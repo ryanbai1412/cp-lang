@@ -539,6 +539,15 @@ enum State {
     Done,
 }
 
+/// Whether a fn's parameter and return types have been read. Every reader
+/// goes through `ensure_sig`, so declaration order doesn't matter.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SigState {
+    Unresolved,
+    Resolving,
+    Resolved,
+}
+
 struct FnSig<'a> {
     name: String,
     /// Without `self`.
@@ -564,6 +573,7 @@ struct FnSig<'a> {
     /// True once a call site has claimed this `returns_fresh_domain` fn.
     used_fresh_call: bool,
     state: State,
+    sig: SigState,
     /// Where this fn was first asked for.
     asked_at: report::Asked,
 }
@@ -717,9 +727,6 @@ enum LibrarySize {
     /// An `impl Index` instance: its `let count`, lowered with the type
     /// arguments bound, and the user's line that asked for the instance.
     Count(Expr, Span),
-    /// The builtin `Subset<D>`: the `2^|D|` masks. It goes once `Subset`
-    /// is std's own `impl Index`.
-    Subsets(DomainId),
 }
 
 /// What a library domain's size reads: it is sized after a statement sets
@@ -794,8 +801,6 @@ struct Lowerer<'a> {
     enum_insts: HashMap<(GenEnumId, Vec<GenArg>), EnumId>,
 
     domains: Vec<String>,
-    /// `Subset<D>` domains: `(subset, base)`.
-    subsets: Vec<(DomainId, DomainId)>,
     /// How each library domain is sized, by its `DomainId`: right after
     /// every definition of a domain its size reads.
     library_sizes: BTreeMap<DomainId, LibrarySize>,
@@ -940,7 +945,6 @@ impl<'a> Lowerer<'a> {
             gen_enums: Vec::new(),
             enum_insts: HashMap::new(),
             domains: Vec::new(),
-            subsets: Vec::new(),
             library_sizes: BTreeMap::new(),
             product_domains: HashMap::new(),
             sum_enums: HashMap::new(),
@@ -2055,6 +2059,7 @@ impl<'a> Lowerer<'a> {
             returns_fresh_domain: false,
             used_fresh_call: false,
             state: State::Pending,
+            sig: SigState::Unresolved,
             asked_at: self.asked_at.callee(self.cur_mod),
         });
         self.bodies.push(None);
@@ -2161,10 +2166,10 @@ impl<'a> Lowerer<'a> {
         self.attach_impls_for_builtins();
         let num_sigs = self.sigs.len();
         for id in 0..num_sigs {
-            if self.sigs[id].params.is_empty() && !self.sigs[id].decl.params.is_empty()
-                || self.sigs[id].ret.is_none()
-            {
+            if self.sigs[id].ret.is_none() && self.sigs[id].sig == SigState::Resolved {
                 self.resolve_fn_sig(id, None);
+            } else {
+                self.ensure_sig(id);
             }
         }
         self.cur_mod = 0;
@@ -2175,6 +2180,25 @@ impl<'a> Lowerer<'a> {
         self.resolve_fn_sig_with(id, trait_name, None, None);
     }
 
+    /// Reads `id`'s signature the first time anything needs it: a call made
+    /// while other signatures are still being read (a domain sized from a
+    /// parameter type) gets the callee's types, not an empty list.
+    pub(super) fn ensure_sig(&mut self, id: FnId) {
+        match self.sigs[id].sig {
+            SigState::Resolved => {}
+            SigState::Resolving => {
+                let span = self.sigs[id].decl.name.span;
+                let name = self.sigs[id].decl.name.text.clone();
+                self.error(
+                    codes::TYPE_MISMATCH,
+                    span,
+                    format!("`{name}`'s parameter types depend on `{name}` itself"),
+                );
+            }
+            SigState::Unresolved => self.resolve_fn_sig(id, None),
+        }
+    }
+
     pub(super) fn resolve_fn_sig_with(
         &mut self,
         id: FnId,
@@ -2183,6 +2207,7 @@ impl<'a> Lowerer<'a> {
         out_ty: Option<&Ty>,
     ) {
         let decl = self.sigs[id].decl;
+        self.sigs[id].sig = SigState::Resolving;
         let saved_mod = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
         let saved_offset = std::mem::replace(&mut self.offset, self.sigs[id].offset);
         let saved_env = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
@@ -2343,6 +2368,7 @@ impl<'a> Lowerer<'a> {
         self.offset = saved_offset;
         self.gen_env = saved_env;
         self.self_struct = saved_self;
+        self.sigs[id].sig = SigState::Resolved;
     }
 
     // ----- types -----
@@ -2561,11 +2587,8 @@ impl<'a> Lowerer<'a> {
                 }
             }
             if rest == "subsets" {
-                if let Some(GenArg::Domain(d)) = self.gen_env.get(prefix).cloned() {
-                    return Spec::Plain(Ty::Pos(self.subset_domain(d)));
-                }
-                if let Some(Sym::Domain(d)) = self.get_sym(prefix) {
-                    return Spec::Plain(Ty::Pos(self.subset_domain(d)));
+                if let Some(d) = self.resolve_domain_name(prefix) {
+                    return Spec::Plain(self.subset_ty(d, name.span));
                 }
             }
             if let Some(GenArg::Ty(t)) = self.gen_env.get(prefix).cloned() {
@@ -2584,7 +2607,7 @@ impl<'a> Lowerer<'a> {
                 return res;
             }
             if let Some(Sym::GenStruct(gid)) = self.get_sym(prefix) {
-                let gargs = self.resolve_gen_args(args);
+                let gargs = self.resolve_gen_args_for_struct(gid, args);
                 let sid = self.instantiate_struct(gid, gargs);
                 if let Some(&dom_id) = self.structs[sid].owned_domains.get(rest) {
                     return Spec::Plain(Ty::Pos(dom_id));
@@ -2641,18 +2664,6 @@ impl<'a> Lowerer<'a> {
                 Ty::HashMap(Box::new(key), Box::new(arg(self, 1)))
             }
             "Range" => Ty::Range(Box::new(arg(self, 0))),
-            "Subset" => match arg(self, 0) {
-                Ty::Pos(base) => Ty::Pos(self.subset_domain(base)),
-                Ty::Error => Ty::Error,
-                other => {
-                    let message = format!(
-                        "`Subset` takes a domain, and `{}` is not one",
-                        self.show(&other)
-                    );
-                    self.error(codes::TYPE_MISMATCH, name.span, message);
-                    Ty::Error
-                }
-            },
             "Cut" if !args.is_empty() => match arg(self, 0) {
                 Ty::Pos(d) => Ty::Bound(d),
                 other => other,
@@ -2701,49 +2712,6 @@ impl<'a> Lowerer<'a> {
             },
         };
         Spec::Plain(ty)
-    }
-
-    /// The domain of the subsets of `base`, made on first use.
-    fn subset_domain(&mut self, base: DomainId) -> DomainId {
-        if let Some((subset, _)) = self.subsets.iter().find(|(_, b)| *b == base) {
-            return *subset;
-        }
-        let subset = self.domains.len();
-        self.domains.push(format!("Subset<{}>", self.domains[base]));
-        self.subsets.push((subset, base));
-        self.library_sizes
-            .insert(subset, LibrarySize::Subsets(base));
-        subset
-    }
-
-    /// The domain whose subsets `subset` holds, when it is a `Subset<D>`.
-    fn subset_base(&self, subset: DomainId) -> Option<DomainId> {
-        self.subsets
-            .iter()
-            .find(|(s, _)| *s == subset)
-            .map(|(_, base)| *base)
-    }
-
-    /// `v in mask`, both already lowered: bit `v` of the mask.
-    fn subset_has(&mut self, mask: Expr, item: Expr, span: Span) -> Expr {
-        let bits = self.cast(Cast::Ord, mask, Ty::Int);
-        let at = self.cast(Cast::Ord, item, Ty::Int);
-        let shifted = self.mk(
-            ExprKind::Binary(BinOp::Shr, Box::new(bits), Box::new(at)),
-            Ty::Int,
-            span,
-        );
-        let one = self.int_lit(1, span);
-        let bit = self.mk(
-            ExprKind::Binary(BinOp::BitAnd, Box::new(shifted), Box::new(one.clone())),
-            Ty::Int,
-            span,
-        );
-        self.mk(
-            ExprKind::Cmp(CmpOp::Eq, Box::new(bit), Box::new(one)),
-            Ty::Bool,
-            span,
-        )
     }
 
     /// A list built by walking the ordinals of `domain`: `first` goes in
@@ -2989,17 +2957,11 @@ impl<'a> Lowerer<'a> {
                     }
                 }
                 if let Some(domain) = name.text.strip_suffix(".subsets") {
-                    if let Some(GenArg::Domain(id)) = self.gen_env.get(domain).cloned() {
-                        return Some(DimSpec::Pos(self.subset_domain(id)));
+                    if let Some(id) = self.resolve_domain_name(domain) {
+                        if let Ty::Struct(sid) = self.subset_ty(id, name.span) {
+                            return self.structs[sid].index_domain.map(DimSpec::Pos);
+                        }
                     }
-                    if let Some(Sym::Domain(id)) = self.get_sym(domain) {
-                        return Some(DimSpec::Pos(self.subset_domain(id)));
-                    }
-                }
-            } else if name.text == "Subset" && args.len() == 1 {
-                // `[Subset<Row>]Int`: one cell for each subset.
-                if let Ty::Pos(id) = self.resolve_ty(ty) {
-                    return Some(DimSpec::Pos(id));
                 }
             } else if name.text == "Cut" && args.len() == 1 {
                 if let Ty::Pos(id) = self.resolve_ty(&args[0]) {
@@ -3010,14 +2972,14 @@ impl<'a> Lowerer<'a> {
                     return Some(DimSpec::Sym(id));
                 }
             } else if let Some(Sym::GenStruct(gid)) = self.get_sym(&name.text) {
-                let gargs = self.resolve_gen_args(args);
+                let gargs = self.resolve_gen_args_for_struct(gid, args);
                 let sid = self.instantiate_struct(gid, gargs);
                 if let Some(dom_id) = self.structs[sid].index_domain {
                     return Some(DimSpec::Pos(dom_id));
                 }
             } else if let Some((prefix, rest)) = name.text.split_once('.') {
                 if let Some(Sym::GenStruct(gid)) = self.get_sym(prefix) {
-                    let gargs = self.resolve_gen_args(args);
+                    let gargs = self.resolve_gen_args_for_struct(gid, args);
                     let sid = self.instantiate_struct(gid, gargs);
                     if let Some(&dom_id) = self.structs[sid].owned_domains.get(rest) {
                         return Some(DimSpec::Pos(dom_id));
@@ -3822,6 +3784,7 @@ impl<'a> Lowerer<'a> {
                 returns_fresh_domain: false,
                 used_fresh_call: false,
                 state: State::Done,
+                sig: SigState::Resolved,
                 asked_at: self.asked_at.callee(self.cur_mod),
             });
             self.bodies.push(Some(Function {
@@ -3886,6 +3849,7 @@ impl<'a> Lowerer<'a> {
                     returns_fresh_domain: false,
                     used_fresh_call: false,
                     state: State::Done,
+                    sig: SigState::Resolved,
                     asked_at: self.asked_at.callee(self.cur_mod),
                 });
                 self.bodies.push(Some(Function {
@@ -5442,9 +5406,7 @@ fn collect_stmt_calls(stmt: &Stmt, out: &mut Vec<FnId>) {
                         collect_expr_calls(s, out);
                     }
                 }
-                Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
-                    collect_expr_calls(e, out)
-                }
+                Iter::RangeVal(e, _) | Iter::Seq(e, _) => collect_expr_calls(e, out),
                 Iter::Walk { len, nth, .. } => {
                     collect_expr_calls(len, out);
                     out.push(*nth);

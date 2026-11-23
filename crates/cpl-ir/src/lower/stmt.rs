@@ -1259,7 +1259,7 @@ impl<'a> Lowerer<'a> {
             | ast::StmtKind::Lend { .. } => {}
             ast::StmtKind::Domain { name, def } => self.domain(name, def, out),
             ast::StmtKind::Expr(e) => {
-                if !self.drop_key(e, out) && !self.subset_set(e, out) {
+                if !self.drop_key(e, out) {
                     self.tail(e, Tail::Discard, out)
                 }
             }

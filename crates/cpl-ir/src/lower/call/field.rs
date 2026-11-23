@@ -11,6 +11,9 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        if let Some(alias) = self.subsets_alias(base) {
+            return self.field(whole, &alias, name, hint);
+        }
         let then = matches!(name.text.as_str(), "len" | "is_empty").then_some(name);
         if let Some(e) = then.and_then(|n| self.map_view_piece(base, Some(n))) {
             return e;
@@ -51,19 +54,6 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        // `Subset<D>.full` / `Subset<D>.empty` / `Subset<D>.len`, etc.
-        if let ast::ExprKind::Generic {
-            base: gb,
-            args: gargs,
-        } = &base.kind
-        {
-            if matches!(&gb.kind, ast::ExprKind::Name(n) if n == "Subset") && gargs.len() == 1 {
-                if let Ty::Pos(d) = self.resolve_ty(&gargs[0]) {
-                    let sub = self.subset_domain(d);
-                    return self.domain_field(sub, name, hint, span);
-                }
-            }
-        }
         // Handle `GenericBase<...>.member` (e.g., `Mod<7>.zero`, `Sum<Int>.id`, `Less<Int>.rev`).
         if let ast::ExprKind::Generic {
             base: gbase,
@@ -78,7 +68,10 @@ impl<'a> Lowerer<'a> {
                     if let Some(sc) = self.structs[sid].consts.get(&name.text).cloned() {
                         return self.eval_struct_const(sid, sc, span);
                     }
-                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
+                    // A method taking `self` is the value's: `Subset<B>.first` is the domain's.
+                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text).filter(|&&f| {
+                        self.sigs[f].receiver.is_none() || self.structs[sid].index_domain.is_none()
+                    }) {
                         return self.method_call(fn_id, None, &[], span);
                     }
                     if let Some(number) = self.struct_number_param(sid, &name.text, span) {
@@ -162,7 +155,10 @@ impl<'a> Lowerer<'a> {
                 if let Some(sc) = self.structs[id].consts.get(&name.text).cloned() {
                     return self.eval_struct_const(id, sc, span);
                 }
-                if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
+                // A method taking `self` is the value's: `Subset<B>.first` is the domain's.
+                if let Some(&fn_id) = self.structs[id].methods.get(&name.text).filter(|&&f| {
+                    self.sigs[f].receiver.is_none() || self.structs[id].index_domain.is_none()
+                }) {
                     return self.method_call(fn_id, None, &[], span);
                 }
                 if let Some(number) = self.struct_number_param(id, &name.text, span) {
@@ -184,7 +180,13 @@ impl<'a> Lowerer<'a> {
                         if let Some(sc) = self.structs[id].consts.get(&name.text).cloned() {
                             return self.eval_struct_const(id, sc, span);
                         }
-                        if let Some(&fn_id) = self.structs[id].methods.get(&name.text) {
+                        // A method taking `self` is the value's: `Subset<B>.first` is the domain's.
+                        if let Some(&fn_id) =
+                            self.structs[id].methods.get(&name.text).filter(|&&f| {
+                                self.sigs[f].receiver.is_none()
+                                    || self.structs[id].index_domain.is_none()
+                            })
+                        {
                             return self.method_call(fn_id, None, &[], span);
                         }
                         if let Some(number) = self.struct_number_param(id, &name.text, span) {
@@ -275,7 +277,10 @@ impl<'a> Lowerer<'a> {
                     if let Some(sc) = self.structs[sid].consts.get(&name.text).cloned() {
                         return self.eval_struct_const(sid, sc, span);
                     }
-                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
+                    // A method taking `self` is the value's: `Subset<B>.first` is the domain's.
+                    if let Some(&fn_id) = self.structs[sid].methods.get(&name.text).filter(|&&f| {
+                        self.sigs[f].receiver.is_none() || self.structs[sid].index_domain.is_none()
+                    }) {
                         return self.method_call(fn_id, None, &[], span);
                     }
                 }
@@ -963,169 +968,6 @@ impl<'a> Lowerer<'a> {
                     Ty::Bool,
                     span,
                 )
-            }
-            (Ty::Pos(d), "subsets") if self.subset_base(*d).is_some() => {
-                let d = *d;
-                let elem_ty = Ty::Pos(d);
-                let list_ty = Ty::list(elem_ty.clone());
-                self.do_expr(Some(&list_ty), span, |lw, out| {
-                    let acc = lw.temp(list_ty.clone());
-                    out.push(Stmt::Let(
-                        acc,
-                        Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
-                    ));
-                    let item = lw.temp(elem_ty.clone());
-                    let lid = lw.fresh_loop();
-                    let push = lw.mk(
-                        ExprKind::Mutate(
-                            Mutation::Push,
-                            Box::new(Place {
-                                kind: PlaceKind::Local(acc),
-                                ty: list_ty.clone(),
-                                span: lw.span(span),
-                            }),
-                            vec![lw.local(item, span)],
-                        ),
-                        Ty::Unit,
-                        span,
-                    );
-                    out.push(Stmt::For(
-                        lid,
-                        item,
-                        Iter::Subsets(value),
-                        Block {
-                            stmts: vec![Stmt::Expr(push)],
-                        },
-                    ));
-                    out.push(Stmt::Give(lw.local(acc, span)));
-                })
-            }
-            (Ty::Pos(d), "supersets") if self.subset_base(*d).is_some() => {
-                let d = *d;
-                let base_d = self.subset_base(d).unwrap();
-                let elem_ty = Ty::Pos(d);
-                let list_ty = Ty::list(elem_ty.clone());
-                self.do_expr(Some(&list_ty), span, |lw, out| {
-                    let s_ord_slot = lw.temp(Ty::Int);
-                    let s_ord = lw.cast(Cast::Ord, value, Ty::Int);
-                    out.push(Stmt::Let(s_ord_slot, Some(s_ord)));
-                    let base_len = lw.mk(ExprKind::DomainLen(base_d), Ty::Int, span);
-                    let one = lw.int_lit(1, span);
-                    let two_n = lw.mk(
-                        ExprKind::Binary(BinOp::Shl, Box::new(one.clone()), Box::new(base_len)),
-                        Ty::Int,
-                        span,
-                    );
-                    let full = lw.mk(
-                        ExprKind::Binary(BinOp::Sub, Box::new(two_n), Box::new(one)),
-                        Ty::Int,
-                        span,
-                    );
-                    let comp_ord = lw.mk(
-                        ExprKind::Binary(
-                            BinOp::BitXor,
-                            Box::new(full),
-                            Box::new(lw.local(s_ord_slot, span)),
-                        ),
-                        Ty::Int,
-                        span,
-                    );
-                    let comp = lw.cast(Cast::Trust, comp_ord, elem_ty.clone());
-                    let acc = lw.temp(list_ty.clone());
-                    out.push(Stmt::Let(
-                        acc,
-                        Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
-                    ));
-                    let item = lw.temp(elem_ty.clone());
-                    let lid = lw.fresh_loop();
-                    let sub_ord = lw.cast(Cast::Ord, lw.local(item, span), Ty::Int);
-                    let sup_ord = lw.mk(
-                        ExprKind::Binary(
-                            BinOp::BitOr,
-                            Box::new(sub_ord),
-                            Box::new(lw.local(s_ord_slot, span)),
-                        ),
-                        Ty::Int,
-                        span,
-                    );
-                    let sup = lw.cast(Cast::Trust, sup_ord, elem_ty.clone());
-                    let push = lw.mk(
-                        ExprKind::Mutate(
-                            Mutation::Push,
-                            Box::new(Place {
-                                kind: PlaceKind::Local(acc),
-                                ty: list_ty.clone(),
-                                span: lw.span(span),
-                            }),
-                            vec![sup],
-                        ),
-                        Ty::Unit,
-                        span,
-                    );
-                    out.push(Stmt::For(
-                        lid,
-                        item,
-                        Iter::Subsets(comp),
-                        Block {
-                            stmts: vec![Stmt::Expr(push)],
-                        },
-                    ));
-                    // Submasks of the complement come largest first; supersets go `self` first.
-                    let rev = lw.mk(
-                        ExprKind::Mutate(
-                            Mutation::Reverse,
-                            Box::new(Place {
-                                kind: PlaceKind::Local(acc),
-                                ty: list_ty.clone(),
-                                span: lw.span(span),
-                            }),
-                            Vec::new(),
-                        ),
-                        Ty::Unit,
-                        span,
-                    );
-                    out.push(Stmt::Expr(rev));
-                    out.push(Stmt::Give(lw.local(acc, span)));
-                })
-            }
-            (Ty::Pos(d), "len") if self.subset_base(*d).is_some() => {
-                let ord = self.cast(Cast::Ord, value, Ty::Int);
-                builtin(self, Builtin::Popcount, vec![ord], Ty::Int)
-            }
-            (Ty::Pos(d), "is_empty") if self.subset_base(*d).is_some() => {
-                let ord = self.cast(Cast::Ord, value, Ty::Int);
-                let zero = self.int_lit(0, span);
-                self.mk(
-                    ExprKind::Cmp(CmpOp::Eq, Box::new(ord), Box::new(zero)),
-                    Ty::Bool,
-                    span,
-                )
-            }
-            (Ty::Pos(d), "first") if self.subset_base(*d).is_some() => {
-                let base_d = self.subset_base(*d).unwrap();
-                let opt_ty = Ty::opt(Ty::Pos(base_d));
-                let ord = self.cast(Cast::Ord, value, Ty::Int);
-                self.do_expr(Some(&opt_ty), span, |lw, out| {
-                    let s = lw.temp(Ty::Int);
-                    out.push(Stmt::Let(s, Some(ord)));
-                    let sv = lw.local(s, span);
-                    let zero = lw.int_lit(0, span);
-                    let is_empty = lw.mk(
-                        ExprKind::Cmp(CmpOp::Eq, Box::new(sv.clone()), Box::new(zero)),
-                        Ty::Bool,
-                        span,
-                    );
-                    let bit = lw.mk(ExprKind::Builtin(Builtin::Ctz, vec![sv]), Ty::Int, span);
-                    let pos = lw.cast(Cast::Trust, bit, Ty::Pos(base_d));
-                    let some = lw.mk(ExprKind::Some(Box::new(pos)), opt_ty.clone(), span);
-                    let none = lw.mk(ExprKind::None, opt_ty.clone(), span);
-                    let res = lw.mk(
-                        ExprKind::If(Box::new(is_empty), Box::new(none), Box::new(some)),
-                        opt_ty.clone(),
-                        span,
-                    );
-                    out.push(Stmt::Give(res));
-                })
             }
             (Ty::Pos(d), "len" | "count") => self.mk(ExprKind::DomainLen(*d), Ty::Int, span),
             (Ty::DomainVal, "first") => {

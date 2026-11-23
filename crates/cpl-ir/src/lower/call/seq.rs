@@ -393,7 +393,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let len = self.mk(ExprKind::DomainLen(id), Ty::Int, span);
-        if matches!(name.text.as_str(), "first" | "last") && self.subset_base(id).is_none() {
+        if matches!(name.text.as_str(), "first" | "last") {
             let ord = if name.text == "first" {
                 self.int_lit(0, span)
             } else {
@@ -414,7 +414,7 @@ impl<'a> Lowerer<'a> {
         }
         // An empty domain has no first or last position: asking stops the
         // program in the built C++ as it does in `cpl run`.
-        if matches!(name.text.as_str(), "first" | "last") && self.subset_base(id).is_none() {
+        if matches!(name.text.as_str(), "first" | "last") {
             let zero = self.int_lit(0, span);
             let empty = self.mk(
                 ExprKind::Cmp(CmpOp::Le, Box::new(len.clone()), Box::new(zero)),
@@ -434,14 +434,6 @@ impl<'a> Lowerer<'a> {
         }
         match name.text.as_str() {
             "len" | "size" | "count" => len,
-            "empty" if self.subset_base(id).is_some() => {
-                let zero = self.int_lit(0, span);
-                self.cast(Cast::Trust, zero, Ty::Pos(id))
-            }
-            "full" if self.subset_base(id).is_some() => {
-                let full = self.int_add(len, -1);
-                self.cast(Cast::Trust, full, Ty::Pos(id))
-            }
             "first" => {
                 let zero = self.int_lit(0, span);
                 self.mk(
@@ -476,13 +468,6 @@ impl<'a> Lowerer<'a> {
                 if let Some(Ty::Struct(sid)) = hint {
                     if self.is_bitset_of(*sid, id) {
                         return self.domain_bitset_full(id, span);
-                    }
-                }
-                if let Some(Ty::Pos(sub)) = hint {
-                    if self.subset_base(*sub) == Some(id) {
-                        let sub_len = self.mk(ExprKind::DomainLen(*sub), Ty::Int, span);
-                        let full = self.int_add(sub_len, -1);
-                        return self.cast(Cast::Trust, full, Ty::Pos(*sub));
                     }
                 }
                 self.mk(

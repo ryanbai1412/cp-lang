@@ -1097,9 +1097,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             Iter::Range { lo, hi, .. } => {
                 Self::expr_mentions_slot(lo, target) || Self::expr_mentions_slot(hi, target)
             }
-            Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
-                Self::expr_mentions_slot(e, target)
-            }
+            Iter::RangeVal(e, _) | Iter::Seq(e, _) => Self::expr_mentions_slot(e, target),
             Iter::TreeRange {
                 container, lo, hi, ..
             } => {

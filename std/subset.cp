@@ -153,3 +153,17 @@ impl BitXor for Subset<B>:
 
 impl Sub for Subset<B>:
     fn sub(a, b) = Subset(a.bits & (b.bits ^ (U64(0) - U64(1))))
+
+impl Index for Subset<B>:
+    let count = subset_count(B.count)
+    @get fn ord(self) -> Int = Int(bits)
+    fn nth(k: Int) -> Subset<B> = Subset(U64(k))
+
+impl Into<Int> for Subset<B>:
+    fn into(self) -> Int = Int(bits)
+
+/// `2^n`, the number of subsets of `n` values, trapping in every build above 25 values.
+fn subset_count(n: Int) -> Int:
+    with checks(asserts: on):
+        assert n <= 25, "Subset over {n} values: at most 25"
+    1 << n

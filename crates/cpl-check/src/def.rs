@@ -47,6 +47,8 @@ pub enum Def {
         getters: Vec<String>,
         /// Methods that take `mut self`.
         mutators: Vec<String>,
+        /// Methods that take `self`: `T.name` on the type itself doesn't reach them.
+        receivers: Vec<String>,
         /// Domains and constants declared in the body: `Rooted<V>.Pre`.
         owned: Vec<(String, Ty)>,
         projections: Vec<Projection>,

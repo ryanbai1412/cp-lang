@@ -42,6 +42,9 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         }
         self.intern_inline_product(base, span);
+        if let Some(alias) = self.subsets_alias(base) {
+            return self.method(whole, &alias, name, args, hint);
+        }
         // `x.inv()`: a `@get` method reads the same with empty parentheses.
         if args.is_empty() {
             if let Some(Ty::Struct(id)) = self.probe_ty_silent(base) {
@@ -364,27 +367,6 @@ impl<'a> Lowerer<'a> {
         } = &base.kind
         {
             if let ast::ExprKind::Name(gname) = &gbase.kind {
-                if gname == "Subset" && gtypes.len() == 1 && name.text == "single" {
-                    if let Ty::Pos(d) = self.resolve_ty(&gtypes[0]) {
-                        if let Some(el) = self.one_arg("single", args, &Ty::Pos(d), span) {
-                            let sub = self.subset_domain(d);
-                            let shifted = self.mk(
-                                ExprKind::Binary(
-                                    BinOp::Shl,
-                                    Box::new(self.int_lit(1, span)),
-                                    Box::new(el),
-                                ),
-                                Ty::Int,
-                                span,
-                            );
-                            return self.mk(
-                                ExprKind::Cast(Cast::Trust, Box::new(shifted)),
-                                Ty::Pos(sub),
-                                span,
-                            );
-                        }
-                    }
-                }
                 let lookup = prefix_shape_struct(gname, gtypes.len()).unwrap_or(gname);
                 if let Some(Sym::GenStruct(gid)) = self.get_sym(lookup) {
                     if let Some(call) = self.list_form_call(gid, name, gtypes, args, span) {

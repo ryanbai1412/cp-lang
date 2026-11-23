@@ -239,7 +239,7 @@ fn iter_exprs<'p>(iter: &'p Iter, f: &mut dyn FnMut(&'p Expr)) {
                 f(s);
             }
         }
-        Iter::RangeVal(e, _) | Iter::Subsets(e) | Iter::Members(e) | Iter::Seq(e, _) => f(e),
+        Iter::RangeVal(e, _) | Iter::Seq(e, _) => f(e),
         Iter::TreeRange {
             container, lo, hi, ..
         } => {
@@ -438,9 +438,6 @@ pub(crate) fn trap_free_stmts(
         }
         Stmt::For(_, _, Iter::Seq(seq, _), body) => {
             matches!(seq.kind, ExprKind::Local(_)) && block_free(body)
-        }
-        Stmt::For(_, _, Iter::Members(mask) | Iter::Subsets(mask), body) => {
-            free(mask) && block_free(body)
         }
         Stmt::Continue(None) => true,
         _ => false,

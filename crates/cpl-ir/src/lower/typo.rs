@@ -68,12 +68,7 @@ impl<'a> Lowerer<'a> {
                     names.push("range");
                 }
             }
-            Ty::Pos(d) => {
-                names.extend(POS_MEMBERS);
-                if self.subset_base(*d).is_some() {
-                    names.push("subsets");
-                }
-            }
+            Ty::Pos(_) => names.extend(POS_MEMBERS),
             Ty::Bound(_) => {
                 names.extend(POS_MEMBERS);
                 names.extend(BOUND_EXTRA);

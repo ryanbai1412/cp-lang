@@ -244,6 +244,60 @@ impl<'a> Lowerer<'a> {
             b.stmts = stmts;
         });
     }
+
+    /// `B.subsets` is `Subset<B>` (spec/lib/search-dp.md), std's `impl Index` struct.
+    pub(super) fn subsets_alias(&mut self, e: &ast::Expr) -> Option<ast::Expr> {
+        let ast::ExprKind::Field { base, name } = &e.kind else {
+            return None;
+        };
+        let ast::ExprKind::Name(n) = &base.kind else {
+            return None;
+        };
+        if name.text != "subsets"
+            || self.lookup(n).is_some()
+            || self.resolve_domain_name(n).is_none()
+        {
+            return None;
+        }
+        let span = base.span;
+        let arg = ast::Type {
+            kind: ast::TypeKind::Named {
+                name: ast::Name {
+                    text: n.clone(),
+                    span,
+                },
+                args: Vec::new(),
+            },
+            span,
+        };
+        Some(ast::Expr {
+            kind: ast::ExprKind::Generic {
+                base: Box::new(ast::Expr {
+                    kind: ast::ExprKind::Name("Subset".into()),
+                    span,
+                }),
+                args: vec![arg],
+            },
+            span: e.span,
+        })
+    }
+
+    /// `Subset<B>`: std's struct over the domain `d`.
+    pub(super) fn subset_ty(&mut self, d: DomainId, span: Span) -> Ty {
+        match self.get_sym("Subset") {
+            Some(Sym::GenStruct(gid)) => {
+                Ty::Struct(self.instantiate_struct(gid, vec![GenArg::Domain(d)]))
+            }
+            _ => {
+                self.error(
+                    codes::UNKNOWN_TYPE,
+                    span,
+                    "`Subset` is not in scope".to_string(),
+                );
+                Ty::Error
+            }
+        }
+    }
 }
 
 impl Lowerer<'_> {
@@ -254,68 +308,40 @@ impl Lowerer<'_> {
         let size = LibrarySize::Count(len, self.asked_at.at);
         if library_size_inputs(&size).is_empty() {
             let mut stmts = Vec::new();
-            self.push_library_size(id, &size, Span::default(), &mut stmts);
+            self.push_library_size(id, &size, &mut stmts);
             self.preamble_stmts.extend(stmts);
         } else {
             self.library_sizes.insert(id, size);
         }
     }
 
-    /// Sizes each library domain that reads `input`, which a statement at
-    /// `span` just set, and in turn those built on them. A size waits for
+    /// Sizes each library domain that reads `input`, which a statement just
+    /// set, and in turn those built on them. A size waits for
     /// the other inputs its block sets, so a later one is never read unset.
     pub(super) fn library_sizing(
         &self,
         input: SizeInput,
-        span: Span,
         pending: &dyn Fn(SizeInput) -> bool,
         out: &mut Vec<Stmt>,
     ) {
         for (&id, size) in &self.library_sizes {
             let inputs = library_size_inputs(size);
             if inputs.contains(&input) && !inputs.iter().any(|&i| pending(i)) {
-                self.push_library_size(id, size, span, out);
-                self.library_sizing(SizeInput::Domain(id), span, pending, out);
+                self.push_library_size(id, size, out);
+                self.library_sizing(SizeInput::Domain(id), pending, out);
             }
         }
     }
 
-    pub(super) fn push_library_size(
-        &self,
-        id: DomainId,
-        size: &LibrarySize,
-        span: Span,
-        out: &mut Vec<Stmt>,
-    ) {
-        let span = match size {
-            LibrarySize::Count(_, site) => *site,
-            LibrarySize::Subsets(_) => span,
-        };
+    pub(super) fn push_library_size(&self, id: DomainId, size: &LibrarySize, out: &mut Vec<Stmt>) {
+        let LibrarySize::Count(len, span) = size;
+        let span = *span;
         let int = |kind| Expr {
             kind,
             ty: Ty::Int,
             span,
         };
-        let len = match size {
-            LibrarySize::Count(len, _) => len.clone(),
-            LibrarySize::Subsets(base) => {
-                let bits = int(ExprKind::DomainLen(*base));
-                let limit = int(ExprKind::Int(MAX_SUBSET_BITS));
-                let too_big = Expr {
-                    kind: ExprKind::Cmp(CmpOp::Gt, Box::new(bits.clone()), Box::new(limit)),
-                    ty: Ty::Bool,
-                    span,
-                };
-                let message =
-                    format!("a `Subset` needs a domain of at most {MAX_SUBSET_BITS} values");
-                let trap = Block {
-                    stmts: vec![Stmt::Trap(message, span)],
-                };
-                out.push(Stmt::If(too_big, trap, Block::default()));
-                let one = int(ExprKind::Int(1));
-                int(ExprKind::Binary(BinOp::Shl, Box::new(one), Box::new(bits)))
-            }
-        };
+        let len = len.clone();
         out.push(Stmt::DefDomain {
             id,
             lo: int(ExprKind::Int(0)),
@@ -341,12 +367,11 @@ impl Lowerer<'_> {
             let mut seen = HashSet::new();
             let mut stmts = Vec::with_capacity(b.stmts.len());
             for (stmt, set) in std::mem::take(&mut b.stmts).into_iter().zip(&sets) {
-                let span = stmt.span().unwrap_or_default();
                 stmts.push(stmt);
                 if let Some(input) = *set {
                     seen.insert(input);
                     let pending = |i: SizeInput| !seen.contains(&i) && sets.contains(&Some(i));
-                    self.library_sizing(input, span, &pending, &mut stmts);
+                    self.library_sizing(input, &pending, &mut stmts);
                 }
             }
             b.stmts = stmts;
@@ -357,7 +382,6 @@ impl Lowerer<'_> {
 /// The domains a library domain's size reads.
 fn library_size_inputs(size: &LibrarySize) -> Vec<SizeInput> {
     match size {
-        LibrarySize::Subsets(base) => vec![SizeInput::Domain(*base)],
         LibrarySize::Count(len, _) => {
             let mut inputs = Vec::new();
             walk::deep_expr(len, &mut |e| {

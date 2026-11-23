@@ -189,6 +189,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/keyed-counter-is-not-a-key.cp: compiler
 - core-04/list-of-domain-array-loses-domain.cp: compiler
 - core-04/nested-slice-below-view-start-traps.cp: compiler
+- core-04/pair-index-arity-mismatch.cp: compiler
 - core-04/pair-symmetric.cp: compiler
 - core-04/palindromes-longest-at-key.cp: stdlib
 - core-04/piece-into-fold.cp: compiler

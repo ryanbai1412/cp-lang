@@ -1099,6 +1099,18 @@ impl<'a> Checker<'a> {
                     }
                     _ => None,
                 });
+                let receivers = s
+                    .methods
+                    .iter()
+                    .filter_map(|m| match &m.kind {
+                        ast::StmtKind::Fn(f)
+                            if f.params.first().is_some_and(|p| p.name.text == "self") =>
+                        {
+                            Some(f.name.text.clone())
+                        }
+                        _ => None,
+                    })
+                    .collect();
                 vec![(
                     s.name.text.clone(),
                     Def::Struct {
@@ -1110,6 +1122,7 @@ impl<'a> Checker<'a> {
                         ctor,
                         getters,
                         mutators,
+                        receivers,
                         owned,
                         projections: self.projections(&s.methods),
                         cached_fields: s

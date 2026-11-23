@@ -661,10 +661,7 @@ impl<'p> Devirt<'p> {
                             self.find_escapes_expr(home, step, false, out);
                         }
                     }
-                    cpl_ir::Iter::RangeVal(e, _)
-                    | cpl_ir::Iter::Seq(e, _)
-                    | cpl_ir::Iter::Subsets(e)
-                    | cpl_ir::Iter::Members(e) => {
+                    cpl_ir::Iter::RangeVal(e, _) | cpl_ir::Iter::Seq(e, _) => {
                         self.find_escapes_expr(home, e, false, out);
                     }
                     cpl_ir::Iter::TreeRange {
@@ -1025,10 +1022,9 @@ impl<'p> Devirt<'p> {
                                 .as_ref()
                                 .is_none_or(|s| self.expr_captures_unused(s, cap_slots))
                     }
-                    cpl_ir::Iter::RangeVal(e, _)
-                    | cpl_ir::Iter::Seq(e, _)
-                    | cpl_ir::Iter::Subsets(e)
-                    | cpl_ir::Iter::Members(e) => self.expr_captures_unused(e, cap_slots),
+                    cpl_ir::Iter::RangeVal(e, _) | cpl_ir::Iter::Seq(e, _) => {
+                        self.expr_captures_unused(e, cap_slots)
+                    }
                     cpl_ir::Iter::TreeRange {
                         container, lo, hi, ..
                     } => {

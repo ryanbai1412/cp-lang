@@ -2915,7 +2915,9 @@ impl<'a> Checker<'a> {
         match &base_ty {
             // `[Sym<V>]T`: symmetric storage over unordered pairs of `V`,
             // indexed as `adj[u, v]` or `adj[p]` with `p: (V, V)`.
-            Ty::Array { index, elem } if matches!(index.as_slice(), [Ty::Named { name, args }] if matches!(name.as_str(), "Sym" | "Pair") && args.len() == 1) =>
+            Ty::Array { index, elem }
+                if matches!(index.as_slice(), [Ty::Named { name, args }] if matches!(name.as_str(), "Sym" | "Pair") && args.len() == 1)
+                    && !(indices.len() == 1 && self.fits(&index_tys[0], &index[0])) =>
             {
                 let Ty::Named { args, .. } = &index[0] else {
                     unreachable!()
@@ -2939,15 +2941,12 @@ impl<'a> Checker<'a> {
                 }
                 if indices.len() != 2 {
                     let message = format!(
-                        "`{}` takes 2 indices ({}, {}), but {} given",
+                        "`{}` takes 2 indices ({}, {}), but {} {} given",
                         self.quote(base.span),
                         dom_ty,
                         dom_ty,
-                        if indices.len() == 1 {
-                            "1 was".to_string()
-                        } else {
-                            format!("{} were", indices.len())
-                        },
+                        indices.len(),
+                        if indices.len() == 1 { "was" } else { "were" },
                     );
                     if let Some(diag) = self.error(codes::NOT_INDEXABLE, expr.span, message) {
                         diag.help =

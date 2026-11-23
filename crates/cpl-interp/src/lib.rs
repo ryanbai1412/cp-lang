@@ -1056,8 +1056,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Iter::Range { lo: e, .. }
             | Iter::RangeVal(e, _)
             | Iter::Seq(e, _)
-            | Iter::Subsets(e)
-            | Iter::Members(e)
             | Iter::TreeRange { container: e, .. } => e.span,
         };
         macro_rules! round {
@@ -1220,24 +1218,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 _ => {}
             },
-            Iter::Subsets(mask_expr) => {
-                let mask = self.eval(mask_expr)?.int();
-                let mut g = mask;
-                loop {
-                    round!(Value::Int(g));
-                    if g == 0 {
-                        break;
-                    }
-                    g = (g - 1) & mask;
-                }
-            }
-            Iter::Members(mask_expr) => {
-                let mut left = self.eval(mask_expr)?.int();
-                while left != 0 {
-                    round!(Value::Int(i64::from(left.trailing_zeros())));
-                    left &= left - 1;
-                }
-            }
             Iter::TreeRange {
                 container,
                 lo,

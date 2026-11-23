@@ -312,9 +312,7 @@ pub(super) fn quiet_iter(iter: &Iter) -> Option<Span> {
         Iter::Range { lo, hi, step, .. } => {
             (quiet(lo) && quiet(hi) && step.as_ref().is_none_or(quiet)).then_some(lo.span)
         }
-        Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => {
-            quiet(e).then_some(e.span)
-        }
+        Iter::RangeVal(e, _) | Iter::Seq(e, _) => quiet(e).then_some(e.span),
         Iter::TreeRange { .. } => None,
     }
 }

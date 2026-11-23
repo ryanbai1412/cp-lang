@@ -330,6 +330,25 @@ impl<'a> Lowerer<'a> {
                 });
                 true
             }
+            Spec::Plain(Ty::Struct(sid)) | Spec::Fields(Ty::Struct(sid), _)
+                if self.structs[*sid].index_domain.is_some()
+                    && self.structs[*sid].methods.contains_key("ord") =>
+            {
+                let d = self.structs[*sid].index_domain.unwrap();
+                let ord = self.structs[*sid].methods["ord"];
+                let raw = self.mk(ExprKind::Call(ord, vec![Arg::Value(value)]), Ty::Int, span);
+                let pos = self.cast(Cast::FromOrd(d), raw, Ty::Pos(d));
+                let ord = self.mk(ExprKind::Cast(Cast::Ord, Box::new(pos)), Ty::Int, span);
+                let len = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                let most = self.domain_lens.get(&d).copied();
+                memo.parts.push(Part {
+                    ord,
+                    len,
+                    ranged: false,
+                    most,
+                });
+                true
+            }
             Spec::Plain(Ty::Enum(e))
                 if self.enums[*e].variants.iter().all(|(_, fs)| fs.is_empty()) =>
             {

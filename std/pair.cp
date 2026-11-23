@@ -1,5 +1,7 @@
 //! Unordered pairs of distinct positions: the domain of data given once per pair.
 
+use std.math.{isqrt}
+
 /// An unordered pair `{lo, hi}` of distinct positions of `V`, `lo` before `hi`. `Pair<V>` is a
 /// domain of `V.count * (V.count - 1) / 2` positions, so `[Pair<V>]T` stores one value per pair,
 /// packed, with no diagonal and no mirrored half. It walks by `hi`, then by `lo`: `(0, 1)`,
@@ -35,7 +37,20 @@ pub struct Pair<V>(pub lo: V, pub hi: V):
         assert v == lo or v == hi, "`Pair.other` needs one of the pair's ends"
         if v == lo: hi else: lo
 
-// blocked: `[Pair<V>]T` is rejected as an array key (GAPS.md pair)
+impl Index for Pair<V>:
+    let count = V.count * (V.count - 1) / 2
+    @get fn ord(self) -> Int = hi.ord * (hi.ord - 1) / 2 + lo.ord
+    fn nth(k: Int) -> Pair<V>:
+        var h = (1 + isqrt(1 + 8 * k)) / 2
+        while h * (h - 1) / 2 > k: h -= 1
+        Pair(V.nth(k - h * (h - 1) / 2), V.nth(h))
+
+impl Into<Int> for Pair<V>:
+    fn into(self) -> Int = self.ord
+
+impl Show for Pair<V>:
+    fn show(a) = "{a.ord}"
+
 /// The full square matrix of a per-pair table: `m[u, v] == m[v, u] == self[u, v]` for
 /// `u != v`, and `diag` at every `m[v, v]`. `read<[Pair<V>]Int>().map(Some).symmetric(diag: None)`
 /// is a distance matrix for `floyd_warshall`.

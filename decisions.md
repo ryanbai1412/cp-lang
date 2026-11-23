@@ -8308,3 +8308,11 @@ tag move fatal again.
 
 - **Call.** 29 holes, all inside M1: 16 silent (12 guesses held), 1 contradiction, 3 missing stdlib, 9 found-late (3 already known gaps). Spec changes: a `fn` parameter always has a type and only a lambda infers its own (R06.1.2, a case pins E0204), so a signature reads alone; and `zip` taking `.rev` (decision 415) answers S8. Routed: `.present()` on `?Range` pieces (compiler, case std-seq/present-unwraps-pieces); `x.f(args)` for a free `f` suggesting `f(x, args)` as one rule (diagnostics); `cpl test` using `checker.py` (tools); positional `maximal` state in std examples, Fenwick suffix search, and the cut-to-position step (stdlib). `cpl-conform corpus` now judges with `checker.py`.
 - **Reverse.** Allow unannotated `fn` parameters as generics inferred from the body.
+- **Reverse.** Drop the hourly cron and the `schedule` branch in `release.yml`'s green step.
+
+## 409. An array index list is the key type's constructor call (stdlib, spec, compiler, 2026-11-23)
+
+- **Decision.** On an array keyed by `K`, `a[x1, ..., xn]` is exactly `a[K(x1, ..., xn)]`, K's ordinary public constructor call, and applies only when that constructor takes `n` arguments. Otherwise it is E0303, with the explicit `a[K(...)]` form as the fix. It is never an `Into` conversion, so each spelling has one meaning. This is decision 159's product rule (`comp[R(0), C(0)]` is `comp[K((R(0), C(0)))]`) generalized to every key type. It also replaces decision 164's `Pair` special case: `Pair<V>` is an ordinary `impl Index` domain, and `Pair(u, v)` calls the ordering `Pair.new` (R02.6.3), so `d[u, v]` and `d[v, u]` are one cell by construction. The checker's `Sym | Pair` name arm goes.
+- **Why.** A key type had one way to make a multi-index (the name arm) only when it was built in. User library domains get the same form with no new mechanism, and errors and traps are the constructor's.
+- **Reverse.** Restore the `Sym | Pair` arm in `cpl-check` `index` and require `d[Pair(u, v)]` everywhere else.
+

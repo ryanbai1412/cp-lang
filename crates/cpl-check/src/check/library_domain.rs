@@ -37,9 +37,16 @@ impl Checker<'_> {
         }
         // `T.count(f)` is the `Seq` count; the impl's own `let count` is `T.count`.
         let seq_count = name.text == "count" && self.in_call_callee;
-        let own = self
-            .members_of(type_name)
-            .is_some_and(|m| m.members.iter().any(|(m, _)| *m == name.text));
+        // A method taking `self` is the value's, not the type's: `Subset<B>.first` is the
+        // domain's first subset, `s.first()` the subset's first member.
+        let receiver = matches!(
+            self.type_def(type_name).as_deref(),
+            Some(Def::Struct { receivers, .. }) if receivers.contains(&name.text)
+        );
+        let own = !receiver
+            && self
+                .members_of(type_name)
+                .is_some_and(|m| m.members.iter().any(|(m, _)| *m == name.text));
         if own && !seq_count {
             return None;
         }

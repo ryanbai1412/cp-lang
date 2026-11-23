@@ -41,6 +41,9 @@ impl<'a> Lowerer<'a> {
     }
 
     fn expr_of(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
+        if let Some(alias) = self.subsets_alias(e) {
+            return self.expr_of(&alias, hint);
+        }
         // Where an optional is wanted, a plain value is typed as the inside.
         let inner_hint = match hint {
             Some(Ty::Opt(inner)) => Some(&**inner),
@@ -2366,30 +2369,6 @@ impl<'a> Lowerer<'a> {
                 );
                 return self.cast(Cast::StepToChar, sum, Ty::Char);
             }
-            (Ty::Pos(a), Ty::Pos(b))
-                if a == b
-                    && self.subset_base(*a).is_some()
-                    && matches!(op, BitOr | BitAnd | BitXor | Sub) =>
-            {
-                let d = *a;
-                let lo = self.cast(Cast::Ord, l, Ty::Int);
-                let ro = self.cast(Cast::Ord, r, Ty::Int);
-                if op == Sub {
-                    let mask = self.mk(ExprKind::Unary(UnOp::BitNot, Box::new(ro)), Ty::Int, span);
-                    let diff = self.mk(
-                        ExprKind::Binary(BinOp::BitAnd, Box::new(lo), Box::new(mask)),
-                        Ty::Int,
-                        span,
-                    );
-                    return self.cast(Cast::Trust, diff, Ty::Pos(d));
-                }
-                let res = self.mk(
-                    ExprKind::Binary(op, Box::new(lo), Box::new(ro)),
-                    Ty::Int,
-                    span,
-                );
-                return self.cast(Cast::Trust, res, Ty::Pos(d));
-            }
             (Ty::Pos(a), Ty::Pos(b)) | (Ty::Bound(a), Ty::Bound(b)) if a == b && op == Sub => {
                 let l = self.cast(Cast::Ord, l, Ty::Int);
                 let r = self.cast(Cast::Ord, r, Ty::Int);
@@ -2794,14 +2773,6 @@ impl<'a> Lowerer<'a> {
         let mut inner = container;
         while let ast::ExprKind::Paren(e) = &inner.kind {
             inner = e;
-        }
-        // `r in mask`, for a `Subset<Row>`.
-        if let Some(Ty::Pos(subset)) = self.probe_ty_silent(inner) {
-            if let Some(base) = self.subset_base(subset) {
-                let mask = self.expr(inner, None);
-                let item = self.expect(item, &Ty::Pos(base));
-                return self.subset_has(mask, item, span);
-            }
         }
         let between = |lw: &mut Self, value: Expr, lo: Expr, hi: Expr, closed: bool| {
             // `lo <= x and x < hi`, with `x` evaluated once.
@@ -4274,6 +4245,9 @@ impl<'a> Lowerer<'a> {
 
     pub(super) fn iter(&mut self, e: &ast::Expr) -> (Iter, Ty) {
         let span = e.span;
+        if let Some(alias) = self.subsets_alias(e) {
+            return self.iter(&alias);
+        }
         if let Some(res) = self.sorted_view_iter(e, span) {
             return res;
         }
@@ -4376,42 +4350,23 @@ impl<'a> Lowerer<'a> {
                 self.error(codes::TYPE_MISMATCH, span, message);
                 error(self)
             }
-            // `for mask in Subset<Row>:` walks every subset, and `for p in
-            // ?Col:` walks `none` and then every `Col`.
+            // `for p in ?Col:` walks `none` and then every `Col`.
             ast::ExprKind::Generic { base, args }
-                if matches!(&base.kind, ast::ExprKind::Name(n) if n == "Subset" || n == "Opt")
+                if matches!(&base.kind, ast::ExprKind::Name(n) if n == "Opt")
                     && args.len() == 1 =>
             {
-                let ast::ExprKind::Name(kind) = &base.kind else {
-                    unreachable!()
-                };
                 let domain = match self.resolve_ty(&args[0]) {
                     Ty::Pos(domain) => domain,
                     Ty::Error => return error(self),
                     other => {
                         let message = format!(
-                            "a `for` can walk the values of a domain's `?D` or `Subset<D>`, and `{}` is not a domain",
+                            "a `for` can walk the values of a domain's `?D`, and `{}` is not a domain",
                             self.show(&other)
                         );
                         self.error(codes::TYPE_MISMATCH, span, message);
                         return error(self);
                     }
                 };
-                if kind == "Subset" {
-                    let subset = self.subset_domain(domain);
-                    let lo = self.int_lit(0, span);
-                    let hi = self.mk(ExprKind::DomainLen(subset), Ty::Int, span);
-                    return (
-                        Iter::Range {
-                            lo,
-                            hi,
-                            step: None,
-                            rev: false,
-                            closed: false,
-                        },
-                        Ty::Pos(subset),
-                    );
-                }
                 let elem = Ty::opt(Ty::Pos(domain));
                 let none = self.mk(ExprKind::None, elem.clone(), span);
                 let some_ty = elem.clone();
@@ -4761,81 +4716,8 @@ impl<'a> Lowerer<'a> {
                         hi,
                         rev: !rev,
                     },
-                    walk @ (Iter::Subsets(_) | Iter::Members(_)) => {
-                        let list_ty = Ty::list(ty.clone());
-                        let collected = self.do_expr(Some(&list_ty), span, |lw, out| {
-                            let acc = lw.temp(list_ty.clone());
-                            out.push(Stmt::Let(
-                                acc,
-                                Some(lw.mk(ExprKind::Tuple(Vec::new()), list_ty.clone(), span)),
-                            ));
-                            let item = lw.temp(ty.clone());
-                            let lid = lw.fresh_loop();
-                            let push = lw.mk(
-                                ExprKind::Mutate(
-                                    Mutation::Push,
-                                    Box::new(Place {
-                                        kind: PlaceKind::Local(acc),
-                                        ty: list_ty.clone(),
-                                        span: lw.span(span),
-                                    }),
-                                    vec![lw.local(item, span)],
-                                ),
-                                Ty::Unit,
-                                span,
-                            );
-                            out.push(Stmt::For(
-                                lid,
-                                item,
-                                walk,
-                                Block {
-                                    stmts: vec![Stmt::Expr(push)],
-                                },
-                            ));
-                            out.push(Stmt::Give(lw.local(acc, span)));
-                        });
-                        Iter::Seq(collected, true)
-                    }
                 };
                 (iter, ty)
-            }
-            ast::ExprKind::Field { base, name } if name.text == "subsets" => {
-                if let ast::ExprKind::Name(n) = &base.kind {
-                    if self.lookup(n).is_none() {
-                        if let Some(d) = self.resolve_domain_name(n) {
-                            let sub = self.subset_domain(d);
-                            let lo = self.int_lit(0, span);
-                            let hi = self.mk(ExprKind::DomainLen(sub), Ty::Int, span);
-                            return (
-                                Iter::Range {
-                                    lo,
-                                    hi,
-                                    step: None,
-                                    rev: false,
-                                    closed: false,
-                                },
-                                Ty::Pos(sub),
-                            );
-                        }
-                    }
-                }
-                let value = self.expr(base, None);
-                if let Ty::Pos(subset) = value.ty {
-                    if self.subset_base(subset).is_some() {
-                        return (Iter::Subsets(value), Ty::Pos(subset));
-                    }
-                }
-                if value.ty != Ty::Error {
-                    self.error(
-                        codes::UNKNOWN_FIELD,
-                        name.span,
-                        format!(
-                            "`{}` has no `.subsets` (expected a `Subset<D>`)",
-                            self.show(&value.ty)
-                        ),
-                    );
-                }
-                error(self)
             }
             ast::ExprKind::Field { base, name }
                 if matches!(name.text.as_str(), "bounds" | "cuts") =>
@@ -4912,12 +4794,6 @@ impl<'a> Lowerer<'a> {
                 }
                 if let Ty::Range(inner) = value.ty.clone() {
                     return (Iter::RangeVal(value, false), *inner);
-                }
-                // `for v in mask`: the members of a `Subset<D>`, in order.
-                if let Ty::Pos(subset) = value.ty {
-                    if let Some(base) = self.subset_base(subset) {
-                        return (Iter::Members(value), Ty::Pos(base));
-                    }
                 }
                 // Any struct with a zero-arg `each(self)` method (such as `Bitset<D>`)
                 // is directly iterable by calling `each`.

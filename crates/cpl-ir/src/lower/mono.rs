@@ -619,10 +619,7 @@ impl<'a> Lowerer<'a> {
                     &t.kind,
                     ast::TypeKind::Record(fields) if !fields.is_empty()
                 ) {
-                    let is_domain_param = decl
-                        .generics
-                        .get(i)
-                        .is_some_and(|g| anon_domain::struct_uses_param_as_domain(decl, &g.text));
+                    let is_domain_param = self.uses_param_as_domain(decl, i);
                     if !is_domain_param {
                         return GenArg::Ty(self.resolve_ty(t));
                     }
@@ -1588,6 +1585,7 @@ impl<'a> Lowerer<'a> {
                 returns_fresh_domain: false,
                 used_fresh_call: false,
                 state: State::Done,
+                sig: SigState::Resolved,
                 asked_at: self.asked_at.callee(self.cur_mod),
             });
             self.bodies.push(Some(Function {

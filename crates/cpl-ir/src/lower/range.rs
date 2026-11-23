@@ -1018,29 +1018,6 @@ impl<'a> Lowerer<'a> {
 }
 
 impl<'a> Lowerer<'a> {
-    /// `s.set(b, on)` on a `Subset<B>` writes `s` (`set(mut self, ...)`).
-    pub(super) fn subset_set(&mut self, e: &ast::Expr, out: &mut Vec<Stmt>) -> bool {
-        let ast::ExprKind::Call { callee, .. } = &e.kind else {
-            return false;
-        };
-        let ast::ExprKind::Field { base, name } = &callee.kind else {
-            return false;
-        };
-        if name.text != "set" {
-            return false;
-        }
-        let Some(Ty::Pos(d)) = self.probe_ty_silent(base) else {
-            return false;
-        };
-        if self.subset_base(d).is_none() {
-            return false;
-        }
-        let value = self.expr(e, None);
-        let place = self.place(base);
-        out.push(Stmt::Assign(place, AssignOp::Set, value));
-        true
-    }
-
     /// The cell of the non-empty range `piece` in a `[V.ranges]T`; an empty range traps, and so
     /// does a `Range<Int>` reaching outside `V`.
     pub(super) fn piece_idx(&mut self, piece: Expr, d: DomainId, span: Span) -> Expr {

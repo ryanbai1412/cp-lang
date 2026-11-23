@@ -136,8 +136,6 @@ impl Found {
                     Iter::Seq(seq, _) if self.blind_scans.contains(&(seq as *const Expr)) => {}
                     Iter::Seq(seq, _)
                     | Iter::RangeVal(seq, _)
-                    | Iter::Subsets(seq)
-                    | Iter::Members(seq)
                     | Iter::TreeRange { container: seq, .. } => self.order(program, &seq.ty),
                     Iter::Range { .. } => {}
                 }

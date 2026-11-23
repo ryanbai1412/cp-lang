@@ -227,10 +227,7 @@ impl Ren {
                     Iter::Range { lo, hi, step, .. } => {
                         self.expr(lo) && self.expr(hi) && step.as_mut().is_none_or(|s| self.expr(s))
                     }
-                    Iter::RangeVal(e, _)
-                    | Iter::Seq(e, _)
-                    | Iter::Subsets(e)
-                    | Iter::Members(e) => self.expr(e),
+                    Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.expr(e),
                     Iter::TreeRange { .. } => false,
                 };
                 ok && self.block(body)

@@ -93,10 +93,7 @@ impl Scopes {
                         self.expr(hi);
                         step.iter().for_each(|e| self.expr(e));
                     }
-                    Iter::RangeVal(e, _)
-                    | Iter::Seq(e, _)
-                    | Iter::Subsets(e)
-                    | Iter::Members(e) => self.expr(e),
+                    Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.expr(e),
                     Iter::TreeRange {
                         container, lo, hi, ..
                     } => {
@@ -1399,10 +1396,7 @@ pub(crate) fn narrow_elems(
                             }
                             check_nested_base(program, scope, e, narrow, changed);
                         }
-                        Iter::Seq(e, _)
-                        | Iter::RangeVal(e, _)
-                        | Iter::Subsets(e)
-                        | Iter::Members(e) => {
+                        Iter::Seq(e, _) | Iter::RangeVal(e, _) => {
                             check_val(program, scope, e, narrow, changed);
                         }
                         Iter::TreeRange {

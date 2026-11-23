@@ -121,8 +121,6 @@ pub type DomainId = usize;
 /// A product domain's parts, each named or not, with its type.
 pub type ProductParts = Vec<(Option<String>, Ty)>;
 
-/// The most values a domain can have for `Subset<D>` to hold its subsets.
-pub const MAX_SUBSET_BITS: i64 = 25;
 pub type StructId = usize;
 pub type EnumId = usize;
 pub type FnId = usize;
@@ -1045,8 +1043,6 @@ impl Stmt {
                 Iter::Walk { len: e, .. }
                 | Iter::RangeVal(e, _)
                 | Iter::Seq(e, _)
-                | Iter::Subsets(e)
-                | Iter::Members(e)
                 | Iter::TreeRange { container: e, .. } => e.span,
             },
             Stmt::Assert { span, .. } | Stmt::Trap(_, span) => *span,
@@ -1083,10 +1079,6 @@ pub enum Iter {
     /// The elements of an array, list, set or string, or the `(key,
     /// value)` pairs of a map. `rev` walks backward.
     Seq(Expr, bool),
-    /// All subsets of a `Subset<D>` bitmask, from the mask down to `0` inclusive.
-    Subsets(Expr),
-    /// The members of a `Subset<D>` bitmask, lowest first.
-    Members(Expr),
     /// The values of a library domain in ordinal order, or backward when
     /// `rev`: `nth(k)` for each `k` in `0..len`, with `k` in slot `k` and
     /// `len` read once into slot `n`. Lowering expands it into an `Int`
@@ -1557,11 +1549,7 @@ impl Program {
                                 self.collect_defined_domains_expr(s, escaping, seen, out);
                             }
                         }
-                        Iter::RangeVal(e, _)
-                        | Iter::Seq(e, _)
-                        | Iter::Subsets(e)
-                        | Iter::Members(e)
-                        | Iter::Walk { len: e, .. } => {
+                        Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Walk { len: e, .. } => {
                             self.collect_defined_domains_expr(e, escaping, seen, out);
                         }
                         Iter::TreeRange {
