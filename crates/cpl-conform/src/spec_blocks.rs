@@ -20,14 +20,57 @@ pub(crate) fn block_hash(text: &str) -> String {
 pub struct SpecBlock {
     pub id: String,
     pub code: String,
+    pub marker: Marker,
+}
+
+/// The `<!-- spec-only: reason -->` or `<!-- given: code -->` comment ending
+/// on the line right above a fence. `given` code (top-level lines, one per
+/// line) is prepended when the block runs; a spec-only block that fails to
+/// check is a skip, not an error.
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum Marker {
+    #[default]
+    None,
+    SpecOnly(String),
+    Given(String),
+}
+
+fn marker_above(before: &str) -> Marker {
+    let Some(body) = before
+        .strip_suffix('\n')
+        .and_then(|b| b.trim_end_matches([' ', '\t']).strip_suffix("-->"))
+    else {
+        return Marker::None;
+    };
+    let Some(open) = body.rfind("<!--") else {
+        return Marker::None;
+    };
+    let inner = body[open + 4..].trim_start();
+    if let Some(r) = inner.strip_prefix("spec-only:") {
+        Marker::SpecOnly(r.split_whitespace().collect::<Vec<_>>().join(" "))
+    } else if let Some(c) = inner.strip_prefix("given:") {
+        let lines: Vec<&str> = c.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
+        Marker::Given(lines.join("\n"))
+    } else {
+        Marker::None
+    }
 }
 
 /// Extracts fenced ```cp / ```python code blocks from markdown text.
 pub fn extract_blocks(text: &str) -> Vec<String> {
+    extract_marked_blocks(text)
+        .into_iter()
+        .map(|(code, _)| code)
+        .collect()
+}
+
+/// Like `extract_blocks`, with each block's marker.
+pub fn extract_marked_blocks(text: &str) -> Vec<(String, Marker)> {
     let mut blocks = Vec::new();
-    let mut rest = text;
-    while let Some(open) = rest.find("```") {
-        let after = &rest[open + 3..];
+    let mut pos = 0;
+    while let Some(rel) = text[pos..].find("```") {
+        let open = pos + rel;
+        let after = &text[open + 3..];
         let Some(nl) = after.find('\n') else {
             break;
         };
@@ -37,9 +80,9 @@ pub fn extract_blocks(text: &str) -> Vec<String> {
             break;
         };
         if lang == "cp" || lang == "python" {
-            blocks.push(body_start[..close].to_string());
+            blocks.push((body_start[..close].to_string(), marker_above(&text[..open])));
         }
-        rest = &body_start[close + 3..];
+        pos = open + 3 + nl + 1 + close + 3;
     }
     blocks
 }
@@ -73,7 +116,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
             .to_string_lossy()
             .replace('\\', "/");
         let mut seen: HashMap<String, usize> = HashMap::new();
-        for code in extract_blocks(&text) {
+        for (code, marker) in extract_marked_blocks(&text) {
             let base = format!("{rel}#{}", block_hash(&code));
             let occ = seen.entry(base.clone()).or_insert(0);
             *occ += 1;
@@ -87,7 +130,7 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
                     continue;
                 }
             }
-            out.push(SpecBlock { id, code });
+            out.push(SpecBlock { id, code, marker });
         }
     }
     out
@@ -95,8 +138,19 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<SpecBlock> {
 
 fn eval_one(db: &mut Database, block: &SpecBlock) -> (String, (CaseOutcome, bool)) {
     let vpath = format!("<spec-block:{}>", block.id);
-    let (spec_diag, spec_failed) = runner::check_spec(db, &vpath, &block.code);
-    let strict_ok = runner::compile_program(db, &vpath, &block.code).is_ok();
+    let source = match &block.marker {
+        Marker::Given(prelude) => format!("{prelude}\n{}", block.code),
+        _ => block.code.clone(),
+    };
+    let (spec_diag, spec_failed) = runner::check_spec(db, &vpath, &source);
+    let strict_ok = runner::compile_program(db, &vpath, &source).is_ok();
+    if let (true, Marker::SpecOnly(reason)) = (spec_failed, &block.marker) {
+        let skip = CaseOutcome {
+            status: "skip".into(),
+            detail: format!("spec-only: {reason}"),
+        };
+        return (block.id.clone(), (skip, strict_ok));
+    }
     let outcome = if !spec_failed {
         CaseOutcome {
             status: "pass".into(),

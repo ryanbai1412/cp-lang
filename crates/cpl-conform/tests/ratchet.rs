@@ -195,6 +195,19 @@ fn spec_blocks_extract_and_strict_roundtrip() {
 }
 
 #[test]
+fn spec_blocks_markers_above_a_fence() {
+    use cpl_conform::spec_blocks::{extract_marked_blocks, Marker};
+    let md = "<!-- spec-only: a tour -->\n```cp\nf(...)\n```\n\n<!-- given:\n  let n = 3\n  let a = [1, 2] -->\n```cp\nprint(n)\n```\n<!-- spec-only: not adjacent -->\n\n```cp\nprint(1)\n```\n";
+    let blocks = extract_marked_blocks(md);
+    assert_eq!(blocks[0].1, Marker::SpecOnly("a tour".into()));
+    assert_eq!(
+        blocks[1].1,
+        Marker::Given("let n = 3\nlet a = [1, 2]".into())
+    );
+    assert_eq!(blocks[2].1, Marker::None);
+}
+
+#[test]
 fn committed_scoreboard_ratchet() {
     let root = find_repo_root().expect("repo root");
     let path = default_scoreboard_path(&root);
