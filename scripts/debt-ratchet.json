@@ -6,9 +6,8 @@
     "crates/cpl-ir/src/lower/expr.rs": 5513,
     "crates/cpl-interp/src/lib.rs": 5346,
     "crates/cpl-ir/src/lower/mono.rs": 4488,
-    "crates/cpl-ir/src/lower/call.rs": 4205,
-    "crates/cpl-check/src/check/expr.rs": 4185,
-    "crates/cpl-check/src/check/stmt.rs": 3205,
+    "crates/cpl-check/src/check/expr.rs": 4163,
+    "crates/cpl-check/src/check/stmt.rs": 3174,
     "crates/cpl-check/src/check/lends.rs": 2811,
     "crates/cpl-check/src/db.rs": 2484,
     "crates/cpl-interp/src/trace.rs": 2243
