@@ -1725,9 +1725,11 @@ impl<'a> Checker<'a> {
                 self.branch -= 1;
                 let mark = self.lend_mark();
                 self.add_cond_facts(cond, false);
+                let before = self.moved.clone();
                 self.block(body);
                 self.lend_reset(mark);
                 self.pop_scope();
+                self.no_move_across_rounds(&before, body);
                 if let Some(else_body) = else_body {
                     self.branch += 1;
                     self.push_scope();
@@ -1803,9 +1805,11 @@ impl<'a> Checker<'a> {
                 self.bind(pat, &elem, steerable, "for");
                 let mark = self.lend_mark();
                 self.hold_iterated(stmt, iter, &iter_ty);
+                let before = self.moved.clone();
                 self.block(body);
                 self.lend_reset(mark);
                 self.pop_scope();
+                self.no_move_across_rounds(&before, body);
                 if let Some(else_body) = else_body {
                     self.branch += 1;
                     self.push_scope();

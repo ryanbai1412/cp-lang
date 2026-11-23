@@ -40,7 +40,7 @@ for l in 1..=31:
     for (s, total) in windows:
         let end = if let p = s.prev: cuts.at(2 * a[p]).l else: cuts.D.last.r
         saved.assign(cuts.at(a[s]).l..end, total)
-    var waiting = by_k
+    var waiting = by_k.clone()
     for (r, opt) in saved.each().rev:
         if let best = opt:
             let xr = x_range(r, l)

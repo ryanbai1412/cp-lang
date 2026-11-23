@@ -42,7 +42,7 @@ var joined_before: [V]List<List<Int>> = []
 for v in t.at.rev:
     var f = [0]
     for c in kids[v]:
-        joined_before[v].push(f)
+        joined_before[v].push(f.clone())
         f = join(f, down[c])
     f.push(0)
     for i in (1..f.len).rev: f[i] max= f[i - 1] + w[v] * i

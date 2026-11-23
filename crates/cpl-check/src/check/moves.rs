@@ -113,3 +113,91 @@ impl Checker<'_> {
         }
     }
 }
+
+/// Whether `body` can leave its loop early (`break`, `return`): a move just
+/// before that does not reach the next round.
+fn may_leave(body: &ast::Block) -> bool {
+    #[derive(Default)]
+    struct Leaves(bool);
+    impl cpl_syntax::visit::Visitor for Leaves {
+        fn stmt(&mut self, stmt: &Stmt) {
+            if matches!(stmt.kind, StmtKind::Break(_) | StmtKind::Return(_)) {
+                self.0 = true;
+            }
+        }
+    }
+    let mut leaves = Leaves::default();
+    cpl_syntax::visit::walk_block(body, &mut leaves);
+    leaves.0
+}
+
+/// The names `body` binds with `let`, `var` or a pattern.
+fn declared_in(body: &ast::Block) -> Vec<String> {
+    #[derive(Default)]
+    struct Binds(Vec<String>);
+    impl cpl_syntax::visit::Visitor for Binds {
+        fn pattern(&mut self, pat: &ast::Pattern) {
+            if let ast::PatternKind::Name(n) = &pat.kind {
+                self.0.push(n.clone());
+            }
+        }
+    }
+    let mut binds = Binds::default();
+    cpl_syntax::visit::walk_block(body, &mut binds);
+    binds.0
+}
+
+impl Checker<'_> {
+    /// A loop body that moves a name from outside the loop moves it again in
+    /// the next round, which finds it moved (R05.2.2). `before` is what was
+    /// moved when the loop started; call it after the body's scope is gone.
+    pub(crate) fn no_move_across_rounds(
+        &mut self,
+        before: &HashMap<String, Span>,
+        body: &ast::Block,
+    ) {
+        // A name the body declares is its own value, gone with the body.
+        for name in declared_in(body) {
+            match before.get(&name) {
+                Some(at) => self.moved.insert(name, *at),
+                None => self.moved.remove(&name),
+            };
+        }
+        if may_leave(body) {
+            return;
+        }
+        let mut again: Vec<(String, Span)> = self
+            .moved
+            .iter()
+            .filter(|(k, v)| before.get(*k) != Some(*v))
+            .map(|(k, v)| (k.clone(), *v))
+            .collect();
+        again.sort_by_key(|(_, at)| at.start);
+        for (src, at) in again {
+            let reported =
+                self.sink.diagnostics().iter().any(|d| {
+                    d.code == codes::USE_AFTER_MOVE && d.labels.iter().any(|l| l.span == at)
+                });
+            if reported || !self.declared_before(&src, body.span.start) {
+                continue;
+            }
+            let message = format!(
+                "`{src}` moves here in one round of the loop, so the next round finds it already moved"
+            );
+            if let Some(diag) = self.error(codes::USE_AFTER_MOVE, at, message) {
+                diag.help = Some(format!(
+                    "move a copy each round: `{src}.clone()`, or declare `{src}` inside the loop"
+                ));
+            }
+        }
+    }
+
+    /// `name` is a value declared before `at`: a local of an enclosing
+    /// scope, or a top-level value (not a fn or type of that name).
+    pub(crate) fn declared_before(&mut self, name: &str, at: u32) -> bool {
+        match self.local(name) {
+            Some(local) => local.span.start < at,
+            None => matches!(self.global(name).as_deref(), Some(Def::Value { .. })),
+        }
+    }
+}

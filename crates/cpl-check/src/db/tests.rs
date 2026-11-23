@@ -75,11 +75,45 @@ fn a_top_level_move_points_at_the_move_after_an_edit_above_it() {
 }
 
 #[test]
+fn a_loop_that_moves_an_outer_value_finds_it_moved_next_round() {
+    let mut db = Database::new();
+    for body in ["let ys = xs", "keep.push(xs)"] {
+        let src = format!(
+            "fn f():\n    var xs = List(1, 2)\n    var keep: List<List<Int>> = []\n    for i in 0..2:\n        {body}\n    print(keep.len)\n"
+        );
+        db.set_file("a.cp", src.as_str());
+        let diags = db.diagnostics("a.cp");
+        assert_eq!(diags.len(), 1, "{diags:?}");
+        assert_eq!(diags[0].code.0, "E0608");
+        let at = src.rfind("xs").unwrap() as u32;
+        assert_eq!(diags[0].span, Span::new(at, at + 2));
+    }
+    for ok in [
+        "        keep.push(xs.clone())",
+        "        let xs = List(i)\n        keep.push(xs)",
+        "        keep.push(xs)\n        break",
+        "        let all = \"\"\n        keep.push(List(all.len))",
+    ] {
+        let src = format!(
+            "fn f():\n    var xs = List(1, 2)\n    var keep: List<List<Int>> = []\n    for i in 0..2:\n{ok}\n    print(keep.len)\n"
+        );
+        db.set_file("a.cp", src.as_str());
+        assert!(db.diagnostics("a.cp").is_empty(), "{src}");
+    }
+    db.set_file(
+        "a.cp",
+        "fn f():\n    var xs = List(1, 2)\n    var keep: List<List<Int>> = []\n    keep.push(xs)\n    print(xs.len)\n",
+    );
+    let codes: Vec<_> = db.diagnostics("a.cp").iter().map(|d| d.code.0).collect();
+    assert_eq!(codes, ["E0608"]);
+}
+
+#[test]
 fn a_move_inside_a_top_level_if_or_loop_reaches_the_items_after_it() {
     let mut db = Database::new();
     for body in [
         "if xs.len > 1:\n    let ys = xs\n",
-        "while false:\n    var ys = xs\n",
+        "while false:\n    var ys = xs\n    break\n",
     ] {
         let src = format!("var xs = List(1, 2)\n{body}print(xs.len)\n");
         db.set_file("a.cp", src.as_str());

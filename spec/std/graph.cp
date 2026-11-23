@@ -3132,8 +3132,8 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
         hist_n.push(cur_n)
         hist_root.push(cur_root)
         hist_in_idx.push(in_idx)
-        hist_v_of.push(cur_v)
-        hist_orig_e.push(cur_orig)
+        hist_v_of.push(cur_v.clone())
+        hist_orig_e.push(cur_orig.clone())
         if cnt == 0:
             hist_id.push([i for i in 0..cur_n])
             hist_prev_idx.push(List<Int>())
@@ -3142,7 +3142,7 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
             if id[i] == -1:
                 id[i] = cnt
                 cnt += 1
-        hist_id.push(id)
+        hist_id.push(id.clone())
         var nxt_u = List<Int>()
         var nxt_v = List<Int>()
         var nxt_w = List<W>()

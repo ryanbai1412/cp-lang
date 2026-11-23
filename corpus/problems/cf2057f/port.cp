@@ -34,7 +34,7 @@ for l in 1..=31:
     for (s, total) in windows:
         let end = if let p = s.prev: cuts.at(2 * a[p]).l else: C.last!.r
         saved.assign(cuts.at(a[s]).l..end, some(total))
-    var waiting = by_k
+    var waiting = by_k.clone()
     for (r, opt) in [x for x in saved.each()].rev:
         if let best = opt:
             let lo = (cuts[r.first!] << (l - 1)) + 1

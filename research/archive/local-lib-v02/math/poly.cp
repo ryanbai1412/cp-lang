@@ -1989,7 +1989,7 @@ fn table_matches<P>(rank2: Int) -> Bool:
         for _ in 0..sz:
             s = lcg_next(s)
             q.push(Z(s))
-        polys.push(q)
+        polys.push(q.clone())
         want_prod = slow_mul(want_prod, q, want_prod.len + sz - 1)
     assert prod_polys(polys) == want_prod
     assert prod_polys([]) == [Z.one]

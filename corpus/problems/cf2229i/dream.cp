@@ -30,7 +30,7 @@ var joined_before: [V]List<List<Int>> = []
 for v in t.at.rev:
     var f = [0]
     for c in kids[v]:
-        joined_before[v].push(f)
+        joined_before[v].push(f.clone())
         f = max_plus_convolve(f, down[c])
     down[v] = [
         if i == 0: f[0] elif i == f.len: f[i - 1] + w[v] * i else: max(

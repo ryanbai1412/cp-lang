@@ -560,7 +560,7 @@ impl<'a> Checker<'a> {
                     );
                     if !branch_leaves {
                         for (k, v) in self.moved.clone() {
-                            if self.local(&k).is_some() || self.global(&k).is_some() {
+                            if self.declared_before(&k, u32::MAX) {
                                 post_moved.entry(k).or_insert(v);
                             }
                         }
@@ -602,7 +602,7 @@ impl<'a> Checker<'a> {
                         self.branch -= value;
                         if !leaves(body) {
                             for (k, v) in self.moved.clone() {
-                                if self.local(&k).is_some() || self.global(&k).is_some() {
+                                if self.declared_before(&k, u32::MAX) {
                                     post_moved.entry(k).or_insert(v);
                                 }
                             }
@@ -651,7 +651,7 @@ impl<'a> Checker<'a> {
                     );
                     if !arm_leaves {
                         for (k, v) in self.moved.clone() {
-                            if self.local(&k).is_some() || self.global(&k).is_some() {
+                            if self.declared_before(&k, u32::MAX) {
                                 post_moved.entry(k).or_insert(v);
                             }
                         }

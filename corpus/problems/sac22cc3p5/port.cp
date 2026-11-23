@@ -19,7 +19,7 @@ for _ in 0..n:
     var w = ""
     for c in raw: w.push(c.lower)
     if w not in seen_words:
-        seen_words.insert(w)
+        seen_words.insert(w.clone())
         words.push(to_letters(w))
 let ac = AhoCorasick<Letter>.new(words)
 

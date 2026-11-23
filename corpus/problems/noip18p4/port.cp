@@ -36,5 +36,5 @@ else:
         skip_u = e.u
         skip_v = e.v
         walk(V(1))
-        if order.len == n and (best.len == 0 or order < best): best = order
+        if order.len == n and (best.len == 0 or order < best): best = order.clone()
     print(best)

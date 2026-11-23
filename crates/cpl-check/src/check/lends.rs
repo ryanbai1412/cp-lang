@@ -2533,6 +2533,7 @@ impl<'a> Checker<'a> {
     /// The arguments of a call that stores them must not be lent views.
     pub(crate) fn no_escape_args(&mut self, callee: &Expr, callee_ty: &Ty, args: &[Arg]) {
         let mut receiver_is_mut_param = false;
+        let mut moves_in = false;
         let what = match (&callee.kind, callee_ty) {
             (ExprKind::Field { base, name }, _) if STORES.contains(&name.text.as_str()) => {
                 // Only collection types store their `.push`/`.insert`/`.set`/`.add`
@@ -2561,6 +2562,7 @@ impl<'a> Checker<'a> {
                 if !stores_elem {
                     return;
                 }
+                moves_in = matches!(base_ty, Ty::Named { .. });
                 if let ExprKind::Name(b) = &unparen(base).kind {
                     if let Some(local) = self.local(b) {
                         receiver_is_mut_param = local.keyword == "param" && local.mutable;
@@ -2590,6 +2592,10 @@ impl<'a> Checker<'a> {
                     }
                 }
             }
+        }
+        // Put in a container, an owned heap value moves in (R05.2.2).
+        if moves_in {
+            self.move_ctor_args(args);
         }
     }
 
