@@ -18,15 +18,15 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
-  # --fast split into parallel jobs (CPL_GATE_PART in scripts/check.sh):
-  # the checks, and the workspace tests in four nextest partitions.
+  # --fast split into parallel jobs (CPL_GATE_PART in scripts/check.sh): the
+  # checks, the conformance ratchet, and the workspace tests in four nextest partitions.
   gate:
     name: gate (${{ matrix.part }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        part: [checks, "tests:hash:1/4", "tests:hash:2/4", "tests:hash:3/4", "tests:hash:4/4"]
+        part: [checks, conform, "tests:hash:1/4", "tests:hash:2/4", "tests:hash:3/4", "tests:hash:4/4"]
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4

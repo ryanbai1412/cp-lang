@@ -236,12 +236,28 @@ if [ "$mode" = timing ]; then
 fi
 
 # CI splits --fast across parallel jobs (.github/workflows/ci.yml):
-# CPL_GATE_PART=checks runs everything but the workspace tests, and
-# CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/4) runs only
-# that share of them, plus the doctests in share 1. Unset runs all of --fast.
+# CPL_GATE_PART=checks runs everything but the workspace tests and the
+# conformance ratchet, CPL_GATE_PART=conform runs the ratchet and the script
+# unit tests, and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/4)
+# runs only that share of the tests, plus the doctests in share 1. Unset runs
+# all of --fast.
+script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py)
 gate_part="${CPL_GATE_PART:-}"
 case "$gate_part" in
     "" | checks) ;;
+    conform)
+        [ "$mode" = fast ] || fail "CPL_GATE_PART=conform needs --fast"
+        step "script unit tests"
+        bare_home python3 -m unittest "${script_tests[@]}" \
+            || fail "script unit test failure; rerun: python3 -m unittest scripts/test_*.py"
+        step "cpl-conform ratchet (all --check against research/scoreboard.json)"
+        cargo build -q -p cpl-cli -p cpl-conform
+        "$target/debug/cpl-conform" all --check \
+            || fail "cpl-conform ratchet failure; rerun: cargo run -p cpl-conform -- all --check"
+        step_end
+        printf '\ncheck: conformance part passed in %ss\n' "$(( $(date +%s) - gate_t0 ))"
+        exit 0
+        ;;
     tests:*)
         [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
         part="${gate_part#tests:}"
@@ -255,7 +271,7 @@ case "$gate_part" in
         printf '\ncheck: test partition %s passed in %ss\n' "$part" "$(( $(date +%s) - gate_t0 ))"
         exit 0
         ;;
-    *) fail "unknown CPL_GATE_PART \`$gate_part\` (checks or tests:<partition>)" ;;
+    *) fail "unknown CPL_GATE_PART \`$gate_part\` (checks, conform or tests:<partition>)" ;;
 esac
 
 if [ "$mode" = land ]; then
@@ -340,11 +356,13 @@ else
     fmt_pid=$!
 fi
 scoreboard_cached=0
-if cache_hit scoreboard_fast; then
+if [ "$gate_part" = checks ]; then
+    scoreboard_cached=2
+elif cache_hit scoreboard_fast; then
     scoreboard_cached=1
 else
     # cpl-conform is already built above; overlap it and script unit tests with nextest.
-    bare_home python3 -m unittest scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py >"$lib_logs/script_tests.log" 2>&1 &
+    bare_home python3 -m unittest "${script_tests[@]}" >"$lib_logs/script_tests.log" 2>&1 &
     script_test_pid=$!
     "$target/debug/cpl-conform" all --check >"$lib_logs/scoreboard.log" 2>&1 &
     scoreboard_pid=$!
@@ -470,7 +488,9 @@ for t in tools/trace/trace.test.cjs tools/trace/state.test.cjs; do
 done
 
 step "cpl-conform ratchet (all --check against research/scoreboard.json)"
-if [ "$scoreboard_cached" -eq 1 ]; then
+if [ "$scoreboard_cached" -eq 2 ]; then
+    echo "skipped: the CI conform part runs it and the script tests (CPL_GATE_PART=checks)"
+elif [ "$scoreboard_cached" -eq 1 ]; then
     echo "cached (tree unchanged outside its excludes)"
 elif [ -n "${scoreboard_pid:-}" ]; then
     script_status=0
