@@ -58,13 +58,11 @@ spec/lib/graphs-trees.md: euler_walk
 spec/lib/graphs-trees.md: find_cycle
 spec/lib/graphs-trees.md: two_color
 spec/lib/graphs-trees.md: two_edge_components
-spec/lib/math.md: bit_len
 spec/lib/math.md: choose
 spec/lib/math.md: crt
 spec/lib/math.md: crt_all
 spec/lib/math.md: deriv
 spec/lib/math.md: det_real
-spec/lib/math.md: divisors
 spec/lib/math.md: divisors_from_factors
 spec/lib/math.md: exp
 spec/lib/math.md: ext_gcd

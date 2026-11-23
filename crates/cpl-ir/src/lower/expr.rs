@@ -2626,11 +2626,12 @@ impl<'a> Lowerer<'a> {
                     | ast::ExprKind::Block(_)
                     | ast::ExprKind::Tuple(_)
                     | ast::ExprKind::Range { .. }
-            ) {
-                match operands.last() {
-                    Some((prev, _)) => self.expr(e, Some(&prev.ty)),
-                    None => self.expr(e, None),
-                }
+            ) || operands
+                .last()
+                .is_some_and(|(prev, _)| matches!(prev.ty, Ty::Enum(_)))
+            {
+                // `x == E.V(..)` of a generic enum: the variant takes `x`'s type arguments.
+                self.expr(e, operands.last().map(|(prev, _)| &prev.ty))
             } else if operands
                 .last()
                 .is_some_and(|(prev, _)| matches!(prev.ty, Ty::Opt(_)))
