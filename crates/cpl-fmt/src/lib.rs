@@ -24,6 +24,8 @@ pub use range::{format_on_type, format_range, Edit};
 pub use style::{Style, StyleError};
 
 #[cfg(test)]
+mod churn_tests;
+#[cfg(test)]
 mod tests;
 
 use cpl_diag::Diagnostic;

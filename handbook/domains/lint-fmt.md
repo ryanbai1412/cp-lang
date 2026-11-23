@@ -191,7 +191,7 @@ in `plan/domains/lint-fmt/metrics.toml`.
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
 | Output is what a careful person writes | style cases from the spec | hand-written suite | `crates/cpl-fmt/src/tests.rs` |
-| A revision reformats only what it touched | lines moved by `cpl fmt` outside an edit, over generated one-token edits to ports | `missing` | — |
+| A revision reformats only what it touched | files where `cpl fmt` changes more than a one-line spacing edit, over ports, specs and `std` | generated suite (spacing edits; token edits not yet) | `crates/cpl-fmt/src/churn_tests.rs` `a_one_line_spacing_edit_reformats_only_that_line` |
 | Formatting a range matches formatting the file there | statements whose range format differs from the whole-file format | generated suite over newcomer files | `crates/cpl-fmt/src/range_tests.rs` `every_line_of_the_newcomer_files_formats_alone` |
 | Opinionated defaults, few knobs: line width and indent in `cp.toml [fmt]` | style options beyond the spec's list | hand-written suite | `crates/cpl-fmt/src/tests.rs` `cp_toml_sets_the_indent_and_line_widths`, `a_style_changes_only_the_widths` |
 | Comments and blank lines stay where they were | comments moved or dropped | hand-written suite | `crates/cpl-fmt/src/tests.rs` `keeps_comments_where_they_are` |
