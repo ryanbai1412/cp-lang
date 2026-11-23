@@ -1,11 +1,15 @@
-// Universal Cup 5 Stage 5 (Chengdu) B: a light pulse leaves (x0, y0) in an
-// n x n mirrored box; after t steps its front is the diamond |dx| + |dy| = t
-// folded back into the box.  Count the lattice points of the folded front on
-// the line a*x + b*y + c = 0.  Each diamond side is cut where it crosses a
-// mirror, so every piece folds to a straight diagonal segment; a piece meets
-// the line in one point or, when parallel and on it, in a whole x-interval.
-// The answer is the length of the union of those x-intervals (b != 0 after the
-// swap, so x determines the point).
+// Source: The 5th Universal Cup, Stage 5 (Grand Prix of Chengdu), problem B (Bouncing
+//   Particles), qoj.ac/problem/23593
+// Problem: multitest. In an n x n grid (n <= 1e9) four particles start at (x0, y0) moving
+//   diagonally; each step every particle flips any direction that would leave the grid, then
+//   splits into a horizontal and a vertical step child. q queries (sum q <= 1e5): count cells
+//   on the line Ax + By + C = 0 (|A|, |B|, |C| <= 1e9) holding a particle at time t <= 1e9.
+// Solution: the occupied cells at time t are the diamond |dx| + |dy| = t around the start,
+//   folded into [0, n-1] with period 2(n-1) (mirror reflections). Swap x and y so B != 0;
+//   walk each diamond side for min(t, 2(n-1)) steps, cut where it crosses a mirror line, so
+//   each piece folds to a straight diagonal segment: it meets the line in one lattice point or,
+//   if parallel and on it, in a whole x-interval. The answer is the length of the union of
+//   these x-intervals (sorted sweep); O(1) pieces, so O(1) per query up to the sort.
 
 // Reflect a coordinate back into 0..=m.
 fn fold(v: Int, m: Int) -> Int:

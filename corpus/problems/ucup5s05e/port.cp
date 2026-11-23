@@ -1,6 +1,14 @@
-// Universal Cup 5 Stage 5 (Chengdu) E: for each query point `c`, name three of
-// the given points whose triangle strictly contains `c` (or the four hull
-// corners when only that quadrilateral does), else -1.
+// Source: The 5th Universal Cup, Stage 5 (Grand Prix of Chengdu), problem E (Enclose the
+//   Point), qoj.ac/problem/23596
+// Problem: multitest. Given n distinct points (sum n <= 1e5, |coords| <= 1e9) and q query
+//   points (sum q <= 1e5): for each, output a simple polygon on the given points with the
+//   fewest vertices that strictly contains the query (vertex count and indices), or -1.
+// Solution: c is enclosable only strictly inside the hull, and then almost always a triangle
+//   works. Build the hull keeping collinear points, split it into lower and upper chains,
+//   binary-search c.x on both and try every triangle among <= 5 consecutive vertices of each
+//   chain (plus, for a 4-vertex hull, one point off both diagonals). If none contains c, a
+//   4-vertex hull with all points on its diagonals and c inside gives the quadrilateral.
+//   O(n log n) for the hull, O(log n) plus a constant triangle search per query.
 //
 // Local-window invariant:
 // - If `c` is strictly inside the convex hull, the vertical line through `c.x`
