@@ -968,6 +968,29 @@ pub struct Rope<D, T>:
         let t = self.find(i.ord)
         val[t]
 
+    // The first `Some` of `f` on node `t`'s path to position `k`: the value first, then each
+    // ancestor's pending tag, deepest first. `flip` is the reversal pending from above `t`.
+    fn path_first<R>(mut self, t: Int, k: Int, flip: Bool, f: (mut T) -> ?R) -> ?R:
+        let sw = flip != rv[t]
+        let (l, r) = if sw: (rs[t], ls[t]) else: (ls[t], rs[t])
+        let s = self.size(l)
+        if k == s: return f(mut val[t])
+        let below = if k < s: self.path_first(l, k, sw, f) else: self.path_first(r, k - s - 1, sw, f)
+        if let x = below: return Some(x)
+        if has[t]: f(mut tg[t]) else: None
+
+    /// The first `Some` that `f` gives on the pieces holding position `i`'s value, oldest first:
+    /// the value stored at `i`, then each tag still pending above it, without pushing any tag down.
+    /// `f` may change a piece in place (`(mut seg) => seg.first_alive(ok)` prunes dead entries for
+    /// good), so a query that would otherwise merge tags costs only the walk.
+    ///
+    /// cost: \(O(\log n)\) expected calls of `f`
+    /// empty: `None` when `f` gives `None` on every piece
+    /// order: the value at `i` first, then pending tags from the deepest up to the root
+    /// traps: when `i` is outside `D`
+    /// example: `var r = Rope([1, 2], merge: (t, x) => t + x); r.apply(0..2, 10); r.query_path(1, (mut x) => if x > 5: Some(x) else: None) == Some(10)`
+    pub fn query_path<R>(mut self, i: D, f: (mut T) -> ?R) -> ?R = self.path_first(root, i.ord, false, f)
+
     /// Overwrite the value currently at position `i` with `x`, replacing any pending tags on it.
     ///
     /// cost: \(O(\log n)\) expected
