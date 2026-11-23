@@ -1,0 +1,131 @@
+---
+title: "Dynamic programming"
+description: "Tables over domains, ?Int for impossible states, min= and max=, 2-D tables, Mod counts and @memo."
+---
+
+A DP is a table and a rule for filling it. In CP Lang the table's
+index type says what a state is, `?Int` marks states that can't be
+reached, and `min=` / `max=` write the relaxation in one step.
+
+## A one-dimensional table
+
+A frog on stones of heights `h` jumps one or two stones ahead, paying
+the height difference. `cost[i]` is the cheapest way to reach stone i:
+
+```cp run input="4\n10 30 40 20\n"
+let n: 1..=2e5 = read()
+let h: [0..n]1..=1e4 = read()
+var cost: [0..n]Int = 0
+for i in 1..n:
+    cost[i] = cost[i - 1] + abs(h[i] - h[i - 1])
+    if i >= 2: cost[i] min= cost[i - 2] + abs(h[i] - h[i - 2])
+print(cost[n - 1])
+```
+
+`cost[i] min= x` sets `cost[i]` to `x` when `x` is smaller. Writing the
+recurrence this way keeps each option on its own line, so adding a
+third jump is one more line.
+
+## Impossible states are `None`
+
+When some states can't be reached, make the table `?Int`. It starts
+all `None`, and `min=` with a value always beats `None`, so there is
+no `INF` to overflow when you add to it:
+
+```cp run input="3 11\n1 5 7\n"
+let (n, x): (1..=100, 1..=1e6) = read()
+let coins: [0..n]1..=1e6 = read()
+var dp: [0..=x]?Int = None
+dp[0] = 0
+for s in 1..=x:
+    for c in coins if c <= s:
+        if let d = dp[s - c]: dp[s] min= d + 1
+print(dp[x] ?? -1)
+```
+
+## Knapsack: iterating backwards
+
+A 0/1 knapsack keeps one row and walks capacities from high to low, so
+each item is used at most once. `.rev` reverses a range:
+
+```cp run input="3 8\n3 30\n4 50\n5 60\n"
+let (n, cap): (1..=100, 0..=1e5) = read()
+let items: [0..n](w: 1..=1e5, v: 0..=1e9) = read()
+var best: [0..=cap]Int = 0
+for it in items:
+    for c in (it.w..=cap).rev:
+        best[c] max= best[c - it.w] + it.v
+print(best[cap])
+```
+
+## Two dimensions
+
+A table over two indices is `[A, B]T`, indexed `d[i, j]`. Edit
+distance compares every prefix of `s` with every prefix of `t`:
+
+```cp run input="kitten\nsitting\n"
+let (s, t): (Str, Str) = read()
+var d: [0..=s.len, 0..=t.len]Int = 0
+for i in 0..=s.len:
+    for j in 0..=t.len:
+        if i == 0 or j == 0: d[i, j] = i + j
+        else:
+            d[i, j] = min(d[i - 1, j] + 1, d[i, j - 1] + 1, d[i - 1, j - 1] + (if s[i - 1] == t[j - 1]: 0 else: 1))
+print(d[s.len, t.len])
+```
+
+## Counting modulo a prime
+
+Counting problems want the answer mod a prime. Make the table `Mod`
+and every `+=` reduces for you. Here `ways[r, c]` counts the right and
+down paths around walls; `r.prev` is the row above, or `None` on the
+first row, so the edges of the grid need no special case:
+
+```cp run input="3 4\n....\n.#..\n....\n"
+const MOD = 1_000_000_007
+type Z = Mod<MOD>
+let (n, m): (1..=1000, 1..=1000) = read()
+domain R = 0..n
+domain Col = 0..m
+let grid: [R, Col]Char = read()
+var ways: [R, Col]Z = Z(0)
+for r in R:
+    for c in Col:
+        if grid[r, c] == '#': continue
+        if r == R(0) and c == Col(0): ways[r, c] = Z(1)
+        if let u = r.prev: ways[r, c] += ways[u, c]
+        if let l = c.prev: ways[r, c] += ways[r, l]
+print(ways[R(n - 1), Col(m - 1)])
+```
+
+## Top-down with `@memo`
+
+When the order to fill a table is awkward, write the recursion and
+mark it `@memo(array)`. Each parameter must have a bounded type; the
+table is their product, allocated once:
+
+```cp run input="50\n"
+let n: 1..=90 = read()
+@memo(array) fn ways(i: 0..=90) -> Int:
+    if i <= 1: return 1
+    ways(i - 1) + ways(i - 2)
+print(ways(n))
+```
+
+`@memo(map)` stores only the states visited, for parameters without
+a small range. The [search and DP reference](/docs/ref/lib/search-dp)
+covers both, plus mask DP over `B.subsets` and the speed-ups.
+
+## Problem: Stepping stones
+
+The frog above, as a judged problem: print the cheapest cost to reach
+the last stone. For heights `10 30 40 20` the answer is `30`.
+
+<Judge id="stepping-stones">
+
+`cost[i]` depends only on `cost[i - 1]` and `cost[i - 2]`, so one
+forward loop fills it; `min=` adds the second option.
+
+</Judge>
+
+Next: [Stress testing and the trace debugger](/learn/read/stress-and-trace).

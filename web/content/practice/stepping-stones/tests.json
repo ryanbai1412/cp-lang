@@ -1,0 +1,27 @@
+[
+ {
+  "input": "4\n10 30 40 20\n",
+  "expected": "30\n",
+  "sample": true
+ },
+ {
+  "input": "1\n7\n",
+  "expected": "0\n"
+ },
+ {
+  "input": "2\n10 20\n",
+  "expected": "10\n"
+ },
+ {
+  "input": "6\n30 10 60 10 60 50\n",
+  "expected": "40\n"
+ },
+ {
+  "input": "5\n1 10000 1 10000 1\n",
+  "expected": "0\n"
+ },
+ {
+  "input": "3\n5 1 5\n",
+  "expected": "0\n"
+ }
+]

@@ -1,0 +1,20 @@
+---
+title: Edit steps
+description: "Level C. Teaches a two-dimensional DP table over prefixes."
+---
+
+Given two words s and t of lowercase letters (1 ≤ |s|, |t| ≤ 2000), print the fewest single-letter insertions, deletions and replacements that turn s into t.
+
+**Input:** s, then t, one per line. **Output:** one number.
+
+| Input | Output |
+|---|---|
+| `kitten`<br/>`sitting` | `3` |
+
+<Judge id="edit-steps">
+
+- `d[i, j]` is the answer for the first i letters of s and the first j of t; `[0..=s.len, 0..=t.len]Int` includes the empty prefixes.
+- The empty prefix row and column are `i + j`: only insertions or only deletions.
+- The three options (delete, insert, replace or keep) are the three arguments of one `min`.
+
+</Judge>

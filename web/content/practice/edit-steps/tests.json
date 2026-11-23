@@ -1,0 +1,27 @@
+[
+ {
+  "input": "kitten\nsitting\n",
+  "expected": "3\n",
+  "sample": true
+ },
+ {
+  "input": "abc\nabc\n",
+  "expected": "0\n"
+ },
+ {
+  "input": "a\nb\n",
+  "expected": "1\n"
+ },
+ {
+  "input": "abc\nxyzabc\n",
+  "expected": "3\n"
+ },
+ {
+  "input": "horse\nros\n",
+  "expected": "3\n"
+ },
+ {
+  "input": "intention\nexecution\n",
+  "expected": "5\n"
+ }
+]

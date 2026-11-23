@@ -1,0 +1,20 @@
+---
+title: Stepping stones
+description: "Level B. Teaches a one-dimensional DP table with min=."
+---
+
+There are n stones in a row (1 ≤ n ≤ 2·10⁵) with heights h₁…hₙ (1 ≤ hᵢ ≤ 10⁴). A frog starts on stone 1 and, from stone i, jumps to stone i + 1 or i + 2, paying the absolute difference of the two heights. Print the least total cost to reach stone n.
+
+**Input:** n, then the n heights. **Output:** one number.
+
+| Input | Output |
+|---|---|
+| `4`<br/>`10 30 40 20` | `30` |
+
+<Judge id="stepping-stones">
+
+- `cost[i]` is the cheapest way to reach stone i; it starts from the one-stone jump and `min=` tries the two-stone jump.
+- Greedy (always take the cheaper next jump) fails on `30 10 60 10 60 50`: the DP looks at both ways into each stone.
+- With n = 1 the loop `1..n` is empty and the answer is 0.
+
+</Judge>

@@ -59,7 +59,7 @@ target = "8/8 200"
 [[metric]]
 name = "learn_content"
 command = "ls web/content/learn/read/*.mdx | wc -l; ls web/content/practice | wc -l"
-today = "9 chapters, 17 problems"
+today = "10 chapters, 19 problems"
 target = "10 chapters, 19 problems"
 
 [[metric]]
