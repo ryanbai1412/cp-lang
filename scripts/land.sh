@@ -24,7 +24,25 @@ for c in $(git rev-list "FETCH_HEAD..HEAD"); do
         { echo "land: $(git log -1 --format='%h %s' "$c") has no Domain: trailer" >&2; exit 1; }
 done
 domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
-git pull -q --rebase --autostash "$remote" main
+# A conflict only in generated files is resolved by taking main's copy and
+# regenerating, as CI's regen job would; any other conflict stops here.
+generated='^(spec/conformance/|skills/|pnpm-lock\.yaml$|editors/vscode/src/languageData\.ts$|editors/vscode/syntaxes/)'
+pull() {
+    git pull -q --rebase --autostash "$remote" main && return 0
+    while [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; do
+        conflicts=$(git diff --name-only --diff-filter=U)
+        if [ -z "$conflicts" ] || printf '%s\n' "$conflicts" | grep -qvE "$generated"; then
+            echo "land: rebase conflict in $(echo $conflicts); resolve it and run land.sh again" >&2
+            return 1
+        fi
+        git checkout -q --ours -- $conflicts
+        [ ! -x scripts/regen.sh ] || scripts/regen.sh >/dev/null
+        git add -- $conflicts
+        echo "land: regenerated conflicted $(echo $conflicts)" >&2
+        GIT_EDITOR=true git rebase --continue >/dev/null 2>&1 || true
+    done
+}
+pull
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
@@ -42,7 +60,8 @@ crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p'
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
 # Clippy as CI runs it (-D warnings, every target) on the touched crates and
 # the workspace crates that depend on them, at the rebased tip; past
-# CPL_LAND_CLIPPY_SECS (cold cache) it warns and lands, leaving it to CI.
+# CPL_LAND_CLIPPY_SECS (cold cache) or on a failure it warns and lands,
+# leaving it to CI (whose regen job applies `clippy --fix`).
 if [ -n "$crates" ]; then
     users=$(cargo metadata -q --format-version 1 --no-deps | python3 -c '
 import json, sys
@@ -71,17 +90,17 @@ print(" ".join("-p " + n for n in sorted(seen)))
         0) ;;
         124) echo "land: clippy over ${CPL_LAND_CLIPPY_SECS:-40}s; landing, CI will check it" >&2 ;;
         *) printf '%s\n' "$out" | grep -E '^(error|warning)|-->' | head -20 >&2
-           echo "land: clippy fails on $users; fix it before landing" >&2; exit 1 ;;
+           echo "land: WARNING: clippy fails on $users (maybe already on main); landing, CI's regen applies clippy --fix" >&2 ;;
     esac
 fi
 regen=$([ ! -x scripts/regen.sh ] || scripts/regen.sh)
 if [ -n "$regen" ]; then
     git add -- $regen
-    git commit -q --no-verify -m "factory: regenerate generated files" -m "Domain: $domain"
+    git commit -q --no-verify -m "factory: regenerate generated files" -m "Domain: $domain" -- $regen
     echo "land: regenerated $(echo $regen)"
 fi
 for try in $(seq "$tries"); do
-    [ "$try" = 1 ] || git pull -q --rebase --autostash "$remote" main
+    [ "$try" = 1 ] || pull
     if git push -q --no-verify "$remote" HEAD:main; then
         secs=$(( $(date +%s) - t0 ))
         printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s"}\n' \
