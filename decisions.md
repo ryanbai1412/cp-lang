@@ -6545,3 +6545,47 @@ Reverse: delete the `regen` job and call `scripts/regen.sh` from `land.sh`.
   prelude too small to write the guide's examples. 80 was never derived.
 - **Reverse.** Restore the warning in `scripts/check.sh` and cut names by
   usage or a budget; each cut is one line in `spec/std/prelude.cp`.
+||||||| parent of f80db9ea2 (diag: decide the three recovery questions and raise the bars)
+
+||||||| parent of 7343659b4 (diag: decide the three recovery questions and raise the bars)
+
+## 282. An error that labels the broken line counts as on the right line (2026-11-22)
+
+- **Decision.** The recovery scoreboard's first-right column counts an
+  error as right when its span or one of its labels is on the broken
+  line. `let` for a `var` reports at the write and labels the `let`; it
+  scored 0.0% first-right and now scores 100.0% (36 copies).
+- **Why.** The rubric asks that the error name the place. The write is
+  where the rule is broken, and the label points the contestant at the
+  declaration to change; moving the error to the `let` would hide which
+  write needs `var`. Recommended in the review packet; Ryan's standing
+  rule decides reversible calls by their recommendation.
+- **Reverse.** In `crates/cpl-cli/tests/recovery.rs`, drop the `labels`
+  term from `first_right`.
+
+## 283. Fix-its only where the repair is right; no placeholders (2026-11-22)
+
+- **Decision.** A diagnostic offers a fix only when applying it gives the
+  program the contestant meant (`a && b` -> `a and b`, a near field
+  name). No placeholder fixes such as `let (n, k) = todo`; where the
+  right repair isn't knowable the error gives help text only. The
+  broken-ports "cut the value after `=`" row stays at 0% fix-it and is
+  excluded from that target.
+- **Why.** A fix-it is a promise that applying it is correct; a fix that
+  compiles and is wrong becomes the contestant's next bug, and incomplete
+  programs already run. Was the open diagnostics entry in
+  `plan/QUESTIONS.md`, decided by its recommendation.
+- **Reverse.** Add placeholder fixes at the E0102 site and count them in
+  the scoreboard; no code depends on their absence.
+
+## 284. Recovery bars: cascades <= 2%, common-mistake fix-its >= 95% (2026-11-22)
+
+- **Decision.** `recovery_scoreboard` fails above 2% cascaded errors per
+  broken port (was 5%), and `fix_it_scoreboard` below 95% of
+  common-mistake errors carrying a fix (was 88%); "fixes restore the
+  program" stays >= 95%.
+- **Why.** These were the review packet's v0.3 targets. Measured with the
+  new bars: 0 cascades over 414 broken-port copies, and 100.0% of 108
+  common-mistake errors carry a fix (`cargo test -p cpl-cli --test
+  recovery -- --nocapture`), so the bars gate what is already true.
+- **Reverse.** Put 0.05 and 0.88 back in `crates/cpl-cli/tests/recovery.rs`.

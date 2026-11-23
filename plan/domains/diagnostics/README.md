@@ -110,9 +110,9 @@ Signs off once: the targets above and a one-page message style guide
 (phase 2 drafts it from the rubric). After that, metric-driven.
 
 ## Decisions for Ryan
-1. Fix-its only where the fix is genuinely right, never placeholders
-   (`let x = todo`) to raise the rate? In [QUESTIONS.md](../../QUESTIONS.md).
-2. Are the targets right: cascades <= 2% (stricter than the current 5% bar)
-   and common-mistake fix-it >= 95%?
-3. Scoring `let` for `var`: count the error at the write as right when it
-   labels the declaration (today it scores 0% first-right)?
+None open. Decided by their recommendations under Ryan's standing rule
+(decisions.md 282-284, each with how to reverse it):
+1. Fix-its only where the fix is right, never placeholders (283).
+2. Cascades <= 2% and common-mistake fix-it >= 95%, now the gated bars (284).
+3. `let` for `var` counts as first-right when the error labels the
+   declaration (282).

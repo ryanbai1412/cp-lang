@@ -348,7 +348,11 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
     }
     t.errors = errs.len() as u32;
     t.cascaded = t.errors - 1;
-    t.first_right = (index.line_of(errs[0].span.start) == b.line) as u32;
+    // An error at a use that labels the broken declaration (`let` for a
+    // `var`) names the place too (decision 282).
+    let on_line = |span: cpl_diag::Span| index.line_of(span.start) == b.line;
+    t.first_right =
+        (on_line(errs[0].span) || errs[0].labels.iter().any(|l| on_line(l.span))) as u32;
     let mut first = FirstFix {
         count: 1,
         ..FirstFix::default()
@@ -643,8 +647,8 @@ fn recovery_scoreboard() {
         "first-error accuracy fell below 99.5%"
     );
     assert!(
-        ports.cascaded as f64 <= 0.05 * ports.files as f64,
-        "cascaded-error rate rose above 0.05 per broken port ({} / {})",
+        ports.cascaded as f64 <= 0.02 * ports.files as f64,
+        "cascaded-error rate rose above 0.02 per broken port ({} / {})",
         ports.cascaded,
         ports.files
     );
@@ -662,8 +666,8 @@ fn fix_it_scoreboard() {
     );
     let reported = (ports.files - ports.silent) as f64;
     assert!(
-        ports.fixable as f64 >= 0.88 * ports.errors as f64,
-        "fewer than 88% of the errors from common mistakes carry a fix ({} / {})",
+        ports.fixable as f64 >= 0.95 * ports.errors as f64,
+        "fewer than 95% of the errors from common mistakes carry a fix ({} / {})",
         ports.fixable,
         ports.errors
     );

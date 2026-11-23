@@ -15,7 +15,7 @@ milestone = "M1"
 name = "broken ports: cascaded errors"
 command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
 today = "0 per 414 files (the `[n - 1Int>` cascade is one E0101 now)"
-target = "<= 2% (M1: <= 5%)"
+target = "<= 2% (gated, decision 284)"
 milestone = "M1"
 
 [[metric]]
@@ -37,7 +37,7 @@ name = "common mistakes: errors carrying a fix-it"
 command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
 today = "100.0% (105 errors over 104 files) (73ceeff41)"
 target = ">= 95%"
-milestone = "M1 (>= 88%), M2 (>= 95%)"
+milestone = "M2 (>= 95%, gated, decision 284)"
 
 [[metric]]
 name = "common mistakes: fixes restore the program"

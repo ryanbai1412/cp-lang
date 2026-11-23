@@ -41,7 +41,7 @@ row that moved.
 ## Alternatives considered
 - *Placeholder fix-its* (`let x = todo`) would lift broken-ports fix-it
   from 72% toward 90% at once. Rejected by default: a fix that compiles but
-  is wrong breaks rubric Q2. Filed in `plan/QUESTIONS.md`.
+  is wrong breaks rubric Q2. Decision 283.
 - *Stop after the first error per item* would zero cascades trivially but
   hide independent errors; the root-cause rule says one per cause, not one
   per item.

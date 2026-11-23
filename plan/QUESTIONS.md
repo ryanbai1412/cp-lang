@@ -16,14 +16,6 @@ Lanes never block on an entry: they work on the default and on everything else. 
 
 ## Open
 
-### diagnostics: placeholder fix-its, or only right ones?
-A broken line like `let (n, k) =` (aac4p6 `spec.cp`, recovery edit "cut the value after `=`") today gives `error[E0102]: expected a value after `=`, found the end of the line` with no fix-it.
-Option A (today): fix-its only where the repair is the right one (`a && b` -> `a and b`, `!x` -> `not x`, a misspelled field -> its near name). Broken-ports fix-it rate stays 72.4%; the "cut the value" row stays at 0%.
-Option B: also offer placeholders, e.g. `let (n, k) = todo`, so the program checks and runs to the hole. The rate would rise, but a fix that compiles and is wrong is the contestant's next bug.
-Recommendation: A. A fix-it is a promise that applying it is correct; placeholders spend that trust, and incomplete programs already run.
-How to reverse it: add placeholder fixes at the E0102 site and count them in the scoreboard; no other code depends on their absence.
-Meanwhile: A; the "cut the value" row is excluded from the fix-it target.
-
 ### tech-debt: which names may the compiler know (the builtin floor)?
 Today `crates/cpl-ir/src/lower/call.rs` matches 89 names, from `print` and `popcount` to library shapes like `prefix`, `first_ge`, `adjacency`, `laws_hold`; a user library cannot do the same.
 Options: (a) floor = I/O (`read`, `print`, `flush`), numeric primitives (`abs`, `min`, `max`, bit ops, `sqrt`), storage of `List`/`Str`/`Map`/`Set`; each declared in `std/` with an `@intrinsic` marker any library may use; everything else written in CP Lang. (b) keep the current set, freeze it. (c) no floor, only "goes down".
