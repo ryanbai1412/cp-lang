@@ -60,7 +60,6 @@ spec/lib/graphs-trees.md: two_color
 spec/lib/graphs-trees.md: two_edge_components
 spec/lib/math.md: bit_len
 spec/lib/math.md: choose
-spec/lib/math.md: choose2
 spec/lib/math.md: crt
 spec/lib/math.md: crt_all
 spec/lib/math.md: deriv
