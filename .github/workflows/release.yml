@@ -257,6 +257,34 @@ jobs:
         run: |
           & ([scriptblock]::Create((Get-Content -Raw web/public/install.ps1))) -Channel ${{ needs.plan.outputs.channel }}
           "$HOME\.cpl\bin" | Out-File -Append -Encoding utf8 $env:GITHUB_PATH
+      # The plain one-liner, no channel flag: stable once one exists, else edge
+      # with a notice (GitHub's releases/latest skips prereleases).
+      - name: default channel installs (no flags)
+        if: runner.os != 'Windows'
+        env:
+          CPL_HOME: ${{ runner.temp }}/cpl-default
+          COMMIT: ${{ needs.plan.outputs.commit }}
+          CHANNEL: ${{ needs.plan.outputs.channel }}
+        run: |
+          sh web/public/install.sh
+          "$CPL_HOME/bin/cpl" --version | tee default.txt
+          if ! curl -fsIL -o /dev/null "https://github.com/$GITHUB_REPOSITORY/releases/latest/download/latest.json"; then
+            test "$CHANNEL" != edge || grep -q "${COMMIT:0:8}" default.txt
+          fi
+      - name: default channel installs (no flags, Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          CPL_HOME: ${{ runner.temp }}\cpl-default
+          COMMIT: ${{ needs.plan.outputs.commit }}
+          CHANNEL: ${{ needs.plan.outputs.channel }}
+        run: |
+          & ([scriptblock]::Create((Get-Content -Raw web/public/install.ps1))) -NoModifyPath
+          $v = & "$env:CPL_HOME\bin\cpl.exe" --version
+          $v
+          $stable = $true
+          try { Invoke-WebRequest -Method Head "https://github.com/$env:GITHUB_REPOSITORY/releases/latest/download/latest.json" | Out-Null } catch { $stable = $false }
+          if (-not $stable -and $env:CHANNEL -eq 'edge' -and $v -notmatch $env:COMMIT.Substring(0, 8)) { throw "default install is not edge $env:COMMIT: $v" }
       - name: cpl runs and builds
         shell: bash
         env:
