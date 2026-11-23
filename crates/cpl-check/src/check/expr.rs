@@ -132,10 +132,7 @@ impl<'a> Checker<'a> {
                     any_vague |= right.is_vague();
                     if matches!(op, ast::CmpOp::In | ast::CmpOp::NotIn) {
                         if matches!(&right, Ty::Named { name, .. } if name == "List") {
-                            let message = format!(
-                                "`in` requires `Contains`, which `{right}` does not implement"
-                            );
-                            self.error(codes::MISSING_IMPL, right_expr.span, message);
+                            self.list_in(*op, left_expr, right_expr, &right, rest.len() == 1);
                         }
                     } else {
                         self.comparable(*op, tests_none, &left, left_expr, &right, right_expr);

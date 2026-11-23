@@ -6,5 +6,5 @@ if not ok or n == 5:
     print(2)
 for i in 0..n:
     print(i)
-if 0 not in [1, 2, 3]:
+if not [1, 2, 3].contains(0):
     print(3)

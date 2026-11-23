@@ -152,3 +152,11 @@ fn empty_braces_for_a_container_offer_its_empty_spelling() {
     let d = check("var m: Map<Int, Int> = {}\n");
     assert!(d[0].message.contains("empty block"), "{d:?}");
 }
+
+#[test]
+fn in_on_a_list_offers_the_scan() {
+    let src = "let xs = [1, 2, 3]\nprint(yes(2 in xs), yes(4 not in xs))\n";
+    let d = check(src);
+    let scans: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(scans, ["xs.contains(2)", "not xs.contains(4)"], "{d:?}");
+}

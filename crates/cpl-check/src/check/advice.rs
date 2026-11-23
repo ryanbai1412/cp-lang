@@ -2,9 +2,37 @@
 
 use super::*;
 use cpl_diag::Fix;
-use cpl_syntax::ast::{Arg, Expr, ExprKind};
+use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind};
 
 impl Checker<'_> {
+    /// `x in xs` on a list: `in` is sub-linear only, so a scan is spelled
+    /// out as `xs.contains(x)`.
+    pub(super) fn list_in(&mut self, op: CmpOp, x: &Expr, xs: &Expr, ty: &Ty, alone: bool) {
+        let message = format!("`in` requires `Contains`, which `{ty}` does not implement");
+        let (l, r) = (self.text(x.span), self.text(xs.span));
+        let bracketed = r.starts_with('[') && r.ends_with(']');
+        let r = if r.contains(' ') && !bracketed {
+            format!("({r})")
+        } else {
+            r.to_string()
+        };
+        let not = if matches!(op, CmpOp::NotIn) {
+            "not "
+        } else {
+            ""
+        };
+        let scan = format!("{not}{r}.contains({l})");
+        let whole = Span::new(x.span.start, xs.span.end);
+        if let Some(diag) = self.error(codes::MISSING_IMPL, xs.span, message) {
+            diag.help = Some(
+                "`in` is for sets, maps and ranges, where it is fast; a list is scanned in O(n) with `xs.contains(x)`".into(),
+            );
+            if alone {
+                diag.fix(format!("scan the list: `{scan}`"), whole, scan);
+            }
+        }
+    }
+
     /// `var m: Map<K, V> = {}`: braces make a block, so the empty container
     /// is reported as one, with its spelling as the fix.
     pub(super) fn empty_braces(&mut self, declared: &Ty, init: &Expr) {
