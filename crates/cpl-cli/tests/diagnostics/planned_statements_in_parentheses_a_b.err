@@ -1,8 +1,0 @@
-error[E0504]: not implemented yet: statements in parentheses, `(a; b)` (not in the design)
-  --> planned_statements_in_parentheses_a_b.cp:2:7
-  |
-2 | print((print(a); a))
-  |       ^^^^^^^^^^^^^
-  = help: put the statements in a block, or on their own lines under an `if`
-
-planned_statements_in_parentheses_a_b.cp: 1 error

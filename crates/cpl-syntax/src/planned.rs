@@ -74,13 +74,6 @@ pub const VALUE_BLOCK: Planned = Planned {
     example: "let a =\n    1\nprint(a)\n",
 };
 
-pub const PAREN_SEQUENCE: Planned = Planned {
-    feature: "statements in parentheses, `(a; b)`",
-    see: None,
-    now: "put the statements in a block, or on their own lines under an `if`",
-    example: "let a = 1\nprint((print(a); a))\n",
-};
-
 pub const START_EXCLUSIVE_RANGE: Planned = Planned {
     feature: "a range that leaves out its start, `lo <.. hi`",
     see: None,
@@ -259,7 +252,6 @@ pub const PLANNED: &[&Planned] = &[
     &TRAILING_LAMBDA,
     &CONTINUED_LINE,
     &VALUE_BLOCK,
-    &PAREN_SEQUENCE,
     &START_EXCLUSIVE_RANGE,
     &DOMAIN_PARAM,
     &DOMAIN_LIST,

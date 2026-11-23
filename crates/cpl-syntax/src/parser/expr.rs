@@ -1206,7 +1206,22 @@ impl<'a> Parser<'a> {
                             self.bump();
                         }
                         let span = self.span_from(start);
-                        self.planned(span, &crate::planned::PAREN_SEQUENCE);
+                        let mut diag = Diagnostic::error(
+                            codes::REMOVED_SYNTAX,
+                            span,
+                            "statements in parentheses are written as a block, `{ a; b }`",
+                        )
+                        .with_help("a block's value is its last expression");
+                        if depth == 0 {
+                            diag.fixes.push(cpl_diag::Fix {
+                                title: "write it as a block".into(),
+                                edits: vec![
+                                    (Span::new(span.start, span.start + 1), "{ ".into()),
+                                    (Span::new(span.end - 1, span.end), " }".into()),
+                                ],
+                            });
+                        }
+                        self.error(diag);
                         return Expr {
                             kind: ExprKind::Error,
                             span,

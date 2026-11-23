@@ -1,0 +1,8 @@
+error[E0503]: statements in parentheses are written as a block, `{ a; b }`
+  --> statements_in_parentheses.cp:2:7
+  |
+2 | print((print(a); a))
+  |       ^^^^^^^^^^^^^
+  = help: a block's value is its last expression
+
+statements_in_parentheses.cp: 1 error
