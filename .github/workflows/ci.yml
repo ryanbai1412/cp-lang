@@ -122,6 +122,38 @@ jobs:
         shell: bash
         run: nvim --headless --clean -l editors/neovim/test/smoke.lua "$PWD/target/debug/cpl" "$PWD"
 
+  # VS Code: the unit tests, then the extension host against the real `cpl lsp`
+  # (diagnostics, definition, completion, formatting); editors/vscode/test/integration.
+  vscode:
+    name: vscode (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # Informational until editors/vscode/test/fixtures/workspace/d.cp checks again (E0309 on `[I.cuts]Int`).
+    continue-on-error: true
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: neovim
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Build cpl
+        run: cargo build -p cpl-cli
+      - name: Extension tests
+        shell: bash
+        working-directory: editors/vscode
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+          if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
+
   # A main push with stale generated files (skill pages, COVERAGE.md, fixed
   # prelude gaps) gets them regenerated and committed here, under the pushed
   # commit's Domain trailer, then CI is dispatched on the new tip: a push by

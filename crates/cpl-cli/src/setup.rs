@@ -5,16 +5,20 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 
 pub(crate) const USAGE: &str = "\
-usage: cpl setup <neovim | vim> [--dir DIR]
+usage: cpl setup <neovim | vim | vscode> [--dir DIR | --vsix FILE]
 
 Writes CP Lang's editor files where the editor loads them at startup, then
 says where. Neovim gets the filetype, highlighting and `cpl lsp`:
 diagnostics, completion, `gd` to the definition and formatting on save.
 Vim gets the filetype and highlighting, and the server through vim-lsp or
-yegappan/lsp when one is installed. Run it again after `cpl self update`.
+yegappan/lsp when one is installed. VS Code gets the extension from the
+edge release, installed with `code --install-extension` (`$CPL_CODE` names
+another editor command, such as `codium` or `cursor`). Run it again after
+`cpl self update`.
 
 options:
-  --dir DIR   write into DIR instead (a `pack/*/start/<name>` folder)
+  --dir DIR     write into DIR instead (a `pack/*/start/<name>` folder)
+  --vsix FILE   install this extension file instead of downloading it
 ";
 
 const LUA: (&str, &str) = (
@@ -79,12 +83,17 @@ fn package_dir(editor: &str) -> Option<PathBuf> {
 pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
     let mut editor = None;
     let mut dir = None;
+    let mut vsix = None;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match *arg {
             "--dir" => match rest.next() {
                 Some(d) => dir = Some(PathBuf::from(d)),
                 None => return usage(stderr, "`--dir` needs a folder"),
+            },
+            "--vsix" => match rest.next() {
+                Some(f) => vsix = Some(PathBuf::from(f)),
+                None => return usage(stderr, "`--vsix` needs a file"),
             },
             e if editor.is_none() && !e.starts_with('-') => editor = Some(e),
             other => return usage(stderr, &format!("unexpected `{other}`")),
@@ -96,10 +105,22 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
             "name the editor: `cpl setup neovim` or `cpl setup vim`",
         );
     };
+    if editor == "vscode" || editor == "code" {
+        return match install_vscode(vsix) {
+            Ok(done) => {
+                let _ = writeln!(stdout, "{done}");
+                0
+            }
+            Err(e) => {
+                *stderr += &format!("cpl: {e}\n");
+                1
+            }
+        };
+    }
     let Some(files) = files(editor) else {
         return usage(
             stderr,
-            &format!("no setup for `{editor}`: `neovim` or `vim` (VS Code: install the .vsix)"),
+            &format!("no setup for `{editor}`: `neovim`, `vim` or `vscode`"),
         );
     };
     let Some(dir) = dir.or_else(|| package_dir(editor)) else {
@@ -116,6 +137,46 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
         dir.display()
     );
     0
+}
+
+/// Installs the extension in `vsix`, or the edge release's, into VS Code.
+fn install_vscode(vsix: Option<PathBuf>) -> Result<String, String> {
+    let code = std::env::var("CPL_CODE").ok().filter(|c| !c.is_empty());
+    let code = code.unwrap_or_else(|| if cfg!(windows) { "code.cmd" } else { "code" }.into());
+    let downloaded = std::env::temp_dir().join(format!("cp-lang-{}.vsix", std::process::id()));
+    let file = match vsix {
+        Some(file) => file,
+        None => {
+            let url = format!(
+                "{}/download/edge/cp-lang.vsix",
+                crate::toolchain::releases_url()
+            );
+            crate::toolchain::fetch(&url, &downloaded)?;
+            downloaded.clone()
+        }
+    };
+    let out = std::process::Command::new(&code)
+        .arg("--install-extension")
+        .arg(&file)
+        .arg("--force")
+        .output();
+    let _ = std::fs::remove_file(&downloaded);
+    let out = out.map_err(|e| match e.kind() {
+        std::io::ErrorKind::NotFound => format!(
+            "no `{code}` on the PATH: in VS Code run \"Shell Command: Install 'code' command in PATH\", or set CPL_CODE"
+        ),
+        _ => format!("could not run `{code}`: {e}"),
+    })?;
+    if !out.status.success() {
+        return Err(format!(
+            "`{code} --install-extension` failed: {}",
+            String::from_utf8_lossy(&out.stderr).trim()
+        ));
+    }
+    Ok(format!(
+        "installed CP Lang for VS Code from {}\nopen a .cp file to start; `cpl` must be on the PATH (or set `cp.server.path`)",
+        file.display()
+    ))
 }
 
 fn write_all(dir: &Path, files: &[(&str, &str)]) -> std::io::Result<()> {

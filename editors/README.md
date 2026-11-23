@@ -31,7 +31,18 @@ come from the server.
 
 ## VS Code
 
-Install directly from this repo (no marketplace needed):
+One step, once `cpl` and VS Code's `code` command are installed:
+
+```sh
+cpl setup vscode
+```
+
+It downloads the edge release's `cp-lang.vsix` and runs `code --install-extension`
+(`--vsix FILE` installs a file you have; `CPL_CODE=codium` or `cursor` picks
+another editor). Open a `.cp` file: highlighting, diagnostics, completion,
+go to definition, format on save, and the Run, Test, Stress and Submit commands.
+
+Or build it from this repo (no marketplace needed):
 
 ```sh
 cargo install --path crates/cpl-cli

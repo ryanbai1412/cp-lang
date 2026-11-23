@@ -308,7 +308,7 @@ fn release_tags(home: &Path, id: &str) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn releases_url() -> String {
+pub(crate) fn releases_url() -> String {
     std::env::var("CPL_RELEASES_URL")
         .ok()
         .filter(|url| !url.is_empty())
@@ -317,7 +317,7 @@ fn releases_url() -> String {
         .to_string()
 }
 
-fn fetch(url: &str, dest: &Path) -> Result<(), String> {
+pub(crate) fn fetch(url: &str, dest: &Path) -> Result<(), String> {
     let mut curl = Command::new("curl");
     curl.args(["-fsSL", "--retry", "2", "--connect-timeout", "20"]);
     // Plain http only when $CPL_RELEASES_URL names an http mirror.

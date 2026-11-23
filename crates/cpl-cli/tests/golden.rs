@@ -1287,3 +1287,42 @@ fn setup_writes_the_editor_files() {
         text(&out.stderr)
     );
 }
+
+/// `cpl setup vscode --vsix FILE` hands the file to `code --install-extension`.
+#[cfg(unix)]
+#[test]
+fn setup_installs_the_vscode_extension() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = scratch("setup-vscode");
+    let code = dir.join("code");
+    std::fs::write(
+        &code,
+        "#!/bin/sh\necho \"$@\" > \"$(dirname \"$0\")/args\"\n",
+    )
+    .unwrap();
+    std::fs::set_permissions(&code, std::fs::Permissions::from_mode(0o755)).unwrap();
+    std::fs::write(dir.join("x.vsix"), "").unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["setup", "vscode", "--vsix", "x.vsix"])
+        .current_dir(&dir)
+        .env("CPL_CODE", &code)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("args")).unwrap(),
+        "--install-extension x.vsix --force\n"
+    );
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args(["setup", "vscode", "--vsix", "x.vsix"])
+        .current_dir(&dir)
+        .env("CPL_CODE", dir.join("nope"))
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    assert!(
+        text(&out.stderr).contains("set CPL_CODE"),
+        "{}",
+        text(&out.stderr)
+    );
+}

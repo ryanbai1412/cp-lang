@@ -106,6 +106,24 @@ const tests: [string, () => Promise<void>][] = [
         },
     ],
     [
+        'formatting comes from cpl fmt through the server',
+        async () => {
+            const document = await open('messy.cp');
+            const edits = await until('format edits from cpl lsp', async () => {
+                const got = await vscode.commands.executeCommand<vscode.TextEdit[]>(
+                    'vscode.executeFormatDocumentProvider',
+                    document.uri,
+                    { tabSize: 4, insertSpaces: true },
+                );
+                return got && got.length > 0 ? got : undefined;
+            });
+            const edit = new vscode.WorkspaceEdit();
+            edit.set(document.uri, edits);
+            assert.ok(await vscode.workspace.applyEdit(edit));
+            assert.equal(document.getText(), 'let x = 1\nprint(x)\n');
+        },
+    ],
+    [
         'completion offers keywords, the prelude and decorators',
         async () => {
             const document = await open('d.cp');

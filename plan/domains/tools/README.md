@@ -5,14 +5,14 @@ Owns: `crates/cpl-cli`, `crates/cpl-contest`, `crates/cpl-doc`, `crates/cpl-json
 Status (2026-11-22, late): every spec command exists (0 mismatches); `new --companion/--listen`, `fetch`, `test`, `stress`, `locate`, `submit --copy` work end to end on Codeforces-shaped samples; VS Code has diagnostics, completion, formatting, lenses and `CP: Submit`.
 
 ## Milestone 1 (plan/product/MILESTONE-1.md): what it needs from tools
-Deadline about 09:30 PST 2026-11-23; ships on edge. Steps 3-6 of the acceptance scenario (install, solve, test, submit) run through this lane. Priorities follow it; the metrics below are means to it. No real judge submissions: Codeforces is the target, checked against the local `codeforces` profile (compiler, flags, limits, 64 KB source). Linux, macOS and Windows are all supported and tested.
+Deadline about 09:30 PST 2026-11-23; ships on edge. Steps 3-6 of the acceptance scenario (install, solve, test, submit) run through this lane. Priorities follow it; the metrics below are means to it. No real judge submissions. `cpl b` gives one portable C++17 file; judge profiles stay working but get no new milestone time (Ryan, 21:38). Linux, macOS and Windows are all supported and tested.
 
 Exit criteria, each checked by a test or a recorded cold run:
-1. **Three editors, in this order: Neovim (with Vim), VS Code, JetBrains.** Each gets highlighting, diagnostics, completion, formatting and go-to-definition from a one-step setup documented in `editors/README.md`, checked by a CI smoke test. Neovim: `cpl setup neovim`, smoke-tested headless on Linux, macOS and Windows. VS Code: the release `.vsix`. JetBrains: the plugin zip from the release, over LSP.
+1. **Three editors, in this order: Neovim (with Vim), VS Code, JetBrains.** Each gets highlighting, diagnostics, completion, formatting and go-to-definition from a one-step setup documented in `editors/README.md`, checked by a CI smoke test. Neovim: `cpl setup neovim`, smoke-tested headless on Linux, macOS and Windows. VS Code: `cpl setup vscode` (the release `.vsix`), tested in the extension host in CI. JetBrains: the plugin zip from the release, over LSP.
 2. **Import**: Competitive Companion's button lands a problem (or a whole contest) as `a.cp` + `a.tests/` with title, URL, limits, judge and samples, via `cpl new --listen`; no flags needed.
 3. **Run**: `cpl run a` with no input runs every sample with the diff; `cpl run a 2` runs one; piped stdin still works. (Landed 440aa2111.)
 4. **Custom tests and checkers**: `cpl test a --add FILE [--expect OUT]` (landed b6394311a); `@check` judges multi-answer problems and `@interactor` interactive ones.
-5. **Submit**: `cpl b -c` (landed dc8a5c361) puts the C++17 file for the file's judge on the clipboard on all three platforms; size against 64 KB, checks and failed samples are said before you paste.
+5. **Submit**: `cpl b -c` (landed dc8a5c361) puts the portable C++17 file on the clipboard on all three platforms; size against 64 KB, checks and failed samples are said before you paste.
 6. **Windows**: paths, clipboard (`clip.exe`), CRLF input and sample files behave as on Linux, tested in CI.
 7. **Workspace**: one folder per contest, one file per problem, newest problem by default; no config file needed.
 8. **No surprises**: every command in the scenario has a golden test; every usage error names the right invocation.
