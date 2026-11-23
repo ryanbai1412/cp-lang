@@ -651,15 +651,15 @@ fn sos_and_bitwise_convolutions():
                 want_and[i & j] += a[i] * b[j]
                 want_xor[i ^ j] += a[i] * b[j]
                 if (i & j) == 0: want_sub[i | j] += a[i] * b[j]
-        assert convolve_or(a, b) == want_or
-        assert convolve_and(a, b) == want_and
-        assert convolve_xor(a, b) == want_xor
-        assert convolve_subset(a, b) == want_sub
+        assert convolve(a, b, on: |) == want_or
+        assert convolve(a, b, on: &) == want_and
+        assert convolve(a, b, on: ^) == want_xor
+        assert convolve(a, b, on: subset) == want_sub
         var w = [x for x in a]
         fwht(mut w)
         fwht(mut w, inverse: true)
         assert w == a
-    // Mod<P> works with sos, fwht, convolve_or, convolve_xor, and convolve_subset
+    // Mod<P> works with sos, fwht, and `convolve` on `^` and `subset`
     type Z = Mod<998_244_353>
     let ma = [Z(1), Z(2), Z(3), Z(4), Z(5), Z(6), Z(7), Z(8)]
     let mb = [Z(9), Z(10), Z(11), Z(12), Z(13), Z(14), Z(15), Z(16)]
@@ -673,5 +673,5 @@ fn sos_and_bitwise_convolutions():
         for j in 0..8:
             want_mxor[i ^ j] += ma[i] * mb[j]
             if (i & j) == 0: want_msub[i | j] += ma[i] * mb[j]
-    assert convolve_xor(ma, mb) == want_mxor
-    assert convolve_subset(ma, mb) == want_msub
+    assert convolve(ma, mb, on: ^) == want_mxor
+    assert convolve(ma, mb, on: subset) == want_msub

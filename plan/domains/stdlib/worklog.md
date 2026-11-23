@@ -197,3 +197,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - `Rooted.shapes`: `tree.cp` called `get_or_insert` without importing it (a library module gets no prelude), so every `shapes` call was E0203; now imported. Test: `std-tree/shapes-groups-isomorphic-subtrees.cp`, interpreter and C++ agree.
 - Filed: the `.pow(...)` rejection also hides methods named `pow` (`Poly.pow(k, n)`).
 - Prelude: `find` was imported from `std.strings`, which has only `find` methods, so `cpl check spec/std/prelude.cp` failed (E0201); it now comes from `std.seq`, where the free `find` lives. Same prelude names. Test: `std-seq/prelude-find-resolves-to-seq.cp`, interpreter and C++ agree.
+- `ntt.cp` self-test called `convolve_or/and/xor/subset`, names no module defines (E0201); it now calls `convolve(on: | & ^ subset)`, the documented API. The module test still stops at the existing E0606 bounds on generic `convolve` (filed: NTT operation dispatch, GAPS.md).
