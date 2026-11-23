@@ -9,21 +9,15 @@
 //   is the best total of the nodes outside subtree(v) given i chosen inside; a child's part
 //   is removed by the transposed convolution split(f, b)[i] = max_j f[i + j] + b[j] (later
 //   siblings, then the stored prefix join of earlier ones, then v itself with k - i chosen
-//   outside). With all children split off, up[v][1] + w(v) * k is the answer at root v.
+//   outside). With all children split off, up[v][1] + w(v) * k is the answer at root v;
+//   up[v][1] is never none, since k <= n leaves room for the k - 1 others outside v.
 @!multitest
-let (n, k): (2..=4000, Int) = read()
+let (n, k): (2..=4000, 1..=n) = read()
 domain V = 1..=n
 let w: [V]1..=1_000_000_000 = read()
 let edges: [0..n - 1](u: V, v: V) = read()
 let t = Rooted(Graph.undirected(edges), root: V.first!)
 let kids: [V]List<V> = [V] u => t.children(u).sorted(by: c => t.size(c))
-
-// Every total is nonnegative, so 0 is below each max-plus entry.
-fn join(a: List<Int>, b: List<Int>) -> List<Int>:
-    var res: List<Int> = [0 for _ in 0..a.len + b.len - 1]
-    for i in 0..a.len:
-        for j in 0..b.len: res[i + j] max= a[i] + b[j]
-    res
 
 fn split(f: List<?Int>, b: List<Int>) -> List<?Int>:
     var res: List<?Int> = [None for _ in 0..f.len - b.len + 1]
@@ -38,7 +32,7 @@ for v in t.at.rev:
     var f = [0]
     for c in kids[v]:
         joined_before[v].push(f.clone())
-        f = join(f, down[c])
+        f = convolve(f, down[c], over: Semiring(max, +))
     f.push(0)
     for i in (1..f.len).rev: f[i] max= f[i - 1] + w[v] * i
     down[v] = f
