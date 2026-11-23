@@ -1830,9 +1830,7 @@ impl<'a> Checker<'a> {
             && self.global(&name.text).is_none()
             && !self.old_copy_spelling(&base_ty, name)
         {
-            let widened = base_ty.widen().with_article();
-            let (a, ty) = widened.split_once(' ').unwrap_or(("a", &widened));
-            let message = format!("{a} `{ty}` has no method `{}`", name.text);
+            let message = Self::no_method(&base_ty, name);
             let suggestion = self.member_typo(&base_ty, &name.text).zip(Some(self.src));
             let twin = self.method_twin(base, name);
             let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));

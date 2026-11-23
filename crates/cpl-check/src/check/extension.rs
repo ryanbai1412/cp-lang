@@ -12,14 +12,19 @@ impl<'a> Checker<'a> {
         let Some(want) = self.no_extension_fits(base_ty, &name.text) else {
             return false;
         };
-        let widened = base_ty.widen().with_article();
-        let (a, ty) = widened.split_once(' ').unwrap_or(("a", &widened));
-        let message = format!("{a} `{ty}` has no method `{}`", name.text);
+        let message = Self::no_method(base_ty, name);
         let note = format!("the `{}` in reach takes a `{want}` as `self`", name.text);
         if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
             diag.help = Some(note);
         }
         true
+    }
+
+    /// "a `[3]Int` has no method `push`".
+    pub(super) fn no_method(base_ty: &Ty, name: &ast::Name) -> String {
+        let widened = base_ty.widen().with_article();
+        let (a, ty) = widened.split_once(' ').unwrap_or(("a", &widened));
+        format!("{a} `{ty}` has no method `{}`", name.text)
     }
 
     /// The did-you-mean for `name` on `base_ty`: a member it has, never a
