@@ -349,7 +349,7 @@ pub fn replace(self: Str, from: Str, to: Str) -> Str:
 /// example: `"-12".parse_int() == Some(-12)`
 /// example: `"12a".parse_int() == None`
 pub fn parse_int(self: Str, base: Int = 10) -> ?Int:
-    assert base >= 2 and base <= 36
+    assert 2 <= base <= 36
     var i = 0
     let neg = self.len > 0 and self[0] == '-'
     if self.len > 0 and (self[0] == '-' or self[0] == '+'): i = 1
@@ -839,7 +839,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>):
         let l = r.start.ord
         let hi = r.end.ord
         let n = odd.len
-        assert 0 <= l and l <= hi and hi <= n, "`is_palindrome(r)` needs `0 <= lo <= hi <= len`"
+        assert 0 <= l <= hi <= n, "`is_palindrome(r)` needs `0 <= lo <= hi <= len`"
         let m = hi - l
         if m <= 1: return true
         if m % 2 == 1: odd[(l + hi) / 2] * 2 - 1 >= m else: even[(l + hi) / 2] * 2 >= m
@@ -1242,8 +1242,8 @@ pub struct SuffixArray:
     /// example: `SuffixArray("banana").compare(1, 2, 1, 3) == -1`
     pub fn compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int:
         let n = sa.len
-        assert 0 <= l1 and l1 <= r1 and r1 <= n, "`compare` needs `0 <= l1 <= r1 <= len`"
-        assert 0 <= l2 and l2 <= r2 and r2 <= n, "`compare` needs `0 <= l2 <= r2 <= len`"
+        assert 0 <= l1 <= r1 <= n, "`compare` needs `0 <= l1 <= r1 <= len`"
+        assert 0 <= l2 <= r2 <= n, "`compare` needs `0 <= l2 <= r2 <= len`"
         let (n1, n2) = (r1 - l1, r2 - l2)
         let m = min(n1, n2)
         if m == 0 or self.lcp_between(l1, l2) >= m: return if n1 < n2: -1 elif n1 > n2: 1 else: 0
@@ -1593,7 +1593,7 @@ pub struct RollingHash:
     /// traps: when `l > r`, `l < 0` or `r > self.len`
     /// example: `let h = RollingHash("abab"); h.slice(0, 2) == h.slice(2, 4) and h.slice(1, 1) == HashVal(0, 0)`
     pub fn slice(self, l: Int, r: Int) -> HashVal:
-        assert 0 <= l and l <= r and r <= p1.len - 1, "`slice(l, r)` needs `0 <= l <= r <= len`"
+        assert 0 <= l <= r <= p1.len - 1, "`slice(l, r)` needs `0 <= l <= r <= len`"
         if l == r: return HashVal(0, 0)
         self.raw_slice(l, r)
 
@@ -1745,8 +1745,8 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
         with lint(unproven_list_index: allow)
         if rows.is_empty or cols.is_empty: return HashVal(0, 0)
         let (r1, r2, c1, c2) = (rows.l.ord, rows.r.ord, cols.l.ord, cols.r.ord)
-        assert (0 <= r1 and r1 <= r2 and r2 < pow_r1.len)
-        assert (0 <= c1 and c1 <= c2 and c2 < stride)
+        assert (0 <= r1 <= r2 < pow_r1.len)
+        assert (0 <= c1 <= c2 < stride)
         let o1 = r1 * stride
         let o2 = r2 * stride
         unchecked:
@@ -1831,7 +1831,7 @@ pub struct RollingHash61:
 
     fn slice61(self, l: Int, r: Int) -> Hash61:
         with lint(unproven_list_index: allow)
-        assert 0 <= l and l <= r and r <= pre.len - 1, "RollingHash61: range out of bounds"
+        assert 0 <= l <= r <= pre.len - 1, "RollingHash61: range out of bounds"
         if l == r: return Hash61(U64(0))
         Hash61(rh61_sub(pre[r], rh61_mul(pre[l], pow[r - l])))
 

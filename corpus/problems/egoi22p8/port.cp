@@ -24,7 +24,7 @@ fn ext3(a: Int, b: Int, c: Int) -> Int:
     f
 fn ext4(a: Int, b: Int, c: Int, d: Int) -> Int:
     if b < a or c < a or d < a: return 0
-    if a == c and b > a and d >= b: return 1
+    if a == c and a < b <= d: return 1
     if (a != c or a == b) and (a != d or a == c): return 1
     0
 

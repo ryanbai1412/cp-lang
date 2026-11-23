@@ -371,71 +371,83 @@ impl HandLoops<'_> {
         }
     }
 
-    /// A comparison bounding a name: the name, whether it is the lower bound,
-    /// and the bound's side of the chained comparison.
-    fn bound<'e>(&self, e: &'e Expr) -> Option<(&'e str, bool, String)> {
-        let (l, op, r) = compare(e)?;
-        let t = |e: &Expr| self.text(e.span).to_string();
-        Some(match (name(l), name(r), op) {
-            (Some(x), _, CmpOp::Ge) => (x, true, format!("{} <=", t(r))),
-            (Some(x), _, CmpOp::Gt) => (x, true, format!("{} <", t(r))),
-            (Some(x), _, CmpOp::Lt) => (x, false, format!("< {}", t(r))),
-            (Some(x), _, CmpOp::Le) => (x, false, format!("<= {}", t(r))),
-            (_, Some(x), CmpOp::Le) => (x, true, format!("{} <=", t(l))),
-            (_, Some(x), CmpOp::Lt) => (x, true, format!("{} <", t(l))),
-            (_, Some(x), CmpOp::Gt) => (x, false, format!("< {}", t(l))),
-            (_, Some(x), CmpOp::Ge) => (x, false, format!("<= {}", t(l))),
-            _ => return None,
-        })
-    }
-
     fn range_check(&mut self, expr: &Expr) {
         let ExprKind::Binary { op: BinOp::And, .. } = &expr.kind else {
             return;
         };
+        // Spans are item-relative; the chains of every item are kept here.
+        let at = expr.span.shift(self.base);
         if self
             .chains
             .iter()
-            .any(|c| c.start <= expr.span.start && expr.span.end <= c.end)
+            .any(|c| c.start <= at.start && at.end <= c.end)
         {
             return;
         }
-        self.chains.push(expr.span);
+        self.chains.push(at);
         let mut terms = Vec::new();
         flatten(expr, &mut terms);
-        let bounds: Vec<_> = terms.iter().map(|e| self.bound(e)).collect();
-        let mut chained = Vec::new();
-        for (k, b) in bounds.iter().enumerate() {
-            let Some((x, true, lo)) = b else { continue };
-            // The other bound is next to it, so the chain keeps the order.
-            let near = [k.wrapping_sub(1), k + 1];
-            let upper = near.iter().find_map(|&m| match bounds.get(m) {
-                Some(Some((y, false, hi))) if y == x => Some((m, hi)),
-                _ => None,
-            });
-            if let Some((m, hi)) = upper {
-                // Bounds that swap places must not call anything: the chain
-                // evaluates the lower one first.
-                let pure = m > k || !format!("{lo}{hi}").contains('(');
-                chained.push((format!("{lo} {x} {hi}"), pure));
+        let asc: Vec<_> = terms.iter().map(|e| ascending(e)).collect();
+        let t = |e: &Expr| self.text(e.span).to_string();
+        // Neighbouring comparisons through a shared name: `lo <= x` then
+        // `x < hi` (or written the other way round) is `lo <= x < hi`.
+        let links = |j: usize, forward: bool| match (&asc[j], asc.get(j + 1)) {
+            (Some((lo, _, hi)), Some(Some((lo2, _, hi2)))) => {
+                let (a, b) = if forward { (hi, lo2) } else { (lo, hi2) };
+                name(a).is_some() && name(a) == name(b)
             }
+            _ => false,
+        };
+        let mut runs = Vec::new();
+        let mut k = 0;
+        while k < terms.len() {
+            let Some(forward) = [true, false]
+                .into_iter()
+                .find(|&f| k + 1 < terms.len() && links(k, f))
+            else {
+                k += 1;
+                continue;
+            };
+            let mut e = k + 1;
+            while e + 1 < terms.len() && links(e, forward) {
+                e += 1;
+            }
+            let mut order: Vec<_> = (k..=e).filter_map(|j| asc[j]).collect();
+            if !forward {
+                order.reverse();
+            }
+            let mut chain = t(order[0].0);
+            for (_, op, hi) in &order {
+                chain = format!("{chain} {op} {}", t(hi));
+            }
+            let span = Span::new(terms[k].span.start, terms[e].span.end);
+            // A chain written the other way round evaluates its bounds in
+            // the other order, so they must not call anything.
+            let pure = forward || !self.text(span).contains('(');
+            runs.push((span, e - k + 1, chain, pure));
+            k = e + 1;
         }
         // Two coordinates checked together are `grid_bounds_check` (L0535).
-        let [(first, pure)] = chained.as_slice() else {
+        let [(span, len, chain, pure)] = runs.as_slice() else {
             return;
+        };
+        let count = match len {
+            2 => "two".to_string(),
+            3 => "three".to_string(),
+            n => n.to_string(),
         };
         let mut diag = Diagnostic::warning(
             SPLIT_RANGE_CHECK.code,
             expr.span.shift(self.base),
-            "a range check written as two comparisons",
+            format!("a range check written as {count} comparisons"),
         )
         .with_help(format!(
-            "write `{first}`: one chained comparison reads as the range it checks"
+            "write `{chain}`: one chained comparison reads as the range it checks"
         ));
-        if terms.len() == 2 && *pure {
+        if *pure {
             diag.fixes.push(Fix {
-                title: format!("write `{first}`"),
-                edits: vec![(expr.span.shift(self.base), first.clone())],
+                title: format!("write `{chain}`"),
+                edits: vec![(span.shift(self.base), chain.clone())],
             });
         }
         self.out.push(Finding {
@@ -509,6 +521,18 @@ impl HandLoops<'_> {
             diag,
         });
     }
+}
+
+/// `e` as `lo op hi` with `op` `<` or `<=`: `x >= 0` is `0 <= x`.
+fn ascending(e: &Expr) -> Option<(&Expr, &'static str, &Expr)> {
+    let (l, op, r) = compare(e)?;
+    Some(match op {
+        CmpOp::Lt => (l, "<", r),
+        CmpOp::Le => (l, "<=", r),
+        CmpOp::Gt => (r, "<", l),
+        CmpOp::Ge => (r, "<=", l),
+        _ => return None,
+    })
 }
 
 fn flatten<'e>(e: &'e Expr, out: &mut Vec<&'e Expr>) {

@@ -621,7 +621,7 @@ pub struct LazyTreap<T, F>(
     /// traps: when `lo < 0`, `hi > len` or `lo > hi`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(0); t.push(0); t.push(0); t.apply_range(1, 3, 5); t.to_list() == [0, 5, 5]`
     pub fn apply_range(mut self, lo: Int, hi: Int, f: F):
-        assert 0 <= lo and lo <= hi and hi <= self.len
+        assert 0 <= lo <= hi <= self.len
         if lo == hi: return
         let (a, bc) = self.split_pos(root, lo)
         let (b, c) = self.split_pos(bc, hi - lo)
@@ -646,7 +646,7 @@ pub struct LazyTreap<T, F>(
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.reverse(0..2); t.to_list() == [2, 1, 3]`
     pub fn reverse(mut self, r: Range<Int>):
         let (lo, hi) = (r.start, r.start + r.len)
-        assert 0 <= lo and lo <= hi and hi <= self.len, "`reverse` out of range"
+        assert 0 <= lo <= hi <= self.len, "`reverse` out of range"
         if lo == hi: return
         let (a, bc) = self.split_pos(root, lo)
         let (b, c) = self.split_pos(bc, hi - lo)
@@ -673,7 +673,7 @@ pub struct LazyTreap<T, F>(
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); t.erase_range(0..2); t.to_list() == [3]`
     pub fn erase_range(mut self, r: Range<Int>):
         let (lo, hi) = (r.start, r.start + r.len)
-        assert 0 <= lo and lo <= hi and hi <= self.len, "`erase_range` out of range"
+        assert 0 <= lo <= hi <= self.len, "`erase_range` out of range"
         if lo == hi: return
         let (a, bc) = self.split_pos(root, lo)
         let (_, c) = self.split_pos(bc, hi - lo)

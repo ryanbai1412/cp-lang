@@ -47,4 +47,4 @@ for comp in complement_components(forbidden):
     hi += sz - (sz - odd) % 2
 
 let target = n / 2
-print(if lo <= target and target <= hi: "Yes" else: "No")
+print(if lo <= target <= hi: "Yes" else: "No")

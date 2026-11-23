@@ -4,7 +4,7 @@
 // has: "cases agree"
 @gen fn input():
     let x = gen(1..=8)
-    assert 1 <= x and x <= 8
+    assert 1 <= x <= 8
     print(x)
 @alt(program)
 fn brute():

@@ -33,7 +33,7 @@ for step in 0..600:
     let hi = seed % 11 + 2
     var want = ""
     for y in ref:
-        if lo <= y and y < hi: want = want + Str(y)
+        if lo <= y < hi: want = want + Str(y)
     if s.fold_between(lo, hi) != want: ok = false
     var all = ""
     for y in ref: all = all + Str(y)

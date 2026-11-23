@@ -6,14 +6,14 @@ print(s, s.len, s[0], s[s.len - 1])
 print(s + t, s + "-" + t, yes(s == t), yes(s < t), yes(s != t))
 var up: Str = ""
 for c in s:
-    if c >= 'a' and c <= 'z':
+    if 'a' <= c <= 'z':
         up.push('A' + (c - 'a'))
     else:
         up.push(c)
 print(up)
 var count: [26]Int = 0
 for c in s:
-    if c >= 'a' and c <= 'z':
+    if 'a' <= c <= 'z':
         count[c - 'a'] += 1
 print(count)
 print('a' + 2, 'z' - 'a', yes('a' < 'b'), "tab\there", "quote\"d", "back\\slash")

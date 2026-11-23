@@ -1116,7 +1116,7 @@ pub struct XorTrie:
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 1) == Some(4)`
     /// example: `var t = XorTrie(3); t.add(1); t.add(5); t.add(6); t.kth_xor(2, 3) == None`
     pub fn kth_xor(self, x: Int, k: Int) -> ?Int:
-        assert k >= 0 and 0 <= x and x < 1 << _bits
+        assert k >= 0 and 0 <= x < 1 << _bits
         if k >= _cnt[0]: return None
         let z = x ^ _mask
         var node = 0

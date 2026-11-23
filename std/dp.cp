@@ -69,7 +69,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// traps: when `x` is not in `over`
     /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.at(1) == Some(1) and t.at(5) == Some(1)`
     pub fn at(self, x: Int) -> ?K:
-        assert lo <= x and x <= hi
+        assert lo <= x <= hi
         var best: ?K = None
         var (i, l, r) = (0, lo, hi)
         unchecked:
@@ -97,7 +97,7 @@ pub struct LiChao<L = Line, K = Int>(pick: (K, K) -> K, lo: Int, hi: Int):
     /// traps: when `x` is not in `over`
     /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); t.line_at(8) == Some(Line(-1, 6))`
     pub fn line_at(self, x: Int) -> ?L:
-        assert lo <= x and x <= hi
+        assert lo <= x <= hi
         var best: ?(line: L, val: K) = None
         var (i, l, r) = (0, lo, hi)
         while true:
@@ -839,7 +839,7 @@ pub fn lis_ends<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -
 /// traps: when `bits < 0` or `m` is not in `0..2^bits`
 /// example: `supermasks(0b01, 2).collect() == [1, 3]`
 pub fn supermasks(m: Int, bits: Int) -> yields Int:
-    assert bits >= 0 and 0 <= m and m < (1 << bits), "`m` must be a mask of `bits` bits"
+    assert bits >= 0 and 0 <= m < (1 << bits), "`m` must be a mask of `bits` bits"
     let full = (1 << bits) - 1
     var s = m
     while true:

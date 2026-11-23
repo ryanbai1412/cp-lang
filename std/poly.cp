@@ -1223,7 +1223,7 @@ pub fn stirling1_row<P>(n: Int) -> List<Mod<P>>:
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling2_row(3); s == [Z(0), Z(1), Z(3), Z(1)]`
 pub fn stirling2_row<P>(n: Int) -> List<Mod<P>>:
     with lint(unproven_list_index: allow)
-    assert n >= 0 and n < P, "stirling2_row requires 0 <= n < P"
+    assert 0 <= n < P, "stirling2_row requires 0 <= n < P"
     if n == 0: return [Mod<P>(1)]
     let (_, inv_fact) = fact_tables<P>(n)
     var a = List.filled(n + 1, Mod<P>(0))
@@ -1292,7 +1292,7 @@ pub fn stirling2_col<P>(k: Int, n: Int) -> List<Mod<P>>:
 /// example: `type Z = Mod<998244353>; let b: List<Z> = bell_table(4); b == [Z(1), Z(1), Z(2), Z(5), Z(15)]`
 pub fn bell_table<P>(n: Int) -> List<Mod<P>>:
     with lint(unproven_list_index: allow)
-    assert n >= 0 and n < P, "bell_table requires 0 <= n < P"
+    assert 0 <= n < P, "bell_table requires 0 <= n < P"
     if n == 0: return [Mod<P>(1)]
     let (fact, inv_fact) = fact_tables<P>(n)
     var f = List.filled(n + 1, Mod<P>(0))

@@ -79,7 +79,7 @@ for d in diag:
         if d.1 <= x and x <= d.2 and s.1 <= x and x <= s.2: hits.push(x)
     for s in vert:
         let y = s.0 + d.0
-        if d.1 <= s.0 and s.0 <= d.2 and s.1 <= y and y <= s.2: hits.push(s.0)
+        if d.1 <= s.0 and s.0 <= d.2 and s.1 <= y <= s.2: hits.push(s.0)
     hits.sort()
     for i in 0..hits.len:
         if i == 0 or hits[i] != hits[i - 1]: cells -= 1

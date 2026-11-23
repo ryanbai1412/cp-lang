@@ -96,7 +96,7 @@ pub struct Concave(start: Int, base: Int):
     /// traps: when `c` is outside `lo..=hi`
     /// example: `var f = Concave.flat(0..=4); f.add_abs(1); f.at(4) == -3`
     pub fn at(mut self, c: Int) -> Int:
-        assert start <= c and c <= start + slopes.len
+        assert start <= c <= start + slopes.len
         base + slopes.take(c - start).sum()
 
     /// The largest value of `f` over its domain.

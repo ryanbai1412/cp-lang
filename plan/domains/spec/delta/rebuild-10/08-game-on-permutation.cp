@@ -8,7 +8,7 @@ var low = n + 1
 var low_win = n + 1
 var wins = 0
 for x in p:
-    if low < x and x < low_win:
+    if low < x < low_win:
         wins += 1
         low_win = x
     low min= x

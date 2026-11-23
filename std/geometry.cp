@@ -1758,7 +1758,7 @@ pub fn ray_hits_segment(o: Vec, dir: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> ?V
     if abs(cr) > eps:
         let t = (a - o).cross(d2) / cr
         let u = (a - o).cross(dir) / cr
-        if t >= -eps and u >= -eps and u <= 1.0 + eps: return Some(o + dir * t)
+        if t >= -eps and -eps <= u <= 1.0 + eps: return Some(o + dir * t)
         return None
     if abs((a - o).cross(dir)) > eps or abs((b - o).cross(dir)) > eps: return None
     let ta = (a - o).dot(dir)

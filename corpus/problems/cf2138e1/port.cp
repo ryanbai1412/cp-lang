@@ -29,7 +29,7 @@ fn walk(x: Int, z: Int, room: Int) -> ?List<0..=1>:
 fn nearest_walk(x: Int, room: Int) -> List<0..=1>:
     let z0 = max(1, min(x - 1, x * 618_033_989 / 1_000_000_000))
     for d in 0..x:
-        for z in [z0 + d, z0 - d] if 1 <= z and z < x and (d > 0 or z == z0):
+        for z in [z0 + d, z0 - d] if 1 <= z < x and (d > 0 or z == z0):
             if let diag = walk(x, z, room): return diag
     []
 

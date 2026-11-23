@@ -27,12 +27,12 @@ var ans = [small[x.at, min(x.budget, cap)] for x in queries]
 
 for p in V:
     let (pc, pw) = item[p]
-    let through = next.reachable(from: [V.first], skip: (u, v) => u < p and p < v)
+    let through = next.reachable(from: [V.first], skip: (u, v) => u < p < v)
     var best: [V, 0..pc]Int = 0
     for v in V if through[v]:
         if item[v].worth * pc <= pw * item[v].cost:
             best[v].add_unbounded(item[v], wrap: (pc, pw))
-        for k in next[v] if not (v < p and p < k): best[k] max= best[v]
+        for k in next[v] if not (v < p < k): best[k] max= best[v]
     for (i, x) in queries.items if x.at >= p and through[x.at] and x.budget >= cap:
         ans[i] max= best[x.at, x.budget % pc] + x.budget / pc * pw
 

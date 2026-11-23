@@ -550,7 +550,7 @@ pub struct SparseIntervalMap<T>:
 
     fn split(mut self, x: Int):
         if let (s, seg) = segs.last_le(x):
-            if s < x and x < seg.hi:
+            if s < x < seg.hi:
                 segs[s] = (hi: x, val: seg.val)
                 segs[x] = (hi: seg.hi, val: seg.val)
 
@@ -586,7 +586,7 @@ pub struct SparseIntervalMap<T>:
     /// traps: when `i` is outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.get(4) == 1`
     pub fn get(self, i: Int) -> T:
-        assert lo <= i and i < hi, "`get` coordinate outside the map"
+        assert lo <= i < hi, "`get` coordinate outside the map"
         segs.last_le(i)!.1.val
 
     /// The maximal run containing coordinate `i` and its value.
@@ -596,7 +596,7 @@ pub struct SparseIntervalMap<T>:
     /// traps: when `i` is outside `lo..hi`
     /// example: `var m = SparseIntervalMap(0, 10, 0); m.assign(3..5, 1); m.run_at(7).range == 5..10`
     pub fn run_at(self, i: Int) -> (range: Range<Int>, val: T):
-        assert lo <= i and i < hi, "`run_at` coordinate outside the map"
+        assert lo <= i < hi, "`run_at` coordinate outside the map"
         let (s, seg) = segs.last_le(i)!
         (range: s..seg.hi, val: seg.val)
 

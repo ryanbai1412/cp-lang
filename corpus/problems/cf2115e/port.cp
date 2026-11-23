@@ -43,7 +43,7 @@ for p in V:
                 for step in 0..=2 * (pc / g):
                     let j = (start + step * c) % pc
                     best[v, (j + c) % pc] max= best[v, j] + w - (j + c) / pc * pw
-        for k in next[v] if not (v < p and p < k):
+        for k in next[v] if not (v < p < k):
             reach[k] = true
             for j in 0..pc:
                 best[k, j] max= best[v, j]

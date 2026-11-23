@@ -290,7 +290,7 @@ pub struct SparseSet<D>:
     /// example: `var s = SparseSet<0..5>(); s.add(3); s.contains(3) and not s.contains(2)`
     pub fn contains(self, v: D) -> Bool:
         let p = pos[v]
-        p >= 0 and p < _len and dense[p] == v
+        0 <= p < _len and dense[p] == v
 
     /// Add `v` at the end of the dense order. Returns `true` when `v` was absent, `false` when it
     /// was present (and nothing changes).

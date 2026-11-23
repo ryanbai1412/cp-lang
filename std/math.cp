@@ -998,7 +998,7 @@ pub fn submasks(mask: Int) -> yields Int:
 /// example: `bit_subsets(2, 3).collect() == []`
 pub fn bit_subsets(n: Int, k: Int) -> yields Int:
     if k == 0: yield 0
-    if k >= 1 and k <= n:
+    if 1 <= k <= n:
         var s = (1 << k) - 1
         while s < 1 << n:
             yield s
@@ -1348,7 +1348,7 @@ pub fn carmichael(n: Int) -> Int:
 /// example: `min_mod_in_range(2, 4, 1, 1) == None`
 /// example: `min_mod_in_range(5, 9, 0, 3) == Some(0)`
 pub fn min_mod_in_range(a: Int, m: Int, lo: Int, hi: Int) -> ?Int:
-    assert m >= 1 and 0 <= lo and lo <= hi and hi < m
+    assert m >= 1 and 0 <= lo <= hi < m
     min_mod_in_range_reduced(a % m, m, lo, hi)
 
 fn min_mod_in_range_reduced(a: Int, m: Int, lo: Int, hi: Int) -> ?Int:

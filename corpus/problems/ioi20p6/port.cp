@@ -45,7 +45,7 @@ fn next_hop(s: Int, t: Int, near: List<Int>) -> Int:
         // of labels after s, and the parent, if there is one, comes last.
         let kids = if s == 0: near.len else: near.len - 1
         for i in 0..kids:
-            if s < t and t <= near[i]: return near[i]
+            if s < t <= near[i]: return near[i]
         near.last!
     else:
         // The mirror image: the parent first, each child opening a stretch.

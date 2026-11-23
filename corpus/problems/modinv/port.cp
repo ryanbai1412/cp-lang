@@ -7,7 +7,7 @@
 // original: corpus/submissions/5034440.cpp
 let x: U64 = read()
 let m: U64 = read()
-assert x < m and m <= U64(10) ** 19
+assert x < m <= U64(10) ** 19
 var (r0, r1) = (m, x)
 var (t0, t1) = (U64(0), U64(1))
 var plus = true

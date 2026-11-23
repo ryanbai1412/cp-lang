@@ -61,7 +61,7 @@ while stk.len > 0:
     let hi = head[Node(u + 1)]
     for ei in lo..hi:
         let v = to[Edge(ei)]
-        if v >= 1 and v <= target and not vis[Node(v)]:
+        if 1 <= v <= target and not vis[Node(v)]:
             vis[Node(v)] = true
             stk.push(v)
 

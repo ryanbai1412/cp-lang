@@ -17,7 +17,7 @@ fn fixed_cost_paths_match_dijkstra_on_the_same_moves():
         for s in S:
             for j in 0..4:
                 let t = s.to_idx + moves[j]
-                if t >= 0 and t < 20: es.push((u: s, v: S.nth(t), w: price[j]))
+                if 0 <= t < 20: es.push((u: s, v: S.nth(t), w: price[j]))
         domain E = 0..es.len
         let ea: [E](u: S, v: S, w: Int) = [E] e => es[e.to_idx]
         let src = S.nth(rand(0, 19))

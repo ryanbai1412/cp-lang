@@ -23,9 +23,9 @@ print(yes(hi.len == 4 and hi[0].0 == D4(0) and hi[0].1 == D4(1) and hi[0].2 == D
 print(yes(circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(1.0, 1.0), Vec(0.0, 1.0)]) == 1.0))
 print(yes(circle_polygon_area(Circle(Vec(0.0, 0.0), 10.0), [Vec(0.0, 0.0), Vec(0.0, 1.0), Vec(1.0, 1.0), Vec(1.0, 0.0)]) == -1.0))
 let ca = circle_polygon_area(Circle(Vec(0.0, 0.0), 1.0), [Vec(-2.0, -2.0), Vec(2.0, -2.0), Vec(2.0, 2.0), Vec(-2.0, 2.0)])
-print(yes(ca > 3.14159265 and ca < 3.14159266))
+print(yes(3.14159265 < ca < 3.14159266))
 let ch2 = circle_polygon_area(Circle(Vec(1.0, 0.0), 1.0), [Vec(1.0, -5.0), Vec(5.0, -5.0), Vec(5.0, 5.0), Vec(1.0, 5.0)])
-print(yes(ch2 > 1.5707963 and ch2 < 1.5707964))
+print(yes(1.5707963 < ch2 < 1.5707964))
 domain S2 = 0..2
 let sg = [(a: Pt(0, 0), b: Pt(1, 1)), (a: Pt(1, 1), b: Pt(2, 0))]
 let m = any_segments_meet_idx([S2] i => sg[i.to_idx])

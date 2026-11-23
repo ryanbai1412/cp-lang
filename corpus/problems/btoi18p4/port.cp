@@ -96,7 +96,7 @@ fn covers_arc(segs: List<(Int, Int)>, ql: Int, qr: Int) -> Bool:
         let pos = e.0
         if let p = prev:
             if pos != p and cur == 0:
-                if (ql <= pos - 1 and pos - 1 <= qr) or (ql <= p and p <= qr):
+                if (ql <= pos - 1 and pos - 1 <= qr) or (ql <= p <= qr):
                     return false
         cur += e.1
         prev = pos

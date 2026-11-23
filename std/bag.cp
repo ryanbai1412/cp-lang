@@ -2141,7 +2141,7 @@ pub struct BucketCount:
     /// traps: when `x` is not in `r`; when the count of `x` would become negative
     /// example: `var b = BucketCount(0..10); b.add(3); b.add(7, 2); b.count(7) == 2 and b.len == 3`
     pub fn add(mut self, x: Int, delta: Int = 1):
-        assert lo <= x and x < hi, "`x` is outside the table's range"
+        assert lo <= x < hi, "`x` is outside the table's range"
         let i = x - lo
         assert cnt[i] + delta >= 0, "the count of `x` would become negative"
         cnt[i] += delta
@@ -2164,7 +2164,7 @@ pub struct BucketCount:
     /// traps: never; an `x` outside `r` has count 0
     /// example: `var b = BucketCount(0..10); b.add(3); b.count(3) == 1 and b.count(4) == 0 and b.count(99) == 0`
     pub fn count(self, x: Int) -> Int:
-        if lo <= x and x < hi: cnt[x - lo] else: 0
+        if lo <= x < hi: cnt[x - lo] else: 0
 
     /// \(O(\sqrt{N})\). Number of elements strictly less than `x`.
     ///
@@ -2316,7 +2316,7 @@ fn sorted_bag_matches_sorted_list_on_random_ops():
             assert b.rank(x) == lt
         else:
             let k = rand(-1, plain.len)
-            assert b.nth(k) == (if 0 <= k and k < plain.len: Some(plain[k]) else: None)
+            assert b.nth(k) == (if 0 <= k < plain.len: Some(plain[k]) else: None)
         assert b.len == plain.len
         assert b.first == (if plain.len > 0: Some(plain[0]) else: None)
         assert b.last == (if plain.len > 0: Some(plain.last!) else: None)

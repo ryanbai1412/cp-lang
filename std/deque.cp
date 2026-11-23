@@ -596,7 +596,7 @@ fn a_deque_of_a_list_is_a_bfs_queue():
     while let u = q.pop_front():
         for d in [-1, 1]:
             let wi = u.to_idx + d
-            if 0 <= wi and wi < 5 and dist[V(wi)] == None:
+            if 0 <= wi < 5 and dist[V(wi)] == None:
                 dist[V(wi)] = Some(dist[u]! + 1)
                 q.push(V(wi))
     assert [dist[v]! for v in V] == [0, 1, 2, 1, 0]
