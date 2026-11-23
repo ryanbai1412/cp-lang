@@ -39,6 +39,7 @@ pub enum Marker {
 
 fn marker_above(before: &str) -> Marker {
     let Some(body) = before
+        .trim_end_matches([' ', '\t'])
         .strip_suffix('\n')
         .and_then(|b| b.trim_end_matches([' ', '\t']).strip_suffix("-->"))
     else {
@@ -84,11 +85,28 @@ pub fn extract_marked_blocks(text: &str) -> Vec<(String, Marker)> {
             break;
         };
         if lang == "cp" || lang == "python" {
-            blocks.push((body_start[..close].to_string(), marker_above(&text[..open])));
+            let line_start = text[..open].rfind('\n').map_or(0, |i| i + 1);
+            let indent = open - line_start;
+            let code = dedent(&body_start[..close], indent);
+            blocks.push((code, marker_above(&text[..open])));
         }
         pos = open + 3 + nl + 1 + close + 3;
     }
     blocks
+}
+
+/// Strips up to `indent` leading spaces from each line, as CommonMark does
+/// for the body of a fence indented that far (a fence inside a list item).
+fn dedent(code: &str, indent: usize) -> String {
+    if indent == 0 {
+        return code.to_string();
+    }
+    let mut out = String::with_capacity(code.len());
+    for line in code.split_inclusive('\n') {
+        let n = line.len() - line.trim_start_matches(' ').len();
+        out.push_str(&line[n.min(indent)..]);
+    }
+    out.trim_end_matches(' ').to_string()
 }
 
 fn md_files_in(dir: &Path) -> Vec<std::path::PathBuf> {

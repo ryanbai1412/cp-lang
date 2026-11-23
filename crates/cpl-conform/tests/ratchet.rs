@@ -210,6 +210,10 @@ fn spec_blocks_markers_above_a_fence() {
         extract_marked_blocks(md)[0].1,
         Marker::Rejects("E0608".into())
     );
+    let md = "1. item\n\n   <!-- spec-only: listed -->\n   ```cp\n   let q = 1\n     q\n   ```\n";
+    let blocks = extract_marked_blocks(md);
+    assert_eq!(blocks[0].0, "let q = 1\n  q\n");
+    assert_eq!(blocks[0].1, Marker::SpecOnly("listed".into()));
 }
 
 #[test]
