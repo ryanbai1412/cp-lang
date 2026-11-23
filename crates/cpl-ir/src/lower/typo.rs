@@ -140,6 +140,27 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Offers `s` for the source at `span` on the error just reported.
+    /// `s.upper()`: `upper` is a `Char` getter, so the `Str` receiver is a
+    /// mismatch; the string's own function is `to_upper`.
+    pub(super) fn char_fn_on_str(&mut self, base: &ast::Expr, name: &ast::Name) {
+        let Some(own) = cpl_check::foreign_str_fn(&name.text) else {
+            return;
+        };
+        let at = self.span(base.span);
+        let edit = self.span(name.span);
+        let whole = self.source(base.span);
+        let last = self.diags.last_mut().filter(|d| {
+            d.code == codes::TYPE_MISMATCH && d.span == at && d.message.ends_with("found `Str`")
+        });
+        if let Some(d) = last {
+            d.help = Some(format!(
+                "`{}` is a `Char` getter; a whole `Str` is `{whole}.{own}()`",
+                name.text
+            ));
+            d.fix(format!("write `{own}`"), edit, own);
+        }
+    }
+
     /// `t[0]` on a tuple: its positional fields are read `t.0`, `t.1`.
     pub(super) fn tuple_index_fix(&mut self, ty: &Ty, index: &ast::Expr, span: Span) {
         let (Ty::Tuple(_), ast::ExprKind::Int(n)) = (ty, &index.kind) else {

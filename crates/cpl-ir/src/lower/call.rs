@@ -507,7 +507,11 @@ impl<'a> Lowerer<'a> {
             ast::ExprKind::Generic { base, args: types } => {
                 self.call_generic(base, types, args, hint, span)
             }
-            ast::ExprKind::Field { base, name } => self.method(whole, base, name, args, hint),
+            ast::ExprKind::Field { base, name } => {
+                let call = self.method(whole, base, name, args, hint);
+                self.char_fn_on_str(base, name);
+                call
+            }
             _ => {
                 let fv = self.expr(callee, None);
                 self.call_fn_val(fv, args, span)

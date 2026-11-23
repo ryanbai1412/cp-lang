@@ -1,0 +1,15 @@
+error[E0302]: expected `Char`, found `Str`
+  --> char_case_on_str.cp:2:7
+  |
+2 | print(s.upper(), s.lower())
+  |       ^
+  = help: `upper` is a `Char` getter; a whole `Str` is `s.to_upper()`
+
+error[E0302]: expected `Char`, found `Str`
+  --> char_case_on_str.cp:2:18
+  |
+2 | print(s.upper(), s.lower())
+  |                  ^
+  = help: `lower` is a `Char` getter; a whole `Str` is `s.to_lower()`
+
+char_case_on_str.cp: 2 errors
