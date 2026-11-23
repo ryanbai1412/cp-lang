@@ -6866,3 +6866,16 @@ Reason: `spec/` holds the rules and `std/` the implementation (plan/LAYOUT.md);
 the prover's directory now matches its package like every other crate.
 Reverse: `git mv std spec/std`, `git mv crates/cpl-prover crates/prover`, and
 the same reference rewrite in the other direction.
+
+## 308. L0527 `neg_mod_fixup` drops C++'s `+ m` remainder guard (2026-11-22)
+
+- **Decision.** `(e + m) % m` warns with a fix to `e % m` (and `(x % m + m) % m`
+  to `x % m`) when `m` is an integer literal or a name or field the checker
+  types as `Int`, `I128` or an integer range. `U64` and unknown types get
+  no finding. The catalog row suggested `Mod` subtraction; the lint teaches
+  the smaller step first and its explain points at `Mod<P>`.
+- **Why.** Integer `%` is Euclidean (`spec/core/13-lowering.md`; `-7 % 3`
+  prints `2` in `cpl run`), so the guard is dead code that can overflow.
+  16 `std` findings and 1 corpus port (noi02p6), 0 in corpus `spec.cp`.
+- **Reverse.** Delete `crates/cpl-lint/src/rules/euclid.rs` and
+  `spec/lints/neg_mod_fixup/`.

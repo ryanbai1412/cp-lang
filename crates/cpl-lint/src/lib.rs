@@ -23,11 +23,7 @@ pub(crate) const STD_DIR: &str = "std";
 /// repeats `STD_DIR` because `include_str!` needs a literal.
 macro_rules! std_source {
     ($file:literal) => {
-        include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../../std/",
-            $file
-        ))
+        include_str!(concat!(env!("CARGO_MANIFEST_DIR"), "/../../std/", $file))
     };
 }
 pub(crate) use std_source;
