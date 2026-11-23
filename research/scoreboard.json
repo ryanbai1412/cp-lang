@@ -1290,7 +1290,10 @@
         "widths/sub-traps-5.cp": "pass",
         "widths/sub-wraps-when-unchecked.cp": "pass",
         "core-04/pair-table-takes-two-indices.cp": "fail",
-        "core-04/pieces-of-a-domain-take-its-cuts.cp": "fail"
+        "core-04/pieces-of-a-domain-take-its-cuts.cp": "fail",
+        "core-07/view-blocks-a-write-to-its-source.cp": "pass",
+        "core-07/in-place-verb-on-a-lent-view.cp": "pass",
+        "core-07/view-of-a-temporary-outlives-it.cp": "fail"
       },
       "causes": [
         {
@@ -1910,11 +1913,11 @@
         }
       ],
       "counts": {
-        "fail": 231,
-        "pass": 1057
+        "fail": 232,
+        "pass": 1059
       },
-      "passed": 1057,
-      "total": 1288
+      "passed": 1059,
+      "total": 1291
     },
     "corpus": {
       "cases": {

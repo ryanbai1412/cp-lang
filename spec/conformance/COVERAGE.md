@@ -7,19 +7,19 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2935 (1057 passing). Rules: 582.
+Cases: 2943 (1057 passing). Rules: 582.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 173 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 177 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 49 rules, 192 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 49 rules, 196 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 107 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 188 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 191 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -233,7 +233,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.10 [7+ 2-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [3+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
 - R04.2.11 [8+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
-- R04.2.12 [1+ 1-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
+- R04.2.12 [2+ 1-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
 - R04.2.13 [4+ 0-]: | `V.wrap(x)` | integer to position, Euclidean mod `V.count` (`V.wrap(-1)` is the last pos...
 - R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | \(O(1)\)
 - R04.2.15 [2+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
@@ -244,7 +244,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.18 [5+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.2.26 [5+ 1-]: The impl writes `count`, `ord` and `nth` under those names; `count` is sized like a domain...
 - R04.2.27 [7+ 3-]: The type is then a domain like any other: `[Two]E` indexes by `t.ord`, `for t in Two` and ...
-- R04.2.28 [4+ 3-]: .
+- R04.2.28 [5+ 3-]: .
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
 - R04.3.3 [4+ 3-]: Arithmetic on a position gives an `Int`: `v + k`, `v - k` and `v - w` (two positions of on...
@@ -289,7 +289,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.8.7 [2+ 0-]: `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `No...
 - R04.8.8 [2+ 1-]: Integer literals convert to positions and cuts of integer domains.
 - R04.8.9 [2+ 1-]: `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.
-- R04.8.10 [2+ 1-]: A list literal for `[D]T` gives one value per cell, so `[]` fills an empty `D`; a list who...
+- R04.8.10 [2+ 3-]: A list literal for `[D]T` gives one value per cell, so `[]` fills an empty `D`; a list who...
 
 ### R04a: 04a-identity-vs-offset.md
 
@@ -388,10 +388,10 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.2 [2+ 1-]: a struct, tuple or enum with a lent field (`Filter(self, keep)`);
 - R05.7.3 [2+ 1-]: a generator value with a lent argument (`dfs(g, from: [s])`, `dfs(g, from: [s], seen: mut ...
 - R05.7.4 [2+ 6-]: a loop item, for the iteration (§9);
-- R05.7.5 [2+ 3-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
+- R05.7.5 [2+ 5-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
 - R05.7.6 [8+ 11-]: **Read lend:** the sources can be read, but not written, resized or moved.
 - R05.7.7 [1+ 3-]: **`mut` lend:** the sources can't be touched at all except through it.
-- R05.7.8 [2+ 3-]: returned, except from a fn declared `lends` (§6);
+- R05.7.8 [3+ 4-]: returned, except from a fn declared `lends` (§6);
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
 - R05.7.10 [3+ 3-]: stored in a top-level `var` by a fn. The file body is itself a fn (§11), so its own statem...
 - R05.8.1 [1+ 3-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
@@ -496,7 +496,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.5.7 [1+ 0-]: | `w.keys`, `w.len` | `lo..hi`, `hi - lo`
 - R07.5.8 [1+ 0-]: | `List(w)` | the one allocation: a fresh 0-based copy
 - R07.5.9 [1+ 3-]: **Lending: the rules of `mut a[i]`, over a range.** Any number of read views coexist with ...
-- R07.5.10 [2+ 1-]: : in a `let`, `var`, field or container that dies no later than its sources, never in a gl...
+- R07.5.10 [3+ 1-]: : in a `let`, `var`, field or container that dies no later than its sources, never in a gl...
 - R07.5.11 [2+ 1-]: **Parameters.** A read-only `xs: [V]T` takes an array or any `Indexed` over `V` (a `mut` o...
 - R07.5.12 [2+ 1-]: **Walk-only views.** `filter`, `take_while` and generators are `Seq` only: the `if` or the...
 - R07.6.1 [2+ 0-]: **Push, not pull.** The generator runs and the `for` body runs at each `yield`, so a non-r...
@@ -755,7 +755,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 16 case(s)
-- E0302 Type mismatch: 44 case(s)
+- E0302 Type mismatch: 45 case(s)
 - E0303 Wrong number of arguments: 11 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
@@ -784,7 +784,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0503 Removed syntax from an older version: 11 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
-- E0602 Variable mutated while lent: 40 case(s)
+- E0602 Variable mutated while lent: 42 case(s)
 - E0603 Lent value escapes its scope: 21 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
@@ -936,7 +936,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
-- R0001 Runtime trap: 10 case(s)
+- R0001 Runtime trap: 11 case(s)
 - R0101 Index out of range: 23 case(s)
 - R0102 Value outside a domain: 5 case(s)
 - R0201 Range store out of range: 10 case(s)
@@ -1035,7 +1035,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **mod** (29/29 named by a case)
 - **ntt** (18/19 named by a case)
   - uncovered: `SosOver`
-- **opt** (2/2 named by a case)
+- **opt** (3/3 named by a case)
 - **pair** (5/5 named by a case)
 - **persistent** (34/39 named by a case)
   - uncovered: `RangeKth`, `RangeKth.new`, `PersistentLazySegTree.fold_rec`, `PMultiset`, `PMultiset.cmp`
@@ -1061,7 +1061,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2199 of 2325 std items are named by a case.
+2200 of 2326 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

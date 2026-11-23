@@ -140,3 +140,11 @@ inputs = ["research/acceptance/runs/*.json"]
 write = ["research/acceptance/blockers.py"]
 check = ["research/acceptance/blockers.py", "--check"]
 tier = "pre-commit"
+
+[[gen]]
+name = "widths"
+files = ["spec/conformance/widths/*.cp"]
+inputs = []
+write = ["scripts/conformance-widths.py"]
+check = ["scripts/conformance-widths.py", "--check"]
+tier = "pre-commit"
