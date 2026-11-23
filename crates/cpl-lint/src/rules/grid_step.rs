@@ -25,9 +25,16 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             direction_lists(&stmts, &mut self.out);
         }
         fn expr(&mut self, expr: &Expr) {
-            let ExprKind::If { branches, .. } = &expr.kind else {
+            let ExprKind::If {
+                branches,
+                otherwise,
+            } = &expr.kind
+            else {
                 return;
             };
+            // `if k > 0: .. elif ..: .. else: ..` is a recurrence's case split,
+            // where the edge does its own thing, not a step off a grid.
+            let split = branches.len() > 1 || otherwise.is_some();
             for (cond, block) in branches {
                 let Cond::Expr(cond) = cond else { continue };
                 if let Some((x, y)) = bounds_check(cond) {
@@ -49,11 +56,15 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                     }
                     continue;
                 }
-                let Some(name) = edge_test(cond) else {
+                let Some(name) = edge_test(cond).filter(|_| !split) else {
                     continue;
                 };
+                // `g[r - 1, c]`: the same cell's neighbour, the other index as is.
                 let off = |ix: &[Expr]| {
-                    ix.len() >= 2
+                    ix.len() == 2
+                        && ix
+                            .iter()
+                            .any(|i| name_of(i).is_some_and(|other| other != name.as_str()))
                         && ix.iter().any(|i| match &unparen(i).kind {
                             ExprKind::Binary {
                                 op: BinOp::Sub,
