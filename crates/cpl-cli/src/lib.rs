@@ -1437,6 +1437,14 @@ mod tests {
         }
     }
 
+    /// The output with `\r\n` as `\n`: the built C++ writes text-mode
+    /// stdout, which is `\r\n` on Windows.
+    fn lf(bytes: &[u8]) -> Vec<u8> {
+        String::from_utf8_lossy(bytes)
+            .replace("\r\n", "\n")
+            .into_bytes()
+    }
+
     #[test]
     fn release_runs_the_built_cpp_and_checked_builds_a_sanitized_program() {
         if std::process::Command::new("g++")
@@ -1449,7 +1457,7 @@ mod tests {
         let path = temp_file("release.cp", "let n: Int = read()\nprint(n * 2)\n");
         let out = run_with_input(&["run", &path, "--release"], b"21\n");
         assert_eq!(
-            (out.code, out.stdout.as_slice()),
+            (out.code, lf(&out.stdout).as_slice()),
             (0, b"42\n".as_slice()),
             "{}",
             out.stderr
@@ -1463,7 +1471,7 @@ mod tests {
         assert!(out.stderr.contains("division by zero"), "{}", out.stderr);
         let out = run_with_input(&["run", &divide, "--release", "--checks", "none"], b"0\n");
         assert_eq!(
-            (out.code, out.stdout.as_slice()),
+            (out.code, lf(&out.stdout).as_slice()),
             (0, b"0\n".as_slice()),
             "{}",
             out.stderr
@@ -1511,7 +1519,7 @@ mod tests {
         for flags in [&["run", &right][..], &["run", &right, "--release"][..]] {
             let out = run_with_input(flags, b"7 41\n");
             assert_eq!(
-                (out.code, out.stdout.as_slice()),
+                (out.code, lf(&out.stdout).as_slice()),
                 (0, b"? 7\n! 42\n".as_slice()),
                 "{}",
                 out.stderr

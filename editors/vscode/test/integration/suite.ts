@@ -121,7 +121,8 @@ const tests: [string, () => Promise<void>][] = [
             const edit = new vscode.WorkspaceEdit();
             edit.set(document.uri, edits);
             assert.ok(await vscode.workspace.applyEdit(edit));
-            assert.equal(document.getText(), 'let x = 1\nprint(x)\n');
+            // A Windows checkout has CRLF line ends, which `cpl fmt` keeps.
+            assert.equal(document.getText().replace(/\r\n/g, '\n'), 'let x = 1\nprint(x)\n');
         },
     ],
     [
@@ -129,7 +130,8 @@ const tests: [string, () => Promise<void>][] = [
         async () => {
             const document = await open('add.cp');
             const added = await vscode.commands.executeCommand<boolean>('cp.addTest', document.uri, '4', '8');
-            assert.equal(added, true);
+            const tests = file('add.tests').fsPath;
+            assert.equal(added, true, `add.tests holds ${fs.existsSync(tests) ? fs.readdirSync(tests).join(', ') || 'nothing' : 'nothing yet'}`);
             assert.equal(fs.readFileSync(file('add.tests/1.in').fsPath, 'utf8'), '4\n');
             assert.equal(fs.readFileSync(file('add.tests/1.out').fsPath, 'utf8'), '8\n');
         },
@@ -283,7 +285,9 @@ const tests: [string, () => Promise<void>][] = [
             });
             const memory = lenses.find(lens => lens.command?.command === 'cpl.exec')!.command!;
             assert.equal(memory.title, 'Memory: bounds allow 1.6 MB of 256 MB on codeforces');
-            assert.deepEqual(memory.arguments, ['judges', document.uri.fsPath]);
+            // The server may spell a Windows path `c:/...`.
+            const [command, file] = memory.arguments ?? [];
+            assert.deepEqual([command, vscode.Uri.file(file).fsPath], ['judges', document.uri.fsPath]);
             assert.ok((await vscode.commands.getCommands(true)).includes('cpl.exec'));
         },
     ],
@@ -299,6 +303,9 @@ const tests: [string, () => Promise<void>][] = [
     [
         'run, stress and trace work against a cpl that answers them',
         async () => {
+            if (process.platform === 'win32') {
+                return; // The stub is a `#!` script, which Windows can't start.
+            }
             const config = vscode.workspace.getConfiguration('cp');
             await config.update('server.path', process.env.CPL_STUB, vscode.ConfigurationTarget.Workspace);
             const document = await open('d.cp');

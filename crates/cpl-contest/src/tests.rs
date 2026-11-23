@@ -16,11 +16,13 @@ fn scratch(name: &str) -> PathBuf {
     dir
 }
 
+#[cfg_attr(not(unix), allow(dead_code))]
 fn sh(script: &str) -> Program {
     Program::command("script", &["sh", "-c", script])
 }
 
 /// Writes an executable shell script and returns its path.
+#[cfg_attr(not(unix), allow(dead_code))]
 fn script(dir: &Path, name: &str, body: &str) -> String {
     let path = dir.join(name);
     std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
@@ -53,6 +55,7 @@ const COMPANION: &str = r#"{
 }"#;
 
 /// Prints the largest number on the second line.
+#[cfg_attr(not(unix), allow(dead_code))]
 const MAX: &str = "awk 'NR==2 { m=$1; for (i=2;i<=NF;i++) if ($i>m) m=$i; print m }'";
 
 #[test]
@@ -374,6 +377,8 @@ fn test_reports_each_case_and_expands_failures() {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
+// Its programs are shell scripts.
+#[cfg(unix)]
 #[test]
 fn the_test_command_judges_with_a_checker_or_an_interactor() {
     let dir = scratch("test-cli");
@@ -548,6 +553,8 @@ fn trees_are_shaped_as_a_path_and_a_star() {
     );
 }
 
+// Its programs are shell scripts.
+#[cfg(unix)]
 #[test]
 fn bench_compares_time_and_memory_with_the_limits() {
     let spec = spec("let n: 1..=50 = read()\nlet a: [0..n]0..=9 = read()\n");
@@ -594,6 +601,8 @@ fn bench_compares_time_and_memory_with_the_limits() {
     }
 }
 
+// Its programs are shell scripts.
+#[cfg(unix)]
 #[test]
 fn the_bench_command_prints_a_report_or_json() {
     let dir = scratch("bench-cli");
@@ -607,8 +616,10 @@ fn the_bench_command_prints_a_report_or_json() {
     let solution = script(&dir, "max", MAX);
     let (code, out, err) = cli(bench::run, &[path, "--fast", &solution]);
     assert_eq!((code, err.as_str()), (0, ""), "{out}");
+    // Peak memory is only measured on Linux so far.
     assert!(
-        out.contains("of the 5000 ms limit") && out.contains(" MB of 512 MB\n"),
+        out.contains("of the 5000 ms limit")
+            && (cfg!(not(target_os = "linux")) || out.contains(" MB of 512 MB\n")),
         "{out}"
     );
     let (code, out, _) = cli(
@@ -678,6 +689,8 @@ fn a_stamp_changes_when_a_file_changes_appears_or_disappears() {
     std::fs::remove_dir_all(dir).unwrap();
 }
 
+// Its programs are shell scripts.
+#[cfg(unix)]
 #[test]
 fn a_watch_round_checks_then_tests_and_recovers_after_a_fix() {
     let dir = scratch("watch");
