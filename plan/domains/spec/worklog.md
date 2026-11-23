@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- R02.4.7: `core-02/question-extent-let-stays-optional.cp` and `core-02/question-not-early-return.cp` fail: `let v = o?` is typed `Int` and a `None` reads as `0` (silent wrong answer). Compiler request filed.
 - Reject cases `core-01/bitand-binds-looser-than-eq.cp` (R01.5.1, E0302) and `core-01/lowercase-generic-needs-expected-type.cp` (R01.3.4, E0806), both pass; 41 rule gaps.
 - R08.4.4 accept case `core-08/row-fn-keeps-extra-fields.cp` (passes).
 - R01.11.1: `core-01/rejected-spellings-replacements-run.cp` (passes: `//`, `xs + ys`, `for .. if`, `**`, getter `len`, `[k: v]`) and `core-01/list-repeat-times-n.cp` (fails: `[x] * n` from decision 135 has no `List * Int`; stdlib request). `[x; n]` gets no fix (diagnostics request).
