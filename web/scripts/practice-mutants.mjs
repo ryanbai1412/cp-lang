@@ -98,6 +98,12 @@ const live = new Set(results.filter((r) => !r.killed).map(key));
 const fresh = [...live].filter((k) => !listed.has(k));
 const stale = [...listed].filter((k) => !live.has(k) && (!only.length || only.includes(k.split(':')[0])));
 if (fresh.length) console.error(`mutants: ${fresh.length} mutants of a practice ref.cp pass every test; add a test to its tests.json that fails them:\n  ${fresh.join('\n  ')}`);
-if (stale.length) console.error(`mutants: ${stale.length} lines in web/scripts/practice-mutants-equivalent.txt no longer survive; delete them:\n  ${stale.join('\n  ')}`);
+// A listed mutant that a fix now kills is dropped here rather than failing
+// the build (ci/R30): the change that fixed it commits the shorter list.
+if (stale.length) {
+  const keep = readFileSync(listFile, 'utf8').split('\n').filter((l) => !stale.includes(l.replace(/\s+#.*$/, '')));
+  writeFileSync(listFile, keep.join('\n'));
+  console.error(`mutants: ${stale.length} mutants in web/scripts/practice-mutants-equivalent.txt are killed now; dropped them, commit it:\n  ${stale.join('\n  ')}`);
+}
 console.log(`mutants: ${total} mutants that check, ${total - survived} killed (${((100 * (total - survived)) / Math.max(total, 1)).toFixed(1)}%), ${survived} survive, over ${Object.keys(by).length} problems`);
-if (fresh.length || stale.length) process.exit(1);
+if (fresh.length) process.exit(1);
