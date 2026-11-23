@@ -2938,23 +2938,7 @@ impl<'a> Lowerer<'a> {
                     return spec;
                 }
                 Some(Sym::GenAlias(gaid)) => {
-                    let gargs = self.resolve_gen_args(args);
-                    let tpl_mod = self.gen_aliases[gaid].mod_id;
-                    let tpl_offset = self.gen_aliases[gaid].offset;
-                    let generics = self.gen_aliases[gaid].generics;
-                    let target_ty = self.gen_aliases[gaid].ty;
-                    let mut env = HashMap::new();
-                    for (p, a) in generics.iter().zip(gargs) {
-                        env.insert(p.text.clone(), a);
-                    }
-                    let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
-                    let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
-                    let saved_env = std::mem::replace(&mut self.gen_env, env);
-                    let spec = self.resolve(target_ty, values);
-                    self.cur_mod = saved_mod;
-                    self.offset = saved_offset;
-                    self.gen_env = saved_env;
-                    return spec;
+                    return self.gen_alias_spec(gaid, args, name.span, values)
                 }
                 _ => {
                     self.error(
@@ -3286,6 +3270,14 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
+            }
+        }
+        if let ast::TypeKind::Named { name, args } = &ty.kind {
+            if let (true, Some(arg @ (GenArg::Ty(_) | GenArg::Range(..)))) = (
+                values && args.is_empty(),
+                self.gen_env.get(&name.text).cloned(),
+            ) {
+                return self.not_a_domain(&name.text, &arg, name.span);
             }
         }
         // Anything else is a length: `[n]Int`, `[2 * n]Int`, `[0..n]Int`, `[V.cuts]Int`.

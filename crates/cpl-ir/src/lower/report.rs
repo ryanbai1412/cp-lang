@@ -43,6 +43,69 @@ impl<'a> Lowerer<'a> {
             .push(notes.into_iter().fold(diag, Diagnostic::with_note));
     }
 
+    /// The type a generic alias such as `Perm<V>` names, resolved where
+    /// the alias is declared; an error inside it is shown at `at`.
+    pub(super) fn gen_alias_spec(
+        &mut self,
+        gaid: mono::GenAliasId,
+        args: &[ast::Type],
+        at: Span,
+        values: bool,
+    ) -> Spec {
+        let gargs = self.resolve_gen_args(args);
+        let alias = &self.gen_aliases[gaid];
+        let (tpl_mod, tpl_offset, target_ty) = (alias.mod_id, alias.offset, alias.ty);
+        let env = alias
+            .generics
+            .iter()
+            .map(|p| p.text.clone())
+            .zip(gargs)
+            .collect();
+        let outer = self.asked_at.enter(at.shift(self.offset), self.cur_mod);
+        let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+        let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
+        let saved_env = std::mem::replace(&mut self.gen_env, env);
+        let spec = self.resolve(target_ty, values);
+        self.cur_mod = saved_mod;
+        self.offset = saved_offset;
+        self.gen_env = saved_env;
+        self.asked_at.leave(outer);
+        spec
+    }
+
+    /// `[V]T` in a generic whose `V` was given `arg`, which is not a
+    /// domain, so it has no positions to index by. The argument is the
+    /// user's, so this is not reported as a gap in the library.
+    pub(super) fn not_a_domain(
+        &mut self,
+        param: &str,
+        arg: &GenArg,
+        span: Span,
+    ) -> Option<DimSpec> {
+        let what = match arg {
+            GenArg::Ty(ty) => format!("`{}`", self.show(ty)),
+            _ => "a range".to_string(),
+        };
+        let inside = (self.cur_mod != 0)
+            .then(|| self.library_place(self.cur_mod, span.shift(self.offset)))
+            .flatten();
+        let message = match inside {
+            Some((module, _, item)) => {
+                format!("`{item}` (`{module}`) needs a domain for `{param}`, and {what} is not one")
+            }
+            None => format!(
+                "`{param}` indexes an array here, so it must be a domain, and {what} is not one"
+            ),
+        };
+        let span = self.span(span);
+        self.diags
+            .push(Diagnostic::error(codes::TYPE_MISMATCH, span, message));
+        self.help(format!(
+            "declare a domain, as in `domain {param} = 1..=n`, and pass its name"
+        ));
+        None
+    }
+
     /// `to(x)` for an `x: from` no conversion takes. For `Int(a)` with
     /// `a: Mod<P>`, a struct whose one field already has the target type,
     /// the help names the field, `a.v`.
