@@ -1,5 +1,5 @@
 //! `sort_for_extreme` (L0572): `xs.sorted()[0]` or `xs.sorted().last!`
-//! sorts a copy to read one element; `xs.min()` / `xs.max()` is one pass.
+//! sorts a copy to read one element; `xs.min()!` / `xs.max()!` is one pass.
 //! The list is labelled so the fact table keeps the finding only on a
 //! `List` or an array (`typed.rs`).
 
@@ -35,7 +35,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 .iter()
                 .map(|a| format!("by: {}", at(&a.value)))
                 .collect();
-            let call = format!("{}.{pick}({})", at(list), args.join(", "));
+            let call = format!("{}.{pick}({})!", at(list), args.join(", "));
             let span = expr.span.shift(self.base);
             let mut diag = Diagnostic::warning(
                 SORT_FOR_EXTREME.code,
