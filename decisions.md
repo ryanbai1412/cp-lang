@@ -7499,6 +7499,10 @@ lines for the module and its table (`--update rs_over_cap`). Reverse:
 drop `op_value.rs` and its two call sites; `each` then needs named
 `Monoid` values again.
 
+Amended 2026-11-23: `lcm` is a bare operator like `gcd`, so `convolve(.., on: lcm)`
+reaches its divisor-indexed branch through `same(on, lcm)`; fn values are not
+`Eq`, so before this `same` on a passed `lcm` was always false.
+
 ## 354. `lower/expr.rs` takes +3 lines so the value `()` has the type `()` (stdlib, 2026-11-23)
 
 The type `()` lowered to `Unit` but the literal `()` to an empty tuple,

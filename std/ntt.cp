@@ -7,7 +7,7 @@
 //! - linear (`cyclic: false`): length `a.len + b.len - 1` (or `[]` if either input is empty)
 //! - cyclic (`cyclic: true`): requires `a.len == b.len`, length `n = a.len`, index `(i + j) % n`.
 use std.algebra.{Monoid, Semiring}
-use std.math.{is_pow2, mul_mod, pow_mod, primitive_root, bit}
+use std.math.{is_pow2, mul_mod, pow_mod, primitive_root, bit, gcd, lcm}
 use std.mod.{Mod}
 use std.seq.{collect}
 
@@ -320,7 +320,8 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
         else: sos(mut fa, over: Sup, inverse: true)
         return fa
     if na == 0 or nb == 0: return []
-    var n_out = if cyclic: na else: na + nb - 1
+    let by_divisor = same(on, gcd) or same(on, lcm)
+    var n_out = if by_divisor: max(na, nb) elif cyclic: na else: na + nb - 1
     if O: IndexOp:
         n_out = on.len(na, nb)
     var out = List.filled(n_out, T.zero)
@@ -329,7 +330,7 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
             var k = -1
             if O: IndexOp:
                 if let x = on.at(i, j): k = x
-            else:
+            elif not by_divisor or (i > 0 and j > 0):
                 k = on(i, j)
             if cyclic and k >= 0: k %= na
             if 0 <= k < n_out:

@@ -68,6 +68,7 @@ impl<'a> Lowerer<'a> {
             BareOp::Max => named("max"),
             BareOp::Min => named("min"),
             BareOp::Gcd => named("gcd"),
+            BareOp::Lcm => named("lcm"),
         };
         let e = ast::Expr { kind, span };
         Some(self.expr(&e, hint))

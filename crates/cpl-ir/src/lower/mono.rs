@@ -13,7 +13,7 @@ pub(super) type GenConstId = usize;
 pub(super) type ModConstId = usize;
 pub(super) type TraitId = usize;
 
-/// A bare binary operator or stdlib combinator passed as a value (`+`, `*`, `max`, `min`, `gcd`, etc.).
+/// A bare binary operator or stdlib combinator passed as a value (`+`, `*`, `max`, `min`, `gcd`, `lcm`, etc.).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub(super) enum BareOp {
     Add,
@@ -24,6 +24,7 @@ pub(super) enum BareOp {
     Max,
     Min,
     Gcd,
+    Lcm,
 }
 
 /// One concrete argument to a generic type, struct, function, or const.
@@ -285,7 +286,7 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// Recognizes a bare operator expression (`+`, `*`, `^`, `|`, `&`, `max`, `min`, `gcd`)
+    /// Recognizes a bare operator expression (`+`, `*`, `^`, `|`, `&`, `max`, `min`, `gcd`, `lcm`)
     /// or a local variable bound to a `BareOp` generic parameter.
     pub(super) fn detect_bare_op(&self, e: &ast::Expr) -> Option<BareOp> {
         match &e.kind {
@@ -305,6 +306,7 @@ impl<'a> Lowerer<'a> {
                     "max" => Some(BareOp::Max),
                     "min" => Some(BareOp::Min),
                     "gcd" => Some(BareOp::Gcd),
+                    "lcm" => Some(BareOp::Lcm),
                     _ => None,
                 }
             }
