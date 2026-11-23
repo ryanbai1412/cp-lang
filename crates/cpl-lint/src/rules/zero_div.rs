@@ -7,6 +7,7 @@ use cpl_diag::{Diagnostic, Span};
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     super::proven_divisors(file)
         .into_iter()
+        .filter(|(op, ..)| !super::wide_shift::in_test_fn(file, op.0))
         .map(|(op, (start, end), lo, hi)| {
             let divisor = Span::new(start, end);
             let text = divisor.text(file.src);

@@ -6,6 +6,7 @@ use super::bounds;
 use crate::File;
 
 mod cost;
+mod hazards;
 pub(crate) use cost::*;
 
 /// Each immutable `let` without a written type, and each loop variable over
@@ -25,6 +26,11 @@ pub(crate) fn proven_expr_ranges(file: &File) -> Vec<crate::ProvenExpr> {
 /// same scoping as [`proven_ranges`]: operator, divisor and its range.
 pub(crate) fn proven_divisors(file: &File) -> Vec<Divisor> {
     proven(file).divisors
+}
+
+/// Each `x << k` whose declared `k` can shift a bounded `x` out of `Int`.
+pub(crate) fn proven_shifts(file: &File) -> Vec<Divisor> {
+    proven(file).shifts
 }
 
 pub(crate) fn proven_loops(file: &File) -> Vec<crate::ProvenLoop> {
@@ -203,6 +209,9 @@ struct Proven {
     /// Each `/` and `%` whose divisor the bounds let be 0: the operator,
     /// the divisor, and the divisor's range.
     divisors: Vec<Divisor>,
+    /// Each `x << k` that leaves `Int` for a declared `k`: the operator,
+    /// `k`, the most `k` can be, and the most it can be without overflow.
+    shifts: Vec<Divisor>,
     loops: Vec<crate::ProvenLoop>,
     indexes: Vec<crate::ProvenIndex>,
     fns: Vec<FnCost>,
@@ -229,6 +238,7 @@ impl Default for Proven {
             lists: Vec::new(),
             exprs: Vec::new(),
             divisors: Vec::new(),
+            shifts: Vec::new(),
             loops: Vec::new(),
             indexes: Vec::new(),
             fns: Vec::new(),
@@ -442,26 +452,7 @@ fn arith(base: u32, expr: &cpl_syntax::ast::Expr, bounds: &bounds::Bounds, out: 
                     });
                 }
             }
-            if matches!(op, BinOp::Div | BinOp::Rem) {
-                // Only a divisor read as declared: a value derived from one
-                // (`a.len`, `k - 1`) is usually nonzero for reasons the
-                // bounds can't see.
-                let declared = match &crate::walk::unparen(rhs).kind {
-                    ExprKind::Name(n) => bounds.is_input(n),
-                    _ => false,
-                };
-                if let Some(d) = bounds
-                    .expr(rhs)
-                    .filter(|d| declared && d.lo <= 0 && 0 <= d.hi && d.lo != d.hi)
-                {
-                    out.divisors.push((
-                        (base + op_span.start, base + op_span.end),
-                        (base + rhs.span.start, base + rhs.span.end),
-                        d.lo,
-                        d.hi,
-                    ));
-                }
-            }
+            hazards::hazards(base, *op, *op_span, lhs, rhs, bounds, out);
             arith(base, lhs, bounds, out);
             arith(base, rhs, bounds, out);
         }

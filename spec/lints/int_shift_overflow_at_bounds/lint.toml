@@ -1,0 +1,6 @@
+code = "L0302"
+level = "warn"
+group = "correctness"
+title = "Shift that can leave Int at the declared bounds"
+summary = "`x << k` where `k`'s declared range lets the shift leave `Int`: narrow `k`, shift a `U64`, or use `Bitset`"
+no_fix = "whether the range is too wide or the value needs a wider type is the contestant's call; the help shows both"
