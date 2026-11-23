@@ -207,8 +207,25 @@ def main():
     home = {ch: max({rules[r][0] for r in rids}, key=lambda f: sum(rules[r][0] == f for r in rids))
             for ch, rids in by_chapter.items()}
 
+    permits_file = CONF / "permits.txt"
+    permits = {}
+    if permits_file.exists():
+        for l in permits_file.read_text().split("\n"):
+            if l and not l.startswith("#"):
+                rid, _, why = l.partition(" ")
+                permits[rid.removeprefix("R")] = why
+    stale = [f"R{r}: not a rule" for r in permits if r not in rules]
+    stale += [f"R{r}: has a reject case" for r in permits if r in rules and neg[r]]
+    stale += [f"R{r}: text no longer forbids" for r in permits
+              if r in rules and not NEGATIVE_WORDS.search(rules[r][2])]
+    if stale:
+        print("spec/conformance/permits.txt is stale; drop these lines:")
+        for s in stale:
+            print(f"  {s}")
+        return 1
+
     def forbids(rid):
-        return bool(NEGATIVE_WORDS.search(rules[rid][2]))
+        return rid not in permits and bool(NEGATIVE_WORDS.search(rules[rid][2]))
 
     def gap(rid):
         if not pos[rid]:
@@ -241,12 +258,15 @@ def main():
         rids = by_chapter[ch]
         chapter_cases = {c for r in rids for c in pos[r] + neg[r]}
         none_ = [r for r in rids if not pos[r] and not neg[r]]
-        happy = [r for r in rids if pos[r] and not neg[r] and NEGATIVE_WORDS.search(rules[r][2])]
+        happy = [r for r in rids if pos[r] and not neg[r] and forbids(r)]
         nopos = [r for r in rids if neg[r] and not pos[r]]
         w(
             f"- R{ch} ({home[ch]}): {len(rids)} rules, {len(chapter_cases)} cases; "
             f"{len(none_)} uncovered, {len(happy)} happy-path only, {len(nopos)} negative only"
         )
+    w("")
+    w(f"{len(permits)} rules match a forbidding word but only permit or define something;")
+    w("`permits.txt` lists them with the reason, so they need no reject case.")
     w("")
     w("## Accept and reject coverage per chapter")
     w("")
@@ -286,7 +306,7 @@ def main():
             gap = ""
             if not p and not n:
                 gap = " **uncovered**"
-            elif not n and NEGATIVE_WORDS.search(text):
+            elif not n and forbids(rid):
                 gap = " *happy-path only*"
             elif not p:
                 gap = " *negative only*"

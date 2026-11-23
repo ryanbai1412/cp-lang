@@ -1,0 +1,28 @@
+# Rules whose text matches the coverage script's forbidding words but that
+# permit, define or promise something, so no program can be rejected by them.
+# Each line: rule id, then why. The coverage gate fails if a listed rule gains
+# a reject case or its text stops matching, so entries can't go stale.
+R01.3.6 permits `None` as a user variant; "not reserved" rejects nothing
+R01.5.7 short-circuit evaluation; "never reads" is behaviour, tested by accept cases
+R02.1.1 defines plain values
+R02.4.3 layout of `?T`; not observable by a program
+R02.7.5 niche layout; not observable by a program
+R03.1.6 a majorizing codegen choice; same answers
+R03.2.1 defines spare values
+R03.2.6 layout of tags; not observable by a program
+R03.2.8 storage order; "nothing observes addresses"
+R04.4.29 an inverted range is empty, "never a trap"; tested by accept cases
+R04a.2.9 table row: length-only results over a lent slice are allowed
+R05.2.1 defines plain values
+R05.10.14 a cache promise; checked by `cpl stress`, not the checker
+R06.3.3 permits `break`/`return` out of generator bodies
+R07.6.1 push iteration; permits `break` out of recursive generators
+R08.3.2 laws select specializations; the checker never assumes them
+R08.3.4 a false law gives wrong answers, which no build can reject
+R09.2.3 checks make the same calls as release; tested by accept cases
+R09.5.1 defines "proved"
+R09.5.3 defines "promised"
+R09.5.4 defines "unsafe" sites
+R10.3.6 output shape; "counts are never written" is tested by accept cases
+R13.1.4 release lowering adds no UB; a codegen property
+R13.3.5 views lower without allocation; a codegen property
