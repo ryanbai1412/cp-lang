@@ -6,7 +6,6 @@ cf2084f
 cf2096h
 coi06p2
 ioi13p4
-ioi14p6
 ioi18p1
 mccc4j5
 noip01p4
