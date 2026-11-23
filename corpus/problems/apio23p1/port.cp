@@ -1,16 +1,13 @@
-// APIO 2023 Cyberland: n countries joined by m two-way roads with travel
-// times. You start in country 0 with the clock at 0 and want to reach
-// country h, where the trip ends at once. Country kinds: 0 sets your clock
-// back to zero, 2 lets you halve it (at most k times in the whole trip),
-// 1 does nothing. Print the least time on the clock at h, or -1.
-//
-// A clock at zero in a country you can reach is as good as starting there,
-// so every reachable kind-0 country is a start. After that, layer by layer:
-// with one more halving allowed, each kind-2 country offers its neighbours
-// half of its best time plus the road. Thirty halvings shrink any time
-// below the answer's tolerance, so more than 80 layers change nothing.
-// A country that cannot be reached has no time at all (`none`), not a
-// large number.
+// Source: APIO 2023, Cyberland, https://dmoj.ca/problem/apio23p1
+// Problem: n countries, m two-way roads with times c <= 1e9; travel from country 0 to h (the
+//   trip ends on arrival). Arriving at a kind-0 country may reset the clock to 0, at a kind-2
+//   country may halve it (at most k <= 1e6 halvings in all). Least time at h, or -1 if h is
+//   unreachable; relative error 1e-6. Sum n, sum m <= 1e5 over the grader calls.
+// Solution: a reset at a reachable kind-0 country is as good as starting there, so all of
+//   them (and country 0) are Dijkstra sources, with no road leaving h. Then add halvings one
+//   layer at a time: re-run Dijkstra from every country's best time plus, for kind-2 countries,
+//   half that time plus each road. After ~70 halvings any time is below the tolerance, so
+//   min(k, 80) layers suffice: O(min(k, 80) (n + m) log n).
 //
 // The original is a grader function; this port reads
 // `n m k h`, the n kinds, then m lines `u v time`.

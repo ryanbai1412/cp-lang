@@ -1,4 +1,13 @@
-// Runnable port (proto/cp.py lib-run) of statement-first noimps23p1.cp
+// Source: NOI Provincial Selection 2023 P1, Train Station,
+//   https://dmoj.ca/problem/noimps23p1
+// Problem: n stations on a line and m tracks [l, r] (l < r). A train leaves station x along any
+//   track through x, in either direction, may change to another track at any station both
+//   cover but never turns back, and stops at the end of a track. Print, ascending, every
+//   station where it can stop. n, m <= 2e5.
+// Solution: rightward stops are the right ends of tracks reachable from x, where a track is
+//   reachable if it covers some position in [x, r] of a reachable track. A DFS over tracks
+//   sweeps each position once with path-compressed skip pointers `nxt`, adding the tracks that
+//   start there. Leftward stops are the same on the mirrored line. O((n + m) log n).
 // original: corpus/submissions/5556659.cpp
 let (n, m, start1): (Int, Int, Int) = read()
 var ivs: List<(l: Int, r: Int)> = []

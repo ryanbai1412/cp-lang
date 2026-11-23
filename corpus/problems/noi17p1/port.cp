@@ -1,4 +1,11 @@
-// NOI 2017 P1, a huge integer under x += a * 2^b, with single-bit queries (buildable today-form)
+// Source: NOI 2017 P1, Integer, https://dmoj.ca/problem/noi17p1
+// Problem: x starts at 0; n <= 1e6 operations: add a * 2^b to x (|a| <= 1e9, 0 <= b <= 30n;
+//   x stays >= 0), or print bit k of x. The first line also has t1, t2, t3 (subtask hints).
+// Solution: keep x = up - down with the positive and negative additions in separate base-2^30
+//   digit arrays; each only grows, so carry chains are amortised O(1). Bit k of x is bit k of
+//   up xor down xor a borrow from the lower bits, and the borrow is set iff up < down below
+//   bit k: compare the low part of digit k / 30, and if equal, the highest lower digit where
+//   up and down differ, from a max SegTree of differing digits. O(n log n) amortised.
 // original: corpus/submissions/5690633.cpp
 let q: 1..=1e6 = read()
 let t1: Int = read()

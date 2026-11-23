@@ -1,8 +1,13 @@
+// Source: NOIP 2022 P3, Barracks, https://dmoj.ca/problem/noip22p3
+// Problem: a connected simple graph, n <= 5e5 cities and m <= 1e6 roads. Choose a non-empty set
+//   of barracks cities and a set of guarded roads so that cutting any one unguarded road keeps
+//   all barracks connected. Count the choices mod 1e9+7.
+// Solution: no single cut splits a 2-edge-connected block, so condense the blocks into the
+//   bridge tree. Only bridges between barracks must be guarded: count as if all m roads were
+//   free (2^m) and halve once per bridge on the subtree spanned by the barracks. A DP over the
+//   rooted block tree counts held sets below each bridge and adds the sets whose highest
+//   block is b, minus those held through one child alone. O(n + m).
 // original: corpus/submissions/5445683.cpp
-// NOIP 2022 Barracks: a connected country of cities and roads. Build
-// barracks in a non-empty set of cities and guard a set of roads, so that
-// whichever single unguarded road the enemy cuts, all the barracks can
-// still reach each other. Count the choices.
 use std.graph.{two_edge_components, condense}
 const P = 1000000007
 type Z = Mod<P>

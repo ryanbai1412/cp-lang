@@ -1,13 +1,13 @@
-// CCO 2020 P4, Travelling Salesperson: n cities, every pair joined by a
-// red or a blue road. For each city print a walk that starts there and
-// visits every city. The walks printed here never change colour: one of
-// the two colours always connects all the cities (a graph or its
-// complement is connected), and the Euler walk of a DFS tree in that
-// colour is a closed walk through every city, which can be entered at any
-// city. (This is what the accepted original prints; the statement was not
-// re-read.)
-// input: n, then for i = 2..n a string of i - 1 letters R/B, the roads to
-// the earlier cities
+// Source: CCO 2020 P4, Travelling Salesperson, https://dmoj.ca/problem/cco20p4
+// Problem: n <= 2000 buildings, every pair joined by a red or a blue road. For each start,
+//   print a route of minimum length (buildings visited, repeats counted) that visits every
+//   building and switches road colour at most once. A route of length M <= 2K, K optimal,
+//   scores partially: floor(8 + 8 (2K - M) / (K - 1)) of 25.
+// Solution: one colour connects every building (a graph or its complement is connected).
+//   `tour` builds the closed DFS walk over a spanning tree in that colour, with no colour
+//   switch; dropping the return leaves 2n - 2 stops through every building, and each start
+//   prints that cycle rotated to begin at it. O(n^2) to build, O(n^2) output. This is the
+//   partial-score answer (length 2n - 2, not the optimal one).
 // original: corpus/submissions/4801875.cpp
 let n: Int = read()
 domain City = 0..n

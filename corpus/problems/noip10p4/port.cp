@@ -1,4 +1,11 @@
-// NOIP 2010 P4, Water Diversion into Cities (buildable today-form)
+// Source: NOIP 2010 P4, Water Diversion into Cities, https://dmoj.ca/problem/noip10p4
+// Problem: an n x m grid of heights (n, m <= 500, heights <= 1e6). Reservoirs can be built in
+//   top-row cells; water flows to side-adjacent strictly lower cells. If every bottom-row city
+//   can get water print 1 and the fewest reservoirs, else 0 and the number of dry cities.
+// Solution: a memoised DFS `flow` gives each cell the bottom-row cities it feeds as [lo, hi];
+//   when every city is fed, each top cell's set is an interval. Dry cities are those no top
+//   cell reaches; otherwise cover 0..m with the fewest intervals, greedily extending as far
+//   right as possible each time. O(n m + m^2).
 // original: corpus/submissions/5205786.cpp
 let n: 1..=500 = read()
 let m: 1..=500 = read()

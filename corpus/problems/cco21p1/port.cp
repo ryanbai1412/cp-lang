@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of statement-first cco21p1.cp
+// Source: CCO 2021 P1, Swap Swap Sort, https://dmoj.ca/problem/cco21p1
+// Problem: an array of n <= 1e5 values in 1..k and a target order of 1..k (initially 1..k).
+//   Each of q <= 1e6 queries swaps the target order's entries j and j + 1; after each, print
+//   the least number of adjacent swaps that sort the array by the current target order.
+// Solution: the answer is the inversion count under the target order; swapping adjacent values
+//   x, y in the order only flips the pairs made of one x and one y. With b(x, y) the pairs with
+//   an x before a y, the count changes by 2 b(x, y) - |x| |y|. b comes from the positions
+//   lists, binary-searching each element of the shorter list in the longer one, memoised per
+//   pair in a Map. Initial count by a Fenwick tree; O(n sqrt(q) log n) over distinct pairs.
 // original: corpus/submissions/4538969.cpp
 
 let (n, k, q): (Int, Int, Int) = read()

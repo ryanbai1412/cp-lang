@@ -1,4 +1,11 @@
-// NOIP 2004 P4, Alphametic Puzzle (buildable today-form)
+// Source: NOIP 2004 P4, Alphametic Puzzle, https://dmoj.ca/problem/noip04p4
+// Problem: base n <= 26; three words of n letters over the first n capital letters, a + b = c,
+//   each letter a distinct digit 0..n-1. The solution is unique; print the digit of each letter
+//   A, B, C, ... in order.
+// Solution: backtrack column by column from the units with the carry: guess unknown addend
+//   letters (largest digits first), then the sum letter is forced. After every guess
+//   `plausible` rejects any fully known column where neither a + b nor a + b + 1 gives c mod n,
+//   which prunes the search hard. Exponential worst case, fast in practice.
 // original: corpus/submissions/5117252.cpp
 let n: 1..=26 = read()
 domain Letter = 0..n
