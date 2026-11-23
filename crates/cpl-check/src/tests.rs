@@ -1747,3 +1747,10 @@ fn a_prelude_math_fn_returns_an_f64() {
     assert!(resolved().any(|(_, r)| r.name == "max" && r.module == "prelude"));
     assert_eq!(codes("let k: Int = sqrt(2.0)\nprint(k)\n"), ["E0302"]);
 }
+
+#[test]
+fn an_index_with_no_key_does_not_crash_the_map_fold_check() {
+    let src =
+        "var cnt: Map<Int, Int> = Map()\nfor x in [3, 1]:\n    cnt[]x = (cnt.get(x) ?? 0) + 1\n";
+    assert!(!codes(src).is_empty());
+}

@@ -686,7 +686,7 @@ impl<'a> Checker<'a> {
             return;
         };
         let plain = matches!(args.as_slice(), [_, value] if !matches!(value, Ty::Optional(_)) && !value.is_vague());
-        if !matches!(name.as_str(), "Map" | "HashMap") || !plain {
+        if !matches!(name.as_str(), "Map" | "HashMap") || !plain || indices.is_empty() {
             return;
         }
         let (target_text, key) = (self.quote(target.span), self.quote(indices[0].span));
