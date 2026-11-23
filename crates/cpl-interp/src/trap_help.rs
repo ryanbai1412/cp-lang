@@ -11,6 +11,13 @@ pub(crate) fn help(message: &str) -> Option<String> {
                 .into(),
         );
     }
+    if m.starts_with("`!` on `None`") || m.starts_with("there is no value here") {
+        return Some(
+            "`x!` needs a value: to handle `None`, write `if let Some(v) = x:`, \
+                 in a loop `while let Some(v) = x and v > k:`, or `x ?? fallback`"
+                .into(),
+        );
+    }
     let (idx, rest) = m.strip_prefix("index ")?.split_once(" is outside ")?;
     let len: i64 = rest.rsplit(' ').next()?.parse().ok()?;
     if idx.starts_with('-') {

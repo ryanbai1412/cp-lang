@@ -1594,12 +1594,12 @@ fn inside_mut(holder: &mut Value, span: Span) -> Res<&mut Value> {
             }
             match opt {
                 OptVal::Boxed(inner) => Ok(Rc::make_mut(inner)),
-                OptVal::None => trap(span, "there is no value here: it is `none`"),
+                OptVal::None => trap(span, "there is no value here: it is `None`"),
                 OptVal::Int(_) => unreachable!(),
             }
         }
         Value::Moved => trap(span, LENT),
-        _ => trap(span, "there is no value here: it is `none`"),
+        _ => trap(span, "there is no value here: it is `None`"),
     }
 }
 

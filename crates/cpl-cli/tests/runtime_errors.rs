@@ -1026,6 +1026,17 @@ fn a_negative_index_says_how_to_reach_the_end() {
 }
 
 #[test]
+fn a_bang_on_none_says_how_to_handle_none() {
+    let source = "var h = MaxHeap<Int>()\nh.push(1)\nwhile h.peek! > 0:\n    h.pop()\n";
+    let (code, err) = run_stderr(source, "");
+    assert_eq!(code, 3);
+    assert!(
+        err.contains("help: `x!` needs a value: to handle `None`, write `if let Some(v) = x:`, in a loop `while let Some(v) = x and v > k:`"),
+        "got:\n{err}"
+    );
+}
+
+#[test]
 fn golden_an_index_past_the_end_and_a_read_past_the_input_say_the_bound() {
     let src = "let n: Int = read()\nlet a: [0..n]Int = read()\nvar s = 0\nfor i in 0..=n:\n    s += a[i]\nprint(s)\n";
     let (code, err) = run_stderr(src, "3\n1 2 3\n");

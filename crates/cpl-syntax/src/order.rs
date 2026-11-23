@@ -1,6 +1,6 @@
 //! Where a step along a domain is known to stay inside it.
 //!
-//! `l + 1` is a `?I`: it is `none` when `l` is the last position. Inside
+//! `l + 1` is a `?I`: it is `None` when `l` is the last position. Inside
 //! `if l < r:`, with `r` an `I` too, it can't be, so there `l + 1` reads
 //! as an `I`, and so does `r - 1`. Like [`crate::narrow`], the rule is
 //! read off the source alone: a test or a loop orders two names, and the

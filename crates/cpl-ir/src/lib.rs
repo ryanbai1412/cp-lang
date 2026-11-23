@@ -112,7 +112,7 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 /// "unreachable", small enough that two of them still add without overflow.
 pub const INF: i64 = 4_000_000_000_000_000_000;
 /// `Int.MIN`: `-(2^63 - 1)`. The one 64-bit pattern below it is not an
-/// `Int`; it is `none` in a `?Int`.
+/// `Int`; it is `None` in a `?Int`.
 pub const INT_MIN: i64 = -i64::MAX;
 
 pub type DomainId = usize;
