@@ -1,2 +1,2 @@
 let a: F64 = 0.1 + 0.2
-print(a == 0.3)
+print(yes(a == 0.3))

@@ -359,8 +359,8 @@ fn slow():
     let _ = std::fs::remove_dir_all(&dir);
 }
 
-/// Every lint record's `before.cp` warns in the playground exactly as
-/// `cpl lint` does, and its `after.cp` is clean there too.
+/// Every lint record's `before.cp` and `after.cp` lint in the playground
+/// exactly as in `cpl lint` and the editor, which share `lint_analysis`.
 #[test]
 fn the_playground_lints_like_cpl_lint() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/lints");
@@ -378,7 +378,13 @@ fn the_playground_lints_like_cpl_lint() {
             let codes = |diags: &[cpl_diag::Diagnostic]| -> Vec<String> {
                 diags.iter().map(|d| d.code.0.to_string()).collect()
             };
-            let want = codes(&cpl_lint::lint(&source, &cpl_lint::Config::default()));
+            let mut db = cpl_check::Database::new();
+            db.set_file(case, source.as_str());
+            let analysis = db.analyze(case).expect("record analyzes");
+            let want = codes(&cpl_lint::lint_analysis(
+                &analysis,
+                &cpl_lint::Config::default(),
+            ));
             let got: Vec<String> = playground
                 .lint(case, &source)
                 .get("diagnostics")
