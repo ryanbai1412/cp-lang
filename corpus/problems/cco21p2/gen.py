@@ -6,7 +6,7 @@ import sys, random
 
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 if S < 100000:
-    k = r.randint(2, 2 + S); m = r.randint(1, 3 * S); d = r.randint(1, min(2 * m + 1, 3 * S))
+    k = r.randint(2, 2 + S); m = r.randint(1, min(3 * S, 2500)); d = r.randint(1, min(2 * m + 1, 3 * S))
     digits = r.sample(range(-m, m + 1), d)
     big = 10 ** r.choice([2, 6, 18])
 else:
