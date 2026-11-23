@@ -27,6 +27,7 @@ Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose
 - `fn apply(mut self, r: Range<D>, tag: T)` — \(O(\log n)\) expected; Apply `tag` to every value at positions `r`: each becomes `merge(tag, x)`, or `tag` when no `merge` was given.; traps: when a non-empty `r` reaches outside `D`
 - `fn reverse(mut self, r: Range<D>)` — \(O(\log n)\) expected; Reverse the order of the values at positions `r`; pending tags stay with their values.; traps: when a non-empty `r` reaches outside `D`
 - `fn get(mut self, i: D) -> T` — \(O(\log n)\) expected; The value currently at position `i`, with pending tags merged in.; traps: when `i` is outside `D`
+- `fn query_path<R>(mut self, i: D, f: (mut T) -> ?R) -> ?R` — \(O(\log n)\) expected calls of `f`; The first `Some` that `f` gives on the pieces holding position `i`'s value, oldest first: the value stored at `i`, then each tag still pending above it, without pushing any tag down.; traps: when `i` is outside `D`
 - `fn set(mut self, i: D, x: T)` — \(O(\log n)\) expected; Overwrite the value currently at position `i` with `x`, replacing any pending tags on it.; traps: when `i` is outside `D`
 - `fn to_array(mut self) -> [D]T` — \(O(\lvert D \rvert)\); The current values in position order, with every pending tag merged in.
 
