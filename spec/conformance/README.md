@@ -36,7 +36,9 @@ its line in the output, and `exit N` (tool cases only) wants that exit
 status (`spec/tools/cli.md`). Each `// has: "..."` line names text the
 output must contain and each `// lacks: "..."` line text it must not;
 the copy blanks those two kinds of line so a tool that echoes the source
-can't match them.
+can't match them. Each `// file: <path> "..."` line (tool cases only)
+writes one more file, escaped like `// input:`, at that path below the
+scratch directory before the run: a `cp.toml` and a library module, say.
 
 They double as the spec's exercises and as the regression suite: the
 runner (`cpl-conform conformance`, in `crates/cpl-conform`) checks each expectation

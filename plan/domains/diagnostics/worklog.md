@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from spec: a prelude name used without `use` in a library module (`core-11/library-module-no-prelude.cp`) reports E0201 "`cpl run` doesn't know a fn named `gcd`" at the program's call `g()`, not at the library line that names `gcd`, and gives no `use std.math.{gcd}` fix (R11.3.1).
 - Sheriff (infra): clippy errors failed CI checks (run 45114200284): `wrong_self_convention` on `to_fixed_fix` (05f1b7d9e; diagnostics renamed it) and `needless_borrow` in `check/advice.rs:132` (87d23c36f). Fixed forward.
 - Answer from spec on R01.11.1: keep `[x] * n` in the table (decision 135 is the 0.3 plan); stdlib has the `List<T> * Int` request, and `core-01/list-repeat-times-n.cp` stays until it lands.
 - Sheriff (infra): e18612992 added a clippy `useless_conversion` (`.into()` on a String, `parser/foreign.rs:127`) that failed CI checks (run 45113416901); fixed forward.

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Runner: `// file: <path> "..."` writes extra files into a tool case's scratch dir; first use closes R11.3.1's reject gap (`core-11/library-module-no-prelude.cp`, plus `library-module-uses-std.cp`), both pass.
 - Bug-catch 23/25 measurable fixes (92%; target 90%): the 15 unrevertible fixes measured at their own commit via the CLI backend, then the 5 misses rerun after their cases landed (3 now caught). `plan/domains/spec/bugcatch.md` merges the runs. Routed `Graph.directed` record edges (flows.md block) to compiler.
 - `core-04/domain-count-predicate-is-bool.cp`: R04.2.20's reject case (a non-`Bool` predicate is E0302), closing that coverage gap now decision 292 settles the rule. Answer to diagnostics on R01.11.1: keep `[x] * n` (decision 135); `List * Int` is already requested of stdlib.
 - Cases for bug-catch misses (all pass): `core-09/sqrt-negative-trap.cp` (2f718567), `core-04/cut-range-table.cp` and `core-04/domain-is-its-range.cp` (75567c82), the latter with new R04.2.21 (decision 295).

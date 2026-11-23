@@ -233,6 +233,23 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
         })
         .collect();
     std::fs::write(&copy, shown).map_err(|e| format!("cannot write {}: {e}", copy.display()))?;
+    for spec in header_values(text, "file:") {
+        let (rel, body) = spec
+            .split_once(char::is_whitespace)
+            .ok_or("`// file:` needs a path and a quoted body")?;
+        if rel.starts_with('/') || rel.split('/').any(|p| p == "..") {
+            return Err(format!(
+                "`// file: {rel}` must stay inside the scratch directory"
+            ));
+        }
+        let path = dir.join(rel);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("cannot make {}: {e}", parent.display()))?;
+        }
+        std::fs::write(&path, unquote(body.trim()))
+            .map_err(|e| format!("cannot write {}: {e}", path.display()))?;
+    }
     let mut words = args.split_whitespace();
     let sub = words.next().ok_or("empty `// tool:` header")?;
     let mut child = Command::new(&cpl)
@@ -331,6 +348,7 @@ pub fn parse_header(text: &str) -> Result<(Expect, usize), String> {
                     || rest.starts_with("rule:")
                     || rest.starts_with("input:")
                     || rest.starts_with("tool:")
+                    || rest.starts_with("file:")
                     || rest.starts_with("has:")
                     || rest.starts_with("lacks:"))
             } else {
