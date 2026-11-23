@@ -40,6 +40,18 @@ def real_compiler():
     sys.exit("cxx-cache: no g++ on PATH besides the cache")
 
 
+def cpu_key():
+    """The CPU's model and feature flags, for builds that tune to it
+    (`-march=native`): a binary from another CPU can die on SIGILL."""
+    try:
+        with open(os.environ.get("CPL_CXX_CPU_INFO", "/proc/cpuinfo")) as f:
+            lines = f.read().splitlines()
+    except OSError:
+        return None
+    keep = [l for l in lines if l.split(":")[0].strip() in ("model name", "flags", "Features")]
+    return "\n".join(sorted(set(keep))) or None
+
+
 def system_key(gxx):
     """Every file under the compiler's include dirs and in its library dirs,
     by path, size and mtime. None if the compiler won't name its dirs."""
@@ -140,6 +152,11 @@ def main():
     st = os.stat(os.path.realpath(gxx))
     h.update(f"{os.path.realpath(gxx)}\0{st.st_size}\0{st.st_mtime_ns}\0".encode())
     h.update(sys_key.encode() + b"\0")
+    if any(a.endswith("=native") for a in args):
+        cpu = cpu_key()
+        if cpu is None:
+            os.execv(gxx, [gxx] + args)
+        h.update(cpu.encode() + b"\0")
     sources = 0
     for i, a in enumerate(args):
         if i == out_i:

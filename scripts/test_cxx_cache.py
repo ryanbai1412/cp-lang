@@ -103,6 +103,16 @@ class CxxCacheTest(unittest.TestCase):
         self.assertEqual(self.compiles(), 3)
         self.assertIn("-O0", self.read("x"))
 
+    def test_a_native_build_on_another_cpu_compiles_again(self):
+        cpu = os.path.join(self.tmp.name, "cpuinfo")
+        self.env["CPL_CXX_CPU_INFO"] = cpu
+        for model in ("model name : A\nflags : avx2", "model name : B\nflags : avx512f"):
+            with open(cpu, "w") as f:
+                f.write(model)
+            self.gxx("-O2", "-march=native", self.src, "-o", "x")
+            self.gxx("-O2", self.src, "-o", "y")
+        self.assertEqual(self.compiles(), 3)
+
     def test_a_failed_compile_is_not_kept(self):
         self.write("FAIL")
         self.assertEqual(self.gxx(self.src, "-o", "x").returncode, 1)
