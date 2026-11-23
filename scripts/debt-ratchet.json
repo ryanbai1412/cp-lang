@@ -12,10 +12,9 @@
     "crates/cpl-stress/src/spec.rs": 2911,
     "crates/cpl-check/src/check/lends.rs": 2834,
     "crates/cpl-check/src/db.rs": 2489,
-    "crates/cpl-stress/src/tests.rs": 2466,
     "crates/cpl-interp/src/trace.rs": 2378
   },
-  "stdlib_todo": 52,
+  "stdlib_todo": 51,
   "rust_ignore": 16,
   "pending_tests": 0,
   "edition_refs": 0,
