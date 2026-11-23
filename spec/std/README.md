@@ -997,11 +997,12 @@ struct DualFenwick<D, T> // [new] range add, point get; O(n), O(log n)
     fn new(a: ?[D]T = none) -> DualFenwick<D, T>
     fn add(mut self, r: Range<D>, x: T)
     fn get(self, i: D) -> T
-struct RangeFenwick<D> // [new] range add, range sum (Int); O(n), O(log n)
+struct RangeFenwick<D> // range add, range sum (Int); O(n), O(log n)
     fn new(a: ?[D]Int = none) -> RangeFenwick<D>
     fn add(mut self, r: Range<D>, x: Int)
     fn prefix(self, b: Cut<D>) -> Int
     fn fold(self, r: Range<D>) -> Int
+    fn clear(mut self) // O(n)
 struct XorFenwick<D, T> // O(n), O(log n)
     fn new(a: ?[D]T = none) -> XorFenwick<D, T>
     fn flip(mut self, i: D, x: T)

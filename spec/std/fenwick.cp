@@ -316,6 +316,144 @@ pub struct DualFenwick<D, T>:
     pub fn clear(mut self):
         for p in 0..t.len: t[p] = T.zero
 
+/// Range add and range sum over `Int` with two difference Fenwick trees (`d[i]` and
+/// `i * d[i]`): `RangeFenwick<D>()` starts at zero and `RangeFenwick<D>(a)` from an array.
+/// `add`, `prefix` and `fold` are O(log n); memory is 3(n + 1) values. Smaller constants than a
+/// `LazySegTree` over `AddSum`.
+pub struct RangeFenwick<D>:
+    base: List<Int>
+    b1: List<Int>
+    b2: List<Int>
+
+    /// A range-add, range-sum tree over `D`: all zeros, or holding the values of `a` when given.
+    ///
+    /// cost: O(|D|) time; memory 3(|D| + 1) values
+    /// empty: an empty `D` gives a tree whose every sum is zero
+    /// order: positions keep the domain `D` (of `a`, when given)
+    /// traps: never
+    /// example: `RangeFenwick([1, 2, 3]).fold(0..3) == 6`
+    /// example: `RangeFenwick<0..3>().fold(0..3) == 0`
+    pub fn new(a: ?[D]Int = None) -> RangeFenwick<D>:
+        var base = List.filled(D.K + 1, 0)
+        if let init = a:
+            for i in D: base[i.to_idx + 1] = base[i.to_idx] + init[i]
+        RangeFenwick(base, List.filled(D.K + 1, 0), List.filled(D.K + 1, 0))
+
+    fn bump(mut self, p0: Int, x: Int):
+        var p = p0 + 1
+        while p <= D.K:
+            b1[p] += x
+            b2[p] += x * p0
+            p += p & -p
+
+    /// Add `x` to every position of `r`.
+    ///
+    /// cost: O(log |D|)
+    /// empty: changes nothing
+    /// traps: when a non-empty `r` reaches outside `D`
+    /// example: `var f = RangeFenwick([1, 2, 3]); f.add(0..2, 10); f.fold(0..3) == 26`
+    /// example: `var f = RangeFenwick([1, 2, 3]); f.add(1..3, 5); f.fold(2..3) == 8`
+    pub fn add(mut self, r: Range<D>, x: Int):
+        let lo = r.start.ord
+        let hi = r.end.ord
+        if lo >= hi: return
+        self.bump(lo, x)
+        if hi < D.K: self.bump(hi, -x)
+
+    /// The sum of every position left of the boundary `b`, adds included.
+    ///
+    /// cost: O(log |D|)
+    /// traps: never (`b` is a cut of `D` by type)
+    /// example: `var f = RangeFenwick([1, 2, 3]); f.add(0..3, 1); f.prefix((0..2).r) == 5`
+    pub fn prefix(self, b: Cut<D>) -> Int:
+        let k = b.ord
+        var s1 = 0
+        var s2 = 0
+        var p = k
+        while p > 0:
+            s1 += b1[p]
+            s2 += b2[p]
+            p -= p & -p
+        base[k] + s1 * k - s2
+
+    /// The sum over the positions of `r`.
+    ///
+    /// cost: O(log |D|)
+    /// empty: zero
+    /// traps: when a non-empty `r` reaches outside `D`
+    /// example: `var f = RangeFenwick([1, 2, 3]); f.add(1..2, 4); f.fold(1..3) == 9`
+    /// example: `RangeFenwick([1, 2, 3]).fold(2..2) == 0`
+    pub fn fold(self, r: Range<D>) -> Int:
+        self.prefix(r.end) - self.prefix(r.start)
+
+    /// Reset every value to zero, keeping the domain and the allocation.
+    ///
+    /// cost: O(|D|)
+    /// traps: never
+    /// example: `var f = RangeFenwick([1, 2, 3]); f.clear(); f.fold(0..3) == 0`
+    pub fn clear(mut self):
+        for p in 0..base.len:
+            base[p] = 0
+            b1[p] = 0
+            b2[p] = 0
+
+/// Point xor and range xor: `XorFenwick<D, T>()` starts at zero and `XorFenwick<D, T>(a)` from an
+/// array, in O(n). `flip`, `prefix` and `xor` are O(log n); memory is n + 1 values. `^` is its
+/// own inverse, so a range is one prefix xored with another.
+pub struct XorFenwick<D, T>:
+    t: List<T>
+
+    /// A xor Fenwick tree over `D`: all zeros, or holding the values of `a` when given.
+    ///
+    /// cost: O(|D|) time; memory |D| + 1 values
+    /// empty: an empty `D` gives a tree whose every xor is zero
+    /// order: positions keep the domain `D` (of `a`, when given)
+    /// traps: never
+    /// example: `XorFenwick([1, 2, 4]).xor(0..3) == 7`
+    pub fn new(a: ?[D]T = None) -> XorFenwick<D, T>:
+        var t = List.filled(D.K + 1, T.zero)
+        if let init = a:
+            for i in D:
+                let p = i.to_idx + 1
+                t[p] ^= init[i]
+                let q = p + (p & -p)
+                if q <= D.K: t[q] = t[q] ^ t[p]
+        XorFenwick(t)
+
+    /// Xor `x` into the value at position `i`: `a[i] ^= x`.
+    ///
+    /// cost: O(log |D|)
+    /// traps: when `i` is outside `D`
+    /// example: `var f = XorFenwick([1, 2, 4]); f.flip(1, 2); f.xor(0..3) == 5`
+    pub fn flip(mut self, i: D, x: T):
+        var p = i.to_idx + 1
+        while p < t.len:
+            t[p] ^= x
+            p += p & -p
+
+    /// The xor of every position left of the boundary `b`.
+    ///
+    /// cost: O(log |D|)
+    /// traps: never (`b` is a cut of `D` by type)
+    /// example: `XorFenwick([1, 2, 4]).prefix((0..2).r) == 3`
+    pub fn prefix(self, b: Cut<D>) -> T:
+        var p = b.ord
+        var acc = T.zero
+        while p > 0:
+            acc = acc ^ t[p]
+            p -= p & -p
+        acc
+
+    /// The xor over the positions of `r`.
+    ///
+    /// cost: O(log |D|)
+    /// empty: zero
+    /// traps: when a non-empty `r` reaches outside `D`
+    /// example: `XorFenwick([1, 2, 4]).xor(1..3) == 6`
+    /// example: `XorFenwick([1, 2, 4]).xor(2..2) == 0`
+    pub fn xor(self, r: Range<D>) -> T:
+        self.prefix(r.end) ^ self.prefix(r.start)
+
 /// O(n log n) space. Offline coordinate-compressed 2D Fenwick tree (KACTL `FT2`):
 /// register all update coordinates with `add_point`, call `build()`, then run `add` and `sum`
 /// in O(log^2 n).
