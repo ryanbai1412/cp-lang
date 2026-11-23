@@ -12,6 +12,9 @@ Codeforces C++ build. Findings (problem-packages/R5, R6):
   invalid-input <id> <args>  the port rejects what gen.py printed
   no-max <id> -              gen.py has no --max (no maximum-bound input)
   invalid-test <id> <file>   the port rejects a committed test input
+  disagrees <id> <args>      the port's C++ and the accepted C++ (orig.cpp, or
+                             the first accepted submission) give different
+                             answers, judged by checker.py when there is one
 
 Interactive problems are skipped: gen.py prints the interactor's hidden
 data, not the port's input.
@@ -19,10 +22,10 @@ data, not the port's input.
 Known findings live in corpus/generators-known.txt, which only shrinks.
 Same flags as corpus/differential.py: --check, --update, --cpl, -j.
 """
-import argparse, concurrent.futures, os, re, subprocess, sys
+import argparse, concurrent.futures, json, os, re, subprocess, sys, tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import differential
+import audit, differential
 
 ROOT = differential.ROOT
 KNOWN = os.path.join(ROOT, "corpus", "generators-known.txt")
@@ -48,6 +51,34 @@ def rejects(cmd, data):
     return r.returncode != 0 and bool(RANGE.search(r.stderr))
 
 
+def output(exe, data):
+    try:
+        r = subprocess.run([exe], input=data, capture_output=True, timeout=TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+def agrees(d, data, got, want):
+    checker = os.path.join(d, "checker.py")
+    if not os.path.exists(checker):
+        return got.split() == want.split()
+    with tempfile.TemporaryDirectory() as tmp:
+        files = []
+        for name, blob in (("in", data), ("out", got), ("ans", want)):
+            files.append(os.path.join(tmp, name))
+            open(files[-1], "wb").write(blob)
+        return subprocess.run([sys.executable, checker, *files], capture_output=True).returncode == 0
+
+
+def reference(d):
+    try:
+        meta = json.load(open(os.path.join(d, "meta.json")))
+    except (OSError, ValueError):
+        return None
+    return next((e for e in map(audit.binary, audit.accepted_cpp(meta)) if e), None)
+
+
 def check(pid, cpl):
     d = os.path.join(ROOT, "corpus", "problems", pid)
     g, port = os.path.join(d, "gen.py"), os.path.join(d, "port.cp")
@@ -59,6 +90,7 @@ def check(pid, cpl):
             found.append(f"invalid-test {pid} {os.path.relpath(inp, ROOT)}")
     if not os.path.exists(g):
         return found
+    exe, orig = differential.native(pid, port, cpl), reference(d)
     for seed in SEEDS:
         for size in SIZES:
             data = gen(g, (seed, size))
@@ -66,10 +98,13 @@ def check(pid, cpl):
                 found.append(f"gen-fails {pid} {seed}/{size}")
             elif rejects([cpl, "run", port], data):
                 found.append(f"invalid-input {pid} {seed}/{size}")
+            elif exe and orig:
+                got, want = output(exe, data), output(orig, data)
+                if got is not None and want is not None and not agrees(d, data, got, want):
+                    found.append(f"disagrees {pid} {seed}/{size}")
     if "--max" not in open(g).read():
         return found + [f"no-max {pid} -"]
     data = gen(g, ("--max",))
-    exe = differential.native(pid, port, cpl)
     if data is None:
         found.append(f"gen-fails {pid} --max")
     elif exe and rejects([exe], data):

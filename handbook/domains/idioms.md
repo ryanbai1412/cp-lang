@@ -207,7 +207,7 @@ GCC and LLVM's differential testing against a reference.
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | Every port checks on the current language | ports failing `cpl check` | ratchet, list only shrinks | `scripts/port-check.sh` (`corpus/port-check-failing.txt`) in `scripts/check.sh`; per staged port in the commit tier |
-| Every port agrees with its accepted C++ | ports matching `orig.cpp` on samples plus generated inputs | differential | `crates/cpl-cli/tests/judges.rs` (`every_v03_port_checks`) over `corpus/sets/v03.txt`; generated-input agreement on every commit: `missing` (done by hand per port today) |
+| Every port agrees with its accepted C++ | ports matching `orig.cpp` on samples plus generated inputs | differential | `crates/cpl-cli/tests/judges.rs` (`every_v03_port_checks`) over `corpus/sets/v03.txt`; `corpus/generators.py` (`disagrees`: the port's C++ against the accepted C++ on generated inputs, judged by `checker.py` when there is one) |
 | The hill-climb problems pass | `cpl-conform corpus` passes, judged by checker where one exists | generated suite, ratchet | `cpl-conform corpus`, `research/scoreboard.json` via `cpl-conform all --check` |
 | Every problem has tests, and expected outputs come from an accepted solution | untested problems; expected outputs regenerated from `orig.cpp` | `handbook/guidelines/problem-packages-checklist.md#r1`; generated | `scripts/corpus-tests.py verify`; `corpus/audit.py` (`answer-is-input`, `no-reference`, ratchet `corpus/audit-known.txt`) |
 | Multi-answer problems are judged by a checker | problems with several valid answers and no checker | `handbook/guidelines/problem-packages-checklist.md#r3`; differential: two accepted submissions that differ on a test | `corpus/audit.py` (`needs-checker`); `cpl-conform corpus` judges by `checker.py` |
@@ -311,3 +311,4 @@ the chunks touched (4); find a planted off-by-one with stress and trace
 - 2026-11-23: the interpreter-and-C++ row names `corpus/differential.py`.
 - 2026-11-23: the generator and max-bound rows name `corpus/generators.py`.
 - 2026-11-23: the spelling and 32 KB rows name `corpus/differential.py`.
+- 2026-11-23: the accepted-C++ agreement row names `corpus/generators.py`.
