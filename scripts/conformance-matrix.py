@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """Generate spec/conformance/matrix/ from spec/conformance/matrix.toml.
 
 Each matrix crosses rows (features) with columns (consumers); `optional`

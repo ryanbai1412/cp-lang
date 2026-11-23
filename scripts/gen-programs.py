@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforces handbook/guidelines/conformance.md#c6. Generate random CP Lang programs with known output; run both engines on them.
+"""Enforces conformance/R6 (handbook/guidelines/conformance-checklist.md#rules). Generate random CP Lang programs with known output; run both engines on them.
 
 Each program is a list of statements over a few `var` lists and `Int`s:
 view chains (`rev`, `drop`, `take`, `drop_last`, `take_last`), folds

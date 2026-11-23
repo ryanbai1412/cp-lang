@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """Check that named arguments in spec/core and spec/lib code blocks exist in std.
 
 For every call `f(..., k: v)` in a fenced block where some `fn f` is declared in

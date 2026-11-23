@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """Check that every trait method of every claimer has a conformance case.
 
 Traits come from `pub trait` bodies in std/*.cp and from the core traits

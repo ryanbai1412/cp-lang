@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Enforces handbook/guidelines/conformance-checklist.md#conformancer1-every-rule-has-a-case-and-every-forbidding-rule-has-a-reject-case
 """Write spec/conformance/COVERAGE.md: rules, diagnostics and std items vs cases.
 
 A case is positive when it expects `ok`, negative when it expects a diagnostic

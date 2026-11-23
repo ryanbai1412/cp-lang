@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Enforces handbook/guidelines/conformance.md#c3. Flag failing conformance cases whose failure looks like a bug in the case.
+"""Enforces conformance/R3 (handbook/guidelines/conformance-checklist.md#rules). Flag failing conformance cases whose failure looks like a bug in the case.
 
 A known-gap case is expected to fail, so a wrong header or a stale API use
 in it hides until the gap closes. This runs the suite (or reads a saved

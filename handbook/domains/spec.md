@@ -6,20 +6,61 @@
 | Owner | spec |
 | Describes | `spec/core/`, `spec/lib/`, `spec/tools/`, `spec/conformance/`, `spec/SUBSET.md`, `spec/GLOSSARY.md`, `handbook/language/`, `crates/cpl-conform/`, `scripts/conformance-*.py`, `scripts/spec-vocab.py`, `scripts/spec-check.sh`, `scripts/spec-stub.py`, `scripts/next-decision.py` |
 
-## Mission
+The spec domain says exactly what CP Lang is, explains why it is shaped
+that way, and holds the compiler to it. A contestant reading a chapter, a
+model writing a solution, and an engineer building a second compiler should
+all get the same answer to "does this compile, what does it print, where
+does it trap?". When the implementation gets one of those wrong, a case of
+ours should fail before a contestant notices.
 
-Say exactly what CP Lang is, in one place, so that a contestant, a model and
-a second implementer all get the same answer to every "does this compile,
-what does it print, what traps?" question. Explain why the language is
-shaped that way, so a reader can hold the model in their head. Then hold the
-implementation to it with conformance cases that catch each compiler bug
-before a contestant does.
+## What good looks like
 
-Example: the spec says a reversed view `a.rev` walks backwards but keeps
-`a`'s keys, so `a.rev.drop(1)` over `[10, 20, 30]` is `20 10`.
-`spec/conformance/core-07/rev-pieces-cut-in-walk-order.cp` pins that
-answer. A compiler that returns `30 20` fails the case, and the case then
-blocks Milestone 1 until it is fixed.
+A reader who knows Python or C++ reads `handbook/language/sequences.md` and
+learns that a reversed view walks backwards but keeps its source's keys.
+They write `a.rev.drop(1)` over `[10, 20, 30]` and expect `20 10`. The
+spec chapter says the same thing in one numbered rule. A conformance case
+pins that answer, so a compiler that prints `30 20` fails the case and the
+release waits for the fix. When a new contestant hits a rule the spec never
+covered, the gap becomes a rule and a case the same day, and the next
+reader doesn't hit it.
+
+## How it fits together
+
+There are three layers. `handbook/language/` gives the picture: the
+problem each area solves, the model to hold in your head, and the decisions
+behind it. `spec/` is the exhaustive layer: every rule with an id, every
+std signature, every tool command. `spec/conformance/` is the evidence: about
+2300 small programs, each citing the rules it tests and stating the one
+result the spec promises.
+
+`cpl-conform` runs the cases against the checker, the interpreter and the
+generated C++, along with the spec's own code blocks and the corpus. Scripts
+around it keep the spec honest. They list rules with no case, chapter
+signatures that disagree with `std`, and gaps the Milestone 1 subset has
+promised to close. A generator writes random programs, computes their output
+in Python, and compares both engines against that answer.
+
+## How we know it is good
+
+Three kinds of check. Coverage: every rule should have a case, and today
+most do. Agreement: the interpreter and the C++ must give the same output
+on every case, and the generator catches wrong answers both engines share.
+Independent readers: fresh models rebuild contest solutions from the spec
+alone, and each place they had to guess becomes a fix. The weakest areas
+today are combinations of features that no table enumerates yet, mistakes
+in the cases themselves (a wrong expected line hides a real bug), and the
+rows marked `missing` in the register below.
+
+## Where to start
+
+- To change a rule, read `guidelines/spec-rules.md`, then the area's
+  `handbook/language/` doc and the spec chapter it leads.
+- To add a case, read `guidelines/conformance.md` and
+  `spec/conformance/README.md`.
+- To see what is open, read `spec/SUBSET.md` (known gaps and their owners)
+  and the `missing` rows below.
+
+# Reference
 
 ## Scope
 
@@ -72,21 +113,21 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Every rule is tested ([C1](../guidelines/conformance.md#c1-every-rule-has-a-case-and-every-forbidding-rule-has-a-reject-case)) | rules with no case; forbidding rules with no reject case | ratchet in the gate | `scripts/conformance-coverage.py --check`, `spec/conformance/rule-gaps.txt` |
+| Every rule is tested ([conformance/R1](../guidelines/conformance-checklist.md)) | rules with no case; forbidding rules with no reject case | ratchet in the gate | `scripts/conformance-coverage.py --check`, `spec/conformance/rule-gaps.txt` |
 | Every case cites something that exists | cites to unknown rules | gate | `cpl-conform --rules` |
 | Every diagnostic code is reachable | codes with no reject case | ratchet | `scripts/conformance-coverage.py --check` |
-| Feature combinations are tested (index types x consumers) ([C5](../guidelines/conformance.md#c5-where-a-rule-covers-a-space-generate-the-cases)) | empty matrix cells | generated suite, gate | `scripts/conformance-matrix.py --check`, `spec/conformance/matrix.toml` |
-| Every trait method on every claimer is tested ([C5](../guidelines/conformance.md#c5-where-a-rule-covers-a-space-generate-the-cases)) | trait methods with no case | generated table, ratchet | `scripts/conformance-traits.py --check` |
+| Feature combinations are tested (index types x consumers) ([conformance/R5](../guidelines/conformance-checklist.md)) | empty matrix cells | generated suite, gate | `scripts/conformance-matrix.py --check`, `spec/conformance/matrix.toml` |
+| Every trait method on every claimer is tested ([conformance/R5](../guidelines/conformance-checklist.md)) | trait methods with no case | generated table, ratchet | `scripts/conformance-traits.py --check` |
 | Chapters and `std` agree on named arguments | named args no std fn takes | ratchet | `scripts/conformance-sigs.py --check`, `sig-gaps.txt` |
 | What the chapters call is in the prelude | chapter functions missing from the prelude | ratchet | `scripts/conformance-prelude.py --check`, `prelude-gaps.txt` |
 | Chapters and `std` agree on return types and existence (e.g. a chapter naming a type `std` doesn't have) | contradictions found per rebuild round | `missing`: found only by rebuild rounds | — |
 | The suite catches compiler bugs | share of reverted compiler fixes the suite turns red | mutation suite over history | `scripts/conformance-bugcatch.py`, `plan/domains/spec/bugcatch.md` |
 | The suite catches bugs no past fix shows | mutation score on compiler source mutants | `missing` | — |
-| Interpreter and C++ agree ([C6](../guidelines/conformance.md#c6-results-agree-across-engines-with-and-without-sanitizers)) | cases whose output differs between `cpl run` and the built C++ | differential suite | `cpl-conform diff` |
+| Interpreter and C++ agree ([conformance/R6](../guidelines/conformance-checklist.md)) | cases whose output differs between `cpl run` and the built C++ | differential suite | `cpl-conform diff` |
 | Interpreter and C++ agree on programs nobody wrote by hand | divergences on generated programs | `missing`: no program generator yet | — |
-| Generated C++ has no undefined behaviour ([C6](../guidelines/conformance.md#c6-results-agree-across-engines-with-and-without-sanitizers)) | cases failing under ASan, UBSan and `_GLIBCXX_DEBUG` | differential suite with sanitizer flags | `CPL_CONFORM_CXXFLAGS='-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG' cpl-conform diff` (not in the gate) |
+| Generated C++ has no undefined behaviour ([conformance/R6](../guidelines/conformance-checklist.md)) | cases failing under ASan, UBSan and `_GLIBCXX_DEBUG` | differential suite with sanitizer flags | `CPL_CONFORM_CXXFLAGS='-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG' cpl-conform diff` (not in the gate) |
 | Every case is itself right | wrong cases found by implementers | gate for new cases; `missing` for known-gap cases, which can hide a wrong header or a misused API because they are expected to fail | `scripts/conform_staged.py` |
-| Code examples in the spec run ([C7](../guidelines/conformance.md#c7-code-in-the-spec-runs)) | spec blocks failing that are not `spec-only` | ratchet | `cpl-conform spec-blocks --check` |
+| Code examples in the spec run ([conformance/R7](../guidelines/conformance-checklist.md)) | spec blocks failing that are not `spec-only` | ratchet | `cpl-conform spec-blocks --check` |
 | Milestone gaps are visible, not hidden | failing cases in a supported section with no owner | gate | `scripts/conformance-subset.py --check`, `spec/SUBSET.md` |
 | One spelling per idea | banned spellings in spec | lint | `scripts/spec-vocab.py` |
 | Each decision is recorded once | duplicate decision numbers | check | `scripts/next-decision.py --check` |
@@ -96,7 +137,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Handbook docs are written for an outsider | context-dependent phrases, hashes | lint | `scripts/check-handbook.py` |
 | Each rule earns what a contestant must remember | rubric score from a cold reader | process: review against the design rules in `AGENTS.md` | — |
 | A behaviour the user can observe has exactly one specified answer | rules whose text a cold reader had to guess (silent holes per round) | process: rebuild rounds; `missing`: a check that each `std` function a chapter names has a cost, a trap list and an example | `research/rebuild-rounds/` |
-| Generated programs agree across engines (the Csmith and YARPGen approach) ([C6](../guidelines/conformance.md#c6-results-agree-across-engines-with-and-without-sanitizers)) | divergences between `cpl run`, `cpl build` with `-O2`, and a sanitized build, on random well-typed programs | generated suite with a Python model of each program's output: catches wrong answers both engines share, shrinks failures by dropping statements | `scripts/gen-programs.py` (views, folds, Euclidean `/` `%`, bit operators, in-place verbs, loops, closures writing captures; `--cxxflags` adds a sanitized leg) |
+| Generated programs agree across engines (the Csmith and YARPGen approach) ([conformance/R6](../guidelines/conformance-checklist.md)) | divergences between `cpl run`, `cpl build` with `-O2`, and a sanitized build, on random well-typed programs | generated suite with a Python model of each program's output: catches wrong answers both engines share, shrinks failures by dropping statements | `scripts/gen-programs.py` (views, folds, Euclidean `/` `%`, bit operators, in-place verbs, loops, closures writing captures; `--cxxflags` adds a sanitized leg) |
 | A meaning-preserving edit never changes the output (equivalence-modulo-inputs testing) | cases whose output changes after renaming, reordering independent `let`s, inlining a `let`, wrapping in a `fn`, or `cpl fmt` | `missing`: metamorphic transforms over every passing case | — |
 | Checked and release builds agree on valid programs | cases whose output differs between the checked build and the release build | `missing` as a suite; hand cases under `core-09/release-*` | `spec/conformance/core-09/` |
 | Every syntactically valid program parses, every invalid one gets one error | grammar productions never generated; parser crashes on generated input | `missing`: grammar fuzzing from the EBNF in `spec/core/01-lexical-grammar.md` | — |
@@ -109,7 +150,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Trace, debugger and explain output is specified | tool features with no rule id | `missing` | — |
 | The same source behaves the same on Linux, macOS and Windows (CRLF source and input, paths) | platform cases passing on all three | hand suite; `missing` on macOS and Windows runners | `spec/conformance/core-01/` |
 | Known gaps get fixed, not just listed | known-gap cases; age of the oldest; entries in `sig-gaps.txt` and `prelude-gaps.txt` | ratchet: lists only shrink; `missing`: an age report per owner | `spec/SUBSET.md`, `spec/conformance/*-gaps.txt` |
-| A known-gap case fails for the reason it names ([C3](../guidelines/conformance.md#c3-a-known-gap-fails-for-the-reason-it-names)) | known-gap cases whose current error isn't the gap's subject (a wrong `at N`, a misused API) | check: a failure with the case's own expected code means a wrong `at N` or `has:`; an E0606 on a printed `?T` means a missing `!` | `scripts/conformance-gaps.py` |
+| A known-gap case fails for the reason it names ([conformance/R3](../guidelines/conformance-checklist.md)) | known-gap cases whose current error isn't the gap's subject (a wrong `at N`, a misused API) | check: a failure with the case's own expected code means a wrong `at N` or `has:`; an E0606 on a printed `?T` means a missing `!` | `scripts/conformance-gaps.py` |
 | The suite is deterministic | cases that pass and fail on the same build | per-case `// timeout:`; `missing`: a flake report | `crates/cpl-conform/tests/timeout.rs` |
 | Cross-references in the spec resolve | `(see Rnn.n.n)` naming no rule; links to missing files | `missing` for chapter text; `cpl-conform --rules` covers cases only | — |
 | The spec says what changed between versions | normative changes with no changelog line | `missing` | — |

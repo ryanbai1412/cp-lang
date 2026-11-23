@@ -27,73 +27,22 @@ hand from the spec text alone. The source and its mirror image give
 different answers (`20 10` against `30 20`), so a mirrored implementation
 fails. A case where both readings print the same thing tests nothing.
 
-## The rules
+## How to think about a case
 
-### C1. Every rule has a case, and every forbidding rule has a reject case
+A case is worth having when it can fail. Work out the answer from the spec
+before running anything, and pick inputs where a plausible wrong reading
+gives a different answer. Then ask where the bug class lives as a space
+(every index type, every consumer, every trait method) and generate the
+table instead of writing one example by hand. A case listed as a known gap
+still has to be right: if it fails for a reason other than the one it
+names, it hides the bug it was written for.
 
-A rule with no case can drift without anyone noticing. A rule that forbids
-something needs a program the checker must reject, with the code it must
-give, not only programs that follow the rule. Enforced by
-`scripts/conformance-coverage.py --check` and `spec/conformance/rule-gaps.txt`,
-which may only shrink.
+Every case also runs in both engines. The interpreter and the generated C++
+must agree, under sanitizers too, and random programs whose output we can
+compute independently catch the wrong answers both engines share.
 
-### C2. Work out the expected result from the spec, not from the compiler
-
-Write the expected output before you run the program. Take it from the
-rule's text and the std signatures: `xs.max()` is a `?T`, so the case writes
-`xs.max()!`. A case copied from today's output pins today's bugs. Pick inputs
-whose wrong readings differ, as in the example above: asymmetric values,
-both sides of a boundary, empty and one-element inputs.
-
-### C3. A known gap fails for the reason it names
-
-A case listed in `spec/SUBSET.md` as a known gap is expected to fail, so a
-mistake in the case itself (a wrong `at N`, a stale API) hides until the
-implementation catches up. Before you list a gap, check that the failure is
-the bug named in the gap line. Enforced by `scripts/conformance-gaps.py`
-(the case's own code at another line, or a printed `?T` without `!`) and by
-`scripts/conformance-subset.py --check` (each gap names an owner, and a gap
-that starts passing must be dropped).
-
-### C4. Every fixed bug lands with a case that fails without the fix
-
-A fix without a case can regress silently. The case has to fail when the
-fix is reverted. `scripts/conformance-bugcatch.py` reverts recent fixes and
-counts how many some case catches.
-
-### C5. Where a rule covers a space, generate the cases
-
-Index types times consumers, every trait method on every type that has it,
-every std signature a chapter names, every type a prelude signature names:
-generate these cases from a table, don't write them by hand. A table shows
-the empty cells. Enforced by `scripts/conformance-matrix.py`,
-`conformance-traits.py`, `conformance-sigs.py` and `conformance-prelude.py`,
-each run with `--check`.
-
-### C6. Results agree across engines, with and without sanitizers
-
-Every `ok` case runs in the interpreter and as built C++, and the two must
-agree. Random programs whose output a model computes catch wrong answers
-the two engines share. Enforced by `cpl-conform diff`, by the same run with
-`CPL_CONFORM_CXXFLAGS='-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'`,
-and by `scripts/gen-programs.py`.
-
-### C7. Code in the spec runs
-
-Every `cp` block in `spec/` is checked as a program. A block that is
-deliberately partial says so with `<!-- spec-only: why -->`, or with
-`<!-- given: ... -->` for the lines it assumes. Enforced by
-`cpl-conform spec-blocks --check`.
-
-## Checklist
-
-- [ ] One rule per case, cited in `// rule:` (C1)
-- [ ] Expected result taken from the spec, and wrong readings give a different one (C2)
-- [ ] A known gap's failure is the bug it names; the gap names an owner (C3)
-- [ ] The fix's case fails with the fix reverted (C4)
-- [ ] Cases over a space come from a table (C5)
-- [ ] Runs the same in both engines and under sanitizers (C6)
+The full list, with ids that checks cite, is [conformance-checklist.md](conformance-checklist.md).
 
 ## Changes
 
-- 2026-11-23: first version.
+- 2026-11-23: first version; rules moved to the checklist.

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """Check R11.3.2: every pub fn in a spec/lib chapter's tables is a prelude name.
 Rule: handbook/process/quality.md#which-test-to-write.
 
