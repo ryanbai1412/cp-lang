@@ -14,5 +14,5 @@ languages = ["CP Lang"]
 # that the commit has it and that it matches the one in the tree.
 [grammars.cp]
 repository = "https://github.com/ryanbai1412/cp-lang"
-rev = "2dfa78bd986e88b1e64e1d16faa7f89ea1863d8c"
+rev = "08298f38a34fc73314b90295f10a546fbee3aa57"
 path = "editors/tree-sitter-cp"
