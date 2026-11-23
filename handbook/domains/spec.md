@@ -95,7 +95,46 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Handbook language docs and the spec say the same thing | disagreements found | `missing`; process today: an edit to either updates both in one commit | — |
 | Handbook docs are written for an outsider | context-dependent phrases, hashes | lint | `scripts/check-handbook.py` |
 | Each rule earns what a contestant must remember | rubric score from a cold reader | process: review against the design rules in `AGENTS.md` | — |
+| A behaviour the user can observe has exactly one specified answer | rules whose text a cold reader had to guess (silent holes per round) | process: rebuild rounds; `missing`: a check that each `std` function a chapter names has a cost, a trap list and an example | `research/rebuild-rounds/` |
+| Generated programs agree across engines (the Csmith and YARPGen approach) | divergences between `cpl run`, `cpl build` with `-O2`, and a sanitized build, on random well-typed programs | `missing`: generator of well-typed CP Lang programs from the grammar and the type rules | — |
+| A meaning-preserving edit never changes the output (equivalence-modulo-inputs testing) | cases whose output changes after renaming, reordering independent `let`s, inlining a `let`, wrapping in a `fn`, or `cpl fmt` | `missing`: metamorphic transforms over every passing case | — |
+| Checked and release builds agree on valid programs | cases whose output differs between the checked build and the release build | `missing` as a suite; hand cases under `core-09/release-*` | `spec/conformance/core-09/` |
+| Every syntactically valid program parses, every invalid one gets one error | grammar productions never generated; parser crashes on generated input | `missing`: grammar fuzzing from the EBNF in `spec/core/01-lexical-grammar.md` | — |
+| Integer widths and overflow are right at every boundary | range types x operations without a boundary case (min, max, max+1, products near \(10^{18}\)) | generated matrix covers index types; `missing` for width boundaries | `scripts/conformance-matrix.py` |
+| Large output is complete and ordered (over 64 KiB, mixed `print` forms, multitest) | cases over 64 KiB passing in both engines | hand suite | `spec/conformance/core-10/` |
+| Interactive I/O flushes correctly | interactive cases passing under an interactor in both engines | hand suite | `spec/conformance/core-10/`, `// tool:` cases |
+| Ownership and lending rules accept every safe program and reject every unsafe one | false E06xx on safe programs found per rebuild round; sanitizer failures on accepted programs | hand suite plus sanitized `cpl-conform diff`; `missing`: generated alias and lend programs | `spec/conformance/core-05/` |
+| What `cpl explain` claims about copies and allocations is true | explain claims contradicted by the generated C++ | hand cases with `// tool: explain` and `// lacks:`; `missing` as a rule over every case | `spec/conformance/core-05/` |
+| Tool behaviour a journey relies on is specified and tested (`check`, `run`, `test`, `stress`, `build`, `fmt`, `lint`, LSP) | journey steps with no rule id and case | hand suite with `// tool:` cases | `spec/tools/`, `spec/conformance/` |
+| Trace, debugger and explain output is specified | tool features with no rule id | `missing` | — |
+| The same source behaves the same on Linux, macOS and Windows (CRLF source and input, paths) | platform cases passing on all three | hand suite; `missing` on macOS and Windows runners | `spec/conformance/core-01/` |
+| Known gaps get fixed, not just listed | known-gap cases; age of the oldest; entries in `sig-gaps.txt` and `prelude-gaps.txt` | ratchet: lists only shrink; `missing`: an age report per owner | `spec/SUBSET.md`, `spec/conformance/*-gaps.txt` |
+| A known-gap case fails for the reason it names | known-gap cases whose current error isn't the gap's subject (a wrong `at N`, a misused API) | `missing` | — |
+| The suite is deterministic | cases that pass and fail on the same build | per-case `// timeout:`; `missing`: a flake report | `crates/cpl-conform/tests/timeout.rs` |
+| Cross-references in the spec resolve | `(see Rnn.n.n)` naming no rule; links to missing files | `missing` for chapter text; `cpl-conform --rules` covers cases only | — |
+| The spec says what changed between versions | normative changes with no changelog line | `missing` | — |
+| Old programs keep their meaning (pins and `cpl migrate`, R11.4.3) | rule ids for compatibility with cases | `missing` | — |
+| Each chapter teaches its model first | supported chapters with no model paragraph | process | `spec/core/` |
+| Every design decision gives its reason and the alternatives that lost | decisions cited in `spec/` with no rationale in `handbook/language/` | `missing` | — |
 | The suite is fast enough to run on every land | wall time of `cpl-conform conformance spec-blocks` | metric only, `missing` as a gate | `plan/domains/spec/metrics.toml` |
+
+### Building the `missing` rows
+
+In order of what a user would feel:
+
+1. Generated programs agree across engines: silent wrong answers are the
+   worst failure a contestant can hit.
+2. Metamorphic transforms over every passing case: these turn each of the
+   2300 cases into many parity and front-end tests.
+3. A known-gap case fails for the reason it names: a wrong case hides a
+   real bug until the gap closes.
+4. The sanitized `cpl-conform diff` as a scheduled job.
+5. Chapter vs `std` contradictions: return types and the existence of named
+   items, not just named arguments.
+6. Width boundary generation.
+7. Mutation score on compiler source.
+8. Grammar fuzzing.
+9. Cross-reference checks, the changelog, and the handbook/spec sync check.
 
 ## Suites and tools
 
