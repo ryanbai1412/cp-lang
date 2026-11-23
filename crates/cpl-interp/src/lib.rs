@@ -1500,6 +1500,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     /// The storage of `part`.
     /// The caller's place a param is lent from.
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn lender(&mut self, part: &Part) -> Res<&mut Value> {
         self.part_mut(part, Span::default())
     }
@@ -2846,7 +2847,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         };
         #[cfg(target_arch = "wasm32")]
         let mut flow = {
-            let _ = (has_part, has_alias, has_fn_param);
+            let _ = (has_alias, has_fn_param);
             self.block(&f.body)
         };
         while self.saved_domains.len() > dom_mark {
