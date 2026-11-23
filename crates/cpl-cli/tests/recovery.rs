@@ -45,6 +45,10 @@ fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
 /// The accidental edits, each applied to one line. `None` when the edit
 /// does not apply to the line.
 type Edit = fn(&str) -> Option<String>;
+/// A deleted value can't be recovered from the text, and decision 6551
+/// rules out placeholder fixes, so this edit is scored apart.
+const CUT_VALUE: &str = "cut the value after `=`";
+const UNRECOVERABLE: &[&str] = &[CUT_VALUE];
 
 const EDITS: &[(&str, Edit)] = &[
     ("drop the last closer", |l| {
@@ -60,7 +64,7 @@ const EDITS: &[(&str, Edit)] = &[
         (t.ends_with(':') && !t.trim_start().starts_with("//"))
             .then(|| t[..t.len() - 1].to_string())
     }),
-    ("cut the value after `=`", |l| {
+    (CUT_VALUE, |l| {
         let t = l.trim_start();
         if !(t.starts_with("let ") || t.starts_with("var ") || t.starts_with("domain ")) {
             return None;
@@ -416,7 +420,7 @@ fn scoreboard_broken_ports(
     title: &str,
     edits: &'static [(&'static str, Edit)],
     restore: bool,
-) -> Tally {
+) -> (Tally, Tally) {
     let broken = broken_ports(edits);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let ports: Vec<&[Broken]> = broken.chunk_by(|a, b| a.path == b.path).collect();
@@ -456,11 +460,16 @@ fn scoreboard_broken_ports(
     }
     println!("\n{title:<30} files silent errors cascaded first-right fix-it restored");
     let mut total = Tally::default();
+    let mut recoverable = Tally::default();
     for (edit, t) in &merged {
         println!("  {}", t.row(edit, restore));
         total.add(*t);
+        if !UNRECOVERABLE.contains(edit) {
+            recoverable.add(*t);
+        }
     }
     println!("  {}", total.row("all", restore));
+    println!("  {}", recoverable.row("recoverable", restore));
     let mut by_count: Vec<(String, FirstFix)> = codes.into_iter().collect();
     by_count.sort_by_key(|(code, f)| (std::cmp::Reverse(f.count), code.clone()));
     println!("\nfirst error by code          count  with a fix  restores  clean");
@@ -470,7 +479,7 @@ fn scoreboard_broken_ports(
             f.count, f.fixed, f.restored, f.clean
         );
     }
-    total
+    (total, recoverable)
 }
 
 /// The fenced cp blocks of `spec/core/*.md` and `spec/lib/*.md`.
@@ -633,7 +642,7 @@ fn scoreboard_plan() -> PlanTally {
 #[test]
 fn recovery_scoreboard() {
     let plan = scoreboard_plan();
-    let ports = scoreboard_broken_ports("broken ports", EDITS, false);
+    let (ports, recoverable) = scoreboard_broken_ports("broken ports", EDITS, false);
     assert!(plan.blocks > 70, "the plan code blocks went missing");
     assert!(
         ports.files >= 200,
@@ -652,13 +661,19 @@ fn recovery_scoreboard() {
         ports.cascaded,
         ports.files
     );
+    assert!(
+        recoverable.fixable as f64 >= 0.95 * recoverable.errors as f64,
+        "fewer than 95% of the errors in recoverable broken ports carry a fix ({} / {})",
+        recoverable.fixable,
+        recoverable.errors
+    );
 }
 
 /// Each common mistake carries a fix, and applying the fixes gives back
 /// the program the mistake was made in.
 #[test]
 fn fix_it_scoreboard() {
-    let ports = scoreboard_broken_ports("common mistakes", MISTAKES, true);
+    let (ports, _) = scoreboard_broken_ports("common mistakes", MISTAKES, true);
     assert!(
         ports.files >= 50,
         "the mistake copies went missing ({})",

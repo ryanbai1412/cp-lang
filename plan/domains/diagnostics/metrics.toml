@@ -26,11 +26,18 @@ target = "0"
 milestone = "M1"
 
 [[metric]]
-name = "broken ports: errors carrying a fix-it"
-command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "79.5% (414 copies); the doubled `==` now reads `a == * b`, not `a = *= b`"
-target = ">= 80% (cut-the-value rows have no right fix and stay 0%)"
-milestone = "M2"
+name = "broken ports: errors carrying a fix-it, over recoverable copies"
+command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep '^  recoverable'"
+today = "100.0% (329 copies; 79.5% over all 414)"
+target = ">= 95% (gated)"
+milestone = "M1"
+
+[[metric]]
+name = "broken ports: cut-value copies (no fix by decision 6551, error names the missing value)"
+command = "cargo test -p cpl-cli --test recovery recovery_scoreboard -- --ignored --nocapture | grep 'cut the value'"
+today = "85 copies, 100% first error on the line (`expected a value after `=``), 0% with a fix"
+target = "first error on the line and names the missing value; no placeholder fix"
+milestone = "M1"
 
 [[metric]]
 name = "common mistakes: errors carrying a fix-it"
