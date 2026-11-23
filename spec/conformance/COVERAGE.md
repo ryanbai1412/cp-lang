@@ -961,8 +961,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `RangeKth`, `RangeKth.new`, `PersistentLazySegTree.fold_rec`, `PMultiset`, `PMultiset.cmp`
 - **poly** (56/57 named by a case)
   - uncovered: `prod_linear`
-- **prefix** (46/56 named by a case)
-  - uncovered: `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff.new`, `_Diff2`, `_Diff2.new`
+- **prefix** (45/56 named by a case)
+  - uncovered: `FillPrefix`, `_FillPrefix2`, `_Prefix2`, `_Prefix2.new`, `_FillPrefixList`, `_PrefixList`, `_PrefixList.new`, `Diff`, `Diff.new`, `_Diff2`, `_Diff2.new`
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
@@ -981,7 +981,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2183 of 2308 std items are named by a case.
+2182 of 2308 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
