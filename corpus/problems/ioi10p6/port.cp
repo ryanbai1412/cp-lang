@@ -13,7 +13,8 @@ domain Road = 1..n
 fn random_tree() -> [Road](u: City, v: City):
     [Road] r => (City(rand(0, r.label - 1)), City(r.label))
 
-let fans: [City]1..=2000 = read()
+let fans: [City]1..=2e9 = read()
+assert fans.sum() <= 2e9
 let roads: [Road](u: City, v: City) = read(gen: random_tree)
 let tree = Rooted(Graph.undirected(roads), City.first!)
 

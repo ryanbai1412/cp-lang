@@ -1,5 +1,5 @@
 // Source: NOIP 2006 Senior P2 (Jinming's Budget Plan), Luogu P1064 (not on DMOJ)
-// Problem: budget n <= 32000, m <= 60 items with price <= 1e4, importance 1..5 and a main item
+// Problem: budget n <= 32000, m <= 60 items with price 0..=1e4, importance 1..5 and a main item
 //   (0 if it is a main item; a main item has at most 2 accessories). An accessory can be bought
 //   only with its main item. Print the largest sum of price * importance within the budget.
 // Solution: each main item and its accessories form a group whose options are the main item plus
@@ -9,8 +9,7 @@ let budget: 1..=32000 = read()
 let n: 1..=60 = read()
 domain Item = 1..=n
 domain Money = 0..=budget
-let items: [Item](price: 1..=10000, weight: 1..=5, main: 0..=60) = read()
-assert all(it.main <= n for it in items)
+let items: [Item](price: 0..=10000, weight: 1..=5, main: 0..=n) = read()
 
 fn worth(i: Item) -> Int: items[i].price * items[i].weight
 

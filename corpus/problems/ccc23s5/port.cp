@@ -5,7 +5,7 @@
 //   l..=r keeps its left and right thirds, so about n^log3(2) segments are visited. Once a
 //   segment holds at most 11 numerators, test each by long division of x / n in base 3
 //   until a remainder repeats; a digit 1 is fine only when nothing follows it.
-let n: 3..=1e9 = read()
+let n: 2..=1e9 = read()
 
 fn in_cantor(x: Int) -> Bool:
     // ternary digits of x / n by long division; a digit 1 is fine only when nothing follows it
