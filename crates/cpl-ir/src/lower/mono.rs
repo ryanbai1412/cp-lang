@@ -1391,6 +1391,16 @@ impl<'a> Lowerer<'a> {
                         ..
                     } => {
                         let cname = let_const_name(pat).map(str::to_string);
+                        if imp_trait.as_deref() == Some("Index")
+                            && cname.as_deref() == Some("count")
+                        {
+                            let generic = self.structs[sid].origin_gen.is_some();
+                            if let (true, Some(dom_id)) = (generic, self.structs[sid].index_domain)
+                            {
+                                let len = self.expect(init, &Ty::Int);
+                                self.size_library_domain(dom_id, len);
+                            }
+                        }
                         if let Some(cname) = cname {
                             self.structs[sid].consts.insert(
                                 cname,

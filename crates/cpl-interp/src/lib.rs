@@ -1033,16 +1033,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
             Stmt::DefDomain { id, lo, len } => {
-                let len_span = len.span;
                 let lo = self.eval(lo)?.int();
                 let len = self.eval(len)?.int().max(0);
                 self.domains[*id] = (lo, len);
-                self.size_subsets(*id, len_span)?;
             }
             Stmt::DefDomainFromVal { id, val } => {
                 if let Value::DomainVal(lo, len) = self.eval(val)? {
                     self.domains[*id] = (lo, len.max(0));
-                    self.size_subsets(*id, val.span)?;
                 }
             }
             Stmt::Trap(message, span) => return trap(*span, message.clone()),
@@ -1389,26 +1386,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
         }
         Ok(Flow::Next)
-    }
-
-    /// Sizes each `Subset<D>` of the domain `base`, which was just set.
-    fn size_subsets(&mut self, base: cpl_ir::DomainId, span: Span) -> Res<()> {
-        for &(subset, of) in &self.program.subsets {
-            if of == base {
-                let len = self.domains[base].1;
-                if len > cpl_ir::MAX_SUBSET_BITS {
-                    return trap(
-                        span,
-                        format!(
-                            "a `Subset` needs a domain of at most {} values, and this one has {len}",
-                            cpl_ir::MAX_SUBSET_BITS
-                        ),
-                    );
-                }
-                self.domains[subset] = (0, 1 << len);
-            }
-        }
-        Ok(())
     }
 
     // ----- places -----

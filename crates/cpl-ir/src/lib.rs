@@ -1329,9 +1329,6 @@ pub struct Program {
     /// `@!multitest(until_eof)`: there is no count; cases run until the
     /// input ends.
     pub until_eof: bool,
-    /// `Subset<D>`: each `(subset, base)` is a domain of the `2^K` subsets
-    /// of `base`, a subset held as its bitmask. It is sized when `base` is.
-    pub subsets: Vec<(DomainId, DomainId)>,
     /// The program calls `ask(...)`: every `print` goes out at once, so
     /// the judge sees a query before the answer is read.
     pub interactive: bool,
@@ -1453,8 +1450,7 @@ impl Program {
         }
     }
 
-    /// Returns the local `DomainId`s defined inside `body` (including dependent
-    /// `Subset<D>` domains) that do not escape through `ret`, in deterministic
+    /// Returns the local `DomainId`s defined inside `body` that do not escape through `ret`, in deterministic
     /// order. Both interpreter and C++ codegen save these on function entry and
     /// restore them on function exit so recursive re-entry preserves the caller.
     pub fn fn_guarded_domains(&self, ret: &Ty, body: &Block) -> Vec<DomainId> {
@@ -1474,11 +1470,6 @@ impl Program {
     ) {
         if !escaping.contains(&id) && seen.insert(id) {
             out.push(id);
-        }
-        for &(subset, base) in &self.subsets {
-            if base == id && !escaping.contains(&subset) && seen.insert(subset) {
-                out.push(subset);
-            }
         }
     }
 

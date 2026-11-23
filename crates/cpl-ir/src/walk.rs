@@ -4,237 +4,261 @@ use crate::{Arg, Block, DimSpec, Expr, ExprKind, FmtPiece, Iter, Place, PlaceKin
 use crate::{Builtin, Local, Slot, Ty};
 use std::collections::BTreeSet;
 
-/// Calls `f` on each index expression along `place`.
-pub fn place_exprs<'p>(place: &'p Place, f: &mut dyn FnMut(&'p Expr)) {
-    match &place.kind {
-        PlaceKind::Local(_) | PlaceKind::Global(_) => {}
-        PlaceKind::Field(base, _) | PlaceKind::Some(base) => place_exprs(base, f),
-        PlaceKind::Index(base, indices) => {
-            place_exprs(base, f);
-            indices.iter().for_each(f);
+macro_rules! walkers {
+    (
+        <$($lt:lifetime)?> [$($m:tt)*] $iter:ident,
+        $place:ident, $children:ident, $spec:ident, $stmt_exprs:ident, $stmt_blocks:ident
+    ) => {
+        /// Calls `f` on each index expression along `place`.
+        pub fn $place<$($lt)?>(place: &$($lt)? $($m)* Place, f: &mut dyn FnMut(&$($lt)? $($m)* Expr)) {
+            match &$($m)* place.kind {
+                PlaceKind::Local(_) | PlaceKind::Global(_) => {}
+                PlaceKind::Field(base, _) | PlaceKind::Some(base) => $place(base, f),
+                PlaceKind::Index(base, indices) => {
+                    $place(base, f);
+                    indices.$iter().for_each(f);
+                }
+            }
         }
-    }
-}
 
-/// Calls `f` on each expression directly inside `e`. Statements of a
-/// `Do` block are not expressions and are left to the caller.
-pub fn children<'p>(e: &'p Expr, f: &mut dyn FnMut(&'p Expr)) {
-    match &e.kind {
-        ExprKind::Unit
-        | ExprKind::Int(_)
-        | ExprKind::Float(_)
-        | ExprKind::Bool(_)
-        | ExprKind::Char(_)
-        | ExprKind::Str(_)
-        | ExprKind::None
-        | ExprKind::Local(_)
-        | ExprKind::Global(_)
-        | ExprKind::DomainLen(_)
-        | ExprKind::DomainLo(_)
-        | ExprKind::DomainVal(_)
-        | ExprKind::Closure(_)
-        | ExprKind::Do(_)
-        | ExprKind::Error => {}
-        ExprKind::Some(a)
-        | ExprKind::Unary(_, a)
-        | ExprKind::Cast(_, a)
-        | ExprKind::Field(a, _)
-        | ExprKind::IsVariant(a, _)
-        | ExprKind::Payload(a, _, _)
-        | ExprKind::IsSome(a)
-        | ExprKind::Unwrap(a, _) => f(a),
-        ExprKind::Binary(_, a, b) | ExprKind::Cmp(_, a, b) => {
-            f(a);
-            f(b);
-        }
-        ExprKind::If(a, b, c) => {
-            f(a);
-            f(b);
-            f(c);
-        }
-        ExprKind::Index(base, indices) => {
-            f(base);
-            indices.iter().for_each(f);
-        }
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) | ExprKind::Builtin(_, items) => {
-            items.iter().for_each(f)
-        }
-        ExprKind::Call(_, args) => {
-            for arg in args {
-                match arg {
-                    Arg::Value(value) => f(value),
-                    Arg::Mut(place) => place_exprs(place, f),
+        /// Calls `f` on each expression directly inside `e`. Statements of a
+        /// `Do` block are not expressions and are left to the caller.
+        pub fn $children<$($lt)?>(e: &$($lt)? $($m)* Expr, f: &mut dyn FnMut(&$($lt)? $($m)* Expr)) {
+            match &$($m)* e.kind {
+                ExprKind::Unit
+                | ExprKind::Int(_)
+                | ExprKind::Float(_)
+                | ExprKind::Bool(_)
+                | ExprKind::Char(_)
+                | ExprKind::Str(_)
+                | ExprKind::None
+                | ExprKind::Local(_)
+                | ExprKind::Global(_)
+                | ExprKind::DomainLen(_)
+                | ExprKind::DomainLo(_)
+                | ExprKind::DomainVal(_)
+                | ExprKind::Closure(_)
+                | ExprKind::Do(_)
+                | ExprKind::Error => {}
+                ExprKind::Some(a)
+                | ExprKind::Unary(_, a)
+                | ExprKind::Cast(_, a)
+                | ExprKind::Field(a, _)
+                | ExprKind::IsVariant(a, _)
+                | ExprKind::Payload(a, _, _)
+                | ExprKind::IsSome(a)
+                | ExprKind::Unwrap(a, _) => f(a),
+                ExprKind::Binary(_, a, b) | ExprKind::Cmp(_, a, b) => {
+                    f(a);
+                    f(b);
+                }
+                ExprKind::If(a, b, c) => {
+                    f(a);
+                    f(b);
+                    f(c);
+                }
+                ExprKind::Index(base, indices) => {
+                    f(base);
+                    indices.$iter().for_each(f);
+                }
+                ExprKind::Tuple(items) | ExprKind::Variant(_, items) | ExprKind::Builtin(_, items) => {
+                    items.$iter().for_each(f)
+                }
+                ExprKind::Call(_, args) => {
+                    for arg in args {
+                        match arg {
+                            Arg::Value(value) => f(value),
+                            Arg::Mut(place) => $place(place, f),
+                        }
+                    }
+                }
+                ExprKind::CallExpr(callee, args) => {
+                    f(callee);
+                    for arg in args {
+                        match arg {
+                            Arg::Value(value) => f(value),
+                            Arg::Mut(place) => $place(place, f),
+                        }
+                    }
+                }
+                ExprKind::Range { lo, hi } => {
+                    f(lo);
+                    f(hi);
+                }
+                ExprKind::RangeCheck { value, lo, hi, .. } => {
+                    f(value);
+                    if let Some(lo) = lo {
+                        f(lo);
+                    }
+                    if let Some(hi) = hi {
+                        f(hi);
+                    }
+                }
+                ExprKind::MutSlice(place, lo, hi) => {
+                    $place(place, f);
+                    f(lo);
+                    f(hi);
+                }
+                ExprKind::Mutate(_, place, args) => {
+                    $place(place, f);
+                    args.$iter().for_each(f);
+                }
+                ExprKind::Sort(place, sort_by, desc) => {
+                    $place(place, f);
+                    if let Some(desc) = desc {
+                        f(desc);
+                    }
+                    match sort_by {
+                        crate::SortBy::Natural => {}
+                        crate::SortBy::Key(_, key) => f(key),
+                        crate::SortBy::Fn { func, .. } => f(func),
+                    }
+                }
+                ExprKind::Read(s) => {
+                    $spec(s, f);
+                }
+                ExprKind::Parse(src, s) => {
+                    f(src);
+                    $spec(s, f);
+                }
+                ExprKind::Print(args, end) => {
+                    args.$iter().for_each(|arg| f(&$($m)* arg.value));
+                    end.$iter().for_each(|end| f(end));
+                }
+                // Only the variables a `debug(...)` names reach the C++.
+                ExprKind::Debug(_, args) => args
+                    .$iter()
+                    .filter(|arg| matches!(arg.value.kind, ExprKind::Local(_) | ExprKind::Global(_)))
+                    .for_each(|arg| f(&$($m)* arg.value)),
+                ExprKind::Format(pieces) => {
+                    for piece in pieces {
+                        match piece {
+                            FmtPiece::Value(arg) => f(&$($m)* arg.value),
+                            FmtPiece::Number(value, _) => f(value),
+                            FmtPiece::Text(_) => {}
+                        }
+                    }
+                }
+                ExprKind::Fill(ds, value) => {
+                    for dim in ds {
+                        if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {
+                            f(len);
+                        }
+                    }
+                    if let Some(value) = value {
+                        f(value);
+                    }
                 }
             }
         }
-        ExprKind::CallExpr(callee, args) => {
-            f(callee);
-            for arg in args {
-                match arg {
-                    Arg::Value(value) => f(value),
-                    Arg::Mut(place) => place_exprs(place, f),
+
+        fn $spec<$($lt)?>(s: &$($lt)? $($m)* Spec, f: &mut dyn FnMut(&$($lt)? $($m)* Expr)) {
+            match s {
+                Spec::Plain(_) | Spec::Line => {}
+                Spec::Int { lo, hi, .. } => {
+                    for bound in [lo, hi].into_iter().flatten() {
+                        f(bound);
+                    }
+                }
+                Spec::Fields(_, fields) => fields.$iter().for_each(|field| $spec(field, f)),
+                Spec::Call(call) => f(call),
+                Spec::List(each) => $spec(each, f),
+                Spec::Parse(text, inner) => {
+                    f(text);
+                    $spec(inner, f);
+                }
+                Spec::Array { dims: ds, elem } => {
+                    for dim in ds {
+                        if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {
+                            f(len);
+                        }
+                    }
+                    $spec(elem, f);
+                }
+                Spec::Opt(inner, absent) => {
+                    $spec(inner, f);
+                    if let Some(absent) = absent {
+                        f(absent);
+                    }
                 }
             }
         }
-        ExprKind::Range { lo, hi } => {
-            f(lo);
-            f(hi);
-        }
-        ExprKind::RangeCheck { value, lo, hi, .. } => {
-            f(value);
-            if let Some(lo) = lo {
-                f(lo);
-            }
-            if let Some(hi) = hi {
-                f(hi);
-            }
-        }
-        ExprKind::MutSlice(place, lo, hi) => {
-            place_exprs(place, f);
-            f(lo);
-            f(hi);
-        }
-        ExprKind::Mutate(_, place, args) => {
-            place_exprs(place, f);
-            args.iter().for_each(f);
-        }
-        ExprKind::Sort(place, sort_by, desc) => {
-            place_exprs(place, f);
-            if let Some(desc) = desc {
-                f(desc);
-            }
-            match sort_by {
-                crate::SortBy::Natural => {}
-                crate::SortBy::Key(_, key) => f(key),
-                crate::SortBy::Fn { func, .. } => f(func),
-            }
-        }
-        ExprKind::Read(s) => {
-            // Bounds and lengths inside a spec live as long as the spec.
-            let s: &'p Spec = s;
-            spec_p(s, f);
-        }
-        ExprKind::Parse(src, s) => {
-            f(src);
-            let s: &'p Spec = s;
-            spec_p(s, f);
-        }
-        ExprKind::Print(args, end) => {
-            args.iter().for_each(|arg| f(&arg.value));
-            end.iter().for_each(|end| f(end));
-        }
-        // Only the variables a `debug(...)` names reach the C++.
-        ExprKind::Debug(_, args) => args
-            .iter()
-            .filter(|arg| matches!(arg.value.kind, ExprKind::Local(_) | ExprKind::Global(_)))
-            .for_each(|arg| f(&arg.value)),
-        ExprKind::Format(pieces) => {
-            for piece in pieces {
-                match piece {
-                    FmtPiece::Value(arg) => f(&arg.value),
-                    FmtPiece::Number(value, _) => f(value),
-                    FmtPiece::Text(_) => {}
+
+        /// Calls `f` on each expression a statement holds directly: not those
+        /// inside its nested blocks.
+        pub fn $stmt_exprs<$($lt)?>(stmt: &$($lt)? $($m)* Stmt, f: &mut dyn FnMut(&$($lt)? $($m)* Expr)) {
+            match stmt {
+                Stmt::Let(_, init) => init.$iter().for_each(f),
+                Stmt::Assign(place, _, value) => {
+                    f(value);
+                    $place(place, f);
                 }
-            }
-        }
-        ExprKind::Fill(ds, value) => {
-            for dim in ds {
-                if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {
+                Stmt::Expr(e) | Stmt::Give(e) | Stmt::If(e, ..) | Stmt::While(_, e, _) => f(e),
+                Stmt::Return(value) => value.$iter().for_each(f),
+                Stmt::For(_, _, iter, _) => match iter {
+                    Iter::Range { lo, hi, step, .. } => {
+                        f(lo);
+                        f(hi);
+                        step.$iter().for_each(f);
+                    }
+                    Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => f(e),
+                    Iter::TreeRange {
+                        container, lo, hi, ..
+                    } => {
+                        f(container);
+                        if let Some((e, _)) = lo {
+                            f(e);
+                        }
+                        if let Some((e, _)) = hi {
+                            f(e);
+                        }
+                    }
+                },
+                Stmt::Assert { cond, message, .. } => {
+                    f(cond);
+                    message.$iter().for_each(f);
+                }
+                Stmt::DefDomain { lo, len, .. } => {
+                    f(lo);
                     f(len);
                 }
-            }
-            if let Some(value) = value {
-                f(value);
+                Stmt::DefDomainFromVal { val, .. } => f(val),
+                Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
             }
         }
-    }
+
+        /// The blocks directly inside a statement.
+        pub fn $stmt_blocks<$($lt)?>(stmt: &$($lt)? $($m)* Stmt, f: &mut dyn FnMut(&$($lt)? $($m)* Block)) {
+            match stmt {
+                Stmt::If(_, then, otherwise) => {
+                    f(then);
+                    f(otherwise);
+                }
+                Stmt::While(_, _, body) | Stmt::For(_, _, _, body) => f(body),
+                _ => {}
+            }
+        }
+    };
 }
 
-fn spec_p<'p>(s: &'p Spec, f: &mut dyn FnMut(&'p Expr)) {
-    match s {
-        Spec::Plain(_) | Spec::Line => {}
-        Spec::Int { lo, hi, .. } => {
-            for bound in [lo, hi].into_iter().flatten() {
-                f(bound);
-            }
-        }
-        Spec::Fields(_, fields) => fields.iter().for_each(|field| spec_p(field, f)),
-        Spec::Call(call) => f(call),
-        Spec::List(each) => spec_p(each, f),
-        Spec::Parse(text, inner) => {
-            f(text);
-            spec_p(inner, f);
-        }
-        Spec::Array { dims: ds, elem } => {
-            for dim in ds {
-                if let DimSpec::Int(len) | DimSpec::IntFrom(_, len) = dim {
-                    f(len);
-                }
-            }
-            spec_p(elem, f);
-        }
-        Spec::Opt(inner, absent) => {
-            spec_p(inner, f);
-            if let Some(absent) = absent {
-                f(absent);
-            }
-        }
+walkers!(<'p> [] iter, place_exprs, children, spec_p, stmt_exprs, stmt_blocks);
+walkers!(<> [mut] iter_mut, place_exprs_mut, children_mut, spec_p_mut, stmt_exprs_mut, stmt_blocks_mut);
+
+/// Calls `f` on every block inside `block`, at any depth (the statements
+/// of a `Do` too), inner blocks first and `block` itself last.
+pub fn blocks_mut(block: &mut Block, f: &mut dyn FnMut(&mut Block)) {
+    for stmt in &mut block.stmts {
+        stmt_exprs_mut(stmt, &mut |e| expr_blocks_mut(e, f));
+        stmt_blocks_mut(stmt, &mut |inner| blocks_mut(inner, f));
     }
+    f(block);
 }
 
-/// Calls `f` on each expression a statement holds directly: not those
-/// inside its nested blocks.
-fn stmt_exprs<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Expr)) {
-    match stmt {
-        Stmt::Let(_, init) => init.iter().for_each(f),
-        Stmt::Assign(place, _, value) => {
-            f(value);
-            place_exprs(place, f);
-        }
-        Stmt::Expr(e) | Stmt::Give(e) | Stmt::If(e, ..) | Stmt::While(_, e, _) => f(e),
-        Stmt::Return(value) => value.iter().for_each(f),
-        Stmt::For(_, _, iter, _) => match iter {
-            Iter::Range { lo, hi, step, .. } => {
-                f(lo);
-                f(hi);
-                step.iter().for_each(f);
-            }
-            Iter::RangeVal(e, _) | Iter::Seq(e, _) | Iter::Subsets(e) | Iter::Members(e) => f(e),
-            Iter::TreeRange {
-                container, lo, hi, ..
-            } => {
-                f(container);
-                if let Some((e, _)) = lo {
-                    f(e);
-                }
-                if let Some((e, _)) = hi {
-                    f(e);
-                }
-            }
-        },
-        Stmt::Assert { cond, message, .. } => {
-            f(cond);
-            message.iter().for_each(f);
-        }
-        Stmt::DefDomain { lo, len, .. } => {
-            f(lo);
-            f(len);
-        }
-        Stmt::DefDomainFromVal { val, .. } => f(val),
-        Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => {}
+fn expr_blocks_mut(e: &mut Expr, f: &mut dyn FnMut(&mut Block)) {
+    if let ExprKind::Do(block) = &mut e.kind {
+        blocks_mut(block, f);
     }
-}
-
-/// The blocks directly inside a statement.
-pub fn stmt_blocks<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Block)) {
-    match stmt {
-        Stmt::If(_, then, otherwise) => {
-            f(then);
-            f(otherwise);
-        }
-        Stmt::While(_, _, body) | Stmt::For(_, _, _, body) => f(body),
-        _ => {}
-    }
+    children_mut(e, &mut |child| expr_blocks_mut(child, f));
 }
 
 /// Calls `f` on `e` and on every expression inside it, at any depth,

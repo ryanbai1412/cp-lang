@@ -42,7 +42,7 @@ use cpl_syntax::narrow;
 use mono::*;
 use prefix::prefix_shape_struct;
 use range::*;
-use std::collections::{HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Lists the names of all `@test` functions declared at the top level of `analysis`.
 pub fn list_tests(analysis: &Analysis) -> Vec<String> {
@@ -353,6 +353,20 @@ impl Lowerer<'_> {
             };
             first.stmts.splice(0..0, preamble);
         }
+        // A library domain is sized after every definition of a domain it reads.
+        let mut main = std::mem::take(&mut lw.main_body);
+        let mut setup = std::mem::take(&mut lw.setup_body);
+        let mut bodies = std::mem::take(&mut lw.bodies);
+        let mut closures = std::mem::take(&mut lw.closures);
+        lw.size_library_domains(&mut main);
+        lw.size_library_domains(&mut setup);
+        for f in bodies.iter_mut().flatten() {
+            lw.size_library_domains(&mut f.body);
+        }
+        for c in &mut closures {
+            lw.size_library_domains(&mut c.body);
+        }
+        (lw.main_body, lw.setup_body, lw.bodies, lw.closures) = (main, setup, bodies, closures);
         // A mistake in the user's code often breaks the library code it asks
         // for as well. The user's own mistake is the one to show.
         if lw.diags.iter().any(|d| !lw.in_library.contains(&d.message)) {
@@ -417,7 +431,6 @@ impl Lowerer<'_> {
             structs: lw.structs.iter().map(|s| s.def.clone()).collect(),
             enums: lw.enums,
             domains: lw.domains,
-            subsets: lw.subsets,
             globals: lw.globals,
             fns,
             library_fns,
@@ -659,6 +672,16 @@ pub(super) struct SumEnumInfo {
     pub(super) variants: Vec<(String, Vec<ProductFactor>)>,
 }
 
+/// The length of a library domain, from the domains it is built on.
+enum LibrarySize {
+    /// An `impl Index` instance: its `let count`, lowered with the type
+    /// arguments bound.
+    Count(Expr),
+    /// The builtin `Subset<D>`: the `2^|D|` masks. It goes once `Subset`
+    /// is std's own `impl Index`.
+    Subsets(DomainId),
+}
+
 struct Lowerer<'a> {
     mods: Vec<&'a Analysis>,
     path_to_mod: HashMap<String, ModId>,
@@ -723,6 +746,9 @@ struct Lowerer<'a> {
     domains: Vec<String>,
     /// `Subset<D>` domains: `(subset, base)`.
     subsets: Vec<(DomainId, DomainId)>,
+    /// How each library domain is sized, by its `DomainId`: right after
+    /// every definition of a domain its size reads.
+    library_sizes: BTreeMap<DomainId, LibrarySize>,
     /// Factor definitions for product domains (`domain State = (V, K)`).
     pub(super) product_domains: HashMap<DomainId, Vec<(Option<String>, ProductFactor)>>,
     /// Finite-index payload enums lowered as dense `DomainId`s (§2.16).
@@ -862,6 +888,7 @@ impl<'a> Lowerer<'a> {
             enum_insts: HashMap::new(),
             domains: Vec::new(),
             subsets: Vec::new(),
+            library_sizes: BTreeMap::new(),
             product_domains: HashMap::new(),
             sum_enums: HashMap::new(),
             enum_to_sum_domain: HashMap::new(),
@@ -2650,7 +2677,90 @@ impl<'a> Lowerer<'a> {
         let subset = self.domains.len();
         self.domains.push(format!("Subset<{}>", self.domains[base]));
         self.subsets.push((subset, base));
+        self.library_sizes
+            .insert(subset, LibrarySize::Subsets(base));
         subset
+    }
+
+    /// Sizes the library domain `id` to `len`: after every definition of a
+    /// domain `len` reads, or once before `main` when it reads none.
+    pub(super) fn size_library_domain(&mut self, id: DomainId, len: Expr) {
+        let size = LibrarySize::Count(len);
+        if library_size_bases(&size).is_empty() {
+            let mut stmts = Vec::new();
+            self.push_library_size(id, &size, size_span(&size), &mut stmts);
+            self.preamble_stmts.extend(stmts);
+        } else {
+            self.library_sizes.insert(id, size);
+        }
+    }
+
+    /// Sizes each library domain built on `base`, which a statement at
+    /// `span` just defined, and in turn those built on them.
+    fn library_sizing(&self, base: DomainId, span: Span, out: &mut Vec<Stmt>) {
+        for (&id, size) in &self.library_sizes {
+            if library_size_bases(size).contains(&base) {
+                self.push_library_size(id, size, span, out);
+                self.library_sizing(id, span, out);
+            }
+        }
+    }
+
+    fn push_library_size(&self, id: DomainId, size: &LibrarySize, span: Span, out: &mut Vec<Stmt>) {
+        let int = |kind| Expr {
+            kind,
+            ty: Ty::Int,
+            span,
+        };
+        let len = match size {
+            LibrarySize::Count(len) => len.clone(),
+            LibrarySize::Subsets(base) => {
+                let bits = int(ExprKind::DomainLen(*base));
+                let limit = int(ExprKind::Int(MAX_SUBSET_BITS));
+                let too_big = Expr {
+                    kind: ExprKind::Cmp(CmpOp::Gt, Box::new(bits.clone()), Box::new(limit)),
+                    ty: Ty::Bool,
+                    span,
+                };
+                let message =
+                    format!("a `Subset` needs a domain of at most {MAX_SUBSET_BITS} values");
+                let trap = Block {
+                    stmts: vec![Stmt::Trap(message, span)],
+                };
+                out.push(Stmt::If(too_big, trap, Block::default()));
+                let one = int(ExprKind::Int(1));
+                int(ExprKind::Binary(BinOp::Shl, Box::new(one), Box::new(bits)))
+            }
+        };
+        out.push(Stmt::DefDomain {
+            id,
+            lo: int(ExprKind::Int(0)),
+            len,
+        });
+    }
+
+    /// Puts each library domain's sizing after every definition, in
+    /// `block`, of a domain it reads.
+    fn size_library_domains(&self, block: &mut Block) {
+        if self.library_sizes.is_empty() {
+            return;
+        }
+        walk::blocks_mut(block, &mut |b| {
+            let mut stmts = Vec::with_capacity(b.stmts.len());
+            for stmt in std::mem::take(&mut b.stmts) {
+                let defined = match &stmt {
+                    Stmt::DefDomain { id, .. } | Stmt::DefDomainFromVal { id, .. } => {
+                        Some((*id, stmt.span().unwrap_or_default()))
+                    }
+                    _ => None,
+                };
+                stmts.push(stmt);
+                if let Some((id, span)) = defined {
+                    self.library_sizing(id, span, &mut stmts);
+                }
+            }
+            b.stmts = stmts;
+        });
     }
 
     /// The domain whose subsets `subset` holds, when it is a `Subset<D>`.
@@ -5731,5 +5841,32 @@ fn type_has_hole(ty: &ast::Type) -> bool {
         ast::TypeKind::Tuple(ts) => ts.iter().any(type_has_hole),
         ast::TypeKind::Record(fs) => fs.iter().any(|(_, t)| type_has_hole(t)),
         _ => false,
+    }
+}
+
+/// The domains a library domain's size reads.
+fn library_size_bases(size: &LibrarySize) -> Vec<DomainId> {
+    match size {
+        LibrarySize::Subsets(base) => vec![*base],
+        LibrarySize::Count(len) => {
+            let mut bases = Vec::new();
+            walk::deep_expr(len, &mut |e| {
+                if let ExprKind::DomainLen(d) | ExprKind::DomainLo(d) | ExprKind::DomainVal(d) =
+                    e.kind
+                {
+                    if !bases.contains(&d) {
+                        bases.push(d);
+                    }
+                }
+            });
+            bases
+        }
+    }
+}
+
+fn size_span(size: &LibrarySize) -> Span {
+    match size {
+        LibrarySize::Count(len) => len.span,
+        LibrarySize::Subsets(_) => Span::default(),
     }
 }
