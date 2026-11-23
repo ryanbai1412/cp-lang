@@ -1861,6 +1861,20 @@ impl<'a> Checker<'a> {
         if self.member_advice(&base_ty, name) {
             return Ty::Error;
         }
+        if let Ty::Named { name: owner, .. } = &base_ty {
+            if self.env.is_private_field(owner, &name.text) {
+                let message = format!(
+                    "`{}` is private to the module that declares `{owner}`",
+                    name.text
+                );
+                if let Some(diag) = self.error(codes::PRIVATE_NAME, name.span, message) {
+                    diag.help = Some(format!(
+                        "mark it `pub` where `{owner}` declares it (R11.1.4)"
+                    ));
+                }
+                return Ty::Error;
+            }
+        }
 
         let ty = self.member_ty(expr, name, base_ty.clone());
         let built_in = matches!(

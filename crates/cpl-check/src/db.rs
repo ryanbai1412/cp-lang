@@ -1799,18 +1799,6 @@ impl FileCtx<'_> {
         (None, 0)
     }
 
-    /// The definition of `name` in the first module this file reaches
-    /// that has one.
-    fn reached(&mut self, name: &str) -> (Option<Arc<Def>>, u64) {
-        let scope = self.scope.clone();
-        for module in &scope.modules {
-            if module.analysis.scope.names.contains_key(name) {
-                return self.module_def(module, name);
-            }
-        }
-        (None, 0)
-    }
-
     /// The definition behind a type's name: this file's own or imported one, else one in a
     /// module it reaches (a library's value can come back without importing its type).
     fn type_def(&mut self, name: &str) -> (Option<Arc<Def>>, u64) {
@@ -2136,6 +2124,10 @@ impl Env for FileCtx<'_> {
         let module = &self.scope.modules[idx];
         module.analysis.scope.names.contains_key(member)
             && !module.analysis.public_names().iter().any(|n| n == member)
+    }
+
+    fn is_private_field(&mut self, ty: &str, member: &str) -> bool {
+        self.member_private(ty, member)
     }
 
     fn impls(&mut self, target: &str) -> Vec<(Option<String>, Arc<Def>)> {

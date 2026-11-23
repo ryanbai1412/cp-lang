@@ -712,7 +712,7 @@ pub fn interpolate<P>(xs: List<Mod<P>>, ys: List<Mod<P>>) -> List<Mod<P>>:
     out
 
 /// O(n) storage. Algebraic polynomial / formal power series wrapper over `T` (lowest degree first).
-pub struct Poly<T>(c: List<T>):
+pub struct Poly<T>(pub c: List<T>):
     /// A polynomial with coefficients `c`, lowest degree first, stored as given (trailing zeros
     /// kept, so `len` is `c.len`).
     ///

@@ -14,7 +14,7 @@ use std.rand.{Rng}
 pub struct Mat<T>:
     pub rows: Int
     pub cols: Int
-    data: List<T>
+    pub data: List<T>
 
     /// A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`):
     /// `Mat(over: Semiring(min, +), d)`. `m * m2`, `pow(m, k)` and a `SegTree(*, ...)` of

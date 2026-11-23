@@ -44,6 +44,10 @@ pub(crate) trait Env {
     fn is_private_member(&mut self, _alias: &str, _member: &str) -> bool {
         false
     }
+    /// True if `member` of the struct `ty` is private to another module (R11.1.4).
+    fn is_private_field(&mut self, _ty: &str, _member: &str) -> bool {
+        false
+    }
     /// What calling the top-level fn `name` touches outside itself,
     /// counting the fns it calls.
     fn effects(&mut self, name: &str) -> Arc<lends::Effects>;

@@ -66,7 +66,7 @@ pub struct Rooted<V, Pre>:
     pub heavy: [V]?V
     /// The highest vertex of the heavy chain through `v`.
     pub top: [V]V
-    tin: [V]Pre
+    pub tin: [V]Pre
     /// The inverse of `tin` / `pos`.
     pub at: [Pre]V
 

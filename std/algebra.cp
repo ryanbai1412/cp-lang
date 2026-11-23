@@ -64,7 +64,7 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 /// The positional form `Action(id, compose, apply, over: op)` is the same call. A flipped
 /// `compose` still type-checks, so check a hand-written action once with
 /// `laws_hold(act, T: [...], F: [...])`.
-pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>):
+pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, apply: (F, T, Int) -> T, pub over: Monoid<T>):
     law ident(a: T) = apply(id, a, 1) == a
     // `compose(f, g)` applies `g` first, then `f`.
     law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
@@ -159,7 +159,7 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
 /// Concatenation (`+` or `MaxSub.join`) is associative with identity `MaxSub.empty` in O(1);
 /// `s.scale(k)` scales every element by non-negative `k` in O(1).
 /// Implements `Reversible` (swapping `pre` and `suf`) for tree-path folds.
-pub struct MaxSub(has: Bool, best: Int, total: Int, pub pre: Int, pub suf: Int):
+pub struct MaxSub(has: Bool, pub best: Int, total: Int, pub pre: Int, pub suf: Int):
     /// The summary of no elements: the identity of `join`. It has no best subarray.
     ///
     /// cost: O(1)

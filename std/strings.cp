@@ -1450,7 +1450,7 @@ pub trait Hashable:
 /// are O(1). Each constructor draws independent random salted bases unless `bases:` is passed
 /// explicitly, so 2D row and column hashes never collide on transposes.
 pub struct RollingHash:
-    bases: (Int, Int)
+    pub bases: (Int, Int)
     p1: List<Int>
     p2: List<Int>
     pow1: List<Int>
@@ -2118,7 +2118,7 @@ pub struct SuffixAutomaton<A>:
     max_len: List<0..=2_000_000_000>
     first_end: List<-1..=2_000_000_000>
     prefix: List<Bool>
-    last: 0..=2_000_000_000
+    pub last: 0..=2_000_000_000
     letters: List<?A>
 
     /// An empty suffix automaton over the alphabet domain `A`: only the root state `0`. Call it

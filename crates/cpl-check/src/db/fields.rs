@@ -1,5 +1,6 @@
 //! Where a struct declares a field, for an error elsewhere that offers to
-//! change the declaration: `var` on a fixed field (E0405).
+//! change the declaration: `var` on a fixed field (E0405), and whether a
+//! member of a struct from another module is `pub` there (E0207).
 
 use super::*;
 
@@ -49,5 +50,68 @@ impl FileCtx<'_> {
         };
         let back = u64::from(self.back_to(k).unwrap_or(0));
         self.items[k].hash ^ back.wrapping_mul(0x9e37_79b9_7f4a_7c15)
+    }
+
+    /// The definition of `name` in the first module this file reaches
+    /// that has one.
+    pub(super) fn reached(&mut self, name: &str) -> (Option<Arc<Def>>, u64) {
+        let scope = self.scope.clone();
+        for module in &scope.modules {
+            if module.analysis.scope.names.contains_key(name) {
+                return self.module_def(module, name);
+            }
+        }
+        (None, 0)
+    }
+
+    /// R11.1.4: `ty`, a struct another module declares, has `member` without `pub`. A
+    /// struct this file declares shows every member to it.
+    pub(super) fn member_private(&mut self, ty: &str, member: &str) -> bool {
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        if self.scope.names.contains_key(ty) {
+            return false;
+        }
+        let scope = self.scope.clone();
+        let Some(module) = scope
+            .modules
+            .iter()
+            .find(|m| m.analysis.scope.names.contains_key(ty))
+        else {
+            return false;
+        };
+        let stmts = module
+            .analysis
+            .items
+            .iter()
+            .flat_map(|i| &i.syntax.parsed.stmts);
+        let mut seen = false;
+        for stmt in stmts {
+            let members: &[ast::Stmt] = match &stmt.kind {
+                StmtKind::Struct(s) if s.name.text == ty => {
+                    if let Some(f) = s.fields.iter().find(|f| f.name.text == member) {
+                        return !f.public;
+                    }
+                    &s.methods
+                }
+                StmtKind::Impl {
+                    trait_name: None,
+                    target,
+                    body,
+                    ..
+                } if matches!(&target.kind, ast::TypeKind::Named { name, .. } if name.text == ty) => {
+                    &body.stmts
+                }
+                _ => continue,
+            };
+            for m in members {
+                if matches!(&m.kind, StmtKind::Fn(f) if f.name.text == member) {
+                    seen = true;
+                    if m.public {
+                        return false;
+                    }
+                }
+            }
+        }
+        seen
     }
 }

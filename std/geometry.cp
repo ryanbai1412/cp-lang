@@ -1789,7 +1789,7 @@ pub fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec:
     Some(a + Vec(v.y * u2 - u.y * v2, u.x * v2 - v.x * u2) / den)
 
 /// O(1) value type. A 2D circle with center `c` and non-negative radius `r`.
-pub struct Circle(pub c: Vec, r: F64):
+pub struct Circle(pub c: Vec, pub r: F64):
     /// The circle through `a`, `b` and `c`: centre `circumcenter(a, b, c, eps)`, radius its distance
     /// to `a`; `None` when collinear.
     ///

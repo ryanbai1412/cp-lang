@@ -186,8 +186,8 @@ pub fn divmod(self: Int, d: Int) -> (Int, Int) = (self / d, self % d)
 /// The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear sieve.
 /// O(n) time and memory.
 pub struct Sieve:
-    spf: List<0..=2_000_000_000>
-    primes: List<0..=2_000_000_000>
+    pub spf: List<0..=2_000_000_000>
+    pub primes: List<0..=2_000_000_000>
 
     /// A linear sieve up to `n`: the smallest prime factor of every `0..=n` and the primes in
     /// `2..=n`, ascending.
