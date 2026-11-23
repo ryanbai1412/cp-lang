@@ -36,6 +36,10 @@ Binary search lives on ranges (round 1). This round adds the rest.
 
 The answer-search idiom is just the range method, read as the statement:
 
+<!-- given:
+  fn can_finish(by: Int) -> Bool = by >= 7
+  fn fits(k: Int) -> Bool = k <= 3
+  let n = 10 -->
 ```python
 let t = (0..=1e18).first_true(t => can_finish(by: t))!   // smallest feasible time
 let k = (1..=n).last_true(k => fits(k)) ?? 0             // largest k that fits, 0 if None

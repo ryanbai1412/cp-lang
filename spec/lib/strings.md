@@ -396,7 +396,7 @@ repeat t:
     var wait = Z(m) ** n
     for b in borders([name[i] for i in 0..n]):
         wait += Z(m) ** b
-    print(f"{wait.v:04}")
+    print("{wait.v:04}")
 ```
 
 ### 5.2 NOI 2015 — Wine Tasting (`noi15p5`)

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- core/04b, core/07, lib/search-dp, lib/strings: 4 blocks given setup, `f".."` -> `".."` in a strings example (there is no f prefix); spec-blocks 50 -> 52/185, errors 71 -> 69. Three given blocks fail on compiler disagreements (E0603 on R8-legal slices, `n.isqrt()`), in compiler/worklog.md.
 - lib/sequence-patterns, graphs-trees, containers: 3 blocks given setup, 2 std excerpts/listings spec-only, `!x` -> `not x` and `let RT` -> `const RT` in examples; spec-blocks 48 -> 50/185 pass, errors 75 -> 71. `runs(link:)`, `gcd(xs)` filed with stdlib; a `List<Int>` vs `List<Int>` E0302 with diagnostics.
 - lib/graphs-trees: 5 blocks given a small graph; spec-blocks 45 -> 48/185 pass. Two of them fail on stubs missing `Visit.prune` and `Rooted.order` (stdlib/worklog.md).
 - Spec-block runner reads markers above indented fences and strips the fence's indent from the body (CommonMark); lib/geometry's two programs fixed (`F64(1e9)` for a `Vec` bound, a parenthesized two-line condition). spec-blocks 43 -> 45/185 pass, errors 87 -> 78. Ratchet tests 8/8.

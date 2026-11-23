@@ -74,6 +74,9 @@ fn solve(r: Range<V>) -> Int:
 **Search in a suffix (B2).** `search` answers in `s`'s keys, so the token is
 `s[l..j]` with no `+ l`.
 
+<!-- given:
+  let s = "a,bc,d"
+  var words = List<Str>() -->
 ```python
 var l = 0
 while l < s.len:
@@ -102,6 +105,9 @@ for (i, x) in a[l..=r].items:            // i runs over l..=r
 **Consuming from the front (A7).** The keys of `rest` shrink, and the
 elements never move.
 
+<!-- given:
+  let a = [1, 2, 3]
+  var budget = 4 -->
 ```python
 var rest = a[..]
 while let x = rest.first:

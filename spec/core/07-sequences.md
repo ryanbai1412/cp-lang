@@ -190,6 +190,9 @@ a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own typ
 
 ## Generators
 
+<!-- given:
+  let n = 12
+  let lim = 5 -->
 ```python
 fn divisors(n: Int) -> yields Int:
     for d in 1..=n.isqrt():
