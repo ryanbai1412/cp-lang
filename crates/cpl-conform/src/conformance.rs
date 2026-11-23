@@ -72,6 +72,15 @@ impl Backend<'_> {
     }
 }
 
+/// A program that traps in a checked build is invalid, and release runs no
+/// checks (R09.2.2), so a release run has no trap to compare.
+fn release_trap_outcome(release: bool) -> Option<CaseOutcome> {
+    release.then(|| CaseOutcome {
+        status: "skip".into(),
+        detail: "release runs no checks (R09.2.2)".into(),
+    })
+}
+
 fn release() -> bool {
     std::env::var_os("CPL_CONFORM_RELEASE").is_some_and(|v| v == "1")
 }
@@ -570,6 +579,9 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                     ),
                 };
             }
+            if let Some(skip) = release_trap_outcome(release()) {
+                return skip;
+            }
             let target_line = line + offset;
             let run = match backend.run(&path_str, &text, &header_input(&text)) {
                 Ok(r) => r,
@@ -830,5 +842,16 @@ mod tests {
         assert_eq!(header_input(text), b"3 4\n");
         assert_eq!(parse_header(text).unwrap().1, 2);
         assert!(header_input("// expect: ok\nprint(1)\n").is_empty());
+    }
+}
+
+#[cfg(test)]
+mod release_tests {
+    use super::*;
+
+    #[test]
+    fn release_skips_trap_cases_and_checked_runs_them() {
+        assert_eq!(release_trap_outcome(true).unwrap().status, "skip");
+        assert!(release_trap_outcome(false).is_none());
     }
 }
