@@ -1,5 +1,5 @@
-// expect: ok, output "[(b, 2), (d, 1)]"
+// expect: ok, output "1 b 2\n3 d 1"
 // rule: 07.2.1
 use std.seq.{runs}
 let ss = "abbd"
-print(ss[1..4].runs())
+for r in ss[1..4].runs(): print(r.keys.first!, r.first!, r.len)
