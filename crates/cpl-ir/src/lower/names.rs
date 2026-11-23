@@ -1,8 +1,11 @@
 //! The names a lowered fn shows in traces, call stacks and the debugger,
 //! and the prelude names a call keeps beside std's fold of that name.
 
+use super::call::Reduce;
 use super::Lowerer;
-use cpl_syntax::ast::{Arg, ExprKind};
+use crate::Expr;
+use cpl_diag::Span;
+use cpl_syntax::ast::{self, Arg, ExprKind};
 
 /// `min(a, b)` and `count(x > 1 for x in xs)` call the core prelude fn even
 /// where std.seq's fold of that name is in scope (R11.3.3, decision 53).
@@ -17,6 +20,19 @@ pub(super) fn core_over_std(name: &str, args: &[Arg]) -> bool {
 }
 
 impl Lowerer<'_> {
+    /// `s.max()` or `s.min()`; `optional` gives `?T`, `None` when empty (under
+    /// `??` or `!`, and always on a slice, which can be empty: R07.9.3).
+    pub(super) fn min_max_reduce(
+        &mut self,
+        max: bool,
+        seq: &ast::Expr,
+        optional: bool,
+        span: Span,
+    ) -> Expr {
+        let kind = if max { Reduce::Max } else { Reduce::Min };
+        self.reduce_opt(kind, seq, optional, span)
+    }
+
     /// Per fn: whether a library module declares it, and its source name
     /// (`Heap.pop` for the method lowered as `Heap_Tup2_Int_P0_10.pop`).
     pub(super) fn fn_names(&self) -> (Vec<bool>, Vec<String>) {

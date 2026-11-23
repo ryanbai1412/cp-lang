@@ -4,7 +4,7 @@
 use super::*;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Reduce {
+pub(super) enum Reduce {
     Sum,
     Count,
     All,
@@ -3789,12 +3789,7 @@ impl<'a> Lowerer<'a> {
                 );
                 self.err_expr(span)
             }
-            [one] => self.reduce_opt(
-                if is_max { Reduce::Max } else { Reduce::Min },
-                &one.value,
-                false,
-                span,
-            ),
+            [one] => self.min_max_reduce(is_max, &one.value, false, span),
             _ => {
                 let mut values: Vec<Expr> =
                     args.iter().map(|a| self.expr(&a.value, None)).collect();
@@ -4039,8 +4034,7 @@ impl<'a> Lowerer<'a> {
             if args.len() == 1 && args[0].name.is_none() {
                 if let ast::ExprKind::Name(n) = &callee.kind {
                     if (n == "min" || n == "max") && self.lookup(n).is_none() {
-                        let kind = if n == "max" { Reduce::Max } else { Reduce::Min };
-                        return self.reduce_opt(kind, &args[0].value, true, e.span);
+                        return self.min_max_reduce(n == "max", &args[0].value, true, e.span);
                     }
                 }
             }
@@ -4061,12 +4055,7 @@ impl<'a> Lowerer<'a> {
                         )
                     )
                 {
-                    let kind = if name.text == "max" {
-                        Reduce::Max
-                    } else {
-                        Reduce::Min
-                    };
-                    return self.reduce_opt(kind, base, true, e.span);
+                    return self.min_max_reduce(name.text == "max", base, true, e.span);
                 }
                 if args.len() == 1
                     && args[0].name.is_none()
@@ -4110,12 +4099,7 @@ impl<'a> Lowerer<'a> {
                     .as_ref()
                     .is_some_and(|e| !matches!(e, Ty::Int | Ty::I128 | Ty::Float))
                 {
-                    let kind = if op_name == "min" {
-                        Reduce::Min
-                    } else {
-                        Reduce::Max
-                    };
-                    return self.reduce_opt(kind, base, optional, span);
+                    return self.min_max_reduce(op_name == "max", base, optional, span);
                 }
             }
         }
@@ -4649,7 +4633,13 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Builtin(Builtin::RangeSum, args), Ty::Int, span)
     }
 
-    fn reduce_opt(&mut self, kind: Reduce, arg: &ast::Expr, optional: bool, span: Span) -> Expr {
+    pub(super) fn reduce_opt(
+        &mut self,
+        kind: Reduce,
+        arg: &ast::Expr,
+        optional: bool,
+        span: Span,
+    ) -> Expr {
         if matches!(kind, Reduce::Sum) && !optional {
             if let Some(closed) = self.try_range_int_sum(arg, span) {
                 return closed;
@@ -7385,14 +7375,8 @@ impl<'a> Lowerer<'a> {
                         self.sorted_by(value, args, span)
                     };
                 }
-                // A slice can be empty, so its `max()` is `?T`, as the checker types it (R07.9.3).
                 ([], "min" | "max") if matches!(seq_ty, Some(Ty::ListView(..))) => {
-                    let kind = if name.text == "max" {
-                        Reduce::Max
-                    } else {
-                        Reduce::Min
-                    };
-                    return self.reduce_opt(kind, base, true, span);
+                    return self.min_max_reduce(name.text == "max", base, true, span);
                 }
                 ([], "min" | "max") if !matches!(seq_ty, Some(Ty::Set(_))) => {
                     return self.min_max(name.text == "max", &[seq], span);
@@ -7908,7 +7892,8 @@ impl<'a> Lowerer<'a> {
             base: Box::new(base.clone()),
             name: name.clone(),
         };
-        if let Some(op) = self.detect_bare_op(&ast::Expr { kind: field, span }) {
+        let op = self.detect_bare_op(&ast::Expr { kind: field, span });
+        if let Some(op) = op.or_else(|| self.field_op(base, &name.text)) {
             if let Some(e) = self.bare_op_call(op, name.span, args, span, hint) {
                 return e;
             }

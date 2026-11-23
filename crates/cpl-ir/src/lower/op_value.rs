@@ -82,4 +82,17 @@ impl<'a> Lowerer<'a> {
         let ty = self.probe_ty_silent(e)?;
         self.op_of_type(&ty)
     }
+
+    /// The operator a record field holds (`ops.count` of `(count: +, n: 2)`),
+    /// so `ops.count(a, b)` calls it. Only probed once an operator value exists.
+    pub(super) fn field_op(&mut self, base: &ast::Expr, field: &str) -> Option<BareOp> {
+        if self.op_types.is_empty() {
+            return None;
+        }
+        let Some(Ty::Record(fields)) = self.probe_ty_silent(base) else {
+            return None;
+        };
+        let (_, ty) = fields.iter().find(|(name, _)| name == field)?;
+        self.op_of_type(ty)
+    }
 }
