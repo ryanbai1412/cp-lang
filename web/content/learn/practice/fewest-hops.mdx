@@ -1,0 +1,20 @@
+---
+title: Fewest hops
+description: "Level B. Teaches a vertex domain, reading edges and bfs."
+---
+
+There are n cities (1 ≤ n ≤ 2·10⁵) and m two-way roads (0 ≤ m ≤ 2·10⁵), each joining two cities. Print the fewest roads on a trip from city 1 to city n, or -1 if city n can't be reached.
+
+**Input:** n and m, then m lines of two cities. **Output:** one number.
+
+| Input | Output |
+|---|---|
+| `5 5`<br/>`1 2`<br/>`2 3`<br/>`3 5`<br/>`1 4`<br/>`4 5` | `2` |
+
+<Judge id="fewest-hops">
+
+- `domain V = 1..=n` makes cities their own type, and reading `(u: V, v: V)` rejects a road to city 0 or n + 1.
+- `bfs` returns `?Int` per city: `None` is "unreachable", so the program never compares against `-1` or `INF`.
+- With n = 1 the answer is 0 even with no roads: the start is already the goal.
+
+</Judge>

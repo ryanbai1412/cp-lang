@@ -1,0 +1,20 @@
+---
+title: Maze walk
+description: "Level B. Teaches a grid as a graph: cells as vertices, adj4 and bfs."
+---
+
+A maze has n rows and m columns (1 ≤ n, m ≤ 1000) of `.` (open) and `#` (wall). The top-left and bottom-right cells are open. In one step you move to an open cell that shares a side with yours. Print the fewest steps from the top-left to the bottom-right cell, or -1.
+
+**Input:** n and m, then n lines of m characters. **Output:** one number.
+
+| Input | Output |
+|---|---|
+| `3 4`<br/>`..#.`<br/>`.#..`<br/>`....` | `5` |
+
+<Judge id="maze-walk">
+
+- A cell `(r, c)` over `domain R` and `domain Col` is a vertex; `bfs` takes a function from a cell to its neighbours instead of a built graph.
+- `c.adj4` yields only the neighbours inside the grid, so there is no `0 <= r < n` check to get wrong.
+- Reading `[R, Col]Char` reads the n lines of m characters in one go.
+
+</Judge>

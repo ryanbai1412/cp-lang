@@ -49,7 +49,7 @@ All measured 2026-11-22 on main `4b8f504f` (commands in [metrics.toml](metrics.t
 | Page weight, gzipped | `pnpm --dir web page-weight` | `/` 783,489 B, no cpl.wasm (was 2,560,698 B); `/docs/guides/tour` 829,726 B | `/` ≤ 800,000 B and no cpl.wasm; tour ≤ 900,000 B | M1 |
 | Docs-only eval pass | `scripts/writable-from-docs.py --manifest research/writable-from-docs-set.json` | **not runnable** (statement fetcher deleted); last recorded 49/55 | ≥ 52/55 | M2 |
 | Live routes up | `curl` 8 routes on cp-lang.org | 8/8 200 | 8/8 | - |
-| Learn content | `ls web/content/learn/read web/content/practice` | 8 chapters, 15 problems | 8, 15 | M3 |
+| Learn content | `ls web/content/learn/read web/content/practice` | 9 chapters, 17 problems | 10, 19 | M3 |
 
 ## Judgment rubric
 

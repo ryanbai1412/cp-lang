@@ -1,0 +1,27 @@
+[
+ {
+  "input": "3 4\n..#.\n.#..\n....\n",
+  "expected": "5\n",
+  "sample": true
+ },
+ {
+  "input": "1 1\n.\n",
+  "expected": "0\n"
+ },
+ {
+  "input": "2 2\n.#\n#.\n",
+  "expected": "-1\n"
+ },
+ {
+  "input": "3 3\n...\n##.\n...\n",
+  "expected": "4\n"
+ },
+ {
+  "input": "4 5\n.....\n####.\n.....\n.####\n",
+  "expected": "-1\n"
+ },
+ {
+  "input": "5 5\n.....\n.###.\n.#...\n.#.#.\n...#.\n",
+  "expected": "8\n"
+ }
+]

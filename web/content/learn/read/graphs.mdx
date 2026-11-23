@@ -1,0 +1,118 @@
+---
+title: "Graphs"
+description: "Vertex domains, Graph.undirected, bfs, components, dijkstra, topo and grids."
+---
+
+A graph problem names its vertices `1..n` and lists m edges. In CP
+Lang the vertices are a domain, the edges are read as records, and
+the standard searches return a table over that domain, so a vertex
+can't be confused with an edge index or a distance.
+
+## Reading a graph
+
+Declare the vertex domain from `n`, read the edges as `(u: V, v: V)`
+records, and build the graph once. `bfs` returns the distance to every
+vertex as `?Int`: `None` means unreachable, so there is no `-1` or
+`INF` inside the program, only at the output:
+
+```cp run input="5 4\n1 2\n2 3\n1 3\n4 5\n"
+let (n, m): (1..=2e5, 0..=2e5) = read()
+domain V = 1..=n
+let es: [0..m](u: V, v: V) = read()
+let g = Graph.undirected(es)
+let p = bfs(g, [V(1)])
+for v in V: print(p[v] ?? -1)
+```
+
+Reading an edge `(u: V, v: V)` checks that both ends are in `1..=n`,
+and `g[u]` lists the neighbours of `u`. `Graph` stores every edge in
+one flat array, so building it allocates once.
+
+## Connected components
+
+`components` gives a fresh domain `C` with one value per component,
+and `comp[v]` names the component of `v`. Its count is `C.len`:
+
+```cp run input="5 4\n1 2\n2 3\n1 3\n4 5\n"
+use std.graph.{components}
+let (n, m): (1..=2e5, 0..=2e5) = read()
+domain V = 1..=n
+let es: [0..m](u: V, v: V) = read()
+let g = Graph.undirected(es)
+let (domain C, comp) = components(g)
+print(C.len)
+```
+
+Because `C` is its own domain, an array `[C]Int` of component sizes
+can't be indexed by a vertex by mistake.
+
+## Weighted shortest paths
+
+Add a weight to the edge record and use `dijkstra`. Its sources are
+`(vertex, starting distance)` pairs, so a multi-source search is the
+same call with more pairs. `p.path(t)` is the vertices of a shortest
+path, or `None`:
+
+```cp run input="4 5\n1 2 1\n2 4 5\n1 3 2\n3 4 1\n1 4 9\n"
+let (n, m): (1..=2e5, 0..=2e5) = read()
+domain V = 1..=n
+let es: [0..m](u: V, v: V, w: 1..=1e9) = read()
+let g = Graph.directed(es)
+let p = dijkstra(g, [(V(1), 0)])
+print(p[V(n)] ?? -1)
+if let path = p.path(V(n)): print(path)
+```
+
+## Ordering a DAG
+
+`topo` returns the vertices with every edge pointing forward, or
+`None` when there is a cycle:
+
+```cp run input="4 3\n1 2\n3 2\n2 4\n"
+let (n, m): (1..=2e5, 0..=2e5) = read()
+domain V = 1..=n
+let es: [0..m](u: V, v: V) = read()
+let g = Graph.directed(es)
+if let order = topo(g): print(order)
+else: print("cycle")
+```
+
+## Grids are graphs too
+
+A cell `(r, c)` of a grid over domains `R` and `Col` is a vertex.
+Instead of building a graph, pass a function from a cell to its
+neighbours: `c.adj4` yields the up to four cells next to `c` that are
+inside the grid, so there is no bounds check to forget:
+
+```cp run input="3 4\n..#.\n.#..\n....\n"
+let (n, m): (1..=1000, 1..=1000) = read()
+domain R = 0..n
+domain Col = 0..m
+let grid: [R, Col]Char = read()
+let p = bfs(c => [q for q in c.adj4 if grid[q] != '#'], [(R(0), Col(0))])
+print(p[(R(n - 1), Col(m - 1))] ?? -1)
+```
+
+The same function form works for any implicit graph: states of a
+puzzle, numbers reachable by allowed moves, and so on.
+
+## Finding the rest
+
+The [graph reference](/docs/ref/std/graph) has `scc`, `bridges`,
+`two_color`, `bellman_ford`, `floyd_warshall`, `euler_walk` and 2-SAT,
+each with its cost. Trees (`Rooted`, LCA, tree DP) are in
+[`std.tree`](/docs/ref/std/tree).
+
+## Problem: Fewest hops
+
+Given an undirected graph, print the fewest edges on a path from
+vertex 1 to vertex n, or -1. With n = 5 and edges 1-2, 2-3, 3-5, 1-4, 4-5 the answer is `2`.
+
+<Judge id="fewest-hops">
+
+`bfs(g, [V(1)])` is the whole search; `?? -1` turns "unreachable" into
+the output format at the last moment.
+
+</Judge>
+
+Next: [Stress testing and the trace debugger](/learn/read/stress-and-trace).
