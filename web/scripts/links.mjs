@@ -1,3 +1,4 @@
+// Enforces site/R5 (handbook/guidelines/site-checklist.md).
 // Internal link check over the static build (web/out): every href="/..." on
 // every page must resolve to a file, and a #fragment to an id on that page.
 // /p/* and /api/* are the Worker's.

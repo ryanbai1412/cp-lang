@@ -1,3 +1,4 @@
+// Enforces site/R1 (handbook/guidelines/site-checklist.md).
 // The snippet gate: every CP Lang program on the site is CP Lang 0.3 and gets
 // its status from the compiler, never by hand. `runs`: the compiler runs it
 // (matching `.out` when given) and emits C++. `checks`: it passes the checker

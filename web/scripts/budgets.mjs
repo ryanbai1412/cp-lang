@@ -1,3 +1,4 @@
+// Enforces site/R7 (handbook/guidelines/site-checklist.md).
 // Size budgets the static build (web/out) must stay within, so CI's site
 // build fails on growth instead of a reviewer noticing it later. cpl.wasm
 // has its own check (wasm-size.mjs); `/` is measured in a browser (page-weight).

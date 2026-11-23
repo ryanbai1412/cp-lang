@@ -1,3 +1,4 @@
+// Enforces site/R7 (handbook/guidelines/site-checklist.md).
 // Phone pass (probe P4, mechanical half): loads each route at 390 px wide and
 // lists what sticks out past the viewport, outside any element that scrolls
 // sideways on purpose. Run with `pnpm --dir web phone`.

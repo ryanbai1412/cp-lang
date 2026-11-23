@@ -151,6 +151,7 @@ How far along each milestone is, and what blocks it, stays in `plan/`.
 | `guidelines/writing.md` | Writing for an outsider: docs, commit messages, reports | coordinator |
 | `guidelines/idiomatic-code.md` | How ports, dreams, skill pages and examples read: editorial first, std over hand-rolled, each fact once, constraints as types, one spelling; checklist | idioms |
 | `guidelines/problem-packages.md` | Tests with trusted answers, checkers, interactors, validators, max inputs, one package format; checklist | idioms |
+| `guidelines/site.md`, `guidelines/site-checklist.md` | Site pages: every program checked, one source per fact, generated pages, structured reference entries, real links, editors through the language server, phone and weight; rules `site/R1`.. | site |
 
 ### Language: why the language is shaped this way
 

@@ -1,3 +1,4 @@
+// Enforces site/R2, site/R8 (handbook/guidelines/site-checklist.md).
 // Contradiction gate: facts several pages state must agree with one source.
 // - install one-liners and the version string match lib/facts.json, whose
 //   version matches the workspace Cargo.toml;

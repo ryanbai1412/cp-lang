@@ -1,3 +1,4 @@
+// Enforces site/R7 (handbook/guidelines/site-checklist.md).
 // Page weight of the pages a visitor lands on: every response a cold load
 // fetches, gzipped at level 9 (the static server here does not compress), and
 // the largest contentful paint. Run with `pnpm --dir web page-weight`.

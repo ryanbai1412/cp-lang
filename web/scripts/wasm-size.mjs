@@ -1,3 +1,4 @@
+// Enforces site/R7 (handbook/guidelines/site-checklist.md).
 // Fails when the browser compiler is over its download budget. The cap is on
 // the gzipped size of cpl.wasm, which is what a visitor waits for before any
 // editor on the site has diagnostics; cpl-build.wasm (adds the C++ back end,
