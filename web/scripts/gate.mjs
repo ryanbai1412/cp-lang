@@ -127,6 +127,7 @@ for (const id of readdirSync(join(web, 'content/practice'))) {
   if (!existsSync(page) || !readFileSync(page, 'utf8').includes(`<Judge id="${id}"`)) lacks.push(`content/learn/practice/${id}.mdx with <Judge id="${id}">`);
   if (!listed.includes(id)) lacks.push('an entry in content/learn/practice/meta.json');
   const hints = existsSync(page) ? /<Judge[^>]*>([\s\S]*?)<\/Judge>/.exec(readFileSync(page, 'utf8'))?.[1] ?? '' : '';
+  // handbook/guidelines/site-checklist.md site/R19.
   if (!/\]\(\/[^)]+\)/.test(hints)) lacks.push('a hint that links to the docs, a chapter or a lint');
   if (existsSync(file('ref.cp'))) {
     const lint = spawnSync(cpl, ['lint', file('ref.cp')], { encoding: 'utf8' });

@@ -24,7 +24,7 @@ The site is a static Next.js export under `web/`, rebuilt on every main commit f
 
 ## How we know it is good
 
-The build fails on a page whose program misbehaves, a contradicting fact, a broken internal link, an oversized search index or an oversized `cpl.wasm`. Browser tests check Run, Trace, share links, hover, completion, go to definition, inlay hints and new-tab links. The weakest areas today are the ones a contestant feels while writing: no check yet that the browser editor matches the language server everywhere, that every std item hovers and completes, or that browser Run and C++ match the CLI. Phone, page-weight and accessibility checks exist only partly or locally. The quality register below lists every quality with the check behind it; rows marked `missing` are the work queue. The rules pages follow are in `handbook/guidelines/site.md`.
+The build fails on a page whose program misbehaves, a contradicting fact, a broken internal link, an oversized search index or an oversized `cpl.wasm`. Browser tests check Run, Trace, share links, hover, completion, go to definition, inlay hints and new-tab links. The weakest areas today are the ones a contestant feels while writing: no check yet that the browser editor's answers match the language server's request by request, or that every std item hovers and completes. Accessibility has a browser check with a list of known violations that only shrinks. The quality register below lists every quality with the check behind it; rows marked `missing` are the work queue. The rules pages follow are in `handbook/guidelines/site.md`.
 
 ## Where to start
 
@@ -182,7 +182,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Learn covers the ground | judged problems per level, Div 2 A to Div 1 C; chapters per topic | Count | `plan/domains/site/metrics.toml` |
 | Practice problems are judged correctly | reference solutions failing a test; starters that pass; problems missing a page, meta entry or sample | Generated suite over every problem | `web/scripts/gate.mjs` |
 | Practice tests are strong | wrong solutions the tests accept | [site/R1](../guidelines/site-checklist.md): every one-token mutant of each `ref.cp` must fail a test, unless listed with the reason no test can | `web/scripts/practice-mutants.mjs` (prebuild) |
-| Hints teach before acceptance | problems without a hint linking std docs or a guide | Gate | **missing**: hints are written, not checked |
+| Hints teach before acceptance | problems without a hint linking std docs or a guide | [site/R19](../guidelines/site-checklist.md): the gate fails on a problem whose hints link nowhere | `web/scripts/gate.mjs` (site prebuild) |
 | Chapters teach the design | chapters without runnable examples and a "why, compared with X" section | Process: [Judgment rubric](#judgment-rubric) | partial: the gate checks the examples |
 | Design chapters cover the whole language | `spec/core` parts no Language chapter cites | [site/R8](../guidelines/site-checklist.md); Gate | `web/scripts/facts.mjs` |
 | Every std item and lint is documented | std items with no reference entry; entries without cost, empty, order and traps | Generated from `cpl doc --format json` | `web/scripts/gen-ref.mjs`; **missing**: fail on an entry without its sections |

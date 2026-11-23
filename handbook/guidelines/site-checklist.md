@@ -156,3 +156,11 @@ A contestant who types the task ("range minimum query", "union find") rather tha
 - **Why:** a contestant who doesn't know the name yet is the one who most needs search; if it only matches names, they fall back to scrolling the module list.
 - **Example:** "union find" finds `std/dsu`; "convex hull" finds the geometry topic page.
 - **Enforced by:** `web/tests/search-tasks.mjs` (site browser tests); phrasings missed today are in `web/tests/search-known.txt`, which only shrinks.
+
+## site/R19: Every practice problem has hints that point into the docs
+
+Each practice problem's page holds hints inside its `<Judge>`, shown under **Hints** before the solution is accepted, and at least one links to a std page, a Learn chapter or a lint.
+
+- **Why:** a learner stuck on a problem needs the next idea and where to read it, not the answer; a hint without a link leaves them guessing which page teaches it.
+- **Example:** *At most* hints that the values at most x are a prefix, names `first_gt`, and links the Sorting and searching chapter.
+- **Enforced by:** `web/scripts/gate.mjs` (site prebuild) fails on a problem whose hints link nowhere.
