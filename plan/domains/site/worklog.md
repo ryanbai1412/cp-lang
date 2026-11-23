@@ -245,3 +245,4 @@ print(k, n)' -> print ends up inside the loop
 - 2026-11-23: the stdlib guide's hand-kept module table (36 of 42 modules) is replaced by a link to the generated library reference; the reference index and module page descriptions read each module's `//!` doc, which cpl doc drops today (sent to tools).
 - 2026-11-23: register rows for lint and error pages now cite their real mechanism: the pages render the records that crates/cpl-lint record/checker tests and crates/cpl-cli/tests/catalogue.rs already run, so no site-side rerun is needed.
 - 2026-11-23: practice mutation check (decision 424): 403 one-token mutants of the practice reference solutions, 393 fail a test, 10 listed (8 equivalent, 2 masked by bugs sent to compiler and stdlib: unchecked Mat.get, unchecked array domain).
+- 2026-11-23: drafts (site/R12): every editor keeps its edit per page and starting text in localStorage, practice problems gain Reset; web/tests/drafts.mjs runs in CI's site browser tests.

@@ -1,12 +1,13 @@
 "use client";
 
-import { CheckCircle2, Loader2, Play, XCircle } from "lucide-react";
+import { CheckCircle2, Loader2, Play, RotateCcw, XCircle } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 import { CodeEditor } from "@/components/editor/code-editor";
 import { formatDiagnostics } from "@/components/runner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { cpl } from "@/lib/cpl";
+import { useDraft } from "@/lib/draft";
 import type { Test } from "@/lib/practice";
 import { cn } from "@/lib/utils";
 
@@ -119,7 +120,7 @@ function CodeTask({
   tests: Test[];
   onSolved: () => void;
 }) {
-  const [source, setSource] = useState(starter);
+  const [source, setSource] = useDraft(starter, 'judge');
   const [busy, setBusy] = useState(false);
   const [verdicts, setVerdicts] = useState<Verdict[] | null>(null);
   const submit = async () => {
@@ -144,6 +145,9 @@ function CodeTask({
       <div className="flex items-center gap-2 p-3">
         <Button size="sm" onClick={submit} disabled={busy}>
           {busy ? <Loader2 className="animate-spin" /> : <Play />} Submit
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setSource(starter)} title="Reset">
+          <RotateCcw />
         </Button>
         <span className="text-sm text-muted-foreground">
           {tests.length} tests · Ctrl+Enter

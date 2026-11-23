@@ -215,7 +215,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 | Typing feels like a Python editor | indentation cases | Hand-written unit suite | `web/components/editor/indent.test.ts` |
 | Highlighting matches the language | tokens the editor colours differently from the TextMate grammar | **missing**: a differential over the gate's snippets | none |
 | Lints and fixes in the editor | lints `cpl lint` raises that the editor does not show; quick fixes that do not apply | **missing** | none |
-| Work is not lost | edits lost on reload or navigation | Draft kept in the URL or local storage | **missing**: a browser test |
+| Work is not lost | edits lost on reload or navigation | [site/R12](../guidelines/site-checklist.md): every editor keeps its draft per page and starting text | `web/lib/draft.ts`, `web/tests/drafts.mjs`, CI job `site browser tests` |
 
 ### J6 and J7. Run, test, stress and trace in the browser
 

@@ -6,6 +6,7 @@ import { CodeEditor } from '@/components/editor/code-editor';
 import { inlayHintsOn, setInlayHints } from '@/components/editor/intelligence';
 import { type Status, StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
+import { useDraft } from '@/lib/draft';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,8 +59,8 @@ export function formatDiagnostics(diagnostics: Diagnostic[], source: string): st
 
 export function Runner({ source: initial, setup = '', stdin: initialStdin = '', status, caption, className, editorHeight, playgroundLink = true,
   shareMenu = false, checkOnLoad = false, compact = false, lint = false, run: runnable = true }: RunnerProps) {
-  const [source, setSource] = useState(initial);
-  const [stdin, setStdin] = useState(initialStdin);
+  const [source, setSource] = useDraft(initial, `src:${setup}`);
+  const [stdin, setStdin] = useDraft(initialStdin, `in:${initial}`);
   const program = setup ? `${setup}\n${source}` : source;
   const [result, setResult] = useState<Result>({ kind: 'idle' });
   const [cpp, setCpp] = useState<string | null>(null);

@@ -96,6 +96,14 @@ The header links and their order come from one list that every layout reads.
 - **Example:** adding Tools to the header is one entry in `web/lib/layout.shared.tsx`, and it appears on Home, Docs and Learn.
 - **Enforced by:** `web/lib/layout.shared.tsx`; review.
 
+## site/R12: An edit survives a reload
+
+A reader's edit to any editor on the site, in the playground, an example or a practice problem, is still there after a reload, until they press Reset.
+
+- **Why:** a contestant who reloads mid-solution, or comes back to a practice problem the next day, should not have to retype it.
+- **Example:** fix the starter of a practice problem, reload, and the fix is still in the editor; Reset brings back the starter and forgets the edit.
+- **Enforced by:** `web/lib/draft.ts`, `web/tests/drafts.mjs`.
+
 ## Changes
 
 - 2026-11-23: first version, from the site guideline.
