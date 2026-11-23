@@ -1,0 +1,10 @@
+error[E0401]: `a` is a `let`, so it can't be assigned
+  --> tuple_assign_to_let.cp:3:2
+  |
+1 | let a = 1
+  |     - declared here
+3 | (a, b) = (5, 6)
+  |  ^
+  = help: declare it with `var a` to change it
+
+tuple_assign_to_let.cp: 1 error

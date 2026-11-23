@@ -498,16 +498,17 @@ impl<'a> Checker<'a> {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
             return;
         }
-        let Ty::Named {
-            name: type_name, ..
-        } = base_ty
-        else {
-            return;
+        let members = match &base_ty {
+            Ty::Named { name, .. } => self.members_of(name),
+            _ => None,
         };
-        if self
-            .members_of(&type_name)
-            .is_some_and(|m| m.mutators.contains(&name.text))
-        {
+        let mutates = match &members {
+            Some(m) if m.members.iter().any(|(n, _)| n == &name.text) => {
+                m.mutators.contains(&name.text)
+            }
+            _ => self.takes_mut_self(&name.text),
+        };
+        if mutates {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
         }
     }

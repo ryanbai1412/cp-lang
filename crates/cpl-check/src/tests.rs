@@ -33,7 +33,7 @@ for e in E:
 print(total)
 ";
 
-fn check(src: &str) -> Vec<Diagnostic> {
+pub(crate) fn check(src: &str) -> Vec<Diagnostic> {
     let mut db = Database::new();
     db.set_file("a.cp", src);
     db.diagnostics("a.cp")
@@ -824,7 +824,7 @@ fn editing_a_file_leaves_the_modules_it_imports_analyzed() {
     assert!(!diags.is_empty(), "an edit to an import reaches its users");
 }
 
-fn messages(diags: &[Diagnostic]) -> Vec<&str> {
+pub(crate) fn messages(diags: &[Diagnostic]) -> Vec<&str> {
     diags.iter().map(|d| d.message.as_str()).collect()
 }
 

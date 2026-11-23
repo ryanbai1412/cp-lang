@@ -867,9 +867,29 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// Whether the top-level fn `name`, called as a method, takes `mut self`:
+    /// `fn swap_at(mut self: [D]T, ..)` changes the list it is called on.
+    fn takes_mut_self(&mut self, name: &str) -> bool {
+        let def = self
+            .global(name)
+            .filter(|d| matches!(&**d, Def::Fn { .. }))
+            .or_else(|| self.global(&crate::prelude::std_method(name)));
+        matches!(
+            def.as_deref(),
+            Some(Def::Fn { ty: Ty::Fn { params, .. }, .. })
+                if params.first().is_some_and(|p| p.name == "self" && p.mutable)
+        )
+    }
+
     /// Checks that `expr` can be changed. `action` finishes the sentence
     /// "`x` is a `let`, so it can't be ...".
     fn require_mutable(&mut self, expr: &cpl_syntax::ast::Expr, action: &str) {
+        if let cpl_syntax::ast::ExprKind::Tuple(parts) = &expr.kind {
+            for part in parts {
+                self.require_mutable(part, action);
+            }
+            return;
+        }
         self.writable(expr);
         if self.view_kind(expr).is_some() {
             if self.is_readonly_view(expr) {

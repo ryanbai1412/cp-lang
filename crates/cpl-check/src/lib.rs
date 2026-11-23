@@ -48,3 +48,5 @@ pub const NAME: &str = env!("CARGO_PKG_NAME");
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod tests_mutation;
