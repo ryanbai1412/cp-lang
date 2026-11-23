@@ -124,6 +124,15 @@ jobs:
       - name: Neovim smoke
         shell: bash
         run: nvim --headless --clean -l editors/neovim/test/smoke.lua "$PWD/target/debug/cpl" "$PWD"
+      - name: Neovim 0.12 smoke (no deprecated API)
+        if: matrix.os == 'ubuntu-latest'
+        uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: v0.12.6
+      - if: matrix.os == 'ubuntu-latest'
+        shell: bash
+        run: nvim --version | head -1 && nvim --headless --clean -l editors/neovim/test/smoke.lua "$PWD/target/debug/cpl" "$PWD"
       - name: Vim smoke
         if: matrix.os == 'ubuntu-latest'
         run: bash editors/neovim/test/smoke_vim.sh "$PWD/target/debug/cpl"

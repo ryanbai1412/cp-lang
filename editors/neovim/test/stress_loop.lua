@@ -12,6 +12,17 @@ local function check(ok, what)
     end
 end
 
+--- The current buffer's code lenses, through each Neovim's own API (0.12 deprecated `refresh`).
+local function code_lenses()
+    if vim.lsp.codelens.enable then
+        vim.lsp.codelens.enable(true, { bufnr = 0 })
+        return vim.tbl_map(function(found) return found.lens end, vim.lsp.codelens.get({ bufnr = 0 }))
+    end
+    local lenses = vim.lsp.codelens.get(0)
+    if #lenses == 0 then vim.lsp.codelens.refresh({ bufnr = 0 }) end
+    return lenses
+end
+
 vim.opt.runtimepath:prepend(repo .. '/editors/neovim')
 vim.cmd('runtime! plugin/**/*.vim plugin/**/*.lua ftdetect/*.vim')
 vim.cmd('filetype plugin on')
@@ -48,8 +59,7 @@ end
 
 local lenses = {}
 check(vim.wait(10000, function()
-    lenses = vim.lsp.codelens.get(0)
-    if #lenses == 0 then vim.lsp.codelens.refresh({ bufnr = 0 }) end
+    lenses = code_lenses()
     return #lenses > 0
 end, 200), 'no code lenses')
 local stress

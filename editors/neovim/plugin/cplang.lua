@@ -92,11 +92,16 @@ vim.api.nvim_create_autocmd('FileType', {
                 vim.lsp.buf.format({ bufnr = args.buf, name = 'cpl', timeout_ms = 2000 })
             end,
         })
-        vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
-            buffer = args.buf,
-            group = vim.api.nvim_create_augroup('cplang_lens_' .. args.buf, {}),
-            callback = function() vim.lsp.codelens.refresh({ bufnr = args.buf }) end,
-        })
+        if vim.lsp.codelens.enable then
+            -- Neovim 0.12+ keeps the lenses current itself.
+            vim.lsp.codelens.enable(true, { bufnr = args.buf })
+        else
+            vim.api.nvim_create_autocmd({ 'BufEnter', 'BufWritePost', 'InsertLeave' }, {
+                buffer = args.buf,
+                group = vim.api.nvim_create_augroup('cplang_lens_' .. args.buf, {}),
+                callback = function() vim.lsp.codelens.refresh({ bufnr = args.buf }) end,
+            })
+        end
     end,
 })
 
