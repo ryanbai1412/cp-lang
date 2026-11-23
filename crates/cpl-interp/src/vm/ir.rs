@@ -1450,6 +1450,13 @@ pub(crate) enum Op {
         idx: u32,
         dst: u16,
     },
+    /// `dst` = `Interp::apply` of `applies[idx]` to its operand registers;
+    /// `sync` hands the frame to the stack first, for user code it calls.
+    ApplyV {
+        idx: u32,
+        dst: u16,
+        sync: bool,
+    },
     FallbackStmt {
         idx: u32,
         clear_from_v: u16,
@@ -1530,6 +1537,12 @@ pub(crate) struct FormatSpec<'p> {
     pub regs: Vec<u16>,
 }
 
+/// An expression applied to the values of its operands, in `regs`.
+pub(crate) struct ApplySpec<'p> {
+    pub expr: &'p Expr,
+    pub regs: Vec<u16>,
+}
+
 /// One of main's loops, as a checkpoint finds it in the registers.
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum LoopReg {
@@ -1600,6 +1613,7 @@ pub(crate) struct Chunk<'p> {
     pub consts_v: Vec<Value>,
     pub prints: Vec<PrintSpec<'p>>,
     pub formats: Vec<FormatSpec<'p>>,
+    pub applies: Vec<ApplySpec<'p>>,
     pub fallback_stmts: Vec<&'p Stmt>,
     pub fallback_exprs: Vec<&'p Expr>,
     pub trace_points: Vec<TracePoint<'p>>,

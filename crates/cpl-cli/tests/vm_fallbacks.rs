@@ -43,15 +43,16 @@ fn fallbacks(program: &Path, traced: bool) -> Vec<String> {
     else {
         return vec!["no-stats".into()];
     };
-    let top = line
-        .split("\"top\":[")
+    // Every kind, not just the `top` 20 by count.
+    let kinds = line
+        .split("\"kinds\":[")
         .nth(1)
-        .and_then(|s| s.split("],\"loop_top\"").next())
-        .unwrap_or("");
-    top.split("[\"")
-        .skip(1)
-        .filter_map(|s| s.split("\",").next())
-        .map(str::to_string)
+        .and_then(|s| s.rsplit_once("]}"))
+        .map_or("", |(s, _)| s);
+    kinds
+        .split("\",\"")
+        .map(|s| s.trim_matches('"').to_string())
+        .filter(|s| !s.is_empty())
         .collect()
 }
 

@@ -1128,6 +1128,41 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     .collect();
                 regs_v[dst as usize] = self.format_values(spec.pieces, &vals, spans[cur_pc])?;
             }
+            Op::ApplyV { idx, dst, sync } => {
+                let spec = &chunk.applies[idx as usize];
+                let vals: Vec<Value> = spec
+                    .regs
+                    .iter()
+                    .map(|&r| regs_v[r as usize].clone())
+                    .collect();
+                let val = if sync {
+                    let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    sync_to_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        chunk.traced,
+                    );
+                    self.show_lent();
+                    let val = self.apply(spec.expr, vals);
+                    self.hide_lent();
+                    let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    sync_from_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        chunk.traced,
+                    );
+                    val
+                } else {
+                    self.apply(spec.expr, vals)
+                };
+                regs_v[dst as usize] = val?;
+            }
             Op::FallbackStmt {
                 idx,
                 clear_from_v,

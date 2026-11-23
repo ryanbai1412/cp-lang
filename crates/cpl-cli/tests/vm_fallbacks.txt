@@ -41,25 +41,12 @@ expr:Call(m1_get_or_insert_with_Int_Int_3)
 expr:Call(m1_get_or_insert_with_Str_D0_P_1)
 expr:Call(m1_get_or_insert_with_Str_D1_P_2)
 expr:CallExpr
-expr:Cast(EnumOrd(0))
-expr:Cast(EnumOrd(1))
-expr:Cast(FloatToInt)
-expr:Cast(I128ToInt)
-expr:Cast(IntToI128)
-expr:Cast(OrdToEnum(0))
-expr:Cast(StepToChar)
-expr:Cast(U64ToFloat)
 expr:Closure
-expr:Cmp
 expr:DomainVal
 expr:Index
-expr:IsVariant
 expr:Mutate(Insert)
 expr:Mutate(Remove)
-expr:Payload
 expr:Read
-expr:Tuple
-expr:Variant
 traced fn:SortedBag_D0_V_17.add_unique(part)
 traced fn:SortedBag_D0_V_17.insert_at(part)
 traced fn:SortedBag_D0_V_17.make_node(part)
@@ -78,8 +65,10 @@ traced fn:SortedBag_Int_14.add_unique(part)
 traced fn:SortedBag_Int_14.erase_at(part)
 traced fn:SortedBag_Int_14.insert_at(part)
 traced fn:SortedBag_Int_14.make_node(part)
+traced fn:SortedBag_Int_14.merge(part)
 traced fn:SortedBag_Int_14.pull(part)
 traced fn:SortedBag_Int_14.refresh(part)
+traced fn:SortedBag_Int_14.remove(part)
 traced fn:SortedBag_Tup2_Int_P0_12.add(part)
 traced fn:SortedBag_Tup2_Int_P0_12.erase_at(part)
 traced fn:SortedBag_Tup2_Int_P0_12.insert_at(part)

@@ -8157,3 +8157,8 @@ tag move fatal again.
   - Stdlib, L2: `Rooted.up` with `U != T`.
   - Stdlib, H12: stale "compiler built-in" comments in `std/tree.cp`.
 - **Reverse.** Make `.rev` `Indexed` by position. That would undo decision 388's rule that a view keeps its parent's keys.
+
+## 396. `vm_fallbacks` reads every kind, not the top 20 (compiler, 2026-11-23)
+
+- **Decision.** `CPL_VM_STATS=json` adds `kinds`, every fallback tag of the run, and the `vm_fallbacks` test reads it instead of `top`, which keeps only the 20 most frequent. A kind past the 20th was invisible to the ratchet and showed up as "new" when other kinds left. The baseline gains `traced fn:SortedBag_Int_14.merge(part)` and `traced fn:SortedBag_Int_14.remove(part)`, which were there but hidden, and `untraced fn:m7_find_all_Str_Str_Int_193(feeding)`, the `_192` line renamed by a mono numbering change on main.
+- **Reverse.** Read `top` again in `crates/cpl-cli/tests/vm_fallbacks.rs`.

@@ -8,6 +8,7 @@
 //!
 //! Strings are byte vectors. Nothing here decodes or validates text.
 
+mod apply;
 pub mod checkpoint;
 mod closed_form;
 mod float_fn;
@@ -2022,90 +2023,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     binary(*op, l, r, span)?
                 }
             },
-            ExprKind::Cmp(op, lhs, rhs) => {
-                let l = self.eval(lhs)?;
-                let r = self.eval(rhs)?;
-                let l = match l {
-                    Value::MutView(mv) => Value::List(Rc::new(self.mut_view_to_vec(&mv, span)?)),
-                    other => other,
-                };
-                let r = match r {
-                    Value::MutView(mv) => Value::List(Rc::new(self.mut_view_to_vec(&mv, span)?)),
-                    other => other,
-                };
-                match (&l, &r) {
-                    (Value::Int(a), Value::Int(b)) => {
-                        return Ok(Value::Bool(match op {
-                            CmpOp::Eq => a == b,
-                            CmpOp::Ne => a != b,
-                            CmpOp::Lt => a < b,
-                            CmpOp::Le => a <= b,
-                            CmpOp::Gt => a > b,
-                            CmpOp::Ge => a >= b,
-                            _ => false,
-                        }));
-                    }
-                    (Value::Char(a), Value::Char(b)) => {
-                        return Ok(Value::Bool(match op {
-                            CmpOp::Eq => a == b,
-                            CmpOp::Ne => a != b,
-                            CmpOp::Lt => a < b,
-                            CmpOp::Le => a <= b,
-                            CmpOp::Gt => a > b,
-                            CmpOp::Ge => a >= b,
-                            _ => false,
-                        }));
-                    }
-                    (Value::Bool(a), Value::Bool(b)) => {
-                        return Ok(Value::Bool(match op {
-                            CmpOp::Eq => a == b,
-                            CmpOp::Ne => a != b,
-                            CmpOp::Lt => a < b,
-                            CmpOp::Le => a <= b,
-                            CmpOp::Gt => a > b,
-                            CmpOp::Ge => a >= b,
-                            _ => false,
-                        }));
-                    }
-                    _ => {}
+            ExprKind::Cmp(..)
+            | ExprKind::Cast(..)
+            | ExprKind::Tuple(_)
+            | ExprKind::Variant(..)
+            | ExprKind::IsVariant(..)
+            | ExprKind::Payload(..) => {
+                let mut vals = Vec::new();
+                for operand in apply::operands(e) {
+                    vals.push(self.eval(operand)?);
                 }
-                if matches!(op, CmpOp::Eq | CmpOp::Ne) {
-                    let eq = self.eq_ty_val(&lhs.ty, &l, &r, span)?;
-                    return Ok(Value::Bool(if *op == CmpOp::Eq { eq } else { !eq }));
-                }
-                if matches!(op, CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge) {
-                    // One `lt` call per comparison, as the C++ makes, so the
-                    // profiler counts the same calls in both.
-                    if let Ty::Struct(id) = &lhs.ty {
-                        if let Some(lt_fn) = self.program.structs[*id].lt_fn {
-                            let (a, b) = if matches!(op, CmpOp::Lt | CmpOp::Ge) {
-                                (l, r)
-                            } else {
-                                (r, l)
-                            };
-                            let less = self.call_direct(lt_fn, vec![a, b], span)?.bool();
-                            return Ok(Value::Bool(if matches!(op, CmpOp::Lt | CmpOp::Gt) {
-                                less
-                            } else {
-                                !less
-                            }));
-                        }
-                    }
-                    let ord = self.cmp_ty_val(&lhs.ty, &l, &r, span)?;
-                    let res = match op {
-                        CmpOp::Lt => ord.is_lt(),
-                        CmpOp::Le => ord.is_le(),
-                        CmpOp::Gt => ord.is_gt(),
-                        CmpOp::Ge => ord.is_ge(),
-                        _ => unreachable!(),
-                    };
-                    return Ok(Value::Bool(res));
-                }
-                Value::Bool(compare(*op, &l, &r))
-            }
-            ExprKind::Cast(cast, operand) => {
-                let value = self.eval(operand)?;
-                self.cast(*cast, value, span)?
+                self.apply(e, vals)?
             }
             ExprKind::Index(base, indices) => self.index(base, indices, span)?,
             ExprKind::Field(base, index) => {
@@ -2129,47 +2057,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     },
                 }
             }
-            ExprKind::Tuple(items) => {
-                if items.len() == 1
-                    && !matches!(
-                        &e.ty,
-                        Ty::List(_) | Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..)
-                    )
-                {
-                    let v = self.eval(&items[0])?;
-                    if let Value::Int(x) = v {
-                        return Ok(Value::Tuple(TupleVal::OneInt(x)));
-                    }
-                    return Ok(Value::Tuple(TupleVal::Boxed(Rc::new(vec![v]))));
-                }
-                let mut values = Vec::with_capacity(items.len());
-                for item in items {
-                    values.push(self.eval(item)?);
-                }
-                match &e.ty {
-                    Ty::List(_) => Value::List(Rc::new(values)),
-                    Ty::Set(_) | Ty::HashSet(_) => {
-                        Value::Set(Rc::new(values.into_iter().collect()))
-                    }
-                    Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::default()),
-                    _ => Value::tuple(values),
-                }
-            }
-            ExprKind::Variant(tag, items) => {
-                let mut values = Vec::with_capacity(items.len());
-                for item in items {
-                    values.push(self.eval(item)?);
-                }
-                Value::Enum(*tag as u32, Rc::new(values))
-            }
-            ExprKind::IsVariant(value, tag) => match self.eval(value)? {
-                Value::Enum(actual, _) => Value::Bool(actual as usize == *tag),
-                _ => Value::Bool(false),
-            },
-            ExprKind::Payload(value, tag, index) => match self.eval(value)? {
-                Value::Enum(actual, payload) if actual as usize == *tag => payload[*index].clone(),
-                _ => return trap(span, "internal: payload of another variant"),
-            },
             ExprKind::IsSome(value) => {
                 Value::Bool(matches!(self.eval(value)?, Value::Opt(opt) if opt.is_some()))
             }

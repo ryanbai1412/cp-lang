@@ -6,6 +6,7 @@ use cpl_ir::{
     PlaceKind, Program, Slot, Stmt, Ty, UnOp,
 };
 
+mod apply;
 mod assign;
 mod expr_i;
 mod expr_opt_i;
@@ -74,6 +75,8 @@ pub(super) struct Compiler<'p, 'f> {
     consts_v: Vec<Value>,
     prints: Vec<PrintSpec<'p>>,
     formats: Vec<FormatSpec<'p>>,
+    applies: Vec<ApplySpec<'p>>,
+    applies_sync: bool,
     fallback_stmts: Vec<&'p Stmt>,
     fallback_exprs: Vec<&'p Expr>,
     fill_tys: Vec<&'p Ty>,
@@ -158,6 +161,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
             consts_v: Vec::new(),
             prints: Vec::new(),
             formats: Vec::new(),
+            applies: Vec::new(),
+            applies_sync: false,
             fallback_stmts: Vec::new(),
             fallback_exprs: Vec::new(),
             fill_tys: Vec::new(),
@@ -188,6 +193,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn finish(self) -> Chunk<'p> {
         let needs_stack = !self.fallback_stmts.is_empty()
             || !self.fallback_exprs.is_empty()
+            || self.applies_sync
             || !self.trace_points.is_empty();
         Chunk {
             ops: self.ops,
@@ -201,6 +207,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             consts_v: self.consts_v,
             prints: self.prints,
             formats: self.formats,
+            applies: self.applies,
             fallback_stmts: self.fallback_stmts,
             fallback_exprs: self.fallback_exprs,
             trace_points: self.trace_points,
@@ -1167,6 +1174,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 | Op::FallbackStmt { .. }
                 | Op::FallbackExprI { .. }
                 | Op::FallbackExprV { .. }
+                | Op::ApplyV { sync: true, .. }
         ) {
             self.in_dom.clear();
             self.dom_clears += 1;

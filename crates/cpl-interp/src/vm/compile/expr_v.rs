@@ -1179,6 +1179,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn emit_fallback_expr_i(&mut self, expr: &'p Expr) -> u16 {
+        if let Some(dst) = self.try_compile_apply_i(expr) {
+            return dst;
+        }
         let idx = self.fallback_exprs.len() as u32;
         self.fallback_exprs.push(expr);
         let dst = self.alloc_i();
@@ -1347,6 +1350,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn emit_fallback_expr_v(&mut self, expr: &'p Expr) -> u16 {
+        if let Some(dst) = self.try_compile_apply_v(expr) {
+            return dst;
+        }
         let idx = self.fallback_exprs.len() as u32;
         self.fallback_exprs.push(expr);
         let dst = self.alloc_v();

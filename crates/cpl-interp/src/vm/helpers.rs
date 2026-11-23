@@ -961,6 +961,13 @@ impl VmStats {
                 let escaped = cpl_json::escape_string(k);
                 s.push_str(&format!("[{escaped},{v}]"));
             }
+            s.push_str("],\"kinds\":[");
+            for (i, (k, _)) in entries.iter().enumerate() {
+                if i > 0 {
+                    s.push(',');
+                }
+                s.push_str(&cpl_json::escape_string(k));
+            }
             s.push_str("]}");
             eprintln!("{s}");
         } else {

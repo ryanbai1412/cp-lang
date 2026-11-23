@@ -1221,3 +1221,59 @@ print(t)
     let msg = failure(&source, "");
     assert!(msg.contains("has no position 16"), "unexpected trap: {msg}");
 }
+
+/// Runs `source` on the VM, which must compile its main and its own fns
+/// with no fallback to the tree-walker but on the way to a trap, and on the
+/// tree-walker (a profiled run), which must agree.
+fn vm_runs_alone(source: &str, input: &str) -> String {
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false);
+    let own = |id: &usize| {
+        let name = program.fns[*id].name.rsplit('.').next().unwrap_or_default();
+        source.contains(&format!("fn {name}("))
+    };
+    let fns = (0..program.fns.len()).filter(own);
+    let chunks =
+        std::iter::once(&compiled.main).chain(fns.filter_map(|id| compiled.fns[id].as_ref()));
+    for chunk in chunks {
+        let stmts: Vec<_> = chunk
+            .fallback_stmts
+            .iter()
+            .filter(|s| !matches!(s, cpl_ir::Stmt::Trap(..) | cpl_ir::Stmt::Assert { .. }))
+            .collect();
+        assert!(
+            stmts.is_empty() && chunk.fallback_exprs.is_empty(),
+            "the VM fell back on {stmts:?} {:?}",
+            chunk.fallback_exprs
+        );
+    }
+    let (out, trap) = outcome(source, input);
+    assert_eq!(trap, None);
+    let mut tree = Vec::new();
+    let io = crate::Io::fixed(input.as_bytes());
+    let observed = crate::run_profiled(&program, io, &mut tree);
+    assert!(observed.trap.is_none());
+    assert_eq!(String::from_utf8(tree).expect("ASCII"), out);
+    out
+}
+
+#[test]
+fn vm_applies_variants_tuples_casts_and_comparisons_to_registers() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_apply_operands.cp"),
+        "",
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_apply_operands.out")
+    );
+}

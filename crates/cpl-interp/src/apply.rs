@@ -1,0 +1,158 @@
+//! The part of evaluating an expression that both engines share: its
+//! value from the values of its operands, which the tree-walker evaluates
+//! with `eval` and the VM in registers.
+
+use crate::observe::Observer;
+use crate::value::{TupleVal, Value};
+use crate::*;
+
+/// The operands of `e`, evaluated in order before [`Interp::apply`], when
+/// every one of them is evaluated, once, as a plain value.
+pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
+    match &e.kind {
+        ExprKind::Cmp(_, lhs, rhs) => vec![lhs, rhs],
+        ExprKind::Cast(_, x) | ExprKind::IsVariant(x, _) | ExprKind::Payload(x, ..) => vec![x],
+        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Whether `e` is applied to its [`operands`] by [`Interp::apply`].
+pub(crate) fn applies(e: &Expr) -> bool {
+    matches!(
+        e.kind,
+        ExprKind::Cmp(..)
+            | ExprKind::Cast(..)
+            | ExprKind::Tuple(_)
+            | ExprKind::Variant(..)
+            | ExprKind::IsVariant(..)
+            | ExprKind::Payload(..)
+    )
+}
+
+impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
+    /// The value of `e` from `vals`, the values of its [`operands`].
+    pub(crate) fn apply(&mut self, e: &'p Expr, vals: Vec<Value>) -> Res<Value> {
+        let span = e.span;
+        Ok(match &e.kind {
+            ExprKind::Cmp(op, lhs, _) => {
+                let mut vals = vals.into_iter();
+                let (l, r) = (vals.next().unwrap(), vals.next().unwrap());
+                let l = match l {
+                    Value::MutView(mv) => Value::List(Rc::new(self.mut_view_to_vec(&mv, span)?)),
+                    other => other,
+                };
+                let r = match r {
+                    Value::MutView(mv) => Value::List(Rc::new(self.mut_view_to_vec(&mv, span)?)),
+                    other => other,
+                };
+                match (&l, &r) {
+                    (Value::Int(a), Value::Int(b)) => {
+                        return Ok(Value::Bool(match op {
+                            CmpOp::Eq => a == b,
+                            CmpOp::Ne => a != b,
+                            CmpOp::Lt => a < b,
+                            CmpOp::Le => a <= b,
+                            CmpOp::Gt => a > b,
+                            CmpOp::Ge => a >= b,
+                            _ => false,
+                        }));
+                    }
+                    (Value::Char(a), Value::Char(b)) => {
+                        return Ok(Value::Bool(match op {
+                            CmpOp::Eq => a == b,
+                            CmpOp::Ne => a != b,
+                            CmpOp::Lt => a < b,
+                            CmpOp::Le => a <= b,
+                            CmpOp::Gt => a > b,
+                            CmpOp::Ge => a >= b,
+                            _ => false,
+                        }));
+                    }
+                    (Value::Bool(a), Value::Bool(b)) => {
+                        return Ok(Value::Bool(match op {
+                            CmpOp::Eq => a == b,
+                            CmpOp::Ne => a != b,
+                            CmpOp::Lt => a < b,
+                            CmpOp::Le => a <= b,
+                            CmpOp::Gt => a > b,
+                            CmpOp::Ge => a >= b,
+                            _ => false,
+                        }));
+                    }
+                    _ => {}
+                }
+                if matches!(op, CmpOp::Eq | CmpOp::Ne) {
+                    let eq = self.eq_ty_val(&lhs.ty, &l, &r, span)?;
+                    return Ok(Value::Bool(if *op == CmpOp::Eq { eq } else { !eq }));
+                }
+                if matches!(op, CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge) {
+                    // One `lt` call per comparison, as the C++ makes, so the
+                    // profiler counts the same calls in both.
+                    if let Ty::Struct(id) = &lhs.ty {
+                        if let Some(lt_fn) = self.program.structs[*id].lt_fn {
+                            let (a, b) = if matches!(op, CmpOp::Lt | CmpOp::Ge) {
+                                (l, r)
+                            } else {
+                                (r, l)
+                            };
+                            let less = self.call_direct(lt_fn, vec![a, b], span)?.bool();
+                            return Ok(Value::Bool(if matches!(op, CmpOp::Lt | CmpOp::Gt) {
+                                less
+                            } else {
+                                !less
+                            }));
+                        }
+                    }
+                    let ord = self.cmp_ty_val(&lhs.ty, &l, &r, span)?;
+                    let res = match op {
+                        CmpOp::Lt => ord.is_lt(),
+                        CmpOp::Le => ord.is_le(),
+                        CmpOp::Gt => ord.is_gt(),
+                        CmpOp::Ge => ord.is_ge(),
+                        _ => unreachable!(),
+                    };
+                    return Ok(Value::Bool(res));
+                }
+                Value::Bool(compare(*op, &l, &r))
+            }
+            ExprKind::Cast(cast, _) => {
+                let value = vals.into_iter().next().unwrap();
+                self.cast(*cast, value, span)?
+            }
+            ExprKind::Tuple(items) => {
+                let mut values = vals;
+                if items.len() == 1
+                    && !matches!(
+                        &e.ty,
+                        Ty::List(_) | Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..)
+                    )
+                {
+                    let v = values.pop().unwrap();
+                    if let Value::Int(x) = v {
+                        return Ok(Value::Tuple(TupleVal::OneInt(x)));
+                    }
+                    return Ok(Value::Tuple(TupleVal::Boxed(Rc::new(vec![v]))));
+                }
+                match &e.ty {
+                    Ty::List(_) => Value::List(Rc::new(values)),
+                    Ty::Set(_) | Ty::HashSet(_) => {
+                        Value::Set(Rc::new(values.into_iter().collect()))
+                    }
+                    Ty::Map(..) | Ty::HashMap(..) => Value::Map(Rc::default()),
+                    _ => Value::tuple(values),
+                }
+            }
+            ExprKind::Variant(tag, _) => Value::Enum(*tag as u32, Rc::new(vals)),
+            ExprKind::IsVariant(_, tag) => match vals.into_iter().next().unwrap() {
+                Value::Enum(actual, _) => Value::Bool(actual as usize == *tag),
+                _ => Value::Bool(false),
+            },
+            ExprKind::Payload(_, tag, index) => match vals.into_iter().next().unwrap() {
+                Value::Enum(actual, payload) if actual as usize == *tag => payload[*index].clone(),
+                _ => return trap(span, "internal: payload of another variant"),
+            },
+            _ => return trap(span, "internal: no shared evaluation for this expression"),
+        })
+    }
+}
