@@ -140,14 +140,17 @@ markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
 [ -z "$markers" ] || fail "merge conflict markers left in:
 $markers"
 need() { command -v "$1" >/dev/null || fail "\`$1\` is not installed; $2"; }
-# The playground build. A lane box without the wasm32 target warns and
-# skips (CI's site build still checks it); CI itself must have it.
+# The playground build. CI's site job builds cpl-wasm itself, and a lane
+# box without the wasm32 target warns and skips.
 wasm_check() {
     step "cargo check -p cpl-wasm --target wasm32-unknown-unknown (the playground build)"
+    if [ -n "${CI:-}" ]; then
+        echo "skipped in CI: the site build job builds cpl-wasm"
+        return 0
+    fi
     local dir
     dir=$(rustc --print target-libdir --target wasm32-unknown-unknown 2>/dev/null)
     if [ -z "$dir" ] || [ ! -d "$dir" ]; then
-        [ -z "${CI:-}" ] || fail "the wasm32 target is not installed; run: rustup target add wasm32-unknown-unknown"
         echo "WARNING: skipped; the wasm32 target is not installed (run: rustup target add wasm32-unknown-unknown)" >&2
         return 0
     fi
