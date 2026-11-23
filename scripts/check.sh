@@ -236,6 +236,29 @@ if [ "$mode" = timing ]; then
     exit
 fi
 
+# CI splits --fast across parallel jobs (.github/workflows/ci.yml):
+# CPL_GATE_PART=checks runs everything but the workspace tests, and
+# CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/4) runs only
+# that share of them, plus the doctests in share 1. Unset runs all of --fast.
+gate_part="${CPL_GATE_PART:-}"
+case "$gate_part" in
+    "" | checks) ;;
+    tests:*)
+        [ "$mode" = fast ] || fail "CPL_GATE_PART=$gate_part needs --fast"
+        part="${gate_part#tests:}"
+        step "cargo nextest run --workspace --partition $part (without the --full tests)"
+        cargo nextest run --workspace --no-fail-fast --partition "$part" -E "not ($slow_filter)"
+        if [[ "$part" == *:1/* ]]; then
+            step "cargo test --workspace --doc"
+            cargo test -q --workspace --doc
+        fi
+        step_end
+        printf '\ncheck: test partition %s passed in %ss\n' "$part" "$(( $(date +%s) - gate_t0 ))"
+        exit 0
+        ;;
+    *) fail "unknown CPL_GATE_PART \`$gate_part\` (checks or tests:<partition>)" ;;
+esac
+
 if [ "$mode" = land ]; then
     land_base="${CHECK_BASE:-$(git rev-parse -q --verify origin/main || true)}"
     sel_all=1
@@ -339,7 +362,10 @@ trap cleanup EXIT
 # - committed_scoreboard_ratchet runs the same conformance+corpus+docs ratchet
 #   as `cpl-conform all --check` below (which also checks `diff`), so running
 #   both in --fast would execute ~3,400 cases twice.
-if cache_hit nextest_doc; then
+if [ "$gate_part" = checks ]; then
+    step "cargo nextest + doctests"
+    echo "skipped: the CI test partitions run them (CPL_GATE_PART=checks)"
+elif cache_hit nextest_doc; then
     step "cargo nextest + doctests"
     echo "cached (tree unchanged outside its excludes)"
 elif [ "$mode" = land ]; then
@@ -526,7 +552,7 @@ if [ "$mode" = fast ] || [ "$mode" = land ]; then
     # .githooks/pre-push lands only trees recorded here, so a rebased tip must
     # pass again before it reaches main. Unstaged edits mean the checked tree
     # is not the index tree, so nothing is recorded.
-    if git diff --quiet 2>/dev/null; then
+    if [ -z "$gate_part" ] && git diff --quiet 2>/dev/null; then
         stamp="$(git rev-parse --git-common-dir)/cpl-gate-passed"
         { tail -n 199 "$stamp" 2>/dev/null || true; git write-tree; } >"$stamp.tmp" && mv "$stamp.tmp" "$stamp"
     fi

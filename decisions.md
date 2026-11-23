@@ -5852,3 +5852,12 @@ both stubs). Reason: each was the reading a cold reader had to guess, and
 picking the implemented one costs no code. Reverse: restore the old wording
 and turn the new cases into reject cases.
 
+
+## 228. CI runs --fast as five parallel jobs (2026-11-22)
+
+One CI job took about 11 minutes: 90 s to build the tests, then 452 s of
+nextest on a 4-core runner. `CPL_GATE_PART` in `scripts/check.sh` splits
+--fast into the checks (everything but the workspace tests) and four nextest
+hash partitions, and ci.yml runs them as a matrix, toward the 3-minute CI
+target. Local --fast is unchanged, and a partial run never records a gate
+stamp. Reverse: drop the matrix in ci.yml; check.sh then runs everything.
