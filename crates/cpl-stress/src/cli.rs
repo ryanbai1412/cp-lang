@@ -776,6 +776,16 @@ pub fn run_with(
         }
         _ => None,
     };
+    // Where a debug run of the brute stops: its own `@alt(program)` fn, or
+    // the file with its `@brute(f)` fns swapped in.
+    let brute_trap = |input: &str, json: bool| match (&own_brute, &part_brute) {
+        _ if args.fast.is_some() => None,
+        (Some(_), _) => crate::explain::trap_report(&args.file, input, true, json),
+        (None, Some(swapped)) => {
+            crate::explain::trap_report_in(&args.file, swapped, input, false, json)
+        }
+        (None, None) => None,
+    };
     // The trap a debug run stops at, in the shape `cpl check --format json` gives.
     let trap_json = (report.failure.as_ref())
         .filter(|_| args.json && args.fast.is_none())
@@ -783,9 +793,7 @@ pub fn run_with(
             crate::Verdict::RuntimeError(_) => {
                 crate::explain::trap_report(&args.file, &failure.input, false, true)
             }
-            crate::Verdict::BruteError(_) if own_brute.is_some() => {
-                crate::explain::trap_report(&args.file, &failure.input, true, true)
-            }
+            crate::Verdict::BruteError(_) => brute_trap(&failure.input, true),
             _ => None,
         });
     if args.json {
@@ -915,9 +923,7 @@ pub fn run_with(
         }
         crate::Verdict::BruteError(why) => {
             let brute_name = brute.as_ref().map_or("brute", |b| b.name.as_str());
-            let trap = (own_brute.is_some() && args.fast.is_none())
-                .then(|| crate::explain::trap_report(&args.file, &failure.input, true, false))
-                .flatten();
+            let trap = brute_trap(&failure.input, false);
             let _ = match trap {
                 Some(trap) => writeln!(
                     stdout,

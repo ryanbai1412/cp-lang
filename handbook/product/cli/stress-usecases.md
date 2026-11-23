@@ -106,7 +106,7 @@ Evidence: `crates/cpl-cli/tests/seeded_bugs.rs` (`cold-lower-bound-stuck`)
 Need: not be told the solution is wrong when the brute crashed.
 Design: the case fails as `brute RE`, shrunk like any other, and the brute's trap is shown as `cpl run` shows one: code, line, locals, help. It isn't saved as a test of the solution.
 Milestone: M1-critical. Status: supported
-Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_brute_that_traps_is_blamed_with_its_line_and_locals_and_not_saved`); `crates/cpl-stress/src/tests.rs` (`a_failing_brute_is_a_failing_case_blamed_on_the_brute`)
+Evidence: integration `crates/cpl-cli/tests/wrong_answer.rs` (`a_brute_that_traps_is_blamed_with_its_line_and_locals_and_not_saved`, `a_swapped_in_brute_fn_that_traps_is_blamed_with_its_line_and_locals`); `crates/cpl-stress/src/tests.rs` (`a_failing_brute_is_a_failing_case_blamed_on_the_brute`)
 
 ### stress/U19: never blame the solution for an input it rightly rejects
 Need: every case is one the problem allows.

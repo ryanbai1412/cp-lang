@@ -24,11 +24,24 @@ pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
 /// `@alt(program)` fn, stops on `input`: the trap with its locals, rendered
 /// as `cpl run` prints it or, with `json`, as `cpl check --format json` does.
 pub fn trap_report(path: &Path, input: &str, brute: bool, json: bool) -> Option<String> {
+    let text = std::fs::read_to_string(path).ok()?;
+    trap_report_in(path, &text, input, brute, json)
+}
+
+/// [`trap_report`] of `text` in place of the file's own source, such as the
+/// file with its `@brute(f)` fns swapped in, whose lines stay where they were.
+pub fn trap_report_in(
+    path: &Path,
+    text: &str,
+    input: &str,
+    brute: bool,
+    json: bool,
+) -> Option<String> {
     if path.extension().is_none_or(|ext| ext != "cp") {
         return None;
     }
     let name = path.shown();
-    let text = std::fs::read_to_string(path).ok()?;
+    let text = text.to_string();
     let mut db = cpl_check::Database::new();
     db.set_file(&name, text.as_str());
     let analysis = db.analyze(&name)?;

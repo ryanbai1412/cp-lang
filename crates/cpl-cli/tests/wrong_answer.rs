@@ -214,3 +214,39 @@ fn a_clean_stress_points_at_the_bound_lint_and_its_saved_witness() {
     let said = String::from_utf8_lossy(&ran.stderr);
     assert!(said.contains("error[R0202]: integer overflow"), "{said}");
 }
+
+/// A swapped-in `@brute(f)` fn that traps is blamed as an `@alt(program)`
+/// brute is: its error, line and locals, in text and in JSON (`stress/U18`).
+#[test]
+fn a_swapped_in_brute_fn_that_traps_is_blamed_with_its_line_and_locals() {
+    let path = scratch("part-brute-traps");
+    let source = format!(
+        "{READS}fn best() -> Int:
+    var m = 0
+    for i in 0..n: m = max(m, a[i])
+    m
+
+@brute(best)
+fn best_slow() -> Int:
+    var m = 0
+    for i in 0..n: m = max(m, a[i + 1])
+    m
+
+print(best())
+"
+    );
+    std::fs::write(&path, source).unwrap();
+    let (code, report) = cpl(&["stress".as_ref(), path.as_os_str()]);
+    assert_eq!(code, Some(1), "{report}");
+    for said in ["brute RE", "error[R0101]", "c.cp:11:", "locals: "] {
+        assert!(report.contains(said), "no {said:?} in:\n{report}");
+    }
+    assert!(!report.contains("exit code"), "{report}");
+    let (_, json) = cpl(&[
+        "stress".as_ref(),
+        path.as_os_str(),
+        "--format".as_ref(),
+        "json".as_ref(),
+    ]);
+    assert!(json.contains("\"code\":\"R0101\""), "{json}");
+}
