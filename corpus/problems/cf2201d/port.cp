@@ -61,5 +61,5 @@ repeat q:
     locs[nv].add(x)
     for v in [old, nv]: sync(v)
 
-    let top = seg.fold(V.first..)
+    let top = seg.all
     print(top.mx, top.cnt)
