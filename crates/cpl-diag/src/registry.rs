@@ -212,6 +212,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0112"),
+        title: "`let ... else` block falls through",
+        summary: "The `else` block of `let p = e else:` can reach its end.",
+        explanation: "When the pattern does not match there is nothing to bind, so the `else` block must leave: end it with `return`, `break`, `continue` or a trap such as `todo` (R01.6.2).",
+        trigger: "fn f(x: ?Int) -> Int:\n    let v = x else:\n        print(0)\n    v\nprint(f(None))\n",
+        fix: "fn f(x: ?Int) -> Int:\n    let v = x else:\n        return 0\n    v\nprint(f(None))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0201"),
         title: "Unresolved name",
         summary: "An identifier was used that is not declared in scope.",
