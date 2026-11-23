@@ -769,7 +769,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             }
             ExprKind::Builtin(Builtin::MapGet, args)
                 if args.len() == 2
-                    && matches!(&args[0].ty, Ty::Map(kty, _) if !crate::value::ty_has_cached(kty, self.program)) =>
+                    && matches!(&args[0].ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program)) =>
             {
                 let map_v = self.compile_expr_v(&args[0]);
                 let key_v = self.compile_expr_v(&args[1]);
@@ -787,7 +787,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 b @ (Builtin::FirstGe | Builtin::FirstGt | Builtin::LastLe | Builtin::LastLt),
                 args,
             ) if args.len() == 2
-                && matches!(args[0].ty, Ty::Set(_) | Ty::Map(_, _))
+                && matches!(args[0].ty, Ty::Set(_) | Ty::Map(_, _) | Ty::HashMap(_, _))
                 && !crate::value::ty_has_cached(&args[1].ty, self.program) =>
             {
                 let mode = match b {
@@ -818,7 +818,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst
             }
             ExprKind::Mutate(m @ (Mutation::PopFirst | Mutation::PopLast), place, args)
-                if args.is_empty() && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _)) =>
+                if args.is_empty()
+                    && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _) | Ty::HashMap(_, _)) =>
             {
                 let saved_ops = self.ops.len();
                 let saved_spans = self.spans.len();
@@ -842,10 +843,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             ExprKind::Index(base, indices)
-                if matches!(&base.ty, Ty::Map(kty, _) if !crate::value::ty_has_cached(kty, self.program))
+                if matches!(&base.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program))
                     && indices.len() == 1 =>
             {
-                let Ty::Map(kty, _) = &base.ty else {
+                let (Ty::Map(kty, _) | Ty::HashMap(kty, _)) = &base.ty else {
                     unreachable!()
                 };
                 let map_v = self.compile_expr_v(base);
@@ -907,7 +908,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         if matches!(op, Mutation::PopFirst | Mutation::PopLast)
             && args.is_empty()
-            && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _))
+            && matches!(place.ty, Ty::Set(_) | Ty::Map(_, _) | Ty::HashMap(_, _))
         {
             let saved_ops = self.ops.len();
             let saved_spans = self.spans.len();

@@ -1074,7 +1074,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if chain.is_empty()
             && !matches!(
                 place.ty,
-                Ty::List(_) | Ty::Array { .. } | Ty::Str | Ty::Set(_) | Ty::Map(_, _)
+                Ty::List(_)
+                    | Ty::Array { .. }
+                    | Ty::Str
+                    | Ty::Set(_)
+                    | Ty::Map(_, _)
+                    | Ty::HashMap(_, _)
             )
         {
             return None;
@@ -1107,7 +1112,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         value: &'p Expr,
     ) -> bool {
         if let PlaceKind::Index(map_place, indices) = &place.kind {
-            if matches!(&map_place.ty, Ty::Map(kty, _) if !crate::value::ty_has_cached(kty, self.program))
+            if matches!(&map_place.ty, Ty::Map(kty, _) | Ty::HashMap(kty, _) if !crate::value::ty_has_cached(kty, self.program))
                 && indices.len() == 1
             {
                 let saved_ops = self.ops.len();

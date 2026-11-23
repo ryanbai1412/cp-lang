@@ -1337,3 +1337,15 @@ fn vm_steps_ranges_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_for_step.out")
     );
 }
+
+#[test]
+fn vm_reads_and_stores_hash_maps_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_hash_map.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_hash_map.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_hash_map.out")
+    );
+}
