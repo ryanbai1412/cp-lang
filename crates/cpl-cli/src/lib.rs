@@ -59,12 +59,14 @@ pub const COMPONENTS: &[&str] = &[
     cpl_lsp::NAME,
 ];
 
-/// `cpl 0.2.2 (edge, 1a2b3c4d)`: what `cpl --version` prints.
+/// `cpl 0.3.0-edge+1a2b3c4d`: what `cpl --version` prints; a stable build
+/// drops the channel, `cpl 0.3.0+1a2b3c4d`.
 pub fn version_line() -> String {
-    format!(
-        "cpl {VERSION} ({CHANNEL}, {})",
-        &COMMIT[..COMMIT.len().min(8)]
-    )
+    let channel = match CHANNEL {
+        "stable" => String::new(),
+        channel => format!("-{channel}"),
+    };
+    format!("cpl {VERSION}{channel}+{}", &COMMIT[..COMMIT.len().min(8)])
 }
 
 /// What one invocation prints and the status it exits with.
@@ -1303,7 +1305,7 @@ mod tests {
         let out = run(&["--version"]);
         assert_eq!(out.code, 0);
         assert_eq!(out.stdout, format!("{}\n", version_line()).into_bytes());
-        assert!(version_line().starts_with(&format!("cpl {VERSION} ({CHANNEL}, ")));
+        assert!(version_line().starts_with(&format!("cpl {VERSION}-{CHANNEL}+")));
     }
 
     #[test]

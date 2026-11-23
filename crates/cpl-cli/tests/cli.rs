@@ -9,10 +9,10 @@ fn binary_reports_its_version() {
     assert!(out.status.success());
     let line = String::from_utf8(out.stdout).unwrap();
     assert!(
-        line.starts_with(&format!("cpl {} (dev, ", env!("CARGO_PKG_VERSION"))),
+        line.starts_with(&format!("cpl {}-dev+", env!("CARGO_PKG_VERSION"))),
         "{line}"
     );
-    assert!(line.ends_with(")\n") && line.lines().count() == 1, "{line}");
+    assert!(line.ends_with('\n') && line.lines().count() == 1, "{line}");
 }
 
 #[test]

@@ -83,7 +83,7 @@ impl Playground {
         Playground::default()
     }
 
-    /// `{"version": "0.2.2", "maxStack": 3145728}`.
+    /// `{"version": "0.3.0", "maxStack": 3145728}`.
     pub fn version() -> Value {
         obj([("version", VERSION.into()), ("maxStack", MAX_STACK.into())])
     }

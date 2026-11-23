@@ -1,6 +1,6 @@
 [project]
 name = "cp-lang-scripts"
-version = "0.2.2"
+version = "0.3.0"
 description = "CP Lang site generator, scoreboard, conformance, and corpus scripts"
 requires-python = ">=3.10"
 dependencies = [
