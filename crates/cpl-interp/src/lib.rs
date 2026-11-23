@@ -658,7 +658,7 @@ struct Interp<'p, 'o, O: Observer> {
     /// The `mut` params of running traced VM calls: the stack slot holding
     /// each one's value, and the caller's place it was lent from.
     #[cfg(not(target_arch = "wasm32"))]
-    lent: Vec<(usize, bool, usize)>,
+    lent: Vec<(usize, Rc<Part>)>,
     /// Reusable pool of `Value` register frames for VM calls.
     #[cfg(not(target_arch = "wasm32"))]
     vm_pool_v: Vec<Vec<Value>>,
@@ -1499,6 +1499,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     /// The storage of `part`.
+    /// The caller's place a param is lent from.
+    pub(crate) fn lender(&mut self, part: &Part) -> Res<&mut Value> {
+        self.part_mut(part, Span::default())
+    }
+
     fn part_mut(&mut self, part: &Part, span: Span) -> Res<&mut Value> {
         let mut value = if part.global {
             &mut self.globals[part.at]
@@ -2807,12 +2812,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         for &d in &self.fn_guarded[id] {
             self.saved_domains.push((d, self.domains[d]));
         }
-        let has_part = self.stack[self.base..self.base + f.params.len()]
-            .iter()
-            .any(|v| matches!(v, Value::Part(_)));
         let has_alias = self.stack[self.base..self.base + f.params.len()]
             .iter()
-            .any(|v| matches!(v, Value::Alias(..)));
+            .any(|v| matches!(v, Value::Alias(..) | Value::Part(_)));
         let has_fn_param = f
             .locals
             .iter()
@@ -2822,7 +2824,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         #[cfg(not(target_arch = "wasm32"))]
         let fed_ok = !feeding || self.vm.as_ref().is_some_and(|c| c.main.traced);
         #[cfg(not(target_arch = "wasm32"))]
-        let mut flow = if fed_ok && !has_part && !(has_alias && has_fn_param) {
+        let mut flow = if fed_ok && !(has_alias && has_fn_param) {
             if let Some(compiled) = self.vm.clone() {
                 if compiled.fns.get(id).is_some_and(Option::is_some) {
                     self.run_fn_vm_waited(&compiled, id, span, saved, dom_mark)

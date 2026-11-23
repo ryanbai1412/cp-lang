@@ -6,6 +6,7 @@ use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::Interp;
 use cpl_ir::{Place, PlaceKind, Ty};
+use std::rc::Rc;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// The `Trace` op of `chunk`: kept out of the op dispatch, which a
@@ -89,29 +90,27 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// the value, as when the tree-walker runs the call.
     pub(super) fn show_lent(&mut self) {
         for k in (0..self.lent.len()).rev() {
-            let (held, global, at) = self.lent[k];
+            let (held, part) = (self.lent[k].0, Rc::clone(&self.lent[k].1));
             if held < self.base {
                 break;
             }
-            let value = std::mem::replace(&mut self.stack[held], Value::Alias(global, at));
-            match global {
-                true => self.globals[at] = value,
-                false => self.stack[at] = value,
-            }
+            let lent = match part.steps.is_empty() {
+                true => Value::Alias(part.global, part.at),
+                false => Value::Part(Rc::clone(&part)),
+            };
+            let value = std::mem::replace(&mut self.stack[held], lent);
+            *self.lender(&part).expect("a lent place is still there") = value;
         }
     }
 
     /// After: the value is back in the param, the caller's place lent.
     pub(super) fn hide_lent(&mut self) {
         for k in (0..self.lent.len()).rev() {
-            let (held, global, at) = self.lent[k];
+            let (held, part) = (self.lent[k].0, Rc::clone(&self.lent[k].1));
             if held < self.base {
                 break;
             }
-            let place = match global {
-                true => &mut self.globals[at],
-                false => &mut self.stack[at],
-            };
+            let place = self.lender(&part).expect("a lent place is still there");
             self.stack[held] = std::mem::replace(place, Value::Moved);
         }
     }

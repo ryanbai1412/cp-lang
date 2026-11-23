@@ -1,5 +1,5 @@
 use crate::observe::Observer;
-use crate::value::{TupleVal, Value};
+use crate::value::{Part, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::Flow;
@@ -124,31 +124,35 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         fn_id: FnId,
     ) -> Res<Value> {
         let chunk = compiled.fns[fn_id].as_ref().unwrap();
-        let mut aliases: Vec<(usize, bool, usize)> = Vec::new();
+        // A param lent from a caller's place (a `mut` param lent on, or a
+        // part of a value) holds the value while the chunk runs.
+        let mut aliases: Vec<(usize, Rc<Part>)> = Vec::new();
         for k in 0..chunk.param_count {
-            if let Value::Alias(mut is_global, mut at) = self.stack[self.base + k] {
-                // A param lent on from a traced caller's `mut` param.
-                while let Value::Alias(g, a) = match is_global {
-                    true => &self.globals[at],
-                    false => &self.stack[at],
-                } {
-                    (is_global, at) = (*g, *a);
+            let part = match &self.stack[self.base + k] {
+                &Value::Alias(mut global, mut at) => {
+                    while let Value::Alias(g, a) = match global {
+                        true => &self.globals[at],
+                        false => &self.stack[at],
+                    } {
+                        (global, at) = (*g, *a);
+                    }
+                    Rc::new(Part {
+                        global,
+                        at,
+                        steps: Vec::new(),
+                    })
                 }
-                let val = if is_global {
-                    std::mem::replace(&mut self.globals[at], Value::Moved)
-                } else {
-                    std::mem::replace(&mut self.stack[at], Value::Moved)
-                };
-                self.stack[self.base + k] = val;
-                aliases.push((k, is_global, at));
-            }
+                Value::Part(part) => Rc::clone(part),
+                _ => continue,
+            };
+            let val = std::mem::replace(self.lender(&part)?, Value::Moved);
+            self.stack[self.base + k] = val;
+            aliases.push((k, part));
         }
         let lent = self.lent.len();
         if chunk.traced {
             let base = self.base;
-            let held = aliases
-                .iter()
-                .map(|&(k, global, at)| (base + k, global, at));
+            let held = aliases.iter().map(|(k, part)| (base + k, Rc::clone(part)));
             self.lent.extend(held);
         }
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
@@ -165,7 +169,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         );
         let res = self.exec_chunk_inner(compiled, chunk, base_i, &mut vm_regs_i, &mut regs_v);
         self.lent.truncate(lent);
-        for (k, is_global, at) in aliases {
+        for (k, part) in aliases {
             // A traced chunk leaves its locals on the stack.
             let val = match chunk.slot_map[k] {
                 _ if chunk.traced => {
@@ -179,11 +183,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
                 SlotLoc::SmallTuple { .. } => unreachable!("params are never SmallTuple"),
             };
-            if is_global {
-                self.globals[at] = val;
-            } else {
-                self.stack[at] = val;
-            }
+            *self.lender(&part)? = val;
         }
         self.return_regs_v(regs_v);
         vm_regs_i.truncate(base_i);
