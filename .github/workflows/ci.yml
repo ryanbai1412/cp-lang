@@ -121,6 +121,9 @@ jobs:
       - name: Neovim smoke
         shell: bash
         run: nvim --headless --clean -l editors/neovim/test/smoke.lua "$PWD/target/debug/cpl" "$PWD"
+      - name: Vim smoke
+        if: matrix.os == 'ubuntu-latest'
+        run: bash editors/neovim/test/smoke_vim.sh "$PWD/target/debug/cpl"
 
   # VS Code: the unit tests, then the extension host against the real `cpl lsp`
   # (diagnostics, definition, completion, formatting); editors/vscode/test/integration.
