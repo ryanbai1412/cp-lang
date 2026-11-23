@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2641 (995 passing). Rules: 568.
+Cases: 2644 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 52 rules, 144 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 52 rules, 146 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 67 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 69 rules, 142 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -175,8 +175,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.8.4 [1+ 0-]: `xs[i]` on a heap element lends it (`let row = rows[i]`); on a plain element it copies.
 - R02.8.5 [2+ 1-]: Large arrays never live on the C++ stack (chapter 13).
 - R02.9.1 [2+ 1-]: Two fresh types are never equal, even from the same expression.
-- R02.9.2 [1+ 1-]: A fresh type is block-scoped. A value whose type mentions it cannot leave the block by `re...
-- R02.9.3 [2+ 0-]: A function may return a fresh type existentially: `fn components(...) -> (domain P, [V]P)`...
+- R02.9.2 [1+ 2-]: A fresh type is block-scoped. A value whose type mentions it cannot leave the block by `re...
+- R02.9.3 [3+ 0-]: A function may return a fresh type existentially: `fn components(...) -> (domain P, [V]P)`...
 - R02.9.4 [1+ 0-]: A fresh type carries runtime data (a domain's count, a modulus) in one static slot per dec...
 - R02.9.5 [1+ 0-]: `V.count` is typed by the declared range, which is where storage widths and overflow proof...
 - R02.9.6 [1+ 0-]: Product domains `domain State = (V, K)` and disjoint unions `domain Node = In + Out` are d...
@@ -751,7 +751,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0310 Unknown named argument: 2 case(s)
 - E0311 Invalid `@memo` function: 2 case(s)
 - E0312 Mutating expression inside `debug(...)`: 1 case(s)
-- E0313 Fresh domain escapes its declaring block: 1 case(s)
+- E0313 Fresh domain escapes its declaring block: 2 case(s)
 - E0314 Match is not exhaustive: 5 case(s)
 - E0315 Not a token type: 1 case(s)
 - E0316 field_bound_from_input *(0.3)*: 1 case(s)
@@ -970,12 +970,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (157/183 named by a case)
-  - uncovered: `dfs_tree`, `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `LinkCut.access`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `EulerTourTree.reroot`, `LazyEulerTourTree.reroot`, `KruskalTree`
+- **tree** (158/183 named by a case)
+  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `LinkCut.access`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `LazyLinkCut.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `EulerTourTree.reroot`, `LazyEulerTourTree.reroot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2178 of 2307 std items are named by a case.
+2179 of 2307 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
