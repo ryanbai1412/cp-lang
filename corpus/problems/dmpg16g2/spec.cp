@@ -2,11 +2,12 @@
 // letters left out. Fix the bottom row; for each set of letters, a column is free while none of
 // them occurs in it between the top and bottom rows. Raising the top frees columns one at a time,
 // and the free runs merge in a Dsu, so each set keeps its count of all-free column spans.
-let n = read<1..=500>()
+let n = read<1..=1000>()
 domain Row = [n]
 domain Col = [n]
 let g = read<[Row, Col]Char>()
-enum Letter = A | B | C | D | E
+// Letters are a numbered domain, not an enum: `enum.subsets` doesn't exist yet (compiler worklog).
+domain Letter = [5]
 fn spans(k: Int) -> Int = k * (k + 1) / 2
 struct FreeSpans:
     var blocked: [Col]Int
@@ -35,12 +36,18 @@ for bot in Row:
         if let ch = Letter.at(Int(g[bot, c]) - Int('A')):
             last[c, ch] = bot
     var free = [Letter.subsets] s => FreeSpans.new(
-        [Col] c => s.items.count(ch => last[c, ch] != None)
+        [Col] c => Letter.count(ch => ch in s and last[c, ch] != None)
     )
-    let leaving = last.buckets()
+    var leaving: [Row]List<(Col, Letter)> = []
+    for c in Col:
+        for ch in Letter:
+            if let r = last[c, ch]:
+                leaving[r].push((c, ch))
     for top in ..=bot:
-        count += Letter.subsets.sum(of: s => if s.len % 2 == 0: free[s].total else: -free[s].total)
-        for (c, ch) in leaving[Some(top)]:
-            for s in Letter.subsets.filter(s => ch in s):
-                free[s].free(c)
+        for s in Letter.subsets:
+            count += if s.len % 2 == 0: free[s].total else: -free[s].total
+        for (c, ch) in leaving[top]:
+            for s in Letter.subsets:
+                if ch in s:
+                    free[s].free(c)
 print(count)
