@@ -272,15 +272,18 @@ impl<'a> Lowerer<'a> {
                         return self.expr(&call, hint);
                     }
                 }
-                if indices.len() == 1
-                    && matches!(indices[0].kind, ast::ExprKind::Range { .. })
+                let piece_cell = matches!(&base_expr.ty, Ty::Array { dims, .. } if matches!(dims.as_slice(), [Dim::Sym(_)]));
+                let sliced = !piece_cell
+                    && indices.len() == 1
+                    && matches!(indices[0].kind, ast::ExprKind::Range { .. });
+                if sliced
                     && self.mut_slice_inits.contains(&self.span(span))
                     && self.is_mutable_place(base)
                     && Self::sliceable_mut_elem(&base_expr.ty).is_some()
                 {
                     return self.mut_slice_expr(base, &indices[0], span);
                 }
-                if indices.len() == 1 && matches!(indices[0].kind, ast::ExprKind::Range { .. }) {
+                if sliced {
                     return self.slice_expr(base_expr, &indices[0], span);
                 }
                 // `g[r]` on `[R, C]T` is the row `g[r, ..]`.
@@ -314,7 +317,7 @@ impl<'a> Lowerer<'a> {
                     let whole: Vec<usize> = (0..indices.len())
                         .filter(|&k| is_whole(&indices[k]))
                         .collect();
-                    if !whole.is_empty() && dims.len() == indices.len() {
+                    if !whole.is_empty() && !piece_cell && dims.len() == indices.len() {
                         let (dims, elem) = (dims.clone(), (**elem).clone());
                         return self.collected(elem, span, |lw, out, push| {
                             let base = lw.hold(base_expr, out);
@@ -392,10 +395,8 @@ impl<'a> Lowerer<'a> {
                             | Ty::StrView
                     )
                 {
-                    // A `[V.ranges]T` cell is one range, not a slice.
-                    let range_cells = matches!(&base_expr.ty, Ty::Array { dims, .. } if matches!(dims.as_slice(), [Dim::Sym(_)]));
                     if let Some(Ty::Range(_)) =
-                        self.probe_ty_silent(&indices[0]).filter(|_| !range_cells)
+                        self.probe_ty_silent(&indices[0]).filter(|_| !piece_cell)
                     {
                         let range_val = self.expr(&indices[0], None);
                         if self.mut_slice_inits.contains(&self.span(span))

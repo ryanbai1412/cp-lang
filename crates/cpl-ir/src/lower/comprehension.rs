@@ -449,6 +449,56 @@ impl Lowerer<'_> {
         let mut loops = Vec::new();
         let mut indices = Vec::new();
         for (i, dim) in dims.iter().enumerate() {
+            if let (DimSpec::Sym(d), Whole::No) = (dim, &whole) {
+                // `[V.ranges] r => …`: `r` is each piece, by length then left end,
+                // the way `for r in V.ranges` walks them.
+                let d = *d;
+                let n = self.mk(ExprKind::DomainLen(d), Ty::Int, span);
+                let n1 = self.int_add(n, 1);
+                let (len, lo) = (self.temp(Ty::Int), self.temp(Ty::Int));
+                let len_var = self.mk(ExprKind::Local(len), Ty::Int, span);
+                let lo_var = self.mk(ExprKind::Local(lo), Ty::Int, span);
+                let lo_end = BinOp::Sub;
+                let lo_end = self.mk(
+                    ExprKind::Binary(lo_end, Box::new(n1.clone()), Box::new(len_var.clone())),
+                    Ty::Int,
+                    span,
+                );
+                let hi = BinOp::Add;
+                let hi = self.mk(
+                    ExprKind::Binary(hi, Box::new(lo_var.clone()), Box::new(len_var)),
+                    Ty::Int,
+                    span,
+                );
+                let piece_ty = Ty::Range(Box::new(Ty::Pos(d)));
+                let piece = ExprKind::Range {
+                    lo: Box::new(lo_var),
+                    hi: Box::new(hi),
+                };
+                let piece = self.mk(piece, piece_ty.clone(), span);
+                let mut pre = Vec::new();
+                let slot = self.loop_var(&params[i], piece_ty, &mut pre);
+                pre.insert(0, Stmt::Let(slot, Some(piece)));
+                let heads = [
+                    (len, self.int_lit(1, span), n1, Vec::new()),
+                    (lo, self.int_lit(0, span), lo_end, pre),
+                ];
+                for (slot, lo, hi, pre) in heads {
+                    let id = self.next_loop;
+                    self.next_loop += 1;
+                    let iter = Iter::Range {
+                        lo,
+                        hi,
+                        step: None,
+                        rev: false,
+                        closed: false,
+                    };
+                    loops.push((id, slot, iter, pre));
+                }
+                let key = self.local(slot, span);
+                indices.push(self.piece_idx(key, d, span));
+                continue;
+            }
             let (ty, lo, hi) = self.table_axis(dim, span);
             let mut pre = Vec::new();
             let slot = match whole {
