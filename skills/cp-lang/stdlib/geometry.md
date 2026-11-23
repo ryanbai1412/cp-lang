@@ -216,6 +216,8 @@ O(1) value type.
 - `fn polyhedron_volume6(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> I128` — O(|faces|); Six times the signed volume of the closed triangulated surface `faces` over `pts`: the sum of `pts[a].dot128(pts[b].cross(pts[c]))` over faces, computed in `I128`.; traps: when a face index is out of range
 - `fn line_plane_intersect(a: Vec3, b: Vec3, plane: Plane3, eps: F64 = 1e-9) -> ?Vec3` — O(1); The point where the infinite line through `a` and `b` meets `plane`, or `None` when `\|plane.n.dot(b - a)\| <= eps` (parallel, including lying in the plane, or `a == b`).
 - `fn sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64` — O(1); The great-circle distance between the directions of `a` and `b` on a sphere of radius `r`: `r * atan2(a.cross(b).len, a.dot(b))`.
+- `fn dot(a: Pt, b: Pt) -> Int` — O(1); The dot product `a.x * b.x + a.y * b.y`, the free form of `a.dot(b)`.; traps: overflow when a product leaves `Int`; use `dot128` style `I128` maths for coordinates past about 3e9
+- `fn cross(a: Pt, b: Pt) -> Int` — O(1); The cross product `a.x * b.y - a.y * b.x`, the free form of `a.cross(b)`: positive when `b` is counter-clockwise from `a`.; traps: overflow when a product leaves `Int`
 
 ## Example
 
