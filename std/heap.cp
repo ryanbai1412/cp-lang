@@ -815,23 +815,38 @@ pub struct MeldHeap<T>:
     /// Meld `other` into `self` (consuming `other`).
     ///
     /// Every element keeps the value its own heap reported: pending `add_all` offsets apply only
-    /// to the elements they were added to.
+    /// to the elements they were added to. Each heap keeps its own nodes, so the smaller side's
+    /// nodes are copied into the larger: a node is copied only when its heap at least doubles.
     ///
-    /// cost: \(O(\log n)\)
+    /// cost: \(O(k + \log n)\) for the smaller heap's `k` nodes; melding `n` one-element heaps
+    /// together in any order is \(O(n \log n)\) in total
     /// traps: never
     /// example: `var a = MeldHeap.of([4, 2]); a.meld(MeldHeap.of([3, 1])); a.drain() == [1, 2, 3, 4]`
     pub fn meld(mut self, other: MeldHeap<T>):
         if other._root < 0: return
         if let q = other._plus: _plus = Some(q)
-        let base = _keys.len
-        for i in 0..other._keys.len:
-            let (a, b) = other._kids[i]
-            _keys.push(other._keys[i])
-            _add.push(other._add[i])
-            _kids.push((if a < 0: a else: a + base, if b < 0: b else: b + base))
-            _rank.push(other._rank[i])
-        _root = self.merge(_root, other._root + base)
         _len += other._len
+        if other._keys.len <= _keys.len:
+            self.graft(other._keys, other._add, other._kids, other._rank, other._root)
+            return
+        let (keys, add, kids, rank, root) = (_keys, _add, _kids, _rank, _root)
+        _keys = other._keys
+        _add = other._add
+        _kids = other._kids
+        _rank = other._rank
+        _root = other._root
+        self.graft(keys, add, kids, rank, root)
+
+    fn graft(mut self, keys: List<T>, add: List<?T>, kids: List<(Int, Int)>, rank: List<Int>, root: Int):
+        if root < 0: return
+        let base = _keys.len
+        for i in 0..keys.len:
+            let (a, b) = kids[i]
+            _keys.push(keys[i])
+            _add.push(add[i])
+            _kids.push((if a < 0: a else: a + base, if b < 0: b else: b + base))
+            _rank.push(rank[i])
+        _root = self.merge(_root, root + base)
 
     /// Meld `other` into `self`, leaving `other` empty.
     ///
