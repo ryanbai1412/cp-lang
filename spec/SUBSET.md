@@ -226,7 +226,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/fold-with-init.cp: compiler
 - core-07/assign-into-range.cp: compiler
 - core-07/sorted-has-no-desc-flag.cp: stdlib
-- core-07/fold-without-parens-warns.cp: compiler
 - core-07/prefix-scan-cuts.cp: compiler
 - core-07/slice-past-source-traps.cp: compiler
 - core-08/const-param-arithmetic.cp: compiler

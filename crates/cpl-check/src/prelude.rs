@@ -135,6 +135,39 @@ pub fn spec_receiver_method_names() -> &'static std::collections::HashSet<String
     })
 }
 
+/// The top-level std methods that do work and need nothing but `self`:
+/// every `pub fn name(self: S, ..)` of that name gives the rest defaults and
+/// is not `@get`, so reading one without `()` hides work (R07.1.7).
+pub fn work_methods() -> &'static std::collections::HashSet<String> {
+    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+    NAMES.get_or_init(|| {
+        let mut work = std::collections::HashSet::new();
+        let mut other = std::collections::HashSet::new();
+        for (_, text) in crate::modules::std_modules() {
+            if !text.contains("self:") {
+                continue;
+            }
+            for (_, item) in cpl_syntax::parse_file(text).items {
+                for stmt in &item.stmts {
+                    let ast::StmtKind::Fn(f) = &stmt.kind else {
+                        continue;
+                    };
+                    if !stmt.public || !f.params.first().is_some_and(|p| p.name.text == "self") {
+                        continue;
+                    }
+                    let getter = stmt.decorators.iter().any(|d| d.name.text == "get");
+                    match !getter && f.params[1..].iter().all(|p| p.default.is_some()) {
+                        true => work.insert(f.name.text.clone()),
+                        false => other.insert(f.name.text.clone()),
+                    };
+                }
+            }
+        }
+        work.retain(|n| !other.contains(n));
+        work
+    })
+}
+
 /// The methods the standard library adds to the types of the language:
 /// each `pub fn name(self: T, ..)` at the top of a module, with that
 /// module. A program that writes `.name` gets the fn without a `use`,

@@ -32,10 +32,15 @@ impl Checker<'_> {
         owner: &str,
         ty: &Ty,
     ) {
-        let Ty::Fn { params, ret } = ty else {
-            return;
+        let does_work = match ty {
+            Ty::Fn { params, ret } => {
+                params.is_empty() && !matches!(**ret, Ty::Unit | Ty::Unknown | Ty::Error)
+            }
+            // `r.sum` on a type std's `fn sum(self: S, ..)` reaches.
+            Ty::Unknown => crate::prelude::work_methods().contains(&name.text),
+            _ => false,
         };
-        if !params.is_empty() || matches!(**ret, Ty::Unit | Ty::Unknown | Ty::Error) {
+        if !does_work {
             return;
         }
         if let Some(Def::Struct { fields, .. }) = self.env.global(owner).as_deref() {
