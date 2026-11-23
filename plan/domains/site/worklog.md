@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed `lsp: hover shows doc math in Unicode and links as code`: `cpl_doc::plain::text` turns `\( O(n \log n) \)` into `O(n log n)` and [`up`] / [`text`](Rooted.up) into the code `up`; LSP hover uses it, so editors without KaTeX read the same docs.
 - Landed `site(search): index dotted names by last part; cap 600 KB`: with 517 more std items the index was 548,047 bytes gzipped; it is 538,189 now, under the new 600,000 cap (decision 326.5). The search smoke still finds a reference item, a guide heading and a core table row.
 - Landed `tools(doc): keep pub on fn signatures; site: check link anchors`: `cpl doc` dropped `pub` from 488 of 730 public top-level fn signatures (`sig_span` starts at `fn`), so the site's reference treated them as private and left them out. The reference now has 41 modules and 2,625 items, up from 37 and 2,108. `web/scripts/links.mjs` now also fails on a `#fragment` with no matching id on its page; one was broken (`flow#min_vertex_cover`, a victim of the same bug).
 - Landed `tools(doc): intra-doc links resolved by cpl doc, broken ones fail`: [`up`], [`Rooted.up`] and [`text`](Rooted.up) in `///` comments resolve from the item's scope; `cpl doc` puts the targets in its JSON and HTML and exits 1 on one that names no item. The 20 existing std links all resolve; the site turns them into anchors on the std pages. Hover and the CLI's text output still show them as code (next).

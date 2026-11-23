@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 cpl-check.workspace = true
 cpl-diag.workspace = true
+cpl-doc.workspace = true
 cpl-fmt.workspace = true
 cpl-json.workspace = true
 cpl-judge.workspace = true

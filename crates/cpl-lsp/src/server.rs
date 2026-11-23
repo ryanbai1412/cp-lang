@@ -1297,7 +1297,7 @@ fn annotated(rest: &str) -> bool {
 fn hover_markdown(hover: &cpl_check::Hover) -> String {
     let code = format!("```cp\n{}\n```", hover.text);
     match &hover.doc {
-        Some(doc) => format!("{code}\n\n{doc}"),
+        Some(doc) => format!("{code}\n\n{}", cpl_doc::plain::text(doc)),
         None => code,
     }
 }

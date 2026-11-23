@@ -142,6 +142,7 @@ version = "0.3.0"
 dependencies = [
  "cpl-check",
  "cpl-diag",
+ "cpl-doc",
  "cpl-fmt",
  "cpl-ir",
  "cpl-json",

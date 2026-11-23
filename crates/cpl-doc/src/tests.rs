@@ -645,3 +645,17 @@ fn a_pub_fn_keeps_pub_in_its_signature() {
     let sigs: Vec<&str> = module.items.iter().map(|i| i.signature.as_str()).collect();
     assert_eq!(sigs, ["pub fn one<T>(x: T) -> Int", "fn two() -> Int"]);
 }
+
+#[test]
+fn plain_text_writes_math_in_unicode_and_links_as_code() {
+    assert_eq!(plain::math("O(n \\log n)"), "O(n log n)");
+    assert_eq!(plain::math("O(n \\cdot \\alpha(n))"), "O(n · α(n))");
+    assert_eq!(plain::math("O(n^2 + \\sqrt{q})"), "O(n² + √q)");
+    assert_eq!(plain::math("O(n^{1/2})"), "O(n^(1/2))");
+    assert_eq!(
+        plain::text(
+            "cost: \\(O(n \\log n)\\); see [`up`] and [`size`](Bag.len), not [a](https://x.y)."
+        ),
+        "cost: O(n log n); see `up` and `size`, not [a](https://x.y)."
+    );
+}
