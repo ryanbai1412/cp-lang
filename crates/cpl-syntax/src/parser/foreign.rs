@@ -99,6 +99,39 @@ impl<'a> Parser<'a> {
         (placed && count == values.len()).then(|| format!("print({})", values.join(", ")))
     }
 
+    /// `[Str: Int]()`, Swift's empty dictionary.
+    pub(super) fn swift_map_ahead(&self, callee: &Expr) -> bool {
+        let type_name = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n.starts_with(|c: char| c.is_ascii_uppercase()));
+        self.peek_n(1) == T::RParen
+            && matches!(&callee.kind, ExprKind::Map(entries)
+                if entries.len() == 1 && type_name(&entries[0].0) && type_name(&entries[0].1))
+    }
+
+    /// `[Str: Int]()`: one error, with CP Lang's `Map<Str, Int>()`.
+    pub(super) fn swift_map(&mut self, callee: Expr) -> ExprKind {
+        let ExprKind::Map(entries) = &callee.kind else {
+            return ExprKind::Error;
+        };
+        let (ExprKind::Name(k), ExprKind::Name(v)) = (&entries[0].0.kind, &entries[0].1.kind)
+        else {
+            return ExprKind::Error;
+        };
+        let new = format!("Map<{k}, {v}>()");
+        self.bump();
+        let span = Span::new(callee.span.start, self.span().end);
+        self.bump();
+        self.recovered(
+            Diagnostic::error(
+                codes::EXPECTED_TOKEN,
+                span,
+                "an empty map is `Map<K, V>()` in CP Lang, or `[:]` where its type is known",
+            )
+            .with_help(format!("write `{new}`"))
+            .with_fix(format!("write `{new}`"), span, new),
+        );
+        ExprKind::Error
+    }
+
     /// `P { x: 1 }` after a type's name: Rust's struct literal.
     pub(super) fn struct_literal_ahead(&self, callee: &Expr) -> bool {
         let fields = self.peek_n(1) == T::RBrace

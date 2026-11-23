@@ -56,3 +56,13 @@ fn a_rust_print_macro_is_one_error_with_the_print_call() {
     assert_eq!(fix("let x = 3\nprintln!(\"x={}\", x)\n"), None);
     assert_eq!(fix("let x = 3\neprintln!(\"{}\", x)\n"), None);
 }
+
+#[test]
+fn a_swift_empty_map_is_one_error_with_the_map_type() {
+    let d = parse_file("var d = [Str: Int]()\nprint(d.len)\n").diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert_eq!(d[0].fixes[0].edits[0].1, "Map<Str, Int>()");
+    assert!(parse_file("let m = [1: 2]\nprint(m)\n")
+        .diagnostics
+        .is_empty());
+}

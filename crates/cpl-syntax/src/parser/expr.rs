@@ -825,6 +825,7 @@ impl<'a> Parser<'a> {
             }
             let kind = match self.peek() {
                 T::LBrace if self.struct_literal_ahead(&expr) => self.struct_literal(expr),
+                T::LParen if self.swift_map_ahead(&expr) => self.swift_map(expr),
                 T::LParen => {
                     self.bump();
                     let mut args = self.comma_list(T::RParen, "the argument list", Self::arg);

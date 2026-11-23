@@ -1,0 +1,8 @@
+error[E0103]: an empty map is `Map<K, V>()` in CP Lang, or `[:]` where its type is known
+  --> swift_map.cp:1:9
+  |
+1 | var d = [Str: Int]()
+  |         ^^^^^^^^^^^^
+  = help: write `Map<Str, Int>()`
+
+swift_map.cp: 1 error
