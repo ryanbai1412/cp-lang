@@ -90,29 +90,42 @@ pub(crate) fn errors_in(
 /// until none applies, and how many were applied. A round can uncover
 /// another error, so the rounds are capped.
 pub fn apply_error_fixes(path: &str, text: &str) -> (String, usize) {
-    let mut db = cpl_check::Database::new();
+    let (text, applied, _) = apply_error_fixes_in(&mut cpl_check::Database::new(), path, text);
+    (text, applied)
+}
+
+/// `apply_error_fixes` in `db`, with the errors left in the result.
+fn apply_error_fixes_in(
+    db: &mut cpl_check::Database,
+    path: &str,
+    text: &str,
+) -> (String, usize, Vec<cpl_diag::Diagnostic>) {
     let mut text = text.to_string();
     let mut applied = 0;
     let mut budget = checked_fix::MAX_CHECKS;
     for _ in 0..8 {
-        let mut errors = errors_in(&mut db, path, &text);
-        checked_fix::rank_checked(&mut db, path, &text, &mut errors, &mut budget);
+        let mut errors = errors_in(db, path, &text);
+        checked_fix::rank_checked(db, path, &text, &mut errors, &mut budget);
         let (next, n) = cpl_lint::apply_fixes(&text, &errors);
         if n == 0 || next == text {
-            break;
+            return (text, applied, errors);
         }
         applied += n;
         text = next;
     }
-    (text, applied)
+    let left = errors_in(db, path, &text);
+    (text, applied, left)
 }
 
-/// `text` with the lint fixes `cpl lint --fix` would make, and how many.
-fn apply_lint_fixes(path: &str, mut text: String) -> (String, usize) {
+/// `text` with the lint fixes `cpl lint --fix` would make, and how many;
+/// each round lints the analysis `db` has, so a clean file is checked once.
+fn apply_lint_fixes(db: &mut cpl_check::Database, path: &str, mut text: String) -> (String, usize) {
     let (config, _) = cpl_lint::Config::discover(std::path::Path::new(path));
     let mut applied = 0;
     for _ in 0..8 {
-        let (next, n) = cpl_lint::apply_fixes(&text, &cpl_lint::lint(&text, &config));
+        db.set_file(path, text.as_str());
+        let analysis = db.analyze(path).expect("the file was just set");
+        let (next, n) = cpl_lint::apply_fixes(&text, &cpl_lint::lint_analysis(&analysis, &config));
         if n == 0 {
             break;
         }
@@ -137,10 +150,9 @@ pub(crate) fn fix(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut S
                 continue;
             }
         };
-        let (fixed, mut applied) = apply_error_fixes(path, &text);
-        let left = errors_in(&mut db, path, &fixed);
+        let (fixed, mut applied, left) = apply_error_fixes_in(&mut db, path, &text);
         let fixed = if left.is_empty() {
-            let (linted, n) = apply_lint_fixes(path, fixed);
+            let (linted, n) = apply_lint_fixes(&mut db, path, fixed);
             applied += n;
             linted
         } else {
