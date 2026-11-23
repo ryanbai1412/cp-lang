@@ -1579,11 +1579,24 @@ fn an_error_inside_std_names_the_library_calls_that_led_there() {
     .unwrap();
     let checked = cpl(&["check".as_ref(), main.as_os_str()], b"");
     let err = String::from_utf8_lossy(&checked.stderr);
-    let inside = err.find("inside `SuffixArray`").expect(&err);
+    let inside = err.find("inside `SuffixArray.new`").expect(&err);
     let via = err
         .find("mylib/text.cp:4: called from `suffix_count`")
         .expect(&err);
     assert!(inside < via && err.contains("main.cp:6:7"), "{err}");
+}
+
+/// A trap inside a std method names that method, not the declaration above it.
+#[test]
+fn a_trap_inside_a_std_method_names_the_method() {
+    let main = scratch(
+        "std-method-trap",
+        "main.cp",
+        b"let s = [1, 2, 3, 4].step(2)\nprint(s.at(1))\n",
+    );
+    let run = cpl(&["run".as_ref(), main.as_os_str()], b"");
+    let err = String::from_utf8_lossy(&run.stderr);
+    assert!(err.contains("inside `Stepped.at`"), "{err}");
 }
 
 #[test]

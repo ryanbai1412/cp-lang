@@ -338,6 +338,10 @@ impl<'a> Lowerer<'a> {
             .items
             .iter()
             .find(|item| item.span.touches(at.start))?;
+        let line = analysis.lines.line_of(at.start) + 1;
+        if let Some(name) = fn_at(&item.syntax.parsed.stmts, item.offset, at.start, None) {
+            return Some((module.clone(), line, name));
+        }
         let inside = item
             .syntax
             .decls
@@ -345,8 +349,28 @@ impl<'a> Lowerer<'a> {
             .filter(|d| d.span.shift(item.offset).touches(at.start))
             .min_by_key(|d| (d.kind != cpl_check::DeclKind::Fn, d.span.end - d.span.start))
             .or(item.syntax.decls.first())?;
-        let line = analysis.lines.line_of(at.start) + 1;
         Some((module.clone(), line, inside.name.clone()))
+    }
+}
+
+/// The fn whose body holds `at`, named as a call stack names it (`Stepped.at`).
+fn fn_at(
+    stmts: &[cpl_syntax::ast::Stmt],
+    offset: u32,
+    at: u32,
+    owner: Option<&str>,
+) -> Option<String> {
+    use cpl_syntax::ast::StmtKind;
+    let stmt = stmts.iter().find(|s| s.span.shift(offset).touches(at))?;
+    match &stmt.kind {
+        StmtKind::Fn(f) => Some(match owner {
+            Some(owner) => format!("{owner}.{}", f.name.text),
+            None => f.name.text.clone(),
+        }),
+        StmtKind::Struct(d) => fn_at(&d.methods, offset, at, Some(&d.name.text)),
+        StmtKind::Enum(d) => fn_at(&d.methods, offset, at, Some(&d.name.text)),
+        StmtKind::Impl { body, .. } => fn_at(&body.stmts, offset, at, None),
+        _ => None,
     }
 }
 
