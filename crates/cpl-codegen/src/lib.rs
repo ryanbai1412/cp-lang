@@ -6,6 +6,7 @@ mod divrem;
 mod emit;
 mod expr;
 mod fuse;
+mod inline;
 mod names;
 mod niche;
 mod ranges;

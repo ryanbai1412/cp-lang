@@ -743,6 +743,8 @@ impl<'p> Emitter<'p> {
                 self.line(out, "}");
             }
             Iter::Seq(seq, rev) => {
+                let inlined = self.inline_list_call(seq);
+                let seq = inlined.as_ref().unwrap_or(seq);
                 let effects = Effects::of_block(body);
                 // The loop walks the value as it was when the loop began,
                 // so a container the body changes is walked as a copy.
