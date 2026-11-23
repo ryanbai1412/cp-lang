@@ -15,3 +15,11 @@ fn an_indent_where_a_value_was_wanted_is_the_indent_error() {
         assert!(!d.fixes.is_empty(), "{src:?}: {d:#?}");
     }
 }
+
+#[test]
+fn a_semicolon_after_a_decorator_is_one_error_with_a_removal() {
+    let diags = parse_file("@!multitest;\nlet n: Int = read()\nprint(n)\n").diagnostics;
+    assert_eq!(diags.len(), 1, "{diags:?}");
+    assert_eq!(diags[0].message, "no `;` after a decorator", "{diags:?}");
+    assert_eq!(diags[0].fixes[0].edits[0].1, "", "{diags:?}");
+}

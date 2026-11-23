@@ -247,6 +247,17 @@ impl<'a> Parser<'a> {
             Vec::new()
         };
         let span = self.span_from(start);
+        if self.at(T::Semi) && matches!(self.peek_n(1), T::Newline | T::Eof) {
+            let semi = self.span();
+            self.error(
+                Diagnostic::error(codes::UNEXPECTED_TOKEN, semi, "no `;` after a decorator")
+                    .with_help(
+                        "statements end at the end of the line; `;` is only used inside `{ ... }`",
+                    )
+                    .with_fix("remove `;`", semi, ""),
+            );
+            self.bump();
+        }
         if directive && !name.text.is_empty() && self.speculating == 0 {
             // The file-level directives: `@!multitest` divides the file
             // (decision 20.5), `@!interactive` writes each `print` out at once.
