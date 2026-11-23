@@ -31,6 +31,7 @@ let act = Action<?Low, Int>(
     compose: (f, g) => f + g,
     apply: (f, x, _) => if let l = x: Low(l.cover + f, l.first, l.last, l.gaps) else: None,
     over: Monoid(id: None, op: merge),
+    commutes: true,
 )
 var low = SegTree<Cut, ?Low, Int>(Monoid(id: None, op: merge), [Cut] c => Low(0, c, c, 0), act:)
 
