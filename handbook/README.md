@@ -186,7 +186,7 @@ reasoning spread through `decisions.md`.
 | `design/editor.md` | The query database, LSP and playground sharing one analysis | tools | `plan/domains/tools/ARCHITECTURE.md` |
 | `design/lint-fmt.md` | The linter and formatter: one analysis, rules as records, a token-preserving formatter | lint-fmt | `plan/domains/lint-fmt/ARCHITECTURE.md` |
 | `design/std-mechanisms.md` | How std gets its powers without privilege | stdlib | `plan/domains/stdlib/library-domains.md` |
-| `design/debugger.md` | Tracing, replay, stress, the debugger | debugger | `plan/domains/debugger/ARCHITECTURE.md` |
+| `design/debugger.md` | Tracing, replay, stress, the debugger | debugger | the debugger plan's architecture notes |
 | `design/repo.md` | File structure, toolchain, scripts | infra | `REPO.md`, `plan/LAYOUT.md` |
 
 ### Domains: one charter each

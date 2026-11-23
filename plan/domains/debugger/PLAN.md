@@ -1,10 +1,42 @@
 # debugger plan
 
-The detail behind [README.md](README.md). Numbers are from [metrics.toml](metrics.toml) (2026-11-22, main `4b8f504f`).
+The debugger's time-bound plan; the charter is [handbook/domains/debugger.md](../../../handbook/domains/debugger.md). Numbers are from [metrics.toml](metrics.toml) (2026-11-22, main `4b8f504f`).
+
+## Milestone 1
+
+Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](worklog.md). What [MILESTONE-1](../../../handbook/product/milestones.md) needs from this domain: the loop **WA → `cpl stress` with a brute in the same file → minimized counterexample in seconds → fix → rerun**, smooth from the CLI, Neovim/Vim, VS Code and JetBrains, on Linux, macOS and Windows. Exit criteria:
+- [x] The loop passes end to end on the CLI for `@alt(program)`, `@check` and `@interactor` multitests (`cargo nextest run -p cpl-cli --test debugger`: `stress_loop` tests).
+- [x] Every seeded bug (`bench/stress/`, 29) found and shrunk; median < 1 s, max < 5 s (`cargo nextest run -p cpl-cli --test seeded_bugs --no-capture`: median 0.24 s, 11 of 11 P0 classes).
+- [x] A cold run on 3 problems written fresh for it (`bench/stress/cold-*.cp`: max subarray, pair sums, increasing runs): each WA found and shrunk to a minimal case in 0.54-0.70 s, `cpl test` fails on it, and after the one-line fix `cpl test` and `cpl stress` pass (about 1 s). Run by debugger, not a stranger; the stranger run is Milestone 2.
+- [x] The loop tests pass on Linux, macOS and Windows CI: paths, CRLF in saved cases, no `g++` or `sh` needed for a same-file brute (`.github/workflows/debugger-loop.yml`: 41 of 41 on each OS).
+- [x] Neovim (headless loop `editors/neovim/test/stress_loop.lua` green on ubuntu, macOS and Windows in `debugger-loop.yml`; Vim's `stress_loop_vim.sh` green on ubuntu and macOS): `:Cpl stress` (or the LSP Stress lens) then `:Cpl test` runs the loop from the documented one-step setup (`editors/neovim/plugin/cplang.lua`); Vim: `:!cpl stress %` then `:!cpl test %`, documented. Tools owns `editors/` and the LSP; debugger writes the scenario.
+- [x] JetBrains (`CpPluginSmokeTest` stress-loop test, headless IDE, green on ubuntu, macOS and Windows in `debugger-loop.yml`): a `cpl` run configuration with command `stress`, then `test` (`editors/jetbrains/src/main/kotlin/dev/cplang/ide/CplRun.kt`), runs the loop; its output names the saved case.
+- [x] VS Code (loop test in `editors/vscode/test/integration/suite.ts` passes on ubuntu, macOS and Windows in `debugger-loop.yml`): Stress lens shows the failing case, Run All Samples reruns `<file>.tests/`; wording is v0.3's (`@alt(program)`, `@check`).
+- [x] Traps name the rule, the place and the locals (all 12 R-codes in `runtime_errors.rs`).
+- [x] Stress guide (`web/content/docs/guides/stress.mdx`, site's) teaches the whole loop including the rerun (section "The loop"); its examples run (they do today).
+
+Milestone 1.5, started the moment the loop above works on all 3 OSes and in all 3 editors: replay (time travel, the +20% trace target) per [design/trace-replay.md](design/trace-replay.md), needing compiler's Interp snapshot/restore. Deferred past both: the `crates/cpl-trace` split, the VM in the browser, `gen<T>` generators beyond a row, DAP and viewer polish. What works stays working.
+
+Every criterion above passes, so Milestone 1.5 has started.
+
+Next:
+1. Milestone 1.5: replay. Time travel already runs in every editor under test: VS Code and nvim-dap step back through `cpl dap` (`suite.ts`, `dap_loop.lua`), JetBrains through the trace view (`CpPluginSmokeTest`). Every program shape (single, multitest, interactive) now takes checkpoints on the VM, and each reader replays from them: `cpl run --trace` windows (`--from`, `--last`), `--live` windows, a trap's locals, and `cpl dap` past its first 10^7 steps (`dap_reaches_every_step_of_a_run_longer_than_a_recording`). Left: checkpoints inside a fed loop body (tech-debt), and the +20% bar on `--full` (`trace_budget`).
+2. Done: with no C++ compiler, `cpl stress` runs the file's `@gen` fn in the interpreter, which writes down and replays its `rand`/`shuffle` choices as the C++ does, so its inputs still shrink (`cpl_stress_interprets_a_gen_fn_where_no_cpp_compiler_is`). Next: the divergence report (Milestone 2).
+
+## Milestone 2
+
+The most ambitious complete version ([MILESTONE-2](../../../handbook/product/milestones.md)): any doubt becomes evidence in seconds, in every editor and OS, for strangers. Exit criteria:
+- [ ] Time travel: any step of any run (single, multitest, interactive) is reachable backwards and forwards in the CLI, the viewer and DAP (VS Code, JetBrains, nvim-dap), via replay; trace overhead at most +20% over the interpreter, which is itself within 5x of C++ (`trace_budget` test, ungated today).
+- [ ] Inputs of any structure are generated and shrunk: trees, graphs, strings, permutations, queries, via `gen<T>` for user types with no std privilege (`core-06/gen-*` 6 of 6 conformance).
+- [ ] "Where do they first disagree": stress reports the first diverging line and value between solution and `@alt`, not just outputs. Today: `cpl stress --explain` names the first differing value (`@alt(program)`) or the first call of a part its `@alt(f)` answers differently, with its arguments, innermost in a recursion, and the solution's last own steps in it with their locals (`stress_explain_names_the_first_call_of_a_part_its_alt_answers_differently`, `..._innermost_wrong_call_of_a_recursive_part`); not yet a line-by-line match against the alt's steps, which have no common lines.
+- [x] Seeded bugs cover all 11 P0 classes, every one found and shrunk, median < 1 s (29 bugs, median 0.24 s; `io-flush` is `guess-unread-verdict`, a judge verdict left unread).
+- [ ] Traces stream in `crates/cpl-trace`; the viewer runs in the browser playground on the same VM; one vocabulary across trace, errors and spec.
+- [ ] A cold stranger debugs 3 planted bugs from the docs alone, in every editor.
+Next steps: the divergence report. `--explain` blames the planted line of 17 of the 29 seeded bugs (`explain_names_the_line_each_bug_was_planted_on`; each bug's planted line ends in `// planted`); a wrong call now names where it made its value, the lines that last changed what that line reads, and a global a multitest leak carries. Open: `@alt(program)` divergences (blame the line that made the first wrong output), calls with no own steps (`noip01p2`, `noip18p2`), and bugs upstream of the value (`dpk`, `noip04p2`, `noip10p1`, `noip14p2`, `nccc10s2`).
 
 ## Milestone 1 order
 
-Milestone 1 ([README](README.md#milestone-1)) sets the order, in hours: due about 09:30 PST 11/23.
+Milestone 1 ([exit criteria](#milestone-1)) sets the order, in hours: due about 09:30 PST 11/23.
 1. **The stress loop, CLI.** Done: `stress_loop` tests in `crates/cpl-cli/tests/debugger.rs` for `@alt(program)`, `@check` and `@interactor`.
 2. **Three platforms.** The loop tests and seeded bugs on macOS and Windows CI (request to infra for the runners); fix in `cpl-stress` what breaks: paths, CRLF in saved cases, the `sh` used to precompile `g++` headers (`crates/cpl-stress/src/program.rs`), which a same-file brute must not need.
 3. **Neovim/Vim.** `:Cpl stress` / the LSP Stress lens, then `:Cpl test`, from the documented setup; `:!cpl stress %` / `:!cpl test %` for Vim. Tools owns `editors/` and the LSP: requests in their worklog, stress-side fixes here.

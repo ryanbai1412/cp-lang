@@ -52,8 +52,7 @@ systems.
 
 The weakest areas are bugs nobody seeded (no mutation suite measures how
 often stress and `--explain` find them), arrays over 20,000 cells (drawn
-as empty), values of types with an `impl Show` (shown by their fields),
-and trace speed (no gate on the overhead). The quality register below
+as empty), and trace speed (no gate on the overhead). The quality register below
 lists every quality, with its check or `missing`.
 
 ## Where to start
@@ -214,6 +213,24 @@ tests for wording.
 | Every escaped bug becomes a test | escaped bugs with no regression test | process: each fix lands with its test | `plan/domains/debugger/worklog.md` |
 | A stranger can debug from the docs alone | planted bugs a cold agent fixes from the docs, in each editor | process: cold-stranger probe | `plan/domains/debugger/PLAN.md` |
 | Handbook and guide text is written for an outsider | context-dependent phrases | lint | `scripts/check-handbook.py` |
+
+## Judgment probes
+
+Numbers can't say whether the evidence is what a contestant needed. Each
+question has a probe a cold agent attempts with only the docs and the CLI.
+
+1. **Is the first screen the answer?** From the trace of
+   `examples/debugging/knapsack.cp` alone, name the buggy line in at most 3
+   actions.
+2. **Does the minimal input explain the bug?** For 5 seeded bugs, state the
+   bug from the shrunk input and the trap or trace, never reading the brute.
+3. **Does a trap need a rerun?** Fix `probes/prefix_trap.cp` from the
+   terminal output alone.
+4. **Is the loop guessable from the docs?** Given a wrong solution and only
+   the site docs, reach `cpl stress` and a minimal input.
+5. **Does it stay out of the way?** Add a dimension to a DP that has an
+   `@alt(program)` brute; stress keeps working with no edit to the generator
+   or the brute.
 
 ## Suites and tools
 

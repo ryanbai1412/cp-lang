@@ -141,18 +141,53 @@ makes no network requests.
 
 The rules are explained in `handbook/guidelines/debugging.md` and listed, with their checks, in `handbook/guidelines/debugging-checklist.md`.
 
+## Invariants
+
+- A seed reproduces the same cases, shrink and trace on every machine and in
+  the browser (`debugging/R7`).
+- A shrunk input still fits its `InputSpec`: shrinking never makes input the
+  program would reject.
+- A traced run prints what an untraced run prints (`debugging/R1`).
+- Step `k` is rebuilt from the nearest snapshot plus deltas, or re-run from
+  the nearest checkpoint (`debugging/R5`).
+- Every program in `crates/cpl-cli/tests/programs` records its saved
+  `.trace`, and no saved trace holds a cpl crash.
+- The viewer works offline from one file; trace JSON validates against
+  `tools/trace/trace-schema.json` (`debugging/R8`).
+
+## Modules
+
+| Path | What it is for |
+|---|---|
+| `crates/cpl-stress/src/spec.rs` | `InputSpec` from typed `read()`s: ranges, domains, records, tuples, `Perm`, graph and tree shapes, `@!multitest` |
+| `crates/cpl-stress/src/gen.rs`, `choices.rs` | random values for a spec; recorded choices so a `@gen` fn replays and shrinks |
+| `crates/cpl-stress/src/shrink.rs` | structural shrinking that keeps the input valid |
+| `crates/cpl-stress/src/engine.rs`, `judge.rs` | running both sides (compiled or in-process) and judging them (`@check`, `@interactor`) |
+| `crates/cpl-stress/src/run.rs`, `program.rs`, `cli.rs` | the stress loop, the parts found from decorators, `cpl stress` itself |
+| `crates/cpl-interp/src/trace.rs`, `trace/` | `TraceConfig`, the `Tracer` hooks, the step log, rendering, divergence |
+| `crates/cpl-interp/src/checkpoint.rs`, `replay.rs` | checkpoints and windows; rerunning one call with an edited fn |
+| `crates/cpl-cli/src/trace.rs`, `live.rs`, `replay.rs`, `dap.rs` | `cpl run --trace`, `--live`, `cpl replay`, `cpl dap` |
+| `crates/cpl-wasm/src/lib.rs` | trace, replay and stress for the browser |
+| `tools/trace/` | the viewer, its schema and tests |
+| `bench/stress/`, `examples/debugging/` | seeded bugs and the stress budget; the debugging demos |
+
 ## Known limits
 
 - The browser traces on the tree-walker, since the VM isn't built for wasm.
 - Checkpoints can't yet stand inside a fed loop body.
 - An array over 20000 cells is drawn as `[]`, because each step stores
   every value whole; showing it needs per-step changes in the JSON.
-- A type with `impl Show` is shown by its fields, not through the impl.
+- A value whose type has an `impl Show` is shown through the impl, but the
+  trace runs that `show` fn on the tree-walker.
 - The trace lives inside `crates/cpl-interp`; it should become its own
   crate behind a narrow observer interface.
 - Tracing 10^7 steps costs more than the 1.2x target over an untraced run;
   the budget test is run by hand.
+- `cpl bench` reuses `cpl-stress`'s flag parser and generator types; the
+  shared part should be a named module with a stated contract.
+- `crates/cpl-stress/src/spec.rs` is the crate's largest file; it should be
+  split by shape (scalar, compound, graph) when next changed.
 
 ## Changes
 
-- 2026-11-23: first version, folded from `plan/domains/debugger/ARCHITECTURE.md` and `design/trace-replay.md`.
+- 2026-11-23: first version, folded from the debugger plan's architecture notes and `design/trace-replay.md`.
