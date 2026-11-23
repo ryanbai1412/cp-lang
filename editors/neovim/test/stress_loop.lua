@@ -60,7 +60,9 @@ check(stress ~= nil and stress.command == 'cpl.exec', 'no Stress lens in ' .. vi
 vim.lsp.commands['cpl.exec'](stress)
 local code, shown = finished('the Stress lens')
 check(code == 1, 'the Stress lens exited ' .. code .. ':\n' .. shown)
-local saved = vim.fn.glob(dir .. '/k.tests/stress-*.in', false, true)
+-- readdir, not glob: Vim's glob misreads the mixed separators of a Windows temp path.
+local saved = vim.tbl_filter(function(name) return name:match('^stress%-.*%.in$') ~= nil end,
+    vim.fn.readdir(dir .. '/k.tests'))
 check(#saved == 1, 'the Stress lens saved ' .. vim.inspect(saved) .. ':\n' .. shown)
 
 vim.cmd('Cpl test')
