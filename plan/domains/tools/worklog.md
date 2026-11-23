@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Branches: deleted `devin/wip-editor-lsp` (tip ; `git cherry origin/main` shows 0 unlanded). Measured: `npm run package` in `editors/vscode` packages `cp-lang.vsix` (8 files, 117.77 KB); `release.yml` attaches it and the JetBrains zip to each release. New metric in `metrics.toml`.
 - Measured: where open-to-first-diagnostics goes at 5,002 lines (a one-off timing test in `tests/latency.rs`, release, not committed): `didOpen` is 149 KB; printing it 1 ms, parsing 0-1 ms, `Server::respond` 79-123 ms against a cold `Database::analyze` of 80-157 ms on the same loaded VM. Nothing tools-side is left to cut; the open waits on the checker. ARCHITECTURE known debt refreshed (exit codes vs spec, cli.json source, file sizes, latency).
 - Landed (this): VS Code tables and grammar list `cross` and `dot`, which stdlib made public free fns on `Pt` (f660ae18d); `vscode_sync` was red on main. `cargo nextest run -p cpl-cli --test vscode_sync` passes; `npm test` in `editors/vscode` 37/37.
 - Landed (this): `cpl build` moves from `crates/cpl-cli/src/lib.rs` to `src/build.rs` (`BuildOptions`, `build_file`, `build_checked`, `take_judge`), no behaviour change; `lib.rs` 1,662 -> 1,422 lines. `cargo nextest run -p cpl-cli` as before (failures only the main-side corpus `Range` `.l`/`.r` ones).
