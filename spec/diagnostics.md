@@ -165,6 +165,7 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0589 | group_into_map | `for x in xs: (m[k] ??= []).push(v)`: `let m = xs.group(by: x => k, of: x => v)` (`std.seq`) |
 | L0590 | sliding_sum_by_hand | `cur += a[i] - a[i - k]` over `k..n`: `Prefix(a)` and `p.fold(j - k..j)` (`std.prefix`) |
 | L0591 | while_not_empty_pop | `while not q.is_empty:` then `let x = q.pop()!`: `while let x = q.pop():` |
+| L0592 | manual_starts_with | `s[0..p.len] == p`: `s.starts_with(p)`; `s[s.len - p.len..] == p`: `s.ends_with(p)` |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

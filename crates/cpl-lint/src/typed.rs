@@ -8,15 +8,16 @@
 use crate::facts::Facts;
 use crate::{
     CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, COUNTER_BY_MAP, FLOAT_SQRT_FOR_INT,
-    LAST_VIA_LEN, MANUAL_BIT_TEST, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP,
-    POP_MIN_LOOP, PUSH_POP_PAIR, REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP,
-    UNPROVEN_LIST_INDEX,
+    LAST_VIA_LEN, MANUAL_BIT_TEST, MANUAL_STARTS_WITH, MAP_AS_MULTISET, NEGATED_HEAP,
+    NEG_MOD_FIXUP, PEEK_THEN_POP, POP_MIN_LOOP, PUSH_POP_PAIR, REVERSE_INDEX, SORT_FOR_EXTREME,
+    STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 17] = [
+const TYPED: [cpl_diag::Code; 18] = [
     MANUAL_BIT_TEST.code,
+    MANUAL_STARTS_WITH.code,
     LAST_VIA_LEN.code,
     FLOAT_SQRT_FOR_INT.code,
     REVERSE_INDEX.code,
@@ -99,6 +100,11 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         }
         c if c == LAST_VIA_LEN.code => {
             matches!(label(), Some(Some(Ty::Str | Ty::Array { .. })))
+                || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
+        }
+        // Slices take keys and `starts_with` positions: they agree on `Str` and `List`.
+        c if c == MANUAL_STARTS_WITH.code => {
+            matches!(label(), Some(Some(Ty::Str)))
                 || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
         }
         c if c == STALE_ENTRY_SKIP.code => matches!(label(), Some(Some(Ty::Named { name, .. }))

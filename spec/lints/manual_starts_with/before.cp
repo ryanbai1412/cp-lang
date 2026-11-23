@@ -1,0 +1,6 @@
+let s: Str = read()
+let p: Str = read()
+let i: Int = read()
+print(yes(p.len <= s.len and s[0..p.len] == p))
+print(yes(s[s.len - p.len..] == p))
+print(yes(i + p.len <= s.len and s[i..i + p.len] == p))

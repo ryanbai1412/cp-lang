@@ -777,13 +777,23 @@ fn symmetric_writes_from_noip18p4_and_noi07p1() {
 }
 
 #[test]
+fn prefix_fix_never_calls_the_fn_it_is_in() {
+    // corpus/problems/ccc01s5: `starts_with` written by hand; `s.starts_with(head)`
+    // inside it would call itself.
+    let own = "fn starts_with(s: Str, head: Str) -> Bool = head.len <= s.len and s[0..head.len] == head\nprint(yes(starts_with(\"ab\", \"a\")))\n";
+    assert_eq!(taste_codes(own), Vec::<&str>::new());
+    let other = "fn opens(s: Str, head: Str) -> Bool = head.len <= s.len and s[0..head.len] == head\nprint(yes(opens(\"ab\", \"a\")))\n";
+    assert_eq!(fixed(other), "fn opens(s: Str, head: Str) -> Bool = s.starts_with(head)\nprint(yes(opens(\"ab\", \"a\")))\n");
+}
+
+#[test]
 fn loop_reductions_from_cco23p4_and_powers() {
     // proto/ports/scout_batch_36/cco23p4.cp: occurrences of a pattern.
     let count = "fn occ(w: Str, pat: Str) -> Int:\n    var res = 0\n    for i in 0..=w.len - pat.len:\n        if w[i..i + pat.len] == pat: res += 1\n    res\nprint(occ(\"aaa\", \"aa\"))\n";
-    assert_eq!(taste_codes(count), ["L0504"]);
+    assert_eq!(taste_codes(count), ["L0504", "L0592"]);
     assert_eq!(
         fixed(count),
-        "fn occ(w: Str, pat: Str) -> Int:\n    let res = count(w[i..i + pat.len] == pat for i in 0..=w.len - pat.len)\n    res\nprint(occ(\"aaa\", \"aa\"))\n"
+        "fn occ(w: Str, pat: Str) -> Int:\n    let res = count(w.starts_with(pat, at: i) for i in 0..=w.len - pat.len)\n    res\nprint(occ(\"aaa\", \"aa\"))\n"
     );
     // examples/local-lib/math/powers.cp: the declared type stays.
     let sum = "const P = 7\nlet pw: List<Mod<P>> = [1, 2]\nvar acc: Mod<P> = 0\nfor i in 0..2: acc += pw[i]\nprint(acc)\n";

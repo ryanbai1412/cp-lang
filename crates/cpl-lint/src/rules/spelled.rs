@@ -2,13 +2,14 @@
 //! descending sort by a negated key (`sort_desc_by_negation`), the last
 //! element by `len - 1` (`last_via_len`), the `i < j` pair loop
 //! (`manual_pair_loop`), the `% 10` / `/= 10` digit loop
-//! (`manual_digit_loop`), and a hand-written fast power or Euclid
-//! (`hand_rolled_pow`, `hand_rolled_gcd`).
+//! (`manual_digit_loop`), a hand-written fast power or Euclid
+//! (`hand_rolled_pow`, `hand_rolled_gcd`), and a slice compared with a
+//! pattern (`manual_starts_with`).
 
 use crate::walk::{unparen, walk_expr, walk_stmt, Visitor};
 use crate::{
     File, Finding, Lint, HAND_ROLLED_GCD, HAND_ROLLED_POW, LAST_VIA_LEN, MANUAL_BIT_TEST,
-    MANUAL_DIGIT_LOOP, MANUAL_PAIR_LOOP, SORT_DESC_BY_NEGATION,
+    MANUAL_DIGIT_LOOP, MANUAL_PAIR_LOOP, MANUAL_STARTS_WITH, SORT_DESC_BY_NEGATION,
 };
 use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::*;
@@ -18,7 +19,8 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         src: file.src,
         base: 0,
         targets: Vec::new(),
-        bit_fns: Vec::new(),
+        fns: Vec::new(),
+        covered: Vec::new(),
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
@@ -30,8 +32,10 @@ struct Spelled<'a> {
     base: u32,
     /// Places written by an assignment, which `.last` cannot replace.
     targets: Vec<Span>,
-    /// The bodies of functions named `bit`, which define the bit test.
-    bit_fns: Vec<Span>,
+    /// Every function's name and body: a fix inside a function must not call it.
+    fns: Vec<(String, Span)>,
+    /// Slice comparisons already reported with their length guard.
+    covered: Vec<Span>,
     out: Vec<Finding>,
 }
 
@@ -49,7 +53,16 @@ impl Spelled<'_> {
         label: Option<(Span, &str)>,
         fix: Option<(Span, String)>,
     ) {
-        let mut diag = Diagnostic::warning(lint.code, span.shift(self.base), msg).with_help(help);
+        let at = span.shift(self.base);
+        if let Some((_, with)) = &fix {
+            // Inside `fn bit` the fix `x.bit(i)` would call itself.
+            if self.fns.iter().any(|(name, body)| {
+                body.start <= at.start && at.end <= body.end && with.contains(&format!("{name}("))
+            }) {
+                return;
+            }
+        }
+        let mut diag = Diagnostic::warning(lint.code, at, msg).with_help(help);
         if let Some((at, what)) = label {
             diag = diag.with_label(at.shift(self.base), what);
         }
@@ -111,14 +124,6 @@ impl Spelled<'_> {
             (Some((x, k)), _, 0) | (None, Some((x, k)), 0) => (x, k, *op == CmpOp::Ne),
             _ => return,
         };
-        let at = expr.span.shift(self.base);
-        if self
-            .bit_fns
-            .iter()
-            .any(|f| f.start <= at.start && at.end <= f.end)
-        {
-            return;
-        }
         let call = format!("{}.bit({})", self.receiver(unparen(x)), self.text(k));
         let fixed = if set { call } else { format!("not {call}") };
         self.push(
@@ -131,6 +136,114 @@ impl Spelled<'_> {
             Some((unparen(x).span, "the tested value")),
             Some((expr.span, fixed)),
         );
+    }
+
+    /// `s[0..p.len] == p`, `s[i..i + p.len] == p` or `s[s.len - p.len..] == p`,
+    /// alone or behind its `p.len <= s.len` guard: `starts_with` / `ends_with`.
+    fn prefix_test(&mut self, expr: &Expr) {
+        if self.covered.contains(&expr.span.shift(self.base)) {
+            return;
+        }
+        let (cmp, guard) = match &expr.kind {
+            ExprKind::Binary {
+                op: BinOp::And,
+                lhs,
+                rhs,
+                ..
+            } => (unparen(rhs), Some(unparen(lhs))),
+            ExprKind::Compare { .. } => (expr, None),
+            _ => return,
+        };
+        let Some((s, fixed, guards)) = self.slice_eq(cmp) else {
+            return;
+        };
+        if let Some(g) = guard {
+            if !guards.iter().any(|want| self.text(g) == want) {
+                return;
+            }
+            self.covered.push(cmp.span.shift(self.base));
+        }
+        self.push(
+            &MANUAL_STARTS_WITH,
+            expr.span,
+            (
+                format!(
+                    "`{}` compares a slice with a pattern by hand",
+                    self.text(expr)
+                ),
+                format!(
+                    "write `{fixed}`; it is `false`, not a trap, when the pattern runs past the end"
+                ),
+            ),
+            Some((s.span, "the searched sequence")),
+            Some((expr.span, fixed)),
+        );
+    }
+
+    /// The sliced sequence, the call that replaces `cmp`, and the guards that
+    /// make the slice in range and the call drops.
+    fn slice_eq<'e>(&self, cmp: &'e Expr) -> Option<(&'e Expr, String, Vec<String>)> {
+        let ExprKind::Compare { first, rest } = &cmp.kind else {
+            return None;
+        };
+        let [(CmpOp::Eq, other)] = rest.as_slice() else {
+            return None;
+        };
+        let (slice, p) = match (&unparen(first).kind, &unparen(other).kind) {
+            (ExprKind::Index { .. }, _) => (unparen(first), unparen(other)),
+            (_, ExprKind::Index { .. }) => (unparen(other), unparen(first)),
+            _ => return None,
+        };
+        let ExprKind::Index { base: s, indices } = &slice.kind else {
+            return None;
+        };
+        let s: &Expr = s;
+        let [Expr {
+            kind:
+                ExprKind::Range {
+                    lo,
+                    hi,
+                    inclusive: false,
+                    step: None,
+                },
+            ..
+        }] = indices.as_slice()
+        else {
+            return None;
+        };
+        if !matches!(
+            p.kind,
+            ExprKind::Name(_) | ExprKind::Field { .. } | ExprKind::Str(_)
+        ) || !matches!(s.kind, ExprKind::Name(_) | ExprKind::Field { .. })
+        {
+            return None;
+        }
+        let (s_text, p_text) = (self.text(s), self.text(p));
+        let (s_len, p_len) = (format!("{s_text}.len"), format!("{p_text}.len"));
+        let lo_text = lo.as_deref().map(|e| self.text(e));
+        let hi_text = hi.as_deref().map(|e| self.text(e));
+        let fits = |need: &str| vec![format!("{need} <= {s_len}"), format!("{s_len} >= {need}")];
+        let zero = lo
+            .as_deref()
+            .is_none_or(|e| matches!(e.kind, ExprKind::Int(0)));
+        if zero && hi_text == Some(p_len.as_str()) {
+            return Some((s, format!("{s_text}.starts_with({p_text})"), fits(&p_len)));
+        }
+        if lo_text == Some(format!("{s_len} - {p_len}").as_str())
+            && (hi_text.is_none() || hi_text == Some(s_len.as_str()))
+        {
+            return Some((s, format!("{s_text}.ends_with({p_text})"), fits(&p_len)));
+        }
+        // `at:` traps outside `0..=s.len` where a guarded slice is `false`, so
+        // the guard stays.
+        let i = lo_text?;
+        (hi_text == Some(format!("{i} + {p_len}").as_str())).then(|| {
+            (
+                s,
+                format!("{s_text}.starts_with({p_text}, at: {i})"),
+                Vec::new(),
+            )
+        })
     }
 }
 
@@ -609,9 +722,8 @@ impl Visitor for Spelled<'_> {
             self.targets.push(target.span.shift(self.base));
         }
         if let StmtKind::Fn(decl) = &stmt.kind {
-            if decl.name.text == "bit" {
-                self.bit_fns.push(stmt.span.shift(self.base));
-            }
+            self.fns
+                .push((decl.name.text.clone(), stmt.span.shift(self.base)));
             self.hand_rolled(decl);
         }
         self.pair_loop(stmt);
@@ -622,5 +734,6 @@ impl Visitor for Spelled<'_> {
         self.bit_test(expr);
         self.sort_desc(expr);
         self.last_via_len(expr);
+        self.prefix_test(expr);
     }
 }

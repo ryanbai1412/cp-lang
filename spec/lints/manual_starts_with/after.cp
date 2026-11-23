@@ -1,0 +1,6 @@
+let s: Str = read()
+let p: Str = read()
+let i: Int = read()
+print(yes(s.starts_with(p)))
+print(yes(s.ends_with(p)))
+print(yes(i + p.len <= s.len and s.starts_with(p, at: i)))

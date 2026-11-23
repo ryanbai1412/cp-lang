@@ -1,0 +1,5 @@
+code = "L0592"
+level = "warn"
+group = "idiom"
+title = "Slice compared with a pattern"
+summary = "`s[0..p.len] == p`: `s.starts_with(p)`; `s[s.len - p.len..] == p`: `s.ends_with(p)`"
