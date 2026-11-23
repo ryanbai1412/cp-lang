@@ -1481,18 +1481,39 @@ fn classify(ty: &Ty, view: &View) -> (Kind, String) {
 fn cells(value: &Value) -> usize {
     match value {
         Value::Array(array) => match &array.data {
-            crate::value::ArrayData::Values(v) => v.iter().map(cells).sum(),
+            crate::value::ArrayData::Values(v) => all_cells(v.iter()),
             _ => array.len(),
         },
-        Value::List(items) | Value::Enum(_, items) => 1 + items.iter().map(cells).sum::<usize>(),
+        Value::List(items) => 1 + all_cells(items.iter()),
+        Value::Enum(_, items) => 1 + items.iter().map(cells).sum::<usize>(),
         Value::Tuple(TupleVal::OneInt(_)) => 2,
         Value::Tuple(TupleVal::Boxed(items)) => 1 + items.iter().map(cells).sum::<usize>(),
         Value::Map(entries) => entries.iter().map(|(k, v)| cells(k) + cells(v)).sum(),
-        Value::Set(items) => items.iter().map(cells).sum(),
+        Value::Set(items) => all_cells(items.iter()),
         Value::Opt(OptVal::Int(_)) => 1,
         Value::Opt(OptVal::Boxed(inner)) => cells(inner),
         Value::Str(bytes) => 1 + bytes.len() / 64,
         _ => 1,
+    }
+}
+
+/// The cells of a collection's items, which share a type: one each when
+/// they are numbers or the like, so a long list costs nothing to measure.
+fn all_cells<'v>(mut items: impl ExactSizeIterator<Item = &'v Value>) -> usize {
+    let n = items.len();
+    match items.next() {
+        None => 0,
+        Some(
+            Value::Int(_)
+            | Value::I128(_)
+            | Value::U64(_)
+            | Value::Float(_)
+            | Value::Bool(_)
+            | Value::Char(_)
+            | Value::Range(..)
+            | Value::Range128(..),
+        ) => n,
+        Some(first) => cells(first) + items.map(cells).sum::<usize>(),
     }
 }
 
@@ -2152,6 +2173,17 @@ pub fn document(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_collection_of_numbers_has_a_cell_per_item() {
+        let ints = |n: i64| Value::List(std::rc::Rc::new((0..n).map(Value::Int).collect()));
+        assert_eq!(cells(&ints(5)), 6);
+        assert_eq!(
+            cells(&Value::List(std::rc::Rc::new(vec![ints(2), ints(3)]))),
+            1 + 3 + 4
+        );
+        assert_eq!(cells(&Value::List(std::rc::Rc::new(Vec::new()))), 1);
+    }
+
     use super::*;
 
     fn run(assigned: &[(u32, &str, &str)]) -> Recording {
