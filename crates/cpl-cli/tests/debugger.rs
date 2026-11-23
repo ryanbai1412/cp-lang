@@ -499,3 +499,29 @@ fn the_loop_reruns_an_interactive_multitest_through_the_files_interactor() {
         "{failed}"
     );
 }
+
+#[test]
+fn with_no_cpp_compiler_the_loop_runs_in_the_interpreter() {
+    // A machine without `g++` on its PATH, as a fresh Windows one often is.
+    let planted = source("../../examples/debugging/knapsack.cp");
+    let path = scratch("loop-no-cxx", "p.cp", &planted);
+    let empty = path.with_file_name("bin");
+    std::fs::create_dir_all(&empty).unwrap();
+    let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .args([
+            "stress".as_ref(),
+            path.as_os_str(),
+            "--cases".as_ref(),
+            "200".as_ref(),
+        ])
+        .env("PATH", &empty)
+        .output()
+        .expect("cpl runs");
+    let report = text(&out.stdout) + &text(&out.stderr);
+    assert_eq!(out.status.code(), Some(1), "{report}");
+    assert!(report.contains("expected `1`, got `2`"), "{report}");
+    assert!(
+        path.with_file_name("p.tests/stress-3.in").is_file(),
+        "{report}"
+    );
+}

@@ -315,7 +315,8 @@ pub(crate) fn swap_in_part_brutes_of(src: &str, only: Option<&str>) -> Option<St
 /// beside `file` so its imports resolve the same way.
 pub(crate) fn build_part_brute(file: &Path, name: &str, swapped: &str) -> Result<Program, String> {
     let stem = file.file_stem().and_then(|s| s.to_str()).unwrap_or("brute");
-    // Never written, so its name and its C++ are the same on every run and
+    // Written only to interpret it with no C++ compiler, so its name and
+    // its C++ are the same on every run and
     // the build cache keeps it.
     let path = file.with_file_name(format!(".{stem}.brute.cp"));
     let mut program = Program::resolve_source(&path, swapped).map_err(|e| e.to_string())?;

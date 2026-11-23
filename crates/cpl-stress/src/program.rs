@@ -335,12 +335,64 @@ fn build_judged(
 ) -> Result<Vec<String>, BuildError> {
     let (cpp, profile) = emit_cpp(source, text, part, checks)?;
     let host = profile.host();
+    if !found(&host.compiler) {
+        return interpreted(source, text, part, &host.compiler);
+    }
     let binary = compile_with(&cpp, true, &host.compiler, &host.flags)?;
     let stack = profile.ulimit();
-    if current_stack().as_deref() == Some(stack.as_str()) {
+    // Off Unix there is no `ulimit`: the stack is the one the linker gave.
+    if cfg!(not(unix)) || current_stack().as_deref() == Some(stack.as_str()) {
         return Ok(vec![binary]);
     }
     Ok(profile.on_stack(binary))
+}
+
+/// Whether `compiler` can be started here, asked once per compiler.
+fn found(compiler: &str) -> bool {
+    type Asked = std::sync::Mutex<std::collections::HashMap<String, bool>>;
+    static FOUND: std::sync::OnceLock<Asked> = std::sync::OnceLock::new();
+    let mut found = FOUND.get_or_init(Default::default).lock().unwrap();
+    *found.entry(compiler.to_string()).or_insert_with(|| {
+        let probe = Command::new(compiler)
+            .arg("--version")
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+        !matches!(probe, Err(e) if e.kind() == std::io::ErrorKind::NotFound)
+    })
+}
+
+/// `part` of `source` run by `cpl run` in the interpreter, on a machine
+/// with no C++ compiler: slower, but the same answers.
+fn interpreted(
+    source: &Path,
+    text: Option<&str>,
+    part: Part,
+    compiler: &str,
+) -> Result<Vec<String>, BuildError> {
+    let cpl = std::env::current_exe().map_err(|e| {
+        BuildError(format!(
+            "can't find `cpl` to interpret {}: {e}",
+            source.display()
+        ))
+    })?;
+    if let Some(text) = text {
+        std::fs::write(source, text)
+            .map_err(|e| BuildError(format!("can't write {}: {e}", source.display())))?;
+    }
+    let mut argv = vec![cpl.display().to_string(), "run".to_string()];
+    match part {
+        Part::Solution | Part::ColdCache => {}
+        Part::Brute => argv.push("--brute".to_string()),
+        Part::Gen(_) => {
+            return Err(BuildError(format!(
+                "there is no {compiler} here to build the `@gen` fn of {}; install it or pass `--gen <program>`",
+                source.display()
+            )))
+        }
+    }
+    argv.push(source.display().to_string());
+    Ok(argv)
 }
 
 /// The `ulimit -s` programs started from here get.
