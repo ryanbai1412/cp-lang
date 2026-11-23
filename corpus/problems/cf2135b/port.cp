@@ -1,19 +1,10 @@
-// Codeforces 2135 B — For the Champion (interactive)
-//
-// Each move query takes at most `step = 10^9`, and all coordinates satisfy
-// `|x|, |y| <= 10^9`. Walk in two legs of 4 moves each (only the final
-// distance of each leg is needed, because intermediate moves only position us
-// strictly outside every anchor's bounding box):
-// 1. Move `2 * step` Up (`U, U`) and `2 * step` Right (`R, R`) to
-//    `(x0 + 2 * step, y0 + 2 * step)`. Every anchor `(x, y)` lies south-west
-//    of this point, so the minimum Manhattan distance `d_ur` equals
-//    `(x0 + y0 + 4 * step) - max(x + y)`, giving
-//    `ur_pos = x0 + y0 = max(x + y) + d_ur - 4 * step`.
-// 2. Move `4 * step` Left (`L, L, L, L`) to `(x0 - 2 * step, y0 + 2 * step)`.
-//    Every anchor lies south-east of this point, so `d_ul` equals
-//    `(-x0 + y0 + 4 * step) - max(-x + y)`, giving
-//    `ul_pos = -x0 + y0 = max(-x + y) + d_ul - 4 * step`.
-// Solving recovers `x0 = (ur_pos - ul_pos) / 2` and `y0 = (ur_pos + ul_pos) / 2`.
+// Source: Codeforces 2135B (For the Champion), https://codeforces.com/contest/2135/problem/B
+// Problem: interactive, multitest. n <= 100 known anchors, |x|, |y| <= 1e9; the robot starts at
+//   an unknown (X, Y), |X|, |Y| <= 1e9. Each of at most 10 moves goes U/D/L/R by k <= 1e9 and
+//   answers the least Manhattan distance to an anchor. Print "! X Y".
+// Solution: after U, U, R, R by 1e9 the robot is north-east of every anchor, so the answer is
+//   X + Y + 4e9 - max(x + y); after four L moves it is north-west of all of them, so the
+//   answer is -X + Y + 4e9 - max(-x + y). Solve the two sums for X and Y: 8 moves, O(n).
 
 @!interactive
 

@@ -1,4 +1,10 @@
-// cp: 0.1 8ef64b9+dirty
+// Source: CEOI 2009 P3 (Photo), https://dmoj.ca/problem/ceoi09p3
+// Problem: n <= 100 points (x, y), y >= 1. Cover them all with the fewest rectangles that stand
+//   on the x-axis and have area <= A (overlaps allowed); print that number.
+// Solution: sort by x. dp[range, k] = fewest rectangles for the points of the range above the
+//   k-th compressed height. An end point at or below it is dropped; otherwise the leftmost
+//   point's rectangle spans it to some point i at the tallest height area / width allows:
+//   1 + dp[l..=i, that height] + dp[i+1..=r, k]. O(n^4): n^2 ranges, n heights, n splits.
 let n: 1..=100 = read()
 let area: 1..=3e5 = read()
 domain P = 0..n

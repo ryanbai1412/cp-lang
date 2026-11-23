@@ -1,15 +1,12 @@
-// Codeforces 2157 E — Value-Spreading Stabilization Time
-//
-// Each round increments every value occurring strictly more than `k` times by
-// 1 (keeping one copy behind and moving the excess copies up by 1), until all
-// frequencies are `<= k`.
-//
-// Sweeping `v` from `2 * n` down to `1`, maintain `stk` as the stack of empty
-// slots in `v..=2 * n` (nearest slot on top), with `next_free` supplying fresh
-// slots `2 * n + 1, 2 * n + 2, ...` whenever `stk` is empty. Each copy of `v`
-// claims the nearest free slot `slot >= v`; the `k`-th remaining copy of `v`
-// (when `rem == k`) is the last copy forced to advance, so it needs `slot - v`
-// rounds to reach `slot`. The maximum over all `v` is the stabilization time.
+// Source: Codeforces 2157E (Adjusting Drones), https://codeforces.com/contest/2157/problem/E
+// Problem: n drones with energies a_i <= 2n and a limit k. While some energy is held by more
+//   than k drones, every drone whose energy already appears at a smaller index gains 1. Print
+//   the number of such operations. Multitest, sum n <= 2e5.
+// Solution: each operation leaves one drone of a pile behind and moves the rest up, so a pile
+//   drops a drone on each free level it passes. Going from level 2n down, keep a stack of the
+//   levels not yet taken (fresh ones past 2n when it is empty); the copies of v take the
+//   nearest ones, and the pile is down to k on the level of its (cnt - k + 1)-th copy, after
+//   slot - v operations. Print the max over v: O(n).
 
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()

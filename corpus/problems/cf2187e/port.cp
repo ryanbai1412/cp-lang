@@ -1,18 +1,13 @@
-// Codeforces 2187 E — Keys and Doors
-//
-// At door i (opening time a[i]), s[i] == '1' grants a key before crossing.
-// Let `dp[k]` be the minimum time to pass doors 0..i while carrying k keys
-// (stored as a `List<Int>` whose length is the active key count):
-// - If s[i] == '1', we may pick up the key, shifting `k -> k + 1` while
-//   keeping `dp[0]` unchanged (`dp.insert(0, dp[0])`).
-// - Crossing door i while ending with k carried keys either:
-//   - waits until a[i] and walks through without spending a key, paying
-//     `1 + 2 * max(k - 1, 0)` for the extra key-carrying steps; or
-//   - spends one of `k + 1` keys to skip waiting, paying `dp[k + 1] + 1 + 2 * k`.
-//
-// Waiting at every door with 0 keys finishes by `t_inf = n + 1 + a.max()!`,
-// so states with `dp[k] > t_inf` can never improve `dp[0]` and are popped;
-// the quadratic key-carrying penalty bounds `dp.len` to O(sqrt(max A + n)).
+// Source: Codeforces 2187E (Doors and Keys), https://codeforces.com/contest/2187/problem/E
+// Problem: rooms 1..n+1 in a line; door i (rooms i, i+1) opens by itself at second a_i <= 2e5
+//   or when a key is spent on it. Room i holds a key if s_i = 1; you carry at most one key at
+//   a time, and a move takes a second. For each i print the least time to reach room i+1
+//   (each i on its own). Multitest, sum n <= 2e5.
+// Solution: dp[k] = least time to be past door i with k keys brought along; ferrying k >= 1
+//   keys one room costs 2k - 1 seconds. A key room adds a key (k -> k + 1). At door i, wait:
+//   max(a_i, dp[k]) + max(1, 2k - 1), or spend one of k + 1 keys: dp[k+1] + 2k + 1. States
+//   worse than n + 1 + max a (waiting everywhere) are popped, so O(sqrt(n + max a)) remain:
+//   O(n sqrt(n + max a)). The answer for i is dp[0].
 
 @!multitest
 let n: 1..=200_000 = read()

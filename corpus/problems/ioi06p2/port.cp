@@ -1,5 +1,12 @@
-// IOI 2006 Pyramid, as it builds today: blocks are four plain numbers and the
-// sliding minimum is a hand-kept deque over plain lists (K14).
+// Source: IOI 2006 (Pyramid), https://dmoj.ca/problem/ioi06p2
+// Problem: an m x n grid (m, n <= 1000) of heights <= 100. Place an a x b pyramid base and,
+//   inside it with a wall at least 1 thick, a c x d chamber, maximising the base's sum minus
+//   the chamber's. Print the column and row of each one's upper-left corner.
+// Solution: 2D prefix sums give every block sum. For a base, the chamber's corner lies in a
+//   fixed window, so the best chamber is a sliding-window minimum of chamber sums, first along
+//   rows and then down columns, each with a monotone deque: O(mn).
+// Note: as it builds today, blocks are four plain numbers and the sliding minimum is a
+//   hand-kept deque over plain lists (K14).
 // original: corpus/submissions/5034372.cpp
 let w: 3..=1000 = read()
 let h: 3..=1000 = read()

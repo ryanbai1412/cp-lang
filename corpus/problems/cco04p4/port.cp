@@ -1,7 +1,13 @@
-// CCO 2004 Orbit, as far as it can be written today: it prints the least
-// squared distance, because the prototype has no floats to take the root.
-// Builds; on 800 script-made inputs the root of its answer, to two
-// decimals, is what 5429989.cpp prints.
+// Source: CCO 2004 Stage 2 Day 2 P1 (Return of Space Turtle), https://dmoj.ca/problem/cco04p4
+// Problem: two points each loop forever around a closed lattice orbit, given as a start and at
+//   most 100 moves of |d| <= 100 units along X or Y, one unit per minute. Print the least
+//   Euclidean distance between them over all whole minutes, to 2 decimals.
+// Solution: expand both orbits into unit steps; after the lcm of the two lap lengths (at most
+//   1e8) both are back at their starts together, so simulate that many minutes and keep the
+//   least squared distance: O(lcm).
+// Note: it prints the least squared distance, not its root to 2 decimals, because the
+//   prototype has no floats. On 800 script-made inputs the root of its answer, to two
+//   decimals, is what 5429989.cpp prints.
 @tags("X", "Y")
 enum Axis:
     X

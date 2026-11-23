@@ -1,5 +1,11 @@
-// ETSR '23 R4 P3 (CP Lang 0.2.2): tree-to-graph homomorphism inclusion-exclusion
-// over `Subset<V>` with 2D domain-indexed DP tables `[V, V]Int`.
+// Source: DMOJ ETSR '23 R4 P3 (ZJOI 2016 Small Stars), https://dmoj.ca/problem/etsr23r4p3
+// Problem: a graph with n <= 17 vertices and m edges, and a tree on the same n labels. Count
+//   the bijections from tree vertices to graph vertices that send every tree edge to a graph
+//   edge.
+// Solution: for a vertex set S, count the maps of the tree into S by tree DP: dp[u, v] = ways
+//   to place u's subtree with u on v, the product over children c of the sum of dp[c, w] over
+//   w in S adjacent to v. Inclusion-exclusion over S with sign (-1)^(n - |S|) keeps only the
+//   onto maps: O(2^n n^3).
 // original: corpus/submissions/5635626.cpp
 
 let (n, m): (Int, Int) = read()

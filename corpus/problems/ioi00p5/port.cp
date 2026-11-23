@@ -1,7 +1,11 @@
-// IOI 2000 Post Office: n villages on a line, m post offices to build in
-// villages. Minimise the sum over villages of the distance to the nearest
-// office; print that sum and the office positions in increasing order.
-// Split the sorted villages into m runs, each served from its median.
+// Source: IOI 2000 (Post Office), https://dmoj.ca/problem/ioi00p5
+// Problem: V <= 300 villages at distinct positions <= 1e4 on a line. Build P <= 30 post
+//   offices in villages, minimising the sum of each village's distance to its nearest office.
+//   Print the sum, then the office positions in increasing order.
+// Solution: the offices split the sorted villages into P runs, each best served from its
+//   median. best(i, k) = least cost for villages i.. with k offices = min over the first run
+//   i..=j of serve(i, j) + best(j + 1, k - 1), both memoised; then follow the optimal choices
+//   to print the medians. O(V^2 P), plus O(V^3) for serve.
 // original: corpus/submissions/4811886.cpp
 let n: 1..=300 = read()
 let m: 1..=30 = read()

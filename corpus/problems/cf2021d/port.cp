@@ -1,11 +1,12 @@
-// Codeforces 2021 D: Boss, Thirsty.
-// A day sells the drinks between two cuts l < r. The next day must strictly
-// contain an endpoint p of this one (l < p < r), so a plan so far is summed up
-// by end[p]: its best total when the last day has an endpoint at cut p.
-// A new right end r earns pref[r] + max over p < r of (end[p] - min over l < p
-// of pref[l]); on day one there is no p, so l = p opens with -pref[p]. One
-// sweep keeps both running extremes; left ends are the same sweep from the
-// right with pref negated. With m >= 3 every cut is an end of some day.
+// Source: Codeforces 2021D (Boss, Thirsty), https://codeforces.com/contest/2021/problem/D
+// Problem: n days, m >= 3 drinks, profit A[i][j] (|A| <= 1e9, sum n * m <= 2e5). Each day
+//   sells a subarray of drinks; from day 2 on it must share a drink with the day before and
+//   also have one that day lacked. Print the max total profit. Multitest.
+// Solution: a day is a pair of cuts l < r; the next day is valid iff it strictly contains an
+//   endpoint p of this one. end[p] = best total so far with the last day ending at cut p. A
+//   new right end r earns pref[r] + max over p < r of (end[p] - min over l < p of pref[l])
+//   (day one: l = p, so -pref[p]); one sweep keeps both running extremes, and left ends are
+//   the same sweep from the right with pref negated. O(nm).
 @!multitest
 let n: 1..=200_000 = read()
 let m: 3..=200_000 = read()
