@@ -2,4 +2,4 @@
 // occurs, in increasing order.
 let n: 1..=200000 = read()
 let xs: [0..n]0..=1500000000 = read()
-for (x, times) in runs(xs.sorted()): print(x, times)
+for run in xs.sorted().runs(): print(run.first!, run.len)

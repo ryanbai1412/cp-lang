@@ -10,7 +10,7 @@ let t: 1..=2e5 = read()
 let asks: [0..t]1..=1e7 = read()
 
 fn has7(x: Int) -> Bool:
-    7 in digits(x)
+    digits(x).contains(7)
 
 var skipped: [0..=LIMIT]Bool = false
 for i in 1..=LIMIT:

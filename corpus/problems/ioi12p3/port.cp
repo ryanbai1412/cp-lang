@@ -19,12 +19,12 @@ var up = [Text] t => t
 var jump = [Text] t => t
 
 var texts = 0  // texts made so far, not counting the empty one
-var history: List<Text> = [Text.first]
+var history: List<Text> = [Text.first!]
 for _ in 0..n:
     let op: Char = read()
     if op == 'T':
         let letter: Char = read()
-        let (old, now) = (history.last, Text.nth(texts + 1))
+        let (old, now) = (history.last!, Text.nth(texts + 1))
         texts += 1
         len[now] = len[old] + 1
         last[now] = letter
@@ -37,7 +37,7 @@ for _ in 0..n:
         history.push(history[history.len - 1 - x])
     else:
         let i: Int = read()
-        var v = history.last
+        var v = history.last!
         while len[v] != i + 1:
             v = if len[jump[v]] > i: jump[v] else: up[v]
         print(last[v])

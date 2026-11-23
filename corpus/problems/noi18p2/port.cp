@@ -14,7 +14,7 @@ for _ in 0..t:
         q.push(v)
     cases.push(q)
 
-let comb = Comb<998244353>(2 * max_n + 5)
+let comb = Comb<Z>(2 * max_n + 5)
 
 fn safe_choose(n: Int, k: Int) -> Z:
     if n < 0 or k < 0 or k > n: return 0

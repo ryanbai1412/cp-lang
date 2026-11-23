@@ -1,10 +1,10 @@
 // IOI '09 P3, POI (buildable today-form)
 // original: corpus/submissions/5106576.cpp
 let n: 1..=2000 = read()
-let T: 1..=2000 = read()
+let tasks: 1..=2000 = read()
 let p: 1..=n = read()
 domain C = 0..n
-domain Task = 0..T
+domain Task = 0..tasks
 let solved: [C, Task]0..=1 = read()
 
 var worth: [Task]Int = 0
