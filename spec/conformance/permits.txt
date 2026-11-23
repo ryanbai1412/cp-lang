@@ -2,6 +2,7 @@
 # permit, define or promise something, so no program can be rejected by them.
 # Each line: rule id, then why. The coverage gate fails if a listed rule gains
 # a reject case or its text stops matching, so entries can't go stale.
+R01.1.3 doc-comment format; the labels are checked by `scripts/spec-stub.py --check` on std, which no program can fail
 R01.3.6 permits `None` as a user variant; "not reserved" rejects nothing
 R01.5.7 short-circuit evaluation; "never reads" is behaviour, tested by accept cases
 R02.1.1 defines plain values
@@ -13,8 +14,8 @@ R03.2.6 layout of tags; not observable by a program
 R03.2.8 storage order; "nothing observes addresses"
 R04.4.29 an inverted range is empty, "never a trap"; tested by accept cases
 R04a.2.9 table row: length-only results over a lent slice are allowed
-R05.2.1 defines plain values
 R05.10.14 a cache promise; checked by `cpl stress`, not the checker
+R05.2.1 defines plain values
 R06.3.3 permits `break`/`return` out of generator bodies
 R07.6.1 push iteration; permits `break` out of recursive generators
 R08.3.2 laws select specializations; the checker never assumes them

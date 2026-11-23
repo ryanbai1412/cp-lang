@@ -11,7 +11,7 @@ Cases: 2297 (995 passing). Rules: 536.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 52 rules, 112 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 113 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 63 rules, 95 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -27,7 +27,7 @@ Cases: 2297 (995 passing). Rules: 536.
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
 
-25 rules match a forbidding word but only permit or define something;
+26 rules match a forbidding word but only permit or define something;
 `permits.txt` lists them with the reason, so they need no reject case.
 
 ## Accept and reject coverage per chapter
@@ -38,7 +38,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 52 | 52 (100%) | 28 | 27 (96%) | 51 (98%) |
+| R01 | 52 | 52 (100%) | 27 | 27 (100%) | 52 (100%) |
 | R02 | 51 | 51 (100%) | 26 | 26 (100%) | 51 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
 | R04 | 63 | 63 (100%) | 15 | 14 (93%) | 62 (98%) |
@@ -53,7 +53,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
-| all | 536 | 535 (99%) | 205 | 202 (98%) | 532 (99%) |
+| all | 536 | 535 (99%) | 204 | 202 (99%) | 533 (99%) |
 
 ## Rules
 
@@ -63,7 +63,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R01.1.1 [1+ 1-]: A source file is UTF-8. Bytes outside ASCII may appear only inside string literals and com...
 - R01.1.2 [1+ 1-]: `//` starts a comment that runs to the end of the line. There are no block comments. `#` i...
-- R01.1.3 [2+ 0-] *happy-path only*: `///` starts a doc comment attached to the next item. Doc comments are Markdown; the first...
+- R01.1.3 [2+ 0-]: `///` starts a doc comment attached to the next item. Doc comments are Markdown; the first...
 - R01.2.1 [1+ 2-]: Indentation is spaces only; a tab in leading whitespace is an error. The width is free but...
 - R01.2.2 [1+ 2-]: A logical line ends at a newline outside brackets. Inside `( )`, `[ ]` and `{ }` newlines ...
 - R01.2.3 [1+ 2-]: A one-line body follows `:` or `=` on the same line. A deeper line after a one-line body i...
@@ -763,13 +763,22 @@ holds the declarations the block takes from the prose; `spec-blocks`
 prepends it.
 
 - 00-overview.md: 1 blocks, 1 with a case, 0 spec-only, 0 neither
-- 01-lexical-grammar.md: 5 blocks, 1 with a case, 4 spec-only, 0 neither
+- 01-lexical-grammar.md: 5 blocks, 1 with a case, 3 spec-only, 1 neither
+  - line 89: `let var const fn struct enum domain type use pub if elif els`
 - 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
-- 04-indices.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
-- 04b-keys.md: 13 blocks, 5 with a case, 8 spec-only, 0 neither
-- 05-ownership.md: 56 blocks, 52 with a case, 3 spec-only, 1 neither
-  - line 972: `fn evens(xs: [V]Int) -> lends Filtered<[V]Int> = xs.filter(x`
+- 04-indices.md: 7 blocks, 1 with a case, 3 spec-only, 3 neither
+  - line 156: `for j in ..i:`
+  - line 244: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 265: `fn inversions(r: Range<Pos>) -> Int:`
+- 04b-keys.md: 13 blocks, 5 with a case, 4 spec-only, 4 neither
+  - line 70: `fn solve(r: Range<V>) -> Int:`
+  - line 98: `let z = z_function(s[l..])`
+  - line 112: `for (i, x) in a[l..=r].items:`
+  - line 165: `let t = s[l..r].rebase`
+- 05-ownership.md: 56 blocks, 52 with a case, 2 spec-only, 2 neither
+  - line 517: `let d = build_dsu(edges)`
+  - line 980: `fn evens(xs: [V]Int) -> lends Filtered<[V]Int> = xs.filter(x`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
   - line 196: `fn divisors(n: Int) -> yields Int:`
@@ -778,7 +787,7 @@ prepends it.
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-2 of 108 blocks have neither a case nor a spec-only reason.
+11 of 108 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 
