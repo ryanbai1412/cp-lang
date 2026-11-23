@@ -1,5 +1,5 @@
 // expect: ok, output "YES YES YES"
-// rule: 07.7
+// rule: std.segtree.MergeSeg.first_alive
 use std.segtree.{MergeSeg}
 domain K = 0..10
 var m = MergeSeg<K>.singleton(K(7)).merge(MergeSeg<K>.singleton(K(3))).merge(MergeSeg<K>.singleton(K(3)))

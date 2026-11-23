@@ -1,5 +1,6 @@
 // expect: ok, output "3 1 200 7"
-// rule: separate calls to a wrapper returning compress() get distinct fresh domains
+// rule: std.seq.compress
+// separate calls to a wrapper returning compress() get distinct fresh domains
 fn wrap(a: List<Int>):
     compress(a)
 

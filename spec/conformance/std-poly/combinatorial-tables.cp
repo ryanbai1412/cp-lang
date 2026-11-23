@@ -1,5 +1,5 @@
 // expect: ok, output "YES YES YES YES YES"
-// rule: 07.7
+// rule: std.poly.stirling1_row
 use std.poly.{bell_table, bernoulli_table, partition_table, stirling1_row, stirling2_row}
 type Z = Mod<998244353>
 let s1: List<Z> = stirling1_row(3)

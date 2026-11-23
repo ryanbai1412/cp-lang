@@ -1,5 +1,5 @@
 // expect: ok, output "YES YES YES"
-// rule: 07.7
+// rule: std.strings.SuffixAutomaton.kth_substring
 use std.strings.{SuffixAutomaton}
 let sam = SuffixAutomaton<Char>.of("abb")
 print(

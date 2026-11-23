@@ -1,5 +1,5 @@
 // expect: ok, output "12 10"
-// rule: 05.4.1
+// rule: 06.1.2
 use std.window.{track}
 fn apply(mut x: Int, y: Int, f: (mut Int, Int) -> ()):
     f(mut x, y)

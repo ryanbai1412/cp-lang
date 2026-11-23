@@ -1,5 +1,5 @@
 // expect: ok, output "3 7"
-// rule: 8.1
+// rule: 01.3.4
 // Method calls with explicit generic type arguments `r.method<T>()` parse without `::`.
 struct Boxed:
     var count: Int
