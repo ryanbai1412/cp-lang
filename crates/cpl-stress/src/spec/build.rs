@@ -159,7 +159,7 @@ impl Builder<'_> {
                     }
                     "Char" => return Ok(Shape::Char { lo: b'a', hi: b'z' }),
                     "Bool" => return Ok(Shape::Bool),
-                    "Str" => return Ok(Shape::Str),
+                    "Str" => return Ok(Shape::WORD),
                     _ => {}
                 }
                 if let Some((lo, hi)) = self.domains.get(&name.text).cloned() {
@@ -251,7 +251,33 @@ impl Builder<'_> {
             TypeKind::OwnDomain { elem, .. }
                 if matches!(self.shape(elem), Ok(Shape::Char { .. })) =>
             {
-                Ok(Shape::Str)
+                Ok(Shape::WORD)
+            }
+            // `Str of "01"`, `Str(len: 1..=n)`: a word over that alphabet,
+            // of a length in that range.
+            TypeKind::ConstrainedStr { alphabet, len } => {
+                let alphabet = match alphabet {
+                    Some(text) => {
+                        let mut bytes: Vec<u8> = text.bytes().collect();
+                        bytes.sort_unstable();
+                        bytes.dedup();
+                        if bytes.is_empty() || bytes.iter().any(|b| b.is_ascii_whitespace()) {
+                            return Err(unsupported(self));
+                        }
+                        Some(bytes.into())
+                    }
+                    None => None,
+                };
+                let len = match len {
+                    Some(len) => {
+                        let (lo, hi) = self.index(len)?;
+                        names_in(&lo, &mut self.spec.sizes);
+                        names_in(&hi, &mut self.spec.sizes);
+                        Some((lo, hi))
+                    }
+                    None => None,
+                };
+                Ok(Shape::Str { alphabet, len })
             }
             TypeKind::Record(fields) => fields
                 .iter()
@@ -999,7 +1025,7 @@ impl Builder<'_> {
         let scalar = |shape: &Shape| {
             matches!(
                 shape,
-                Shape::Int { .. } | Shape::Char { .. } | Shape::Bool | Shape::Str
+                Shape::Int { .. } | Shape::Char { .. } | Shape::Bool | Shape::Str { .. }
             )
         };
         for at in (0..parts.len()).rev() {
@@ -1115,7 +1141,7 @@ impl Builder<'_> {
         // A `Str` tag is compared with words: each is its position in
         // the order the arms name them.
         let words = std::cell::RefCell::new(Vec::<String>::new());
-        let word = matches!(tag, Shape::Str);
+        let word = matches!(tag, Shape::Str { .. });
         let literal = |expr: &Expr| match &expr.kind {
             ExprKind::Str(pieces) if word => {
                 let [StrPiece::Text(text)] = pieces.as_slice() else {
@@ -1260,7 +1286,7 @@ impl Builder<'_> {
                     _ => Shape::Int { lo, hi },
                 }
             }
-            Shape::Str => {
+            Shape::Str { .. } => {
                 let mut words = words.into_inner();
                 if words.is_empty()
                     || words

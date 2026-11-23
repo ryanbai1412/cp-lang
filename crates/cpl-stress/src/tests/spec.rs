@@ -1237,3 +1237,23 @@ fn a_read_of_a_range_is_a_field_of_that_range() {
         assert!(matches!(tokens[..], [n, k] if (1..=5).contains(&n) && (0..10).contains(&k)));
     }
 }
+
+#[test]
+fn a_constrained_str_is_a_word_over_its_alphabet_of_a_length_in_its_range() {
+    let src = "let n: 2..=4 = read()\nlet s: Str(len: n..=n) of \"ABC\" = read()\nlet t: Str of \"01\" = read()\n";
+    let spec = InputSpec::from_source(src).unwrap();
+    for seed in 0..30 {
+        let case = generate(&spec, &mut Rng::new(seed), Size::Small(6)).unwrap();
+        let text = case.render();
+        let tokens: Vec<&str> = text.split_whitespace().collect();
+        let [n, s, t] = tokens[..] else {
+            panic!("{text}")
+        };
+        assert_eq!(s.len(), n.parse::<usize>().unwrap(), "{text}");
+        assert!(s.bytes().all(|b| b"ABC".contains(&b)), "{text}");
+        assert!(
+            !t.is_empty() && t.bytes().all(|b| b"01".contains(&b)),
+            "{text}"
+        );
+    }
+}

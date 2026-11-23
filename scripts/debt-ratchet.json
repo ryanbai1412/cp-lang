@@ -128,14 +128,14 @@
     "crates/cpl-syntax/src/parser/expr.rs",
     "crates/cpl-syntax/src/tests.rs"
   ],
-  "skip_lists": 193,
+  "skip_lists": 235,
   "dead_code_allows": 6,
   "external_crates": 5,
   "corpus_test_files": 2763,
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 1,
-    "debugger": 15,
+    "debugger": 14,
     "diagnostics": 6,
     "idioms": 3,
     "infra": 5,

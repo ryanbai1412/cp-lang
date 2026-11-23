@@ -52,8 +52,12 @@ pub enum Shape {
     Char { lo: u8, hi: u8 },
     /// `0` or `1`.
     Bool,
-    /// A word of letters, of any length from 1.
-    Str,
+    /// A word over `alphabet` (lowercase letters when `None`), its length
+    /// in `len` (from 1 when `None`).
+    Str {
+        alphabet: Option<std::sync::Arc<[u8]>>,
+        len: Option<(Expr, Expr)>,
+    },
     /// One of these words: a `Str` tag a choice compares with literals.
     Words(std::sync::Arc<[String]>),
     /// Every value of `lo..lo + len` once, in some order.
@@ -114,6 +118,12 @@ impl Arm {
 }
 
 impl Shape {
+    /// A plain `Str`: lowercase letters, any length from 1.
+    pub const WORD: Shape = Shape::Str {
+        alphabet: None,
+        len: None,
+    };
+
     /// A tuple whose parts bind no names.
     pub fn tuple(parts: Vec<Shape>) -> Shape {
         Shape::Tuple {

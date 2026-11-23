@@ -112,6 +112,19 @@ case has a value for `k`.
 
 Check: `crates/cpl-cli/tests/stress_inputs.rs`.
 
+## R11: Every input a program reads can be generated
+
+Stress makes a case for every input shape a program can read: domains,
+enums, words over an alphabet, ranges. A shape it can't make yet is listed
+with its reason, and the list only shrinks, so a contestant whose program
+reads it learns why instead of getting no cases.
+
+Example: `let s: Str(len: n..=n) of "ABC" = read()` generates words of
+exactly `n` letters from `A`, `B` and `C`.
+
+Check: `crates/cpl-stress/tests/readable_shapes.rs`, its list
+`crates/cpl-stress/tests/generate-gaps.txt`.
+
 ## Changes
 
 - 2026-11-23: first version.

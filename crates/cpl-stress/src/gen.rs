@@ -276,11 +276,20 @@ fn build(
         },
         // Only a top-level field is drawn: it reads the input above it.
         Shape::Gen { .. } => None,
-        Shape::Str => {
-            let len = pick.pick(1, MAX_WORD, true);
+        Shape::Str { alphabet, len } => {
+            let (lo, hi) = match len {
+                Some((lo, hi)) => (eval(lo, env)?, eval(hi, env)?),
+                None => (1, MAX_WORD),
+            };
+            (lo <= hi && hi >= 0).then_some(())?;
+            let len = pick.pick(lo.max(0), hi, true);
+            let letter = |pick: &mut dyn Pick| match alphabet {
+                Some(letters) => letters[pick.pick(0, letters.len() as i128 - 1, false) as usize],
+                None => pick.pick(i128::from(b'a'), i128::from(b'z'), false) as u8,
+            };
             Some(Value::Seq(
                 (0..len)
-                    .map(|_| Value::Char(pick.pick(i128::from(b'a'), i128::from(b'z'), false)))
+                    .map(|_| Value::Char(i128::from(letter(pick))))
                     .collect(),
             ))
         }

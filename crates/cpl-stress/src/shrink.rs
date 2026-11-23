@@ -61,13 +61,27 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
         }),
         (Shape::Maybe { none, .. }, Value::Int(v)) if v == none => Some(Value::Int(*none)),
         (Shape::Maybe { inner, .. }, value) => fit_value(inner, value, env),
-        // A word keeps at least one letter.
-        (Shape::Str, Value::Seq(items)) if !items.is_empty() => Some(Value::Seq(
-            items
-                .iter()
-                .map(|item| Value::Char(item.number().unwrap_or(97).clamp(97, 122)))
-                .collect(),
-        )),
+        // A word keeps its letters in its alphabet and its length in range.
+        (Shape::Str { alphabet, len }, Value::Seq(items)) => {
+            let (lo, hi) = match len {
+                Some((lo, hi)) => (eval(lo, env)?, eval(hi, env)?),
+                None => (1, i128::MAX),
+            };
+            let n = items.len() as i128;
+            (lo <= n).then_some(())?;
+            let keep = n.min(hi).max(0) as usize;
+            let letter = |c: i128| match alphabet {
+                Some(letters) if letters.iter().any(|&l| i128::from(l) == c) => c,
+                Some(letters) => i128::from(letters[0]),
+                None => c.clamp(97, 122),
+            };
+            Some(Value::Seq(
+                items[..keep]
+                    .iter()
+                    .map(|item| Value::Char(letter(item.number().unwrap_or(97))))
+                    .collect(),
+            ))
+        }
         // The first `len` values, in the order they were in, renamed
         // to `lo..lo + len`: still a permutation.
         (Shape::Perm { lo, len }, Value::Seq(items)) => {
@@ -457,10 +471,13 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
                     }
                 }
             }
-            (Shape::Str, Value::Seq(items)) => {
+            (Shape::Str { alphabet, .. }, Value::Seq(items)) => {
+                let first = alphabet
+                    .as_ref()
+                    .map_or(97, |letters| i128::from(letters[0]));
                 for index in 0..items.len() {
                     path.push(index);
-                    out.push((path.clone(), 97));
+                    out.push((path.clone(), first));
                     path.pop();
                 }
             }
@@ -1127,7 +1144,7 @@ pub fn shrink(
         }
         // 2c. Words: drop one letter at a time.
         for field in 0..best.values.len() {
-            if spec.fields[field].shape != Shape::Str {
+            if !matches!(spec.fields[field].shape, Shape::Str { .. }) {
                 continue;
             }
             let mut position = 0;
@@ -1139,7 +1156,7 @@ pub fn shrink(
                 if let Value::Seq(letters) = &mut smaller.values[field] {
                     letters.remove(position);
                 }
-                if attempt(&mut best, smaller) {
+                if fit(spec, &smaller).is_some() && attempt(&mut best, smaller) {
                     improved = true;
                 } else {
                     position += 1;

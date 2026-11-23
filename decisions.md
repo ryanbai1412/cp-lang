@@ -8371,3 +8371,9 @@ tag move fatal again.
 - **Call.** `scripts/debt-ratchet.py` (`register_rows`) resolves each command a row names: `cargo test`, `nextest`, `clippy`, `fuzz` or `mutants` with an existing `-p` crate and `--test` file; a `cpl-conform` suite; a `just` recipe; `cpl <subcommand> --check`. A command that only produces something (`cpl doc`, `cpl check`) no longer names the check, and an unknown command or subcommand counts as gone. A cited rule (`<doc>.md#<anchor>`, `errors/R2`) is neither a check nor a gap unless its anchor is gone. Paths under `.git/` and git ranges aren't checks. Perf rose 3 to 4 and site 16 to 17 for rows that named only a command (handbook/process/quality.md#accountability); idioms and tools fell for rows that cited a rule beside a real check.
 - **Why.** 20 rows passed on a command alone, such as "Std reference is readable :: `cpl doc`", so the count said a row was checked when nothing could fail.
 - **Reverse.** Count any span starting with `cpl`, `cargo`, `cpl-conform` or `just` as a check again.
+
+## 427. The shapes stress can't generate are listed and only shrink (debugger, 2026-11-23)
+
+- **Call.** `crates/cpl-stress/tests/readable_shapes.rs` builds the input spec of every corpus problem's `spec.cp`, every saved-trace program and every conformance program that builds, and lists each one stress can't generate, with the reason, in `crates/cpl-stress/tests/generate-gaps.txt`. A new gap fails the test; a fixed one must delete its line. The list starts with the 47 gaps that exist today, so `skip_lists` rises by 47.
+- **Why.** A contestant whose program reads one of these shapes gets no cases from `cpl stress`, and nothing measured how many programs that was (debugging/R11).
+- **Reverse.** Delete the test and its list and lower `skip_lists` by the list's length.
