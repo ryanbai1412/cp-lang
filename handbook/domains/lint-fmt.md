@@ -7,24 +7,22 @@
 | Status | Active |
 | Describes | `crates/cpl-lint/`, `crates/cpl-fmt/`, `spec/lints/`, `spec/tools/fmt-lint.md` (with spec), `cpl lint`, `cpl fmt`, the removed-syntax codemods behind `cpl fix`, `scripts/fmt_check.py`, `scripts/new-lint.py` |
 
-## Mission
+`cpl fmt` gives every CP Lang file one layout and never changes what the
+program means. `cpl lint` points at legal code that is probably wrong, slow
+or not the CP Lang way, explains why, and offers fixes that are safe to apply
+without reading them. If you have saved a file in an editor or run
+`cpl fix`, you have used this domain's work.
 
-`cpl fmt` gives every file one canonical layout, never changes what the
-program means, and runs on save with nothing set up. `cpl lint` is the
-teacher looking over a newcomer's shoulder: it points at legal code that is
-probably wrong, slow or not the CP Lang way, says why in the contestant's
-own terms, and offers only fixes that are verified to check and to print the
-same output. Neither tool ever fires on, or churns, code a careful reviewer
-calls idiomatic.
+## What good looks like
 
-Example: a C++ habit,
+A contestant fresh from C++ writes
 
 ```
 var doubled: List<Int> = []
 for x in raw: doubled.push(2 * x)
 ```
 
-gets
+and sees, in the editor and in `cpl lint` alike,
 
 ```
 warning[L0507]: a loop that only pushes onto `doubled` is a comprehension
@@ -32,9 +30,55 @@ warning[L0507]: a loop that only pushes onto `doubled` is a comprehension
   = help: write `[2 * x for x in raw]`; the comprehension says what each item is, so no push is missed or doubled
 ```
 
-and `cpl fix` rewrites it to `let doubled = [2 * x for x in raw]`, keeping
-the fix only because the result checks clean; the behaviour suite runs every
-fixed program to show it prints the same output.
+One `cpl fix` rewrites it to `let doubled = [2 * x for x in raw]`, already
+formatted, printing the same output. On idiomatic code (the corpus
+solutions, `std/`) neither tool says or changes anything, and saving a file
+moves only the lines that were edited.
+
+## How it fits together
+
+- **One analysis.** The checker (`cpl-check`) owns what a file means. Every
+  tool (`cpl lint`, `cpl fix`, the language server, the browser playground,
+  `cpl contest`'s watch loop) lints the analysis its checker database
+  already holds, through `cpl_lint::lint_analysis`. A lint reads the
+  checker's facts (types, resolved names, ranges) and never guesses them
+  from syntax.
+- **Records are the spec.** Each lint is a folder in `spec/lints/<name>/`:
+  `lint.toml` (code, level, group, the handbook rule it enforces),
+  `before.cp`, `after.cp`, `near_miss.cp` and `explain.md`. The lint
+  registry is generated from them, and the same files are the lint's tests.
+- **Fixes are verified.** `cpl fix` applies a fix only when the result checks
+  clean, and record tests check each fix clears its lint, converges and is
+  formatted.
+- **The formatter is token-preserving.** `cpl-fmt` lays out the lossless
+  syntax tree and may only add or drop trailing commas; `cp.toml [fmt]`
+  sets line and indent width.
+
+## How we know it is good
+
+Every record runs as a test: `before.cp` fires once, `near_miss.cp` stays
+quiet, and the fix clears the lint, adds no error and converges. The corpus
+and `std` warning counts only go down. `scripts/fmt_check.py` formats every
+tracked file and checks the result is stable and checks and runs the same.
+Parity tests check that the editor, the playground and `cpl lint` report the
+same findings.
+
+The weakest areas today: no fuzzer feeds random programs to lint and fmt,
+fixed programs are not yet run on the whole corpus to show the output is
+unchanged, nothing measures how much a small edit reformats, and the suites
+have no mutation score. Those rows are marked `missing` in the quality
+register below and are built first.
+
+## Where to start
+
+- **Add or change a lint:** `handbook/guidelines/lints.md`, then
+  `python3 scripts/new-lint.py`.
+- **A lint fired on correct code:** add it to that record's `near_miss.cp`
+  and fix the rule in `crates/cpl-lint/src/rules/`.
+- **A formatting bug:** add the input to `crates/cpl-fmt/src/tests.rs` and
+  run `python3 scripts/fmt_check.py`.
+
+# Reference
 
 ## Scope
 
@@ -81,19 +125,21 @@ contributor feels, the number that measures it, and the strongest mechanism
 that enforces it. Mechanisms rank: a design that makes the failure
 impossible, then a generated, differential, property or mutation suite, then
 a hand-written suite, then a lint, ratchet or gate, then a process.
-`missing` marks a row with no real check yet. Targets and current values are
+`missing` marks a row with no real check yet. A row about how lints are
+written names its rule in `handbook/guidelines/lints-checklist.md`
+(`lints/R1` and on), which states the rule; the row only measures it. Targets and current values are
 in `plan/domains/lint-fmt/metrics.toml`.
 
 ### Lint precision: it never cries wolf
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| No warnings on idiomatic code | warnings on corpus `spec.cp`, `std`, the practice solutions | ratchet, only goes down | `crates/cpl-lint/src/corpus_tests.rs` `corpus_warnings_only_go_down`, `std_tests.rs` |
-| A rule's near misses stay quiet | records whose `near_miss.cp` or `after.cp` fires | generated suite over every record | `record_tests.rs` `every_lint_record_fires_on_before_only` |
-| A lint never repeats a checker error at the same place | lint findings at the span of a checker diagnostic | design (rules read checker facts) plus suite | `checker_tests.rs` `a_lint_does_not_repeat_the_error_at_its_place` |
-| A user's own name is never mistaken for a std item (a file's `fn max`, `fn sum`) | rules matching std items by spelling | ratchet `lint_std_names`, to 0 by matching resolved paths | `scripts/debt-ratchet.py` |
-| Lints read the checker's types, never guess them from syntax | rules with a syntax type guesser | ratchet `consumer_rederived`; `missing` as a per-rule check | `scripts/debt-ratchet.py` |
-| One cause, one finding | nested or duplicated findings for one root cause | hand-written suite | `corpus_tests.rs` `nested_findings_are_one_cause_or_listed_distinct` |
+| No warnings on idiomatic code (`lints/R1`) | warnings on corpus `spec.cp`, `std`, the practice solutions | ratchet, only goes down | `crates/cpl-lint/src/corpus_tests.rs` `corpus_warnings_only_go_down`, `std_tests.rs` |
+| A rule's near misses stay quiet (`lints/R3`) | records whose `near_miss.cp` or `after.cp` fires | generated suite over every record | `record_tests.rs` `every_lint_record_fires_on_before_only` |
+| A lint never repeats a checker error at the same place (`lints/R6`) | lint findings at the span of a checker diagnostic | design (rules read checker facts) plus suite | `checker_tests.rs` `a_lint_does_not_repeat_the_error_at_its_place` |
+| A user's own name is never mistaken for a std item (`lints/R5`) | rules matching std items by spelling | ratchet `lint_std_names`, to 0 by matching resolved paths | `scripts/debt-ratchet.py` |
+| Lints read the checker's types, never guess them from syntax (`lints/R4`) | rules with a syntax type guesser | ratchet `consumer_rederived`; `missing` as a per-rule check | `scripts/debt-ratchet.py` |
+| One cause, one finding (`lints/R16`) | nested or duplicated findings for one root cause | hand-written suite | `corpus_tests.rs` `nested_findings_are_one_cause_or_listed_distinct` |
 | Precision on code we did not write | false positives on mutated or newcomer-written programs, sampled and graded | `missing` | — |
 
 ### Lint recall and teaching value
@@ -105,19 +151,19 @@ in `plan/domains/lint-fmt/metrics.toml`.
 | A lint catches the bug it names | mutation score: plant the anti-pattern into clean ports, count findings | `missing` | — |
 | The most frequent lints are worth seeing | hits per lint on corpus `port.cp`; top lints sampled for true positives | process, ranked in metrics | `plan/domains/lint-fmt/metrics.toml` |
 | A finding teaches in one read: the fact, the CP Lang way, a link | findings without a help or an explain page | gate | `record_tests.rs`, `checker_tests.rs` `every_checker_lint_has_a_registry_entry_for_cpl_explain` |
-| Help text names things that exist | helps naming a missing function, method or option | generated suite | `record_tests.rs` `every_help_names_real_vocabulary` |
+| Help text names things that exist (`lints/R14`) | helps naming a missing function, method or option | generated suite | `record_tests.rs` `every_help_names_real_vocabulary` |
 | One spelling per idea across lint, spec and errors | banned spellings in records and helps | hand-written suite; `missing` against `spec/GLOSSARY.md` | `record_tests.rs` `records_and_helps_spell_options_some_none` |
 
 ### Fixes you can apply blind
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| A fix clears its lint and still parses | record fixes that leave the lint or a parse error | generated suite | `record_tests.rs` `every_record_fix_clears_its_lint_and_still_parses` |
-| A fix never adds a checker error | fixed files with more errors, over records, `std` and corpus | generated suite | `record_tests.rs` `every_record_fix_adds_no_checker_error`, `corpus_tests.rs` `fixes_never_add_checker_errors` |
-| A fix keeps what the program prints | runnable programs whose output changes after `cpl fix` | differential suite | `crates/cpl-cli/tests/fix_behavior.rs`, `behaviour_tests.rs` |
-| The fixed file is what a person would write: formatted, no churn outside the edit | fixed files `cpl fmt --check` rejects; lines changed outside the fix | `missing` | — |
-| Fixes converge: a second `cpl fix` changes nothing | non-idempotent fix runs | `missing` | — |
-| Every lint has a fix or says why it has none | lints with neither | gate | `record_tests.rs` `every_lint_has_a_fix_or_says_why_not` |
+| A fix clears its lint and still parses (`lints/R8`) | record fixes that leave the lint or a parse error | generated suite | `record_tests.rs` `every_record_fix_clears_its_lint_and_still_parses` |
+| A fix never adds a checker error (`lints/R9`) | fixed files with more errors, over records, `std` and corpus | generated suite | `record_tests.rs` `every_record_fix_adds_no_checker_error`, `corpus_tests.rs` `fixes_never_add_checker_errors` |
+| A fix keeps what the program prints (`lints/R11`) | runnable programs whose output changes after `cpl fix` | differential suite | `crates/cpl-cli/tests/fix_behavior.rs`, `behaviour_tests.rs` |
+| The fixed file is what a person would write: formatted, no churn outside the edit (`lints/R10`) | fixed files `cpl fmt --check` rejects; lines changed outside the fix | generated suite over every record; corpus files `missing` | `record_tests.rs` `every_record_fix_converges_and_is_formatted` |
+| Fixes converge: a second `cpl fix` changes nothing (`lints/R10`) | non-idempotent fix runs | generated suite over every record | `record_tests.rs` `every_record_fix_converges_and_is_formatted` |
+| Every lint has a fix or says why it has none (`lints/R12`) | lints with neither | gate | `record_tests.rs` `every_lint_has_a_fix_or_says_why_not` |
 | `cpl fix` migrates removed syntax so old solutions keep building | codemods whose output fails `cpl check` | hand-written suite | `crates/cpl-lint/src/tests.rs`, `fix_tests.rs` |
 | Fixes keep CRLF and non-ASCII sources intact | fixes that change line ends or split a character | hand-written suite | `record_tests.rs` `every_record_fix_keeps_crlf` |
 
