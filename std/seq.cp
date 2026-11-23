@@ -757,7 +757,7 @@ pub fn runs<S: Indexed, T, K>(
 /// empty: every bucket is empty
 /// order: each bucket lists keys of `self` in increasing order; the result is keyed by `K`
 /// traps: never
-/// example: `[1, 0, 1].buckets()` over values `0..2` is `[[1], [0, 2]]`
+/// example: `domain D = 0..3; domain K = 0..2; let a: [D]K = [1, 0, 1]; a.buckets() == [[1], [0, 2]]`
 pub fn buckets<D, K: Domain>(self: [D]K) -> [K]List<D>:
     var out: [K]List<D> = []
     for i in D: out[self[i]].push(i)
@@ -2146,7 +2146,7 @@ pub fn perm_rank<V>(p: [V]V) -> Int:
 /// empty: the empty permutation for `rank == 0`
 /// order: keyed by `V`
 /// traps: when `rank` is not in `0..|V|!`
-/// example: `perm_unrank<[3]>(2) == [1, 0, 2]`
+/// example: `domain V = 0..3; perm_unrank<V>(2) == [1, 0, 2]`
 pub fn perm_unrank<V>(rank: Int) -> [V]V:
     let n = V.K
     var digits: List<Int> = List.filled(n, 0)
@@ -2222,7 +2222,7 @@ pub fn perm_order<V>(p: [V]V) -> Int:
 /// empty: every entry `None`
 /// order: keyed by `V`
 /// traps: when two keys map to the same value
-/// example: `[Some(2), None, Some(0)].partial_inverse() == [Some(2), None, Some(0)]`
+/// example: `domain I = 0..3; let p: [I]?I = [Some(2), None, Some(0)]; p.partial_inverse() == [Some(2), None, Some(0)]`
 pub fn partial_inverse<I, V>(self: [I]?V) -> [V]?I:
     var out: [V]?I = None
     for i in I:
