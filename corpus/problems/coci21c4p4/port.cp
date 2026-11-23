@@ -1,5 +1,14 @@
-// COCI 2021/22 #4 Parkovi, as it builds today: the parks of the best radius are
-// worked out a second time (R2), and the road lengths are stored beside the tree (B14).
+// Source: COCI 2021/22 Round 4 (Parkovi), https://dmoj.ca/problem/coci21c4p4
+// Problem: a tree on n <= 2e5 towns, road lengths <= 1e9. Build exactly k parks in distinct
+//   towns minimising the largest distance from a town to its nearest park; print that distance,
+//   then the k towns.
+// Solution: binary search the radius over 0..=2e14 with a greedy check: going up the tree,
+//   keep the farthest unserved town and the nearest park in each subtree, and build a park at
+//   v only when the farthest unserved town below could not reach v's parent (always at the
+//   root if one is left). That gives the fewest parks for a radius, O(n) per check, O(n log)
+//   in all; pad the answer with any other towns up to k.
+// As it builds today: the parks of the best radius are worked out a second time (R2), and
+// the road lengths are stored beside the tree (B14).
 // original: corpus/submissions/5120081.cpp
 let n: 1..=2e5 = read()
 let k: 1..=n = read()

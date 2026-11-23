@@ -1,8 +1,12 @@
-// SAC '22 Code Challenge 1 P3: a side view of a tank. A type 1 event drops
-// every 'X' block one row (off the bottom it disappears), then water 'W'
-// settles: it runs left along its row while the cell is free and falls into
-// a free cell below, until nothing moves. A type 2 event prints the tank.
-// Runnable on proto/cpc today.
+// Source: SAC '22 Code Challenge 1 P3, https://dmoj.ca/problem/sac22cc1p3
+// Problem: an N x M grid (N, M, Q <= 100) of 'X' heads, 'W' blood and '.' empty. Action 1
+//   drops every X one row (overwriting the cell below; off the bottom it vanishes), then blood
+//   alternates: every W moves to the leftmost cell it can reach in its row, then every W with
+//   an empty cell below drops one row, until nothing moves. Action 2 prints the grid.
+// Solution: plain simulation. Drop X rows bottom-up, then repeat until stable: slide each W
+//   left through empty cells (row by row, left to right, so each W stops at its leftmost
+//   reachable cell), then collect every W with an empty cell below and drop them all at once.
+//   Each round moves blood down or left, so a step costs O((NM)^2) at worst.
 // original: corpus/submissions/3992599.cpp
 let n: 1..=50 = read()
 let m: 1..=50 = read()

@@ -1,16 +1,12 @@
-// Codeforces 2124 I: Lexicographic Partition (dream).
-// Input `x[i]` is the 1-based depth of index `i` in the prefix-extremum tree:
-// `x[0] = 1`, each `i >= 1` has `2 <= x[i] <= x[i - 1] + 1`, and its parent is
-// the most recent vertex at depth `x[i] - 1`.
-// Whenever `x[i] <= x[i - 1]`, the parent `p` starts a new branch after an
-// earlier child, so `p` must precede its children in value order (`is_ext[p]`);
-// otherwise `p` follows its children. A valid permutation exists iff no vertex
-// and its parent are both `is_ext`.
-// Because each vertex `u` independently chooses preorder (`is_ext[u]`) or
-// postorder (`not is_ext[u]`) relative to its children (so neither `tree.Pre`
-// nor `tree.Post` alone suffices), an iterative stack DFS emits this mixed
-// Euler order safely at `n <= 2e5`, and `let pos = order.inverse()` converts
-// value positions into 1-based ranks in O(n).
+// Source: Codeforces 2124I, https://codeforces.com/contest/2124/problem/I
+// Problem: f(a) is the number of parts in a partition of a into subarrays whose sequence of
+//   minimums is lexicographically largest. Given x_1..x_n (x_i <= i, n <= 2e5, multitest with
+//   sum n <= 2e5), print a permutation a with f(a[1..i]) = x_i for all i, or NO.
+// Solution: x_i is the depth of i in a tree: x_1 = 1, each later i needs 2 <= x_i <= x_{i-1} + 1
+//   and hangs under the latest vertex at depth x_i - 1. A parent that gets a new child after an
+//   earlier branch (x_i <= x_{i-1}) must come before its children in value order, otherwise
+//   after them; it is impossible iff a vertex and its parent both must come first. Number the
+//   vertices in that mixed pre/post order with an iterative DFS and print each one's rank. O(n).
 
 @!multitest
 let n: 1..=200_000 = read()

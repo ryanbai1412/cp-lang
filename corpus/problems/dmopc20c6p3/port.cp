@@ -1,4 +1,12 @@
-// Runnable port (proto/cp.py lib-run) of dmopc20c6p3.cp
+// Source: DMOPC '20 Contest 6 P3 (Bread Merchant), https://dmoj.ca/problem/dmopc20c6p3
+// Problem: directed graph, N, M <= 5e5 (self-loops allowed); some cities have police
+//   (p_i = 1). The robber must leave any city with an out-route: police pick the route,
+//   elsewhere the robber picks. He is caught on reaching a city with no out-route. For each
+//   start city print 1 if optimal police catch him, else 0 (running forever is not caught).
+// Solution: retrograde game analysis, as in Kahn's algorithm on the reversed graph. Dead ends
+//   are caught. A police city is caught once any successor is caught; a robber city once all
+//   successors are decided and caught. Each decided city tells its predecessors (rem counts
+//   undecided successors); cities never decided sit on cycles the robber can keep, so 0. O(N + M).
 // original: corpus/submissions/3917634.cpp
 
 let (n, m): (Int, Int) = read()

@@ -1,15 +1,13 @@
-// Codeforces 2180 G: Balance (sequence doubling with midpoint deletion).
-// Maintain a sequence starting empty under two mutations and a query:
-//   - op 2 (x): interleave x into every gap (before, between, and after),
-//     turning length L into 2L + 1, sum into sum + x * (L + 1), and keeping
-//     the existing midpoint `mid` (or x when the sequence was empty).
-//   - op 1: delete the current midpoint. Because doubling preserves the
-//     midpoint of an odd-length sequence, deleting it rewinds to the highest
-//     stack frame `l` that still carries a midpoint, switches that frame to
-//     the midpoint-dropped doubling (`double_even`, length 2L, `mid = none`),
-//     and replays the layers above `l` as `double_odd`.
-//   - op 3: every element contributes equally by symmetry, so the answer for
-//     length n (with `p2 = 2^n`) is `((2^n - 1) / n + 2^(n - 1)) * sum / 2`.
+// Source: Codeforces 2180G (Balance), https://codeforces.com/contest/2180/problem/G
+// Problem: an array starts empty; q <= 1e6 queries (multitest, sum q <= 1e6): 1 erases the
+//   middle element, 2 x inserts x before, between and after all elements (L -> 2L + 1), 3
+//   prints the sum over all 2^L - 1 non-empty subsequences b of (1 b_1 + ... + m b_m) / m,
+//   mod 1e9 + 7.
+// Solution: by symmetry the answer is ((2^L - 1) / L + 2^(L-1)) * sum / 2, so keep L, 2^L, sum
+//   and the middle value mod p. The stack of type-2 layers is L in binary: 2 x pushes a 1 bit,
+//   and an erase is L - 1, a binary decrement: the topmost odd layer loses its middle x
+//   (becomes even, length 2L) and the layers above are replayed odd. Each decrement creates one
+//   0 bit, so the replays are O(q) amortized in total.
 
 type Z = Mod<1_000_000_007>
 

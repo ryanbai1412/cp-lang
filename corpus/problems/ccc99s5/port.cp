@@ -1,12 +1,12 @@
-// CCC 1999 S5 Letter Arithmetic: n puzzles, each three words of capital
-// letters, the first two adding up to the third (SEND + MORE = MONEY).
-// Different letters are different digits and no number starts with 0. Each
-// puzzle has one answer: print the three numbers, one to a line, and a
-// blank line after each puzzle.
-//
-// Add as on paper: column by column from the right, giving a digit to each
-// new letter of the two top rows and checking the bottom row against the
-// sum, so a wrong guess fails in the column where it is made.
+// Source: CCC 1999 S5 (Letter Arithmetic), https://dmoj.ca/problem/ccc99s5
+// Problem: n puzzles, each three words of at most 20 capital letters with word1 + word2 =
+//   word3 (SEND + MORE = MONEY). Give distinct letters distinct digits, no leading zero; each
+//   puzzle has exactly one answer. Print the three numbers, one per line, and a blank line
+//   after each puzzle.
+// Solution: backtracking that adds as on paper: column by column from the right, give a digit
+//   to each new letter of the two top rows, then force the bottom row's letter to the column
+//   sum mod 10 and carry the rest. A wrong guess fails in the column where it is made, so the
+//   search prunes far below 10! assignments.
 // original: corpus/submissions/5515588.cpp
 domain Letter = 'A'..='Z'
 domain Digit = 0..10

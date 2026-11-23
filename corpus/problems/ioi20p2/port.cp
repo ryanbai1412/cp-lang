@@ -1,4 +1,11 @@
-// IOI 2020 Day 1 P2, Connecting Supertrees (buildable today-form)
+// Source: IOI 2020 Day 1 P2 (Connecting Supertrees), https://dmoj.ca/problem/ioi20p2
+// Problem: n <= 1000 towers and a symmetric matrix p with p[i][i] = 1 and 0 <= p[i][j] <= 3.
+//   Build bridges (a simple undirected graph) with exactly p[i][j] simple paths from i to j
+//   for every pair, or report that it is impossible.
+// Solution: in a valid graph each component is a cycle with trees hanging off it. Towers with
+//   p == 1 form one tree each (a star on its first tower); tree roots with p == 2 share a ring,
+//   which needs at least 3 trees (a ring of 2 is impossible), and p == 3 never happens. Build
+//   that, then check every p[i][j] is 1 within a tree, 2 within a ring and 0 otherwise. O(n^2).
 // original: corpus/submissions/4724578.cpp (grader function delivery)
 // stdin here, as the IOI sample grader: n, then the n x n matrix p.
 // stdout: 0, or 1 followed by the bridge matrix.
