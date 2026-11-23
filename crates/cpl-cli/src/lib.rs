@@ -1771,4 +1771,17 @@ mod tests {
         assert!(text.contains("explicit copy -> std::vector"), "{text}");
         let _ = std::fs::remove_dir_all(&dir);
     }
+
+    #[test]
+    fn explain_file_lists_no_views_from_library_bodies() {
+        let dir = std::env::temp_dir().join("cpl_explain_library_views_test");
+        let _ = std::fs::create_dir_all(&dir);
+        let file = dir.join("push.cp");
+        std::fs::write(&file, "var xs: List<Int> = []\nxs.push(1)\nprint(xs)\n").unwrap();
+        let out = run(&["explain", &file.to_string_lossy()]);
+        assert_eq!(out.code, 0, "{}", out.stderr);
+        let text = String::from_utf8(out.stdout).unwrap();
+        assert!(!text.contains("Views & copies"), "{text}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
