@@ -6,6 +6,8 @@
 //! `for i in 0..xs.len` or `for i in xs.indices` over the same list, or when
 //! an enclosing `while` or `if` test, or the left side of an `and`, tests it:
 //! `i < xs.len and xs[i] > 0`, `if not xs.is_empty: xs[xs.len - 1]`.
+//! An access in the `Proven*` fact table ([`crate::ProvenIndex`], which the
+//! editor shows too) is proven as well: `ys[mid]` in a binary search.
 
 use crate::walk::{unparen, Bind, Scope, Visitor};
 use crate::{File, Finding, UNPROVEN_LIST_INDEX};
@@ -346,6 +348,16 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         findings: Vec::new(),
     };
     file.walk(&mut indexes, |indexes, base| indexes.base = base);
+    if indexes.findings.is_empty() {
+        return indexes.findings;
+    }
+    let proven: HashSet<(u32, u32)> = super::proven_indexes(file)
+        .into_iter()
+        .map(|p| p.access)
+        .collect();
+    indexes
+        .findings
+        .retain(|f| !proven.contains(&(f.diag.span.start, f.diag.span.end)));
     indexes.findings
 }
 
@@ -423,10 +435,15 @@ mod tests {
         };
         assert_eq!(codes(&rev("(0..ws.len).rev")), Vec::<&str>::new());
         assert_eq!(codes(&rev("ws.indices.rev")), Vec::<&str>::new());
-        // Any literal start is at least 0; a variable one may be negative.
+        // Any literal start is at least 0, and so is the outer `i in 0..3`;
+        // `i - 5` may be negative.
         assert_eq!(codes(&rev("(1..ws.len).rev")), Vec::<&str>::new());
         assert_eq!(codes(&rev("2..ws.len")), Vec::<&str>::new());
-        assert_eq!(codes(&rev("i..ws.len")), ["L0414"]);
+        assert_eq!(codes(&rev("i..ws.len")), Vec::<&str>::new());
+        assert_eq!(codes(&rev("(i - 5)..ws.len")), ["L0414"]);
+        // An access the fact table proves: a binary search over a fixed list.
+        let search = "let ys: List<Int> = read()\nvar hits = 0\nfor q in 0..3:\n    for t in 0..3:\n        var (lo, hi) = (0, ys.len)\n        while lo < hi:\n            let mid = (lo + hi) / 2\n            if ys[mid] < t: lo = mid + 1\n            else: hi = mid\n        hits += lo\nprint(hits)\n";
+        assert!(!codes(search).contains(&"L0414"), "{:?}", codes(search));
         // So is an enclosing `if` or `while` test.
         let body = |test: &str, index: &str| {
             format!("var ws: List<Int> = []\nws.push(read())\nvar total = 0\nfor i in 0..3:\n    for j in 0..3:\n        if {test}:\n            total += {index}\nprint(total)\n")
