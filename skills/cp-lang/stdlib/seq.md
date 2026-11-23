@@ -254,7 +254,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn sorted_diff<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<T>` — \(O(\lvert a \rvert + \lvert b \rvert)\), \(O(\lvert a \rvert + \lvert b \rvert)\) memory
 - `fn kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>` — \(O(N \log k)\), \(O(N)\) memory
 - `fn radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x)` — \(O(n)\) passes over 8-bit digits of the key, \(O(n)\) memory; \(O(n)\), \(O(n)\) memory.
-- `fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K)` — \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory; Sorts in place by `by(x)`, a position of the domain `K`, keeping equal keys in their
+- `fn counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K)` — \(O(n + \lvert K \rvert)\), \(O(n + \lvert K \rvert)\) memory
 - `fn is_permutation<A: Seq, B: Seq, T>(a: A, b: B) -> Bool` — \(O(n)\) expected, \(O(n)\) memory
 - `fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool` — \(O(\lvert \mathit{self} \rvert + \lvert \mathit{of} \rvert)\)
 - `fn perm_rank<V>(p: [V]V) -> Int` — \(O(n \log n)\), \(O(n)\) memory; traps: when `|V| > 20`; debug traps when `p` is not a permutation
