@@ -500,3 +500,6 @@ Round 12's cold reader hit again: `tally` returning `HashMap` (R07.11.4 says `Co
   case `core-07/record-literal-compared-takes-other-side-type`; the doc runner retries any
   failing example with its module imported (prelude `sqrt` shadowed `poly.sqrt`). Docs 2714/2780,
   33 error, 27 todo, 4 trap; 0 conform regressions.
+- 2026-11-23: `KruskalTree.top(v, ok)` written (was `todo`): each node keeps its merging edge's
+  key, `top` climbs the lift while `ok` holds. Interp and C++ agree; case `std-tree/kruskal-tree-top`.
+  Docs 2715/2780, 33 error, 26 todo, 4 trap; 0 conform regressions.

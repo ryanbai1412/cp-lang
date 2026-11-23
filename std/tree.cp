@@ -3899,6 +3899,7 @@ pub struct KruskalTree<V, N, W>:
     pub leaf: [V]N
     /// The merging weight of each node; `None` at a leaf.
     pub w: [N]?W
+    edge: [N]Int
     lift: Lift<N, Int>
 
     /// The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds. The roots, one per
@@ -3925,7 +3926,7 @@ pub struct KruskalTree<V, N, W>:
     /// ties: None; the highest such node is unique
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.w[kt.top(1, e => es[e].w < 5)] == Some(3) and kt.top(0, e => false) == kt.leaf[0]`
-    pub fn top<E>(self, v: V, ok: E -> Bool) -> N = todo
+    pub fn top<E>(self, v: V, ok: E -> Bool) -> N = lift.climb(leaf[v], x => ok(E.nth(edge[x]))).at
 
     /// For every node, `op` folded over the `leaf` values of the leaves under it: the least walk
     /// home from any vertex a subtree reaches is `kt.up(min, leaf: v => home[v]!)`. Each node
@@ -3984,6 +3985,7 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
     var top: [V]Int = [V] v => v.to_idx
     var par: List<Int> = [-1 for _ in V]
     var weight: List<?W> = [None for _ in V]
+    var key: List<Int> = [-1 for _ in V]
     for e in order:
         let r = edges[e]
         let a = top[dsu.find(r.u)]
@@ -3994,13 +3996,14 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
             par[b] = x
             par.push(-1)
             weight.push(Some(w(e)))
+            key.push(e.to_idx)
             top[dsu.find(r.u)] = x
     domain N = 0..par.len
     var up: [N]?(N, Int) = None
     for x in N:
         if par[x.to_idx] >= 0: up[x] = Some((N.nth(par[x.to_idx]), 0))
     let lift = Lift(up, op: (a, b) => a + b, identity: 0)
-    (N, KruskalTree<V, N, W>([V] v => N.nth(v.to_idx), [N] x => weight[x.to_idx], lift))
+    (N, KruskalTree<V, N, W>([V] v => N.nth(v.to_idx), [N] x => weight[x.to_idx], [N] x => key[x.to_idx], lift))
 
 /// The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour,
 /// until two vertices remain. `V.count - 2` vertices, in bijection with the labelled trees.
