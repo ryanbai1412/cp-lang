@@ -18,7 +18,7 @@ std L0210 72
 std L0301 38
 std L0501 6
 std L0503 7
-std L0504 22
+std L0504 28
 std L0505 1
 std L0506 20
 std L0507 10
@@ -26,7 +26,7 @@ std L0508 6
 std L0509 6
 std L0516 2
 std L0520 19
-std L0523 19
+std L0523 18
 std L0526 1
 std L0527 16
 std L0528 3

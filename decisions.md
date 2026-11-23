@@ -6912,7 +6912,7 @@ Reverse: `git mv` each file back and delete `scripts/status.py`.
 - **Why.** Tool behaviour (exit codes, `--json` shapes) had no citable rules, so a tool regression broke no rule and coverage could not see it; numbered chapters belong to the core, and a tool name reads better than a fake chapter number.
 - **Reverse.** Drop the `(R<tool>.<n>)` marks from `spec/tools/`, the `tools` glob and the `[a-z]+` alternative from `RULE_DEF`, and the `// rule: <tool>.<n>` lines from `spec/conformance/tools-cli/`.
 
-## 312. L0528 `reverse_index` covers only the whole-list reversed copy (2026-11-22)
+## 318. L0528 `reverse_index` covers only the whole-list reversed copy (2026-11-22)
 
 - **Decision.** `[xs[xs.len - 1 - i] for i in 0..xs.len]` warns with a fix to
   `xs.reversed()` when `xs` is a plain path the checker types as `List`.
@@ -6984,7 +6984,7 @@ also completes as you type `.` and maps `gd`, each with an
 off switch. Reverse: drop the command and the file list; the runtime-path setup in
 `editors/README.md` still works.
 
-## 317. L0414 `unproven_list_index` is `pedantic`, allowed by default (2026-11-22)
+## 319. L0414 `unproven_list_index` is `pedantic`, allowed by default (2026-11-22)
 Milestone 1 treats lint as teaching for newcomers, and C++-shaped code
 (the 1,160 corpus `port.cp` files) drew 279 L0414 warnings on 214 lines in
 86 files, often five on one line of index arithmetic, each with help that
@@ -7029,3 +7029,11 @@ Reason: a quarter off interpreter time and a third off cold checks for no
 measurable build cost.
 Reverse: decision 249's reverse; drop a crate when a measurement here stops
 favouring it.
+
+## 320. L0504 matches the calls `max` and `min` by name (2026-11-22)
+`best = max(best, x)` is how C++ writes `best max= x`, and Milestone 1's
+newcomer set expects L0504 to teach that loop as one fold. `max` and `min`
+are core builtins that a user can't usefully shadow in a fold, so the lint
+compares the callee's name (`crates/cpl-lint/src/rules/taste/forms.rs`
+`spelled_out`) and the `lint_std_names` ratchet rises 135 -> 138. Reverse:
+drop the `ExprKind::Call` arm of `spelled_out` and re-run `--update`.

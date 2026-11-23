@@ -788,6 +788,29 @@ fn loop_reductions_from_cco23p4_and_powers() {
     let best = "let xs = [3, 1]\nvar best = 1_000_000_000\nfor x in xs: best min= x\nprint(best)\n";
     let found = only(best);
     assert_eq!((found.code.0, found.fixes.len()), ("L0504", 0));
+    // C++'s `s = s + x` and `best = max(best, x)` are the same loops, taught once.
+    let spelled = "let a = [1, 2, 3]\nvar s = 0\nfor x in a: s = s + x\nvar best = 0\nfor x in a: best = max(best, x)\nvar low = 9\nfor i in 0..3:\n    if a[i] > 1:\n        low = min(a[i] * 2, low)\nprint(s, best, low)\n";
+    assert_eq!(codes(spelled), ["L0504"; 3]);
+    let helps: Vec<_> = lint(spelled, &Config::default())
+        .into_iter()
+        .map(|d| d.help.unwrap())
+        .collect();
+    assert_eq!(helps, [
+        "write `a.sum()`",
+        "write `a.max()`, or `max(0, a.max() ?? 0)` if `0` can win or the loop can run zero times",
+        "write `(0..3).filter(i => a[i] > 1).map(i => a[i] * 2).min()`, or `min(9, (0..3).filter(i => a[i] > 1).map(i => a[i] * 2).min() ?? 9)` if `9` can win or the loop can run zero times",
+    ]);
+    assert!(
+        fixed(spelled).contains("let s = a.sum()\n"),
+        "{}",
+        fixed(spelled)
+    );
+    let least =
+        "let a = [1, 2, 3]\nvar least = Int.MAX\nfor x in a: least = min(least, x)\nprint(least)\n";
+    assert_eq!(
+        only(least).help.as_deref(),
+        Some("write `a.min() ?? Int.MAX`")
+    );
     // Strings, a `?`, a name of the file's own, and self-reference are left alone.
     let skip = "let xs = [\"a\"]\nvar s = \"\"\nfor x in xs: s += x\nvar t = 0\nfor x in [1]: t += t\nprint(s, t)\n";
     assert_eq!(taste_codes(skip), Vec::<&str>::new());

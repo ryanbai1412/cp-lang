@@ -1513,6 +1513,9 @@ impl<'a> Taste<'a> {
                 Some(format!("count({} for {p} in {it})", c.unwrap_or_default())),
             ),
             AssignOp::Binary(BinOp::Add) if !numeric(i) => return,
+            AssignOp::Binary(BinOp::Add) if i == "0" && c.is_none() && v == p => {
+                ("sum", Some(format!("{}.sum()", receiver(&it))))
+            }
             AssignOp::Binary(BinOp::Add) => (
                 "sum",
                 Some(if i == "0" {
@@ -1530,7 +1533,17 @@ impl<'a> Taste<'a> {
             self.pair_span(decl.span, next.span),
             format!("a loop that only accumulates `{name}` is one `{call}`"),
         )
-        .with_help(format!("write `{call}({v} for {p} in {it}{filter})`"));
+        .with_help(match &text {
+            Some(text) => format!("write `{text}`"),
+            None if sentinel(i) => {
+                let seq = sequence(&it, &p, &v, c.as_deref());
+                format!("write `{seq}.{call}() ?? {i}`")
+            }
+            None => {
+                let seq = sequence(&it, &p, &v, c.as_deref());
+                format!("write `{seq}.{call}()`, or `{call}({i}, {seq}.{call}() ?? {i})` if `{i}` can win or the loop can run zero times")
+            }
+        });
         if let Some(edits) = text.and_then(|text| self.fold(init, next, call, text)) {
             diag.fixes.push(Fix {
                 title: format!("use `{call}`"),
@@ -1809,6 +1822,44 @@ fn iter_text<'s>(iter: &Expr, text: &'s str) -> std::borrow::Cow<'s, str> {
         ExprKind::Range { hi: None, .. } => format!("({text})").into(),
         _ => text.into(),
     }
+}
+
+/// A start value no element beats: `Int.MAX`, `INF`, `1_000_000_000`, `-1e18`.
+fn sentinel(init: &str) -> bool {
+    let digits: String = init.chars().filter(|c| c.is_ascii_digit()).collect();
+    ["MAX", "MIN", "INF", "inf", "e18", "e9", "**"]
+        .iter()
+        .any(|w| init.contains(w))
+        || (digits.len() >= 9
+            && init
+                .trim_start_matches('-')
+                .chars()
+                .all(|c| c.is_ascii_digit() || c == '_'))
+}
+
+/// `it` as the receiver of a method call.
+fn receiver(it: &str) -> std::borrow::Cow<'_, str> {
+    let plain = !it.contains("..")
+        && it
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "_.".contains(c));
+    if it.starts_with('(') || plain {
+        it.into()
+    } else {
+        format!("({it})").into()
+    }
+}
+
+/// The values a `for p in it` loop visits: `it`, mapped and filtered as written.
+fn sequence(it: &str, p: &str, v: &str, cond: Option<&str>) -> String {
+    let mut seq = receiver(it).into_owned();
+    if let Some(c) = cond {
+        seq = format!("{seq}.filter({p} => {c})");
+    }
+    if v != p {
+        seq = format!("{seq}.map({p} => {v})");
+    }
+    seq
 }
 
 /// An initial value `sum` can start from: a number or a `.zero`.

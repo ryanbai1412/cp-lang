@@ -87,11 +87,55 @@ impl<'a> AccLoop<'a> {
             _ => (None, only),
         };
         match &only.kind {
-            StmtKind::Assign { target, op, value } if matches!(&target.kind, ExprKind::Name(n) if n == self.name) => {
+            StmtKind::Assign { target, op, value } if matches!(&target.kind, ExprKind::Name(n) if n == self.name) =>
+            {
+                let (op, value) = match op {
+                    AssignOp::Set => spelled_out(self.name, value)?,
+                    _ => (op, value),
+                };
                 Some(Form::Fold { cond, op, value })
             }
             StmtKind::Expr(e) => pushed_onto(e, self.name).map(|value| Form::Build { cond, value }),
             _ => None,
         }
+    }
+}
+
+static ADD: AssignOp = AssignOp::Binary(BinOp::Add);
+static MAX: AssignOp = AssignOp::Max;
+static MIN: AssignOp = AssignOp::Min;
+
+/// `x = x + v` and `x = max(x, v)`, C++'s spellings of `x += v` and `x max= v`:
+/// the operator and `v`.
+fn spelled_out<'a>(name: &str, value: &'a Expr) -> Option<(&'static AssignOp, &'a Expr)> {
+    let other = |a: &'a Expr, b: &'a Expr| {
+        let is_self = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n == name);
+        match (is_self(a), is_self(b)) {
+            (true, false) => Some(b),
+            (false, true) => Some(a),
+            _ => None,
+        }
+    };
+    match &value.kind {
+        ExprKind::Binary {
+            op: BinOp::Add,
+            lhs,
+            rhs,
+            ..
+        } => Some((&ADD, other(lhs, rhs)?)),
+        ExprKind::Call { callee, args } => {
+            let op = match &callee.kind {
+                ExprKind::Name(n) if n == "max" => &MAX,
+                ExprKind::Name(n) if n == "min" => &MIN,
+                _ => return None,
+            };
+            match &args[..] {
+                [a, b] if [a, b].iter().all(|x| x.name.is_none() && !x.mutable) => {
+                    Some((op, other(&a.value, &b.value)?))
+                }
+                _ => None,
+            }
+        }
+        _ => None,
     }
 }
