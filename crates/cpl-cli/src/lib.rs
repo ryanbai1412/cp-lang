@@ -18,6 +18,7 @@ mod migrate;
 mod profile;
 mod replay;
 mod report;
+mod setup;
 mod sha256;
 mod submit;
 use submit::{list_judges, submit};
@@ -157,6 +158,7 @@ pub fn exec<S: AsRef<str>>(
         Some("self") => toolchain::self_command(&rest, stdout, stderr),
         Some("explain") => explain_code(&rest, stdout, stderr),
         Some("migrate") => migrate::migrate(&rest, stdout, stderr),
+        Some("setup") => setup::setup(&rest, stdout, stderr),
         Some("check") if rest.iter().all(|arg| *arg == "--json") => {
             usage_error("`check` needs a file: `cpl check a.cp`".into())
         }

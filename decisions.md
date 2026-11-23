@@ -6972,3 +6972,14 @@ the edge; the site falls back to checker diagnostics only.
 - **Call.** `spec/lib/ops-ranges.md` (What merges) is normative over the older decision 42.2: range add with range sum is `SegTree(+, a, act: add)`, range add with point read is `SegTree(a: a, act: add)`. The stdlib removes both Fenwick variants and their README rows; until then they are undocumented leftovers, not part of the Milestone 1 subset.
 - **Why.** Rebuild round 6 (H-RANGEFENWICK-GONE) found the spec and `std/fenwick.cp` disagreeing; one way per job, and `act:` already says which operations a tree supports, which was 42.2's reason for separate types.
 - **Reverse.** Restore 42.2: document the two types in `spec/lib/ops-ranges.md` and drop the "goes" line.
+
+## 314. `cpl setup neovim` (and `vim`) installs the editor files built into `cpl` (2026-11-22)
+Milestone 1's friend uses Neovim and needs a one-step setup; the old one asked for
+a clone of this repo and a runtime-path line. `cpl setup <editor>`
+(`crates/cpl-cli/src/setup.rs`) writes `editors/neovim/` (plus the tree-sitter
+queries) into the editor's start-package folder: `stdpath('data')/site/pack/cpl/start/cplang`
+for Neovim, `~/.vim` (`~/vimfiles` on Windows) for Vim. It is a new top-level
+command because the editors are not toolchains (`cpl self`). The Neovim plugin now
+also completes as you type `.` and maps `gd`, each with an
+off switch. Reverse: drop the command and the file list; the runtime-path setup in
+`editors/README.md` still works.

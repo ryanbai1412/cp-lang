@@ -365,7 +365,7 @@ fn every_command_has_help_and_rejects_an_unknown_option() {
         .filter(|line| !line.starts_with("   "))
         .filter_map(|line| line.split_whitespace().next())
         .collect();
-    assert_eq!(commands.len(), 26, "{help}");
+    assert_eq!(commands.len(), 27, "{help}");
     for command in commands {
         helps(command);
         let out = cpl(Path::new("."), &[command, "--no-such-option"]);
@@ -387,14 +387,14 @@ fn help_json_lists_every_command_with_its_usage_summary_json_and_help() {
     assert_eq!(out.status.code(), Some(0));
     let json = cpl_json::parse(&text(&out.stdout)).expect("cpl --help --json is JSON");
     let commands = json.at(&["commands"]).as_array().unwrap();
-    assert_eq!(commands.len(), 26);
+    assert_eq!(commands.len(), 27);
     let listed = text(&cpl(Path::new("."), &["--help"]).stdout);
     let no_json: Vec<_> = commands
         .iter()
         .filter(|c| c.at(&["json"]).as_str().is_none())
         .map(|c| c.at(&["name"]).as_str().unwrap())
         .collect();
-    assert_eq!(no_json, ["watch", "lsp", "dap", "self"]);
+    assert_eq!(no_json, ["watch", "lsp", "dap", "setup", "self"]);
     for command in commands {
         let name = command.at(&["name"]).as_str().unwrap();
         let usage = command.at(&["usage"]).as_str().unwrap();
@@ -1251,4 +1251,39 @@ fn test_adds_a_custom_case_and_runs_it() {
         text(&out.stderr)
     );
     assert!(!dir.join("a.tests/3.in").exists());
+}
+
+/// `cpl setup neovim` writes the plugin, filetype, syntax and queries where
+/// Neovim loads a start package; `vim` leaves out what only Neovim reads.
+#[test]
+fn setup_writes_the_editor_files() {
+    let dir = scratch("setup");
+    let out = cpl(&dir, &["setup", "neovim", "--dir", "nvim"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        text(&out.stdout).starts_with("installed CP Lang for neovim in nvim"),
+        "{}",
+        text(&out.stdout)
+    );
+    for file in [
+        "plugin/cplang.lua",
+        "ftdetect/cp.vim",
+        "syntax/cp.vim",
+        "queries/cp/highlights.scm",
+    ] {
+        assert!(dir.join("nvim").join(file).is_file(), "{file}");
+    }
+    let out = cpl(&dir, &["setup", "vim", "--dir", "vim"]);
+    assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+    assert!(
+        dir.join("vim/plugin/cplang.vim").is_file() && !dir.join("vim/plugin/cplang.lua").exists()
+    );
+
+    let out = cpl(&dir, &["setup", "emacs"]);
+    assert_eq!(out.status.code(), Some(EXIT_USAGE as i32));
+    assert!(
+        text(&out.stderr).contains("no setup for `emacs`"),
+        "{}",
+        text(&out.stderr)
+    );
 }

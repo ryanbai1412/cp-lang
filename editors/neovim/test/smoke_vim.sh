@@ -40,5 +40,14 @@ printf 'let  x=1\nprint( x )\n' >"$tmp/b.cp"
     -c "wqall"
 printf 'let x = 1\nprint(x)\n' | cmp -s - "$tmp/b.cp" || { echo "vim smoke: gq wrote $(cat "$tmp/b.cp")" >&2; exit 7; }
 
+# The documented setup: `cpl setup vim` writes a start package Vim loads.
+"$cpl" setup vim --dir "$tmp/pack/cpl/start/cplang" >/dev/null
+"$vim_bin" --clean -Nu NONE -Es \
+    -c "set packpath^=$tmp" -c "packloadall" \
+    -c "filetype plugin indent on" -c "syntax on" \
+    -c "edit $tmp/a.cp" \
+    -c "if &filetype !=# 'cp' || !exists('g:loaded_cplang') | cquit 6 | endif" \
+    -c "qall!"
+
 python3 "$root/editors/lsp-smoke.py" vim "$cpl" lsp
 echo "vim smoke: ok"

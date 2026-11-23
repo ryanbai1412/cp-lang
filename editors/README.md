@@ -54,21 +54,30 @@ settings, snippets, and extension-host integration tests.
 
 ## Neovim (0.10 or later)
 
-Add the folder to the runtime path; it sets the filetype, the highlighting and
-the comment string, and starts `cpl lsp` for every `.cp` buffer with the
-server's Run, Trace, Test and Stress lenses (`<cmd>lua vim.lsp.codelens.run()<cr>`
-runs the one under the cursor in a terminal split). Writing a buffer formats
-it with `cpl fmt` in the nearest `cp.toml` style; `vim.g.cpl_format_on_save =
-false` turns that off:
+One step, once `cpl` is installed:
 
-```lua
-vim.opt.rtp:append('/path/to/cp-lang/editors/neovim')
-vim.g.cpl_path = 'cpl' -- or the full path
+```sh
+cpl setup neovim
 ```
 
-With lazy.nvim, `{ dir = '/path/to/cp-lang/editors/neovim' }` does the same.
-With nvim-lspconfig instead of the bundled autocommand, register the server
-and keep the rest:
+Open a `.cp` file: highlighting, diagnostics, completion (as you type `.`, and
+Ctrl-X Ctrl-O any time; Neovim 0.11 or later for as-you-type), `gd` to the
+definition, `K` for hover, formatting on every write, the Run, Trace, Test and
+Stress lenses (`<cmd>lua vim.lsp.codelens.run()<cr>` runs the one under the
+cursor) and `:Cpl <command>` (bare `:Cpl` runs `cpl test` on the file). It
+writes the plugin to `stdpath('data')/site/pack/cpl/start/cplang`; run it again
+after `cpl self update`. Settings, all optional:
+
+```lua
+vim.g.cpl_path = 'cpl'             -- when cpl is not on the PATH
+vim.g.cpl_format_on_save = false   -- keep your own formatting
+vim.g.cpl_autocomplete = false     -- keep your completion plugin's menu
+```
+
+From a checkout instead, add the folder to the runtime path
+(`vim.opt.rtp:append('/path/to/cp-lang/editors/neovim')`, or with lazy.nvim
+`{ dir = '/path/to/cp-lang/editors/neovim' }`). With nvim-lspconfig instead of
+the bundled autocommand, register the server and keep the rest:
 
 ```lua
 require('lspconfig.configs').cpl = {
@@ -87,15 +96,14 @@ cd /path/to/cp-lang/editors && mkdir -p neovim/parser &&
   cc -O2 -shared -fPIC -I tree-sitter-cp/src tree-sitter-cp/src/parser.c -o neovim/parser/cp.so
 ```
 
-Vim gets the highlighting from the same folder (`set rtp+=...`), and `gq`
-formats through `cpl fmt --stdin` (`let g:cpl_path = ...` if `cpl` is not on
-the `PATH`). To format on write:
+Vim: `cpl setup vim` installs the filetype and highlighting into
+`~/.vim/pack/cpl/start/cplang` (`~/vimfiles` on Windows), and registers
+`cpl lsp` with vim-lsp or yegappan/lsp when one of them is installed. `gq` formats
+through `cpl fmt --stdin`. To format on write:
 
 ```vim
 autocmd BufWritePre *.cp let b:cpl_view = winsaveview() | silent execute 'keepjumps normal! gggqG' | call winrestview(b:cpl_view)
 ```
-
-For the server, use a client such as vim-lsp with `cmd: ['cpl', 'lsp']`.
 
 ## Emacs
 

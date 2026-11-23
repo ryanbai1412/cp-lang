@@ -4,11 +4,12 @@ The detail behind the [README](README.md): workstreams and their order, why each
 
 ## Milestone 1 order (from 2026-11-22, deadline 09:30 PST 2026-11-23)
 [plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md) and Ryan's 21:30 update set the order; anything not on this path waits. Checkpoint in worklog.md every 2 hours.
-1. **Neovim LSP.** The friend uses Neovim/Vim. `editors/neovim/test/smoke.lua` gains completion, formatting and go-to-definition; `editors/README.md` gets one copy-paste setup; CI runs the smoke test headless (nvim is pinned in mise.toml). Vim's setup checked by `smoke_vim.sh`.
+1. **Neovim LSP** (done: `cpl setup neovim`). The friend uses Neovim/Vim. `editors/neovim/test/smoke.lua` gains completion, formatting and go-to-definition; `editors/README.md` gets one copy-paste setup; CI runs the smoke test headless (nvim is pinned in mise.toml). Vim's setup checked by `smoke_vim.sh`.
 2. **Windows CLI.** CRLF in inputs and `.out` files, Windows paths in file resolution and messages, `clip.exe` for `-c`; tests that run on the Windows runner.
 3. **Contest-flow golden test** on all three platforms: new (Companion fixture) → run → test --add → stress → b -c.
 4. **Done already:** `cpl run` runs the samples (440aa2111), `cpl b -c` and short forms (dc8a5c361), `cpl test --add` (b6394311a).
-5. **VS Code**: release `.vsix`, format on save, Companion listen and Add Test commands.
+5. **VS Code**: release `.vsix`, format on save, go-to-definition, Companion listen and Add Test commands; smoke in CI.
+6. **JetBrains** (Ryan, 21:34: "i care about neovim, vscode, and jetbrains"): the plugin over `cpl lsp` with highlighting, diagnostics, completion, formatting and definition; one-step install from the release zip; a CI smoke build and test (CI reaches Gradle; this VM can't).
 
 Deferred: workstream 3 (explain), the rest of 2 (shared parser beyond new flags), and tier-2 editor polish.
 

@@ -93,6 +93,35 @@ jobs:
           path: target
           key: ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
 
+  # The Milestone 1 editor: `cpl setup neovim`, then diagnostics, completion,
+  # `gd` and format on write in headless Neovim (editors/neovim/test/smoke.lua).
+  # Windows is informational until it has passed once.
+  neovim:
+    name: neovim (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    continue-on-error: ${{ matrix.os == 'windows-latest' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: neovim
+      - uses: rhysd/action-setup-vim@v1
+        with:
+          neovim: true
+          version: v0.11.5
+      - name: Build cpl
+        run: cargo build -p cpl-cli
+      - name: Neovim smoke
+        shell: bash
+        run: nvim --headless --clean -l editors/neovim/test/smoke.lua "$PWD/target/debug/cpl" "$PWD"
+
   # A main push with stale generated files (skill pages, COVERAGE.md, fixed
   # prelude gaps) gets them regenerated and committed here, under the pushed
   # commit's Domain trailer, then CI is dispatched on the new tip: a push by

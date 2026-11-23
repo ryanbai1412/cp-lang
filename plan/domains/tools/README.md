@@ -8,20 +8,19 @@ Status (2026-11-22, late): every spec command exists (0 mismatches); `new --comp
 Deadline about 09:30 PST 2026-11-23; ships on edge. Steps 3-6 of the acceptance scenario (install, solve, test, submit) run through this lane. Priorities follow it; the metrics below are means to it. No real judge submissions: Codeforces is the target, checked against the local `codeforces` profile (compiler, flags, limits, 64 KB source). Linux, macOS and Windows are all supported and tested.
 
 Exit criteria, each checked by a test or a recorded cold run:
-1. **Neovim just works** (the friend's editor): one documented step in `editors/README.md` gives diagnostics, completion, formatting and go-to-definition on a `.cp` file; a headless-nvim smoke test checks all four in CI; the Vim setup works too.
+1. **Three editors, in this order: Neovim (with Vim), VS Code, JetBrains.** Each gets highlighting, diagnostics, completion, formatting and go-to-definition from a one-step setup documented in `editors/README.md`, checked by a CI smoke test. Neovim: `cpl setup neovim`, smoke-tested headless on Linux, macOS and Windows. VS Code: the release `.vsix`. JetBrains: the plugin zip from the release, over LSP.
 2. **Import**: Competitive Companion's button lands a problem (or a whole contest) as `a.cp` + `a.tests/` with title, URL, limits, judge and samples, via `cpl new --listen`; no flags needed.
 3. **Run**: `cpl run a` with no input runs every sample with the diff; `cpl run a 2` runs one; piped stdin still works. (Landed 440aa2111.)
 4. **Custom tests and checkers**: `cpl test a --add FILE [--expect OUT]` (landed b6394311a); `@check` judges multi-answer problems and `@interactor` interactive ones.
 5. **Submit**: `cpl b -c` (landed dc8a5c361) puts the C++17 file for the file's judge on the clipboard on all three platforms; size against 64 KB, checks and failed samples are said before you paste.
 6. **Windows**: paths, clipboard (`clip.exe`), CRLF input and sample files behave as on Linux, tested in CI.
 7. **Workspace**: one folder per contest, one file per problem, newest problem by default; no config file needed.
-8. **VS Code** (second target): installs from the release `.vsix`; highlighting, diagnostics, completion and format-on-save on a fresh file.
-9. **No surprises**: every command in the scenario has a golden test; every usage error names the right invocation.
+8. **No surprises**: every command in the scenario has a golden test; every usage error names the right invocation.
 
-Deferring until after Milestone 1 (continues in parallel only when cheap): `explain` representation sections (tools-3), the shared parser/output refactor, the last `--json` gaps, VS Code polish beyond item 8, polish of Zed/Helix/Emacs/JetBrains, debugger code moves.
+Deferring until after Milestone 1 (continues in parallel only when cheap): `explain` representation sections (tools-3), the shared parser/output refactor, the last `--json` gaps, editor polish beyond item 1, Zed/Helix/Emacs beyond staying working, debugger code moves.
 
 Top 3 next steps:
-1. Neovim: completion, formatting and definition in the headless smoke test, the one-step setup in `editors/README.md`, the smoke test in CI.
+1. Editors in order: Neovim (`cpl setup neovim` and its CI smoke, landed with this section's update), then VS Code (`.vsix`, format on save, definition), then JetBrains (LSP client plugin, smoke in CI).
 2. Windows: CRLF input and sample files, `\` paths, `clip.exe` for `cpl b -c`, with tests that run on a Windows CI runner.
 3. A contest-flow golden test (new → run → test --add → stress → b -c) on a Companion fixture, run on all three platforms.
 

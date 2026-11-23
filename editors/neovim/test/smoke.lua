@@ -1,14 +1,10 @@
 -- nvim --headless --clean -l editors/neovim/test/smoke.lua CPL REPO
--- Loads editors/neovim as a plugin, opens a .cp file with a type error and checks the
+-- Installs the plugin with `cpl setup neovim`, opens a .cp file with a type error and checks the
 -- filetype, the highlighting, the server's diagnostic, its hover and the run lens beside
--- the sample `i1`, run through `cpl.exec`; `:Cpl check` and its completion; then, with the
+-- the sample `i1`, run through `cpl.exec`; completion, `gd` and format on write; `:Cpl check` and its completion; then, with the
 -- tree-sitter parser built, the highlighting the shared queries give.
 local cpl, repo = arg[1], arg[2]
-vim.opt.rtp:prepend(repo .. '/editors/neovim')
 vim.g.cpl_path = cpl
-vim.cmd('filetype plugin on')
-vim.cmd('syntax on')
-vim.cmd('runtime! plugin/cplang.lua')
 
 local function check(ok, what)
     if not ok then
@@ -17,8 +13,18 @@ local function check(ok, what)
     end
 end
 
+-- The documented one step: `cpl setup neovim` puts the plugin in a start package.
 local dir = vim.fn.tempname()
 vim.fn.mkdir(dir, 'p')
+local setup = vim.system({ cpl, 'setup', 'neovim', '--dir', dir .. '/site/pack/cpl/start/cplang' }):wait()
+check(setup.code == 0, 'cpl setup neovim: ' .. (setup.stderr or ''))
+vim.opt.packpath:prepend(dir .. '/site')
+-- Startup has already loaded the packages; source what it would have, from the package.
+vim.cmd('runtime! plugin/**/*.vim plugin/**/*.lua ftdetect/*.vim')
+check(#vim.api.nvim_get_runtime_file('plugin/cplang.lua', true) == 1, 'the package is not on the path')
+vim.cmd('filetype plugin on')
+vim.cmd('syntax on')
+
 local file = dir .. '/a.cp'
 vim.fn.writefile({ '5' }, dir .. '/i1')
 vim.fn.writefile({ 'fn main():', '    let n: Int = read()', '    let s: Str = n', '    print(n + 1)' }, file)
@@ -42,6 +48,24 @@ for _, reply in pairs(replies) do
     if reply.result then hover = reply.result.contents.value end
 end
 check(hover:find('n: Int', 1, true) ~= nil, 'hover on `n` is ' .. vim.inspect(hover))
+local function request(method, line, character)
+    local replies = vim.lsp.buf_request_sync(0, method, {
+        textDocument = { uri = vim.uri_from_fname(file) },
+        position = { line = line, character = character },
+    }, 5000) or {}
+    for _, reply in pairs(replies) do
+        if reply.result then return reply.result end
+    end
+end
+-- Completion at `print` lists the prelude's functions and the locals in scope.
+local items = request('textDocument/completion', 3, 6) or {}
+local labels = vim.tbl_map(function(item) return item.label end, items.items or items)
+check(vim.tbl_contains(labels, 'print') and vim.tbl_contains(labels, 'n'), 'completion is ' .. vim.inspect(labels))
+check(vim.bo.omnifunc == 'v:lua.vim.lsp.omnifunc', 'omnifunc is ' .. vim.bo.omnifunc)
+-- `gd` on the `n` in `print(n + 1)` jumps to its `let`.
+vim.api.nvim_win_set_cursor(0, { 4, 10 })
+vim.cmd('normal gd')
+check(vim.wait(5000, function() return vim.api.nvim_win_get_cursor(0)[1] == 2 end), 'gd went to ' .. vim.inspect(vim.api.nvim_win_get_cursor(0)))
 local lenses = {}
 check(vim.wait(10000, function()
     lenses = vim.lsp.codelens.get(0)

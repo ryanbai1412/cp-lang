@@ -31,6 +31,7 @@ most recently edited `.cp` file in the folder.
 | `cpl lsp` | the language server |
 | `cpl watch d` | rebuild and test on save |
 | `cpl report d` | writes a paste-ready bug report (`--last` after an internal compiler error) |
+| `cpl setup neovim` | installs the editor support built into `cpl` (`neovim`, `vim`) where the editor loads it at startup |
 | `cpl self <command>` | updates, switches or rolls back the installed toolchain; `cpl +<toolchain> <command>` runs one command with another |
 
 Output is plain text for people and `--json` (the same as `--format json`, on every command that has

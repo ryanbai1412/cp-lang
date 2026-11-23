@@ -233,6 +233,13 @@ pub(crate) const COMMANDS: &[Command] = &[
         options: None,
     },
     Command {
+        name: "setup",
+        args: "<neovim | vim>",
+        summary: &["install the editor support: `cpl setup neovim`"],
+        json: Json::None,
+        options: Some(&["--dir"]),
+    },
+    Command {
         name: "self",
         args: "<command>",
         summary: &[
@@ -332,6 +339,7 @@ pub(crate) fn command_usage(command: &str) -> Option<&'static str> {
         "check" => CHECK_USAGE,
         "fix" => FIX_USAGE,
         "migrate" => crate::migrate::USAGE,
+        "setup" => crate::setup::USAGE,
         "run" => RUN_USAGE,
         "build" => BUILD_USAGE,
         "locate" => cpl_stress::locate::USAGE,

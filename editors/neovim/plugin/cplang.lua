@@ -1,6 +1,8 @@
 -- CP Lang for Neovim 0.10+: the filetype, tree-sitter highlighting when the parser is
--- built, and `cpl lsp` on every .cp buffer, which formats it on write.
--- Set vim.g.cpl_path when cpl is not on the PATH.
+-- built, and `cpl lsp` on every .cp buffer with diagnostics, completion, `gd` to the
+-- definition and formatting on save. `cpl setup neovim` installs this folder.
+-- Set vim.g.cpl_path when cpl is not on the PATH; vim.g.cpl_format_on_save = false
+-- and vim.g.cpl_autocomplete = false turn those off.
 vim.filetype.add({ extension = { cp = 'cp' } })
 
 -- The server's Run, Trace and Stress lenses name `cpl` arguments; run them in a terminal split.
@@ -61,5 +63,24 @@ vim.api.nvim_create_autocmd('FileType', {
             group = vim.api.nvim_create_augroup('cplang_lens_' .. args.buf, {}),
             callback = function() vim.lsp.codelens.refresh({ bufnr = args.buf }) end,
         })
+    end,
+})
+
+-- Once `cpl lsp` attaches: the completion menu as you type `.` (Neovim 0.11+; Ctrl-X Ctrl-O
+-- any time) and `gd` unless you mapped it. Formatting on write is set up above.
+vim.api.nvim_create_autocmd('LspAttach', {
+    group = vim.api.nvim_create_augroup('cplang_attach', {}),
+    callback = function(args)
+        local client = vim.lsp.get_client_by_id(args.data.client_id)
+        if client == nil or client.name ~= 'cpl' then return end
+        local buf = args.buf
+        if vim.lsp.completion and vim.g.cpl_autocomplete ~= false then
+            vim.lsp.completion.enable(true, client.id, buf, { autotrigger = true })
+            -- Nothing is inserted until you pick it, unless you set your own completeopt.
+            if vim.o.completeopt == 'menu,popup' then pcall(function() vim.bo[buf].completeopt = 'menuone,noselect,popup' end) end
+        end
+        if vim.fn.maparg('gd', 'n') == '' then
+            vim.keymap.set('n', 'gd', vim.lsp.buf.definition, { buffer = buf, desc = 'cpl: go to definition' })
+        end
     end,
 })
