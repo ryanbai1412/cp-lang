@@ -2,6 +2,9 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-23
+- 2026-11-23 (cco20p4): `scripts/corpus-tests.py` takes the first `AC` submission as the reference; for cco20p4 that is 4801875, a partial-score walk of length 2n - 2 that the problem's `checker.py` rejects. The tests now hold 6416816's answers, but `make`/`verify` would regenerate the old ones. Fix: a pinned reference in `meta.json` kept by `scripts/corpus.py`, and `checker.py` run on reference answers (`research/frictions/cco20p4.md`).
+
 ## 2026-11-22
 - From tech-debt (2026-11-22), on acceptance run 1's two P0s (bc3b253e9): the free `count(p(x) for x in xs)` now counts trues (and `all`/`any` of a generator check), with a regression case. `a.sorted().rev[k]` reading the un-reversed element is what the spec says today (R07: `a.rev[i] is still a[i]`; R04a.9.2 keeps source keys), so it waits on Ryan's range-key decision; until then a lint or the docs should warn that `.rev` doesn't renumber.
 - Sheriff (infra): reverted 282c7e878 (nccc10s4 brute-force spec and generator). Its `spec.cp` raised the cpl-lint corpus ratchet, `spec L0414: 4 -> 14` and `L0504: 0 -> 1` (run 45114200284, `corpus_warnings_only_go_down`). Re-land it with the nested-loop indexing written without per-pass bounds checks (or a lint fix if those are false positives).

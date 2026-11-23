@@ -28,5 +28,5 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Implicit colour graph as a Next closure; reachable() free fn (aligned earlier, stub was a Graph method); Rooted.euler_tour() added; keys.first(p) for position of a value."
+ "notes": "Minimum route of length n per start, following 6416816's insertion order (tests use its answers; 4801875's 2n - 2 walk fails checker.py). Road table read as rows until [Pair<V>]T arrays work."
 }
