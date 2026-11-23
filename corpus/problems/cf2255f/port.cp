@@ -1,14 +1,13 @@
-// Codeforces 2255 F — Vieta Catalan Composition
-//
-// Let `vieta(t) = prod_i (1 - a[i] * t)` be the Vieta polynomial of `-a`.
-// Pairing complementary subsets of sizes `k` and `n - k` gives
-// `v2[k] = vieta[k] * vieta[n - k]` for `k in 0..=n / 2`.
-//
-// Substituting the Catalan generating function `C(x) = sum_i C_i x^i`
-// (`cat[i] = comb.catalan(i)`, `cat1(x) = x * C(x)` shifted to `cat[1..]`)
-// computes `ways(x) = v2(cat1(x)) * C(x)^(-n)` via NTT composition and power.
-// Weighting each `ways[k]` by `1 / C(2k, k) = inv_fact(2k) * fact(k)^2` and
-// multiplying by `2 * (n - 1)!` yields the answer in O(n log^2 n).
+// Source: Codeforces 2255F (Who Will Witness the End?),
+//   https://codeforces.com/contest/2255/problem/F
+// Problem: n labeled values a[i] mod 998244353, 3 <= n <= 2e5. Over the (n - 1)! circular
+//   orders p (rotations equal, reflections not), sum prod (a[p_i] + a[p_(i+1)]), mod
+//   998244353. Multitest, sum of n <= 2e5.
+// Solution: expand the product: each edge picks one end, so every value is picked 0, 1 or 2
+//   times, with as many 0s as 2s (k of each). The code builds the elementary symmetric sums
+//   e_k of a with prod_linear, takes v2[k] = e_k * e_(n-k) for k <= n/2, composes v2 with
+//   x * C(x) (C the Catalan series), multiplies by C(x)^-n, weights term k by k!^2 / (2k)!
+//   and the total by 2 (n - 1)!. NTT compose and pow: O(n log^2 n).
 
 use std.poly.{compose, pow, prod_linear}
 

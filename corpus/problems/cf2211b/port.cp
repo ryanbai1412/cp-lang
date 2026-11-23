@@ -1,15 +1,13 @@
-// Codeforces 2211 B — Mickey Mouse Constructive
-//
-// Arrange `x_in` copies of `+1` and `y_in` copies of `-1` to minimize the
-// number of equal-sum partitions. WLOG let `x <= y` with minority sign `vx`
-// and total sum `-(y - x) * vx`.
-// - If `x == y`: total sum is `0`; putting all `x` copies of `vx` before all
-//   `y` copies of `-vx` has strictly positive prefix sums until the very end,
-//   so only the 1-piece partition exists (`cnt = 1`).
-// - If `x < y`: any `d`-piece equal-sum partition requires `d | (y - x)`.
-//   Putting all `x` copies of `vx` before all `y` copies of `-vx` makes prefix
-//   sums drop monotonically across `0..=(y - x)`, so each divisor `d | (y - x)`
-//   yields exactly one partition (`cnt = divisors(y - x).len`, O(sqrt(|x - y|))).
+// Source: Codeforces 2211B (Mickey Mouse Constructive),
+//   https://codeforces.com/contest/2211/problem/B
+// Problem: f(a) counts the partitions of a into subarrays that all have the same sum. Over
+//   arrays of x copies of 1 and y copies of -1 (x, y <= 2e5), print the least f(a) mod
+//   676767677 and an array reaching it. Multitest, sums of x and of y <= 2e5.
+// Solution: the total is x - y, and a partition into d parts needs d | |x - y|; prefix sums
+//   move by 1, so they pass every k(x - y)/d and each divisor gives at least one partition.
+//   Putting the minority sign first sends the prefix sums away from the total and then
+//   straight to it, so each divisor gives exactly one: f = divisors(|x - y|), or 1 when
+//   x = y (no inner prefix sum is 0). O(sqrt(|x - y|)) plus the output.
 
 use std.math.{divisors}
 

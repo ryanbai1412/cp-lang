@@ -1,14 +1,13 @@
-// Codeforces 2115 A: Gellyfish and Flaming Peony.
-//
-// An operation a_i = gcd(a_i, a_j) never changes the overall gcd g, and the
-// elements must end equal, so they all end at g. Once one element equals g,
-// every other element takes one operation. So if g already occurs, the
-// answer is n minus its count; otherwise it is (m - 1) + (n - 1), where m is
-// the fewest elements whose gcd is g: folding them into one costs m - 1.
-//
-// fewest[d], the fewest elements with gcd d, is a shortest path over values:
-// taking x from d reaches gcd(d, x) <= d with one more element. Settle d from
-// largest to smallest. O(max * distinct values).
+// Source: Codeforces 2115A (Gellyfish and Flaming Peony),
+//   https://codeforces.com/contest/2115/problem/A
+// Problem: n <= 5000 values a[i] in 1..=5000. One operation sets a[i] = gcd(a[i], a[j]) for
+//   some i != j. Print the fewest operations that make all elements equal. Multitest, sum of
+//   n <= 5000.
+// Solution: the overall gcd g never changes, so all end at g, and once one element is g each
+//   other takes one operation: if g occurs the answer is n minus its count, else
+//   (m - 1) + (n - 1) with m the fewest elements whose gcd is g. fewest[d] is a shortest path
+//   over values: taking x from d reaches gcd(d, x) with one more element; settle d from
+//   largest to smallest, O(max * distinct values).
 @!multitest
 let n: 1..=5000 = read()
 type Val = 1..=5000

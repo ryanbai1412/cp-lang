@@ -1,13 +1,11 @@
-// Codeforces 2165 B — Marble Council
-//
-// A subset `S` of distinct values can be the chosen multiset of modes iff its
-// total multiplicity `sum_{v in S} freq[v] >= max_v freq[v]` (so every color
-// class can be distributed across distinct piles without exceeding the chosen
-// modes). Each selected value `v` with frequency `f` contributes `f` choices
-// for how many copies enter the mode multiset (1..=f), so the knapsack
-// `dp[i + f] += dp[i] * f` accumulates the sum of `prod_{v in S} freq[v]` over
-// all subsets `S` of total frequency `i`. Summing `dp[i]` for `i >= freq.max()!`
-// yields the answer in `O(n^2)`.
+// Source: Codeforces 2165B (Marble Council), https://codeforces.com/contest/2165/problem/B
+// Problem: a multiset a of n <= 5000 values in 1..=n. Split a into any non-empty groups and
+//   put one mode of each group into s. Count the distinct multisets s, mod 998244353.
+//   Multitest, sum of n <= 5000.
+// Solution: s is fixed by the set S of values in it and a count 1..=freq[v] for each v in S,
+//   and it can be made iff the frequencies in S sum to at least the largest frequency. So
+//   knapsack over the distinct values on total frequency, each value weighted by its
+//   freq[v] choices (dp[i + f] += dp[i] * f), and sum dp[i] for i >= max freq: O(n^2).
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

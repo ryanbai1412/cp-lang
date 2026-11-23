@@ -1,7 +1,12 @@
-// COCI 2011 Ograda: a fence of n boards is to be rebuilt from n new boards.
-// The new fence must rise wherever the old one rises and fall wherever it
-// falls, and the sum of the height differences of neighbours must be as large
-// as possible. Print that sum and one such fence.
+// Source: COCI 2011/2012 Contest 4 #4 (Ograda), https://dmoj.ca/problem/coci11c4p4
+// Problem: Slavko's fence of n <= 3e5 boards of distinct heights, and n distinct new boards
+//   (heights < 1e9). Arrange the new boards so every neighbour pair compares as in Slavko's
+//   fence, maximizing the sum of |height differences| of neighbours; print it and the fence.
+// Solution: a board adds its height once per lower neighbour and subtracts it once per
+//   higher one, so its weight is that pull (-2..=2); sort positions by pull and deal the
+//   boards shortest first, so the tallest go where the pull is largest. Slope boards (pull
+//   0) only keep the slope: rising slopes get theirs left to right, then falling ones right
+//   to left. O(n log n).
 // original: corpus/submissions/5325112.cpp
 let n: 2..=3e5 = read()
 domain I = 1..=n

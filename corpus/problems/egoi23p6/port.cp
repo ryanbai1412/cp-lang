@@ -1,6 +1,12 @@
-// EGOI '23 P6 (Candy): fewest adjacent swaps that bring the first m boxes to
-// a total of at least k. Runnable on proto/cpc today.
+// Source: EGOI 2023 Day 2 Problem 2 (Candy), https://dmoj.ca/problem/egoi23p6
+// Problem: n <= 100 boxes with a[i] <= 1e9 candy, f <= n and t <= 1e11. Print the fewest swaps
+//   of adjacent boxes after which the first f boxes hold at least t candy, or NO.
+// Solution: moving chosen boxes j_0 < ... < j_(f-1) to the front costs sum (j_i - i) swaps.
+//   best[i, j, s]: most candy from boxes j.. put into slots i..f-1 with at most s swaps; skip
+//   box j, or put it in slot i for j - i swaps. Swaps never need to exceed n^2 / 2, so the
+//   answer is the least s with best[0, 0, s] >= t: O(f n * n^2/2) = 5e7.
 // original: corpus/submissions/5678056.cpp
+// Runnable on proto/cpc today.
 let n: 1..=100 = read()
 let m: 1..=n = read()
 let k: 1..=1e11 = read()

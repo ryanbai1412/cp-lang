@@ -1,10 +1,11 @@
-// Codeforces 2245 E — Tree Edge Gluing
-//
-// Glue every tree edge `e` to each of its even-degree endpoints (`u`, `v`).
-// In `DsuOf`, each edge node carries weight `+1` and each vertex node carries
-// weight `-1`, so every connected component's aggregate `diff` equals
-// `edges - vertices`. A glued piece with `e` edges and `v` vertices has
-// `extra = e - v + 1 = diff + 1` free slots and contributes `choose2(extra)`.
+// Source: Codeforces 2245E (Tom and Jerry), https://codeforces.com/contest/2245/problem/E
+// Problem: a tree on n <= 2e5 vertices. Players alternately pick a simple path that shares no
+//   edge with earlier paths and has an end on the previous path; who cannot move loses. Count
+//   the first paths with which the first player wins. Multitest, sum of n <= 2e5.
+// Solution: the winning first paths are those whose two ends have odd degree and whose inner
+//   vertices all have even degree. Glue each edge to its even-degree ends in a DsuOf over
+//   vertices and edges, weighting edges +1 and vertices -1: a piece is a subtree with even
+//   inner vertices and e - v + 1 = diff + 1 odd ends, so it adds choose2(diff + 1). O(n a(n)).
 
 use std.math.{choose2}
 
