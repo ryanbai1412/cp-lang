@@ -8066,3 +8066,18 @@ tag move fatal again.
   implied by a general rule (decision 159, R10.3.1 printing any `Seq`), so
   the fix states the instance at the place the reader looked.
 - **Reverse.** Delete the sentences; the general rules still hold.
+
+## 390. Library conversions and always-on preconditions use existing mechanisms (spec, 2026-11-23)
+
+- **Decision.** `Int(x)` and `F64(x)` on a library type call its
+  `impl Into<Int>` / `impl Into<F64>` (`fn into(self) -> T`), dispatched
+  through mono as `Show` is; the call stays explicit (R08.5.2). `Str(x)` is
+  not an `Into` target: a word from a `Seq<Char>` is `Str(cs)` and a value's
+  text is its `Show`. A library precondition that must hold in the judge
+  build (a `Subset` over at most 25 values) is an `assert` inside
+  `with checks(asserts: on):` (R09.4.1), so std has no private trap and the
+  compiler's `MAX_SUBSET_BITS` goes.
+- **Why.** Decision 291 and R04.2.28 promised library conversions with no
+  mechanism; both needs are met by one trait and one existing context, and
+  user libraries get the same powers as std.
+- **Reverse.** Drop `Into`, and give `Int(x)` a fixed list of core types.

@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2757 (995 passing). Rules: 573.
+Cases: 2760 (995 passing). Rules: 573.
 
 ## Summary per chapter
 
@@ -19,9 +19,9 @@ Cases: 2757 (995 passing). Rules: 573.
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 166 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 101 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 159 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 161 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R09 (09-contexts-checks.md): 26 rules, 57 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -48,14 +48,14 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 56 | 56 (100%) | 31 | 31 (100%) | 56 (100%) |
 | R02 | 52 | 52 (100%) | 30 | 30 (100%) | 52 (100%) |
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
-| R04 | 73 | 73 (100%) | 18 | 18 (100%) | 73 (100%) |
+| R04 | 73 | 73 (100%) | 17 | 17 (100%) | 73 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
 | R07 | 90 | 90 (100%) | 27 | 27 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
-| R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
+| R09 | 26 | 26 (100%) | 15 | 15 (100%) | 26 (100%) |
 | R10 | 19 | 19 (100%) | 9 | 9 (100%) | 19 (100%) |
 | R11 | 16 | 15 (93%) | 10 | 10 (100%) | 15 (93%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
@@ -243,7 +243,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.18 [5+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
 - R04.2.26 [5+ 1-]: The impl writes `count`, `ord` and `nth` under those names; `count` is sized like a domain...
 - R04.2.27 [5+ 2-]: The type is then a domain like any other: `[Two]E` indexes by `t.ord`, `for t in Two` and ...
-- R04.2.28 [1+ 1-]: Ordinal order is a walk order, not a successor: `V(x)`, `V.at(x)`, `Int(v)`, `V.wrap`, `.n...
+- R04.2.28 [1+ 1-]: .
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
 - R04.3.2 [1+ 0-]: | cut `c` | `c.prev`, `c.next`: `?V.cuts` | `c.l`, `c.r`: the positions beside it, `?V`
 - R04.3.3 [4+ 3-]: Arithmetic on a position gives an `Int`: `v + k`, `v - k` and `v - w` (two positions of on...
@@ -506,7 +506,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.9 [3+ 0-]: | `a.windows(k)`, `a.chunks(k)` | `Seq` of views of `a` | each view keeps `a`'s indices
 - R07.7.10 [5+ 1-]: | `a.runs(by: k)` | `Seq` of views: maximal equal-key runs | `.keys` of each is its range
 - R07.7.11 [1+ 0-]: | `s.step(k)` | every k-th element | ranges and indexed
-- R07.8.1 [2+ 0-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
+- R07.8.1 [2+ 2-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
 - R07.9.2 [3+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
 - R07.9.3 [3+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\)
@@ -562,6 +562,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R09: 09-contexts-checks.md
 
+- R09.4.1 [2+ 1-]: Ordinal order is a walk order, not a successor: `V(x)`, `V.at(x)`, `Int(v)`, `V.wrap`, `.n...
 - R09.1.1 [4+ 2-]: Precedence: call argument, then the innermost `with`, then outer ones, then the default. A...
 - R09.1.2 [1+ 1-]: Values are compile-time constants. A runtime value is a parameter or a fresh type (`type Z...
 - R09.1.3 [6+ 0-]: Contexts are **lexical**: a body sees the contexts where it is written. A function that sh...
@@ -576,10 +577,9 @@ Each rule: positive / negative case counts, then the gap if any.
 - R09.3.4 [2+ 1-]: | `Int` / `I128` overflow | interval arithmetic proves it fits | trap with operands | wrap...
 - R09.3.5 [1+ 1-]: | `x!` on `None` | flow proves `Some` | trap naming the place | reads the niche as a value
 - R09.3.6 [2+ 2-]: | division by zero, negative shift, `sqrt` of a negative | the divisor's range excludes 0 ...
-- R09.3.7 [2+ 1-]: | `assert c` | n/a | trap with the message | skipped
+- R09.3.7 [3+ 1-]: | `assert c` | n/a | trap with the message | skipped
 - R09.3.8 [2+ 1-]: | `@cache` cold-mode check | n/a | stress compares cold and cached runs | none
 - R09.3.9 [2+ 0-]: | `law` promises | n/a | stress samples them | none
-- R09.4.1 [1+ 1-]: `with checks(...: on)` keeps those checks in release for a block or file. A judge profile ...
 - R09.4.2 [1+ 0-]: `with checks(...: off)` removes a check in checked builds too, for a hot loop whose stress...
 - R09.4.3 [1+ 1-]: `unchecked:` is the greppable escape: a statement block with every check off in every buil...
 - R09.4.4 [1+ 3-]: Lints are contexts: `with lint(name: allow)` silences one in a scope, and is the only in-c...
@@ -637,7 +637,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R12.4.3 [1+ 1-]: | `Sized` | `.len`
 - R12.4.4 [1+ 1-]: | `Bidir` | `.rev`, `.last` as an \(O(1)\) property
 - R12.4.5 [2+ 1-]: | `Indexed` | `s[k]`, slices, `nth`, `bsearch`, `first_ge`, string algorithms, `zip`
-- R12.4.6 [1+ 1-]: | `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `shuffle`, `next_perm`, slice as...
+- R12.4.6 [1+ 1-]: | `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `next_perm`, and `rng.shuffle(mu...
 - R12.4.7 [1+ 1-]: | `Contains` | `x in s`: sets, maps (keys), bitsets, ranges; a linear search is `s.any(x)`
 - R12.4.13 [4+ 2-]: `at(k)` takes a key, the same key as `s[k]`; it is never a walk offset. On `w = s[2..]`, `...
 - R12.4.8 [1+ 1-]: Parameters are lent: a fn never owns its arguments.
@@ -738,7 +738,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0112 `let ... else` block falls through: 1 case(s)
 - E0201 Unresolved name: 8 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 13 case(s)
+- E0203 Unknown field or method: 15 case(s)
 - E0204 Unknown type: 3 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
@@ -889,9 +889,9 @@ prepends it.
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 8 blocks, 1 with a case, 3 spec-only, 4 neither
   - line 59: `struct Two(a: Int, b: Int)`
-  - line 207: `for j in ..i:`
-  - line 303: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 324: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 208: `for j in ..i:`
+  - line 304: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 325: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`

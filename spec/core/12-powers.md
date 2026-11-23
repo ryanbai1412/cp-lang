@@ -72,7 +72,7 @@ keeps it at its stated cost (decision 142):
 | `Sized` | `.len` (R12.4.3) |
 | `Bidir` | `.rev`, `.last` as an \(O(1)\) property (R12.4.4) |
 | `Indexed` | `s[k]`, slices, `nth`, `bsearch`, `first_ge`, string algorithms, `zip` (R12.4.5) |
-| `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `shuffle`, `next_perm`, slice assignment (R12.4.6) |
+| `IndexedMut` | `sort()`, `reverse()`, `swap`, `select`, `next_perm`, and `rng.shuffle(mut a)` from `std.rand`, slice assignment (R12.4.6) |
 | `Contains` | `x in s`: sets, maps (keys), bitsets, ranges; a linear search is `s.any(x)` (R12.4.7) |
 
 `at(k)` takes a key, the same key as `s[k]`; it is never a walk offset.
