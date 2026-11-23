@@ -5,12 +5,11 @@
 //   end, the smallest left end that keeps max - min <= t, with the max and the min of the window
 //   in two monotone deques (index arrays). The answer is count(T) - count(B - 1), O(n).
 // original: corpus/submissions/4411200.cpp
-// note: a runnable subset, n <= 2e5 and B, T <= 1e9, below the statement's 1e6 and 2e9.
 
-let n: 1..=200_000 = read()
-let ql: 0..=1_000_000_000 = read()
-let qr: 0..=1_000_000_000 = read()
-let a: [0..n]Int = read()
+let n: 1..=1e6 = read()
+let ql: 0..=2e9 = read()
+let qr: ql..=2e9 = read()
+let a: [0..n](-1e9..=1e9) = read()
 
 fn count_at_most(limit: Int) -> Int:
     if limit < 0:
