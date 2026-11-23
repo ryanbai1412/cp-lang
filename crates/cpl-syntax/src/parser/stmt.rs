@@ -1690,6 +1690,10 @@ impl<'a> Parser<'a> {
                     diag = diag
                         .with_help("`=` assigns; to compare, write `==`")
                         .with_fix("change to `==`", at, "==");
+                } else if let Some(edits) = self.brace_header_edits() {
+                    diag.help = Some("the body is indented under `:`, with no braces".into());
+                    let title = "write `:` and drop the braces".into();
+                    diag.fixes.push(cpl_diag::Fix { title, edits });
                 } else if !ends_in_colon {
                     diag = diag.with_fix("insert `:`", Span::point(at.start), ":");
                 }

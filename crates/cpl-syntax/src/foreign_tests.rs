@@ -118,3 +118,22 @@ fn javas_new_is_one_error_that_drops_it() {
         .diagnostics
         .is_empty());
 }
+
+#[test]
+fn a_c_brace_block_header_becomes_a_colon_block() {
+    let src = "let x = 3\nif x > 2 {\n    print(x)\n}\n";
+    let d = parse_file(src).diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    let edits = &d[0].fixes[0].edits;
+    assert_eq!(edits.len(), 2, "{edits:?}");
+    assert_eq!(
+        (edits[0].0.start, edits[0].0.end, edits[0].1.as_str()),
+        (18, 20, ":")
+    );
+    assert_eq!(
+        (edits[1].0.start, edits[1].0.end, edits[1].1.as_str()),
+        (33, 35, "")
+    );
+    let one_line = parse_file("let x = 3\nif x > 2 {\n    print(x) }\n").diagnostics;
+    assert_eq!(one_line[0].fixes[0].edits.len(), 1);
+}

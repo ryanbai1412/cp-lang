@@ -184,6 +184,40 @@ impl<'a> Parser<'a> {
             && matches!(&callee.kind, ExprKind::Name(n) if n.starts_with(|c: char| c.is_ascii_uppercase()))
     }
 
+    /// `if c {` with the `}` alone on a later line: the edits that make it
+    /// `if c:` over the same indented body.
+    pub(super) fn brace_header_edits(&self) -> Option<Vec<(Span, String)>> {
+        let blank_after = |at: u32| {
+            let rest = self.src.get(at as usize..).unwrap_or("");
+            rest.split('\n').next().is_some_and(|l| l.trim().is_empty())
+        };
+        let open = self.tokens.get(self.pos)?.span;
+        if !(self.at(T::LBrace) && blank_after(open.end)) {
+            return None;
+        }
+        let mut depth = 0;
+        for t in &self.tokens[self.pos..] {
+            match t.kind {
+                T::LBrace => depth += 1,
+                T::RBrace if depth == 1 => {
+                    let line = self.src.get(..t.span.start as usize)?.rfind('\n')?;
+                    let indent = &self.src[line + 1..t.span.start as usize];
+                    let alone = indent.trim().is_empty() && blank_after(t.span.end);
+                    let close = Span::new(line as u32, t.span.end);
+                    return alone.then(|| {
+                        vec![
+                            (Span::new(self.prev_end(), self.span().end), ":".into()),
+                            (self.rel(close), String::new()),
+                        ]
+                    });
+                }
+                T::RBrace => depth -= 1,
+                _ => {}
+            }
+        }
+        None
+    }
+
     /// `new P(x: 1)`: Java's and C++'s `new`. One error with the fix that
     /// drops it; the call after it is read as written.
     pub(super) fn foreign_new(&mut self) {
