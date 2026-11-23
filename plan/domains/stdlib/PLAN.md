@@ -52,6 +52,9 @@ Each: the instance, the general fix, the owner when it is not stdlib.
 
 - **A stored `()` in the C++.** Instance: `MonotoneHull<()>` keeps `tags: List<()>`, which the interpreter runs but the C++ emits as `std::vector<void>`; `let x: () = ()` emits `x = (void)0` with no declaration. General fix: a `()` that is stored (a local, a field, a container element) gets an empty C++ type such as `cpl::Unit`, keeping `void` only for returns (codegen).
 
+- **Element types of a two-sided std generic.** Instance: `zip<A: Indexed, B: Indexed, T, U>` bound `T` and `U` both from `a` (the lowerer's "first `Seq` bound gives `T`" guess), so `zip([1], "a")` failed. Fixed locally by writing `A: Indexed<K, T>, B: Indexed<L, U>` in `zip`, `zip_exact`, `product`. General fix: drop the guess and bind element generics only through `Indexed<K, T>`/`Seq<T>` arguments, sweeping std signatures to name them (compiler, then stdlib).
+- **Views keep their source.** Instance: `Filtered`/`Mapped`/`Rev`/`Items`/`Slice` `.src` (5 doc examples) and `filter` keys (`[5, 6, 7].filter(p).items` gives keys 0, 1, not the source's 1, 2): the compiler materialises `filter`/`map`/`rev` as a `List`. General fix: lower views to std structs over their source, as spec/lib describes (compiler).
+
 ## Why each milestone
 
 - **M1** banks work already done (about 120 stubs) and puts the cycle guard in the gate before more bodies add `use` edges. Cheapest big move.

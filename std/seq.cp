@@ -567,7 +567,7 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U):
+pub fn zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U):
     for i in 0..min(a.len, b.len): yield (a.nth(i), b.nth(i))
 
 /// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
@@ -1645,7 +1645,7 @@ pub fn chain<A: Seq, B: Seq, T>(a: A, b: B) -> yields T:
 /// order: lexicographic, `a` outer
 /// traps: never
 /// example: `product([1, 2], "xy").count() == 4`
-pub fn product<A: Seq, B: Indexed, T, U>(a: A, b: B) -> yields (T, U):
+pub fn product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U):
     for x in a:
         for y in b: yield (x, y)
 
@@ -1683,7 +1683,7 @@ pub fn with_next<S: Seq, T>(self: S) -> yields (T, ?T):
 /// order: position by position
 /// traps: when `a.len != b.len`
 /// example: `zip_exact([1, 2], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip_exact<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U):
+pub fn zip_exact<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U):
     assert a.len == b.len
     for i in 0..a.len: yield (a.nth(i), b.nth(i))
 
