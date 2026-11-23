@@ -192,9 +192,9 @@ pub struct Comb<M>:
         let have = f.len
         let n = min(max(want + 1, 2 * have), M.MOD)
         if n <= have: return
-        for i in have..n:
-            f.push(f[i - 1] * M(i))
-            g.push(M(1))
+        f.reserve(n)
+        g.resize(n, M(1))
+        for i in have..n: f.push(f[i - 1] * M(i))
         g[n - 1] = f[n - 1].inv
         for i in (have..n - 1).rev: g[i] = g[i + 1] * M(i + 1)
 
