@@ -134,17 +134,17 @@
   "corpus_test_files": 2763,
   "uncited_rules": 0,
   "register_rows_by_domain": {
-    "compiler": 5,
+    "compiler": 4,
     "debugger": 33,
     "diagnostics": 40,
     "idioms": 21,
     "infra": 17,
     "lint-fmt": 33,
     "perf": 8,
-    "site": 19,
+    "site": 18,
     "spec": 21,
     "stdlib": 43,
-    "tech-debt": 1,
+    "tech-debt": 0,
     "tools": 38
   },
   "written_twice": 11

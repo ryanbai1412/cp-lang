@@ -151,7 +151,7 @@ means no real check exists yet. Targets and current numbers are in
 | No dead language era | References to the removed 0.2 edition | Ratchet | `scripts/debt-ratchet.py` (`edition_refs`) |
 | No unfinished std | Std functions whose body is a stub | Ratchet | `scripts/debt-ratchet.py` (`stdlib_todo`) |
 | Dead code is deleted | `allow(dead_code)` attributes; items no caller reaches are not yet counted | Ratchet | `scripts/debt-ratchet.py` (`dead_code_allows`) |
-| Suites cover the code they own | Line and branch coverage per crate | Coverage matrix | `missing` |
+| Suites cover the code they own | Line, region and function coverage of each crate, by its own tests and by all | Coverage matrix, reported, not yet ratcheted; branches need a nightly toolchain | `scripts/coverage-matrix.py`, `.github/workflows/ci-slow.yml` (`coverage`) |
 | Tests are deterministic | Tests that pass and fail on the same tree | Rerun-on-fail detector: every red main test is rerun at the failing commit and reported flaky if it passes; reported, not yet counted | `scripts/culprit.py`, `.github/workflows/culprit.yml` |
 | Few, vetted third-party crates | Third-party packages in `Cargo.lock` | Ratchet: a new one fails the gate until `--update` and a `decisions.md` line | `scripts/debt-ratchet.py` (`external_crates`) |
 | An everyday change touches one obvious place | Files, crates and minutes for a cold agent on a fixed change | Process: cold change-cost probes | process |

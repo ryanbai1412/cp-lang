@@ -140,6 +140,10 @@ owns, and by asking how mature projects measure the same thing.
   `cpl-check` and `cpl-lint` first.
 - **Coverage matrices.** For generated suites, the cells (feature by
   context, type by consumer) that have no case.
+- **Code coverage.** The lines, regions and functions of each crate that
+  its own tests run, and that all tests run (`scripts/coverage-matrix.py`).
+  Code only another crate's tests reach breaks for unrelated reasons; code
+  no test reaches is unchecked.
 - **Escapes.** Bugs found by users or other domains that the suite should
   have caught.
 

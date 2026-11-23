@@ -49,6 +49,30 @@ jobs:
       - name: Wall-clock budgets
         run: scripts/check.sh --timing
 
+  # Coverage of each crate by its own tests and by all (handbook/process/quality.md#how-suites-are-measured).
+  coverage:
+    name: coverage matrix (not blocking)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - run: rustup component add llvm-tools-preview
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: coverage
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest,cargo-llvm-cov
+      - name: Coverage matrix
+        run: python3 scripts/coverage-matrix.py -o target/coverage | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-matrix
+          path: target/coverage/
+
   # The editor's latency budgets on each OS, in the optimized build people
   # run. Its own job, so its release build doesn't lengthen the cli job.
   # Not blocking until a few runs show the hosted runners meet them.
