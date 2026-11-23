@@ -406,6 +406,49 @@ fn current_stack() -> Option<String> {
         .clone()
 }
 
+/// The interpreter and its arguments a script's first line names:
+/// `#!/bin/sh` is `["/bin/sh"]`, `#!/usr/bin/env python3 -u` is
+/// `["python3", "-u"]`. `None` without a `#!`.
+pub fn interpreter(first_line: &str) -> Option<Vec<String>> {
+    let words: Vec<String> = first_line
+        .strip_prefix("#!")?
+        .split_whitespace()
+        .map(String::from)
+        .collect();
+    let (program, rest) = words.split_first()?;
+    if interpreter_name(program) == "env" {
+        let rest: Vec<String> = rest.iter().filter(|w| *w != "-S").cloned().collect();
+        return (!rest.is_empty()).then_some(rest);
+    }
+    Some(words)
+}
+
+/// `/usr/bin/python3` is `python3`.
+fn interpreter_name(program: &str) -> &str {
+    program.rsplit(['/', '\\']).next().unwrap_or(program)
+}
+
+/// Where `program` from a `#!` line runs: the path itself when it exists
+/// (`/bin/sh` on Linux and macOS), else its name on the PATH (Git for
+/// Windows' `sh.exe`).
+fn find_interpreter(program: &str) -> Option<String> {
+    if Path::new(program).is_file() {
+        return Some(program.to_string());
+    }
+    let name = interpreter_name(program);
+    let exts: &[&str] = if cfg!(windows) {
+        &[".exe", ".cmd", ""]
+    } else {
+        &[""]
+    };
+    std::env::split_paths(&std::env::var_os("PATH")?).find_map(|dir| {
+        exts.iter()
+            .map(|ext| dir.join(format!("{name}{ext}")))
+            .find(|path| path.is_file())
+            .map(|path| path.display().to_string())
+    })
+}
+
 impl Program {
     /// A program that runs `argv` as given.
     pub fn command(name: &str, argv: &[&str]) -> Program {
@@ -434,12 +477,39 @@ impl Program {
             "cpp" | "cc" | "cxx" => vec![compile_cpp(path, false)?],
             "py" => vec!["python3".to_string(), name.clone()],
             "cp" => build_judged(path, None, Part::Solution, TRAPS)?,
-            // Relative paths need `./` to be found.
-            _ => vec![path
-                .canonicalize()
-                .map_err(|e| BuildError(format!("can't find {name}: {e}")))?
-                .display()
-                .to_string()],
+            _ => {
+                // Relative paths need `./` to be found.
+                let full = path
+                    .canonicalize()
+                    .map_err(|e| BuildError(format!("can't find {name}: {e}")))?
+                    .display()
+                    .to_string();
+                // A script runs through the interpreter its `#!` line names on
+                // every OS, so Windows (which ignores `#!`) and a script that
+                // isn't executable behave as Linux does.
+                let first = std::fs::read(path)
+                    .map(|bytes| bytes.split(|&b| b == b'\n').next().unwrap_or(&[]).to_vec())
+                    .unwrap_or_default();
+                match interpreter(&String::from_utf8_lossy(&first)) {
+                    Some(mut argv) => {
+                        argv[0] = find_interpreter(&argv[0]).ok_or_else(|| {
+                            BuildError(format!(
+                                "{name} starts `{}`, and there is no `{}` on the PATH{}",
+                                String::from_utf8_lossy(&first).trim_end(),
+                                interpreter_name(&argv[0]),
+                                if cfg!(windows) {
+                                    " (Git for Windows has `sh` and `bash`)"
+                                } else {
+                                    ""
+                                }
+                            ))
+                        })?;
+                        argv.push(full);
+                        argv
+                    }
+                    None => vec![full],
+                }
+            }
         };
         Ok(Program {
             name,
@@ -669,5 +739,50 @@ mod tests {
             b"#include <vector>\n#include <bits/stdc++.h>\n"
         ));
         assert!(!starts_with_std(b""));
+    }
+}
+
+#[cfg(test)]
+mod shebang_tests {
+    use super::{interpreter, Program};
+
+    #[test]
+    fn a_scripts_first_line_names_its_interpreter() {
+        let words = |line: &str| interpreter(line).map(|w| w.join(" "));
+        assert_eq!(words("#!/bin/sh"), Some("/bin/sh".into()));
+        assert_eq!(words("#! /bin/bash -e"), Some("/bin/bash -e".into()));
+        assert_eq!(words("#!/usr/bin/env python3"), Some("python3".into()));
+        assert_eq!(
+            words("#!/usr/bin/env -S python3 -u\r"),
+            Some("python3 -u".into())
+        );
+        assert_eq!(words("#!/usr/bin/env"), None);
+        assert_eq!(words("echo 1"), None);
+        assert_eq!(words("\u{7f}ELF"), None);
+    }
+
+    // The script is not executable: it runs through `sh`, as on Windows.
+    #[cfg(unix)]
+    #[test]
+    fn a_script_runs_through_its_interpreter_without_the_execute_bit() {
+        let dir = std::env::temp_dir().join(format!("cpl-shebang-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let script = dir.join("gen.sh");
+        std::fs::write(&script, "#!/bin/sh\necho \"$1 $1\"\n").unwrap();
+        let program = Program::resolve(&script).unwrap();
+        assert_eq!(program.argv[0], "/bin/sh");
+        let out = program
+            .with_args(&["7"])
+            .run("", std::time::Duration::from_secs(5))
+            .unwrap();
+        assert_eq!(out.stdout, "7 7\n");
+        let missing = dir.join("odd.sh");
+        std::fs::write(&missing, "#!/usr/bin/env cpl-no-such-shell\n").unwrap();
+        let err = Program::resolve(&missing).unwrap_err().0;
+        assert!(
+            err.contains("there is no `cpl-no-such-shell` on the PATH"),
+            "{err}"
+        );
+        std::fs::remove_dir_all(dir).unwrap();
     }
 }

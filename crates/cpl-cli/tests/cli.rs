@@ -557,8 +557,8 @@ fn judge_is_the_interactor_as_a_program_on_stdin_and_stdout() {
     assert!(String::from_utf8_lossy(&out.stderr).starts_with("assertion failed: x == secret"));
 }
 
-// Its generator is a shell script (tools PLAN: a portable test-program helper).
-#[cfg(unix)]
+// The generator is a `#!/bin/sh` script, which `cpl stress` runs through
+// `sh` on every OS (Git for Windows' on Windows).
 #[test]
 fn stress_judges_with_the_interactor_in_the_file() {
     let gen = "#!/bin/sh\nn=$(( ($1 * 37) % 1000 + 1 ))\necho \"$n $(( ($1 * 13) % n + 1 ))\"\n";

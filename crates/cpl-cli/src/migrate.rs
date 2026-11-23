@@ -72,7 +72,12 @@ pub(crate) fn migrate(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &m
     let mut code = 0;
     let mut reports = Vec::new();
     for file in &files {
-        let path = file.display().to_string();
+        // Spelled with `/` on every OS, as git spells paths in a diff.
+        let path = if cfg!(windows) {
+            file.display().to_string().replace('\\', "/")
+        } else {
+            file.display().to_string()
+        };
         let Ok(text) = std::fs::read_to_string(file) else {
             *stderr += &format!("cpl: can't read `{path}`\n");
             code = crate::EXIT_USAGE;
