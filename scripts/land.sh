@@ -5,7 +5,7 @@
 # tip, and the infra sheriff reverts or fixes a red one. Every commit to land
 # needs a `Domain: <d>` trailer. Before the first push it runs the checks
 # behind most red mains, in a few seconds: conflict markers in the changed
-# files, the debt ratchet, `cargo fmt --check` on the touched crates, and
+# files, the debt ratchet, `cargo fmt --check` and clippy on the touched crates, and
 # generated files (regenerated and committed, as CI's regen job would).
 # It also says when AGENTS.md or plan/product/ changed since this worktree's
 # last land, so product direction reaches every lane.
@@ -40,6 +40,20 @@ fi
 crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p' | sort -u | tr '\n' ' ')
 [ -z "$crates" ] || cargo fmt --check $crates >/dev/null 2>&1 ||
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
+# Clippy as CI runs it (-D warnings) on the touched crates of the rebased tip;
+# past CPL_LAND_CLIPPY_SECS (cold cache) it warns and lands, leaving it to CI.
+if [ -n "$crates" ]; then
+    set +e
+    out=$(timeout "${CPL_LAND_CLIPPY_SECS:-40}" cargo clippy -q $crates --all-targets -- -D warnings 2>&1)
+    rc=$?
+    set -e
+    case "$rc" in
+        0) ;;
+        124) echo "land: clippy over ${CPL_LAND_CLIPPY_SECS:-40}s; landing, CI will check it" >&2 ;;
+        *) printf '%s\n' "$out" | grep -E '^(error|warning)|-->' | head -20 >&2
+           echo "land: clippy fails on $crates; fix it before landing" >&2; exit 1 ;;
+    esac
+fi
 regen=$([ ! -x scripts/regen.sh ] || scripts/regen.sh)
 if [ -n "$regen" ]; then
     git add -- $regen
