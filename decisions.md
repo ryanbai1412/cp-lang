@@ -8180,3 +8180,11 @@ tag move fatal again.
   - Lint, F06: an `Int` product whose proven range exceeds i64 right before a `Mod` conversion (`s * k * Z(3).inv()`) behaves as chapter 3 §4 says: debug traps, release wraps. A lint should name `Z(s) * k`.
 - **Already fixed.** F03, `read<Str of "01?">()`, passes on main.
 - **Reverse.** Restore `MonoDeque` as a separate type beside `Window`.
+
+## 398. `gen<T>` lowers through std fns beside each type (tools, 2026-11-23)
+
+- **Decision.** `gen(lo..=hi)` and `gen<T>(...)` (R06.4.3, `lib/random-stress.md`) are a prelude builtin like `read<T>`. Ranges draw with `rand`; `[D]E` is the table `[D] _ => gen<E>()`; `Str of`, `Perm`, `Rooted` and `Graph` call plain CP Lang fns next to each type (`_gen_str` in std.strings, `gen_perm` in std.seq, `gen_rooted` in std.tree, `gen_graph` in std.graph). This raises two ratchets by one each: `ir_builtin_names` (93 -> 94, the `"gen"` match in `lower/call/`) and `backend_std_names` (17 -> 18, the `Perm`/`Rooted`/`Graph` names in `lower/call/gen.rs`).
+- **Debt.** The checker skips name resolution for `gen`'s `shape:` argument, and `gen_rooted` takes the shape as an `Int`. The general form is `enum Shape = random | path | star | caterpillar | binary` in std.tree, resolved through the parameter's type.
+- **Why.** Six M1 conformance cases (core-06/gen-*) need `gen`. Library fns keep the drawing code in CP Lang that interp and C++ already agree on, instead of new IR.
+- **Reverse.** Drop `lower/call/gen.rs` and the four std fns. `gen` then reports E0201 again.
+

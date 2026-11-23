@@ -3776,3 +3776,40 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
                     cur[v] = pos + 1
                     tarcs[pos] = reversed_arc(a, u)
         Graph<V, G.Arc>(start: tstart, arcs: tarcs)
+
+/// `gen<Graph<V, A>>(simple:, connected:, directed:)`: `arc(to)` draws an
+/// arc and `mirror(a, from)` turns it back, so both arcs of an undirected
+/// edge carry the same fields. Up to `2 * V.count` edges, a random spanning
+/// tree among them when `connected`.
+fn gen_graph<V, A>(
+    arc: (V) -> A,
+    mirror: (A, V) -> A,
+    simple: Bool,
+    connected: Bool,
+    directed: Bool,
+) -> Graph<V, A>:
+    let n = V.count
+    var label = [v for v in V]
+    shuffle(mut label)
+    var used: [V, V]Bool = false
+    var edges = List<(V, V)>()
+    if connected:
+        for i in 1..n:
+            let (u, v) = (label[rand(0, i - 1)], label[i])
+            edges.push((u, v))
+            used[u, v] = true
+            used[v, u] = true
+    let most = if simple: (if directed: n * (n - 1) else: n * (n - 1) / 2) else: 2 * n
+    let m = rand(edges.len, max(edges.len, min(most, 2 * n)))
+    while edges.len < m:
+        let (u, v) = (label[rand(0, n - 1)], label[rand(0, n - 1)])
+        if simple and (u == v or used[u, v]): continue
+        edges.push((u, v))
+        used[u, v] = true
+        if not directed: used[v, u] = true
+    var pairs = List<(from: V, arc: A)>()
+    for (u, v) in edges:
+        let a = arc(v)
+        pairs.push((from: u, arc: a))
+        if not directed: pairs.push((from: v, arc: mirror(a, u)))
+    Graph.of(pairs)

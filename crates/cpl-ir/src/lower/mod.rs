@@ -3616,8 +3616,8 @@ impl<'a> Lowerer<'a> {
                     self.divide(decorator, &mut out);
                 }
             }
-            let constant =
-                matches!(&stmt.kind, ast::StmtKind::Const { generics, .. } if generics.is_empty());
+            let constant = call::fixed_domain(stmt)
+                || matches!(&stmt.kind, ast::StmtKind::Const { generics, .. } if generics.is_empty());
             if idx < header || constant || is_item(stmt) {
                 self.stmt(stmt, &mut out);
                 continue;

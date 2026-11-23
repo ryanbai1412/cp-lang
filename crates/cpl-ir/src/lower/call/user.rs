@@ -557,6 +557,9 @@ impl<'a> Lowerer<'a> {
                 let want = self.resolve_ty(ty);
                 return self.prelude(name, args, Some(&want), span);
             }
+            if name == "gen" && self.get_sym(name).is_none() {
+                return self.gen_call(Some(ty), args, span);
+            }
         }
         // Check `base.method::<T>(...)`.
         if let ast::ExprKind::Field { base: recv, name } = &base.kind {

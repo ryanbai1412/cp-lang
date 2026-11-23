@@ -6,6 +6,8 @@ use super::*;
 mod collect;
 mod field;
 mod fold;
+mod gen;
+pub(super) use gen::fixed_domain;
 mod items;
 mod prelude;
 mod seq;

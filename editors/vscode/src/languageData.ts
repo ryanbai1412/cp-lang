@@ -85,7 +85,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'debug', 'dedup', 'deduped', 'desc', 'dfs', 'digit', 'digits', 'dijkstra', 'distinct',
     'divisors', 'divmod', 'drop_while', 'each', 'ends_with', 'equal_range', 'eval', 'exp', 'find',
     'find_all', 'first', 'first_gt', 'fixed', 'flat_map', 'flatten', 'floor', 'floor_quotients',
-    'floyd_warshall', 'flush', 'fold', 'gcd', 'get_or_insert', 'group', 'hypot', 'insert',
+    'floyd_warshall', 'flush', 'fold', 'gcd', 'gen', 'get_or_insert', 'group', 'hypot', 'insert',
     'inverse', 'inversions', 'is_none_or', 'is_some_and', 'is_sorted', 'is_subsequence', 'isqrt',
     'iterate', 'kruskal', 'kruskal_tree', 'last_lt', 'laws_hold', 'lcm', 'len', 'lis', 'ln',
     'locate', 'lower', 'lyndon_factorization', 'manacher', 'max', 'max_closure', 'min',

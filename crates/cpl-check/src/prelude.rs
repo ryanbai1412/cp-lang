@@ -282,6 +282,7 @@ pub const BUILT_ON: &[(&str, &str)] = &[
 /// file uses the unified family name (`prefix`, `Prefix`, `Diff`), without
 /// spending prelude slots or exposing internal names to users.
 pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
+    ("gen", "strings", "_gen_str"),
     ("prefix", "prefix", "_Prefix2"),
     ("prefix", "prefix", "_PrefixList"),
     ("prefix", "prefix", "FillPrefix"),
@@ -347,6 +348,7 @@ pub fn value_doc(name: &str, args: Option<usize>, fixed: bool) -> Option<&'stati
         ("ask", _) if fixed => "Writes a query of its arguments, flushes and reads the judge's reply, in O(1) for numbers, characters and tuples of them, not counting the judge's own time.",
         ("ask", _) => "Writes a query of its arguments, flushes and reads the judge's reply, in time linear in what it writes and reads, not counting the judge's own time.",
         ("Int" | "I128" | "U64" | "F64" | "Char" | "Bool", Some(1)) if fixed => "Converts a number, character or `Bool` to this type, in O(1).",
+        ("gen", _) => "A random value of its type, or of its range, within the type's contract, in time linear in the value's size.",
         ("rand", Some(0 | 2)) => "A random `Int`, from `lo` to `hi` when given, in O(1).",
         ("abs", _) => "The absolute value, in O(1).",
         ("min", Some(1)) => "The smallest element of a list, an array, a slice `xs[a..b]` or a generator, in O(n) for n elements.",
@@ -458,6 +460,7 @@ pub const VALUE_NAMES: &[&str] = &[
     "read_line",
     "debug",
     "read_output",
+    "gen",
     "min",
     "max",
     "adjacency",

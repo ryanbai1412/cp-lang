@@ -4080,3 +4080,20 @@ pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
         if deg[v] == 1: last = v
     if leaf.ord < last.ord: out.push((u: leaf, v: last)) else: out.push((u: last, v: leaf))
     [0..V.count - 1] i => out[i]
+
+/// `gen<Rooted<V>>(shape:)`, with the shape by its place in path, star,
+/// binary, caterpillar, random: each vertex hangs from one drawn before it.
+fn gen_rooted<V>(shape: Int) -> Rooted<V, _>:
+    let n = V.count
+    var label = [v for v in V]
+    shuffle(mut label)
+    var par: [V]?V = None
+    let spine = max(1, (n + 1) / 2)
+    for i in 1..n:
+        var j = rand(0, i - 1)
+        if shape == 0 or (shape == 3 and i < spine): j = i - 1
+        if shape == 1: j = 0
+        if shape == 2: j = (i - 1) / 2
+        if shape == 3 and i >= spine: j = rand(0, spine - 1)
+        par[label[i]] = Some(label[j])
+    Rooted.from_parents(par)

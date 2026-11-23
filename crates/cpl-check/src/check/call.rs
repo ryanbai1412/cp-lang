@@ -149,6 +149,19 @@ impl<'a> Checker<'a> {
                 return ty;
             }
         }
+        // `gen<Rooted<V>>(shape: path)`: the shape is a name of `gen`'s own.
+        if let ExprKind::Generic { base, .. } = &callee.kind {
+            if matches!(&base.kind, ExprKind::Name(n) if n == "gen" && self.local(n).is_none() && self.global(n).is_none())
+            {
+                for arg in args {
+                    let shape = arg.name.as_ref().is_some_and(|n| n.text == "shape");
+                    if !(shape && matches!(arg.value.kind, ExprKind::Name(_))) {
+                        self.infer(&arg.value);
+                    }
+                }
+                return self.read_ty(callee, args).unwrap_or(Ty::Unknown);
+            }
+        }
         if let Some(on_self) = self.implicit_self_method(callee) {
             return self.call(call, &on_self, args);
         }
@@ -282,6 +295,10 @@ impl<'a> Checker<'a> {
         let (ExprKind::Name(name), [t]) = (&base.kind, tys.as_slice()) else {
             return None;
         };
+        if name == "gen" && self.local(name).is_none() && self.global(name).is_none() {
+            let ty = self.quietly(|c| c.type_arg(t));
+            return (!matches!(ty, Ty::Unknown | Ty::Error)).then_some(ty);
+        }
         if !args.iter().all(|a| {
             a.name
                 .as_ref()

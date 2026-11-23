@@ -3976,3 +3976,7 @@ fn dynamic_aho_corasick_matches_brute_after_adds_and_removes():
                 for i in 0..=text.len - w.len:
                     if (0..w.len).all(j => text[i + j] == w[j]): want += 1
             assert d.count_matches(text) == want
+
+/// `gen<Str of alphabet>(len: lo..=hi)`.
+pub fn _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str =
+    Str([alphabet[rand(0, alphabet.len - 1)] for _ in 0..rand(lo, hi)])

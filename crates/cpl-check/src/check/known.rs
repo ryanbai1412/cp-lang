@@ -51,6 +51,7 @@ impl<'a> Checker<'a> {
             .map(|arg| self.quietly(|c| c.infer(&arg.value)))
             .collect();
         match (name.as_str(), tys.as_slice()) {
+            ("gen", [_]) if matches!(args[0].value.kind, ExprKind::Range { .. }) => Some(Ty::Int),
             ("List", []) => Some(Ty::Named {
                 name: "List".into(),
                 args: vec![],

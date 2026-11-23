@@ -102,6 +102,7 @@ use std.search.{
 use std.segtree.{SegTree}
 use std.window.{Sweep, Track, Undo, Undoing, Window, track, undoing}
 use std.seq.{
+    Perm,
     buckets,
     chain,
     chunks,

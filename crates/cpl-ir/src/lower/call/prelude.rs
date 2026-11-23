@@ -489,6 +489,7 @@ impl<'a> Lowerer<'a> {
                     out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
                 })
             }
+            "gen" => self.gen_call(None, args, span),
             "rand" => match self.positional_any(name, args, 2, span) {
                 Some(exprs) => {
                     let lo = self.expect(exprs[0], &Ty::Int);

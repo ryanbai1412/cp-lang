@@ -2,6 +2,10 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-23
+- `gen(lo..=hi)` / `gen<T>(...)` lower in `crates/cpl-ir/src/lower/call/gen.rs` (decision 398): core-06/gen-* pass (6), `cpl-conform diff core-06/gen` 9/9, interp and g++ print the same for all six forms. Debt: `shape:` skips name resolution in the checker; next is `enum Shape` in std.tree.
+- A literal-bounds `domain V = 0..5` is now shared with `@gen`/`@alt`/`@check` programs as a `const` is (V.count was 0 inside `@gen`).
+
 ## 2026-11-22
 - `@gen` under `@!multitest` must print the test count itself; a per-case gen makes the brute fail with only "failed on this input (Code(3))" (acceptance run 6 row 84; site documented it in the stress guide). General fix: stress names the cause when the generated input ends before the program reads its test count, or counts the cases itself. (site, 2026-11-23)
 - `cpl run --help` (and the missing-brute error, `crates/cpl-cli/src/lib.rs` `missing("@brute(main)")`) still names `@brute(main)`, which spec R06 retired (E0503) for `@alt(program)`; acceptance run 6 row 153 read it as a second spelling. (site, 2026-11-23)

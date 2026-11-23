@@ -3601,3 +3601,9 @@ fn ring_steps_wrap_both_ways():
     assert r.next(V(2)) == V(0) and r.prev(V(0)) == V(2)
     assert r.step(V(1), 7) == V(2) and r.step(V(2), -8) == V(0)
     assert r.from(V(1)).collect() == [V(1), V(2), V(0)]
+
+/// `gen<Perm<V>>()`: every permutation of `V` equally likely.
+fn gen_perm<V>() -> Perm<V>:
+    var p: [V]V = [V] v => v
+    shuffle(mut p)
+    p

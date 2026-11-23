@@ -973,8 +973,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **sparse** (23/23 named by a case)
 - **spec** (8/16 named by a case)
   - uncovered: `concavity_break`, `argmins`, `knuth_break`, `differences`, `newton`, `poly_degree`, `poly_at`, `recurrence_at`
-- **strings** (183/196 named by a case)
-  - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
+- **strings** (183/197 named by a case)
+  - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`, `_gen_str`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
 - **tree** (158/183 named by a case)
@@ -982,7 +982,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2182 of 2308 std items are named by a case.
+2182 of 2309 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
