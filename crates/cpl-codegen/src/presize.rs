@@ -1,9 +1,14 @@
 //! `[f(x) for x in xs]`: the list a comprehension fills takes its source's
-//! size up front, so it grows once instead of doubling.
+//! size up front, so it grows once instead of doubling. A filtered one,
+//! `[f(x) for x in xs if p(x)]`, takes at most [`FILTERED_CAP`] of it: it
+//! skips the first doublings and holds at most that many unused slots.
 
 use crate::emit::{Emitter, ADD, PRIMARY};
 use crate::walk;
-use cpl_ir::{ElemLoc, Expr, ExprKind, Iter, Mutation, PlaceKind, Stmt, Ty};
+use cpl_ir::{Block, ElemLoc, Expr, ExprKind, Iter, Mutation, PlaceKind, Stmt, Ty};
+
+/// The most a list filled under a condition reserves ahead.
+const FILTERED_CAP: usize = 16;
 
 /// `t.push(e)` as a statement.
 fn pushes_to(stmt: &Stmt, slot: usize) -> bool {
@@ -42,8 +47,22 @@ impl<'p> Emitter<'p> {
                 .stmts
                 .iter()
                 .all(|s| matches!(s, Stmt::Let(..)) || pushes_to(s, *slot));
-        if !once {
+        if !once && !at_most_once(body, *slot) {
             return None;
+        }
+        if let Iter::Seq(src, _) = iter {
+            if let Some(Expr {
+                kind: ExprKind::Tuple(items),
+                ..
+            }) = self.inline_list_call(src)
+            {
+                let n = if once {
+                    items.len()
+                } else {
+                    items.len().min(FILTERED_CAP)
+                };
+                return Some(format!("{}.reserve({n});", self.names[*slot]));
+            }
         }
         let n = match iter {
             Iter::Seq(src, _)
@@ -69,6 +88,26 @@ impl<'p> Emitter<'p> {
             }
             _ => return None,
         };
+        let n = if once {
+            n
+        } else {
+            format!("std::min<size_t>({n}, {FILTERED_CAP})")
+        };
         Some(format!("{}.reserve({n});", self.names[*slot]))
     }
+}
+
+/// The loop body pushes to `slot` at most once a round, under conditions,
+/// and does nothing else with it.
+fn at_most_once(body: &Block, slot: usize) -> bool {
+    let (mut pushes, mut loops, mut named) = (0, false, false);
+    walk::deep_stmts(body, &mut |stmt| {
+        pushes += usize::from(pushes_to(stmt, slot));
+        loops |= matches!(stmt, Stmt::For(..) | Stmt::While(..));
+    });
+    walk::deep_exprs(body, &mut |e| {
+        named |= matches!(e.kind, ExprKind::Local(s) if s == slot)
+            || matches!(&e.kind, ExprKind::Mutate(_, place, _) if place.kind == PlaceKind::Local(slot) && !matches!(e.kind, ExprKind::Mutate(Mutation::Push, ..)));
+    });
+    pushes == 1 && !loops && !named
 }

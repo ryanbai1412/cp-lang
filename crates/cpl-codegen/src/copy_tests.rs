@@ -123,7 +123,11 @@ fn a_comprehension_reserves_its_source_size() {
         cpp.contains(".reserve((size_t)std::max<ll>(0, n - 0));"),
         "{cpp}"
     );
-    assert_eq!(cpp.matches(".reserve(").count(), 2, "{cpp}");
+    assert!(
+        cpp.contains(".reserve(std::min<size_t>(sq.size(), 16));"),
+        "{cpp}"
+    );
+    assert_eq!(cpp.matches(".reserve(").count(), 3, "{cpp}");
 }
 
 #[test]

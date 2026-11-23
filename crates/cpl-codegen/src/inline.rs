@@ -3,10 +3,15 @@
 //! walks the literal with the arguments put in: the loop over a literal
 //! keeps it on the stack, where the call built a `std::vector` each time.
 //! Taken when every argument is a variable or a constant, so evaluating it
-//! once per element is the same as once.
+//! once per element is the same as once. A fn that is a comprehension over
+//! a short constant range, `fn all() = [Dir4(k) for k in 0..4]`, is that
+//! literal written out.
 
 use crate::emit::{pad, Emitter};
-use cpl_ir::{Arg, Expr, ExprKind, Stmt, Ty};
+use cpl_ir::{Arg, Expr, ExprKind, Iter, Mutation, PlaceKind, Stmt, Ty};
+
+/// The most elements a constant-range comprehension is written out to.
+const MAX_UNROLLED: i64 = 16;
 
 impl<'p> Emitter<'p> {
     /// The literal `seq` evaluates to, when it calls a list-literal fn.
@@ -18,9 +23,6 @@ impl<'p> Emitter<'p> {
         let [Stmt::Return(Some(body))] = func.body.stmts.as_slice() else {
             return None;
         };
-        if !matches!((&body.kind, &body.ty), (ExprKind::Tuple(_), Ty::List(_))) {
-            return None;
-        }
         let args = args
             .iter()
             .map(|a| match a {
@@ -29,7 +31,12 @@ impl<'p> Emitter<'p> {
             })
             .collect::<Option<Vec<_>>>()?;
         (args.len() == func.params.len()).then_some(())?;
-        put_in(body, &args)
+        let param = |slot: usize| args.get(slot).map(|a| (*a).clone());
+        match (&body.kind, &body.ty) {
+            (ExprKind::Tuple(_), Ty::List(_)) => put_in(body, &param),
+            (ExprKind::Do(block), Ty::List(_)) => unrolled(block, body, &param),
+            _ => None,
+        }
     }
     /// The declaration of `src` holding what `extend` appends: a list
     /// literal goes in a stack array, where a `std::vector` would allocate.
@@ -58,17 +65,86 @@ fn simple(e: &Expr) -> bool {
     )
 }
 
-/// `e` with parameter `i` replaced by `args[i]`; none if `e` reads another
-/// local or does more than compute.
-fn put_in(e: &Expr, args: &[&Expr]) -> Option<Expr> {
+/// `[elem for k in lo..hi]` with constant bounds, as the literal of each
+/// `elem` with `k` put in.
+fn unrolled(
+    block: &cpl_ir::Block,
+    list: &Expr,
+    param: &dyn Fn(usize) -> Option<Expr>,
+) -> Option<Expr> {
+    let [Stmt::Let(acc, Some(init)), Stmt::For(_, k, iter, each), Stmt::Give(given)] =
+        block.stmts.as_slice()
+    else {
+        return None;
+    };
+    let Iter::Range {
+        lo,
+        hi,
+        step: None,
+        rev: false,
+        closed,
+    } = iter
+    else {
+        return None;
+    };
+    let (ExprKind::Int(lo), ExprKind::Int(hi)) = (&lo.kind, &hi.kind) else {
+        return None;
+    };
+    let hi = hi.checked_add(i64::from(*closed))?;
+    let [Stmt::Expr(Expr {
+        kind: ExprKind::Mutate(Mutation::Push, place, pushed),
+        ..
+    })] = each.stmts.as_slice()
+    else {
+        return None;
+    };
+    let [elem] = pushed.as_slice() else {
+        return None;
+    };
+    if !matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
+        || !matches!(given.kind, ExprKind::Local(g) if g == *acc)
+        || place.kind != PlaceKind::Local(*acc)
+        || hi
+            .checked_sub(*lo)
+            .is_none_or(|n| !(0..=MAX_UNROLLED).contains(&n))
+    {
+        return None;
+    }
+    let items = (*lo..hi)
+        .map(|i| {
+            put_in(elem, &|slot| {
+                if slot == *k {
+                    Some(Expr {
+                        kind: ExprKind::Int(i),
+                        ty: Ty::Int,
+                        span: elem.span,
+                    })
+                } else if slot == *acc {
+                    None
+                } else {
+                    param(slot)
+                }
+            })
+        })
+        .collect::<Option<Vec<_>>>()?;
+    Some(Expr {
+        kind: ExprKind::Tuple(items),
+        ty: list.ty.clone(),
+        span: list.span,
+    })
+}
+
+/// `e` with each local put in by `local`; none if `local` has no value for
+/// one or `e` does more than compute.
+fn put_in(e: &Expr, local: &dyn Fn(usize) -> Option<Expr>) -> Option<Expr> {
     let each = |xs: &[Expr]| {
         xs.iter()
-            .map(|x| put_in(x, args))
+            .map(|x| put_in(x, local))
             .collect::<Option<Vec<_>>>()
     };
-    let one = |x: &Expr| put_in(x, args).map(Box::new);
+    let one = |x: &Expr| put_in(x, local).map(Box::new);
     let kind = match &e.kind {
-        ExprKind::Local(slot) => return args.get(*slot).map(|a| (*a).clone()),
+        ExprKind::Local(slot) => return local(*slot),
         ExprKind::Unit
         | ExprKind::Int(_)
         | ExprKind::Float(_)
@@ -123,6 +199,38 @@ mod tests {
         let code = cpp(&ROLES.replace("roles(k, n)", "roles(k + 1, n)"));
         let main = &code[code.find("for (ll k").unwrap()..];
         assert!(main.contains("roles("), "{code}");
+    }
+
+    #[test]
+    fn a_loop_over_a_constant_range_comprehension_fn_walks_its_literal() {
+        let code = cpp(concat!(
+            "struct D(k: Int):\n",
+            "    pub fn all() -> List<D> = [D(k) for k in 0..4]\n",
+            "let n: Int = read()\n",
+            "var t = 0\n",
+            "for i in 0..n:\n",
+            "    for d in D.all(): t += d.k * i\n",
+            "print(t)\n",
+        ));
+        let main = &code[code.find("for (ll i").unwrap()..];
+        assert!(
+            !main[..main.find("print").unwrap_or(main.len())].contains("all("),
+            "{code}"
+        );
+    }
+
+    #[test]
+    fn a_long_comprehension_fn_keeps_the_call() {
+        let code = cpp(concat!(
+            "fn all() -> List<Int> = [k for k in 0..100]\n",
+            "let n: Int = read()\n",
+            "var t = 0\n",
+            "for i in 0..n:\n",
+            "    for d in all(): t += d * i\n",
+            "print(t)\n",
+        ));
+        let main = &code[code.find("for (ll i").unwrap()..];
+        assert!(main.contains("all("), "{code}");
     }
 
     #[test]
