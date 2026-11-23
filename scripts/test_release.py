@@ -144,5 +144,94 @@ class ReleaseScriptsTest(unittest.TestCase):
             self.assertIn("<idea-version since-build=", xml)
 
 
+SHIP_GH = """#!/bin/sh
+case "$1 $2" in
+  "run list") cat "$FAKE_CI/runs" ;;
+  "run view") cat "$FAKE_CI/jobs-$3" ;;
+  "api repos/"*) r="${2##*/}"; cat "$FAKE_CI/compare-$r" 2>/dev/null || echo behind ;;
+  *) exit 2 ;;
+esac
+"""
+SHIP_CURL = """#!/bin/sh
+[ -f "$FAKE_CI/edge" ] || exit 22
+printf '{"commit":"%s"}' "$(cat "$FAKE_CI/edge")"
+"""
+SHIPPING = ["gate (conform:diff@1/2)", "cli (windows-latest)", "acceptance solutions stay AC (1/1)"]
+
+
+class ShippableTest(unittest.TestCase):
+    """scripts/release/shippable.sh (handbook/guidelines/ci-checklist.md ci/R26)."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.ci = Path(self.tmp.name)
+        bin_dir = self.ci / "bin"
+        bin_dir.mkdir()
+        for name, body in (("gh", SHIP_GH), ("curl", SHIP_CURL)):
+            (bin_dir / name).write_text(body)
+            (bin_dir / name).chmod(0o755)
+        self.runs = []
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def run_ci(self, sha, red=(), pending=(), extra_red=()):
+        """Adds a CI run (newest last) whose shipping jobs pass except `red`."""
+        run_id = str(100 + len(self.runs))
+        self.runs.append(f"{run_id} {sha}")
+        lines = [("" if j in pending else "failure" if j in red else "success") + "\t" + j for j in SHIPPING]
+        lines += [f"failure\t{j}" for j in extra_red] + ["success\tsite build"]
+        (self.ci / f"jobs-{run_id}").write_text("\n".join(lines) + "\n")
+
+    def edge_at(self, sha, newer=()):
+        """Edge shipped `sha`; the commits in `newer` came after it."""
+        (self.ci / "edge").write_text(sha)
+        for s in [sha] + [r.split()[1] for r in self.runs]:
+            if s != sha and s not in newer:
+                (self.ci / f"compare-{s}...{sha}").write_text("ahead")
+        (self.ci / f"compare-{sha}...{sha}").write_text("identical")
+
+    def pick(self):
+        (self.ci / "runs").write_text("\n".join(reversed(self.runs)) + "\n")
+        env = dict(os.environ, GITHUB_REPOSITORY="o/r", FAKE_CI=str(self.ci),
+                   PATH=f"{self.ci / 'bin'}:{os.environ['PATH']}")
+        out = subprocess.run([str(ROOT / "scripts/release/shippable.sh")], env=env,
+                             capture_output=True, text=True, check=True)
+        return out.stdout.strip()
+
+    def test_with_no_edge_every_shipping_job_must_pass(self):
+        self.run_ci("a1")
+        self.run_ci("b2", red=["cli (windows-latest)"])
+        self.assertEqual(self.pick(), "a1")
+
+    def test_a_red_outside_the_shipping_jobs_does_not_hold_edge(self):
+        self.run_ci("a1", extra_red=["tests (hash)"])
+        self.assertEqual(self.pick(), "a1")
+
+    def test_a_job_already_red_at_edge_may_stay_red(self):
+        self.run_ci("a1", red=["cli (windows-latest)"])
+        self.run_ci("b2", red=["cli (windows-latest)"])
+        self.edge_at("a1", newer=["b2"])
+        self.assertEqual(self.pick(), "b2")
+
+    def test_a_job_green_at_edge_and_red_now_blocks(self):
+        self.run_ci("a1")
+        self.run_ci("b2")
+        self.run_ci("c3", red=["gate (conform:diff@1/2)"])
+        self.edge_at("a1", newer=["b2", "c3"])
+        self.assertEqual(self.pick(), "b2")
+
+    def test_nothing_newer_than_edge_qualifies_gives_the_edge_commit(self):
+        self.run_ci("a1")
+        self.run_ci("b2", red=["cli (windows-latest)"])
+        self.edge_at("a1", newer=["b2"])
+        self.assertEqual(self.pick(), "a1")
+
+    def test_a_run_whose_shipping_jobs_have_not_finished_is_skipped(self):
+        self.run_ci("a1")
+        self.run_ci("b2", pending=["acceptance solutions stay AC (1/1)"])
+        self.assertEqual(self.pick(), "a1")
+
+
 if __name__ == "__main__":
     unittest.main()

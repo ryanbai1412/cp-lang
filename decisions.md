@@ -8359,3 +8359,9 @@ tag move fatal again.
 - **Call.** `web/scripts/practice-mutants.mjs` runs in the site prebuild. It makes every one-token mutant of each practice `ref.cp` (comparison flips, `..` against `..=`, `+ 1` dropped, `min` against `max`, digit bumps; lines that read input are skipped) and runs the ones that check on the problem's `tests.json`. A mutant that passes every test fails the build unless `web/scripts/practice-mutants-equivalent.txt` lists it with the reason no test can kill it. A listed mutant that is now killed also fails, so the list stays exact. The first run: 403 mutants, 393 killed, 10 listed; 2 of the 10 survive only because of bugs (an unchecked `Mat.get`, an array's declared domain not checked against its value) and drop off once those are fixed.
 - **Why.** A practice problem whose tests accept an off-by-one teaches the reader that the wrong solution is right. Hand-picked tests miss boundaries; mutants find which boundary a test set never touches.
 - **Reverse.** Delete the stage from `web/scripts/prebuild.mjs`, the script and its list.
+
+## 425. Edge ships when its shipping jobs are no worse than at the last edge (infra, 2026-11-23)
+
+- **Call.** `scripts/release/shippable.sh` picks the newest main commit whose CI shipping jobs (conformance parts, `cli` on every OS, acceptance) include every one that was green at the commit edge last shipped; one already red there may stay red. The release run's build, archive smoke and installer smoke still gate the publish. This replaces 408's "every shipping job passed"; stable is unchanged (ci/R26).
+- **Why.** At about 200 commits an hour some shipping job is usually red for a reason fixed within the hour, so "all green" left edge 7.5 h without a shippable commit. Not worse than edge still blocks every new regression, and one lingering red can't stall shipping.
+- **Reverse.** Drop the baseline in `shippable.sh` so every shipping job must pass.

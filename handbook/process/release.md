@@ -45,13 +45,16 @@ https://github.com/ryanbai1412/cp-lang cpl-cli --rev <sha>`.
 
 | Channel | Built from | When | Version |
 |---|---|---|---|
-| edge | the newest main commit whose shipping checks pass | at least hourly | `0.3.0-edge+<sha>` |
+| edge | the newest main commit no worse than the last edge on the shipping checks | at least hourly | `0.3.0-edge+<sha>` |
 | stable | a `v*` tag on a fully green commit | by hand, Ryan decides | `0.3.0` |
 
 **Edge's shipping checks** are the CI jobs a user would feel if they broke:
 the gate's conformance shards, `cli` on every OS, and acceptance. Other jobs
 (an editor test, a unit-test shard) may be red: edge still ships, since
-shipping a working compiler beats waiting for every job.
+shipping a working compiler beats waiting for every job. A shipping job need
+not be green, only no worse than at the last edge: one green there must be
+green here, and one already red there may stay red, so a lingering red
+can't stall edge while a new regression still blocks it (ci/R26).
 `scripts/release/shippable.sh` prints the commit it would pick.
 
 **Edge timing.** `release.yml` starts after each main CI run ends, and on

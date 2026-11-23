@@ -18,7 +18,7 @@ A lane commits a change and runs `scripts/land.sh`; about 7 seconds later
 the commit is on main. Within minutes CI says whether main still works. If
 it doesn't, infra names the commit that broke it from the failing log, and
 its lane fixes it or infra reverts it. Within the hour, edge ships from the
-newest commit whose shipping checks pass, and a stranger installs it with
+newest commit no worse than the last edge on the shipping checks, and a stranger installs it with
 one line:
 
 ```sh
@@ -143,7 +143,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Edge ships often | hours since the last edge publish | Hourly timer plus CI-completion fallback, from the newest commit passing the shipping checks | `release.yml`, `scripts/release/shippable.sh`; **missing**: an alert past 90 min |
+| Edge ships often | hours since the last edge publish | Hourly timer plus CI-completion fallback, from the newest commit no worse than the last edge (ci/R26) | `scripts/release/shippable.sh`, `scripts/test_release.py` `ShippableTest`, `release.yml`; **missing**: an alert past 90 min |
 | Edge is never broken | edge releases that fail install smoke | Shipping checks before publish; install smoke after | `release.yml` `install-smoke`; **missing**: smoke before marking latest |
 | Stable is full green | stable releases from a commit with any red job | Gate in `release.yml` stable path | `release.yml`; never published without Ryan |
 | One line installs on every OS | install failures per OS | Install smoke on Ubuntu, macOS, Windows after each publish | `release.yml` `install-smoke` |
@@ -175,7 +175,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 | `python3 scripts/culprit.py` | Bisects failing tests over a commit range and verifies a revert |
 | `python3 scripts/land_stats.py` | Landing p50/p95, commits per hour per domain |
 | `python3 scripts/devex_stats.py` | Devex share per lane, velocity per 15 min |
-| `scripts/release/shippable.sh` | The newest main commit whose shipping checks pass |
+| `scripts/release/shippable.sh` | The newest main commit no worse than the last edge on the shipping checks |
 | `python3 -m unittest scripts/test_*.py` | The scripts' own tests |
 
 ## Changes

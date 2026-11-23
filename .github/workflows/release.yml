@@ -11,7 +11,7 @@ on:
     tags: ["v*", "edge-now-*"] # edge-now-*: edge from the newest green commit, or edge-now-<sha> from that main commit
   schedule:
     - cron: "17 7 * * *" # nightly edge
-    - cron: "41 * * * *" # hourly edge from the newest shippable main commit (decision 408)
+    - cron: "41 * * * *" # hourly edge from the newest shippable main commit (decisions 408, 425)
   workflow_dispatch:
     inputs:
       channel:
@@ -70,7 +70,7 @@ jobs:
               if [ "$RUN_CONCLUSION" != success ]; then
                 # Red or superseded CI: GitHub drops most hourly crons on this
                 # repo, so such a run ships the newest shippable commit instead
-                # (decision 408), at most once an hour; of runs going at once only the
+                # (decisions 408, 425), at most once an hour; of runs going at once only the
                 # oldest selects, so two can't each wait for the other.
                 # The release object keeps its first publish time; latest.json's
                 # upload time is when edge last moved.

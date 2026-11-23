@@ -193,3 +193,15 @@ job, so waiting for a full green run holds shipping for hours. *Example:* a
 red interpreter test doesn't stop the site deploying from a commit whose
 `site build` and `site browser tests` passed. *Enforced by:*
 `scripts/release/shippable.sh`, `scripts/site-deployable.sh`.
+
+### ci/R26
+
+Edge ships from the newest main commit that passes the release build and
+its archive and installer smoke tests, and whose CI shipping jobs are no
+worse than at the last shipped edge.
+*Why:* requiring every shipping job green held edge for 7.5 h behind reds
+unrelated to what users install, while a regression against the last edge
+is exactly what must not ship. *Example:* a conformance part red at edge and
+still red now doesn't block; a `cli` job green at edge and red now does.
+*Enforced by:* `scripts/release/shippable.sh` (tested in
+`scripts/test_release.py` `ShippableTest`), `.github/workflows/release.yml`.
