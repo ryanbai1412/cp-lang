@@ -6,7 +6,7 @@
 use crate::emit::{Emitter, COND};
 use crate::names::ident;
 use crate::walk::{self, Effects};
-use cpl_ir::{Arg, Block, Expr, ExprKind, Stmt, Ty};
+use cpl_ir::{Arg, BinOp, Block, Expr, ExprKind, Stmt, Ty};
 
 /// A container argument that is no place: a temporary C++ destroys at the
 /// end of the statement.
@@ -20,6 +20,21 @@ pub(crate) fn lending_if(init: &Expr) -> Option<[&Expr; 2]> {
         ExprKind::If(_, then, otherwise) => Some([then, otherwise]),
         _ => None,
     }
+}
+
+/// Whether a `let` of `init` may read a place in place, so its block works
+/// out what the statements after it do: `a[i]`, `if c: f(a) else: a[i]`,
+/// `m.get(k)`, `m.get(k) ?? d`.
+pub(crate) fn may_lend(init: &Expr) -> bool {
+    let map_get = |e: &Expr| {
+        matches!(&e.kind, ExprKind::Builtin(cpl_ir::Builtin::MapGet, a)
+            if a.first().is_some_and(|m| crate::stmt::place_root(m).is_some()))
+    };
+    crate::stmt::place_root(init).is_some()
+        || lending_if(init)
+            .is_some_and(|arms| arms.iter().any(|a| crate::stmt::place_root(a).is_some()))
+        || map_get(init)
+        || matches!(&init.kind, ExprKind::Binary(BinOp::Coalesce, got, _) if map_get(got))
 }
 
 /// What the statements after a `let` in its block can do, for
@@ -115,6 +130,57 @@ impl<'p> Emitter<'p> {
             && !self.spent.contains(&slot)
             && self.place_stays(slot, map, tail))
         .then_some([map, key])
+    }
+
+    /// Writes `const auto t = cpl::map_lend(m, k); const cpp& name = t ? *t : (own = d);`
+    /// for `let name = m.get(k) ?? d` when nothing changes `m` while `name`
+    /// lives, so a found entry is read in place, never copied.
+    pub(crate) fn let_lending_coalesce(
+        &mut self,
+        slot: usize,
+        init: &Expr,
+        (cpp, name): (&str, &str),
+        tail: Option<&Tail>,
+        out: &mut String,
+    ) -> bool {
+        let ExprKind::Binary(BinOp::Coalesce, got, default) = &init.kind else {
+            return false;
+        };
+        let ExprKind::Builtin(cpl_ir::Builtin::MapGet, args) = &got.kind else {
+            return false;
+        };
+        let [map, key] = args.as_slice() else {
+            return false;
+        };
+        let plain = matches!(map.kind, ExprKind::Local(_) | ExprKind::Global(_));
+        if got.ty == init.ty
+            || init.ty.is_scalar()
+            || self.closure_id.is_some()
+            || !plain
+            || self.spent.contains(&slot)
+            || !self.place_stays(slot, map, tail)
+        {
+            return false;
+        }
+        self.need("map_lend");
+        let (m, k) = (self.expr(map).text, self.expr(key).text);
+        let entry = self.temp();
+        self.line(
+            out,
+            &format!("const auto {entry} = cpl::map_lend({m}, {k});"),
+        );
+        let other = if self.reads_in_place(slot, default, tail) {
+            format!("({})", self.expr(default).text)
+        } else {
+            let own = self.temp();
+            self.line(out, &format!("{cpp} {own};"));
+            format!("({own} = {})", self.expr(default).text)
+        };
+        self.line(
+            out,
+            &format!("const {cpp}& {name} = {entry} ? *{entry} : {other};"),
+        );
+        true
     }
 
     /// Writes `cpp own; const cpp& name = c ? (own = f(a)) : a[i];` and gives

@@ -16,3 +16,19 @@ for i in 0..4:
     if let l = h.get(2):
         s += 100 + l.len
 print(s)
+fn total(m: Map<Int, List<Int>>, fallback: List<Int>) -> Int:
+    var t = 0
+    for i in 0..3:
+        let l = m.get(i) ?? fallback
+        let k = m.get(i + 1) ?? [i, i]
+        t += l.len * 10 + l[0] + k.len
+    t
+var c = Map<Int, List<Int>>()
+c[0] = [4, 5]
+c[2] = [6]
+print(total(c, [9]))
+let before = c.get(0) ?? []
+c[0] = []
+var grown = c.get(7) ?? [1]
+grown.push(2)
+print(before.len, c[0].len, grown.len)

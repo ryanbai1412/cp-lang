@@ -53,13 +53,7 @@ impl<'p> Emitter<'p> {
     pub fn block(&mut self, block: &Block, out: &mut String) {
         for (k, stmt) in block.stmts.iter().enumerate() {
             self.tail = match stmt {
-                Stmt::Let(_, Some(init))
-                    if place_root(init).is_some()
-                        || crate::lend::lending_if(init)
-                            .is_some_and(|arms| arms.iter().any(|a| place_root(a).is_some()))
-                        || matches!(&init.kind, ExprKind::Builtin(cpl_ir::Builtin::MapGet, a)
-                            if a.first().is_some_and(|m| place_root(m).is_some())) =>
-                {
+                Stmt::Let(_, Some(init)) if crate::lend::may_lend(init) => {
                     let rest = &block.stmts[k + 1..];
                     let tested = matches!(stmt, Stmt::Let(slot, _) if copied_at_test(*slot, rest));
                     Some(Tail {
@@ -1415,6 +1409,9 @@ impl<'p> Emitter<'p> {
                     if self.let_lending_branch(*slot, init, at, tail.as_ref(), out) {
                         return;
                     }
+                    if self.let_lending_coalesce(*slot, init, at, tail.as_ref(), out) {
+                        return;
+                    }
                     if let Some([map, key]) = self.lent_map_get(*slot, init, tail.as_ref()) {
                         // `if let l = m.get(k)`: point at the entry, never copy it.
                         self.need("map_lend");
@@ -1770,7 +1767,7 @@ fn expr_may_alias_root(e: &Expr, root: (bool, usize)) -> bool {
 
 /// The variable a place reads from, looking through the unchecked unwrap
 /// that follows an `if let` test.
-fn place_root(e: &Expr) -> Option<(bool, usize)> {
+pub(crate) fn place_root(e: &Expr) -> Option<(bool, usize)> {
     match &e.kind {
         ExprKind::Unwrap(base, false) | ExprKind::Field(base, _) => place_root(base),
         ExprKind::Index(base, indices) if indices.iter().all(walk::is_simple) => place_root(base),

@@ -65,3 +65,41 @@ fn if_let_on_a_field_reads_it_in_place_when_the_branch_copies_out() {
         "a list bound out of a changed place keeps its copy: {copied}"
     );
 }
+
+#[test]
+fn coalesced_map_get_points_into_the_map_unless_it_changes() {
+    let lent = body(concat!(
+        "var m = Map<Int, List<Int>>()\n",
+        "m[0] = [1, 2, 3]\n",
+        "var s = 0\n",
+        "for i in 0..3:\n",
+        "    let l = m.get(i) ?? [i]\n",
+        "    s += l.len\n",
+        "print(s)\n",
+    ));
+    assert!(
+        lent.contains("cpl::map_lend(m, i)"),
+        "expected a lent entry: {lent}"
+    );
+    assert!(
+        !lent.contains("map_get("),
+        "a read-only lookup must not copy the list: {lent}"
+    );
+    let copied = body(concat!(
+        "var m = Map<Int, List<Int>>()\n",
+        "m[0] = [1, 2, 3]\n",
+        "let l = m.get(0) ?? []\n",
+        "m[0] = []\n",
+        "var v = m.get(1) ?? [4]\n",
+        "v.push(5)\n",
+        "print(l.len, v.len)\n",
+    ));
+    assert!(
+        copied.contains("cpl::map_get(m, 0)"),
+        "a changed map keeps the copy: {copied}"
+    );
+    assert!(
+        copied.contains("cpl::map_get(m, 1)"),
+        "a changed binding keeps the copy: {copied}"
+    );
+}
