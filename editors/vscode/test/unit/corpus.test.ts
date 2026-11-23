@@ -31,7 +31,7 @@ test('the grammar cleanly tokenizes every .cp program in corpus/problems/, cases
     const files = [
         ...cpFiles(path.join(REPO_ROOT, 'corpus', 'problems')),
         ...cpFiles(path.join(REPO_ROOT, 'crates', 'cpl-cli', 'tests', 'cases')),
-        ...cpFiles(path.join(REPO_ROOT, 'spec', 'std')),
+        ...cpFiles(path.join(REPO_ROOT, 'std')),
         ...cpFiles(path.join(REPO_ROOT, 'examples', 'local-lib')),
     ];
     assert.ok(files.length >= 50, `only ${files.length} .cp files found`);

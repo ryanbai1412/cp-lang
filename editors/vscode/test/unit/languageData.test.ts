@@ -80,7 +80,7 @@ function shipped() {
         ...typeNames,
     ]);
     const builtinTypes = new Set([...rustStrings(prelude, /pub fn ty\(/, '\n}\n'), ...typeNames]);
-    const stdlib = path.join(REPO_ROOT, 'spec', 'std');
+    const stdlib = path.join(REPO_ROOT, 'std');
     const imported = new Set<string>();
     for (const use of fs.readFileSync(path.join(stdlib, 'prelude.cp'), 'utf8').matchAll(/^use std\.\w+\.\{([^}]*)\}/gm)) {
         for (const name of use[1].split(',').map(name => name.trim()).filter(Boolean)) {
@@ -117,7 +117,6 @@ function shipped() {
 const UNLISTED_BUILTINS: Record<string, string> = {
     INF: 'no INF sentinel; use ?Int / none',
     Opt: 'spelled ?T',
-    Counter: 'only the result of counts(); cpl run rejects it as a written type',
     argmax: 'checked, but cpl run has no lowering yet',
     argmin: 'checked, but cpl run has no lowering yet',
     columns: 'checked, but cpl run has no lowering yet',
@@ -188,7 +187,7 @@ test('stale v1 and removed v2.1 names stay out of the tables; decorators match 0
     const decoratorNames = DECORATORS.map(d => d.name);
     assert.deepEqual(
         sorted(decoratorNames),
-        sorted(['memo', 'multitest', 'brute', 'tags', 'gen', 'checker', 'interactor', 'grader', 'get', 'test', 'law']),
+        sorted(['memo', 'multitest', 'alt', 'tags', 'gen', 'check', 'interactor', 'grader', 'get', 'test', 'law']),
     );
     for (const stale of STALE_V1_DECORATORS) {
         assert.ok(!decoratorNames.includes(stale), `stale v1 decorator: @${stale}`);
