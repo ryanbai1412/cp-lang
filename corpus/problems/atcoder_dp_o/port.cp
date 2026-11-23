@@ -7,7 +7,7 @@ let n: 1..=21 = read()
 domain Man = 0..n
 domain Woman = 0..n
 type Taken = Subset<Woman>
-let likes: [Man, Woman]Bool = read()
+let likes: [Man, Woman]0..=1 = read()
 
 // ways[t]: pairings of the first t.len men with exactly the women in t.
 // The last of those men takes one of them.
@@ -16,5 +16,5 @@ ways[Taken.empty] = 1
 for t in Taken:
     if not t.is_empty:
         let m = Man(t.len - 1)
-        ways[t] = sum(ways[t.without(w)] for w in t if likes[m, w])
+        ways[t] = sum(ways[t.without(w)] for w in t if likes[m, w] == 1)
 print(ways[Taken.full])

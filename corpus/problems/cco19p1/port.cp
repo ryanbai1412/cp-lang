@@ -13,6 +13,7 @@ domain Row = 1..=n
 domain Col = 1..=m
 domain Cell = (Row, Col)
 
+@tags("J", "D")
 enum Player: J | D
 fn other(p: Player) -> Player: if p == J: D else: J
 type Board = [Row, Col]?Player                            // none once a piece has left

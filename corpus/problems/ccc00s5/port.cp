@@ -24,7 +24,7 @@ var sheep: List<(Int, Int)> = []
 for _ in 0..n:
     let x: F64 = read()
     let y: F64 = read()
-    sheep.push((Int(x * SCALE), Int(y * SCALE)))
+    sheep.push((round(x * SCALE), round(y * SCALE)))
 
 for (px, py) in sheep:
     var (lo, hi) = (Frac(0, 1), Frac(1000 * SCALE, 1))
