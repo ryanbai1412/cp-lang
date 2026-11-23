@@ -464,7 +464,7 @@ impl Program {
     /// not a file but has spaces in it is a command line, split like a
     /// shell splits one: `--gen "python3 gen.py --tree"`.
     pub fn resolve(path: &Path) -> Result<Program, BuildError> {
-        let name = path.shown();
+        let name = path.display().to_string();
         if !path.is_file() && name.contains(char::is_whitespace) {
             let words = split_command(&name)?;
             let argv: Vec<&str> = words.iter().map(String::as_str).collect();

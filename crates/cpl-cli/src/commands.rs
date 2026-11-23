@@ -3,7 +3,6 @@
 
 use std::sync::OnceLock;
 
-use cpl_diag::Shown;
 use cpl_json::{obj, Value};
 
 /// One `cpl` command: what `cpl --help` lists and `cpl --help --json` emits.
@@ -626,7 +625,7 @@ pub(crate) fn file_names<'a>(command: &str, args: Vec<&'a str>) -> Vec<std::borr
     let many = shape == "<file>...";
     let resolve = |arg: &'a str| -> Cow<'a, str> {
         match bare_source(std::path::Path::new(arg)) {
-            Some(cp) => Cow::Owned(cp.shown()),
+            Some(cp) => Cow::Owned(cp.display().to_string()),
             None => Cow::Borrowed(arg),
         }
     };
