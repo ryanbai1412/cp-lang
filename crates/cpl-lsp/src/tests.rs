@@ -4,6 +4,7 @@ use cpl_json::{self as json, obj, Value};
 mod complete;
 mod fixes;
 mod format;
+mod hover;
 mod nav;
 mod parity;
 mod rename;

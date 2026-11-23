@@ -173,7 +173,7 @@ fn every_corpus_token_has_a_hover() {
     // Per mille of each kind's tokens with a hover, over the sampled ports.
     let floors = [
         (Kind::Name, 925),
-        (Kind::TypeName, 650),
+        (Kind::TypeName, 975),
         (Kind::TypeSyntax, 1000),
     ];
     let mut low = Vec::new();
