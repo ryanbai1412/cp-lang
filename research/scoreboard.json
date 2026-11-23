@@ -1288,7 +1288,9 @@
         "widths/sub-traps-3.cp": "pass",
         "widths/sub-traps-4.cp": "pass",
         "widths/sub-traps-5.cp": "pass",
-        "widths/sub-wraps-when-unchecked.cp": "pass"
+        "widths/sub-wraps-when-unchecked.cp": "pass",
+        "core-04/pair-table-takes-two-indices.cp": "fail",
+        "core-04/pieces-of-a-domain-take-its-cuts.cp": "fail"
       },
       "causes": [
         {
@@ -1908,11 +1910,11 @@
         }
       ],
       "counts": {
-        "fail": 229,
+        "fail": 231,
         "pass": 1057
       },
       "passed": 1057,
-      "total": 1286
+      "total": 1288
     },
     "corpus": {
       "cases": {

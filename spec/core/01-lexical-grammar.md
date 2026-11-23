@@ -493,7 +493,7 @@ parameter is marked `mut` at the call too (`link(mut d, a, b)`), except
 for the receiver of a method call. (R01.10.1)
 
 A program the grammar does not derive is a syntax error, E0103: `var x: Int`
-with no `= expr`, `fn f() lends T` without the arrow, and `enum Dir: N, E`
+with no `= expr`, a `lends` result type with no `->` before it, and `enum Dir: N, E`
 (write `enum Dir = N | E`, or one variant per line). (R01.10.2)
 
 ## 1.11 Rejected spellings
