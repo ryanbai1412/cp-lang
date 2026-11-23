@@ -929,6 +929,13 @@ impl<'a> Lowerer<'a> {
                 if let Some(p) = param {
                     if let Some(pat_ty) = &p.ty {
                         self.bind_bare_op(pat_ty, &arg.value, &gen_names, &mut inferred);
+                        self.unify_lambda_params(
+                            pat_ty,
+                            &arg.value,
+                            tpl_mod,
+                            &gen_names,
+                            &mut inferred,
+                        );
                         self.bind_range_domain(
                             pat_ty,
                             &arg.value,
@@ -992,6 +999,7 @@ impl<'a> Lowerer<'a> {
         } else {
             for (f, arg) in decl.fields.iter().zip(args) {
                 self.bind_bare_op(&f.ty, &arg.value, &gen_names, &mut inferred);
+                self.unify_lambda_params(&f.ty, &arg.value, tpl_mod, &gen_names, &mut inferred);
                 self.bind_range_domain(&f.ty, &arg.value, &gen_names, &mut inferred, span, None);
                 if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
                     && !matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))

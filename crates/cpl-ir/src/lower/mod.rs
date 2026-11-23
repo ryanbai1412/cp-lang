@@ -19,6 +19,7 @@ mod fresh;
 mod hoist;
 mod index_set;
 mod keyed;
+mod lambda_infer;
 mod memo;
 mod mono;
 mod names;

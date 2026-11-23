@@ -1781,6 +1781,7 @@ impl<'a> Lowerer<'a> {
             if matches!(arg.value.kind, ast::ExprKind::Lambda { .. })
                 || matches!(&arg.value.kind, ast::ExprKind::Name(n) if matches!(n.as_str(), "min" | "max"))
             {
+                self.unify_lambda_params(pty, &arg.value, tpl_mod, &gen_names, &mut inferred);
                 continue;
             }
             if let Some(concrete) =
