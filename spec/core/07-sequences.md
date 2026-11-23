@@ -82,10 +82,10 @@ a.items           // (i, a[i]) pairs with a's own indices
 | Capability | What it guarantees | Examples |
 |---|---|---|
 | `Seq<T>` | `for x in s` walks it in order; each `for` runs it from the start | generators, `s.filter(p)`, `chain(a, b)`, `g[u]` (R07.3.1) |
-| `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `Indexed`, `s.filter(p)`, `s.take_while(p)`, `Map`, `g.keyed()`, `g.keyed(by: f)` (R07.3.2) |
+| `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `Indexed`, `s.rev`, `s.filter(p)`, `s.take_while(p)`, `Map`, `g.keyed()`, `g.keyed(by: f)` (R07.3.2) |
 | `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps (R07.3.3) |
 | `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorted sets, deques, `filter` over a `Bidir` (R07.3.4) |
-| `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices, `.rev`, `.map(f)`, `zip(a, b)` (R07.3.5) |
+| `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices (`a[r]`, `take`/`drop`, `windows`, `chunks`, `runs`, `split`), `.map(f)`, `zip(a, b)`; not `.rev` or `filter` (R07.3.5) |
 | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment | `[D]T`, `List`, `Str`, `mut` slices (R07.3.6) |
 
 **Cost rule.** Views are \(O(1)\) to make and allocate nothing. A
@@ -105,7 +105,7 @@ alike, so an index taken from a view is valid on the source.
 let w = a[l..=r]
 let best = w.argmax()!                   // a position of a, usable anywhere
 for (i, x) in w.items: ...               // i runs l..=r, not 0..
-s[2..5][3]                               // s[3]; s[2..5][0] traps
+s[2..5][3]                               // s[3]; s[2..5][0] is E0305: 0 isn't a key
 w.first!, w.nth(k)                       // first element; k steps from the start
 let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len domain t.Idx
 ```
@@ -120,10 +120,26 @@ let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len 
 - **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)`
   and `Str(w)` build a new sequence keyed from 0. To keep `w`'s keys, build
   a table over them: `[w.keys] k => w[k]` (see R04b.1.6). (R07.4.4)
-- **Lints:** a literal index into a slice (`w[0]`), and a 0-based counter
-  used as a slice key (`for k in 0..w.len: w[k]`); both suggest `first`,
-  `nth`, `items` or `rebase`. An out-of-keys read traps naming the slice's
-  keys. A raw `Int` into a domain slice is a compile error. (R07.4.5)
+- **When `w[x]` is legal.** One rule covers every keyed view (slices,
+  runs, windows, chunks, `rev`, `filter`, cut-keyed scans): a view keeps
+  its parent's keys, and `w.nth(k)`, `w.first`, `w.last` are the positional
+  accessors on any view (`k` counts walk steps from 0). `w[x]` takes a key:
+  - only a view that walks in key order over a range of keys (the
+    `Indexed` row above) has `w[x]`; on `rev`, `filter` or a generator it
+    is E0305 naming `w.nth(k)`;
+  - `x` proven to be in `w.keys` (taken from `w.keys`, `w.items` or a
+    search on `w`, or a constant inside constant bounds) reads with no
+    check;
+  - a literal or constant not proven in `w.keys`, as `r[0]` on a run, is
+    E0305: it names `r.nth(0)` for the first element and `a[0]` for the
+    parent's key 0;
+  - any other `x` is checked: out of `w.keys` traps R0101 naming the key
+    and `w.keys`, and never reads the parent outside the view.
+  A cut-keyed view (`w.scan(+)`) takes `w`'s cuts the same way. A literal
+  that is proven a key still lints (`w[1]` reads key 1, not element 1), as
+  does a 0-based counter used as a key (`for k in 0..w.len: w[k]`); both
+  suggest `nth`, `items` or `rebase`. A raw `Int` into a domain slice is a
+  compile error (decision 388). (R07.4.5)
 
 | View | Indexed by | Walks | Cost |
 |---|---|---|---|

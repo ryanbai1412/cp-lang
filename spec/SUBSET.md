@@ -275,6 +275,8 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-10/read-range-arithmetic-lower-bound.cp: compiler
 - core-10/print-view-honours-sep.cp: compiler
 - std-graph/bfs-over-named-product-domain.cp: compiler
+- core-07/slice-literal-outside-keys-rejected.cp: compiler
+- core-07/run-literal-index-not-a-key.cp: compiler
 - core-02/str-len-and-charset-compose.cp: compiler
 - core-02/list-of-str-is-chars.cp: compiler
 - std-graph/undirected-unweighted-has-deg.cp: stdlib

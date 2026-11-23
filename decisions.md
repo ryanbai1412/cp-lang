@@ -8039,3 +8039,16 @@ tag move fatal again.
   `partition_point` on a `List` gives an `Int` cut (H12). Everything else
   in the round's 14 holes was a correct guess, pinned by cases, or a route.
 - **Reverse.** Leave group order unspecified.
+
+## 388. One indexing rule for every keyed view (spec, 2026-11-23)
+
+- **Decision.** A view keeps its parent's keys (Ryan's rule). `.nth(k)`,
+  `.first`, `.last` are positional on any view. `w[x]` exists only on views
+  that walk in key order over a range of keys; `x` proven in `w.keys` is
+  unchecked, a literal not proven a key is E0305 naming `.nth`, anything
+  else is checked and traps naming `w.keys`. Covers `rev`, `filter`, runs,
+  windows, chunks, slices and cut-keyed scans (R07.4.5).
+- **Why.** Acceptance runs 3-6 read `a.rev[0]` and `r[0]` on a run as
+  "the first element". A literal is almost always meant as a position, so
+  an unproven literal is rejected at compile time instead of trapping.
+- **Reverse.** Make the literal case a lint again (L0605) and let it trap.
