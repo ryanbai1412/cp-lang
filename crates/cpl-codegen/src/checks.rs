@@ -57,6 +57,10 @@ const TRAPS: &[(&str, &str)] = &[
         "",
     ),
     (r#"if (bad) fail("index outside the array"); "#, ""),
+    (
+        r#"if ((unsigned long long)ord >= (unsigned long long)len) fail("outside the domain"); "#,
+        "",
+    ),
 ];
 
 /// `code`, a runtime piece, without its index and `/ 0` traps.
