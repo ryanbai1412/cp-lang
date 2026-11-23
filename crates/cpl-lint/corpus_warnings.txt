@@ -20,7 +20,7 @@ std L0501 1
 std L0503 3
 std L0504 21
 std L0505 1
-std L0506 32
+std L0506 13
 std L0507 11
 std L0508 4
 std L0509 8

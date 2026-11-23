@@ -17,9 +17,15 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         /// types of records read as input: each is the statement's bound for
         /// its own input, so equal bounds there are separate facts.
         input_types: Vec<Span>,
+        /// `@test` functions: their literals are test data, not facts the
+        /// program keeps.
+        tests: Vec<Span>,
     }
     impl Visitor for Ints {
         fn stmt(&mut self, stmt: &Stmt) {
+            if stmt.decorators.iter().any(|d| d.name.text == "test") {
+                self.tests.push(stmt.span.shift(self.base));
+            }
             match &stmt.kind {
                 StmtKind::Struct(decl) => {
                     for field in &decl.fields {
@@ -67,15 +73,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
         base: 0,
         seen: HashMap::new(),
         input_types: Vec::new(),
+        tests: Vec::new(),
     };
     file.walk(&mut ints, |i, base| i.base = base);
-    let input_types = ints.input_types;
+    let skipped: Vec<Span> = ints.input_types.into_iter().chain(ints.tests).collect();
     for spans in ints.seen.values_mut() {
-        spans.retain(|s| {
-            !input_types
-                .iter()
-                .any(|t| t.start <= s.start && s.end <= t.end)
-        });
+        spans.retain(|s| !skipped.iter().any(|t| t.start <= s.start && s.end <= t.end));
     }
     let lines = cpl_diag::LineIndex::new(file.src);
     let mut out = Vec::new();
