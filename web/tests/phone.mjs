@@ -3,7 +3,7 @@
 // sideways on purpose. Run with `pnpm --dir web phone`.
 import { base, open } from './browser.mjs';
 
-const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/learn', '/learn/start', '/learn/read/standard-library', '/learn/practice/prime-ranges', '/learn/read/graphs', '/learn/read/dynamic-programming', '/learn/practice/maze-walk', '/play', '/corpus', '/tools', '/performance', '/setup', '/trace.html'];
+const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/learn', '/learn/start', '/learn/read/standard-library', '/learn/practice/prime-ranges', '/learn/read/graphs', '/learn/read/dynamic-programming', '/learn/read/greedy-and-two-pointers', '/learn/practice/maze-walk', '/play', '/corpus', '/tools', '/performance', '/setup', '/trace.html'];
 const { page, errors } = await open();
 await page.setViewportSize({ width: 390, height: 844 });
 let bad = 0;

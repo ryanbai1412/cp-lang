@@ -59,8 +59,8 @@ target = "8/8 200"
 [[metric]]
 name = "learn_content"
 command = "ls web/content/learn/read/*.mdx | wc -l; ls web/content/practice | wc -l"
-today = "10 chapters, 19 problems"
-target = "10 chapters, 19 problems"
+today = "11 chapters, 21 problems"
+target = "11 chapters, 21 problems"
 
 [[metric]]
 name = "page_weight_gzip_bytes"
@@ -71,5 +71,5 @@ target = "/ <= 800000 with 0 of it cpl.wasm; /docs/guides/tour <= 900000"
 [[metric]]
 name = "phone_routes_fit"
 command = "pnpm --dir web phone  # set CDP=<devtools url> to drive a running Chrome"
-today = "15/15 routes fit 390 px, nothing past the right edge"
+today = "17/17 routes fit 390 px, nothing past the right edge"
 target = "every route in web/tests/phone.mjs"

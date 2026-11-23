@@ -1,0 +1,143 @@
+---
+title: "Greedy and two pointers"
+description: "@!multitest, greedy after sorting, two pointers, sliding windows, prefix sums with a Map."
+---
+
+Many Div 2 B problems need one observation and a linear pass. This
+chapter covers the input shape most of them use (many test cases),
+then the passes that usually follow a sort: greedy choice, two
+pointers and a sliding window.
+
+## Many test cases
+
+When the input starts with t and then t independent tests, write the
+program for one test and put `@!multitest` on the first line:
+
+```cp run input="2\n3\n1 2 3\n2\n5 -5\n"
+@!multitest
+let n: 1..=2e5 = read()
+let a: [0..n]Int = read()
+print(a.sum())
+```
+
+Everything below the line runs once per test, so state can't leak from
+one test into the next: each `var` starts fresh. A `return` ends only
+the current test.
+
+## Greedy after sorting
+
+To buy as many items as a budget c allows, buy the cheapest first.
+Sorting turns the observation into a loop:
+
+```cp run input="5 10\n4 8 1 3 6\n"
+let (n, c): (1..=2e5, 1..=1e9) = read()
+let w: [0..n]1..=1e9 = read()
+var left = c
+var taken = 0
+for x in w.sorted():
+    if x > left: break
+    left -= x
+    taken += 1
+print(taken)
+```
+
+The sort key is often not the obvious one. To keep the most
+non-overlapping intervals, take them by earliest end:
+
+```cp run input="4\n1 3\n2 5\n3 4\n5 7\n"
+let n: 1..=2e5 = read()
+let iv: [0..n](l: Int, r: Int) = read()
+var end = -1e18
+var kept = 0
+for x in iv.sorted(by: x => x.r):
+    if x.l >= end:
+        kept += 1
+        end = x.r
+print(kept)
+```
+
+When you can't prove a greedy choice, check it: put an exhaustive
+`@alt(program)` in the same file and press Stress (see
+[Stress testing](/learn/read/stress-and-trace)).
+
+## Two pointers
+
+On sorted data, two indices moving towards each other replace a
+nested loop. This counts pairs `i < j` with `s[i] + s[j] <= x` in
+O(n): when the pair at the ends fits, so does every pair between them.
+
+```cp run input="5 6\n1 5 2 4 3\n"
+let (n, x): (1..=2e5, 1..=2e9) = read()
+let a: [0..n]1..=1e9 = read()
+let s = a.sorted()
+var i = 0
+var j = n - 1
+var pairs = 0
+while i < j:
+    if s[i] + s[j] <= x:
+        pairs += j - i
+        i += 1
+    else: j -= 1
+print(pairs)
+```
+
+## Sliding windows
+
+Two pointers that move the same way keep a window `lo..=hi`. With
+positive numbers, growing the window only raises its sum, so each end
+moves at most n times. The shortest window with sum at least s:
+
+```cp run input="6 7\n2 3 1 2 4 3\n"
+let (n, s): (1..=2e5, 1..=1e18) = read()
+let a: [0..n]1..=1e9 = read()
+var best: ?Int = None
+var sum = 0
+var lo = 0
+for hi in 0..n:
+    sum += a[hi]
+    while sum - a[lo] >= s:
+        sum -= a[lo]
+        lo += 1
+    if sum >= s: best min= hi - lo + 1
+print(best ?? -1)
+```
+
+`best` starts as `None`, not a large number, and `min=` on a `?Int`
+takes the first value it is given; `?? -1` prints the "no window"
+answer.
+
+## When numbers can be negative
+
+A window no longer works when a sum can shrink as the window grows.
+Count subarrays with sum exactly k with prefix sums and a `Map` of
+how often each prefix sum has appeared:
+
+```cp run input="5\n1 2 -1 2 1\n3\n"
+let n: 1..=2e5 = read()
+let a: [0..n]Int = read()
+let k: Int = read()
+var seen: Map<Int, Int> = Map()
+seen[0] += 1
+var pre = 0
+var count = 0
+for x in a:
+    pre += x
+    count += seen.get(pre - k) ?? 0
+    seen[pre] += 1
+print(count)
+```
+
+## Problem: Boat pairs
+
+Each boat holds one or two people with total weight at most x. Print
+the fewest boats for every test.
+
+<Judge id="boat-pairs">
+
+Sort, then pair the lightest person left with the heaviest who fits:
+the heaviest has to go somewhere, and the lightest is the best partner
+anyone could give them.
+
+</Judge>
+
+More like this: [Budget window](/learn/practice/budget-window). Next: [The standard library](/learn/read/standard-library).

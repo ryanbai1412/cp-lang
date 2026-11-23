@@ -1,1 +1,17 @@
-{"title": "Read", "defaultOpen": true, "pages": ["first-program", "arrays-and-index-spaces", "optionals", "functions-and-records", "strings-and-output", "sorting-and-searching", "standard-library", "graphs", "dynamic-programming", "stress-and-trace"]}
+{
+  "title": "Read",
+  "defaultOpen": true,
+  "pages": [
+    "first-program",
+    "arrays-and-index-spaces",
+    "optionals",
+    "functions-and-records",
+    "strings-and-output",
+    "sorting-and-searching",
+    "greedy-and-two-pointers",
+    "standard-library",
+    "graphs",
+    "dynamic-programming",
+    "stress-and-trace"
+  ]
+}

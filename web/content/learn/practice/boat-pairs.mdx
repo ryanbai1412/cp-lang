@@ -1,0 +1,20 @@
+---
+title: Boat pairs
+description: "Level B. Teaches @!multitest, a greedy after sorting and two pointers."
+---
+
+There are t tests (1 ≤ t ≤ 10⁴). In each, n people (1 ≤ n ≤ 2·10⁵) with weights from 1 to 10⁹ cross a river. A boat holds one or two people whose total weight is at most x (1 ≤ x ≤ 10⁹). Print the fewest boats for each test.
+
+**Input:** t, then for each test n and x, then n weights. **Output:** one number per test.
+
+| Input | Output |
+|---|---|
+| `3`<br/>`4 10`<br/>`3 5 3 4`<br/>`2 5`<br/>`5 5`<br/>`5 9`<br/>`1 2 3 4 5` | `2`<br/>`2`<br/>`3` |
+
+<Judge id="boat-pairs">
+
+- `@!multitest` reads t and runs the program once per test, so nothing from one test leaks into the next.
+- The heaviest person left takes a boat either way; giving them the lightest person who fits never makes the rest worse.
+- `i <= j` with `i < j` inside: the last person alone still needs a boat.
+
+</Judge>
