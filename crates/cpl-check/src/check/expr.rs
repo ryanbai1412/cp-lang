@@ -1903,13 +1903,16 @@ impl<'a> Checker<'a> {
             && self.global(&name.text).is_none()
         {
             let message = format!(
-                "{base_ty} has no `{}` in the spec: no std module declares it",
+                "{} has no `{}` in the spec: no std module declares it",
+                base_ty.widen(),
                 name.text
             );
             let suggestion = super::spec_member_typo(&base_ty, &name.text);
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
                 if let Some(s) = suggestion {
                     diag.suggest(name.span, s);
+                } else if let Some(help) = super::advice::foreign_call(&name.text) {
+                    diag.help = Some(help.to_string());
                 } else if generator {
                     diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
                 }

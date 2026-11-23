@@ -118,4 +118,10 @@ fn pythons_conversions_say_how_ours_are_written() {
     assert!(help("let x = 5\nprint(str(x))\n").contains("`\"{x}\"`"));
     assert!(help("let s = \"1\"\nprint(int(s))\n").contains("s.parse<Int>()!"));
     assert!(help("let a = 4\nprint(math.sqrt(a))\n").contains("`x.sqrt`"));
+    let d = check("let x = 5\nprint(x.toString())\n");
+    assert!(d[0].message.starts_with("Int has no `toString`"), "{d:?}");
+    assert!(
+        d[0].help.as_deref().unwrap_or("").contains("`\"{x}\"`"),
+        "{d:?}"
+    );
 }
