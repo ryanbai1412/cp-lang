@@ -375,14 +375,15 @@
     ]
   },
   "scripts": {
-    "compile": "tsc -p .",
+    "compile": "node scripts/language-data.js && tsc -p .",
+    "language-data": "node scripts/language-data.js",
     "watch": "tsc -w -p .",
     "test": "npm run compile && npm run test:grammar && npm run test:unit",
     "test:grammar": "vscode-tmgrammar-test \"test/grammar/**/*.cp\"",
     "test:unit": "node --test \"out/test/unit/*.test.js\"",
     "package": "vsce package --no-dependencies --out cp-lang.vsix",
     "vscode:prepublish": "npm run bundle",
-    "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=out/src/extension.js --minify",
+    "bundle": "node scripts/language-data.js && esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=out/src/extension.js --minify",
     "test:integration": "npm run compile && node out/test/integration/runTest.js"
   },
   "dependencies": {
