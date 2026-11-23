@@ -91,6 +91,14 @@ class WorkflowTest(unittest.TestCase):
                 views = [l for l in f if l.startswith("run view")]
             self.assertEqual(len(views), 1, "only the run newer than the live build is inspected")
 
+    def test_release_does_not_plan_on_superseded_runs(self):
+        # Planning on each cancelled ci run spent the API rate limit that the
+        # site and release selection share (ci/R26).
+        with open(os.path.join(ROOT, ".github", "workflows", "release.yml"), encoding="utf-8") as f:
+            plan = job_block(f.read(), "plan")
+        self.assertIn("github.event.workflow_run.conclusion == 'failure'", plan)
+        self.assertNotIn("== 'cancelled'", plan)
+
     def test_a_stale_live_site_turns_the_schedule_red(self):
         # The alert for the site falling behind main (ci/R25) never blocks a
         # deploy and costs no API call beyond the selection's.
