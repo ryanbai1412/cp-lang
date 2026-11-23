@@ -3,7 +3,9 @@
 
 mod common;
 use common::program;
-use cpl_interp::checkpoint::{record_on_this_thread, resume_on_this_thread, Checkpoint};
+use cpl_interp::checkpoint::{
+    record_last_on_this_thread, record_on_this_thread, resume_on_this_thread, Checkpoint,
+};
 use cpl_interp::trace::{Recording, TraceConfig};
 use cpl_interp::{observe_on_this_thread, Io, Limits};
 
@@ -137,4 +139,63 @@ fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
             }
         }
     }
+}
+
+const MULTITEST: &str = "@!multitest\nlet n: Int = read()\nvar s = 0\nfor i in 0..n:\n    s = (s + i * i) % 1009\nprint(s)\n";
+
+const ONE_CALL: &str = "fn walk(n: Int) -> Int:\n    var s = 0\n    for i in 0..n:\n        s = (s + i) % 1009\n    return s\nprint(walk(30000))\n";
+
+#[test]
+fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
+    let input = reads_input();
+    for (source, input, steps) in [
+        (NESTED, &b""[..], 1000),
+        (CALLS, &b""[..], 5000),
+        (READS, &input[..], 700),
+        (NESTED, &b""[..], 1 << 22),
+        (MULTITEST, &b"2\n3000\n4000\n"[..], 900),
+        (ONE_CALL, &b""[..], 400),
+        (NESTED, &b""[..], 1),
+    ] {
+        let program = program(source);
+        let keep = TraceConfig {
+            last_steps: Some(steps),
+            ..config(source)
+        };
+        let mut whole_out = Vec::new();
+        let io = Io::fixed(input);
+        let whole =
+            observe_on_this_thread(&program, io, &mut whole_out, LIMITS, Some(keep.clone()));
+        let whole = whole.recording.unwrap();
+        let mut out = Vec::new();
+        let tail =
+            cpl_interp::trace::resumed_tail_every(&program, input, &mut out, keep, steps, 64);
+        assert!(tail.trap.is_none(), "{:?}", tail.trap);
+        assert_eq!(
+            String::from_utf8_lossy(&out),
+            String::from_utf8_lossy(&whole_out)
+        );
+        let tail = tail.recording.unwrap();
+        assert_eq!(tail.len(), whole.len(), "{steps} steps of {source}");
+        for step in 0..tail.len() {
+            assert_eq!(
+                step_text(&tail, step),
+                step_text(&whole, step),
+                "step {step} of {source}"
+            );
+        }
+    }
+}
+
+#[test]
+fn a_run_keeping_the_last_checkpoints_keeps_the_whole_runs_last_ones() {
+    let source = "var s = 0\nfor i in 0..100000:\n    s = (s + i * i) % 1009\n    if i % 20000 == 0:\n        print(s)\nprint(s)\n";
+    let (program, out, all) = record(source, b"");
+    assert!(all.len() > 3, "only {} checkpoints", all.len());
+    let mut kept_out = Vec::new();
+    let (observed, kept) = record_last_on_this_thread(&program, b"", &mut kept_out, LIMITS, 1, 3);
+    assert!(observed.trap.is_none(), "{:?}", observed.trap);
+    assert_eq!(kept_out, out);
+    let ticks = |cs: &[Checkpoint]| cs.iter().map(|c| c.ticks).collect::<Vec<_>>();
+    assert_eq!(ticks(&kept), ticks(&all[all.len() - 3..]));
 }

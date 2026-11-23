@@ -240,9 +240,28 @@ fn observe(
 ) -> Observed {
     let io = std::sync::Mutex::new(Some(io));
     let trace = std::sync::Mutex::new(trace);
-    // The writer is shared by reference so that a spawn that fails (too
-    // little address space for the stack) can be tried again smaller.
     let output = std::sync::Mutex::new(output);
+    on_interp_thread(&|limits| {
+        let mut output = output
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+        let io = io
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take()
+            .expect("only the thread that starts takes the input");
+        let trace = trace
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .take();
+        run_io(program, io, &mut **output, limits, trace, profile)
+    })
+}
+
+/// `run` on a thread with the interpreter's deep stack. What it needs is
+/// shared by reference, so that a spawn that fails (too little address
+/// space for the stack) can be tried again smaller.
+pub(crate) fn on_interp_thread(run: &(dyn Fn(Limits) -> Observed + Sync)) -> Observed {
     let failed = |message: &str| Observed {
         trap: Some(Trap {
             message: message.into(),
@@ -255,29 +274,13 @@ fn observe(
     let memory = memory_for_stack();
     std::thread::scope(|scope| {
         for bytes in [STACK_BYTES, 3 << 30, 1 << 28, 1 << 23] {
-            let (output, io, trace) = (&output, &io, &trace);
             let limits = Limits {
                 // The rest is left for the frames under the deepest call.
                 stack_bytes: (bytes - (bytes / 64).max(1 << 20)).min(memory),
             };
-            let spawned =
-                std::thread::Builder::new()
-                    .stack_size(bytes)
-                    .spawn_scoped(scope, move || {
-                        let mut output = output
-                            .lock()
-                            .unwrap_or_else(|poisoned| poisoned.into_inner());
-                        let io = io
-                            .lock()
-                            .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .take()
-                            .expect("only the thread that starts takes the input");
-                        let trace = trace
-                            .lock()
-                            .unwrap_or_else(|poisoned| poisoned.into_inner())
-                            .take();
-                        run_io(program, io, &mut **output, limits, trace, profile)
-                    });
+            let spawned = std::thread::Builder::new()
+                .stack_size(bytes)
+                .spawn_scoped(scope, move || run(limits));
             if let Ok(handle) = spawned {
                 return handle.join().unwrap_or_else(|_| {
                     failed("the interpreter itself failed; this is a bug in cpl")

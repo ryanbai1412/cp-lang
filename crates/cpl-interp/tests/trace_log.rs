@@ -433,14 +433,14 @@ fn ten_million_steps_fit_the_debugging_budgets() {
                 Some(observed.clone()),
             );
         });
-        // The last 20,000 steps, kept by running again: what time travel to the end costs.
+        // The last 20,000 steps, traced again from a checkpoint: what time travel to the end costs.
         let started = Instant::now();
         let tail = TraceConfig {
             source: source.into(),
             record_frames: true,
             ..TraceConfig::default()
         };
-        let tail = cpl_interp::trace::tail(&program, b"", tail, 20_000);
+        let tail = cpl_interp::trace::resumed_tail(&program, b"", &mut Vec::new(), tail, 20_000);
         let windowed = started.elapsed();
         assert_eq!(tail.recording.unwrap().len(), 20_000);
         let config = TraceConfig {
@@ -480,7 +480,7 @@ fn ten_million_steps_fit_the_debugging_budgets() {
         let slower = traced.as_secs_f64() / plain.as_secs_f64();
         let recording = traced.as_secs_f64() / walked.as_secs_f64();
         eprintln!(
-            "{name}: {} steps; untraced {plain:?}, observed {walked:?}, recorded {traced:?}: {slower:.2}x the untraced run, {recording:.2}x the observed one; {mb:.0} MB; step back at most {back:?}; the last 20,000 steps by running again {windowed:?}, {:.2}x the untraced run",
+            "{name}: {} steps; untraced {plain:?}, observed {walked:?}, recorded {traced:?}: {slower:.2}x the untraced run, {recording:.2}x the observed one; {mb:.0} MB; step back at most {back:?}; the last 20,000 steps from a checkpoint {windowed:?}, {:.2}x the untraced run",
             rec.len(),
             windowed.as_secs_f64() / plain.as_secs_f64()
         );

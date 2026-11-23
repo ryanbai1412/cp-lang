@@ -1182,15 +1182,11 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
     let record = |from: Option<usize>| {
         let mut stderr = String::new();
         let compiled = compile_side(args.file, side, &mut stderr).map_err(|_| stderr.clone())?;
-        let observed = cpl_interp::run_observed(
-            &compiled.program,
-            cpl_interp::Io::fixed(&input),
-            &mut Vec::new(),
-            Some(cpl_interp::trace::TraceConfig {
-                from_step: from.or(args.from_step),
-                ..trace_config(args, &compiled.text)
-            }),
-        );
+        let config = cpl_interp::trace::TraceConfig {
+            from_step: from.or(args.from_step),
+            ..trace_config(args, &compiled.text)
+        };
+        let observed = traced(&compiled.program, &input, &mut Vec::new(), config);
         Ok(trace::single(
             args.file,
             &compiled.text,
@@ -1198,6 +1194,22 @@ fn run_live(args: &RunArgs, stdin: &mut (dyn FnMut() -> Vec<u8> + Send)) -> u8 {
         ))
     };
     live::serve(args.file, &input, &note, &record)
+}
+
+/// The run on `input`, recorded; `--last` traces only the run's end again,
+/// from a checkpoint of its untraced run.
+fn traced(
+    program: &cpl_ir::Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    config: cpl_interp::trace::TraceConfig,
+) -> cpl_interp::Observed {
+    match config.last_steps.filter(|_| config.from_step.is_none()) {
+        Some(steps) => cpl_interp::trace::resumed_tail(program, input, output, config, steps),
+        None => {
+            cpl_interp::run_observed(program, cpl_interp::Io::fixed(input), output, Some(config))
+        }
+    }
 }
 
 fn trace_config(args: &RunArgs, text: &str) -> cpl_interp::trace::TraceConfig {
@@ -1236,12 +1248,7 @@ fn observe_file(
         Some((_, judge)) => {
             interact::run_traced(&compiled.program, judge, input, &mut printed, config)
         }
-        None => cpl_interp::run_observed(
-            &compiled.program,
-            cpl_interp::Io::fixed(input),
-            &mut printed,
-            Some(config),
-        ),
+        None => traced(&compiled.program, input, &mut printed, config),
     };
     let millis = started.elapsed().as_millis();
     let recording = observed.recording.unwrap_or_default();

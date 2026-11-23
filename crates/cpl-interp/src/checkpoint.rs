@@ -58,6 +58,7 @@ pub(crate) struct Clock {
     loaded: u32,
     every: u64,
     next_at: u64,
+    keep: usize,
     taken: Vec<Checkpoint>,
     pub(crate) printed: u64,
     pub(crate) resume: Option<Checkpoint>,
@@ -71,6 +72,7 @@ impl Default for Clock {
             loaded: crate::stop::EVERY,
             every: 0,
             next_at: 0,
+            keep: usize::MAX,
             taken: Vec::new(),
             printed: 0,
             resume: None,
@@ -109,10 +111,24 @@ pub fn record_on_this_thread(
     limits: Limits,
     every: u64,
 ) -> (Observed, Vec<Checkpoint>) {
+    record_last_on_this_thread(program, input, output, limits, every, usize::MAX)
+}
+
+/// The same run keeping only the last `keep` checkpoints, so a run's memory
+/// stays bounded by `keep` copies of its state however long it runs.
+pub fn record_last_on_this_thread(
+    program: &Program,
+    input: &[u8],
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+    every: u64,
+    keep: usize,
+) -> (Observed, Vec<Checkpoint>) {
     let every = every.max(1);
     let ckpt = Clock {
         every,
         next_at: every,
+        keep: keep.max(1),
         ..Clock::default()
     };
     let io = Io::fixed(input);
@@ -190,6 +206,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             rng_state: self.rng_state,
             queries: self.queries,
         });
+        if self.ckpt.taken.len() > self.ckpt.keep {
+            self.ckpt.taken.remove(0);
+        }
         self.ckpt.next_at = ticks + self.ckpt.every;
     }
 
