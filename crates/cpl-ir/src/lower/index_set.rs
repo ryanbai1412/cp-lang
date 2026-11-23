@@ -1,6 +1,7 @@
 //! W8 `IndexSet`: on a struct whose only place protocol is `set`, `x[k] = v` is `x.set(k, v)`
 //! and `x[k] op= v` is `x.set(k, x[k] op v)`, with `k` evaluated once.
 
+use super::call::is_place;
 use super::*;
 
 impl<'a> Lowerer<'a> {
@@ -91,5 +92,24 @@ fn pure(e: &ast::Expr) -> bool {
         ast::ExprKind::Name(_) | ast::ExprKind::Int(_) => true,
         ast::ExprKind::Field { base, .. } => pure(base),
         _ => false,
+    }
+}
+
+impl<'a> Lowerer<'a> {
+    /// `e` as a place; a value with no home (`SortedBag.of(xs).range(r)`) is held in a temporary
+    /// that lives as long as the statements in `out`.
+    pub(super) fn held_place(&mut self, e: &ast::Expr, out: &mut Vec<Stmt>) -> Place {
+        if is_place(e) {
+            return self.place(e);
+        }
+        let value = self.expr(e, None);
+        let held = self.temp(value.ty.clone());
+        let ty = value.ty.clone();
+        out.push(Stmt::Let(held, Some(value)));
+        Place {
+            kind: PlaceKind::Local(held),
+            ty,
+            span: e.span,
+        }
     }
 }

@@ -22,7 +22,14 @@ pub struct Heap<T>:
     /// cost: O(1)
     /// traps: never
     /// example: `var h: Heap<Int> = Heap(); h.push(3); h.push(1); h.pop() == Some(1)`
-    /// example: `var h: Heap<Int> = Heap(by: desc); h.push(1); h.push(3); h.pop() == Some(3)`
+    ///
+    /// ```cp
+    /// use std.algebra.{desc}
+    /// var h: Heap<Int> = Heap(by: desc)
+    /// h.push(1)
+    /// h.push(3)
+    /// h.pop() == Some(3)
+    /// ```
     pub fn new<K>(by: ?(T -> K) = None) -> Heap<T>:
         if let f = by: return Heap(xs: [], lt: Some((a, b) => f(a) < f(b)))
         Heap(xs: [], lt: None)
@@ -36,7 +43,12 @@ pub struct Heap<T>:
     /// empty: an empty heap
     /// traps: never
     /// example: `var h = Heap.of([3, 1, 2]); h.pop() == Some(1) and h.len == 2`
-    /// example: `var h = Heap.of([3, 1, 2], by: desc); h.pop() == Some(3)`
+    ///
+    /// ```cp
+    /// use std.algebra.{desc}
+    /// var h = Heap.of([3, 1, 2], by: desc)
+    /// h.pop() == Some(3)
+    /// ```
     pub fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>:
         var h: Heap<T> = Heap.new(by: by)
         h.xs = xs

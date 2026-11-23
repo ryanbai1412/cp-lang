@@ -7548,3 +7548,14 @@ idea and new core syntax for what an existing mechanism covers. R02.7.2 now
 says so; `core-02/token-set-is-an-enum.cp` pins it, and diagnostics should make
 E0309 on `"A" | "B"` suggest `enum D = A | B`. Reverse: add literal types to
 R02 and drop the sentence.
+
+## 356. A `range` view on a value with no home holds that value (stdlib, 2026-11-23)
+
+`SortedBag.of(xs).range(r).len` failed with E0401 ("only a variable, a field,
+or an element can be assigned to"): the sorted-view lowering asked for the
+receiver's place, and a call result has none (8 bag/set doc examples). The
+receiver is now held in a temporary in the enclosing statements
+(`Lowerer::held_place`), the same way a cache-growing method call on a
+temporary is held (`Squares([]).at(4)`). Case
+`conformance/core-12/view-of-a-temporary.cp`. Reverse: use `self.place(base)`
+again in `sorted_view_from_expr`.

@@ -12481,7 +12481,7 @@ impl<'a> Lowerer<'a> {
                         _ => return None,
                     };
                     let span = cur.span;
-                    let raw_place = self.place(base);
+                    let raw_place = self.held_place(base, out);
                     let place = self.settle_indexes(raw_place, out);
                     let arg = &args[0].value;
                     let opt_k = Ty::opt(key_ty.clone());
