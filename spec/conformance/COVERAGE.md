@@ -735,7 +735,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0112 else_falls_through *(0.3)*: 1 case(s)
 - E0201 Unresolved name: 8 case(s)
 - E0202 Duplicate definition: 3 case(s)
-- E0203 Unknown field or method: 11 case(s)
+- E0203 Unknown field or method: 12 case(s)
 - E0204 Unknown type: 3 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
@@ -982,6 +982,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 ## Core cases without a `// rule:` line
 
 - core-01/while-let-tuple-pattern.cp
+- core-02/alias-walks-as-aliased-type.cp
 - core-02/generic-variant-compares-with-typed-side.cp
 - core-02/range-type-argument-is-anonymous-domain.cp
 - core-02/range-type-arguments-index-a-2d-segtree.cp
