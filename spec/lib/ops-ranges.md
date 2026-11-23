@@ -337,10 +337,10 @@ The same values fold any `Seq`, with no structure:
 | `xs.fold(op)` | left to right; `T` for a `Monoid`, `?T` for an `Op` | O(n) |
 | `xs.sum()`, `xs.prod()` | `fold(+)`, `fold(*)` | O(n) |
 | `xs.min()`, `xs.max()`, `xs.min(by:)` | `fold(min)` and friends; `?T`, `None` when empty | O(n) |
-| `xs.scan(op)` | the running folds, lazily: a generator | O(1) per item |
+| `xs.scan(op)` | a `Prefix<D, T>`: the n + 1 exclusive folds, indexed by cuts (ch. 7) | O(n) |
 | `pow(x, k, op = *)` | `x` folded with itself `k` times by squaring | O(log k) ops |
 
-`pow` is the one fast power: numbers, `Mod<P>`, matrices under any
+`pow` is the one fast power (`x ** k` is its operator spelling, through `Pow`): numbers, `Mod<P>`, matrices under any
 semiring, permutations (`op: compose`), `Affine` maps, and any user monoid.
 `k = 0` needs a `Monoid`; an `Op` traps on it.
 
@@ -381,7 +381,7 @@ operations support it:
 |---|---|---|---|---|
 | point write, range fold | `SegTree(op, a)` | O(n) | O(log n) | |
 | range apply, range fold | `SegTree(op, a, act:)` | O(n) | O(log n) | tags `Commutative`: no push-down |
-| range apply, point read | `SegTree(act:, a)` | O(n) | O(log n) | tags `Commutative`: no push-down |
+| range apply, point read | `SegTree(a: a, act:)` | O(n) | O(log n) | tags `Commutative`: no push-down |
 | static fold | `SparseTable(op, a)` | O(n log n) | O(1) | `Idempotent`: overlapping halves; else `DisjointSparseTable(op, a)` |
 | static prefix / range sum | `Prefix(a)` | O(n) | O(1) | `+` only: `prefix(c)`, `fold(r)`; other ops scan with `a.scan(op)` |
 | dynamic prefix / range sum | `Fenwick(a)` | O(n) | O(log n) | `+`/`-` only: `fold(r)`; other ops use `SegTree` |

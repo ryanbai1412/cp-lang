@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2286 (995 passing). Rules: 535.
+Cases: 2290 (995 passing). Rules: 536.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 52 rules, 110 cases; 0 uncovered, 3 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 52 rules, 111 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 112 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 4 happy-path only, 0 negative only
-- R04 (04-indices.md): 62 rules, 94 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R04 (04-indices.md): 63 rules, 94 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 2 happy-path only, 0 negative only
@@ -38,7 +38,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 52 | 52 (100%) | 30 | 27 (90%) | 49 (94%) |
 | R02 | 51 | 51 (100%) | 29 | 26 (89%) | 48 (94%) |
 | R03 | 24 | 24 (100%) | 17 | 13 (76%) | 20 (83%) |
-| R04 | 62 | 62 (100%) | 15 | 13 (86%) | 60 (96%) |
+| R04 | 63 | 63 (100%) | 15 | 13 (86%) | 61 (96%) |
 | R04a | 39 | 39 (100%) | 4 | 3 (75%) | 38 (97%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 23 | 21 (91%) | 41 (95%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
-| all | 535 | 534 (99%) | 229 | 201 (87%) | 506 (94%) |
+| all | 536 | 535 (99%) | 229 | 201 (87%) | 507 (94%) |
 
 ## Rules
 
@@ -68,7 +68,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.2.5 [1+ 1-]: `;` separates simple statements on one line (`if c: a.push(x); continue`). It never ends a...
 - R01.2.6 [1+ 0-]: Trailing commas are allowed in every comma-separated list.
 - R01.3.1 [1+ 0-]: Types, domains, traits, type parameters and enum variants are `PascalCase`: `Some(x)`, `No...
-- R01.3.2 [1+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a value binding wit...
+- R01.3.2 [2+ 1-]: Values, functions, fields and modules are `snake_case` or lower camel; a `let` or `var` bi...
 - R01.3.3 [2+ 1-]: So a pattern needs no lookup to read: a capitalized name is a variant or constant, a lower...
 - R01.3.4 [3+ 1-]: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
 - R01.3.5 [1+ 0-]: `_` is the discard name in patterns and parameters.
@@ -232,7 +232,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.4.25 [1+ 2-]: . For a domain with a runtime count (`domain V = 1..=n`, `n: 1..=2e5`), a literal outside ...
 - R04.4.26 [2+ 0-]: **Cut range to piece:** a literal `j..i` whose ends are cuts, where a `Range<V>` is expect...
 - R04.4.27 [2+ 1-]: **Scalar to array fill:** a value `x: T` where `[D]T` is expected is the array over `D` wi...
-- R04.4.28 [3+ 0-]: **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where a `Mod<P>` is expec...
+- R04.4.28 [2+ 0-]: **`Int` to `Mod<P>`:** an integer (a literal or any `Int` value) where a `Mod<P>` is expec...
+- R04.4.30 [1+ 0-]: **Integer ranges as domains.** An integer range `lo..hi` (or `lo..=hi`, or a counted `[n]`...
 - R04.4.12 [1+ 0-]: | `r.len`, `r.is_empty`, `x in r` | count of positions; membership of a position | count o...
 - R04.4.13 [1+ 0-]: | `for x in r`, `r.rev`, `r.step(k)` | positions | cuts | O(1) per step
 - R04.4.14 [1+ 0-]: | `r.first`, `r.last` | end positions, `?V` | end cuts, `?V.cuts` | O(1)
@@ -734,6 +735,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0207 : 1 case(s)
 - L0208 : 1 case(s)
 - L0209 : 1 case(s)
+- L0210 : **no case**
 - L0301 : 1 case(s)
 - L0412 : 1 case(s)
 - L0413 : 1 case(s)
@@ -785,7 +787,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-1 of 139 testable codes have no negative case.
+2 of 140 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -831,13 +833,13 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **deque** (42/42 named by a case)
 - **dp** (39/39 named by a case)
 - **dsu** (63/63 named by a case)
-- **fenwick** (31/31 named by a case)
+- **fenwick** (42/42 named by a case)
 - **flow** (57/65 named by a case)
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (153/160 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (106/122 named by a case)
-  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Complement`, `Only`
+- **graph** (107/122 named by a case)
+  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `TwoSat.add_or`, `Complement`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
@@ -877,4 +879,4 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2121 of 2247 std items are named by a case.
+2133 of 2258 std items are named by a case.

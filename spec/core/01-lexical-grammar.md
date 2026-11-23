@@ -67,8 +67,9 @@ Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
   `PascalCase`: `Some(x)`, `None`, `Ev.Add(v)`, `Dir.L` (decision 157).
   `true` and `false` are lowercase literals. (R01.3.1)
 - Values, functions, fields and modules are `snake_case` or lower camel;
-  a value binding with an uppercase first letter is an error ("values are
-  lowercase; `N` would read as a type"). (R01.3.2)
+  a `let` or `var` binding with an uppercase first letter is an error
+  ("values are lowercase; `N` would read as a type"). A `const` is named
+  like a variant: `const P = 1e9 + 7`. (R01.3.2)
 - So a pattern needs no lookup to read: a capitalized name is a variant
   or constant, a lowercase name binds. `match h: Big => ...` tests the
   variant; `match h: big => ...` binds `big`. (R01.3.3)
@@ -231,7 +232,7 @@ for i in V, j in V.after(i) if ok(i, j): ...   // clauses nest; `if` filters
 else:
     print("none")                   // loop else: runs when no break
 match op:
-    Add(l, r) => st.apply(l..r, add(1))
+    Add(l, r) => st.apply(l..r, 1)
     Ask(i) =>
         print(st[i])
 match d: L => -1, R => 1            // one-line match

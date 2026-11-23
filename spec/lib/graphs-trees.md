@@ -293,7 +293,7 @@ doesn't mix.
 var seg = SegTree(max, t.reorder(val))     // [t.Pre]T
 seg.fold(t.sub(v))                         // subtree query: one range
 t.fold_path(a, b, seg)                     // path query: O(log n) ranges (HLD)
-t.apply_path(a, b, lazy, add(x))
+t.apply_path(a, b, lazy, x)
 for r in t.chains(a, b): ...               // the ranges themselves, when you need them
 ```
 

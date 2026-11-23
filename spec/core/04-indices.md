@@ -191,7 +191,7 @@ cuts run `lo..=hi` for `lo..hi`. `(1..=5).bsearch(x => x >= 3)` is `3`,
 the first position where `ok` holds, and `Graph.directed` accepts the
 counted edges of `read<[m](u: V, v: V)>()`. R04.2.16 (`Int(c)` counts the
 positions before `c`) is for declared domains, where the two agree when
-the base is 0. (R04.4.28)
+the base is 0. (R04.4.30)
 
 A general implicit `Into` is the C++ trap: conversions that don't show and
 overloads that turn ambiguous.

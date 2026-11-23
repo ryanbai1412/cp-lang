@@ -13,7 +13,7 @@ trait Ord(Eq):
 
 trait Next<V>:
     type Arc: Target<V>
-    fn next(self, v: V) -> yields Arc
+    fn out(self, u: V) -> yields Arc
 
 trait Monoid<T>(Op<T>):
     fn id(self) -> T
