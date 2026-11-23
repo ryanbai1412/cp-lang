@@ -218,18 +218,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit_escapes();
                 self.compile_fed_body(*id, body);
             }
-            Stmt::For(_, slot, iter, _) if self.feed_acc.is_none() => match quiet_iter(iter) {
-                Some(span) => {
-                    self.traced_loop_var = Some((*slot, span));
-                    self.compile_untraced_stmt(stmt);
-                    self.traced_loop_var = None;
-                    self.emit_trace(TracePoint::LoopEnd(*slot), span);
+            Stmt::For(_, slot, iter, _) if self.feed_acc.is_none() => {
+                match self.traced_quiet_iter(iter) {
+                    Some(span) => {
+                        self.traced_loop_var = Some((*slot, span));
+                        self.compile_untraced_stmt(stmt);
+                        self.traced_loop_var = None;
+                        self.emit_trace(TracePoint::LoopEnd(*slot), span);
+                    }
+                    None => {
+                        self.emit_fallback_stmt(stmt);
+                        self.emit_escapes();
+                    }
                 }
-                None => {
-                    self.emit_fallback_stmt(stmt);
-                    self.emit_escapes();
-                }
-            },
+            }
             Stmt::Expr(e) if self.traced_yield(e).is_some() => {
                 let (acc, place, arg) = self.traced_yield(e).unwrap();
                 let back = match arg.kind {
@@ -345,6 +347,21 @@ impl<'p, 'f> Compiler<'p, 'f> {
             cpl_ir::walk::children(e, &mut |child| children &= self.traced_quiet(child));
         }
         children
+    }
+
+    /// Where a traced `for` reports its variable, when its iterable is
+    /// [`Self::traced_quiet`]: evaluated once before the loop, so a `do`
+    /// in it traces its own lets as a `let` initializer's would.
+    fn traced_quiet_iter(&self, iter: &'p Iter) -> Option<Span> {
+        match iter {
+            Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
+            Iter::Range { lo, hi, step, .. } => (self.traced_quiet(lo)
+                && self.traced_quiet(hi)
+                && step.as_ref().is_none_or(|s| self.traced_quiet(s)))
+            .then_some(lo.span),
+            Iter::RangeVal(e, _) | Iter::Seq(e, _) => self.traced_quiet(e).then_some(e.span),
+            Iter::TreeRange { .. } => None,
+        }
     }
 
     /// Whether each `give` in `stmts` compiles on the VM, so none is left

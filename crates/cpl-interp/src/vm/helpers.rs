@@ -305,18 +305,6 @@ fn root_fields(e: &Expr, root: (bool, usize)) -> Option<Vec<usize>> {
     }
 }
 
-/// Where a traced `for` reports its variable, when its iterable is [`quiet`].
-pub(super) fn quiet_iter(iter: &Iter) -> Option<Span> {
-    match iter {
-        Iter::Walk { .. } => unreachable!("Iter::Walk is expanded before codegen"),
-        Iter::Range { lo, hi, step, .. } => {
-            (quiet(lo) && quiet(hi) && step.as_ref().is_none_or(quiet)).then_some(lo.span)
-        }
-        Iter::RangeVal(e, _) | Iter::Seq(e, _) => quiet(e).then_some(e.span),
-        Iter::TreeRange { .. } => None,
-    }
-}
-
 #[inline(always)]
 pub(super) fn place_root_mut<'a>(
     root: PlaceRoot,
