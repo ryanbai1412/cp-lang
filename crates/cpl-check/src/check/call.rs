@@ -1448,10 +1448,6 @@ impl Checker<'_> {
             return None;
         }
         let ret = catalog_ty(member.ret, &elem)?;
-        // `a[l..r].max()` is `?T`: a slice can be empty (R07.9.3).
-        if matches!(name.text.as_str(), "max" | "min") && self.view_kind(base) == Some("slice") {
-            return Some(Ty::Optional(Box::new(ret)));
-        }
         // A sum of `1..=1e9`s leaves that range, and may not hold its `0`.
         if name.text == "sum" && matches!(ret, Ty::Range { .. }) {
             return Some(ret.widen());

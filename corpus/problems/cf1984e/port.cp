@@ -21,4 +21,4 @@ let greedy = t.reroot(
     (c, _, _) => c,
     (s, _) => (count: s.count + Int(not s.taken), taken: not s.taken),
 )
-print([greedy[r].count - Int(greedy[r].taken) + 1 for r in V if g[r].len == 1].max())
+print([greedy[r].count - Int(greedy[r].taken) + 1 for r in V if g[r].len == 1].max()!)

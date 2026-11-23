@@ -11,7 +11,7 @@ let n: Int = read()
 domain I = 0..n
 let raw: [I]Int = read()
 let a = raw.sorted()
-let sieve = Sieve.new(a.max())
+let sieve = Sieve.new(a.max()!)
 
 fn divisors(x: Int) -> List<Int>:
     var ds = [1]

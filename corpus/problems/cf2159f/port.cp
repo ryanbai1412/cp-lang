@@ -36,7 +36,7 @@ fn push_seg(val: Val, len: Int, cur: Time, end: Time, dir: Int):
     heap.push((val, Seg(val, len, cur, end, dir)))
 
 for len in 1..=n:
-    var v0 = (0..len).map(j => a[0, j]).max()
+    var v0 = (0..len).map(j => a[0, j]).max()!
     var t0 = Time.first!
     while t0 < Time.last!:
         push_seg(v0, len, t0, t0, 1)

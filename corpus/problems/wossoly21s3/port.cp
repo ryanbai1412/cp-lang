@@ -49,7 +49,9 @@ fn walk(from: Cell, to: Cell) -> ?Int:
 
 fn total() -> ?Int:
     var steps = 0
-    for k in 0..4: steps += walk(place['0' + k], place['0' + k + 1])?
+    for k in 0..4:
+        let w = walk(place['0' + k], place['0' + k + 1]) else: return None
+        steps += w
     return steps
 
 print(total() ?? -1)

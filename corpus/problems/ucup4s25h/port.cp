@@ -22,5 +22,5 @@ for i in (0..n).rev:
     if go_right: right.push(i)
     else: left.push(i)
     if i > 0 and s[i] != s[i - 1]: go_right = s[i - 1] > s[i]
-let del = (left.rev + right)[n / 2]
+let del = (List(left.rev) + right)[n / 2]
 print(s[0..del] + s[del + 1..n])

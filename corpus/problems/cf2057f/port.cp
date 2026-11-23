@@ -18,14 +18,14 @@ let a: [Pos]1..=1e9 = read()
 let ks: [q]1..=1e9 = read()
 let window = prefix(a)
 let (C, cuts) = compress(a + [2 * x for x in a])
-let cap = ks.max() + a.max()
+let cap = ks.max()! + a.max()!
 let by_k = (0..q).sorted(by: i => ks[i])
 
 fn raise(l: 1..=31, x: Int) -> Int:
     let y = x - 1
     l + 2 * y - (y >> (l - 1)) - popcount(y & ((1 << (l - 1)) - 1))
 
-var ans: [q]Int = a.max()
+var ans: [q]Int = a.max()!
 for l in 1..=31:
     var saved = IntervalMap<C, ?Int>.new(None)
     let windows = [

@@ -20,7 +20,7 @@ let heights: [n]1..=1000 = read()
 type Ways = [0..=n, 0..=limit, 0..=2]Z
 var ways: Ways = 0
 ways[0, 0, 0] = 1
-var level = heights.min()
+var level = heights.min()!
 for h in heights.sorted():
     var next: Ways = 0
     for g in 0..n:

@@ -30,4 +30,4 @@ repeat n:
     sweep(mut next, Drink.cuts, c => pre[c], end)
     sweep(mut next, Drink.cuts.rev, c => -pre[c], end)
     end = [Cut] p => next[p]!
-print(end!.max())
+print(end!.max()!)
