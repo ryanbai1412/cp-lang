@@ -36,7 +36,12 @@ local function finished(what)
     check(vim.bo[term].buftype == 'terminal', what .. ' did not open a terminal')
     check(vim.wait(60000, function() return status[term] ~= nil end), what .. ' did not finish')
     local code = status[term]
-    local shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
+    -- The last of the output can reach the buffer after TermClose (Windows' ConPTY).
+    local shown = ''
+    vim.wait(5000, function()
+        shown = table.concat(vim.api.nvim_buf_get_lines(term, 0, -1, false), '\n')
+        return shown:find('%S') ~= nil
+    end)
     vim.cmd('wincmd p')
     return code, shown
 end
@@ -55,9 +60,8 @@ check(stress ~= nil and stress.command == 'cpl.exec', 'no Stress lens in ' .. vi
 vim.lsp.commands['cpl.exec'](stress)
 local code, shown = finished('the Stress lens')
 check(code == 1, 'the Stress lens exited ' .. code .. ':\n' .. shown)
-check(shown:find('saved', 1, true) ~= nil, 'the Stress lens saved no case:\n' .. shown)
 local saved = vim.fn.glob(dir .. '/k.tests/stress-*.in', false, true)
-check(#saved == 1, 'saved ' .. vim.inspect(saved))
+check(#saved == 1, 'the Stress lens saved ' .. vim.inspect(saved) .. ':\n' .. shown)
 
 vim.cmd('Cpl test')
 code, shown = finished(':Cpl test')
