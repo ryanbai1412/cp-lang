@@ -18,10 +18,9 @@ Runs the solution and a brute on random inputs made from the file's
 `read()` types, stops at the first case they disagree on, shrinks it, and
 saves it to <file>.tests/ as a regression test.
 
-The brute, the checker and the interactor are the file's own `@brute(main)`
-(or `@alt(program)`), `@checker` (or `@check`) and `@interactor` fns unless
-an option names a program: a .cpp file (built with g++), a .py file, or an
-executable.
+The brute, the checker and the interactor are the file's own
+`@alt(program)`, `@check` and `@interactor` fns unless an option names a
+program: a .cpp file (built with g++), a .py file, or an executable.
 
 options:
   --brute PROG       the slow, obviously right solution to compare with
@@ -38,8 +37,8 @@ options:
   --trace            on a failure, run the solution and the brute on the
                      shrunk case in the debug interpreter and save the two
                      traces side by side as <file>.tests/stress-<seed>.trace.html
-                     (the solution's alone, when a `@checker` is the judge)
-  --explain          on a failure, run the solution and its `@brute(main)` on
+                     (the solution's alone, when a `@check` is the judge)
+  --explain          on a failure, run the solution and its `@alt(program)` fn on
                      the shrunk case in the debug interpreter and name the
                      first value they give a variable differently, with its line
   --format json      print the result as JSON, for an editor
@@ -66,7 +65,7 @@ pub struct Traced {
     pub divergence: Option<cpl_interp::trace::Divergence>,
 }
 
-/// Runs a `.cp` file and its `@brute(main)` on an input in the debug
+/// Runs a `.cp` file and its `@alt(program)` fn on an input in the debug
 /// interpreter. `cpl` passes its own; this crate does not link one.
 /// The `bool` asks for [`Traced::divergence`].
 pub type Tracer<'a> = &'a dyn Fn(&Path, &str, bool) -> Result<Traced, String>;
@@ -416,7 +415,7 @@ pub fn run_with(
         Ok(judge) => judge,
         Err(message) => return fail(message),
     };
-    // The file's own `@brute(main)`, unless `--brute` names another.
+    // The file's own `@alt(program)`, unless `--brute` names another.
     let own_brute = match (&args.brute, args.file.extension().and_then(|e| e.to_str())) {
         (None, Some("cp")) => {
             let mut db = cpl_check::Database::new();
@@ -477,7 +476,7 @@ pub fn run_with(
         && judge == Judge::Tokens
     {
         return fail(format!(
-            "there is nothing to compare {name} with: write a `@brute(main) fn` in it, pass `--brute <program>`, or give it a `@checker` or an `@interactor` that can judge an output on its own"
+            "there is nothing to compare {name} with: write an `@alt(program)` fn in it, pass `--brute <program>`, or give it a `@check` or an `@interactor` that can judge an output on its own"
         ));
     }
     // The file's own `@gen` fn, unless `--gen` names another.
@@ -591,7 +590,7 @@ pub fn run_with(
         }
         (Some(_), Some(Err(why))) if args.explain => Some(Err(why.clone())),
         (Some(_), _) if args.explain => Some(Err(
-            "`--explain` runs the file against its own `@brute(main)` fn".to_string(),
+            "`--explain` runs the file against its own `@alt(program)` fn".to_string(),
         )),
         _ => None,
     };
@@ -615,7 +614,7 @@ pub fn run_with(
         (true, Some(_), None) => {
             trace_note = Some(match &traced {
                 Some(Err(why)) => format!("no trace: {why}"),
-                _ => "no trace: `--trace` runs the file itself, against its own `@brute(main)` fn or under its own `@checker`".to_string(),
+                _ => "no trace: `--trace` runs the file itself, against its own `@alt(program)` fn or under its own `@check`".to_string(),
             });
             None
         }

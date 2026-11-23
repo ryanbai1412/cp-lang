@@ -55,7 +55,7 @@ impl Verdict {
     }
 }
 
-/// A `@checker` or `@interactor` a source file declares.
+/// A `@check` or `@interactor` a source file declares.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Declared {
     /// `checker` or `interactor`.

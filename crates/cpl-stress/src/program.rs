@@ -290,7 +290,7 @@ fn emit_cpp(
         Part::Solution => cpl_ir::lower(&analysis),
         Part::ColdCache => cpl_ir::lower_cold_cache(&analysis),
         Part::Brute => {
-            let (brute_fn, _) = cpl_ir::brute(&analysis).ok_or_else(|| missing("@brute(main)"))?;
+            let (brute_fn, _) = cpl_ir::brute(&analysis).ok_or_else(|| missing("@alt(program)"))?;
             cpl_ir::lower_brute(&analysis, &brute_fn)
         }
         Part::Gen(size) => {
@@ -406,7 +406,7 @@ impl Program {
         })
     }
 
-    /// The `@brute(main)` fn of the `.cp` file `path`, built like the
+    /// The `@alt(program)` fn of the `.cp` file `path`, built like the
     /// solution: the file's input header, then the fn.
     pub fn resolve_brute(path: &Path, fn_name: &str) -> Result<Program, BuildError> {
         Ok(Program {
