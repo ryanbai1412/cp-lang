@@ -12,7 +12,7 @@ domain V = 1..=n
 let a: [I]V = read()
 let b: [I]V = read()
 let pos_a = a.inverse()
-let t = PermTree.of([I] i => pos_a[b[I(n - 1 - i.ord)]])
+let t = PermTree.new([I] i => pos_a[b[I(n - 1 - i.ord)]])
 
 fn depth<Node>(v: Node) -> Int:
     if t.kind[v] == PermKind.Leaf: return 1
