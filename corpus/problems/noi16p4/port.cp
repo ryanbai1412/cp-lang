@@ -11,7 +11,8 @@ fn short() -> Span:  // few coordinates, so intervals pile up
     let l = rand(0, 8)
     (l, l + rand(0, 5))
 fn tangle() -> [I]Span: [I] _ => short()
-let given: [I]Span = read(gen: tangle) where all(s.l <= s.r for s in given)
+let given: [I]Span = read(gen: tangle)
+assert all(s.l <= s.r for s in given)
 fn length(s: Span) -> Int: s.r - s.l
 let spans = given.sorted(by: s => length(s))
 
@@ -20,17 +21,17 @@ for s in spans:
     ends.push(s.l)
     ends.push(s.r)
 let (X, coord) = compress(ends)
-var depth = AddMax<X>()
+var depth = SegTree<X, Int, Int>(max, fill: 0, act: add)
 fn cover(s: Span, times: Int):
-    depth.add(coord.first_ge(s.l)!, coord.first_ge(s.r)!, times)
+    depth.apply(coord.first_ge(s.l)!..=coord.first_ge(s.r)!, times)
 
 var best: ?Int = None
 var taken = 0  // the window is spans[i..taken]
 for i in 0..n:
-    while taken < n and depth.max() < m:
+    while taken < n and depth.fold(X.all) < m:
         cover(spans[taken], 1)
         taken += 1
-    if depth.max() >= m:
+    if depth.fold(X.all) >= m:
         best min= length(spans[taken - 1]) - length(spans[i])
     cover(spans[i], -1)
 print(best ?? -1)

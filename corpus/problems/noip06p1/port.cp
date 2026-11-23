@@ -13,5 +13,5 @@ fn best(i: Bead, len: 1..=n) -> Int =
     [best(i, k) + best(
             Bead.wrap(i.ord + k),
             len - k,
-        ) + mark[i] * mark[Bead.wrap(i.ord + k)] * mark[Bead.wrap(i.ord + len)] for k in 1..len].max()! ?? 0
+        ) + mark[i] * mark[Bead.wrap(i.ord + k)] * mark[Bead.wrap(i.ord + len)] for k in 1..len].max() ?? 0
 print([best(i, n) for i in Bead].max()!)

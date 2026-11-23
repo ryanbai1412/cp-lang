@@ -29,7 +29,7 @@ for (u, v, cost) in roads.sorted_by(.cost):
 type Top = (hi: Int, lo: Int)
 fn both(a: Top, b: Top) -> Top:
     let hi = max(a.hi, b.hi)
-    (hi, [x for x in [a.hi, a.lo, b.hi, b.lo] if x < hi].max()! ?? 0)
+    (hi, [x for x in [a.hi, a.lo, b.hi, b.lo] if x < hi].max() ?? 0)
 
 if kept.len < n - 1:
     print(-1)
