@@ -109,7 +109,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Trace, debugger and explain output is specified | tool features with no rule id | `missing` | — |
 | The same source behaves the same on Linux, macOS and Windows (CRLF source and input, paths) | platform cases passing on all three | hand suite; `missing` on macOS and Windows runners | `spec/conformance/core-01/` |
 | Known gaps get fixed, not just listed | known-gap cases; age of the oldest; entries in `sig-gaps.txt` and `prelude-gaps.txt` | ratchet: lists only shrink; `missing`: an age report per owner | `spec/SUBSET.md`, `spec/conformance/*-gaps.txt` |
-| A known-gap case fails for the reason it names | known-gap cases whose current error isn't the gap's subject (a wrong `at N`, a misused API) | `missing` | — |
+| A known-gap case fails for the reason it names | known-gap cases whose current error isn't the gap's subject (a wrong `at N`, a misused API) | check: a failure with the case's own expected code means a wrong `at N` or `has:`; an E0606 on a printed `?T` means a missing `!` | `scripts/conformance-gaps.py` |
 | The suite is deterministic | cases that pass and fail on the same build | per-case `// timeout:`; `missing`: a flake report | `crates/cpl-conform/tests/timeout.rs` |
 | Cross-references in the spec resolve | `(see Rnn.n.n)` naming no rule; links to missing files | `missing` for chapter text; `cpl-conform --rules` covers cases only | — |
 | The spec says what changed between versions | normative changes with no changelog line | `missing` | — |
@@ -126,8 +126,8 @@ In order of what a user would feel:
    worst failure a contestant can hit.
 2. Metamorphic transforms over every passing case: these turn each of the
    2300 cases into many parity and front-end tests.
-3. A known-gap case fails for the reason it names: a wrong case hides a
-   real bug until the gap closes.
+3. A known-gap case fails for the reason it names: the first two patterns
+   are checked; extend them as new kinds of wrong case turn up.
 4. The sanitized `cpl-conform diff` as a scheduled job.
 5. Chapter vs `std` contradictions: return types and the existence of named
    items, not just named arguments.
