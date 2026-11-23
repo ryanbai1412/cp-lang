@@ -16,7 +16,7 @@ struct Node:
 
 @!multitest
 let n: 1..=5000 = read()
-var x = [i for i in 0..n]
+var x = (0..n).collect()
 var nodes = [Node(i..i + 1, None) for i in 0..n]
 
 fn ask() -> Int:

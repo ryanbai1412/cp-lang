@@ -41,7 +41,7 @@ fn has(v: Val, lo: Pos.bounds, hi: Pos.bounds) -> Bool:
 
 var copies: [Val]Copies = Copies.Both
 var (lo, hi) = (Pos.bounds.first!, Pos.bounds.last!)
-var alive = [v for v in Val]
+var alive = Val.collect()
 
 while alive.len > 1:
     let mid = Pos.cuts.nth((lo.ord + hi.ord) / 2)

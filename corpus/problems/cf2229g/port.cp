@@ -35,8 +35,8 @@ fn records(path: List<Pos>) -> List<House>:
     out
 
 let side: [Side]List<House> = [Side] s => match s:
-    Left => records([p for p in (Pos.first!..=x).rev])
-    Right => records([p for p in x..=Pos.last!])
+    Left => records((Pos.first!..=x).rev.collect())
+    Right => records((x..=Pos.last!).collect())
 let order = merge_sorted(
     [(h.v, Side.Left, i) for (i, h) in side[Side.Left].items if i > 0],
     [(h.v, Side.Right, i) for (i, h) in side[Side.Right].items if i > 0],

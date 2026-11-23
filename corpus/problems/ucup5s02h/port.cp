@@ -116,8 +116,8 @@ while not C.all(i => colour.same(node_of(i), node_of(C.first!))):
                 let wins = if let cur = best[cc]: weaker_gap(cand, cur.gap) else: true
                 if wins: best[cc] = Some((cand, i, j!))
             for node in path: hulls[node].add(Pt(x, pts[i].q, i.ord))
-    sweep([i for i in C], 1)
-    sweep([i for i in C.rev], -1)
+    sweep(C.collect(), 1)
+    sweep(C.rev.collect(), -1)
     for e in best if let edge = e: link(edge.i, edge.j)
 
 var weakest: ?(num: Int, den: Int) = None

@@ -16,13 +16,13 @@ fn plan() -> ?List<(Elf, Elf)>:
     if 2 * m > n: return None
     if m >= 1:
         let k = n - 2 * m
-        return [p for p in ord[..=k].adjacent] + [
+        return ord[..=k].adjacent.collect() + [
             (ord[n - 1 - i], ord[n - m - 1 - i]) for i in 0..m
         ]
     let top = ord.last!
     let pref = prefix(ord.map(e => attack[e]))
     let s = (0..n - 1).last_true(k => pref.fold(k..n - 1) >= attack[top]) ?? return None
-    [p for p in ord[..=s].adjacent] + [(e, top) for e in ord[s..n - 1].rev]
+    ord[..=s].adjacent.collect() + [(e, top) for e in ord[s..n - 1].rev]
 
 let moves = plan() ?? return print(-1)
 print(moves.len)

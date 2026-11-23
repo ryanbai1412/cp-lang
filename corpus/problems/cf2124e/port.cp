@@ -15,7 +15,7 @@ let a: [I]Int = read()
 let tot = a.sum()
 let half = tot / 2
 let pref = prefix(a)
-let mid = [i for i in I].find(i => pref.prefix(i.r) >= half)!
+let mid = I.find(i => pref.prefix(i.r) >= half)!
 let cur = pref.prefix(mid.r)
 
 if tot % 2 == 1 or a[mid] > half:

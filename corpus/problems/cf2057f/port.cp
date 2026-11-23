@@ -35,7 +35,7 @@ for l in 1..=31:
         let end = if let p = s.prev: cuts.at(2 * a[p]).l else: C.last!.r
         saved.assign(cuts.at(a[s]).l..end, Some(total))
     var waiting = by_k.clone()
-    for (r, opt) in [x for x in saved.each()].rev:
+    for (r, opt) in saved.each().collect().rev:
         if let best = opt:
             let lo = (cuts[r.first!] << (l - 1)) + 1
             let hi = if let nxt = r.last!.next: min(cap, cuts[nxt] << (l - 1)) else: cap

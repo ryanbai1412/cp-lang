@@ -36,7 +36,7 @@ fn join(a: Int, b: Int, is_max: Bool) -> Int:
     gates.len - 1
 
 fn solve(l: Int, r: Int, is_max: Bool, known_m: ?Int) -> List<Int>:
-    if r - l <= 1: return [i for i in l..r]
+    if r - l <= 1: return (l..r).collect()
     let m = known_m ?? probe()
 
     x[l..=m].rotate_left(1)

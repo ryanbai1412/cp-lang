@@ -14,7 +14,7 @@ domain V = 1..=n
 fn reflect(i: Int) -> Int = n - 1 - i
 
 fn greedy_picks(xs: [0..n]1..=n) -> List<Int>:
-    var free = SortedSet<V>.of([v for v in V])
+    var free = SortedSet<V>.of(V.collect())
     var picks: List<Int> = []
     for (i, x) in xs.items:
         if let v = free.range(..=V(x)).last:
