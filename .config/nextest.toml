@@ -1,3 +1,8 @@
+# A hung test ends as a named TIMEOUT after 4 min instead of holding its
+# shard to the job cap (the slowest healthy test takes about 70 s; ci/R28).
+[profile.default]
+slow-timeout = { period = "60s", terminate-after = 4 }
+
 # Start the longest tests first so none of them begins near the end of the
 # run and becomes its tail. Ordered by measured wall time on the fast gate.
 [[profile.default.overrides]]

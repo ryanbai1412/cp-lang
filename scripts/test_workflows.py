@@ -54,6 +54,13 @@ class WorkflowTest(unittest.TestCase):
             ci = f.read()
         self.assertRegex(ci, r"if: matrix.part == 'conform:corpus\+docs'\n\s+with:\n\s+path: target/corpus-tests")
 
+    def test_a_hung_test_is_terminated_before_its_shard_times_out(self):
+        with open(os.path.join(ROOT, ".config", "nextest.toml"), encoding="utf-8") as f:
+            m = re.search(r'slow-timeout = \{ period = "(\d+)s", terminate-after = (\d+) \}', f.read())
+        self.assertTrue(m, ".config/nextest.toml needs a default slow-timeout with terminate-after")
+        # With --retries 1 a hung test runs twice; both must end inside the 12-min gate step.
+        self.assertLess(2 * int(m.group(1)) * int(m.group(2)), 12 * 60)
+
     def test_site_selection_skips_superseded_runs(self):
         # Superseded ci runs end `cancelled` ~100 times an hour and ran no job;
         # scanning each one spent the repo's API rate limit (ci/R25).
