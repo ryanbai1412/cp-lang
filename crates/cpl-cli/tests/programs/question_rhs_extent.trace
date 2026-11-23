@@ -1,0 +1,10 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"o":{"name":"o","type":"?Int","kind":"scalar"},"w":{"name":"w","type":"?Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":6,"label":"let n = read\u003cInt>()","stage":"main","values":{"stdout":[],"n":8},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":1,"line":7,"label":"let o: ?Int = if n > 0: Some(n) else: None","stage":"main","values":{"stdout":[],"n":8,"o":8},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":2,"line":8,"label":"var w: ?Int = None","stage":"main","values":{"stdout":[],"n":8,"o":8,"w":null},"locals":{},"frames":[{"fn":"main","line":8}]},
+{"id":3,"line":9,"label":"w = (o? * 3)","stage":"main","values":{"stdout":[],"n":8,"o":8,"w":24},"locals":{},"frames":[{"fn":"main","line":9}]},
+{"id":4,"line":2,"label":"let v = o? / 2","stage":"main","values":{"stdout":[],"n":8,"o":8,"w":24},"locals":{"o":8,"v":4},"frames":[{"fn":"half","line":2},{"fn":"main","line":10}]},
+{"id":5,"line":10,"label":"print → 4 -1 24 9","stage":"main","values":{"stdout":["4 -1 24 9"],"n":8,"o":8,"w":24},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":10}]},
+{"id":6,"line":2,"label":"let v = o? / 2","stage":"main","values":{"stdout":["4 -1 24 9"],"n":8,"o":8,"w":24},"locals":{"o":null,"v":null},"frames":[{"fn":"half","line":2},{"fn":"main","line":11}]},
+{"id":7,"line":11,"label":"print → -1 9","stage":"main","values":{"stdout":["4 -1 24 9","-1 9"],"n":8,"o":8,"w":24},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":11}]},
+{"id":8,"line":11,"label":"the program ended","stage":"main","values":{"stdout":["4 -1 24 9","-1 9"],"n":8,"o":8,"w":24},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":11}]}]}}}
+stderr:

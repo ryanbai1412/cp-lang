@@ -64,7 +64,7 @@ impl<'a> Checker<'a> {
 
     /// R06.4.8: dropping what one of the file's fns returns is W0101
     /// unless the fn is `@droppable`.
-    fn dropped_result(&mut self, expr: &Expr) {
+    pub(super) fn dropped_result(&mut self, expr: &Expr) {
         let ExprKind::Call { callee, .. } = &expr.kind else {
             return;
         };
@@ -747,27 +747,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    fn stmt(&mut self, stmt: &Stmt, top_level: bool) -> Ty {
-        if top_level {
-            if let StmtKind::Expr(expr) = &stmt.kind {
-                self.dropped_result(expr);
-            }
-        }
-        if let StmtKind::Expr(expr) = &stmt.kind {
-            if let ExprKind::Try(inner) = &expr.kind {
-                let message = format!(
-                    "the result of `{}` is dropped: `?` makes its expression `None`, it never returns early",
-                    self.quote(expr.span)
-                );
-                let help = format!(
-                    "to leave on `None`, bind it: `let v = {} else: return None` (R02.4.7)",
-                    self.quote(inner.span)
-                );
-                if let Some(diag) = self.error(codes::DROPPED_QUESTION, expr.span, message) {
-                    diag.help = Some(help);
-                }
-            }
-        }
+    pub(super) fn stmt_body(&mut self, stmt: &Stmt, top_level: bool) -> Ty {
         // A statement is straight-line code again, whatever it is inside;
         // an `if` or `match` standing as a statement is one too.
         let branch = match &stmt.kind {

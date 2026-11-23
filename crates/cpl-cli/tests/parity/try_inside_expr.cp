@@ -1,9 +1,11 @@
 fn f(m: Map<Int, Int>, k: Int) -> ?Int:
-    let v = k + m.get(k)? * 2
-    Some(v + m.get(v)?)
+    let v = k + m.get(k) * 2 else: return None
+    v + m.get(v)?
 fn g(xs: List<?Int>) -> ?Int:
     var s = 0
-    for x in xs: s += 1 + x?
+    for x in xs:
+        let y = x else: return None
+        s += 1 + y
     Some(s)
 fn h(a: ?Int, b: ?Int) -> ?Int = Some(a? + b?)
 fn side(x: Int) -> Int:
@@ -20,7 +22,8 @@ print(order(Some(5)) ?? -1, order(None) ?? -1)
 fn walk(line: Str, on_foot: [0..26]?Int) -> ?Int:
     var total = 0
     for i in 0..line.len:
-        total += i + on_foot[line[i].ord - 'a'.ord]?
+        let foot = on_foot[line[i].ord - 'a'.ord] else: return None
+        total += i + foot
     Some(total)
 var of: [0..26]?Int = None
 of[0] = Some(3)

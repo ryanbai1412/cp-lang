@@ -32,7 +32,10 @@ impl<'a> Lowerer<'a> {
     pub(super) fn expr(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
         // Library code that this expression asks for reports here.
         let outer = self.asked_at.enter(e.span.shift(self.offset), self.cur_mod);
-        let lowered = self.expr_of(e, hint);
+        let lowered = match self.cx.rhs_extent.take_if(|at| *at == e.span) {
+            Some(_) => self.try_extent(e, e.span),
+            None => self.expr_of(e, hint),
+        };
         self.asked_at.leave(outer);
         lowered
     }

@@ -91,6 +91,29 @@ pub struct Stmt {
     pub public: bool,
 }
 
+impl Stmt {
+    /// The right-hand side of `let`, an assignment or `return` when a `?` in
+    /// it has the whole side as its extent: that side is the optional, never
+    /// a way out of the fn. (R02.4.7)
+    pub fn rhs_extent(&self) -> Option<Span> {
+        let rhs = match &self.kind {
+            StmtKind::Let {
+                init: Some(e),
+                otherwise: None,
+                ..
+            }
+            | StmtKind::Assign { value: e, .. }
+            | StmtKind::Return(Some(e)) => e,
+            _ => return None,
+        };
+        let mut e = rhs;
+        while let ExprKind::Paren(inner) = &e.kind {
+            e = inner;
+        }
+        rhs.bare_try().map(|_| e.span)
+    }
+}
+
 /// `T: Ord + Bounded`, from a type parameter list or a `where` clause.
 #[derive(Clone, PartialEq, Debug)]
 pub struct Bound {
@@ -373,6 +396,34 @@ pub struct Expr {
 }
 
 impl Expr {
+    /// The first `?` whose extent is this expression's: operators, calls,
+    /// fields and indexing reach it; `??` and lambdas are extents of their
+    /// own. (R02.4.7)
+    pub fn bare_try(&self) -> Option<Span> {
+        match &self.kind {
+            ExprKind::Try(_) => Some(self.span),
+            ExprKind::Binary {
+                op: BinOp::Coalesce,
+                ..
+            } => None,
+            ExprKind::Binary { lhs, rhs, .. } => lhs.bare_try().or_else(|| rhs.bare_try()),
+            ExprKind::Compare { first, rest } => first
+                .bare_try()
+                .or_else(|| rest.iter().find_map(|(_, rhs)| rhs.bare_try())),
+            ExprKind::Unary { expr: operand, .. }
+            | ExprKind::Paren(operand)
+            | ExprKind::Unwrap(operand)
+            | ExprKind::Field { base: operand, .. } => operand.bare_try(),
+            ExprKind::Call { callee, args } => callee
+                .bare_try()
+                .or_else(|| args.iter().find_map(|a| a.value.bare_try())),
+            ExprKind::Index { base, indices } => base
+                .bare_try()
+                .or_else(|| indices.iter().find_map(Expr::bare_try)),
+            _ => None,
+        }
+    }
+
     /// `[x for x in base]`: the walk of the domain `base` names, as a list.
     pub fn walk_list(base: &Expr) -> Expr {
         let span = base.span;

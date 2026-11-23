@@ -16,7 +16,10 @@ impl<'a> Checker<'a> {
         // uses its place: a conflict with a live lend is reported once
         // its parts are known.
         let uses_place = self.enter_place(expr);
-        let ty = self.infer_kind(expr);
+        let mut ty = self.infer_kind(expr);
+        if self.rhs_extent == Some(expr.span) && !ty.is_vague() && !matches!(ty, Ty::Optional(_)) {
+            ty = Ty::Optional(Box::new(ty)); // the extent of its `?` (R02.4.7)
+        }
         if uses_place {
             self.check_access(expr, false);
         }
@@ -1054,7 +1057,7 @@ impl<'a> Checker<'a> {
                 let in_opt_fn =
                     matches!(self.fns.last().map(|(_, r, _, _)| r), Some(Ty::Optional(_)));
                 if !in_opt_fn {
-                    if let Some(try_span) = Self::find_bare_try(expr) {
+                    if let Some(try_span) = expr.bare_try() {
                         let message =
                             "`?` cannot be used directly in a condition; write `(... ?? false)`"
                                 .to_string();
@@ -1079,7 +1082,7 @@ impl<'a> Checker<'a> {
                 let in_opt_fn =
                     matches!(self.fns.last().map(|(_, r, _, _)| r), Some(Ty::Optional(_)));
                 if !in_opt_fn {
-                    if let Some(try_span) = Self::find_bare_try(test) {
+                    if let Some(try_span) = test.bare_try() {
                         let message =
                             "`?` cannot be used directly in a condition; write `(... ?? false)`"
                                 .to_string();
@@ -1109,31 +1112,6 @@ impl<'a> Checker<'a> {
                     self.cond(and);
                 }
             }
-        }
-    }
-
-    fn find_bare_try(expr: &Expr) -> Option<Span> {
-        match &expr.kind {
-            ExprKind::Try(_) => Some(expr.span),
-            ExprKind::Binary {
-                op: BinOp::Coalesce,
-                ..
-            } => None,
-            ExprKind::Binary { lhs, rhs, .. } => {
-                Self::find_bare_try(lhs).or_else(|| Self::find_bare_try(rhs))
-            }
-            ExprKind::Compare { first, rest } => Self::find_bare_try(first)
-                .or_else(|| rest.iter().find_map(|(_, rhs)| Self::find_bare_try(rhs))),
-            ExprKind::Unary { expr: operand, .. }
-            | ExprKind::Paren(operand)
-            | ExprKind::Unwrap(operand)
-            | ExprKind::Field { base: operand, .. } => Self::find_bare_try(operand),
-            ExprKind::Call { callee, args } => Self::find_bare_try(callee)
-                .or_else(|| args.iter().find_map(|a| Self::find_bare_try(&a.value))),
-            ExprKind::Index { base, indices } => {
-                Self::find_bare_try(base).or_else(|| indices.iter().find_map(Self::find_bare_try))
-            }
-            _ => None,
         }
     }
 

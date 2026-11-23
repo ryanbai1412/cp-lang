@@ -646,6 +646,8 @@ struct FnCx {
     /// The loop a `?` leaves when it is inside the left side of `??`
     /// instead of leaving the fn.
     try_extent: Option<LoopId>,
+    /// The statement right-hand side that is the extent of its `?`s.
+    rhs_extent: Option<Span>,
     /// The `x ?? return` that is the whole right side of the statement
     /// being lowered, and the test it puts ahead of that statement.
     way_out: Option<Span>,

@@ -18,6 +18,7 @@ mod library_domain;
 mod moves;
 mod mut_args;
 mod pattern;
+mod question;
 mod spelling;
 mod steps;
 mod stmt;
@@ -164,6 +165,8 @@ pub(crate) struct Checker<'a> {
     branch: u32,
     /// The `if` or `match` that is a statement of its own, not a value.
     plain_if: Option<Span>,
+    /// The statement right-hand side that is the extent of its `?`s.
+    rhs_extent: Option<Span>,
     /// What `Self` is: the struct, enum or impl target whose body this is.
     self_ty: Option<Ty>,
     /// What is lent and what is known, for the exclusivity of lends.
@@ -244,6 +247,7 @@ impl<'a> Checker<'a> {
             in_fn: 0,
             branch: 0,
             plain_if: None,
+            rhs_extent: None,
             self_ty: None,
             lends: lends::Lends::default(),
             expected_bounds_range: false,
