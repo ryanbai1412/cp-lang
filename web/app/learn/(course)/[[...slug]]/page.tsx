@@ -3,6 +3,7 @@ import defaultMdxComponents from 'fumadocs-ui/mdx';
 import { DocsBody, DocsDescription, DocsPage, DocsTitle } from 'fumadocs-ui/layouts/notebook/page';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
+import { LiveCode } from '@/components/live-code';
 import { Judge } from '@/components/judge';
 import { Runner } from '@/components/runner';
 import { learnSource } from '@/lib/source';
@@ -19,7 +20,7 @@ export default async function Page({ params }: Props) {
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
-        <MDX components={{ ...defaultMdxComponents, Card, Cards, Runner, Judge }} />
+        <MDX components={{ ...defaultMdxComponents, Card, Cards, LiveCode, Runner, Judge }} />
       </DocsBody>
     </DocsPage>
   );

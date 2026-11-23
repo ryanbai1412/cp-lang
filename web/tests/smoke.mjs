@@ -49,6 +49,20 @@ await page.goto(base + '/play');
 await page.getByRole('button', { name: 'Run' }).click();
 await page.getByRole('status').filter({ hasText: '115' }).waitFor({ timeout: 30000 });
 console.log('play run output ok');
+wasm = 0;
+await page.goto(base + '/docs/guides/tour', { waitUntil: 'networkidle' });
+if (wasm) {
+  console.error('the tour fetched cpl.wasm before a Run');
+  process.exit(1);
+}
+await page.locator('.live-code').getByRole('button', { name: 'Run' }).first().click();
+const live = page.locator('.live-code [role=status]').first();
+await live.filter({ hasNotText: 'Loading' }).waitFor({ timeout: 30000 });
+if (!(await live.innerText()).trim() || (await live.getAttribute('class')).includes('text-destructive')) {
+  console.error('tour run:', JSON.stringify(await live.innerText()));
+  process.exit(1);
+}
+console.log('a guide block runs in place, wasm loaded on Run:', JSON.stringify(await live.innerText()));
 for (const [query, url] of [['Monoid', '/docs/ref/std/algebra'], ['borrow it', '/docs/guides/borrowing'], ['last_true', '/docs/ref/core/04-indices']]) {
   await page.goto(base + '/docs/guides/tour');
   await page.getByRole('button', { name: /^Search/ }).first().click();

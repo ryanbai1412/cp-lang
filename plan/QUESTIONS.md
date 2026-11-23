@@ -54,7 +54,7 @@ Meanwhile: (c).
 Options: (a) static highlighted blocks, as today (`web/content/docs/guides/tour.mdx`); (b) every block with status `runs` gets a compact Run and "Open in playground"; (c) only on Learn pages.
 Recommendation: (b). The gate already proves which blocks run; Run turns reading into checking, which is the docs-only bar.
 How to reverse it: one MDX component mapping in `web/components/`.
-Meanwhile: (b), behind the same gate status as the landing.
+Meanwhile: (b), built: `remarkLive` in `web/source.config.ts` wraps each fence the gate measured `runs` in `web/components/live-code.tsx`.
 
 ### site: Learn for v0.3, breadth or depth?
 Options: (a) 8 short chapters + 15 original judged problems covering a Div 2 A-C (today 3 chapters, 7 problems in `web/content/learn/read/`, `web/content/practice/`); (b) a full course to Div 1 topics; (c) freeze Learn and put the effort into guides and reference.

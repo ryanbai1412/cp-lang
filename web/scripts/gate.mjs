@@ -9,7 +9,9 @@
 // everything a visitor can run is covered. Writes .gate/status.json and
 // .gate/report.md (the run/check split per page, and why each check-only
 // snippet does not run), and fails when a snippet is below its declared
-// status. Fragments without input only need to build.
+// status. Fragments without input only need to build; `ran` says whether a
+// fence prints something when run (with empty input if it has none), which is
+// what gives it a Run button.
 import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
@@ -111,7 +113,10 @@ for (const s of snippets) {
     status = 'checks';
     note = run.status === 0 && build.status === 0 ? `output ${JSON.stringify(run.stdout)} != expected` : first(build.status === 0 ? run : build);
   }
-  results[s.id] = { status, declared: s.declared, ...(status === 'runs' ? {} : { note }) };
+  // A fence the gate only built runs live on the page only if it also runs with no input.
+  const live = status === 'runs' && (run !== build ? run : sh(['run', file], ''));
+  const ran = Boolean(live && live.status === 0 && live.stdout.trim());
+  results[s.id] = { status, declared: s.declared, ...(status === 'runs' ? { ran } : { note }) };
   if (rank[status] < rank[s.declared]) {
     failed++;
     console.error(`gate: ${s.id} is ${status}, declared ${s.declared}: ${note}`);

@@ -24,6 +24,7 @@ A static site plus one Worker. `next build` (Next.js App Router, `output: 'expor
 | `web/app/llms.txt/`, `web/app/llms-full.txt/`, `web/lib/llms.ts` | Docs for models: index and one-file bundle |
 | `web/app/api/search/` | Static search index (Fumadocs) |
 | `web/components/runner.tsx` | The one interactive program surface: Run, Trace, Stress, C++, stdin/stdout, share |
+| `web/components/live-code.tsx`, `remarkLive` in `web/source.config.ts` | Guide fences the gate measured `runs` keep their highlighted block and gain "Open in playground", plus Run when the gate's `ran` says they print something (`.gate/status.json`); WASM loads on the first Run |
 | `web/components/editor/` | CodeMirror editor, CP Lang language mode, live diagnostics |
 | `web/components/exercise.tsx`, `judge.tsx` | Practice problem UI and in-browser judging against tests |
 | `web/components/ui/` | shadcn/ui primitives |

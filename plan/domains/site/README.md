@@ -94,5 +94,5 @@ More: [learn](screenshots/learn.jpg), [practice](screenshots/practice.jpg), [pla
 Filed in [plan/QUESTIONS.md](../../QUESTIONS.md); the default is what I build meanwhile.
 
 1. **Landing examples that don't run yet.** Default: lead each landing tab group with runnable programs; spec-only ones stay as later tabs with the "0.3 spec" badge. Applied (reversible, `runsFirst` in `web/lib/landing.ts`): every landing tab group now opens on a program that runs.
-2. **Guide code blocks become live runners.** Default: yes, for blocks whose status is `runs`.
+2. **Guide code blocks become live runners.** Default: yes, for blocks whose status is `runs`. Applied (reversible: drop `remarkLive` from `web/source.config.ts`): every guide block that runs has "Open in playground"; the 79 that print something also have Run ([screenshot](screenshots/guide-runner.jpg)).
 3. **Learn for v0.3: breadth or depth.** Default: 8 short chapters + 15 original problems, not a full course.
