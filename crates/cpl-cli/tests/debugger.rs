@@ -307,11 +307,15 @@ fn stress_explain_names_the_first_value_the_solution_and_brute_give_differently(
     );
     assert!(report.contains("solution s = 4 at line 6"), "{report}");
     assert!(report.contains("brute    s = 2 at line 12"), "{report}");
+    assert!(
+        report.contains("look at line 6: `s`, which line 7 prints, last changed here, to 4"),
+        "{report}"
+    );
     let out = cpl(&args(true), b"");
     let report = text(&out.stdout);
     assert!(
         report.contains(
-            "\"explain\":{\"divergence\":{\"name\":\"s\",\"nth\":2,\"call\":false,\"fast\":{\"line\":6,\"value\":\"4\"},\"brute\":{\"line\":12,\"value\":\"2\"}}}"
+            "\"explain\":{\"divergence\":{\"name\":\"s\",\"nth\":2,\"call\":false,\"fast\":{\"line\":6,\"value\":\"4\"},\"brute\":{\"line\":12,\"value\":\"2\"},\"blame\":[{\"line\":6,\"why\":\"`s`, which line 7 prints, last changed here, to 4\"}]}}"
         ),
         "{report}"
     );

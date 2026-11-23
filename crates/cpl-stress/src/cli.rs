@@ -354,12 +354,12 @@ pub fn divergence_json(d: &Divergence) -> String {
             .collect();
         format!(",\"blame\":[{}]", lines.join(","))
     };
+    let stuck = if d.stuck { ",\"stuck\":true" } else { "" };
     format!(
-        "{{\"name\":{},\"nth\":{},\"call\":{},\"stuck\":{},\"fast\":{},\"brute\":{}{inside}{blame}}}",
+        "{{\"name\":{},\"nth\":{},\"call\":{}{stuck},\"fast\":{},\"brute\":{}{inside}{blame}}}",
         json_string(&d.name),
         d.nth,
         d.call,
-        d.stuck,
         side(&d.fast),
         side(&d.brute),
     )
