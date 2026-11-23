@@ -183,8 +183,7 @@ impl<'p> Emitter<'p> {
             return Vec::new();
         }
         let (stored, every, every_grid) = (scan.stored, scan.every, scan.every_grid);
-        let fixed = |e: &Expr| bound(e, &stored);
-        if stored.contains(&(false, slot)) || !fixed(lo) || !fixed(hi) {
+        if stored.contains(&(false, slot)) || !end(lo, &stored) || !end(hi, &stored) {
             return Vec::new();
         }
         let every: Vec<_> = every
@@ -314,6 +313,21 @@ fn bound(e: &Expr, stored: &BTreeSet<Var>) -> bool {
         },
         ExprKind::Binary(BinOp::Add | BinOp::Sub, a, b) => bound(a, stored) && bound(b, stored),
         _ => false,
+    }
+}
+
+/// A loop end the check may read again before the loop: `bound`, or an
+/// element of a list or array the body does not replace. The loop reads it once
+/// before its first round, so a second read fails the same way or not at all.
+fn end(e: &Expr, stored: &BTreeSet<Var>) -> bool {
+    match &e.kind {
+        ExprKind::Index(list, at) => {
+            matches!(list.ty, Ty::List(_) | Ty::Array { .. })
+                && var_of(&list.kind).is_some_and(|v| !stored.contains(&v))
+                && at.iter().all(|i| bound(i, stored))
+        }
+        ExprKind::Binary(BinOp::Add | BinOp::Sub, a, b) => end(a, stored) && end(b, stored),
+        _ => bound(e, stored),
     }
 }
 
@@ -615,5 +629,20 @@ mod tests {
             .replace("var g:", "let w = [i for i in 0..n]\nvar g:")
             .replace("min(k, 3)", "w[k]"));
         assert!(inner(&code).contains(".ck("), "{code}");
+    }
+
+    #[test]
+    fn a_grid_loop_to_a_list_element_checks_ahead() {
+        let code = cpp(concat!(
+            "let n: Int = read()\n",
+            "let a = [i for i in 0..n]\n",
+            "let b: [0..n]0..n = read()\n",
+            "var g: [0..n, 0..n]Int = 0\n",
+            "for y in 0..n:\n",
+            "    for k in 0..a[y] + b[y]:\n",
+            "        g[k, y] += 1\n",
+            "print(g[0, 0])\n",
+        ));
+        assert!(!inner(&code).contains(".ck("), "{code}");
     }
 }
