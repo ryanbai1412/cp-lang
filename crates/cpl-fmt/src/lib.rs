@@ -26,6 +26,8 @@ pub use style::{Style, StyleError};
 #[cfg(test)]
 mod churn_tests;
 #[cfg(test)]
+mod docs_tests;
+#[cfg(test)]
 mod tests;
 
 use cpl_diag::Diagnostic;

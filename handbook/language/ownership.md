@@ -52,16 +52,16 @@ Read the examples first; the rules after them say the same thing.
 
 ```cp
 var xs = [1, 2]
-let ys = xs                  // xs moves into ys: O(1), no copy
+let ys = xs  // xs moves into ys: O(1), no copy
 print(ys.len)
 
 let p = (x: 3, y: 4)
-let q = p                    // plain record: a copy
+let q = p  // plain record: a copy
 print(p.x + q.y)
 
 fn grow(mut xs: List<Int>): xs.push(1)
 var a = List<Int>()
-grow(mut a)                  // `mut` at both ends: you see who writes a
+grow(mut a)  // `mut` at both ends: you see who writes a
 print(a.len)
 ```
 
@@ -139,7 +139,7 @@ names is `.clone()`.
 
 ```cp
 var xs = [1, 2]
-let ys = xs.clone()          // the O(n) step is spelled out
+let ys = xs.clone()  // the O(n) step is spelled out
 print(xs.len + ys.len)
 ```
 
@@ -164,7 +164,7 @@ var win = [[1], [2], [3], [4]]
 let k = 3
 let l = 1
 if k > l:
-    win[k] = win[l].take()   // `k > l` proves the two places apart
+    win[k] = win[l].take()  // `k > l` proves the two places apart
 print(win[k].len, win[l].len)
 ```
 
@@ -273,7 +273,7 @@ can repair the ancestors after the write (R05.6.3).
 ```cp
 fn head(mut xs: List<Int>) -> lends mut Int = xs[0]
 var a = [1, 2]
-head(mut a) = 7              // a writable place, returned by a fn
+head(mut a) = 7  // a writable place, returned by a fn
 a[1] = 5
 print(a[0], a[1])
 ```
@@ -287,8 +287,8 @@ not to the end of its block (R7). Rust calls this non-lexical lifetimes.
 domain V = 0..8
 var a: [V]Int = 0
 let w = a[V(2)..V(5)]
-print(w.sum())               // last use of w
-a[V(2)] = 5                  // fine: w is dead
+print(w.sum())  // last use of w
+a[V(2)] = 5     // fine: w is dead
 print(a[V(2)])
 ```
 
@@ -340,13 +340,13 @@ struct S:
     var right: List<Int>
 fn mv(mut a: List<Int>, mut b: List<Int>): a.push(b.pop()!)
 var s = S(left: [1], right: [2])
-mv(mut s.left, mut s.right)            // different fields
+mv(mut s.left, mut s.right)  // different fields
 print(s.left.len, s.right.len)
 ```
 
 ```cp
 fn f(mut a: List<Int>, i: Int, j: Int):
-    if i != j: swap(mut a[i], mut a[j])    // `i != j` is the proof
+    if i != j: swap(mut a[i], mut a[j])  // `i != j` is the proof
 var a = [1, 2, 3]
 f(mut a, 0, 2)
 print(a[0], a[2])
@@ -385,7 +385,7 @@ whole life (decision 144).
 var cnt = 0
 let inc = () => cnt += 1
 inc()
-print(cnt)                   // fine: inc borrows cnt only while it runs
+print(cnt)  // fine: inc borrows cnt only while it runs
 inc()
 print(cnt)
 ```
@@ -459,7 +459,7 @@ fn divisors(n: Int) -> yields Int:
         if n % d == 0:
             yield d
             if d * d != n: yield n / d
-let gs = List(divisors(12), divisors(30))   // owned generator values in a list
+let gs = List(divisors(12), divisors(30))  // owned generator values in a list
 for d in gs[0]: print(d)
 ```
 

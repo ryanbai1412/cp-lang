@@ -33,10 +33,10 @@ Conversions add a third kind of bug: C++ converts `size_t`, `int`,
 ```cp
 let k = 3
 let a = [1, 2]
-let b = a.clone()            // a heap value copies only when you say so
+let b = a.clone()  // a heap value copies only when you say so
 print(k + b.len)
 
-let x: ?Int = None           // an optional; None costs no extra bytes here
+let x: ?Int = None  // an optional; None costs no extra bytes here
 print(x ?? 7)
 
 type Z = Mod<7>
@@ -102,9 +102,9 @@ R03.1.1 to R03.1.9.
 ```cp
 let n = 3
 domain V = 0..n
-let a: [V]1..=1000000000 = [V] v => 7    // 4 bytes per element
+let a: [V]1..=1000000000 = [V] v => 7  // 4 bytes per element
 var s = 0
-for x in a: s += x                      // each x computes as Int
+for x in a: s += x  // each x computes as Int
 print(s)
 ```
 
@@ -143,8 +143,8 @@ spare value pays a tag. Decision 149.
 ```cp
 domain V = 1..=4
 struct Edge: to: V, w: Int
-var best: [V]?Edge = [V].filled(None)     // 16 bytes per slot, not 24
-var span: ?(lo: Int, hi: Int) = None      // None lives in lo
+var best: [V]?Edge = [V].filled(None)  // 16 bytes per slot, not 24
+var span: ?(lo: Int, hi: Int) = None   // None lives in lo
 print(yes(best[1] is None), yes(span is None))
 ```
 
@@ -165,7 +165,7 @@ already proved in range is not checked at all (decision 100).
 ```cp
 var a: [3]0..=9 = [3].filled(0)
 var x = 4
-a[0] = x * 2                          // 8 fits; 10 would trap at this line
+a[0] = x * 2  // 8 fits; 10 would trap at this line
 print(a[0])
 ```
 
@@ -230,9 +230,9 @@ every type can be read off the line it's on.
 let n = 3
 domain V = 0..n
 let a: [V]1..=1000000000 = [V] v => Int(v) + 1
-var par: [V]?V = [V].filled(None)        // 4 bytes, None = all ones
-var mx = SegTree(max, a)                 // 4-byte nodes
-var sm = SegTree(+, a)                   // 8-byte nodes
+var par: [V]?V = [V].filled(None)  // 4 bytes, None = all ones
+var mx = SegTree(max, a)           // 4-byte nodes
+var sm = SegTree(+, a)             // 8-byte nodes
 print(mx.fold(V.range), sm.fold(V.range))
 ```
 

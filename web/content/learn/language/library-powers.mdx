@@ -49,8 +49,8 @@ the element type (`+` uses zero, `min` over `?T` uses `None`), and anything else
 build from an identity and an operation, exactly as std's own structures do:
 
 ```cp run
-use std.segtree.*
 use std.algebra.{Monoid}
+use std.segtree.*
 let mul = Monoid(1, (a: Int, b: Int) => a * b % 97)
 let t = SegTree(mul, [3, 5, 7])
 print(t.fold(0..3))

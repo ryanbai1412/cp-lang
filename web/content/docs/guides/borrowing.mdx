@@ -21,8 +21,8 @@ fn total(a: [V]Int) -> Int:
 fn bump(mut a: [V]Int, v: V):
     a[v] += 1
 
-print(total(a))       // read-only borrow, no array copy
-bump(mut a, V(1))     // mutable borrow, explicit at both ends
+print(total(a))        // read-only borrow, no array copy
+bump(mut a, V(1))      // mutable borrow, explicit at both ends
 let saved = a.clone()  // an owned copy, explicit cost
 ```
 
@@ -30,9 +30,9 @@ A plain value (a number, `Bool`, a range, a domain value, or a record or tuple o
 
 ```cp
 var a = [1, 2, 3]
-var b = a        // a moves into b; nothing is copied
+var b = a  // a moves into b; nothing is copied
 b.push(4)
-print(b)         // 1 2 3 4; print(a) here is error E0608: `a` was already moved
+print(b)  // 1 2 3 4; print(a) here is error E0608: `a` was already moved
 ```
 
 There is never a silent deep copy and never a second name for the same list, so a change through `b` can't show up in `a`. Write `let b = a.clone()` when you need both.

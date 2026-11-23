@@ -10,15 +10,15 @@
 
 ```cp
 let a = [5, 1, 4, 1]
-print(a.sorted())                 // prelude: no `use` needed
-print(a.tally()[1])               // 2
+print(a.sorted())    // prelude: no `use` needed
+print(a.tally()[1])  // 2
 
 use std.bag.{SortedBag}
 var bag = SortedBag<Int>()
 for x in a:
     bag.add(x)
-print(bag.count(1))               // 2
-print(bag.pop_first())            // Some(1)
+print(bag.count(1))     // 2
+print(bag.pop_first())  // Some(1)
 ```
 
 ## The model

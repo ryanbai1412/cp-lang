@@ -37,9 +37,9 @@ off-by-one in a binary search or prefix sum lives.
 ```cp
 domain V = 1..=5
 let a = [V] v => Int(v)
-let i = V.cuts(4)                // the cut after the fourth position
+let i = V.cuts(4)  // the cut after the fourth position
 var best = 0
-for j in ..i: best = max(best, a[j..i].sum())    // j..i is a piece
+for j in ..i: best = max(best, a[j..i].sum())  // j..i is a piece
 print(best)
 
 let s = [1, 2, 3, 4, 5, 6]
@@ -151,7 +151,7 @@ print(s[2..].nth(k))
 ```cp
 let s = [5, 6, 7, 8]
 let w = s[1..3]
-print(w.rebase[0], w.rebase[1])          // explicit zero-based view
+print(w.rebase[0], w.rebase[1])  // explicit zero-based view
 ```
 
 A range's keys are its values, so `(3..8)[5]` is `5`, never the sixth
@@ -168,7 +168,7 @@ by walk order, never by key (R04b.1.3).
 
 ```cp
 let s = "a,b,c"
-print(s[2..].search(',')!)               // 3: a key of s
+print(s[2..].search(',')!)  // 3: a key of s
 
 let a = [1, 2, 3, 4]
 var t = 0

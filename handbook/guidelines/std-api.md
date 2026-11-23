@@ -14,10 +14,10 @@ call they guess should be correct and as fast as it looks.
 ## A good API, by example
 
 ```cp
-let c = [3, 1, 3].tally()             // Counter: c[3] is 2, c[7] is 0
-let best = scores.max() ?? 0          // ?T: an empty list has no max
+let c = [3, 1, 3].tally()     // Counter: c[3] is 2, c[7] is 0
+let best = scores.max() ?? 0  // ?T: an empty list has no max
 rows.sort(by: r => (-r.score, r.name))
-let sums = a.scan(+)                  // sums.fold(l..=r) in O(1)
+let sums = a.scan(+)  // sums.fold(l..=r) in O(1)
 ```
 
 Each line uses a name the reader has met in another language or another

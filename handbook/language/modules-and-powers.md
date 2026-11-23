@@ -327,8 +327,8 @@ Two modules, one using the other and the stdlib:
 mod a:
     pub fn f() -> Int = 1
 mod b:
-    use a.f
     use std.math.gcd
+    use a.f
     pub fn g() -> Int = f() + 1
     pub fn h() -> Int = gcd(12, 18)
 print(b.g(), b.h())

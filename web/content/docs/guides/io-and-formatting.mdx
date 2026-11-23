@@ -85,12 +85,12 @@ let (a, b) = (3, 7)
 let arr = [3, 7]
 let dist: List<?Int> = [0, None, 7]
 let ok = true
-print(ans)               // single value
-print(a, b)              // space-separated: "3 7"
-print(arr)               // space-separated elements on one line (note: [D]Char prints contiguously; pass sep: " " for spaced chars)
-print(arr, sep: "\n")    // one element per line
-print(dist, none: "-1")  // prints ?Int array, writing -1 for every None
-print(yes(ok))           // YES or NO
+print(ans)                     // single value
+print(a, b)                    // space-separated: "3 7"
+print(arr)                     // space-separated elements on one line (note: [D]Char prints contiguously; pass sep: " " for spaced chars)
+print(arr, sep: "\n")          // one element per line
+print(dist, none: "-1")        // prints ?Int array, writing -1 for every None
+print(yes(ok))                 // YES or NO
 print(yes(ok, ("Yes", "No")))  // Yes or No, as AtCoder and some Codeforces problems want
 ```
 
