@@ -917,6 +917,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[callee_v as usize] = Value::Unit;
                 }
                 let def = &self.program.closures[cid];
+                // The closure may read the place a param of this frame is lent from.
+                let lends = self.lends();
+                if lends {
+                    sync_to_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        chunk.traced,
+                    );
+                    self.show_lent();
+                }
                 let val = if let Some(callee) = compiled.closures[cid].as_ref() {
                     self.tick(spans[cur_pc])?;
                     self.stack_left(spans[cur_pc], None)?;
@@ -1047,7 +1060,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             iv += 1;
                         }
                     }
-                    let has_frame = chunk.needs_stack;
+                    // With `lends` the frame is already on the stack.
+                    let has_frame = chunk.needs_stack && !lends;
                     if has_frame {
                         sync_to_stack(
                             &chunk.slot_map,
@@ -1072,6 +1086,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     res?
                 };
+                if lends {
+                    self.hide_lent();
+                    sync_from_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        chunk.traced,
+                    );
+                }
                 match ret_mode {
                     CallRet::Unit => {}
                     CallRet::I => regs_i[dst_i as usize] = ScalarKind::unbox_val(&val),

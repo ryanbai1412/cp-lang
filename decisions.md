@@ -8407,5 +8407,6 @@ tag move fatal again.
 - **Call.** Calls that pass a lent argument and a fn-valued param run on the tree-walker again, and `vm_fallbacks` goes from 63 back to 75. On the VM, a frame with a lent param synced its registers around every closure call. When the closure wasn't compiled, the `call_value` path synced a second time and wrote cleared registers over the lent `self`, so `std-interval/sparse-interval-map-matches-array` failed with "expected closure".
 - **Why.** Main has to stay green, and the fix needs its own regression test before it lands.
 - **Reverse.** Land the VM path again with one sync per call and a program where a method with `mut self` calls a closure that writes a caller's local. Then delete the 12 lines and lower `vm_fallbacks`.
+- **Reversed (2026-11-23).** The VM path is back with one sync per closure call, and the narrower guard that replaced the old one in the meantime (`fn_args_may_see_lent`) is gone with it. `lent_self_closure_writes_local` is the regression.
 
 Reversed (2026-11-23): traced fed loops run on the VM, so both lines are gone from the inventory.
