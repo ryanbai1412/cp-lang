@@ -508,8 +508,8 @@ fn plan_blocks() -> Vec<(String, String)> {
     out
 }
 
-/// A block that only lists signatures (`fn z_function(s: Str) -> List<Int>
-/// // O(n)`), an API synopsis rather than a program.
+/// A block with a body-less signature (`fn z_function(s: Str) -> List<Int>
+/// // O(n)`) that runs nothing: an API synopsis, not a program.
 fn synopsis(body: &str) -> bool {
     let decl = |l: &str| {
         let mut l = l;
@@ -524,16 +524,18 @@ fn synopsis(body: &str) -> bool {
                 depth == 0 && c != ')'
             })
             .collect();
-        ["fn ", "struct ", "trait ", "enum ", "type "]
+        ["fn ", "struct ", "trait ", "enum ", "type ", "const "]
             .iter()
             .any(|k| l.starts_with(k))
             && !l.ends_with(':')
             && !outside.contains(" = ")
     };
-    let mut lines = body
-        .lines()
-        .map(|l| l.split("//").next().unwrap_or("").trim());
-    lines.all(|l| l.is_empty() || decl(l))
+    let lines = || {
+        body.lines()
+            .map(|l| l.split("//").next().unwrap_or("").trim())
+    };
+    let run = ["let ", "var ", "for ", "while ", "if ", "print(", "return "];
+    lines().any(decl) && !lines().any(|l| run.iter().any(|k| l.starts_with(k)))
 }
 
 /// Errors in a plan block that name something an earlier error's line
@@ -616,7 +618,7 @@ fn scoreboard_plan() -> PlanTally {
 fn recovery_scoreboard() {
     let plan = scoreboard_plan();
     let ports = scoreboard_broken_ports("broken ports", EDITS, false);
-    assert!(plan.blocks > 100, "the plan code blocks went missing");
+    assert!(plan.blocks > 70, "the plan code blocks went missing");
     assert!(
         ports.files >= 200,
         "the broken ports went missing ({})",

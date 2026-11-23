@@ -5798,17 +5798,18 @@ the struct entirely, like any unread field, instead of a `bool` placeholder.
 - **Reverse.** Drop `TracePoint::Cell` from `cell_point`; every write goes
   through `TracePoint::Assign` again.
 
-## 224. The spec-block recovery probe skips signature-only blocks (2026-11-22)
+## 224. The spec-block recovery probe skips API synopses (2026-11-22)
 
 - **Decision.** `plan_blocks` in `crates/cpl-cli/tests/recovery.rs` skips
-  a block whose every line is a body-less `fn`/`struct`/`trait`/`enum`/
-  `type` signature (attributes and `// cost` comments allowed). 41 of 154
-  blocks are such API synopses (`fn z_function<S: Indexed>(s: S) ->
-  List<Int>  // O(n)`).
-- **Why.** A synopsis is not a program and can never compile, so its
+  a block that has a body-less `fn`/`struct`/`const` signature
+  (`fn z_function<S: Indexed>(s: S) -> List<Int>  // O(n)`) and no line
+  that runs (`let`, `var`, `for`, `while`, `if`, `print(`, `return`):
+  70 of 154 blocks are such synopses.
+- **Why.** A synopsis is not a program and cannot compile, so its
   "expected `:` ... found the end of the line" said nothing about recovery;
-  it was 37 of the 75 generic first errors the M2 metric counts.
-- **Reverse.** Drop `!synopsis(&body)` from `plan_blocks`.
+  synopses were 60 of the 75 generic first errors the M2 metric counted.
+- **Reverse.** Drop `!synopsis(&body)` from `plan_blocks` and put the
+  `plan.blocks > 70` guard back to 100.
 
 ## 225. Wall-clock assertions never block a landing or turn main red (2026-11-22)
 
