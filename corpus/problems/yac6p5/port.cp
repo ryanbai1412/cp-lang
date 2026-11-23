@@ -1,53 +1,33 @@
 // Source: Yet Another Contest 6 P5 (No More Coyotes), https://dmoj.ca/problem/yac6p5
-// Problem: N <= 1e6 sheep at (X, Y) (|X|, |Y| <= 1e9), each seeing one quadrant V in 0..=3
+// Problem: 2 <= N <= 1e6 sheep at (X, Y) (|X|, |Y| <= 1e9), each seeing one quadrant V in 0..=3
 //   (0: x >= and y >= its own, 1: x >=, y <=, 2: x <=, y <=, 3: x <=, y >=). A move is a unit
 //   step or a 90 degree turn (V +- 1 mod 4). Print the fewest moves so every sheep sees all.
 // Solution: V is a pair of bits, one per axis, and a turn flips one of them, so the axes are
-//   independent. On one axis the sheep seeing larger coordinates must share the minimum and
-//   the others the maximum: sort, try every split into a low and a high group, gather each at
-//   its median (prefix sums) and pay a turn per sheep facing the wrong way (cadd). Sum the two
-//   axes; O(N log N).
+//   independent. On one axis the sheep looking up must share the minimum and the ones looking
+//   down the maximum: sort, try every split into a low and a high group, gather each at its
+//   median (prefix sums) and pay a turn per sheep in the low group looking down or in the high
+//   group looking up. Everyone at one spot needs no turns. Sum the two axes; O(N log N).
 
-let n: 1..=200_000 = read()
-var xs: List<(Int, Int)> = []
-var ys: List<(Int, Int)> = []
-for i in 0..n:
-    let x: -1_000_000_000..=1_000_000_000 = read()
-    let y: -1_000_000_000..=1_000_000_000 = read()
-    let v: 0..=3 = read()
-    var bx = 1
-    if v == 0 or v == 1:
-        bx = 0
-    var by = 1
-    if v == 0 or v == 3:
-        by = 0
-    xs.push((x, bx))
-    ys.push((y, by))
+let n: 2..=1e6 = read()
+struct Sheep:
+    x: -1e9..=1e9
+    y: -1e9..=1e9
+    v: 0..=3
+let flock: [n]Sheep = read()
 
-var pre: [0..=n]Int = 0
-
-// cost of gathering sorted positions l..r at their median
-fn cost(l: Int, r: Int) -> Int:
-    let h = (r - l) / 2
-    (pre[r] - pre[r - h]) - (pre[l + h] - pre[l])
-
-fn solve(mut arr: List<(Int, Int)>) -> Int:
-    arr.sort()
-    var cadd = 0
-    for i in 0..n:
-        pre[i + 1] = pre[i] + arr[i].0
-        if arr[i].1 == 0:
-            cadd += 1
-    var best = cost(0, n)
+// One axis: each sheep's coordinate and whether it looks down (toward smaller values).
+fn axis(sheep: List<(Int, Bool)>) -> Int:
+    let at = sheep.sorted()
+    let pre = at.map(a => a.0).scan(+)
+    // gathering sorted sheep l..r at their median
+    fn gather(l: Int, r: Int) -> Int:
+        let h = (r - l) / 2
+        pre.fold(r - h..r) - pre.fold(l..l + h)
+    var turns = at.count(a => not a.1)  // split before everyone: all must look down
+    var best = gather(0, n)
     for i in 0..=n:
-        let cur = cost(0, i) + cost(i, n) + cadd
-        if cur < best:
-            best = cur
-        if i < n:
-            if arr[i].1 == 0:
-                cadd -= 1
-            else:
-                cadd += 1
+        best min= gather(0, i) + gather(i, n) + turns
+        if i < n: turns += if at[i].1: 1 else: -1
     best
 
-print(solve(mut xs) + solve(mut ys))
+print(axis([(s.x, s.v >= 2) for s in flock]) + axis([(s.y, s.v == 1 or s.v == 2) for s in flock]))
