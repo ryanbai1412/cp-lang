@@ -7,25 +7,25 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2254 (995 passing). Rules: 531.
+Cases: 2255 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 104 cases; 0 uncovered, 2 happy-path only, 0 negative only
-- R02 (02-values-types.md): 51 rules, 103 cases; 0 uncovered, 6 happy-path only, 0 negative only
+- R02 (02-values-types.md): 51 rules, 104 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 60 cases; 0 uncovered, 5 happy-path only, 0 negative only
-- R04 (04-indices.md): 61 rules, 89 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R04 (04-indices.md): 61 rules, 90 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 145 cases; 0 uncovered, 3 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 147 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 110 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 76 cases; 0 uncovered, 2 happy-path only, 1 negative only
 - R09 (09-contexts-checks.md): 25 rules, 51 cases; 0 uncovered, 5 happy-path only, 0 negative only
-- R10 (10-io.md): 16 rules, 66 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R10 (10-io.md): 16 rules, 67 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 30 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R13 (13-lowering.md): 22 rules, 26 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 2 happy-path only, 0 negative only
 
 ## Accept and reject coverage per chapter
 
@@ -145,7 +145,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.7.4 [1+ 2-]: `match` is exhaustive. Patterns match only the stored shape; there are no user-defined pat...
 - R02.7.6 [4+ 0-]: A record pattern names the fields it binds, `(to: u, w: c)`, and `..` skips the rest; `(to...
 - R02.7.5 [1+ 0-] *happy-path only*: Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V` positions are 4 bytes (...
-- R02.8.1 [1+ 1-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`). `[...
+- R02.8.1 [1+ 2-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`). `[...
 - R02.8.2 [1+ 0-]: `List<T>` grows, is indexed by `0..len` positions, and its slices keep source positions.
 - R02.8.3 [2+ 1-]: `[D]T` arrays are built by tables (`[V] v => 0`), typed reads (`read<[V]Int>()`), comprehe...
 - R02.8.4 [1+ 0-]: `xs[i]` on a heap element lends it (`let row = rows[i]`); on a plain element it copies.
@@ -195,7 +195,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.1 [3+ 0-]: | `for v in V`, `V.rev` | positions in order or reverse order | O(1) per step
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | O(1)
 - R04.2.20 [2+ 0-] *happy-path only*: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
-- R04.2.3 [1+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
+- R04.2.3 [2+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
 - R04.2.4 [1+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | O(1)
 - R04.2.5 [1+ 0-]: | `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the ...
 - R04.2.6 [1+ 0-]: | `x in V` | is integer `x` a position | O(1)
@@ -246,7 +246,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.8.1 [2+ 1-]: `.l`/`.r` switch kind, `.prev`/`.next` keep it; `.next(k)`/`.prev(k)` step k.
 - R04.8.2 [3+ 3-]: Position arithmetic gives an `Int`; back into the domain is explicit.
 - R04.8.3 [2+ 1-]: `r.first_true(ok)`/`r.last_true(ok)` return `?` the element; `r.bsearch(ok)` returns the f...
-- R04.8.4 [1+ 2-]: Empty domains are valid; `V.first`/`V.last` are `?V` (no `NonEmpty` bound).
+- R04.8.4 [2+ 2-]: Empty domains are valid; `V.first`/`V.last` are `?V` (no `NonEmpty` bound).
 - R04.8.5 [2+ 1-]: One generic `Range<D>`; elements are the kind of the ends, so `a..=b` on cuts is cuts. The...
 - R04.8.6 [4+ 1-]: `..i`, `..=i`, `i..` are open-ended ranges over the end's domain; bare `..` only inside `[...
 - R04.8.7 [2+ 0-]: `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `No...
@@ -344,7 +344,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.3 [2+ 1-]: a generator value with a lent argument (`dfs(g, from: [s])`, `dfs(g, from: [s], seen: mut ...
 - R05.7.4 [1+ 1-]: a loop item, for the iteration (§9);
 - R05.7.5 [2+ 3-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
-- R05.7.6 [7+ 10-]: **Read lend:** the sources can be read, but not written, resized or moved.
+- R05.7.6 [7+ 11-]: **Read lend:** the sources can be read, but not written, resized or moved.
 - R05.7.7 [1+ 3-]: **`mut` lend:** the sources can't be touched at all except through it.
 - R05.7.8 [1+ 3-]: returned, except from a fn declared `lends` (§6);
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
@@ -352,7 +352,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.8.1 [1+ 3-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
 - R05.8.2 [3+ 4-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
 - R05.8.3 [1+ 1-]: Different projections of one receiver always conflict (`g.row(r)` and `g.col(c)`).
-- R05.8.4 [1+ 7-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
+- R05.8.4 [1+ 8-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
 - R05.9.1 [3+ 5-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
 - R05.9.2 [1+ 2-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
 - R05.9.3 [1+ 0-] *happy-path only*: `break`, `continue` and `return` in `B` act on the loop and the enclosing fn, through recu...
@@ -564,7 +564,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.2.7 [2+ 1-]: `read_all<T>()` reads every remaining `T` until the input ends, for statements that give n...
 - R10.3.1 [1+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
 - R10.3.2 [3+ 0-]: Interpolated strings format each piece through `Show`; positions print in the file's base;...
-- R10.3.3 [1+ 2-]: `Bool` is not `Show`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word ...
+- R10.3.3 [1+ 3-]: `Bool` is not `Show`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word ...
 - R10.3.4 [2+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`.
 - R10.3.5 [4+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
 - R10.3.6 [2+ 0-] *happy-path only*: Output mirrors input, shape for shape, except that counts are never written for you. `[R, ...
@@ -610,7 +610,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R13: 13-lowering.md
 
 - R13.1.1 [1+ 1-]: One deterministic C++17 file: a stamp, the used runtime pieces, the used library instances...
-- R13.1.2 [1+ 0-]: `main` starts a thread with the profile's stack (default 1 GB, halving down to 8 MB) and r...
+- R13.1.2 [1+ 1-]: `main` starts a thread with the profile's stack (default 1 GB, halving down to 8 MB) and r...
 - R13.1.3 [1+ 0-]: Input is one bulk `fread` and a hand-written parser; output is one buffer written at exit ...
 - R13.1.4 [1+ 0-] *happy-path only*: Release builds compile with the profile's flags and emit no checks (chapter 9). The loweri...
 - R13.2.1 [1+ 0-]: | `Int`, ranges | `int64_t` in locals; storage at the range's width (`uint8_t` ... `int64_...
@@ -689,7 +689,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0501 Unsupported construct in backend: 7 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 6 case(s)
-- E0504 Planned syntax, not implemented yet: **no case**
+- E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 12 case(s)
 - E0602 Variable mutated while lent: 33 case(s)
 - E0603 Lent value escapes its scope: 17 case(s)
@@ -778,7 +778,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-2 of 136 testable codes have no negative case.
+1 of 136 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -876,10 +876,4 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-01/rb1-q36-no-comma-enum.cp
 - core-01/var-needs-initializer.cp
 - core-02/enum-comma-form-rejected.cp
-- core-04/domain-mixup.cp
-- core-04/first-is-optional.cp
-- core-05/rb1-q07-sort-closure-reads-target.cp
-- core-05/same-place-lint.cp
-- core-09/deep-recursion-trap.cp
 - core-10/rb1-q25-optional-not-print.cp
-- core-10/rb1-q39-bool-not-print.cp

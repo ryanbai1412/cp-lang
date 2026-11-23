@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `// rule:` lines on 6 rule-less core cases (11 to 5 left: three E0103 spellings and `?T` not `Show` have no rule id in the chapter text yet); `diagnostics/planned-domain-list.cp` gives E0504 a reject case (1 code left, E0903, routed to diagnostics).
 - lib/ops-ranges.md: three blocks built on the reader's own `Low` struct (defined nowhere) are `spec-only` fragments.
 - Routed to stdlib: `Monoid` is a trait in chapters 8 and ops-ranges but a struct in `spec/std/algebra.cp`; `SegTree(act: assign, a)` leaks a type parameter `D`.
 - Spec-block triage: the `dijkstra` signature excerpt in lib/ops-ranges.md is `spec-only`; 3 E0603 blocks the spec calls valid went to compiler, 9 missing std items to stdlib (by block id).

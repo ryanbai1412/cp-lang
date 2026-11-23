@@ -43,7 +43,7 @@ target = "0"
 [[metric]]
 name = "diagnostic codes with no reject case"
 command = "python3 -c 'import pathlib,runpy,sys; pathlib.Path.write_text=lambda p,t: sys.stdout.write(t); sys.argv=[sys.argv[0]]; runpy.run_path(\"scripts/conformance-coverage.py\", run_name=\"__main__\")' 2>/dev/null | grep 'testable codes have no negative case'"
-today = "2 of 135"
+today = "1 of 136"
 target = "0"
 
 [[metric]]
