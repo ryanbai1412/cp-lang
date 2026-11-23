@@ -1981,3 +1981,12 @@ fn a_guarded_step_of_a_global_counter_does_not_branch() {
     assert!(cpp.contains("distinct -= ("), "{cpp}");
     assert!(!cpp.contains("distinct += 1;"), "{cpp}");
 }
+
+#[test]
+fn char_array_reads_fill_in_one_pass() {
+    let body = body("let n: 1..=10 = read()\nlet s: [0..n]Char = read()\nprint(s[0])\n");
+    assert!(
+        body.contains("cpl::read_chars(") && !body.contains("read_char()"),
+        "a [D]Char read should fill the array in one pass:\n{body}"
+    );
+}

@@ -756,6 +756,73 @@ print(inv[V(2)]!.label)
     );
 }
 
+/// A `[D]Char` read skips spaces between chars like one `read()` per cell,
+/// across the input's 64 KB reads, and fails the same way when chars run out.
+#[test]
+fn char_arrays_read_across_spaces_and_refills_agree() {
+    let dir = std::env::temp_dir().join(format!("cpl-read-chars-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("chars.cp");
+    std::fs::write(
+        &path,
+        "\
+let n: 1..=1_000_000 = read()
+let s: [0..n]Char = read()
+domain Row = 0..2
+domain Col = 0..3
+let g: [Row, Col]Char = read()
+var h = 0
+for c in s:
+    h = (h * 31 + Int(c)) % 1_000_000_007
+print(h, s[0], s[n - 1], g[Row(1), Col(2)])
+",
+    )
+    .unwrap();
+    let path_str = path.to_string_lossy().into_owned();
+    let n = 150_000;
+    let mut long = String::new();
+    for i in 0..n {
+        long.push((b'a' + (i % 26) as u8) as char);
+        if i % 7919 == 0 {
+            long.push_str(" \n\t");
+        }
+    }
+    let good = format!("{n}\n{long}\nab c\ndef\n");
+    let short = format!("{n}\n{}\n", &long[..1000]);
+    let built = cpl_cli::run(&["build", &path_str, "-o", "-"]);
+    assert_eq!(built.code, 0, "{}", built.stderr);
+    let binary = sanitized_binary(&built.stdout).unwrap();
+    for (input, ok) in [(good, true), (short, false)] {
+        let input_path = dir.join("in.txt");
+        std::fs::write(&input_path, &input).unwrap();
+        let interp = Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(["run", &path_str])
+            .stdin(std::fs::File::open(&input_path).unwrap())
+            .output()
+            .unwrap();
+        let cpp = Command::new(&binary)
+            .stdin(std::fs::File::open(&input_path).unwrap())
+            .output()
+            .unwrap();
+        assert_eq!(
+            interp.status.success(),
+            ok,
+            "{}",
+            String::from_utf8_lossy(&interp.stderr)
+        );
+        assert_eq!(
+            cpp.status.success(),
+            ok,
+            "{}",
+            String::from_utf8_lossy(&cpp.stderr)
+        );
+        assert_eq!(
+            String::from_utf8_lossy(&interp.stdout),
+            String::from_utf8_lossy(&cpp.stdout)
+        );
+    }
+}
+
 /// Separate `compress` call sites get distinct fresh domains in checker, IR,
 /// interpreter, `--checked`, and `--release` C++ (top-level, inside a fn called
 /// twice, wrapper fn returning `compress`, and `@!multitest` loop).

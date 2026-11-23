@@ -577,6 +577,10 @@ impl<'p> Emitter<'p> {
                 let rhs = self.narrow_cell_value(&value, l);
                 out.push_str(&format!("{lead}for (auto& {x} : {items}) {x} = {rhs};\n"));
             }
+            (None, Spec::Plain(Ty::Char)) => {
+                self.need("read_chars");
+                out.push_str(&format!("{lead}cpl::read_chars({items});\n"));
+            }
             _ => {
                 let value = self.read(elem).text;
                 out.push_str(&format!("{lead}for (auto& {x} : {items}) {x} = {value};\n"));

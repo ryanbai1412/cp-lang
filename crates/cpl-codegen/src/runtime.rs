@@ -287,7 +287,25 @@ inline double read_float() { need_input(); char* end; double x = strtod(in.c_str
         name: "read_char",
         needs: &["in"],
         code: "\
-inline u8 read_char() { need_input(); return in_at < in.size() ? (u8)in[in_at++] : 0; }
+inline u8 read_char() {
+  if (in_at < in.size() && !is_space(in[in_at])) return (u8)in[in_at++];
+  need_input(); return in_at < in.size() ? (u8)in[in_at++] : 0;
+}
+",
+    },
+    Piece {
+        name: "read_chars",
+        needs: &["in"],
+        code: "\
+// Fills `v` with the next `v.size()` chars that are not spaces, like that
+// many `read_char()`s in one pass.
+template <class V> void read_chars(V& v) {
+  for (size_t k = 0; k < v.size();) {
+    if (in_at >= in.size()) { if (!more()) fail(\"the input ended where a value was expected\"); continue; }
+    char c = in[in_at++];
+    if (!is_space(c)) v[k++] = (typename V::value_type)(u8)c;
+  }
+}
 ",
     },
     Piece {
