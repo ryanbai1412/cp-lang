@@ -80,13 +80,13 @@ print(a.sum(), a.min()!, a.max()!, a.sorted(), a.count(x => x == 2))
 print(yes(a.any(x => x > 7)), yes(a.all(x => x > 1)))
 print(sum(x * x for x in a), [x for x in a if x % 2 == 0])
 domain V = 1..=4
-let b: [V]Int = [V] v => v.to_idx * 10
+let b: [V]Int = [V] v => v.ord * 10
 for v in V: print(v, b[v], end: " ")
 print()
 ```
 
 - `domain V = 1..=n` names an index space. `[V]T` is an array over it, and `a[v]` needs a `V`.
-- `V(3)` makes an index from an integer; `v.to_idx` goes back to a 0-based integer.
+- `V(3)` makes an index from an integer; `v.ord` goes back to a 0-based integer.
 - `a.min()` and `a.max()` return `?T`, because the sequence may be empty.
 
 ## Collections

@@ -6,6 +6,7 @@ const rules = (facts) => [
   { what: 'version string', find: /\bcpl \d+\.\d+\.\d+[-+][\w<>&;.+-]*/g, ok: (s) => !/-dev\b/.test(s) && s.startsWith(`cpl ${facts.version}`) },
   { what: 'version string', find: /\b\d+\.\d+\.\d+-dev\+/g, ok: () => false },
   { what: 'saved-case folder (cpl saves to <file>.tests/)', find: /\b\w+\.cp\.tests\//g, ok: () => false },
+  { what: 'retired domain method (0.3 spells them `.ord`, `.try_at`, `.count`)', find: /\.(to_idx|from_idx)\b/g, ok: () => false },
 ];
 
 /** Every line of `text` that states a fact differently from `facts`. */

@@ -22,3 +22,8 @@ describe('facts gate', () => {
     expect(bad('saved to solution.cp.tests/')).toEqual(['saved-case folder (cpl saves to <file>.tests/)']);
   });
 });
+
+it('prose naming a retired domain method is a contradiction', () => {
+  expect(contradictions('convert with `v.to_idx` or `V.from_idx(i)`', facts).length).toBe(2);
+  expect(contradictions('convert with `v.ord` or `V.try_at(i)`', facts)).toEqual([]);
+});

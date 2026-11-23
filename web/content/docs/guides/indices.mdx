@@ -19,7 +19,7 @@ for i in 0..n:
 cnt.fill(0)  // reset the whole array in place
 ```
 
-Structural range arrays unify across functions whenever their written bounds match (`[0..n]Int` matches `[0..n]Int`). Index an array using the **same bounds** it was declared with (`for i in 1..=n:` for `[1..=n]T`, `for i in 0..n:` for `[0..n]T`; indexing `[1..=n]T` at `0` traps at runtime). `for i in 0..n` binds `i: Int`, so `i + 1` is `Int`. Nominal domain values (`v: V`) are **not** `Int`: you cannot multiply or pass `v` where `Int` is expected, nor index `[V]T` with an `Int` — convert explicitly with `v.ord` / `v.to_idx` (to `Int`) or `V(k)` (from `Int`), or use a structural range array `[0..n]T` / `[1..=n]T` when you need integer arithmetic on indices. Generic stdlib structures (`Dsu<V>`, `DsuOf<V, ...>`, `Fenwick<V>`, `SegTree<V, ...>`, `Graph<V>`) require a **named `domain V = ...`**, never an inline range like `Dsu<1..=n>`. Neighbor properties `v.next` / `v.prev` and domain arithmetic `v + 1` / `v - 1` / `V.last - 1` return `?V` (they may step outside the domain — unwrap with `if let nxt = v.next:` or `??` before indexing or forming a range). Multi-dimensional `[R, C]T` arrays take comma-separated indices (`g[r, c]`) and accept a scalar fill (`var g: [R, C]T = 0`), whereas nested `[R][C]T` is an array of arrays and `[R]List<T>` is indexed as `adj[r][k]`. Unnamed grid cell tuples `(r, c): (Row, Col)` (not named records `(r: Row, c: Col)`) have built-in `.adj4` and `.adj8` neighbor properties without importing anything. Use `a.fill(x)` (or `seen.fill(none)` on `[D]?T`) to clear an array between test cases.
+Structural range arrays unify across functions whenever their written bounds match (`[0..n]Int` matches `[0..n]Int`). Index an array using the **same bounds** it was declared with (`for i in 1..=n:` for `[1..=n]T`, `for i in 0..n:` for `[0..n]T`; indexing `[1..=n]T` at `0` traps at runtime). `for i in 0..n` binds `i: Int`, so `i + 1` is `Int`. Nominal domain values (`v: V`) are **not** `Int`: you cannot multiply or pass `v` where `Int` is expected, nor index `[V]T` with an `Int` — convert explicitly with `v.ord` (to `Int`) or `V(k)` (from `Int`), or use a structural range array `[0..n]T` / `[1..=n]T` when you need integer arithmetic on indices. Generic stdlib structures (`Dsu<V>`, `DsuOf<V, ...>`, `Fenwick<V>`, `SegTree<V, ...>`, `Graph<V>`) require a **named `domain V = ...`**, never an inline range like `Dsu<1..=n>`. Neighbor properties `v.next` / `v.prev` and domain arithmetic `v + 1` / `v - 1` / `V.last - 1` return `?V` (they may step outside the domain — unwrap with `if let nxt = v.next:` or `??` before indexing or forming a range). Multi-dimensional `[R, C]T` arrays take comma-separated indices (`g[r, c]`) and accept a scalar fill (`var g: [R, C]T = 0`), whereas nested `[R][C]T` is an array of arrays and `[R]List<T>` is indexed as `adj[r][k]`. Unnamed grid cell tuples `(r, c): (Row, Col)` (not named records `(r: Row, c: Col)`) have built-in `.adj4` and `.adj8` neighbor properties without importing anything. Use `a.fill(x)` (or `seen.fill(none)` on `[D]?T`) to clear an array between test cases.
 
 ## Nominal domains and `Index`
 
@@ -46,7 +46,7 @@ print(a.sum())
 A domain implements the `Index` and `Seq` traits:
 
 - `V.count` (and `V.K`) is the number of elements; `V.first` and `V.last` are the endpoints as `?V` (`None` for an empty domain; unwrap with `!`).
-- `v.to_idx` converts to `0..V.count` and `V.from_idx(i) -> ?V` converts back safely.
+- `v.ord` converts to `0..V.count` and `V.try_at(i) -> ?V` converts back safely.
 - `v + k -> ?V` and `v - k -> ?V` step by an integer offset and return `None` past the ends; `b - a -> Int` is the signed distance; `v.cyc(k) -> V` wraps cyclically.
 - Step along a named domain in either direction with `for v in V by k:` and `for v in V.rev by k:`.
 
@@ -54,7 +54,7 @@ Array endpoints are **values**, not domain indices: `a.first` and `a.last` retur
 
 ```cp
 domain V = 5..8
-let a: [V]Int = [V] v => 10 + v.to_idx
+let a: [V]Int = [V] v => 10 + v.ord
 let endpoints: (?Int, ?Int) = (a.first, a.last)
 print(V.first, V.last, endpoints.0!, endpoints.1!)  // 5 7 10 12
 domain Empty = 0..0
@@ -178,7 +178,7 @@ A fresh domain cannot escape the block or function that declares it (`E0313`) un
 ```cp
 fn make_seq(k: Int) -> (domain P, [P]Int):
     domain Local = 0..k
-    (Local, [Local] i => i.to_idx * 2)
+    (Local, [Local] i => i.ord * 2)
 
 let (domain Q, vals) = make_seq(4)
 print(Q.count, vals.sum())

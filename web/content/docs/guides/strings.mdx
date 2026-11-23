@@ -37,7 +37,7 @@ The current toolchain supports these operations directly:
 - Building: `var out = ""`, `out.push(c)`, and `out += t`. String repetition with `*` is not yet implemented; append in a loop.
 - Prefix matching: guard the length, then compare `s[..prefix.len] == prefix`. For input, `read()` parses whitespace-delimited typed tokens.
 - Character arithmetic & tests: `c - '0'`, `c - 'a'`, `'A' + (c - 'a')`; test ranges with `'a' <= c and c <= 'z'` (`..=` ranges are `Int`-only, not `Char`).
-- Nominal character domains: `let s: [domain S]Char = read()` introduces `S` (`let`, not `var`); for a mutable character array, read `let raw: Str = read()`, declare `domain S = 0..raw.len`, and copy into `var s: [S]Char = [S] i => raw[i.to_idx]`.
+- Nominal character domains: `let s: [domain S]Char = read()` introduces `S` (`let`, not `var`); for a mutable character array, read `let raw: Str = read()`, declare `domain S = 0..raw.len`, and copy into `var s: [S]Char = [S] i => raw[i.ord]`.
 
 ## Opt-in nominal character domains
 
