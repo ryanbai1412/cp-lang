@@ -73,7 +73,13 @@ for i in Pos.cuts:
 - **`min=` / `max=` return whether they improved**, so the argmin is kept
   where it's found:
 
-<!-- spec-only: fragment over a DP's `dp`, `from` and `cost` -->
+<!-- given:
+  domain V = 0..5
+  var dp: [V.cuts]Int = 0
+  var from: [V.cuts]?V.cuts = None
+  fn cost(r: Range<V>) -> Int = r.len
+  let i = V.cuts.last!
+  let j = V.cuts.first! -->
 ```python
 if dp[i] min= dp[j] + cost(j..i): from[i] = j
 ```
