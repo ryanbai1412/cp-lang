@@ -531,49 +531,17 @@ impl<'a> Lowerer<'a> {
 
     /// Evaluates a compile-time integer expression (for `Mod<998244353>`, `Mod<P>`, etc.).
     pub(super) fn eval_const_int(&self, e: &ast::Expr) -> Option<i64> {
-        match &e.kind {
-            ast::ExprKind::Int(v) => i64::try_from(*v).ok(),
-            ast::ExprKind::Paren(inner) => self.eval_const_int(inner),
-            ast::ExprKind::Unary {
-                op: UnOp::Pos,
-                expr,
-            } => self.eval_const_int(expr),
-            ast::ExprKind::Unary {
-                op: UnOp::Neg,
-                expr,
-            } => self.eval_const_int(expr)?.checked_neg(),
-            ast::ExprKind::Binary { op, lhs, rhs, .. } => {
-                let l = self.eval_const_int(lhs)?;
-                let r = self.eval_const_int(rhs)?;
-                match op {
-                    BinOp::Add => l.checked_add(r),
-                    BinOp::Sub => l.checked_sub(r),
-                    BinOp::Mul => l.checked_mul(r),
-                    BinOp::Div if r != 0 => l.checked_div_euclid(r),
-                    BinOp::Rem if r != 0 => l.checked_rem_euclid(r),
-                    BinOp::Pow if r >= 0 => l.checked_pow(u32::try_from(r).ok()?),
-                    BinOp::Shl if (0..63).contains(&r) => l.checked_mul(1 << r),
-                    BinOp::Shr if (0..64).contains(&r) => Some(l >> r),
-                    BinOp::BitAnd => Some(l & r),
-                    BinOp::BitOr => Some(l | r),
-                    BinOp::BitXor => Some(l ^ r),
-                    _ => None,
-                }
-            }
-            ast::ExprKind::Name(n) => {
-                if let Some(GenArg::Int(v)) = self.gen_env.get(n) {
-                    return Some(*v);
-                }
-                if let Some(Sym::ModConst(cid)) = self.get_sym(n) {
-                    return self.eval_const_int(self.mod_consts[cid].init);
-                }
-                if let Some(v) = self.const_ints.get(n) {
-                    return Some(*v);
-                }
-                None
-            }
-            _ => None,
+        cpl_syntax::const_int::eval(e, &|n| self.const_name(n))
+    }
+
+    pub(super) fn const_name(&self, n: &str) -> Option<i64> {
+        if let Some(GenArg::Int(v)) = self.gen_env.get(n) {
+            return Some(*v);
         }
+        if let Some(Sym::ModConst(cid)) = self.get_sym(n) {
+            return self.eval_const_int(self.mod_consts[cid].init);
+        }
+        self.const_ints.get(n).copied()
     }
 
     /// Evaluates the test of an `if const`: comparisons of compile-time

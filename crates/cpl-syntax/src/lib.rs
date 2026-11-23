@@ -12,6 +12,7 @@
 //! `Error` nodes and one diagnostic per root cause.
 
 pub mod ast;
+pub mod const_int;
 mod items;
 mod lexer;
 pub mod literal;

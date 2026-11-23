@@ -31,18 +31,7 @@ impl Lowerer<'_> {
                 }
                 _ => continue,
             };
-            let constant = match &def.kind {
-                ast::ExprKind::Range {
-                    lo: Some(lo),
-                    hi: Some(hi),
-                    step: None,
-                    ..
-                } => self.eval_const_int(lo).is_some() && self.eval_const_int(hi).is_some(),
-                ast::ExprKind::List(items) => {
-                    matches!(items.as_slice(), [n] if self.eval_const_int(n).is_some())
-                }
-                _ => false,
-            };
+            let constant = cpl_syntax::const_int::constant_domain(def, &|n| self.const_name(n));
             if constant {
                 self.offset = offset;
                 self.stmt(stmt, out);
