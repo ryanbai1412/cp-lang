@@ -233,8 +233,8 @@ impl<'a> Lowerer<'a> {
                     return self.mk(ExprKind::Some(Box::new(val)), ty, span);
                 }
                 if name == "same" && args.len() == 2 {
-                    let op_a = self.detect_bare_op(&args[0].value);
-                    let op_b = self.detect_bare_op(&args[1].value);
+                    let op_a = self.op_identity(&args[0].value);
+                    let op_b = self.op_identity(&args[1].value);
                     if op_a.is_some() || op_b.is_some() {
                         return self.mk(
                             ExprKind::Bool(op_a.is_some() && op_a == op_b),

@@ -18,6 +18,7 @@ mod keyed;
 mod memo;
 mod mono;
 mod names;
+mod op_value;
 mod prefix;
 mod range;
 mod report;
@@ -678,6 +679,8 @@ struct Lowerer<'a> {
 
     structs: Vec<StructInfo<'a>>,
     gen_structs: Vec<GenStructTemplate<'a>>,
+    /// The empty struct each bare operator value has as its type (`op_value`).
+    op_types: Vec<(BareOp, StructId)>,
     struct_insts: HashMap<(GenStructId, Vec<GenArg>), StructId>,
     /// The domains made for arrays indexed by a plain range (`[0..n]T`,
     /// `[1..=n]T`) where a fn asks for a `[D]T`, with their first index.
@@ -827,6 +830,7 @@ impl<'a> Lowerer<'a> {
             warnings: Vec::new(),
             structs: Vec::new(),
             gen_structs: Vec::new(),
+            op_types: Vec::new(),
             struct_insts: HashMap::new(),
             range_domains: HashMap::new(),
             range_domain_sites: HashMap::new(),

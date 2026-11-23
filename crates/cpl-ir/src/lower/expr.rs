@@ -440,9 +440,9 @@ impl<'a> Lowerer<'a> {
                             for &(from, to) in &remaps {
                                 h = super::stmt::remap_domain_ty(&h, from, to);
                             }
-                            self.expect(item, &h)
+                            self.component(item, Some(&h))
                         }
-                        None => self.expr(item, None),
+                        None => self.component(item, None),
                     };
                     if let ExprKind::DomainVal(local_dom) = v.kind {
                         if let Some(&sig_dom) = sig_doms.get(dom_idx) {
@@ -474,8 +474,8 @@ impl<'a> Lowerer<'a> {
                     .iter()
                     .enumerate()
                     .map(|(i, (_, value))| match &hints {
-                        Some(hints) => self.expect(value, &hints[i].1),
-                        None => self.expr(value, None),
+                        Some(hints) => self.component(value, Some(&hints[i].1)),
+                        None => self.component(value, None),
                     })
                     .collect();
                 let ty = Ty::Record(

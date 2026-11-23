@@ -7483,3 +7483,18 @@ lowering, the two places that already handle a passed bare operator, so
 the ratchet's `--update rs_over_cap` lets `call.rs` grow by 5 lines and
 `mono.rs` by 11. Reverse: drop the two branches; `Action.new` and
 friends then need `over:` passed explicitly.
+
+## 353. A bare operator in a tuple or record is a value of its own empty type (stdlib, 2026-11-23)
+
+`each(+, max)` and `each(n: +, hi: max)` pack their operators into a
+tuple or record; a packed `+` used to become a `(Int, Int) -> Int` and
+`Monoid.of` could no longer tell it was `+`. Now a bare operator written
+as a tuple or record component, where no fn type is asked for, lowers to
+a value of an empty struct, one per operator (`lower/op_value.rs`), and
+`same(m, +)` reads the operator off that type as it already does for a
+marker struct. So the identity survives generics, `fields(..)` and
+struct fields, the same for user libraries as for std. Where a fn type is
+asked for, the component is the fn as before. `lower/mod.rs` takes +4
+lines for the module and its table (`--update rs_over_cap`). Reverse:
+drop `op_value.rs` and its two call sites; `each` then needs named
+`Monoid` values again.
