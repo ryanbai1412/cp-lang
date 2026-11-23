@@ -382,6 +382,36 @@ pub(super) fn exec_bin_u64(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res
 }
 
 #[inline(never)]
+/// The elements of a list or array in the stable order of `keys`, one
+/// per element; `desc` puts larger keys first and keeps ties in order.
+pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> Res<Value> {
+    let Value::List(keys) = keys else {
+        return trap(span, "internal: expected the sort keys");
+    };
+    let mut order: Vec<usize> = (0..keys.len()).collect();
+    order.sort_by(|&a, &b| {
+        let o = keys[a].cmp(&keys[b]);
+        if desc {
+            o.reverse()
+        } else {
+            o
+        }
+    });
+    match seq {
+        Value::List(items) => Ok(Value::List(Rc::new(
+            order.iter().map(|&k| items[k].clone()).collect(),
+        ))),
+        Value::Array(arr) => {
+            let values = order.iter().map(|&k| arr.get_unchecked_val(k)).collect();
+            Ok(Value::Array(Rc::new(Array::from_values(
+                arr.dims.clone(),
+                values,
+            ))))
+        }
+        _ => trap(span, LENT),
+    }
+}
+
 pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res<()> {
     fn sort_ord<T: Ord>(v: &mut [T], desc: bool) {
         v.sort_unstable();

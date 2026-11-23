@@ -1,3 +1,4 @@
+use super::seq_load::SeqKind;
 use super::{Compiler, GiveTarget, LoopTargets};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
@@ -611,6 +612,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     }
                 } else if let ExprKind::Sort(place, cpl_ir::SortBy::Natural, desc) = &expr.kind {
                     if !self.try_compile_sort_stmt(place, desc.as_deref(), expr.span) {
+                        self.emit_fallback_stmt(stmt);
+                    }
+                } else if let ExprKind::Sort(place, cpl_ir::SortBy::Key(slot, key), desc) =
+                    &expr.kind
+                {
+                    if !self.try_compile_sort_key_stmt(
+                        place,
+                        *slot,
+                        key,
+                        desc.as_deref(),
+                        expr.span,
+                    ) {
                         self.emit_fallback_stmt(stmt);
                     }
                 } else if let ExprKind::Call(fn_id, args) = &expr.kind {
@@ -1295,12 +1308,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         rev: bool,
         body: &'p Block,
     ) -> bool {
-        #[derive(Clone, Copy)]
-        enum SeqKind {
-            Array,
-            List,
-            Str,
-        }
         let seq_kind = match &seq_expr.ty {
             Ty::Array { dims, .. } if dims.len() == 1 => SeqKind::Array,
             Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) => SeqKind::List,
@@ -1405,217 +1412,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             )
         };
         let body_pc = self.ops.len() as u32;
-        match slot_loc {
-            SlotLoc::I(r_var, _) => match (seq_kind, global_id) {
-                (SeqKind::Array, Some(gid)) => {
-                    self.emit(
-                        Op::LoadGArr1I {
-                            dst: r_var,
-                            gid,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::Array, None) => {
-                    self.emit(
-                        Op::LoadLArr1I {
-                            dst: r_var,
-                            arr_v: local_v.unwrap(),
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::List, Some(gid)) => {
-                    self.emit(
-                        Op::LoadGList1I {
-                            dst: r_var,
-                            gid,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::List, None) => {
-                    self.emit(
-                        Op::LoadLList1I {
-                            dst: r_var,
-                            list_v: local_v.unwrap(),
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::Str, Some(gid)) => {
-                    self.emit(
-                        Op::GStrGetI {
-                            dst: r_var,
-                            gid,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::Str, None) => {
-                    self.emit(
-                        Op::StrGetI {
-                            dst: r_var,
-                            str_v: local_v.unwrap(),
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-            },
-            SlotLoc::V(r_var) => match (seq_kind, global_id) {
-                (SeqKind::Array, Some(gid)) => {
-                    self.emit(
-                        Op::LoadGArr1V {
-                            dst: r_var,
-                            gid,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::Array, None) => {
-                    self.emit(
-                        Op::LoadLArr1V {
-                            dst: r_var,
-                            arr_v: local_v.unwrap(),
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::List, Some(gid)) => {
-                    self.emit(
-                        Op::LoadGList1V {
-                            dst: r_var,
-                            gid,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::List, None) => {
-                    self.emit(
-                        Op::LoadLList1V {
-                            dst: r_var,
-                            list_v: local_v.unwrap(),
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::Str, _) => unreachable!(),
-            },
-            SlotLoc::SmallTuple { base, len, .. } => match (seq_kind, global_id) {
-                (SeqKind::Array, Some(gid)) => {
-                    self.emit(
-                        Op::LoadGArr1SmallTuple {
-                            dst_base: base,
-                            len,
-                            gid,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::Array, None) => {
-                    self.emit(
-                        Op::LoadLArr1SmallTuple {
-                            dst_base: base,
-                            len,
-                            arr_v: local_v.unwrap(),
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::List, Some(gid)) => {
-                    self.emit(
-                        Op::LoadList1SmallTuple {
-                            dst_base: base,
-                            len,
-                            root: gid,
-                            is_global: true,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::List, None) => {
-                    self.emit(
-                        Op::LoadList1SmallTuple {
-                            dst_base: base,
-                            len,
-                            root: local_v.unwrap(),
-                            is_global: false,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::Str, _) => unreachable!(),
-            },
-            SlotLoc::OptI { val, some, .. } => match (seq_kind, global_id) {
-                (SeqKind::Array, Some(gid)) => {
-                    self.emit(
-                        Op::LoadGArr1OptI {
-                            dst_val: val,
-                            dst_some: some,
-                            gid,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::Array, None) => {
-                    self.emit(
-                        Op::LoadLArr1OptI {
-                            dst_val: val,
-                            dst_some: some,
-                            arr_v: local_v.unwrap(),
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::List, None) => {
-                    self.emit(
-                        Op::LoadLList1OptI {
-                            dst_val: val,
-                            dst_some: some,
-                            list_v: local_v.unwrap(),
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::List, Some(gid)) => {
-                    let cell = self.alloc_v();
-                    self.emit(
-                        Op::LoadGList1V {
-                            dst: cell,
-                            gid,
-                            r_i: r_idx,
-                        },
-                        seq_expr.span,
-                    );
-                    self.emit(
-                        Op::UnboxOptI {
-                            dst_val: val,
-                            dst_some: some,
-                            src_v: cell,
-                        },
-                        seq_expr.span,
-                    );
-                }
-                (SeqKind::Str, _) => unreachable!(),
-            },
-        }
+        self.emit_seq_load(slot_loc, seq_kind, global_id, local_v, r_idx, seq_expr.span);
         let own = LoopReg::Seq {
             id,
             r_idx,

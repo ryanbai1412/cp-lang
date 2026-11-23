@@ -1200,6 +1200,14 @@ pub(crate) enum Op {
         path: u16,
         val_v: u16,
     },
+    /// Puts the elements of `seq_v` back into `path` in the stable order
+    /// of their keys in `keys_v`.
+    SortByKeysPlace {
+        path: u16,
+        seq_v: u16,
+        keys_v: u16,
+        desc_r: u16,
+    },
     SortPlace {
         path: u16,
         desc_r: u16,

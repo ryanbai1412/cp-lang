@@ -1373,3 +1373,15 @@ fn vm_walks_sets_maps_and_optionals_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_for_items.out")
     );
 }
+
+#[test]
+fn vm_sorts_by_keys_itself() {
+    let out = vm_runs_alone(
+        include_str!("../../cpl-cli/tests/programs/vm_sort_key.cp"),
+        include_str!("../../cpl-cli/tests/programs/vm_sort_key.in"),
+    );
+    assert_eq!(
+        out,
+        include_str!("../../cpl-cli/tests/programs/vm_sort_key.out")
+    );
+}

@@ -167,6 +167,21 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     _ => return trap(spans[cur_pc], "internal: expected list"),
                 }
             }
+            Op::SortByKeysPlace {
+                path,
+                seq_v,
+                keys_v,
+                desc_r,
+            } => {
+                let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
+                let seq = std::mem::replace(&mut regs_v[seq_v as usize], Value::Unit);
+                let by = std::mem::replace(&mut regs_v[keys_v as usize], Value::Unit);
+                let sorted = sort_by_keys(seq, &by, desc, spans[cur_pc])?;
+                let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                *walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])? = sorted;
+            }
             Op::SortPlace { path, desc_r } => {
                 let pp = &chunk.places[path as usize];
                 let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
