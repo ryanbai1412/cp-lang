@@ -37,7 +37,7 @@ pub use db::{
 };
 pub use def::{DeclKind, Def, DomainInfo};
 pub use hover::{Definition, Hover, Representation, Symbol};
-pub use modules::{bundled_std, file_path, home_dir, FsLoader, Loader};
+pub use modules::{bundled_std, dev_std_problem, file_path, home_dir, FsLoader, Loader};
 pub use prelude::{import_edit, methods as std_methods, std_method, std_module, std_names};
 pub use ty::{human_bytes, Param, Ty};
 

@@ -14,6 +14,10 @@ fn main() -> ExitCode {
     if let Some(code) = cpl_cli::toolchain::launch(&args) {
         return ExitCode::from(code);
     }
+    if let Some(problem) = cpl_check::dev_std_problem() {
+        eprintln!("error: {problem}");
+        return ExitCode::from(2);
+    }
     if std::env::var_os("CPL_FORCE_ICE").as_deref() == Some(std::ffi::OsStr::new("1")) {
         panic!("forced ICE for testing");
     }

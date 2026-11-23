@@ -89,6 +89,46 @@ fn source_std() -> Option<&'static Path> {
     (!dir.as_os_str().is_empty() && dir.is_dir()).then_some(dir)
 }
 
+/// Why this dev `cpl` would check against the wrong std, if it would: its
+/// std/ is gone, or it runs from another checkout than the one it was built
+/// in (a copied or shared target dir), whose std it would silently ignore.
+pub fn dev_std_problem() -> Option<String> {
+    let built = env!("CPL_STD_SOURCE");
+    if built.is_empty() || std::env::var_os("CPL_STD_DIR").is_some() {
+        return None;
+    }
+    let exe = std::env::current_exe().ok();
+    let cwd = std::env::current_dir().ok();
+    std_mismatch(Path::new(built), exe.as_deref(), cwd.as_deref())
+}
+
+fn std_mismatch(built: &Path, exe: Option<&Path>, cwd: Option<&Path>) -> Option<String> {
+    let fix =
+        "rebuild it there (`touch crates/cpl-check/build.rs && cargo build`) or set CPL_STD_DIR";
+    let Ok(built) = built.canonicalize() else {
+        return Some(format!(
+            "this dev `cpl` reads std from {}, which is gone; {fix}",
+            built.display()
+        ));
+    };
+    let here = exe.and_then(checkout).or_else(|| cwd.and_then(checkout))?;
+    let here_std = here.join("std").canonicalize().ok()?;
+    (built != here_std).then(|| {
+        format!(
+            "this dev `cpl` reads std from {}, but runs from the checkout at {}; {fix}",
+            built.display(),
+            here.display()
+        )
+    })
+}
+
+/// The cp-lang checkout `path` is in.
+fn checkout(path: &Path) -> Option<std::path::PathBuf> {
+    path.ancestors()
+        .find(|d| d.join("std").is_dir() && d.join("crates/cpl-check/build.rs").is_file())
+        .map(Path::to_path_buf)
+}
+
 /// Whether `modules()` reads std from disk rather than the built-in copy.
 pub(crate) fn std_from_disk() -> bool {
     !std::ptr::eq(modules(), BUNDLED)
@@ -410,5 +450,39 @@ mod tests {
         }
         std::fs::remove_dir_all(&root).unwrap();
         assert_eq!(found.map(|p| p.ends_with("kit")), Some(true));
+    }
+}
+
+#[cfg(test)]
+mod dev_std_tests {
+    use super::std_mismatch;
+    use std::path::{Path, PathBuf};
+
+    fn checkout(root: &Path, name: &str) -> PathBuf {
+        let dir = root.join(name);
+        std::fs::create_dir_all(dir.join("std")).unwrap();
+        std::fs::create_dir_all(dir.join("crates/cpl-check")).unwrap();
+        std::fs::write(dir.join("crates/cpl-check/build.rs"), "").unwrap();
+        std::fs::create_dir_all(dir.join("target/debug")).unwrap();
+        dir
+    }
+
+    #[test]
+    fn a_dev_cpl_names_the_std_of_another_checkout() {
+        let root = std::env::temp_dir().join(format!("cpl-dev-std-{}", std::process::id()));
+        let (a, b) = (checkout(&root, "a"), checkout(&root, "b"));
+        let exe = |c: &Path| c.join("target/debug/cpl");
+        assert_eq!(std_mismatch(&a.join("std"), Some(&exe(&a)), None), None);
+        let wrong = std_mismatch(&a.join("std"), Some(&exe(&b)), None).unwrap();
+        assert!(wrong.contains("runs from the checkout at"), "{wrong}");
+        let shared = root.join("shared/debug/cpl");
+        assert!(std_mismatch(&a.join("std"), Some(&shared), Some(&b)).is_some());
+        assert_eq!(
+            std_mismatch(&a.join("std"), Some(&shared), Some(&root)),
+            None
+        );
+        let gone = std_mismatch(&root.join("gone/std"), Some(&exe(&a)), None).unwrap();
+        assert!(gone.contains("which is gone"), "{gone}");
+        std::fs::remove_dir_all(&root).ok();
     }
 }
