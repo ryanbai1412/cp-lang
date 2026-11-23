@@ -306,5 +306,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/step-on-list.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler
 - core-07/rev-does-not-satisfy-indexed.cp: compiler
+- core-07/range-min-max-compile-without-walk.cp: compiler
 - core-05/map-entry-index-key-lends.cp: compiler
 - std-tree/up-lift-changes-type.cp: stdlib

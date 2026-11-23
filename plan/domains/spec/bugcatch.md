@@ -104,3 +104,7 @@ Keyed views through generic params and struct fields, nested generators with ear
 ## Round 16 result (2026-11-23)
 
 7 of 8 revertible fixes caught (87%); 2 no longer build when reverted (`2f89a5fa`, `7814a504`). Missed: `262b230b`, the `cpl fix` quick fix for `K`/`to_idx`/`from_idx`. `core-04/impl-index-old-names-fix` still passes with it reverted, so another path also writes the fix. Round 17 runs on the 9 newest check/codegen/interp/syntax commits.
+
+## Sanitizer sweep (2026-11-23)
+
+Every runnable `ok` case built at `-O1` under ASan, UBSan and `_GLIBCXX_DEBUG` and compared with `cpl run`. Bug: `r.min()`/`r.max()` on a range lower to a full walk in C++ (R07.9.6 says O(1)); at -O2 gcc folds it, so only the sanitizer build timed out (compiler). Case: `core-07/range-min-max-compile-without-walk`.
