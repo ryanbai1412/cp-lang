@@ -1,5 +1,6 @@
 //! W8 `IndexSet`: on a struct whose only place protocol is `set`, `x[k] = v` is `x.set(k, v)`
 //! and `x[k] op= v` is `x.set(k, x[k] op v)`, with `k` evaluated once.
+//! Also `d[p, q]` on `[P, P]T`: product positions spelled out as their factor indices.
 
 use super::call::is_place;
 use super::*;
@@ -111,5 +112,60 @@ impl<'a> Lowerer<'a> {
             ty,
             span: e.span,
         }
+    }
+
+    /// `g[p]` with `p: (Row, Col)`, or `d[p, q]` on `[P, P]T` with `type P = (A, B)`:
+    /// each tuple, record or product position stands for its factor indices.
+    pub(super) fn spread_indices(
+        &mut self,
+        dims: &[Dim],
+        indices: &[ast::Expr],
+    ) -> Option<Vec<Expr>> {
+        if indices.len() >= dims.len() {
+            return None;
+        }
+        let mut out = Vec::with_capacity(dims.len());
+        for index in indices {
+            let value = self.expr(index, None);
+            if let Ty::Pos(p) = value.ty {
+                if let Some(grid) = self.product_grid(p) {
+                    if dims.get(out.len()..out.len() + grid.len()) != Some(grid.as_slice()) {
+                        return None;
+                    }
+                    for i in 0..grid.len() {
+                        out.push(self.decode_product_field(p, value.clone(), i, index.span));
+                    }
+                    continue;
+                }
+            }
+            let parts: Vec<Ty> = match &value.ty {
+                Ty::Tuple(ts) => ts.clone(),
+                Ty::Record(fs) => fs.iter().map(|(_, t)| t.clone()).collect(),
+                _ => return None,
+            };
+            for (i, part) in parts.into_iter().enumerate() {
+                let dim = *dims.get(out.len())?;
+                let want = match dim {
+                    Dim::Pos(d) => Ty::Pos(d),
+                    Dim::Bound(d) => Ty::Bound(d),
+                    Dim::Enum(e) => Ty::Enum(e),
+                    Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
+                };
+                let field = self.mk(
+                    ExprKind::Field(Box::new(value.clone()), i),
+                    part,
+                    index.span,
+                );
+                let at = self.coerce(field, &want, index.span);
+                out.push(match dim {
+                    Dim::Enum(e) => {
+                        let ord = self.cast(Cast::EnumOrd(e), at, Ty::Int);
+                        self.cast(Cast::Raw, ord, Ty::Int)
+                    }
+                    _ => at,
+                });
+            }
+        }
+        (out.len() == dims.len()).then_some(out)
     }
 }

@@ -3060,55 +3060,9 @@ impl<'a> Lowerer<'a> {
                     let flat = self.cast(Cast::Raw, sym, Ty::Int);
                     return (vec![flat], (**elem).clone());
                 }
-                if dims.len() > 1 && indices.len() == 1 {
-                    // Allow indexing a multi-D array with a single tuple/record coordinate `g[p]` where `p: (Row, Col)`.
-                    let tuple_val = self.expr(&indices[0], None);
-                    if let Ty::Pos(p) = tuple_val.ty {
-                        if self.product_grid(p).as_deref() == Some(dims.as_slice()) {
-                            let parts = (0..dims.len())
-                                .map(|i| {
-                                    self.decode_product_field(
-                                        p,
-                                        tuple_val.clone(),
-                                        i,
-                                        indices[0].span,
-                                    )
-                                })
-                                .collect();
-                            return (parts, (**elem).clone());
-                        }
-                    }
-                    let field_tys: Option<Vec<Ty>> = match &tuple_val.ty {
-                        Ty::Tuple(ts) if ts.len() == dims.len() => Some(ts.clone()),
-                        Ty::Record(fs) if fs.len() == dims.len() => {
-                            Some(fs.iter().map(|(_, t)| t.clone()).collect())
-                        }
-                        _ => None,
-                    };
-                    if let Some(ftys) = field_tys {
-                        let mut out = Vec::new();
-                        for (i, (dim, fty)) in dims.iter().zip(ftys).enumerate() {
-                            let want = match dim {
-                                Dim::Pos(d) => Ty::Pos(*d),
-                                Dim::Bound(d) => Ty::Bound(*d),
-                                Dim::Enum(e) => Ty::Enum(*e),
-                                Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-                            };
-                            let field_e = self.mk(
-                                ExprKind::Field(Box::new(tuple_val.clone()), i),
-                                fty,
-                                indices[0].span,
-                            );
-                            let idx_v = self.coerce(field_e, &want, indices[0].span);
-                            if let Dim::Enum(e) = dim {
-                                let ord = self.cast(Cast::EnumOrd(*e), idx_v, Ty::Int);
-                                out.push(self.cast(Cast::Raw, ord, Ty::Int));
-                            } else {
-                                out.push(idx_v);
-                            }
-                        }
-                        return (out, (**elem).clone());
-                    }
+                // `g[p]` with `p: (Row, Col)`, or `d[p, q]` on `[P, P]T`.
+                if let Some(parts) = self.spread_indices(dims, indices) {
+                    return (parts, (**elem).clone());
                 }
                 if dims.len() != indices.len() {
                     let message = format!(

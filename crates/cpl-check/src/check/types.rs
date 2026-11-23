@@ -20,6 +20,17 @@ impl<'a> Checker<'a> {
         flat
     }
 
+    /// `grid[p]` or `d[p, q]` with `p, q: Cell = (Row, Col)`: each product
+    /// position stands for its factor indices.
+    pub(crate) fn indexes_by_factors(&mut self, got: &[Ty], index: &[Ty]) -> bool {
+        let flat = self.flat_index(got.to_vec());
+        flat.len() == index.len()
+            && flat
+                .iter()
+                .zip(index)
+                .all(|(got, want)| self.fits(got, want))
+    }
+
     /// The factor positions of a product-domain position, when every
     /// factor is itself a position.
     pub(crate) fn position_factors(&mut self, ty: &Ty) -> Option<Vec<Ty>> {

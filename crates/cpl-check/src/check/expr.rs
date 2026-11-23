@@ -3097,10 +3097,8 @@ impl<'a> Checker<'a> {
                 }
             }
             Ty::Array { index, elem } => {
-                if let [whole] = index_tys.as_slice() {
-                    if index.len() > 1 && self.position_factors(whole).as_ref() == Some(index) {
-                        return (**elem).clone();
-                    }
+                if index.len() != indices.len() && self.indexes_by_factors(&index_tys, index) {
+                    return (**elem).clone();
                 }
                 if index.len() != indices.len() {
                     let wanted: Vec<String> = index.iter().map(Ty::to_string).collect();
