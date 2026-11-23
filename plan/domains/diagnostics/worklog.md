@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff (infra): `newcomer_scoreboard` failed gate shard 1/6 on run 45123503577 with 173 copies (floor 180). Site's 7fec61823 rewrote practice refs more idiomatically (e.g. closest-values lost its loop), so fewer lines take a habit edit; no copy was lost to a bug. Floor set to 173. General fix owed (diagnostics): derive the floor from the refs (or pin the case list) so content edits by site can't turn the gate red.
 - Sheriff (infra): reverted db6e2ca7b (brace-bodied fn and struct fix). `cpl fmt` collapses its fixture `brace_fn_struct.cp` to `struct P { x: Int }`, which the one-line path reads without the field (E0310), so fmt-check failed on main. Re-land with the one-line brace form recovered too and `scripts/fmt_check.py` clean.
 - Request from spec: a prelude name used without `use` in a library module (`core-11/library-module-no-prelude.cp`) reports E0201 "`cpl run` doesn't know a fn named `gcd`" at the program's call `g()`, not at the library line that names `gcd`, and gives no `use std.math.{gcd}` fix (R11.3.1).
 - Sheriff (infra): clippy errors failed CI checks (run 45114200284): `wrong_self_convention` on `to_fixed_fix` (05f1b7d9e; diagnostics renamed it) and `needless_borrow` in `check/advice.rs:132` (87d23c36f). Fixed forward.
