@@ -821,6 +821,12 @@ impl<'a> Checker<'a> {
             return ty;
         }
         if let Some(ty) = prelude::value(name) {
+            let resolved = Resolved {
+                module: "prelude".into(),
+                name: name.into(),
+                owner: None,
+            };
+            self.resolved.push((span, resolved));
             return ty;
         }
         // A spec stub's body: `pub fn f(x: Int) -> Int = todo`.

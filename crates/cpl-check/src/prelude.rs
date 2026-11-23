@@ -302,11 +302,21 @@ pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
 ];
 
 fn int_fn(arity: usize) -> Ty {
+    fn_of(arity, Ty::Int, Ty::Int)
+}
+
+/// `sqrt`, `atan2`: an F64 from any number, an `Int` variable included.
+fn float_fn(arity: usize) -> Ty {
+    fn_of(arity, Ty::Unknown, Ty::Float)
+}
+
+/// A fn taking `arity` arguments of type `param`.
+fn fn_of(arity: usize, param: Ty, ret: Ty) -> Ty {
     Ty::Fn {
         params: (0..arity)
             .map(|_| Param {
                 name: String::new(),
-                ty: Ty::Int,
+                ty: param.clone(),
                 mutable: false,
                 has_default: false,
                 named_only: false,
@@ -314,7 +324,7 @@ fn int_fn(arity: usize) -> Ty {
                 lazy: false,
             })
             .collect(),
-        ret: Box::new(Ty::Int),
+        ret: Box::new(ret),
     }
 }
 
@@ -325,6 +335,9 @@ pub fn value(name: &str) -> Option<Ty> {
     Some(match name {
         "INF" => Ty::Int,
         "bit_ceil" => int_fn(1),
+        "sqrt" | "cbrt" | "sin" | "cos" | "tan" | "asin" | "acos" | "atan" | "exp" | "ln"
+        | "log2" | "log10" => float_fn(1),
+        "atan2" | "hypot" => float_fn(2),
         // `ask("?", x)` prints a query, flushes, and reads the judge's
         // answer; `Subset<D>` is the subsets of a domain. Both are lowered
         // by `cpl-ir`.

@@ -1729,3 +1729,20 @@ fn a_reversed_view_concatenates_like_its_source() {
     let src = "let a = [3, 2, 1]\nlet b = [7, 8]\nlet c: List<Int> = a.rev + b\nlet d: List<Int> = b + a.rev\nprint(c, d)\n";
     assert_eq!(check(src), vec![]);
 }
+
+#[test]
+fn a_prelude_math_fn_returns_an_f64() {
+    let mut db = Database::new();
+    db.set_file(
+        "a.cp",
+        "let n: Int = read()\nlet d = sqrt(n)\nprint(d, max(n, 2))\n",
+    );
+    let analysis = db.analyze("a.cp").unwrap();
+    assert!(!analysis.has_errors());
+    let items = &analysis.items;
+    let hovers = || items.iter().flat_map(|item| item.check.hovers.iter());
+    assert!(hovers().any(|h| h.name == "d" && h.ty == crate::Ty::Float));
+    let resolved = || items.iter().flat_map(|item| item.check.resolved.iter());
+    assert!(resolved().any(|(_, r)| r.name == "sqrt" && r.module == "prelude"));
+    assert_eq!(codes("let k: Int = sqrt(2.0)\nprint(k)\n"), ["E0302"]);
+}
