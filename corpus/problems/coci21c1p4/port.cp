@@ -1,5 +1,13 @@
-// Set, in the forms proto/cpc builds today. See ../coci21c1p4.cp.
-// The record of two Ints is two arrays, the stepped range is a `while`, and
+// Source: COCI 2021/2022 Contest 1 #4, Set, https://dmoj.ca/problem/coci21c1p4
+// Problem: n distinct cards, each a string of k characters from {1,2,3} (k <= 12, n <= 3^k).
+//   Count unordered triples of cards that form a set: at every position the three characters
+//   are all equal or all different.
+// Solution: Three cards form a set iff each position sums to 0 mod 3, so count ordered triples
+//   x + y + z = 0 in Z_3^k: take the k-dimensional DFT of the card indicator over Z[w] (w a
+//   cube root of unity, stored as two Int arrays), cube every value, sum the real parts and
+//   divide by 3^k. Remove the n triples x = y = z (the only degenerate ones), divide by 6.
+//   O(k 3^k).
+// Today-form: the record of two Ints is two arrays, the stepped range is a `while`, and
 // the cube sum is a plain Int (it is at most 3^k * n^2 < 2^58).
 // original: corpus/submissions/4106618.cpp
 let n: Int = read()

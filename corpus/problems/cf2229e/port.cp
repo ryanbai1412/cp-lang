@@ -1,21 +1,11 @@
-// Codeforces 2229 E: count valid ways to orient / partition the tree rooted
-// at `root = V.last` (vertex `n`).
-//
-// Invariant:
-// - Every leaf `l` must appear before any strict ancestor in the order, so no
-//   valid prefix can end below `max_leaf = max(u for u in V if g[u].len == 1)`:
-//   `max_leaf` is the unique starting state (`dp[max_leaf] = 1`).
-// - For any non-root vertex `u > max_leaf`, the last chosen vertex `w < u`
-//   must exceed every label in `u`'s proper child subtrees, so `w > prv_val[u]`
-//   where `prv_val[u] = max(sub_max[c] for c in t.children(u))`.
-// - At `root = V.last` (`n`), the child subtree holding `n - 1` (`root.prev!`)
-//   is excluded from `prv_val[root]`: the penultimate chosen vertex `w` is
-//   allowed to lie inside that subtree (even `w = n - 1`), whereas every other
-//   child subtree of `root` has maximum `< n - 1` and must be cleared before
-//   `w`, so `w` only needs to exceed the largest label in the *other* child
-//   subtrees of `root`.
-// - Therefore `dp[u] = sum(dp[w] for w in pv.next!..u)` when `pv = prv_val[u] < u`,
-//   maintained in O(1) per vertex via `Prefix<Z>.filling(n)`.
+// Source: Codeforces 2229 E, Deconstruction Tree, https://codeforces.com/contest/2229/problem/E
+// Problem: multitest (sum n <= 2e5): a tree on n vertices. n-1 times: add the largest-index
+//   leaf x to a set S, then delete any leaf other than x. Count the distinct sets S you can
+//   end with, modulo 998244353.
+// Solution: Root at n. In increasing order S is a chain from the largest initial leaf up to n,
+//   and w < u can precede u iff w exceeds every label in u's child subtrees (at the root the
+//   child subtree holding n-1 is exempt). With pv[u] that largest label, dp[u] = sum of dp[w]
+//   for pv[u] < w < u, dp[largest leaf] = 1, answer dp[n]; a prefix-sum array makes it O(n).
 const MOD = 998_244_353
 type Z = Mod<MOD>
 

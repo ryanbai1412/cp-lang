@@ -1,7 +1,11 @@
-// COCI 2010 contest 7 #4, Poštar: a postman starts at the post office (P)
-// and must reach every house (K) on a hilly square town, moving to any of
-// the eight cells around him. Print the smallest gap between the highest
-// and lowest ground he has to stand on.
+// Source: COCI 2010/2011 Contest 7 #4, Postar, https://dmoj.ca/problem/coci10c7p4
+// Problem: an N x N town (N <= 50) of cells P (one post office), K (houses, at least one) and
+//   '.', each with a height < 1e6. Starting from P and moving to any of the 8 neighbours,
+//   visit every K and return. Print the smallest possible (highest - lowest) height visited.
+// Solution: Two pointers over the sorted heights: raising the floor never lowers the needed
+//   ceiling. For each floor, raise the ceiling until a flood fill from P through cells with
+//   heights inside [floor, ceiling] reaches every K. O(N^2) window steps, each an O(N^2)
+//   fill: O(N^4).
 // original: corpus/submissions/5245379.cpp
 let n: 2..=50 = read()
 domain Row = 1..=n

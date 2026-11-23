@@ -1,13 +1,12 @@
-// CCO 2019 P6 Bad Codes: n different codewords of 0s and 1s (n <= 50, each at
-// most m <= 50 long). A message is codewords written one after another.
-// Print the length of the shortest message that can be read as two different
-// lists of codewords, or -1 if there is none.
-//
-// Write the two readings side by side, one codeword at a time on whichever
-// side is behind. What matters is the part by which one side is ahead: a
-// tail of some codeword, so at most n * m states. Putting a codeword on the
-// short side costs the letters that become common to both. Dijkstra from
-// every pair of codewords where one starts the other, to the empty tail.
+// Source: CCO 2019 Day 2 P3 (CCO '19 P6), Bad Codes, https://dmoj.ca/problem/cco19p6
+// Problem: n distinct binary codewords (n <= 50), each 1..m bits long (m <= 50). Print the
+//   length of the shortest bit string that splits into codewords in two different ways,
+//   or -1 if every bit string decodes uniquely.
+// Solution: Write the two readings side by side, adding a codeword to whichever is behind;
+//   only the part by which one side is ahead matters, a tail of some codeword, so there are
+//   at most n * m states. A codeword placed against the tail costs the bits now shared by
+//   both. Dijkstra (map of distances, min-heap) starts from every pair of codewords where
+//   one is a prefix of the other and stops at the empty tail: O(n^2 m^2 log(nm)).
 // original: corpus/submissions/3617414.cpp
 
 fn starts_with(s: Str, head: Str) -> Bool = head.len <= s.len and s[0..head.len] == head

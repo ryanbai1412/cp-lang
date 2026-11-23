@@ -1,19 +1,12 @@
-// Codeforces 2101 D — Mani and Segments
-//
-// A subarray a[l..=r] of a permutation is "cute" (LIS + LDS = len + 1) iff
-// it contains no element strictly between two earlier elements (1-3-2 / 3-1-2)
-// and none strictly between two later elements (2-3-1 / 2-1-3).
-//
-// For each i, two monotone stacks give the nearest earlier smaller and larger
-// indices; if both exist, any start l <= min(prev_lo, prev_hi) breaks at i.
-// A suffix minimum turns those into bad_r[l], the first right endpoint that
-// breaks start l. Running the same scan on the reversed array gives bad_l[r],
-// the last left endpoint that breaks end r.
-//
-// Since bad_l and bad_r are non-decreasing, the cute subarrays are the union
-// of rectangles [bad_l[i] + 1 ..= i] x [i .. bad_r[i]]. Adjacent rectangles
-// k and k + 1 overlap on [bad_l[k + 1] + 1 ..= k] x [k + 1 .. bad_r[k]], so
-// subtracting adjacent overlaps counts every cute subarray once in O(n).
+// Source: Codeforces 2101 D, Mani and Segments, https://codeforces.com/contest/2101/problem/D
+// Problem: multitest (sum n <= 2e5): a permutation a of length n. Count the non-empty
+//   subarrays b that are cute: LIS(b) + LDS(b) = |b| + 1.
+// Solution: b is cute iff no element lies strictly between two earlier elements in value,
+//   and none strictly between two later ones. Monotone stacks give, for each i, the nearest
+//   earlier smaller and larger elements; any start at or before both breaks at i, and a
+//   suffix minimum turns that into bad_r[l], the first end that breaks start l (the reversed
+//   scan gives bad_l). Cute subarrays are the union of rectangles
+//   [bad_l[i]+1..=i] x [i..bad_r[i]]; subtracting adjacent overlaps counts each once. O(n).
 
 use std.prefix.{suffix_fold}
 

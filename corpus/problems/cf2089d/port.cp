@@ -1,15 +1,13 @@
-// Codeforces 2089 D — Conditional Tree
-//
-// Parenthesize the binary string `s[0..2*half+1]` as a ternary `?:` expression
-// evaluating to `'1'` (with `chain(lo, hi)` forming a right-associated chain).
-//
-// Three constructive cases cover all solvable strings:
-// 1. `n >= 5` with `s[0..=1] == "10"` and `s[n - 1] == '1'`: group `(s[0]?s[1]:s[2])`
-//    (evaluates to `'0'`) as the outer condition so it selects the final `s[n - 1] == '1'`.
-// 2. `s[0] == '0'` and `s[n - 1] == '1'`: `0?chain(1, n - 1):1` directly selects `1`.
-// 3. Otherwise we need an even-indexed `'1'` at `i` followed by an odd-indexed `'1'`
-//    at `j > i` (so `s[i] == '1'` enters its true branch, which evaluates to `s[j] == '1'`,
-//    while any leading `0`s skip over `chain(1, i)` straight to `s[i]`).
+// Source: Codeforces 2089 D, Conditional Operators, https://codeforces.com/contest/2089/problem/D
+// Problem: multitest (t <= 1e4, sum n <= 1.5e5): a binary string of length 2n+1. Insert n
+//   right-associative ?: operators (and any parentheses) between the characters, keeping
+//   their order, so the expression evaluates to 1: print Yes and such an expression of
+//   length <= 10n+1000, or No.
+// Solution: Constructive, with chain(lo, hi) the flat right-associated a?b:c?d:... of a span.
+//   1. length >= 5 and s = "10...1": (1?0:s2) is 0 and selects the final 1.
+//   2. s[0] = 0 and s[last] = 1: 0?chain(...):1.
+//   3. Otherwise some '1' at even i must be followed by a '1' at odd j > i: leading 0s skip
+//      to s[i], whose true branch is (s[i+1]?chain:s[j]) = 1; no such pair means No. O(n).
 
 @!multitest
 let half: 1..=200_000 = read()

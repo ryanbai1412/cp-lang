@@ -1,16 +1,14 @@
-// Codeforces 2138 D: Antiamuny Wants to Learn Swap.
-// `n` sliders sit at strictly increasing positions `raw_a[i]` in `1..=l`; each
-// operation `(i, x)` moves slider `i` to `x`, pushing neighbors to stay
-// strictly ordered. Shifting by `- 1 - i` (`a[i] = raw_a[i] - 1 - i`, op
-// `(val: x - i, pos: i - 1)`) turns strict gaps into non-decreasing order.
-//
-// For fixed slider `i` and threshold `y`, an op with `pos <= i, val >= y`
-// pushes slider `i` to `>= y` (`num_right` ops), while `pos >= i, val < y`
-// pushes it to `< y` (`num_left` ops). In a random order of the `q` ops,
-// whichever of these `num_left + num_right` ops runs last decides `[a'[i] >= y]`,
-// giving probability `num_right / (num_left + num_right)` (or `[a[i] >= y]` if
-// none). Integrating over `y in [0, l]` yields `E[a'[i]]`; adding back `i + 1`
-// and scaling by `q!` sums final positions over all `q!` operation orders.
+// Source: Codeforces 2138 D, Antiamuny and Slider Movement,
+//   https://codeforces.com/contest/2138/problem/D
+// Problem: multitest (sum n, sum q <= 5000): n sliders at increasing positions a_i on a track
+//   1..m (m <= 1e9); q operations "move slider i to x", pushing neighbours to keep them
+//   distinct and ordered. For each slider print the sum of its final position over all q!
+//   orders of the operations, modulo 1e9+7.
+// Solution: Shift a_i by -i so pushes keep a non-decreasing order. For slider i and a threshold
+//   y, ops at or left of i with value >= y force a'_i >= y, ops at or right of i with value < y
+//   force a'_i < y; in a random order the last of these decides, so P(a'_i >= y) =
+//   right / (left + right), or [a_i >= y] if none. Sweep y over the sorted op values and
+//   integrate to get E[a'_i]; undo the shift and multiply by q!. O(n q) per test.
 
 type Z = Mod<1_000_000_007>
 let comb = Comb<Z>()
