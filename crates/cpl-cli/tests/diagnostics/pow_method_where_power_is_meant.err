@@ -1,0 +1,8 @@
+error[E0203]: power uses `**`, not `.pow(...)`
+  --> pow_method_where_power_is_meant.cp:2:9
+  |
+2 | print(x.pow(2).to_str())
+  |         ^^^
+  = help: write `(x ** 2)`
+
+pow_method_where_power_is_meant.cp: 1 error

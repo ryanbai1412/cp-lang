@@ -2161,10 +2161,11 @@ impl<'a> Checker<'a> {
         }
         if name.text == "pow" {
             let message = "power uses `**`, not `.pow(...)`".to_string();
+            let fix = self.pow_fix(expr, name);
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
-                diag.help = Some(
-                    "write `a ** e` (or run `cpl fix` to rewrite `.pow(e)` to `** e`)".to_string(),
-                );
+                let shown = fix.as_ref().map_or("a ** e", |f| f.edits[0].1.as_str());
+                diag.help = Some(format!("write `{shown}`"));
+                diag.fixes.extend(fix);
             }
             return Ty::Error;
         }
