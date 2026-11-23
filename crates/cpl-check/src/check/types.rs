@@ -3,7 +3,7 @@
 use super::*;
 use crate::def::DomainInfo;
 use crate::ty::{human_int, Param};
-use cpl_syntax::ast::{self, ExprKind, TypeKind};
+use cpl_syntax::ast::{self, Expr, ExprKind, TypeKind};
 
 impl<'a> Checker<'a> {
     /// R04.2.11: for `P = (A, B)`, `[P]T` and `[A, B]T` are one type, kept
@@ -1912,6 +1912,47 @@ impl<'a> Checker<'a> {
             }
             Ty::RowWithout(_, inner, _) => self.derives_print(inner, allow_none, seen),
             Ty::Domain(_) | Ty::TypeName(_) => true,
+        }
+    }
+
+    /// Reports `expr` if it is known not to be a `Bool`.
+    pub(crate) fn require_bool(&mut self, ty: &Ty, expr: &Expr, what: &str) {
+        if ty.is_vague() || *ty == Ty::Bool {
+            return;
+        }
+        if !(ty.is_numeric() || matches!(ty, Ty::Str | Ty::Char | Ty::Pos(_) | Ty::Optional(_))) {
+            return;
+        }
+        let quoted = self.quote(expr.span);
+        let message = format!(
+            "{what} needs a Bool, but `{quoted}` is {}",
+            ty.widen().with_article()
+        );
+        let zero = match ty {
+            Ty::Optional(_) => Some("None"),
+            t if t.is_numeric() => Some("0"),
+            _ => None,
+        };
+        let simple = matches!(
+            expr.kind,
+            ExprKind::Name(_)
+                | ExprKind::Field { .. }
+                | ExprKind::Call { .. }
+                | ExprKind::Index { .. }
+        );
+        if let Some(diag) = self.error(codes::CONDITION_NOT_BOOL, expr.span, message) {
+            let Some(zero) = zero else {
+                diag.help = Some("write a comparison".to_string());
+                return;
+            };
+            diag.help = Some(format!("compare it: `{quoted} != {zero}`"));
+            if simple {
+                diag.fix(
+                    format!("compare with `!= {zero}`"),
+                    Span::point(expr.span.end),
+                    format!(" != {zero}"),
+                );
+            }
         }
     }
 }
