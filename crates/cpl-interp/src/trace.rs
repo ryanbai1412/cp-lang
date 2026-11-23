@@ -14,12 +14,14 @@ use std::collections::{BTreeMap, HashMap, HashSet};
 use std::fmt::Write as _;
 use std::sync::Arc;
 
+mod compare;
 mod glob;
 mod lines;
 mod log;
 mod raw;
 mod trap;
 mod window;
+pub use compare::{first_divergence, stages, Divergence, Stage};
 use glob::glob_match;
 pub use log::Steps;
 pub use trap::{shown, trap_config, trap_locals};
@@ -2214,111 +2216,6 @@ pub fn document(
     }
     out.push('}');
     out
-}
-
-/// A checkpoint both runs reached, with what each showed there.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Stage {
-    pub name: String,
-    /// 1-based line in the solution.
-    pub line: u32,
-    pub fast: String,
-    pub brute: String,
-}
-
-/// Where a solution and its brute first give a variable they both name
-/// different values: its `nth` value (1-based, a repeat of the value
-/// before not counted), with the line and the value on each side, `None`
-/// on a side that never gives it an `nth` value.
-#[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Divergence {
-    pub name: String,
-    pub nth: usize,
-    pub fast: Option<(u32, String)>,
-    pub brute: Option<(u32, String)>,
-}
-
-/// The first value the solution gives one of the variables both runs
-/// name that the brute does not give it, from [`Recording::assigned`]. A
-/// variable that takes the same values in another order and ends alike
-/// (a loop walked the other way) is not a divergence.
-pub fn first_divergence(fast: &Recording, slow: &Recording) -> Option<Divergence> {
-    fn histories(rec: &Recording) -> HashMap<&str, Vec<(usize, &Assigned)>> {
-        let mut out: HashMap<&str, Vec<(usize, &Assigned)>> = HashMap::new();
-        for (at, assigned) in rec.assigned.iter().enumerate() {
-            let history = out.entry(assigned.name.as_str()).or_default();
-            if history
-                .last()
-                .is_none_or(|(_, last)| last.value != assigned.value)
-            {
-                history.push((at, assigned));
-            }
-        }
-        out
-    }
-    let (ours, theirs) = (histories(fast), histories(slow));
-    let mut best: Option<(usize, &str, usize)> = None;
-    for (name, a) in &ours {
-        let Some(b) = theirs.get(name) else {
-            continue;
-        };
-        let values = |history: &[(usize, &Assigned)]| -> Vec<String> {
-            history
-                .iter()
-                .map(|(_, assigned)| assigned.value.clone())
-                .collect()
-        };
-        let (va, vb) = (values(a), values(b));
-        if va == vb {
-            continue;
-        }
-        let (mut sa, mut sb) = (va.clone(), vb.clone());
-        sa.sort();
-        sb.sort();
-        if sa == sb && va.last() == vb.last() {
-            continue;
-        }
-        let nth = va.iter().zip(&vb).take_while(|(x, y)| x == y).count();
-        let at = a.get(nth).map_or(fast.assigned.len(), |(at, _)| *at);
-        if best.is_none_or(|(best_at, best_name, _)| (at, *name) < (best_at, best_name)) {
-            best = Some((at, name, nth));
-        }
-    }
-    let (_, name, nth) = best?;
-    let side = |history: &Vec<(usize, &Assigned)>| {
-        history
-            .get(nth)
-            .map(|(_, assigned)| (assigned.line, assigned.value.clone()))
-    };
-    Some(Divergence {
-        name: name.to_string(),
-        nth: nth + 1,
-        fast: side(&ours[name]),
-        brute: side(&theirs[name]),
-    })
-}
-
-/// The `debug(...)` checkpoints both runs reached, in the solution's
-/// order, and the last line each printed: where the two first differ is
-/// where to look.
-pub fn stages(fast: &Recording, slow: &Recording) -> Vec<Stage> {
-    let theirs: HashMap<&str, &Shown> = slow
-        .shown
-        .iter()
-        .map(|shown| (shown.name.as_str(), shown))
-        .collect();
-    fast.shown
-        .iter()
-        .filter_map(|shown| {
-            let other = theirs.get(shown.name.as_str())?;
-            Some(Stage {
-                name: shown.name.clone(),
-                line: shown.line,
-                fast: shown.text.clone(),
-                brute: other.text.clone(),
-            })
-        })
-        .collect()
 }
 
 #[cfg(test)]
