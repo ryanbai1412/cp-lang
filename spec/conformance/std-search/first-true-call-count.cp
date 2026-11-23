@@ -5,4 +5,4 @@ fn ok(c: Int) -> Bool:
     calls += 1
     c >= 777
 let c = (0..100000).first_true(ok)
-print(c, if calls <= 17: "ok" else: "over")
+print(c!, if calls <= 17: "ok" else: "over")

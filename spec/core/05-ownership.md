@@ -145,7 +145,10 @@ with no copy and no move. The callee can read it, pass it on, lend from it,
 but never keep it (R8). `fn f(mut xs: List<Int>)` may also write it, and
 the call says so: `f(mut a)`. A method receiver is the same, with no marker
 at the call: `fn add(mut self, x: Int)` is called as `st.add(x)` and needs
-`st` to be a mutable place.
+`st` to be a mutable place. (R05.4.1) A method call
+resolves to the receiver type's own method first, so a type's own non-`mut`
+`swap`, or a field holding an operation value `add`, is not the built-in
+mutator of that name and a `let` receiver may call it. (R05.4.2)
 
 <!-- rejects: E0402 -->
 ```python
@@ -158,13 +161,13 @@ grow(mut b)                 // error: b is a let; declare it var
 ```
 
 A `mut` parameter is a place: the callee may assign it whole
-(`xs = List()`), which replaces the caller's value.
+(`xs = List()`), which replaces the caller's value. (R05.4.3)
 
 **Generated constructors move.** `S(a, b)` and struct literals take their
 arguments by value (R2): an owned argument moves in, a lent argument makes
 the struct lent (R6). That is how a library struct holds a closure or a
 source: `Filter(self, keep)`. A custom constructor (`SegTree(max, a)`) is a
-static fn and follows R4/R5 below (chapter 2.6 has the one rule).
+static fn and follows R4/R5 below (chapter 2.6 has the one rule). (R05.4.4)
 
 <!-- rejects: E0608 -->
 ```python
@@ -179,7 +182,7 @@ print(a.len)               // error: a was moved into h on line 3; write Holder(
 **R5. A fn returns an owned value, unless it is declared `lends`.**
 Returning moves, and is \(O(1)\). Returning a parameter, part of one, or
 anything built from one is returning a lent value, which needs `lends` in
-the signature (§6), or `.clone()`.
+the signature (§6), or `.clone()`. (R05.5.1)
 
 <!-- rejects: E0603 -->
 ```python
@@ -195,7 +198,7 @@ fn same(xs: List<Int>) -> List<Int> = xs
 **Custom constructors follow R5 too.** A static-fn constructor is a fn, so its parameters
 are lent for the call and its result is owned unless it says `lends`. An
 owned result never keeps its source busy: the source is free again when
-the call returns.
+the call returns. (R05.5.2)
 
 <!-- given:
   domain V = 0..3

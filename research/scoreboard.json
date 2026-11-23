@@ -346,6 +346,8 @@
         "core-05/closure-not-returned.cp": "pass",
         "core-05/closure-param-read-twice.cp": "pass",
         "core-05/closure-returned-by-move.cp": "pass",
+        "core-05/constructor-moves-owned-arg.cp": "pass",
+        "core-05/constructor-takes-clone.cp": "pass",
         "core-05/disjoint-fields.cp": "pass",
         "core-05/elements-maybe-same.cp": "pass",
         "core-05/elements-proved-apart.cp": "pass",
@@ -363,6 +365,7 @@
         "core-05/lent-source-not-moved.cp": "pass",
         "core-05/let-binds-once.cp": "pass",
         "core-05/let-cannot-assign.cp": "pass",
+        "core-05/let-receiver-builtin-mutator-rejects.cp": "pass",
         "core-05/local-var-captured-by-reference.cp": "pass",
         "core-05/loop-item-clone-kept.cp": "pass",
         "core-05/loop-item-cloned-kept.cp": "pass",
@@ -373,11 +376,15 @@
         "core-05/mut-generator-rewalk-lint.cp": "fail",
         "core-05/mut-generator-rewalk-sees-writes.cp": "pass",
         "core-05/mut-lend-touched-through-it.cp": "pass",
+        "core-05/mut-param-assigned-whole-replaces-caller.cp": "pass",
+        "core-05/mut-param-needs-mut-at-call.cp": "pass",
+        "core-05/mut-param-with-mut-at-call.cp": "pass",
         "core-05/mut-place-binding.cp": "pass",
         "core-05/mut-place-excludes-reads.cp": "pass",
         "core-05/nested-and-lambda-recursion.cp": "pass",
         "core-05/nested-fn-mutual-and-generic.cp": "fail",
         "core-05/no-resize-while-place-lent.cp": "pass",
+        "core-05/own-swap-is-not-the-mutator.cp": "pass",
         "core-05/plain-element-copies.cp": "pass",
         "core-05/projections-conflict.cp": "pass",
         "core-05/projections-one-at-a-time.cp": "fail",
@@ -390,6 +397,8 @@
         "core-05/rb1-q07-sort-closure-reads-target.cp": "pass",
         "core-05/rb1-q08-swap-unproven-distinct.cp": "fail",
         "core-05/rb1-q42-closure-escapes-local.cp": "pass",
+        "core-05/return-built-list-moves-out.cp": "pass",
+        "core-05/return-lent-param-rejects.cp": "pass",
         "core-05/return-lent-param.cp": "pass",
         "core-05/return-through-recursive-generator.cp": "pass",
         "core-05/same-field-lent-twice.cp": "pass",
@@ -397,6 +406,8 @@
         "core-05/same-place-lint.cp": "pass",
         "core-05/sequential-lends.cp": "pass",
         "core-05/slices-proved-apart.cp": "fail",
+        "core-05/static-constructor-keeping-param-rejects.cp": "fail",
+        "core-05/static-constructor-result-is-owned.cp": "pass",
         "core-05/store-clone-in-top-level-var.cp": "pass",
         "core-05/store-clone-into-mut-param.cp": "pass",
         "core-05/store-in-top-level-var.cp": "pass",
@@ -1844,11 +1855,11 @@
         }
       ],
       "counts": {
-        "fail": 227,
-        "pass": 995
+        "fail": 228,
+        "pass": 1005
       },
-      "passed": 995,
-      "total": 1222
+      "passed": 1005,
+      "total": 1233
     },
     "corpus": {
       "cases": {
@@ -3339,7 +3350,7 @@
           ]
         },
         {
-          "cause": "cxx_err: In function ‘ll prog::f()’:",
+          "cause": "cxx_err: In function \u2018ll prog::f()\u2019:",
           "count": 1,
           "examples": [
             "conformance/core-01/todo-unreached.cp"

@@ -124,7 +124,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | The suite catches compiler bugs | share of reverted compiler fixes the suite turns red | mutation suite over history | `scripts/conformance-bugcatch.py`, `plan/domains/spec/bugcatch.md` |
 | The suite catches bugs no past fix shows | mutation score on compiler source mutants | `missing` | — |
 | Interpreter and C++ agree ([conformance/R6](../guidelines/conformance-checklist.md)) | cases whose output differs between `cpl run` and the built C++ | differential suite | `cpl-conform diff` |
-| Interpreter and C++ agree on programs nobody wrote by hand | divergences on generated programs | `missing`: no program generator yet | — |
+| Interpreter and C++ agree on programs nobody wrote by hand | divergences on generated programs | generated differential suite against an independent Python model ([conformance/R6](../guidelines/conformance-checklist.md)) | `scripts/gen-programs.py`, `scripts/check.sh --full` |
 | Generated C++ has no undefined behaviour ([conformance/R6](../guidelines/conformance-checklist.md)) | cases failing under ASan, UBSan and `_GLIBCXX_DEBUG` | differential suite with sanitizer flags | `CPL_CONFORM_CXXFLAGS='-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG' cpl-conform diff` (not in the gate) |
 | Every case is itself right | wrong cases found by implementers | gate for new cases; `missing` for known-gap cases, which can hide a wrong header or a misused API because they are expected to fail | `scripts/conform_staged.py` |
 | Code examples in the spec run ([conformance/R7](../guidelines/conformance-checklist.md)) | spec blocks failing that are not `spec-only` | ratchet | `cpl-conform spec-blocks --check` |
@@ -152,7 +152,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Known gaps get fixed, not just listed | known-gap cases; age of the oldest; entries in `sig-gaps.txt` and `prelude-gaps.txt` | ratchet: lists only shrink; `missing`: an age report per owner | `spec/SUBSET.md`, `spec/conformance/*-gaps.txt` |
 | A known-gap case fails for the reason it names ([conformance/R3](../guidelines/conformance-checklist.md)) | known-gap cases whose current error isn't the gap's subject (a wrong `at N`, a misused API) | check: a failure with the case's own expected code means a wrong `at N` or `has:`; an E0606 on a printed `?T` means a missing `!` | `scripts/conformance-gaps.py` |
 | The suite is deterministic | cases that pass and fail on the same build | per-case `// timeout:`; `missing`: a flake report | `crates/cpl-conform/tests/timeout.rs` |
-| Cross-references in the spec resolve | `(see Rnn.n.n)` naming no rule; links to missing files | `missing` for chapter text; `cpl-conform --rules` covers cases only | — |
+| Cross-references in the spec resolve | rule ids anywhere in the repo naming no rule; links to missing files | gate ([spec-rules/R3](../guidelines/spec-rules-checklist.md)) | `scripts/spec-xref.py --check`, `scripts/check-doc-links.py` |
 | The spec says what changed between versions | normative changes with no changelog line | `missing` | — |
 | Old programs keep their meaning (pins and `cpl migrate`, R11.4.3) | rule ids for compatibility with cases | `missing` | — |
 | Each chapter teaches its model first | supported chapters with no model paragraph | process | `spec/core/` |

@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2869 (995 passing). Rules: 576.
+Cases: 2880 (1005 passing). Rules: 582.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 2869 (995 passing). Rules: 576.
 - R04 (04-indices.md): 73 rules, 177 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 49 rules, 192 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 187 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -51,7 +51,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04 | 73 | 73 (100%) | 18 | 18 (100%) | 73 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
-| R05 | 43 | 43 (100%) | 22 | 22 (100%) | 43 (100%) |
+| R05 | 49 | 49 (100%) | 25 | 25 (100%) | 49 (100%) |
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
 | R07 | 90 | 90 (100%) | 26 | 26 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 576 | 575 (99%) | 230 | 230 (100%) | 575 (99%) |
+| all | 582 | 581 (99%) | 233 | 233 (100%) | 581 (99%) |
 
 ## Rules
 
@@ -374,6 +374,12 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.3.3 [1+ 0-]: A **place** is a variable, a field (`s.f`), an element (`a[i]`), a slice (`a[r]`) or any p...
 - R05.3.4 [1+ 1-]: `let p = mut a[i]` names a place: `p += 1` writes `a[i]`. `p` is a `mut` lend of `a` (R7).
 - R05.3.5 [10+ 11-]: Reading an element or field binds a lend of it, not a copy, when the value is heap (`let r...
+- R05.4.1 [1+ 1-]: **R4. Parameters are lent.** `fn f(xs: List<Int>)` reads the caller's list, with no copy a...
+- R05.4.2 [1+ 1-]: A method call resolves to the receiver type's own method first, so a type's own non-`mut` ...
+- R05.4.3 [1+ 0-]: A `mut` parameter is a place: the callee may assign it whole (`xs = List()`), which replac...
+- R05.4.4 [1+ 1-]: **Generated constructors move.** `S(a, b)` and struct literals take their arguments by val...
+- R05.5.1 [1+ 1-]: **R5. A fn returns an owned value, unless it is declared `lends`.** Returning moves, and i...
+- R05.5.2 [1+ 1-]: **Custom constructors follow R5 too.** A static-fn constructor is a fn, so its parameters ...
 - R05.6.1 [1+ 2-]: **Meaning.** The result is a lent value whose sources are every non-plain parameter, or th...
 - R05.6.2 [2+ 1-]: **Desugaring.** A call passes the rest of the caller's block as a callback: `let w = windo...
 - R05.6.3 [3+ 1-]: **`lends mut T`** is a place: the caller can assign through it, `a[i] = 5` is `a.at(i) = 5...
@@ -766,8 +772,8 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0316 Field bound from input: 1 case(s)
 - E0317 Getter needs defaults: 1 case(s)
 - E0401 Assignment to immutable `let` binding: 4 case(s)
-- E0402 Missing `mut` at call site: 2 case(s)
-- E0403 `mut` of an immutable binding: 4 case(s)
+- E0402 Missing `mut` at call site: 3 case(s)
+- E0403 `mut` of an immutable binding: 5 case(s)
 - E0404 top_level_var_in_fn *(retired)*: exempt (retired)
 - E0405 Assigning a fixed field: 1 case(s)
 - E0406 Recursive `var` lambda: 1 case(s)
@@ -779,12 +785,12 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0504 Planned syntax, not implemented yet: 1 case(s)
 - E0601 Aliased mutable lend: 14 case(s)
 - E0602 Variable mutated while lent: 40 case(s)
-- E0603 Lent value escapes its scope: 19 case(s)
+- E0603 Lent value escapes its scope: 21 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)
 - E0605 Invalid `Index` implementation: 2 case(s)
 - E0606 Missing trait implementation for operator: 23 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
-- E0608 Use of moved value: 15 case(s)
+- E0608 Use of moved value: 16 case(s)
 - E0701 Ambiguous trait method: 2 case(s)
 - E0702 Overload by type: 2 case(s)
 - E0703 Operator tuple: 1 case(s)
@@ -915,12 +921,12 @@ prepends it.
   - line 171: `let t = s[l..r].rebase`
 - 05-ownership.md: 56 blocks, 47 with a case, 2 spec-only, 7 neither
   - line 105: `var xs = [1, 2]`
-  - line 170: `struct Holder: xs: List<Int>`
-  - line 520: `let d = build_dsu(edges)`
-  - line 642: `var xs = [1, 2]`
-  - line 651: `var xs = [1, 2]`
-  - line 857: `var xs = [3, 1, 2]`
-  - line 963: `var xs = [1, 2]`
+  - line 173: `struct Holder: xs: List<Int>`
+  - line 523: `let d = build_dsu(edges)`
+  - line 645: `var xs = [1, 2]`
+  - line 654: `var xs = [1, 2]`
+  - line 860: `var xs = [3, 1, 2]`
+  - line 966: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
   - line 218: `fn divisors(n: Int) -> yields Int:`
