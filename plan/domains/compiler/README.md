@@ -6,6 +6,27 @@ Segment: B (metric). Owns: `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-
 
 Every program the spec defines means exactly what the spec says, in the interpreter and in the C++, and every program it rejects is rejected with the rule it breaks. One front end, one IR, one interpreter engine, no stdlib names in the compiler.
 
+## Milestone 1
+
+[Milestone 1](../../product/MILESTONE-1.md) sets the order: a CF 1500+ friend solves, tests, submits and competes in CPL without help. Its steps 4-7 rest on the compiler for one thing: **the supported subset is correct and identical in the interpreter and the C++, and what isn't supported says so.** Divergences and silent wrong answers come before VM, speed and cleanup work. Deadline about 09:30 PST 2026-11-23, on edge; Codeforces is checked against a local profile (no real submissions); Linux, macOS and Windows. Measured 2026-11-22 on main `67abd688a`:
+
+| Exit criterion | Command | Today | Exit |
+|---|---|---|---|
+| Interpreter == C++ wherever both run | `cpl-conform diff` | 1 mismatch (`corpus/dmopc21c5p2`: interp `1`, C++ `32441352192`) | 0 |
+| No silent wrong answer in conformance | `cpl-conform conformance --causes`, `wrong output` | 11 cases | 0: fixed, or rejected with a named error |
+| No wrong answer or internal trap on a real problem | `cpl-conform corpus` | 1 wrong (`aac5p4`), 1 internal trap (`etsr23r4p2`, `expected closure`) | 0 whose cause is in compiler crates |
+| Gaps named, not hidden | every unsupported construct a friend can write | not measured; `--causes` lists 71 | an error naming the gap (never an ICE, a crash or a wrong value), and the `--causes` list in `spec/STATUS.md` (request to spec) |
+| Ordinary contest code runs | `cpl-conform corpus` errors with a compiler cause | 35 error (not yet split by owner) | each compiler-caused error fixed or listed as a gap |
+| Windows line endings | a CRLF source and CRLF input through `cpl run` and `cpl build` + `g++ -O2 -std=c++17` | both print `8 3` (Linux; macOS/Windows CI is tools') | stays so, with a regression test |
+| `cpl run` and stress don't feel slow | sample runs of the corpus | not measured | no runnable corpus sample over 1 s in `cpl run` |
+
+Deferring (milestone "can wait", or not on the friend's path): interpreter snapshot/restore for trace replay (time-travel debugging; the shared value-register stack is parked), deleting the tree-walker and VM coverage work beyond what a slow `cpl run` needs, VM speed work, edition branches, std-name table and giant-file splits except where a fix needs them, the long tail of `matrix/index` method cases.
+
+Order of work (hours, not days): divergences, then wrong outputs, then traps and corpus errors; a checkpoint in [worklog.md](worklog.md) every 2 hours. Top 3 next steps:
+1. `dmopc21c5p2`: find where the interpreter and C++ first disagree, fix the wrong side with a diff regression.
+2. The 11 `wrong output` conformance cases and `aac5p4`, by cause; where a construct can't be made right yet, reject it with an error instead.
+3. Internal traps to named errors (`etsr23r4p2`), then the corpus `error` cases split by owner, compiler causes fixed biggest first.
+
 ## Covers
 
 - Lexer, parser, syntax tree (`cpl-syntax`); names, types, domains, lends, the incremental database and its query API (`cpl-check`); lowering to the typed IR, monomorphization (`cpl-ir`); the checked interpreter, its VM, traces and replay (`cpl-interp`); the integer prover (`prover`).

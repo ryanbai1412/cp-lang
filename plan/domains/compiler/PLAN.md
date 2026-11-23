@@ -8,14 +8,17 @@ Conformance 1617/1711 with 47 distinct causes; the top two (18 wrong outputs, 16
 
 ## Workstreams, in order
 
-1. **Land the queue (M1).** `devin/wip-split-vm` first (pure move of `vm.rs` into `vm/`; everything else rebases on it), then `devin/wip-conformance-queue` (6 commits: `turn` in the prelude, `<<` in type bounds, `join` on a list view, `Prefix(a)` on a 2-D shape, top-level `let ... else` narrowing, domain values using domain methods), then `devin/wip-product-domain` once `p.step(d)` passes. Each: rebase, `scripts/check.sh --fast`, land, `git cherry` to delete superseded ones, worklog entry.
-2. **Known bugs (M1).** `Seq.max()`/`min()` on a slice returns `?T` (`std-seq/slice-max-optional`, `diagnostics/max-of-a-slice-is-optional`); a fn that mints a domain mints a fresh one per call (`std-compress/wrapper-fn-fresh-domain`, `core-04/rebase-fresh-domain`).
-3. **Products and keyed slices (M1 to M2).** One representation of a product position used by check, lowering and both back ends (Q1); then keyed-slice positions (`b1`/`b2`/`b5` wrong outputs) and the `E0302` cluster.
-4. **The long tail (M2).** By cause, biggest first, re-running `--causes` after each landing: generic inference (`E0501` explicit type args, `E0204`), missing std methods that are compiler gaps (`E0201`/`E0203`; stdlib gaps go to the stdlib worklog), ownership (`E0608` in loops and branches), the 3 missing-diagnostic cases.
-5. **One engine (M3).** Lower each fallback tag into the VM, most executed first (`CPL_VM_STATS=json` names them; `expr:Read` leads), until the fallback count is 0 on corpus and conformance; delete the tree-walker; enable the VM on wasm.
-6. **No privilege, no editions, no giant files (M3).** Inline `is_v03()` branches (mechanical, 120 sites); move std-name matching into one intrinsics table; split `lower/call.rs` and `cpl-interp/src/lib.rs` along the seams the table and the VM leave. Each split is a pure move commit, then behaviour commits.
+Ordered by [Milestone 1](../../product/MILESTONE-1.md) (deadline about 09:30 PST 2026-11-23): what blocks the friend's solve/test/submit/compete steps comes first, the metric milestones below after. Done since the packet: `wip-split-vm` and `wip-conformance-queue` landed; `Seq.max()` on a slice is `?T` and the `compress()` wrapper case passes; the two P0 wrong answers (`**` on an `Int` parameter, a comprehension's stale range bound) landed with diff regressions.
 
-Contract tests run alongside all of it: each interface change adds or updates the test in its consumer's suite; first missing one is "parse round-trips every corpus file".
+1. **Interpreter == C++ (Milestone 1).** `cpl-conform diff` to 0 mismatches: `corpus/dmopc21c5p2` first. Each fix adds a `crates/cpl-cli/tests/programs/` pair that both back ends run.
+2. **No silent wrong answers (Milestone 1).** The 11 `wrong output` causes in `--causes`, `corpus/aac5p4`. A construct that can't be made right in the time gets a named error instead (spec R-rule: compile-time error, then trap, never wrong).
+3. **Gaps named (Milestone 1).** Internal traps (`etsr23r4p2`: `expected closure`) become errors naming the unsupported construct; the corpus `error` cases split by owner, compiler causes fixed biggest first; the `--causes` list goes to spec for `spec/STATUS.md`.
+4. **`cpl run` and stress speed (Milestone 1, only where slow).** Time every runnable corpus sample; VM work only for one over 1 s.
+5. **Products and keyed slices (M2).** `wip-product-domain` (tuple positions, Q1 default) and the `E0302` cluster (29 cases, top cause).
+6. **The long tail (M2).** By cause: `matrix/index` methods (`E0203`, 21 cases), generic inference (`E0501`), lends (`E0603`), `Gen` for `core-06/gen-*` with stdlib.
+7. **Deferred, in parallel when nothing above is open.** Interpreter snapshot/restore for trace replay (time-travel can wait; the shared value-register stack is parked locally), one engine (M3), std-name table, edition branches, file splits.
+
+Contract tests run alongside all of it: each interface change adds or updates the test in its consumer's suite.
 
 ## Why each milestone
 
@@ -42,9 +45,8 @@ Contract tests run alongside all of it: each interface change adds or updates th
 | VM work blocked by perf's C++ choices or the trace format | IR changes go through the interface table and consumers' contract tests |
 | Two-core VM makes the full gate slow | `--fast` per commit; trains via `scripts/land.sh` |
 
-## Phase 2, first actions
+## Next actions
 
-1. Rebase `devin/wip-split-vm` on main, `scripts/check.sh --fast`, `CPL_LANE=compiler scripts/land.sh`.
-2. Rebase and land `devin/wip-conformance-queue` (6 commits, each gated), record the conformance delta.
-3. Fix `p.step(d)` on `devin/wip-product-domain` (the remaining tuple-expecting path in check/lowering), add the regression, land.
-4. `Seq.max()` on a slice as `?T`; fresh domains per `compress()` call. Then `--causes`, next biggest.
+1. `dmopc21c5p2`: bisect the first differing value between `cpl run` and the C++, fix, regression.
+2. `--causes` `wrong output`, one cause per commit.
+3. `etsr23r4p2` internal trap to a named error.
