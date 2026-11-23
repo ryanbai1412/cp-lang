@@ -1949,3 +1949,24 @@ fn chmin_chmax_fix_keeps_the_line_break() {
         "var m = 0\nfor l in [3, 5]:\n    m max= l\n\nprint(m)\n"
     );
 }
+
+#[test]
+fn chmin_chmax_needs_a_scalar() {
+    // std/geometry.cp least_rotation: on lists `min=` is elementwise and `<`
+    // lexicographic, so `best min= rot` returned a different rotation.
+    let src = concat!(
+        "let cyc = [3, 1, 2]\nvar best = [3, 1, 2]\nvar low = 9\n",
+        "for s in 1..3:\n",
+        "    let rot = [cyc[(s + i) % 3] for i in 0..3]\n",
+        "    if rot < best: best = rot\n",
+        "    best = min(best, [cyc[s], 0, 0])\n",
+        "    if s < low: low = s\n",
+        "print(best, low)\n",
+    );
+    let found: Vec<_> = lint(src, &all_on())
+        .into_iter()
+        .filter(|d| d.code == CHMIN_CHMAX_IF.code || d.code == COMPOUND_SELF_REF.code)
+        .map(|d| d.span.text(src).trim().to_string())
+        .collect();
+    assert_eq!(found, ["if s < low: low = s"]);
+}
