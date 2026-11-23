@@ -975,6 +975,35 @@ fn a_multi_number_problem_gets_the_multitest_divider() {
     assert!(!Scaffold::from_companion(COMPANION).unwrap().multitest);
 }
 
+/// Companion calls Codeforces' multitest problems `single`; the samples say otherwise.
+#[test]
+fn a_codeforces_import_whose_samples_count_tests_gets_the_divider() {
+    let import = |url: &str, input: &str, output: &str| {
+        let json = format!(
+            "{{\"name\": \"A\", \"url\": \"{url}\", \"timeLimit\": 1000, \"memoryLimit\": 256, \
+             \"testType\": \"single\", \"interactive\": false, \
+             \"tests\": [{{\"input\": \"{input}\", \"output\": \"{output}\"}}]}}"
+        );
+        Scaffold::from_companion(&json).unwrap().multitest
+    };
+    let cf = "https://codeforces.com/contest/2289/problem/A";
+    assert!(import(
+        cf,
+        "3\\n2\\n1 2\\n1\\n5\\n3\\n1 2 3\\n",
+        "3\\n5\\n6\\n"
+    ));
+    // One line of input after n is not n tests, nor is a single test.
+    assert!(!import(cf, "3\\n1 2 3\\n", "6\\n"));
+    assert!(!import(cf, "1\\n5\\n", "5\\n"));
+    // n numbers on n lines, but one answer.
+    assert!(!import(cf, "2\\n4\\n5\\n", "9\\n"));
+    assert!(!import(
+        "https://atcoder.jp/contests/abc300/tasks/abc300_a",
+        "2\\n4\\n5\\n",
+        "4\\n5\\n"
+    ));
+}
+
 #[test]
 fn an_interactive_problem_names_the_interactor_in_the_file() {
     let json = COMPANION.replace("\"interactive\": false", "\"interactive\": true");

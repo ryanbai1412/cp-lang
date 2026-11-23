@@ -280,7 +280,7 @@ impl Scaffold {
                 .and_then(Json::as_u64)
                 .map_or(defaults.memory_kb, |mb| mb * 1024),
         };
-        let samples = problem
+        let samples: Vec<(String, String)> = problem
             .get("tests")
             .and_then(Json::as_array)
             .unwrap_or_default()
@@ -296,7 +296,10 @@ impl Scaffold {
             url: text_of("url"),
             limits: Some(limits),
             interactive: problem.get("interactive") == Some(&Json::Bool(true)),
-            multitest: problem.get("testType").and_then(Json::as_str) == Some("multiNumber"),
+            // Companion sends `single` for Codeforces' multitest problems too.
+            multitest: problem.get("testType").and_then(Json::as_str) == Some("multiNumber")
+                || (text_of("url").is_some_and(|u| u.contains("codeforces."))
+                    && samples_count_test_cases(&samples)),
             // Competitive Companion sends no statement to look for it in.
             any_answer: false,
             reads: Vec::new(),
@@ -608,4 +611,17 @@ fn report(
             1
         }
     }
+}
+
+/// Samples that each open with a lone `t` and answer every one of the `t`
+/// tests in the same number of lines, with `t > 1` somewhere.
+fn samples_count_test_cases(samples: &[(String, String)]) -> bool {
+    let counted = |(input, output): &(String, String)| {
+        let mut lines = input.lines().filter(|l| !l.trim().is_empty());
+        let t: usize = lines.next()?.trim().parse().ok()?;
+        let answers = output.lines().filter(|l| !l.trim().is_empty()).count();
+        (t > 0 && lines.count() >= t && answers >= t && answers % t == 0).then_some(t)
+    };
+    let ts: Option<Vec<usize>> = samples.iter().map(counted).collect();
+    ts.is_some_and(|ts| ts.iter().any(|&t| t > 1))
 }
