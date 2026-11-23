@@ -59,3 +59,18 @@ jobs:
         with:
           name: probe-${{ matrix.variant }}
           path: ${{ runner.temp }}/probe
+
+  self-update:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install edge into a fresh home, then self update
+        run: |
+          export HOME="$RUNNER_TEMP/home" && mkdir -p "$HOME"
+          sh web/public/install.sh
+          cpl="$HOME/.cpl/bin/cpl"
+          "$cpl" --version
+          "$cpl" self update
+          "$cpl" self update edge
+          "$cpl" --version
