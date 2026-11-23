@@ -8108,3 +8108,15 @@ tag move fatal again.
 - **Choices with reasons:** the other 11.
 
 **Reverse.** The notes are in git history before this commit.
+
+## 393. Ratchet tree-walker fallbacks, lint helper copies, plan notes and decision numbers (tech-debt, 2026-11-23)
+
+- **Decision.** Four new shrink-only counters in `scripts/debt-ratchet.py`:
+  - `vm_fallbacks` (242): the `(mode, tag)` kinds of statement or expression the VM hands to the tree-walker over `crates/cpl-cli/tests/programs`, untraced and traced. They are listed in `crates/cpl-cli/tests/vm_fallbacks.txt`, which the `vm_fallbacks` test keeps true. A new program that hits a listed kind passes; a new kind fails. It reaches 0 when the tree-walker can be deleted (M1).
+  - `lint_dup_helpers` (13): helper fns defined in more than one lint rule file.
+  - `plan_delta_lines` (1,627): lines of working notes under `plan/domains/*/delta`.
+  - `decision_dup_numbers` (28): now gated. It was informational and grew from 12 in a day. `next-decision.py` also reads origin/main, so a number another lane just landed is not reused.
+  
+  `rs_near_cap` lists files within 100 lines of the cap, for information only. A baseline raised above origin/main now fails `--check` unless the commit's decisions.md lines name the counter or the file.
+- **Why.** Ryan's debt scan found counts that only grew because nothing gated them (`ir_builtin_names` 89 -> 95 by a bare `--update`, decision numbers 12 -> 28), and "tree-walker deleted" needs a number that can only fall.
+- **Reverse.** Drop the counters from `COUNTERS` and `unexplained_bumps` from `main`.

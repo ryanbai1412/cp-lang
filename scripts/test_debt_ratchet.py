@@ -248,6 +248,38 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(dr.evaluate(more, eff)[0]), 2)
         self.assertEqual(base["lint_std_names"], 10)
 
+    def test_lint_dup_helpers_and_vm_fallbacks(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            rules = root / "crates/cpl-lint/src/rules"
+            rules.mkdir(parents=True)
+            (rules / "a.rs").write_text("fn check() {}\nfn squash() {}\nimpl X {\n    fn inner() {}\n}\n")
+            (rules / "b.rs").write_text("pub fn check() {}\npub(crate) fn squash() {}\nfn inner() {}\n")
+            self.assertEqual(dr.lint_dup_helpers(root),
+                             ["squash: crates/cpl-lint/src/rules/a.rs, crates/cpl-lint/src/rules/b.rs"])
+            tests = root / "crates/cpl-cli/tests"
+            tests.mkdir(parents=True)
+            (tests / "vm_fallbacks.txt").write_text("# header\np untraced expr:Read\np traced stmt:Return\n")
+            self.assertEqual(len(dr.vm_fallbacks(root)), 2)
+
+    def test_a_raised_baseline_needs_a_decision_naming_it(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            git = lambda *a: subprocess.run(["git", *a], cwd=root, check=True, capture_output=True,
+                                            env=dr._git_env())
+            git("init", "-q")
+            (root / "scripts").mkdir()
+            (root / "scripts/debt-ratchet.json").write_text(json.dumps({"lint_std_names": 5}))
+            (root / "decisions.md").write_text("# Decisions\n")
+            git("add", ".")
+            git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "base")
+            raised = {"lint_std_names": 6}
+            self.assertEqual(len(dr.unexplained_bumps(root, raised, ref="HEAD")), 1)
+            self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 4}, ref="HEAD"), [])
+            with open(root / "decisions.md", "a") as f:
+                f.write("## 9. lint_std_names grows by one for X (2026-11-23)\n")
+            self.assertEqual(dr.unexplained_bumps(root, raised, ref="HEAD"), [])
+
 
 if __name__ == "__main__":
     unittest.main()

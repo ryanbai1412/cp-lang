@@ -2,12 +2,13 @@
 """Print the next unused decision number in decisions.md, or --check for duplicates.
 
 Usage:
-    python3 scripts/next-decision.py          # print next integer (max + 1)
+    python3 scripts/next-decision.py          # print next integer (max + 1 over this tree and origin/main)
     python3 scripts/next-decision.py --check  # exit 1 if duplicate heading numbers exist
 """
 import argparse
 import os
 import re
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -22,6 +23,13 @@ def parse_decision_numbers(text: str) -> list[int]:
 def next_number(text: str) -> int:
     nums = parse_decision_numbers(text)
     return (max(nums) + 1) if nums else 1
+
+
+def upstream_text(ref: str = "origin/main") -> str:
+    """decisions.md on `ref`, so a number another lane just landed is not reused."""
+    subprocess.run(["git", "fetch", "-q", "origin", "main"], cwd=ROOT, capture_output=True)
+    r = subprocess.run(["git", "show", f"{ref}:decisions.md"], cwd=ROOT, capture_output=True, text=True)
+    return r.stdout if r.returncode == 0 else ""
 
 
 def find_duplicates(text: str) -> list[int]:
@@ -50,7 +58,7 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(f"ok ({len(parse_decision_numbers(text))} decisions, next is {next_number(text)})")
         return 0
-    print(next_number(text))
+    print(max(next_number(text), next_number(upstream_text())))
     return 0
 
 

@@ -305,6 +305,37 @@ def decision_dup_numbers(root: Path) -> list[str]:
     return sorted({n for n in nums if nums.count(n) > 1}, key=int)
 
 
+def lint_dup_helpers(root: Path) -> list[str]:
+    """Helper fns defined in more than one lint rule file (each rule's `check` excepted)."""
+    where = defaultdict(list)
+    for p in _rs_files(root, "crates/cpl-lint/src/rules"):
+        for name in sorted({m.group(2) for m in map(FN_RE.match, _lines(p)) if m and not m.group(1)}):
+            where[name].append(_rel(root, p))
+    return [f"{n}: {', '.join(fs)}" for n, fs in sorted(where.items()) if len(fs) > 1 and n != "check"]
+
+
+def plan_delta_lines(root: Path) -> list[str]:
+    """Lines of working notes under plan/domains/*/delta, to fold into spec/ or archive."""
+    return [f"{f}:{i}" for f in _git(root, "ls-files", "plan/domains/*/delta/*")
+            for i, _ in enumerate(_lines(root / f), 1)]
+
+
+def rs_near_cap(root: Path) -> list[str]:
+    """`.rs` files within 100 lines under the cap: split them on a seam before they reach it."""
+    out = []
+    for p in _rs_files(root, "crates"):
+        n = len(_lines(p))
+        if DEFAULT_MAX_RS_LINES - 100 < n <= DEFAULT_MAX_RS_LINES:
+            out.append(f"{_rel(root, p)} {n}")
+    return sorted(out)
+
+
+def vm_fallbacks(root: Path) -> list[str]:
+    """(program, mode, tag) tree-walker fallbacks; cpl-cli's vm_fallbacks test keeps the list true."""
+    path = root / "crates/cpl-cli/tests/vm_fallbacks.txt"
+    return [l for l in _lines(path) if l and not l.startswith("#")] if path.is_file() else []
+
+
 def stale_arch_paths(root: Path) -> list[str]:
     """Backticked repo paths in ARCHITECTURE docs that do not exist.
 
@@ -344,7 +375,11 @@ COUNTERS = {
     "v02_port_files": ("v0.2 corpus port.cp files", v02_port_files, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
-    "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, False),
+    "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),
+    "lint_dup_helpers": ("helper fns copied across lint rule files", lint_dup_helpers, True),
+    "plan_delta_lines": ("lines of notes under plan/domains/*/delta", plan_delta_lines, True),
+    "vm_fallbacks": ("tree-walker fallbacks over tests/programs", vm_fallbacks, True),
+    "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, False),
     "crate_edges": ("shipped crate edges", crate_edges, False),
     "dev_crate_edges": ("test-only crate edges", dev_crate_edges, False),
@@ -432,6 +467,30 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
             notes.append(f"crate edge {edge} removed")
 
     return errors, warnings, notes
+
+
+def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> list[str]:
+    """Baseline entries raised above `ref`'s without a decisions.md line naming them.
+
+    A bump is a decision: the added decisions.md lines must name the counter
+    (e.g. `ir_builtin_names`) or the allowlisted file.
+    """
+    shown = _git(root, "show", f"{ref}:scripts/debt-ratchet.json")
+    if not shown:
+        return []
+    old = json.loads("\n".join(shown))
+    raised = [n for n, (_, _, g) in COUNTERS.items()
+              if g and n in old and int(baseline.get(n, 0)) > int(old[n])]
+    old_allow = old.get("rs_file_size_allowlist", {})
+    raised += [rel for rel, cap in baseline.get("rs_file_size_allowlist", {}).items()
+               if cap > old_allow.get(rel, 0)]
+    if not raised:
+        return []
+    base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
+    added = "\n".join(l for l in _git(root, "diff", base, "--", "decisions.md")
+                      if l.startswith("+") and not l.startswith("+++"))
+    return [f"{n}: baseline raised above {ref} without a decisions.md line naming it "
+            f"(a bump is a decision; add one, or remove the debt)" for n in raised if n not in added]
 
 
 def inherited_baseline(baseline: dict, upstream: dict) -> dict:
@@ -530,6 +589,7 @@ def main(argv: list[str] | None = None) -> int:
     baseline = json.loads(args.ratchet.read_text(encoding="utf-8"))
     actual = measure(args.root, max_lines)
     errors, warnings, notes = evaluate(actual, baseline)
+    errors += unexplained_bumps(args.root, baseline)
     if errors:
         try:
             upstream = measure_upstream(args.root, max_lines)
