@@ -1437,7 +1437,8 @@ pub struct Slice<S>():
     /// traps: never
     /// example: `[1, 2][2..].is_empty == true`
     @get pub fn is_empty(self) -> Bool = todo
-    ///
+
+    /// The slice's keys, which are the source's positions: `a[1..]` walks keys from 1.
     ///
     /// cost: \(O(1)\) per step
     /// empty: yields nothing

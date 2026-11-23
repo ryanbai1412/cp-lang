@@ -87,7 +87,7 @@ The doc starts with one sentence saying what the item is for, without restating 
 
 - **Why:** hover shows the first line; it must stand alone.
 - **Example:** "The prefix folds of `self` under `f`, so any range fold is O(1)."
-- **Enforced by:** `missing` (doc readability lint: summary length, one sentence).
+- **Enforced by:** `scripts/std-docs-lint.py` (a summary paragraph exists and is at most 240 characters; shrink-only, in `scripts/check.sh`).
 
 ### R9. The spec's words, and links instead of repetition
 
