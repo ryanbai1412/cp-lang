@@ -32,7 +32,7 @@ target = "305/305 v0.3 re-ports (as spec.cp or migrated port.cp)"
 [[metric]]
 name = "dreams_check_v03"
 command = "for p in $(cat corpus/sets/ecnerwala.txt); do cpl check corpus/problems/$p/dream.cp; done"
-today = "145/305"
+today = "157/305 (2026-11-23 on 0d43fd76e)"
 target = "tracked, not a gate: each failing dream is a logged gap in plan/domains/spec/delta/hillclimb.md"
 
 [[metric]]
@@ -62,7 +62,7 @@ target = "median >= 4 and 0 under 3 on v0.3 re-ports (today's scores are for pre
 [[metric]]
 name = "token_ratio"
 command = "uv run python scripts/ports-page.py --tokens"
-today = "port.cp median 0.52x, max 1.10x, 1 over 1.0x (n=294, 11 originals strip to nothing); dream.cp median 0.49x, max 0.97x, 0 over"
+today = "port.cp median 0.51x, max 0.97x, 0 over 1.0x (n=294, 11 originals strip to nothing); dream.cp median 0.48x, max 0.97x, 0 over (2026-11-23 on 0d43fd76e)"
 target = "contestant tokens median <= 0.6x C++, none > 1.0x (AGENTS.md goal 1)"
 
 [[metric]]
