@@ -902,3 +902,35 @@ fn spacing_by_role_from_misspaced_input() {
         assert_eq!(fmt(&format!("{src}\n")), format!("{want}\n"), "{src}");
     }
 }
+
+/// Each line is the shape one role decision in `spacing.rs` exists for:
+/// a tight `?` opening a type, a spaced `[V]? T`, a `-` after a list, an
+/// uppercase `N < b`, comparisons after a closed generic, a tight `>>`, an
+/// assignment after an index, an open range before a word operator, a
+/// record's braces and a negative argument. Rule: `lints/R22`.
+#[test]
+fn spaces_each_role_as_written() {
+    for (src, want) in [
+        (
+            "let p: (?Int, Int) = (None, 1)",
+            "let p: (?Int, Int) = (None, 1)",
+        ),
+        ("let t: [V]? Int = x", "let t: [V]? Int = x"),
+        ("print([1]- b)", "print([1] - b)"),
+        ("print(N< b)", "print(N < b)"),
+        ("let v: List<Int> = f(n>0)", "let v: List<Int> = f(n > 0)"),
+        (
+            "let m: Map<Int, List<Int>> = f(n>0)",
+            "let m: Map<Int, List<Int>> = f(n > 0)",
+        ),
+        ("print(n>>1)", "print(n >> 1)"),
+        ("a[0]= 1", "a[0] = 1"),
+        ("if x in 3.. and y: print(1)", "if x in 3.. and y: print(1)"),
+        ("let r = {x: 1}", "let r = { x: 1 }"),
+        ("print(a,-1)", "print(a, -1)"),
+        ("y = a[0]if c else d", "y = a[0] if c else d"),
+        ("y = a[0]and b", "y = a[0] and b"),
+    ] {
+        assert_eq!(fmt(&format!("{src}\n")), format!("{want}\n"), "{src}");
+    }
+}
