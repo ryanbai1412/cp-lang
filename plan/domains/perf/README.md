@@ -18,6 +18,23 @@ The submitted C++ is as fast and as small as the C++ a strong contestant writes 
 | Perf of stdlib code paths through codegen | Stdlib bodies and their algorithms (stdlib) |
 | | Choice of algorithm in ports (idioms) |
 
+## Milestone 1
+
+[Milestone 1](../../product/MILESTONE-1.md) needs perf for step 6 (Submit) and step 7 (Compete): what CPL submits fits, compiles and is never slower than the C++ the friend would write.
+
+Exit criteria, each one command:
+1. Every program that builds is under 32 KB for `codeforces` and `atcoder` (`python3 bench/sizes.py --judge J --check`). Today (debug `cpl` at `6bc30ccfb`): 752 build, 2 over for both judges: `ucup5s05f/port.cp` 37,388 B and `noi17p2/spec.cp` 34,794 B.
+2. Every program compiles under each judge's own compiler and flags (`cargo nextest run -p cpl-cli --test judges`, extended to the whole corpus): 0 failures.
+3. No performance disadvantage, tail first: on the matched perf set (`bench/v03_perf_bench.py`) max < 1.5x and p95 < 1.2x. Today (no-trap build, 142 timed): p50 0.778x, p95 1.548x, max 3.90x (`p06_labyrinth`), 9 over 1.5x.
+4. The submission is the no-trap build by default (decision 299, on main), with `--checks traps` as the opt-in. Trap cost on 46 `bench/` pairs, same C++ with and without `-DCPL_TRAPS`: p50 1.011x, max 1.27x (`monodeque`); `math/comb` 100.3 -> 83.6 ms against 73.5 ms matched C++.
+
+Deferred (milestone's "what can wait"): SIMD and optimisation beyond parity; max < 1.1x after tuning; zero-cost pairs past what the tail needs (`iterators`, `optionals`); `cpl explain` cost annotations; the codegen file splits; folding the Python harnesses into `cpl bench`.
+
+Next 3:
+1. The tail over 1.5x: `p06_labyrinth`, `cf1146h` (3.47x, RSS 10.5x), `wtf26b`, `p10_matching`, `cf2178h`; general fixes only.
+2. `ucup5s05f` and `noi17p2` under 32 KB, and `sizes.py --check` for `atcoder` too.
+3. Corpus-wide compile check under the `codeforces` and `atcoder` flags; route stdlib/compiler failures to their owners.
+
 ## Success criteria for v0.3
 
 1. Zero-cost: every `bench/zero-cost` pair <= 1.05x against both `direct.cp` and `hand.cpp` (7/7).
@@ -86,6 +103,4 @@ Signs off the targets and the perf set once (Q1). Hears only about trade-offs: r
 
 ## Decisions needed from Ryan
 
-Still with Ryan, in [plan/QUESTIONS.md](../../QUESTIONS.md): does the judge build trap on a bad index, `/ 0` and `assert`? Default: keep the traps.
-
-Decided by their recommendations (decisions.md 269-271): the perf set and its bars, floored `%` as semantics (optionals declares its ranges), minify before dropping the source header.
+None open. Judge-build traps: Ryan decided no traps by default (decision 299). Decided by their recommendations (decisions.md 269-271): the perf set and its bars, floored `%` as semantics (optionals declares its ranges), minify before dropping the source header.
