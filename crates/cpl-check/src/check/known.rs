@@ -260,4 +260,85 @@ impl<'a> Checker<'a> {
             args: vec![index[0].clone(), index[1].clone(), *elem],
         })
     }
+
+    /// `let g: [Row, Col]Tile = read()` reads each `Tile` as text, so the
+    /// enum says how its variants are written: nothing is read as a
+    /// number or by guessing.
+    pub(crate) fn readable(&mut self, declared: &Ty, init: &Expr) {
+        let reads = matches!(
+            &init.kind,
+            ExprKind::Call { callee, args }
+                if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read")
+        );
+        if !reads {
+            return;
+        }
+        let mut todo = vec![declared];
+        while let Some(ty) = todo.pop() {
+            match ty {
+                Ty::Array { elem, .. } | Ty::Optional(elem) => todo.push(elem),
+                Ty::Tuple(items) => todo.extend(items),
+                Ty::Bool => {
+                    self.not_a_token_type(init.span);
+                    return;
+                }
+                Ty::Named { name, args } => {
+                    todo.extend(args);
+                    let Some(Def::Enum {
+                        variants,
+                        tagged: false,
+                        ..
+                    }) = self.type_def(name).as_deref().cloned()
+                    else {
+                        continue;
+                    };
+                    if variants.iter().any(|(_, fields)| !fields.is_empty()) {
+                        continue;
+                    }
+                    let tags: Vec<String> =
+                        variants.iter().map(|(v, _)| format!("{v:?}")).collect();
+                    let message = format!(
+                        "reading a `{name}` needs to know how its variants are written in the input"
+                    );
+                    if let Some(diag) = self.error(codes::TYPE_MISMATCH, init.span, message) {
+                        diag.help =
+                            Some(format!("put `@tags({})` above the enum", tags.join(", ")));
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+
+    /// `Bool` is not an input token: a judge spells yes and no its own way
+    /// (R10.2.3).
+    pub(crate) fn not_a_token_type(&mut self, span: Span) {
+        let message = "`read()` can't read a `Bool`: it is not a token type".to_string();
+        if let Some(diag) = self.error(codes::NOT_A_TOKEN_TYPE, span, message) {
+            diag.help = Some("read a `Str` and compare it: `read<Str>() == \"YES\"`".to_string());
+        }
+    }
+
+    /// `c.bump()` where `bump` takes `mut self` changes `c`, so `c` is a
+    /// `var`, a `mut` parameter, or the `mut self` of the calling method.
+    /// Without this the call works on a copy and the change is lost.
+    /// `p.swap()` on a type with its own non-`mut` `swap`, or `s.add(x, y)`
+    /// on an operation-value field `add`, is not the built-in mutator of
+    /// that name (R05.4.1).
+    pub(crate) fn own_non_mutator(&mut self, callee: &Expr) -> bool {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return false;
+        };
+        let Ty::Named {
+            name: type_name, ..
+        } = self.quietly(|c| c.infer(base))
+        else {
+            return false;
+        };
+        self.members_of(&type_name).is_some_and(|m| {
+            m.fields.iter().any(|f| f.name == name.text)
+                || m.members.iter().any(|(n, _)| *n == name.text)
+                    && !m.mutators.contains(&name.text)
+        })
+    }
 }

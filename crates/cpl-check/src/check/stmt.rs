@@ -500,51 +500,6 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// `let g: [Row, Col]Tile = read()` reads each `Tile` as text, so the
-    /// enum says how its variants are written: nothing is read as a
-    /// number or by guessing.
-    fn readable(&mut self, declared: &Ty, init: &ast::Expr) {
-        let reads = matches!(
-            &init.kind,
-            ExprKind::Call { callee, args }
-                if args.is_empty() && matches!(&callee.kind, ExprKind::Name(name) if name == "read")
-        );
-        if !reads {
-            return;
-        }
-        let mut todo = vec![declared];
-        while let Some(ty) = todo.pop() {
-            match ty {
-                Ty::Array { elem, .. } | Ty::Optional(elem) => todo.push(elem),
-                Ty::Tuple(items) => todo.extend(items),
-                Ty::Named { name, args } => {
-                    todo.extend(args);
-                    let Some(Def::Enum {
-                        variants,
-                        tagged: false,
-                        ..
-                    }) = self.type_def(name).as_deref().cloned()
-                    else {
-                        continue;
-                    };
-                    if variants.iter().any(|(_, fields)| !fields.is_empty()) {
-                        continue;
-                    }
-                    let tags: Vec<String> =
-                        variants.iter().map(|(v, _)| format!("{v:?}")).collect();
-                    let message = format!(
-                        "reading a `{name}` needs to know how its variants are written in the input"
-                    );
-                    if let Some(diag) = self.error(codes::TYPE_MISMATCH, init.span, message) {
-                        diag.help =
-                            Some(format!("put `@tags({})` above the enum", tags.join(", ")));
-                    }
-                }
-                _ => {}
-            }
-        }
-    }
-
     /// What `let pat = init else: ...` binds: the value in each optional.
     /// A tuple of values is taken apart, `let (x, y) = (a, b) else: ...`.
     /// A refutable pattern, `let (gap, Some(best)) = e else: ...`, is matched

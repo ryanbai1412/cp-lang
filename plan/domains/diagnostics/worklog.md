@@ -39,3 +39,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - Review packet (README, PLAN, ARCHITECTURE, metrics.toml). Measured on main 4b8f504f: recovery scoreboards fail and are ignored (98.6% first-right, 8.9% cascaded, 59.2% fixable). Next (phase 2): rebase and land devin/wip-diag-recovery, re-measure.
 - Request to compiler: replace 11 raw `cpl_diag::Code("E…")` literals with `codes::` constants (see ARCHITECTURE.md debt 2).
 - Lane opened.
+
+- Note from compiler (trivial unblock): added `codes::NOT_A_TOKEN_TYPE` (E0315, already in `spec/diagnostics.md` as *(0.3)*) and its registry entry in `crates/cpl-diag`, so the checker can report `read<Bool>()` (R10.2.3). Reword the title or help freely.

@@ -60,6 +60,6 @@ if which == 35:
     let (a, b): (Int, Int) = read()
     out = a + b
 if which == 36:
-    let (a, on): (Int, Bool) = read()
-    out = if on: a else: 0
+    let (a, k): (Int, 1..=9) = read()
+    out = a + k
 print("fine", out)

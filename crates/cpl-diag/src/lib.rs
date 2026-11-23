@@ -145,6 +145,8 @@ pub mod codes {
     /// A value mentioning a fresh domain escapes its declaring block.
     pub const DOMAIN_ESCAPES: Code = Code("E0313");
     pub const NON_EXHAUSTIVE_MATCH: Code = Code("E0314");
+    /// `read<Bool>()`: `Bool` is not an input token (R10.2.3).
+    pub const NOT_A_TOKEN_TYPE: Code = Code("E0315");
 
     pub const ASSIGN_TO_LET: Code = Code("E0401");
     pub const MISSING_MUT_AT_CALL: Code = Code("E0402");

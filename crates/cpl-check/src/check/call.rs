@@ -228,6 +228,9 @@ impl<'a> Checker<'a> {
             if matches!(&base.kind, ExprKind::Name(n) if n == "read") && args.is_empty() {
                 if let [t] = tys.as_slice() {
                     let t = self.resolve_type(t);
+                    if t == Ty::Bool {
+                        self.not_a_token_type(callee.span);
+                    }
                     if self.io_fixed(&t) {
                         self.fixed_io.push(base.span);
                     }
@@ -496,29 +499,6 @@ impl<'a> Checker<'a> {
             );
         }
         Some(ret_ty)
-    }
-
-    /// `c.bump()` where `bump` takes `mut self` changes `c`, so `c` is a
-    /// `var`, a `mut` parameter, or the `mut self` of the calling method.
-    /// Without this the call works on a copy and the change is lost.
-    /// `p.swap()` on a type with its own non-`mut` `swap`, or `s.add(x, y)`
-    /// on an operation-value field `add`, is not the built-in mutator of
-    /// that name (R05.4.1).
-    fn own_non_mutator(&mut self, callee: &Expr) -> bool {
-        let ExprKind::Field { base, name } = &callee.kind else {
-            return false;
-        };
-        let Ty::Named {
-            name: type_name, ..
-        } = self.quietly(|c| c.infer(base))
-        else {
-            return false;
-        };
-        self.members_of(&type_name).is_some_and(|m| {
-            m.fields.iter().any(|f| f.name == name.text)
-                || m.members.iter().any(|(n, _)| *n == name.text)
-                    && !m.mutators.contains(&name.text)
-        })
     }
 
     fn mutates_self(&mut self, callee: &Expr) {

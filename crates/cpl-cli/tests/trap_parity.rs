@@ -80,7 +80,7 @@ fn every_runtime_error_of_cpl_run_stops_the_judge_build_too() {
     let mut wrong = Vec::new();
     for which in 0..=SITES {
         // The sites that read more get a 7, which is outside `D`, and then
-        // nothing; the last one gets `true` where a `Bool` is 0 or 1.
+        // nothing; the last one gets `true` where a tuple wants a number.
         let more = if which == SITES { "7 true" } else { "7" };
         let input = format!("{which} 0 3 {more}\n");
         let mut interp = Command::new(env!("CARGO_BIN_EXE_cpl"));

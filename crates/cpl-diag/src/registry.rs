@@ -659,6 +659,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0315"),
+        title: "Not a token type",
+        summary: "`read()` was asked for a `Bool`, which the input never spells one way.",
+        explanation: "Judges write a yes/no answer as `YES`, `1`, `true` or something else, so a `Bool` is not a token: read the token and compare it to what the statement says.",
+        trigger: "let b: Bool = read()\nprint(yes(b))\n",
+        fix: "let b = read<Str>() == \"YES\"\nprint(yes(b))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("L0601"),
         title: "Right side changes the place it assigns",
         summary: "The right side of an assignment mutates storage that may be the place being written, as in `xs[0] = xs.pop()!`.",

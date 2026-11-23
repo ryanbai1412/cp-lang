@@ -1,0 +1,22 @@
+error[E0315]: `read()` can't read a `Bool`: it is not a token type
+  --> read_bool_is_not_a_token.cp:3:9
+  |
+3 | let a = read<Bool>()
+  |         ^^^^^^^^^^
+  = help: read a `Str` and compare it: `read<Str>() == "YES"`
+
+error[E0315]: `read()` can't read a `Bool`: it is not a token type
+  --> read_bool_is_not_a_token.cp:4:15
+  |
+4 | let b: Bool = read()
+  |               ^^^^^^
+  = help: read a `Str` and compare it: `read<Str>() == "YES"`
+
+error[E0315]: `read()` can't read a `Bool`: it is not a token type
+  --> read_bool_is_not_a_token.cp:5:18
+  |
+5 | let c: [3]Bool = read()
+  |                  ^^^^^^
+  = help: read a `Str` and compare it: `read<Str>() == "YES"`
+
+read_bool_is_not_a_token.cp: 3 errors
