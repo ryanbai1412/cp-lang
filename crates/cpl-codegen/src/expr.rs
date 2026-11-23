@@ -1664,7 +1664,10 @@ impl<'p> Emitter<'p> {
 
     fn call(&mut self, e: &Expr, id: usize, args: &[Arg]) -> Code {
         let last_use = std::mem::take(&mut self.last_use_call);
-        if let Some(code) = self.try_fused_bitset_op(e, id, args) {
+        if let Some(code) = self
+            .try_fused_bitset_op(e, id, args)
+            .or_else(|| self.try_sink_call(id, args))
+        {
             return code;
         }
         let program = self.program;

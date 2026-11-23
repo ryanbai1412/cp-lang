@@ -16,6 +16,8 @@ pub(crate) struct FusedPush {
     pub cpp: String,
     pub first: Vec<String>,
     pub body: Block,
+    /// Hands each element to this callback instead (`crate::sink`).
+    pub sink: Option<String>,
 }
 
 impl<'p> Emitter<'p> {
@@ -38,6 +40,10 @@ impl<'p> Emitter<'p> {
             return false;
         };
         let elem = self.expr(elem).text;
+        if let Some(put) = &consumer.sink {
+            self.line(out, &format!("{put}({elem});"));
+            return true;
+        }
         self.line(out, "{");
         self.indent += 1;
         self.line(out, &format!("{} {} = {elem};", consumer.cpp, consumer.var));
@@ -114,26 +120,17 @@ impl<'p> Emitter<'p> {
         outer_body: &Block,
         out: &mut String,
     ) -> bool {
-        let ExprKind::Do(do_block) = &seq.kind else {
-            return false;
-        };
-        let [Stmt::Let(vec_slot, Some(init)), Stmt::For(inner_id, inner_slot, inner_iter, inner_body), Stmt::Give(given)] =
-            do_block.stmts.as_slice()
+        let Some(Producer {
+            vec: vec_slot,
+            id: inner_id,
+            slot: inner_slot,
+            iter: inner_iter,
+            body: inner_body,
+        }) = producer(seq)
         else {
             return false;
         };
-        if !matches!(init.ty, Ty::List(_))
-            || !matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
-            || !matches!(given.kind, ExprKind::Local(g) if g == *vec_slot)
-            || self.hoisted.contains(vec_slot)
-        {
-            return false;
-        }
-        let mut iter_uses_vec = false;
-        iter_exprs(inner_iter, &mut |e| {
-            iter_uses_vec |= expr_mentions_local(e, *vec_slot);
-        });
-        if iter_uses_vec || !only_pushed_in_block(*vec_slot, inner_body) {
+        if self.hoisted.contains(vec_slot) {
             return false;
         }
         let mut outer_escapes = false;
@@ -175,6 +172,7 @@ impl<'p> Emitter<'p> {
                 cpp: cpp.to_string(),
                 first: first.to_vec(),
                 body: outer_body.clone(),
+                sink: None,
             },
         ));
         let inside = walk::inside_list(*inner_slot, inner_iter, inner_body, self.locals());
@@ -187,6 +185,42 @@ impl<'p> Emitter<'p> {
         self.fused_pushes.pop();
         true
     }
+}
+
+/// `do { let v = []; for .. { v.push(e) }; give v }`: a list built by one
+/// loop that only pushes onto it.
+pub(crate) struct Producer<'p> {
+    pub vec: &'p usize,
+    pub id: &'p LoopId,
+    pub slot: &'p usize,
+    pub iter: &'p Iter,
+    pub body: &'p Block,
+}
+
+pub(crate) fn producer(seq: &Expr) -> Option<Producer<'_>> {
+    let ExprKind::Do(do_block) = &seq.kind else {
+        return None;
+    };
+    let [Stmt::Let(vec, Some(init)), Stmt::For(id, slot, iter, body), Stmt::Give(given)] =
+        do_block.stmts.as_slice()
+    else {
+        return None;
+    };
+    if !matches!(init.ty, Ty::List(_))
+        || !matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
+        || !matches!(given.kind, ExprKind::Local(g) if g == *vec)
+    {
+        return None;
+    }
+    let mut iter_uses_vec = false;
+    iter_exprs(iter, &mut |e| iter_uses_vec |= expr_mentions_local(e, *vec));
+    (!iter_uses_vec && only_pushed_in_block(*vec, body)).then_some(Producer {
+        vec,
+        id,
+        slot,
+        iter,
+        body,
+    })
 }
 
 fn iter_exprs<'p>(iter: &'p Iter, f: &mut dyn FnMut(&'p Expr)) {
@@ -325,23 +359,28 @@ fn only_pushed_in_block(vec_slot: usize, block: &Block) -> bool {
 /// so where it runs relative to other effect-free code cannot be seen.
 /// Pushes onto `vec` count as nothing; the fused consumer is checked apart.
 fn trap_free_block(block: &Block, vec: usize) -> bool {
-    block.stmts.iter().all(|stmt| match stmt {
-        Stmt::Let(_, init) => init.as_ref().is_none_or(trap_free),
-        Stmt::Assign(place, _, val) => matches!(place.kind, PlaceKind::Local(_)) && trap_free(val),
+    trap_free_stmts(&block.stmts, vec, &|_| false)
+}
+
+/// `trap_free_block` over `stmts`, where `call_ok` says which calls cannot trap.
+pub(crate) fn trap_free_stmts(stmts: &[Stmt], vec: usize, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
+    let free = |e: &Expr| trap_free_with(e, call_ok);
+    let block_free = |b: &Block| trap_free_stmts(&b.stmts, vec, call_ok);
+    stmts.iter().all(|stmt| match stmt {
+        Stmt::Let(_, init) => init.as_ref().is_none_or(free),
+        Stmt::Assign(place, _, val) => matches!(place.kind, PlaceKind::Local(_)) && free(val),
         Stmt::Expr(e) => match &e.kind {
             ExprKind::Mutate(Mutation::Push, place, args) if matches!(place.kind, PlaceKind::Local(s) if s == vec) => {
-                args.iter().all(trap_free)
+                args.iter().all(free)
             }
-            _ => trap_free(e),
+            _ => free(e),
         },
-        Stmt::If(cond, then, otherwise) => {
-            trap_free(cond) && trap_free_block(then, vec) && trap_free_block(otherwise, vec)
-        }
+        Stmt::If(cond, then, otherwise) => free(cond) && block_free(then) && block_free(otherwise),
         Stmt::For(_, _, Iter::Range { lo, hi, step: None, .. }, body) => {
-            trap_free(lo) && trap_free(hi) && trap_free_block(body, vec)
+            free(lo) && free(hi) && block_free(body)
         }
         Stmt::For(_, _, Iter::Seq(seq, _), body) => {
-            matches!(seq.kind, ExprKind::Local(_)) && trap_free_block(body, vec)
+            matches!(seq.kind, ExprKind::Local(_)) && block_free(body)
         }
         Stmt::Continue(None) => true,
         _ => false,
@@ -350,7 +389,8 @@ fn trap_free_block(block: &Block, vec: usize) -> bool {
 
 /// True when `e` cannot trap: no checked index, call, unwrap or division by
 /// what may be zero.
-fn trap_free(e: &Expr) -> bool {
+pub(crate) fn trap_free_with(e: &Expr, call_ok: &dyn Fn(&Expr) -> bool) -> bool {
+    let free = |x: &Expr| trap_free_with(x, call_ok);
     match &e.kind {
         ExprKind::Unit
         | ExprKind::Int(_)
@@ -365,19 +405,19 @@ fn trap_free(e: &Expr) -> bool {
         | ExprKind::IsSome(x)
         | ExprKind::IsVariant(x, _)
         | ExprKind::Unwrap(x, false)
-        | ExprKind::Cast(Cast::IntToFloat, x) => trap_free(x),
-        ExprKind::Unary(op, x) => *op != UnOp::Neg && trap_free(x),
+        | ExprKind::Cast(Cast::IntToFloat, x) => free(x),
+        ExprKind::Unary(op, x) => *op != UnOp::Neg && free(x),
         ExprKind::Binary(op, l, r) => {
             let safe = match op {
                 BinOp::Div | BinOp::Rem => matches!(r.kind, ExprKind::Int(k) if k != 0),
                 BinOp::Pow | BinOp::Shl | BinOp::Shr => false,
                 _ => true,
             };
-            safe && l.ty != Ty::Str && trap_free(l) && trap_free(r)
+            safe && l.ty != Ty::Str && free(l) && free(r)
         }
-        ExprKind::Cmp(_, l, r) => trap_free(l) && trap_free(r),
-        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(trap_free),
-        ExprKind::If(c, t, f) => trap_free(c) && trap_free(t) && trap_free(f),
-        _ => false,
+        ExprKind::Cmp(_, l, r) => free(l) && free(r),
+        ExprKind::Tuple(items) | ExprKind::Variant(_, items) => items.iter().all(free),
+        ExprKind::If(c, t, f) => free(c) && free(t) && free(f),
+        _ => call_ok(e),
     }
 }

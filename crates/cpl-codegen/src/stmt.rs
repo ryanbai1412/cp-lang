@@ -302,7 +302,13 @@ impl<'p> Emitter<'p> {
     /// The body of a loop, its `}` and the labels a `break` or
     /// `continue` from an inner loop jumps to. `first` are statements
     /// that open the body.
-    fn loop_body(&mut self, id: LoopId, first: &[String], body: &Block, out: &mut String) {
+    pub(crate) fn loop_body(
+        &mut self,
+        id: LoopId,
+        first: &[String],
+        body: &Block,
+        out: &mut String,
+    ) {
         self.indent += 1;
         for line in first {
             self.line(out, line);
@@ -779,6 +785,9 @@ impl<'p> Emitter<'p> {
                 };
                 let is_map = matches!(seq.ty, Ty::Map(..) | Ty::HashMap(..));
                 let is_grid = matches!(&seq.ty, Ty::Array { dims, .. } if dims.len() > 1);
+                if !rev && self.sink_loop(id, seq, &var, &cpp, &first, body, out) {
+                    return;
+                }
                 if !rev && self.try_fuse_producer(id, slot, &var, &cpp, &first, seq, body, out) {
                     return;
                 }

@@ -166,6 +166,9 @@ pub(crate) struct Emitter<'p> {
     pub bodies: Vec<Pushed>,
     /// Temporary list slots whose `push` statements run a fused consumer loop body directly.
     pub fused_pushes: Vec<(usize, crate::fuse::FusedPush)>,
+    /// Fns with a `cpl_sink_f` form (`crate::sink`), and the slot it sinks.
+    pub sinks: BTreeMap<usize, usize>,
+    pub sinking: Option<usize>,
     /// Emitting what is above `@!multitest`, where a top-level `return`
     /// ends the program.
     pub in_setup: bool,
@@ -257,6 +260,8 @@ impl<'p> Emitter<'p> {
             last_use_call: false,
             moves_last: false,
             pushers: BTreeMap::new(),
+            sinks: BTreeMap::new(),
+            sinking: None,
             pushing: None,
             bodies: Vec::new(),
             fused_pushes: Vec::new(),
@@ -272,6 +277,7 @@ impl<'p> Emitter<'p> {
         let feeds = cpl_ir::pushed::Feeds::of(program);
         emitter.summaries = feeds.summaries;
         emitter.pushers = feeds.pushers;
+        emitter.sinks = crate::sink::sinks(program, &emitter.devirt);
         emitter
     }
 
@@ -1409,6 +1415,25 @@ impl<'p> Emitter<'p> {
                 self.hoisted_decls(&mut fns, f.params.len());
                 self.block(&f.body, &mut fns);
                 self.pushing = None;
+                fns.push_str("}\n");
+            }
+            let sunk = self.sinks.get(&id).copied();
+            let sink_name = format!("cpl_sink_{}", fn_name(&f.name));
+            if let Some(head) =
+                sunk.and_then(|s| crate::sink::head(&signature, &f.name, &self.names[s]))
+            {
+                protos.push(Proto {
+                    name: sink_name,
+                    line: format!("{head};\n"),
+                    at: fns.len(),
+                    always: false,
+                });
+                fns.push_str(&format!("\n{head} {{\n"));
+                self.reused.clear();
+                self.sinking = sunk;
+                self.hoisted_decls(&mut fns, f.params.len());
+                self.block(&f.body, &mut fns);
+                self.sinking = None;
                 fns.push_str("}\n");
             }
             self.chunks

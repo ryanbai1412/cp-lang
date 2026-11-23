@@ -18,6 +18,7 @@ mod rowcache;
 mod runtime;
 mod scope;
 mod show;
+mod sink;
 mod stmt;
 mod unordered;
 mod walk;
@@ -398,5 +399,7 @@ pub fn emit_aiming(
 mod copy_tests;
 #[cfg(test)]
 mod devirt_tests;
+#[cfg(test)]
+mod sink_tests;
 #[cfg(test)]
 mod tests;

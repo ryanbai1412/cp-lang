@@ -16,7 +16,7 @@
     "crates/cpl-interp/src/trace.rs": 2389
   },
   "stdlib_todo": 52,
-  "rust_ignore": 17,
+  "rust_ignore": 16,
   "pending_tests": 0,
   "edition_refs": 0,
   "ir_builtin_names": 85,
