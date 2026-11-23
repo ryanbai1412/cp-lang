@@ -36,9 +36,11 @@ fi
 
 # A profile of its own, set here so the workspace's Cargo.toml stays as it
 # is. A panic ends the call as a trap that cpl.js reports. The interpreter is
-# built at level 2 and not "z": its frames are a program's recursion, and at
-# "z" a program can nest about half as many calls on a browser's stack. The
-# rest is built at "z", ~205 kB smaller gzipped (~274 kB smaller base64) than "s".
+# built at "s" and not "z": its frames are a program's recursion, and at "z" a
+# program can nest about half as many calls on a browser's stack. "s" nests as
+# deep as level 2 and is 66 kB smaller gzipped, at about 1.5x the run time
+# (prime-count's slowest test: 1.07 s against 0.72 s). The rest is built at
+# "z", ~205 kB smaller gzipped (~274 kB smaller base64) than "s".
 cd "$root"
 mkdir -p "$out"
 built="$(cargo metadata --format-version 1 --no-deps | sed -n 's/.*"target_directory":"\([^"]*\)".*/\1/p')/$target/wasm/cpl_wasm.wasm"
@@ -52,8 +54,9 @@ build() {
     cargo build -p cpl-wasm --target "$target" --profile wasm \
         --config 'profile.wasm.inherits="release"' \
         --config 'profile.wasm.opt-level="z"' \
-        --config 'profile.wasm.package.cpl-interp.opt-level=2' \
+        --config 'profile.wasm.package.cpl-interp.opt-level="s"' \
         --config 'profile.wasm.lto=true' \
+        --config 'profile.wasm.codegen-units=1' \
         --config 'profile.wasm.panic="abort"' \
         --config "profile.wasm.strip=$strip" "$@"
 }
