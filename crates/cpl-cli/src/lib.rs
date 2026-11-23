@@ -473,7 +473,7 @@ impl<'a> RunArgs<'a> {
                 "--brute" => args.brute = true,
                 "--release" => args.release = true,
                 "--checks" => {
-                    match iter.next().and_then(|n| cpl_codegen::Checks::parse(n)) {
+                    match iter.next().and_then(cpl_codegen::Checks::parse) {
                         Some(level) => args.checks = Some(level),
                         None => {
                             return Err(format!(
