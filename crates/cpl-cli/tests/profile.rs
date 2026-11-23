@@ -171,6 +171,13 @@ fn programs() -> Vec<PathBuf> {
     programs
 }
 
+/// An empty input file; `/dev/null` doesn't exist on Windows.
+fn empty_input() -> String {
+    let path = std::env::temp_dir().join(format!("cpl-profile-empty-{}.in", std::process::id()));
+    std::fs::write(&path, "").unwrap();
+    path.to_string_lossy().into_owned()
+}
+
 fn native_agrees_on_shard(shard: usize) {
     if !has_gxx() {
         eprintln!("skipped: no g++");
@@ -184,7 +191,7 @@ fn native_agrees_on_shard(shard: usize) {
         let input = if input.is_file() {
             input.to_string_lossy().into_owned()
         } else {
-            "/dev/null".into()
+            empty_input()
         };
         let program = program.to_string_lossy();
         let (interp, _, _) = cpl(&["profile", &program, &input, "--format", "json"]);
