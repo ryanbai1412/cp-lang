@@ -152,8 +152,8 @@ def main():
             note = f"{ok} pass" + (f", {len(bad)} known gaps" if bad and st == "supported" else "")
             if st != "supported" and key in rows:
                 note = rows[key][1]
-            label = key if key.startswith("std-") else f"R{key}"
-            print(f"| {label} | {secs[key][1]} | {st} | {note} |")
+            shown = label(key)
+            print(f"| {shown} | {secs[key][1]} | {st} | {note} |")
             if st == "supported":
                 listed |= set(bad)
         print("\n## Known gaps\n")
