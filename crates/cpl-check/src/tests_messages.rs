@@ -246,3 +246,13 @@ fn substr_and_substring_become_slices() {
     let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixes, ["s[1..1 + 2]", "s[1..3]"], "{d:?}");
 }
+
+#[test]
+fn int_of_input_is_one_error_with_the_read_fix() {
+    let d = check("let n = int(input())\nlet x = float(input())\nprint(n, x)\n");
+    let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixes, ["read<Int>()", "read<F64>()"], "{d:?}");
+    let d = check("let s = input()\nprint(s)\n");
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(d[0].help.as_deref().unwrap().contains("read()"), "{d:?}");
+}

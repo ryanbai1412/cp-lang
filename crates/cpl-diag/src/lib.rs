@@ -413,6 +413,11 @@ impl Sink {
         &self.diags
     }
 
+    /// Drops a diagnostic a later one explains, keeping one per root cause.
+    pub fn drop_where(&mut self, f: impl Fn(&Diagnostic) -> bool) {
+        self.diags.retain(|d| !f(d));
+    }
+
     pub fn poisoned(&self) -> &[Span] {
         &self.poisoned
     }

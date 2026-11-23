@@ -34,7 +34,26 @@ impl Checker<'_> {
                 format!("({t})")
             }
         };
+        let input = args.first().and_then(|x| match &x.value.kind {
+            ExprKind::Call { callee, args } if args.is_empty() => {
+                matches!(&callee.kind, ExprKind::Name(n) if n == "input").then_some(callee.span)
+            }
+            _ => None,
+        });
+        let read = match name.as_str() {
+            "int" => Some("Int"),
+            "float" => Some("F64"),
+            _ => None,
+        };
+        if let (Some(at), Some(_), [_]) = (input, read, args) {
+            self.sink
+                .drop_where(|d| d.code == codes::UNRESOLVED_NAME && d.span == at);
+        }
         let (ours, what) = match (name.as_str(), args) {
+            ("int" | "float", [_]) if input.is_some() => (
+                format!("read<{}>()", read.unwrap_or("Int")),
+                "a value is read from the input with `read`",
+            ),
             ("enumerate", [xs]) => (
                 format!("{}.items", operand(self, xs)),
                 "index-element pairs are a member",
@@ -259,6 +278,7 @@ pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
         "float" | "stod" | "parseFloat" => {
             Some("read a number from a string with `s.parse<F64>()!`")
         }
+        "input" => Some("read the input with `read`: `let n: Int = read()`"),
         "math" | "Math" => Some("math functions are methods here: `x.sqrt`, `x.abs`, `x.isqrt`"),
         _ => None,
     }
