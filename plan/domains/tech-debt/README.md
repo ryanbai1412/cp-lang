@@ -55,6 +55,27 @@ Next three steps (hours from 21:30 PST):
 3. By 03:30: the user-library privilege test in the fast gate. Then the
    third-party crate verdict and crate READMEs.
 
+## Milestone 2
+
+Most ambitious complete version: a stranger reads `plan/ARCHITECTURE.md` and changes any
+layer in its own crate; the core has no name std can't override; every generated file is
+built, not hand-kept; the interpreter and C++ agree on the whole corpus with zero skips.
+
+Exit criteria (each a command in [metrics.toml](metrics.toml)):
+- `cpl-conform diff`: 0 mismatches, 0 sanitizer traps, and skips only for cases
+  that expect an error (today 141 skips, mostly E0302/E0203 compile errors).
+- `ir_builtin_names` at the storage, I/O, bits and numeric floor (66), every other
+  name a std body within the perf bar: idiomatic p50 <= 1.1x, p95 <= 1.2x,
+  max <= 1.5x, and tuned max <= 1.1x.
+- `prelude_privilege` = 0: a user library can declare every power std uses.
+- No file over 2,000 lines; `rs_over_cap`, `stdlib_todo` and `spec_edition` at 0.
+- Cold probes P1-P4 at most 3 files each; P5 at 5/5.
+- `plan/DECISIONS.md` current-only, full log archived; corpus answers derived and
+  cached, committed only where underivable.
+
+Next steps: settle `span`/`counts`/`first_ge` in one body with stdlib; split the
+capped `tests.rs` files; derive corpus answers once tools' shared cache lands.
+
 ## Covers / not covered
 
 | Covers (this lane) | Not covered (owner) |
