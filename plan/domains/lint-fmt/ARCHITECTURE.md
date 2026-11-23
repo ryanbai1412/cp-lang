@@ -14,6 +14,7 @@ Depends on `cpl-syntax` (lexer, parser) and `cpl-diag` only.
 | `src/lib.rs` | 142 | `format`, `is_formatted`, `FormatError`; `INDENT = 4`, `MAX_WIDTH = 100`; the final `verify` step |
 | `src/spacing.rs` | 345 | Space or no space between each pair of adjacent tokens |
 | `src/layout.rs` | 622 | Indentation, blank lines, comments, breaking an over-wide bracket one element per line with a trailing comma (`MIN_BREAK_WIDTH`) |
+| `src/imports.rs` | 85 | Sorts each run of one-line `use` lines at one indentation, `std` paths first, with its own verify (only whole lines move) |
 | `src/cli.rs` | 154 | `cpl fmt [--check] <files>` |
 | `src/tests.rs` | 541 | Unit cases and `formats_the_whole_corpus` (AST equal after formatting) |
 

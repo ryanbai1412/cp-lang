@@ -360,9 +360,22 @@ fn formats_the_whole_corpus() {
             file.display()
         );
         if p_src.diagnostics.is_empty() {
+            // The same items, except that each run of `use` items may be
+            // reordered.
             let ast = |p: &cpl_syntax::ParsedFile| {
-                let items: Vec<_> = p.items.iter().map(|(_, item)| item).collect();
-                strip_spans(&format!("{items:?}"))
+                let mut items: Vec<String> = p
+                    .items
+                    .iter()
+                    .map(|(_, item)| strip_spans(&format!("{item:?}")))
+                    .collect();
+                let is_use = |s: &String| s.starts_with("ParsedItem { stmts: [Stmt { kind: Use {");
+                let mut i = 0;
+                while i < items.len() {
+                    let j = i + items[i..].iter().take_while(|s| is_use(s)).count();
+                    items[i..j].sort();
+                    i = j.max(i + 1);
+                }
+                items
             };
             assert_eq!(
                 ast(&p_src),
@@ -610,4 +623,33 @@ fn spaces_shorthands_reads_and_member_keywords_like_the_spec() {
     for (src, want) in cases {
         assert_eq!(fmt(src), want, "{src:?}");
     }
+}
+
+#[test]
+fn sorts_a_run_of_use_lines_std_first() {
+    let src = "use lib.flow as fl\nuse std.segtree\nuse std.graph.{dijkstra, Paths}\nuse lib.treap\nprint(1)\n";
+    let want = "use std.graph.{dijkstra, Paths}\nuse std.segtree\nuse lib.flow as fl\nuse lib.treap\nprint(1)\n";
+    assert_eq!(fmt(src), want);
+}
+
+#[test]
+fn keeps_use_groups_and_trailing_comments() {
+    let src = "use std.seq  // sort\nuse std.dsu\n\nuse lib.b\n// local\nuse lib.a\n";
+    let want = "use std.dsu\nuse std.seq  // sort\n\nuse lib.b\n// local\nuse lib.a\n";
+    assert_eq!(fmt(src), want);
+}
+
+#[test]
+fn leaves_a_run_with_a_multi_line_use_alone() {
+    let src = "use std.seq\nuse std.graph.{\n    long_function_name_0,\n    long_function_name_1,\n    long_function_name_2,\n    long_function_name_3,\n    long_function_name_4,\n    long_function_name_5,\n}\nuse std.dsu\n";
+    let out = fmt(src);
+    assert!(out.starts_with("use std.seq\n"), "{out}");
+    assert!(out.ends_with("use std.dsu\n"), "{out}");
+}
+
+#[test]
+fn sorts_use_lines_inside_a_block() {
+    let src = "fn f():\n    use std.seq\n    use std.dsu\n    print(1)\n";
+    let want = "fn f():\n    use std.dsu\n    use std.seq\n    print(1)\n";
+    assert_eq!(fmt(src), want);
 }

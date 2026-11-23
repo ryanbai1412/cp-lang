@@ -79,7 +79,7 @@ target = "< 0.05"
 [[metric]]
 name = "fmt_files_changed"
 command = "python3 scripts/fmt_check.py"
-today = "560 of 5,157 tracked .cp files"
+today = "585 of 5,176 tracked .cp files"
 target = "0 outside exempt layout tests"
 note = "scripts/fmt_check.py --cpl target/release/cpl; the bulk reformat waits on Q2"
 
@@ -99,7 +99,7 @@ note = "was 1 (c_operators.cp), fixed in 361f22b0; the gate in scripts/check.sh 
 [[metric]]
 name = "fmt_snippets_meaning_or_idempotence"
 command = "scripts/fmt_check.py --snippets"
-today = "1803 snippets, 717 changed by cpl fmt, 0 not idempotent, 0 change meaning, 0 formatter bugs"
+today = "1803 snippets, 722 changed by cpl fmt, 0 not idempotent, 0 change meaning, 0 formatter bugs"
 target = "0 not idempotent, 0 change meaning"
 note = "every ```cp block in tracked .md and .mdx files (spec, skills, web/content); not in the fast gate"
 

@@ -85,7 +85,7 @@ Measured 2026-11-22 on main (98618e1b5) with a release `cpl`; commands in full i
 | Fixed files with more checker errors (std + corpus spec) | test `fixes_never_add_checker_errors` | 0 | 0 |
 | Lint time, largest linted file (2,682 lines) | `time cpl lint spec/std/tree.cp` | 0.01 s | < 0.05 s |
 | Fmt time, same file | `time cpl fmt --check spec/std/tree.cp` | 0.00 s | < 0.05 s |
-| `.cp` files fmt would change | `python3 scripts/fmt_check.py` | 560 / 5,157 | 0 outside exempt tests |
+| `.cp` files fmt would change | `python3 scripts/fmt_check.py` | 585 / 5,176 | 0 outside exempt tests |
 | Not idempotent | same | 0 | 0 |
 | Meaning changes | same | 0 | 0 |
 | Corpus `spec.cp` not fmt-clean | `cpl fmt --check corpus/problems/*/spec.cp` | 28 / 100 | 0 |

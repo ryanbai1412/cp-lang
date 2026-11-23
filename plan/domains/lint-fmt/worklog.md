@@ -3,6 +3,8 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- fmt: `cpl fmt` sorts runs of one-line `use` lines, `std` first (decisions.md 236, new `crates/cpl-fmt/src/imports.rs` with its own verify). The whole-corpus AST test now lets a run of `use` items reorder and nothing else. `fmt_check.py`: 5176 files, 585 changed, 0 not idempotent, 0 meaning changes; 1803 snippets, 722 changed, 0 meaning changes. The spec example in core/11 11.2 is out of that order: request in the spec worklog.
+- fmt: `fmt_check.py` copies `lib.toml` beside `cp.toml`, so a library root is found in the scratch tree; without it `research/archive/local-lib-v02/spec/worked.cp` read as 1 -> 4 E0206 after sorting (the handoff's cascade), while the same file formatted in place keeps 1.
 - triage: the 5 `spec/std` files `cpl lint` skips, by first error: graph.cp (`type Arc: Target<V>`, trait associated-type bound) and algebra.cp (`(+)` as a value, E0504) are compiler parser gaps already requested; geometry.cp and strings.cp are one `else if` each, whose parser fix has a reversed span (offset 42494 -> 22676 in geometry.cp), so the span guard skips it; seq.cp is `(I:, [I] i => ..)`. Evidence added to the compiler request.
 - lint: `fixes_never_add_checker_errors` now also covers the 421 `dream.cp` ports, files split across threads (5.4 s, was 17 s single-threaded in debug). cf2262d (1 -> 16, `find(p)` typing, compiler worklog) is the one `KNOWN_WORSE` entry; the test fails if a new file gets worse or if a known one stops getting worse (checked both ways by editing the list).
 - plan: the 4 wasm gates are all the prover; decisions.md 235 logs keeping it native, and the metric target becomes 4.

@@ -2,14 +2,16 @@
 //!
 //! [`format`] works on the token stream and the comments the lexer keeps,
 //! not on the syntax tree, so it formats code the parser cannot read yet
-//! and can never drop a comment. It changes whitespace and trailing commas
-//! and nothing else, and it checks that before it returns: the result is
-//! lexed again and compared token by token with the input.
+//! and can never drop a comment. It changes whitespace and trailing commas,
+//! and sorts runs of `use` lines (`imports`), and nothing else. It checks
+//! both before it returns: the laid-out text is lexed again and compared
+//! token by token with the input, and sorting may only move whole lines.
 //!
 //! The style: four spaces per level, at most 100 columns, one blank line
 //! at most between statements, a bracketed list either on one line or one
 //! element per line with a trailing comma.
 
+mod imports;
 mod layout;
 mod spacing;
 
@@ -86,7 +88,9 @@ pub fn format(src: &str) -> Result<String, FormatError> {
     }
     let out = layout::render(src, &lexed);
     verify(src, &lexed.tokens, &out)?;
-    Ok(out)
+    let sorted = imports::sort_use_runs(&out);
+    imports::verify(&out, &sorted)?;
+    Ok(sorted)
 }
 
 /// Whether `src` is already formatted. A file that cannot be formatted is

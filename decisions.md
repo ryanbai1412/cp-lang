@@ -5950,3 +5950,12 @@ playground still shows the overflow lint; it only lacks the counterexample
 (`n = 55110`). Every other lint, including the checker-backed ones, runs on
 wasm32. Reverse: move `cpl-prover` to `[dependencies]` in
 `crates/cpl-lint/Cargo.toml` and delete the two `cfg` arms in `bounds.rs`.
+
+## 236. `cpl fmt` sorts `use` runs, `std` first (2026-11-22)
+`spec/tools/fmt-lint.md` asks for sorted `use` lines without a key. `cpl fmt`
+sorts each run of one-line `use` lines at one indentation, `std` paths
+first, then by path text (`crates/cpl-fmt/src/imports.rs`). A blank line, a
+comment line or a `use` spanning lines ends a run, so hand-made groups stay.
+Order cannot change meaning: a colliding `use` is an error either way
+(R11.2.3); `scripts/fmt_check.py` finds 0 meaning changes on 5,176 files.
+Reverse: drop the `imports` pass from `format` in `crates/cpl-fmt/src/lib.rs`.
