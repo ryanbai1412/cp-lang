@@ -164,7 +164,7 @@ pub(super) fn bounds_decl<'a>(
     i: usize,
     lo: &str,
     hi: &str,
-) -> Option<(usize, &'a Expr, &'a Expr)> {
+) -> Option<(usize, &'a Expr, &'a Expr, usize)> {
     let prev = stmts.get(i.checked_sub(1)?)?.1;
     if let StmtKind::Let {
         mutable: true,
@@ -191,11 +191,11 @@ pub(super) fn bounds_decl<'a>(
                 _ => None,
             }
         }
-        return (name(n0) == Some(lo) && name(n1) == Some(hi)).then_some((i - 1, a, b));
+        return (name(n0) == Some(lo) && name(n1) == Some(hi)).then_some((i - 1, a, b, i - 1));
     }
     let (n1, b) = var_decl(prev)?;
     let (n0, a) = var_decl(stmts.get(i.checked_sub(2)?)?.1)?;
-    (n0 == lo && n1 == hi).then_some((i - 2, a, b))
+    (n0 == lo && n1 == hi).then_some((i - 2, a, b, i - 1))
 }
 
 /// A first search over `0..xs.len` on `xs[mid] >= t` (or `> t`, or a field

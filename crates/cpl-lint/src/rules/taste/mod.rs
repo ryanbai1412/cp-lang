@@ -280,14 +280,17 @@ impl<'a> Taste<'a> {
             mid = found.mid
         ));
         let mut call_name = call.to_string();
-        if let Some((first, a, b)) = bounds_decl(stmts, i, found.lo, found.hi) {
+        if let Some((first, a, b, second)) = bounds_decl(stmts, i, found.lo, found.hi) {
             let later: Vec<&str> = stmts[i + 1..].iter().map(|&(b, s)| at(b, s.span)).collect();
-            let simple =
-                |e: &Expr| !at(base, e.span).contains('(') || matches!(e.kind, ExprKind::Paren(_));
+            let simple = |e: &Expr, at_base: u32| {
+                !at(at_base, e.span).contains('(') || matches!(e.kind, ExprKind::Paren(_))
+            };
             let (fb, fs) = stmts[first];
-            if !later.iter().any(|t| mentions(t, found.hi)) && simple(b) && simple(a) {
+            // `var lo = ..` and `var hi = ..` at top level are two items, each with its own base.
+            let sb = stmts[second].0;
+            if !later.iter().any(|t| mentions(t, found.hi)) && simple(b, sb) && simple(a, fb) {
                 let a_text = at(fb, a.span);
-                let b_text = at(fb, b.span);
+                let b_text = at(sb, b.span);
                 let pred = if found.keep {
                     pred_text.to_string()
                 } else {
@@ -782,9 +785,11 @@ impl<'a> Taste<'a> {
             self.pair_span(decl.span, next.span),
             format!("a search loop that sets `{name}` and breaks"),
         )
-        .with_help(format!(
-            "say the search: `{call}(.. for .. in ..)`, or `find`/`count` for their questions"
-        ));
+        .with_help(if init_text == "none" {
+            "say the search: `first(.. for .. in .. if ..)`, or `.count(..)` to count".to_string()
+        } else {
+            format!("say the search: `xs.{call}(x => ..)`, or `.count(..)` to count")
+        });
         if let Some(edits) = fix.and_then(|text| self.fold(init, next, call, text)) {
             diag.fixes.push(Fix {
                 title: format!("use `{call}`"),
@@ -849,8 +854,8 @@ impl<'a> Taste<'a> {
         }
         Some(match (init, v) {
             ("none", _) => ("first", format!("first({v} for {p} in {it} if {c})")),
-            ("false", "true") => ("any", format!("any({c} for {p} in {it})")),
-            ("true", "false") => ("all", format!("all(not ({c}) for {p} in {it})")),
+            ("false", "true") => ("any", format!("{}.any({p} => {c})", receiver(&it))),
+            ("true", "false") => ("all", format!("{}.all({p} => not ({c}))", receiver(&it))),
             _ => return None,
         })
     }

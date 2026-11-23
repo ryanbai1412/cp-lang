@@ -736,9 +736,9 @@ fn search_loop_with_a_flag_becomes_any_or_all_from_noi09p1() {
     // proto/ports/scout_batch_15/noi09p1.cp: `var moved = false` over a neighbour list.
     let src = "let adj = [1, 2]\nvar moved = false\nfor a in adj:\n    if a > 1:\n        moved = true\n        break\nprint(moved)\n";
     assert_eq!(taste_codes(src), ["L0501"]);
-    assert!(fixed(src).contains("let moved = any(a > 1 for a in adj)"));
+    assert!(fixed(src).contains("let moved = adj.any(a => a > 1)"));
     let all = "let grp = [1, 2]\nvar ok = true\nfor m in grp:\n    if m < 0:\n        ok = false\n        break\nprint(ok)\n";
-    assert!(fixed(all).contains("let ok = all(not (m < 0) for m in grp)"));
+    assert!(fixed(all).contains("let ok = grp.all(m => not (m < 0))"));
     // A loop that does more than search is flagged without a rewrite.
     let more = "let grp = [1, 2]\nvar ok = true\nfor m in grp:\n    print(m)\n    if m < 0:\n        ok = false\n        break\nprint(ok)\n";
     let found = only(more);
@@ -1688,4 +1688,32 @@ for (i, v) in x.items: a[2 * i] = v
 print(a)
 ";
     assert_eq!(taste_codes(strided), Vec::<&str>::new());
+}
+
+#[test]
+fn newcomer_fixes_still_check() {
+    // n07: `var lo` and `var hi` are two top-level items; `hi`'s text was read at `lo`'s offset.
+    let search = "let k = 10\nvar lo = 1\nvar hi = 1000000001\nwhile lo < hi:\n    let mid = (lo + hi) / 2\n    if mid * 2 < k:\n        lo = mid + 1\n    else:\n        hi = mid\nprint(lo)\n";
+    let out = fixed(search);
+    assert!(
+        out.contains("(1..1000000001).first_true(mid => mid * 2 >= k)"),
+        "{out}"
+    );
+    // n25: `all`/`any` take a predicate, not a generator.
+    let all = "let s: Str = \"abba\"\nlet n = s.len\nvar ok = true\nfor i in 0..n / 2:\n    if s[i] != s[n - 1 - i]:\n        ok = false\n        break\nprint(yes(ok))\n";
+    let any = "let a = [1, 2]\nvar ok = false\nfor x in a:\n    if x > 1:\n        ok = true\n        break\nprint(yes(ok))\n";
+    for src in [search, all, any] {
+        let out = fixed(src);
+        assert!(crate::fix_tests::checker_errors(&out).is_empty(), "{out}");
+    }
+    assert!(fixed(all).contains("(0..n / 2).all(i => not (s[i] != s[n - 1 - i]))"));
+    assert!(fixed(any).contains("let ok = a.any(x => x > 1)"));
+}
+
+#[test]
+fn chmax_if_with_a_comment_warns_without_a_fix() {
+    let src = "let a = [1, 2]\nvar best = 0\nvar n = 0\nfor x in a:\n    n += 1\n    if x > best:  // keep the max\n        best = x\nprint(best, n)\n";
+    let d = only(src);
+    assert_eq!(d.code, crate::CHMIN_CHMAX_IF.code);
+    assert!(d.fixes.is_empty());
 }

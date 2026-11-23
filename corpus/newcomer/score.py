@@ -8,7 +8,7 @@
 
 Every `.cp` here is a solution written the way a C++ contestant first writes CPL. Each
 non-idiomatic spot carries `// expect: <lint name>` (a lint from `cpl lint --list`) or
-`// expect: missing <pattern>` (no lint exists yet) at the end of the line it is about.
+`// expect: missing <pattern>` (no lint exists yet), or `a|b` when either lint teaches the spot, at the end of the line it is about.
 A mark is flagged when that lint reports a diagnostic that covers the line or starts
 within 3 lines of it (lints anchor on the accumulator, the loop or the fn); a `missing`
 mark is flagged by any lint that does. Unmatched diagnostics are listed as unmarked.
@@ -96,12 +96,14 @@ def main(argv):
             if want.startswith("missing "):
                 ok = any(near(line, d) for _, _, d in ds)
             else:
-                if want not in known:
-                    unknown.append(f"{f.name}:{line}: `{want}`")
-                ok = any(n == want and near(line, d) for _, n, d in ds)
+                wants = want.split("|")
+                for w in wants:
+                    if w not in known:
+                        unknown.append(f"{f.name}:{line}: `{w}`")
+                ok = any(n in wants and near(line, d) for _, n, d in ds)
             if ok:
                 hit += 1
-                used |= {i for i, (_, n, d) in enumerate(ds) if near(line, d) and (n == want or want.startswith("missing "))}
+                used |= {i for i, (_, n, d) in enumerate(ds) if near(line, d) and (n in want.split("|") or want.startswith("missing "))}
             else:
                 missed[want] += 1
         for i, (l, n, _) in enumerate(ds):

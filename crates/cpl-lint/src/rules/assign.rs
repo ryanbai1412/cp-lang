@@ -156,9 +156,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 _ => return,
             };
             let whole = stmt.span.shift(self.base);
-            if calls(target) || calls(value) || whole.text(self.src).contains("//") {
+            if calls(target) || calls(value) {
                 return;
             }
+            // The rewrite is one line; a comment inside the `if` would be lost.
+            let commented = whole.text(self.src).contains("//");
             let text = |e: &Expr| e.span.shift(self.base).text(self.src);
             let squash = |e: &Expr| text(e).split_whitespace().collect::<String>();
             let sides = (squash(first), squash(second));
@@ -182,10 +184,12 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             )
             .with_label(target.span.shift(self.base), "the place it updates")
             .with_help(format!("write `{rewrite}`"));
-            diag.fixes.push(Fix {
-                title: format!("use `{f}=`"),
-                edits: vec![(whole, rewrite)],
-            });
+            if !commented {
+                diag.fixes.push(Fix {
+                    title: format!("use `{f}=`"),
+                    edits: vec![(whole, rewrite)],
+                });
+            }
             self.out.push(Finding {
                 lint: &CHMIN_CHMAX_IF,
                 diag,

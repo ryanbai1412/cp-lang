@@ -6,5 +6,5 @@ for _ in 0..m:
     adj[v].push(u)  // expect: symmetric_write
 var deg_max = 0
 for u in 1..=n:
-    deg_max = max(deg_max, adj[u].len)  // expect: chmin_chmax_if
+    deg_max = max(deg_max, adj[u].len)  // expect: chmin_chmax_if|loop_reduction
 print(deg_max)
