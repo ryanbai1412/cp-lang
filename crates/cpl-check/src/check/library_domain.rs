@@ -20,8 +20,14 @@ impl Checker<'_> {
         base: &Expr,
         name: &Name,
     ) -> Option<Ty> {
-        let ExprKind::Name(type_name) = &base.kind else {
-            return None;
+        // `T.first` or, for a generic struct, `Sub<V>.first`.
+        let (type_name, type_args) = match &base.kind {
+            ExprKind::Name(type_name) => (type_name, &[][..]),
+            ExprKind::Generic { base, args } => match &base.kind {
+                ExprKind::Name(type_name) => (type_name, &args[..]),
+                _ => return None,
+            },
+            _ => return None,
         };
         if self.local(type_name).is_some()
             || !self.has_impl(type_name, "Index")
@@ -50,7 +56,7 @@ impl Checker<'_> {
         }
         let elem = Ty::Named {
             name: type_name.to_string(),
-            args: Vec::new(),
+            args: type_args.iter().map(|a| self.type_arg(a)).collect(),
         };
         Some(match name.text.as_str() {
             "count" if !seq_count => Ty::Int,

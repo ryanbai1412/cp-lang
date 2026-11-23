@@ -4661,10 +4661,10 @@ impl<'a> Lowerer<'a> {
                     Ty::Enum(eid),
                 )
             }
-            ast::ExprKind::Name(name)
-                if self.lookup(name).is_none() && self.index_struct(name).is_some() =>
+            ast::ExprKind::Name(_) | ast::ExprKind::Generic { .. }
+                if self.index_struct_of(e).is_some() =>
             {
-                let Some(sid) = self.index_struct(name) else {
+                let Some(sid) = self.index_struct_of(e) else {
                     unreachable!()
                 };
                 let dom_id = self.structs[sid].index_domain.unwrap();

@@ -92,6 +92,26 @@ impl<'a> Lowerer<'a> {
 }
 
 impl<'a> Lowerer<'a> {
+    /// The `impl Index` struct the type expression `e` names: `T`, a generic's
+    /// argument, or an instance `Sub<V>`.
+    pub(super) fn index_struct_of(&mut self, e: &ast::Expr) -> Option<StructId> {
+        match &e.kind {
+            ast::ExprKind::Name(name) if self.lookup(name).is_none() => self.index_struct(name),
+            ast::ExprKind::Generic { base, args } => {
+                let ast::ExprKind::Name(name) = &base.kind else {
+                    return None;
+                };
+                let Some(Sym::GenStruct(gid)) = self.get_sym(name) else {
+                    return None;
+                };
+                let gargs = self.resolve_gen_args_for_struct(gid, args);
+                let sid = self.instantiate_struct(gid, gargs);
+                self.structs[sid].index_domain.is_some().then_some(sid)
+            }
+            _ => None,
+        }
+    }
+
     /// The `impl Index` struct `name` names, directly or as a generic's argument.
     pub(super) fn index_struct(&self, name: &str) -> Option<StructId> {
         let sid = match self.gen_env.get(name) {

@@ -4999,6 +4999,9 @@ impl<'a> Lowerer<'a> {
                             return self.mk(ExprKind::DomainLen(d), Ty::Int, span);
                         }
                     }
+                    if self.structs[sid].index_domain.is_some() {
+                        return self.library_domain_seq(base, sid, name, None, span);
+                    }
                 }
             }
         }
@@ -7567,6 +7570,9 @@ impl<'a> Lowerer<'a> {
                     }
                     if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
                         return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+                    }
+                    if self.structs[sid].index_domain.is_some() {
+                        return self.library_domain_seq(base, sid, name, Some(args), span);
                     }
                     self.error(
                         codes::UNKNOWN_FIELD,
