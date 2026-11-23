@@ -206,7 +206,7 @@ fn replaced_spellings_get_their_cpl_fix_codemod_as_a_quick_fix() {
             "Z(2).pow(inside) - ways",
             "L0205",
         ),
-        ("cf2066b", "(0..b.len).rev:", "(0..b.len()).rev:", "L0206"),
+        ("cf2066b", "(0..b.len).rev:", "(0..b.len()).rev:", "E0304"),
         ("cf2053i1", "reach.start", "reach.lo", "E0503"),
     ] {
         let mut server = Server::new();

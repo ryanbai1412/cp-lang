@@ -426,13 +426,16 @@ pub fn lint(src: &str, config: &Config) -> Vec<Diagnostic> {
 }
 
 /// `diags` less the lints at the place of one of `errors`: the error
-/// already names that root cause (E0304 and L0206 on `xs.first()`). The
-/// editor keeps both until the error carries the lint's quick fix.
+/// already names that root cause (E0304 and L0206 on `xs.first()`). A lint
+/// with a quick fix stays unless the error carries one too.
 pub(crate) fn drop_repeats(diags: &mut Vec<Diagnostic>, errors: &[Diagnostic]) {
     diags.retain(|d| {
-        !errors
-            .iter()
-            .any(|e| e.severity == Severity::Error && e.span == d.span && e.code != d.code)
+        !errors.iter().any(|e| {
+            e.severity == Severity::Error
+                && e.span == d.span
+                && e.code != d.code
+                && (d.fixes.is_empty() || !e.fixes.is_empty())
+        })
     });
 }
 

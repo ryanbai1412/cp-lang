@@ -64,6 +64,7 @@ pub fn lint_analysis(analysis: &Analysis, config: &crate::Config) -> Vec<Diagnos
     let mut diags = crate::lint_parsed(&analysis.text, &items, config);
     refine_with_analysis(&mut diags, analysis);
     crate::recheck::recheck(&mut diags, &analysis.text);
+    crate::drop_repeats(&mut diags, &analysis.diagnostics);
     diags
 }
 

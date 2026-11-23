@@ -161,3 +161,19 @@ fn a_lint_does_not_repeat_the_error_at_its_place() {
     crate::drop_repeats(&mut diags, &analysis.diagnostics);
     assert!(diags.iter().all(|d| d.code.0 != "L0206"), "{diags:?}");
 }
+
+#[test]
+fn the_editor_shows_one_finding_with_its_fix_for_a_getter_called() {
+    let src = "let ys = [1, 2]\nprint(ys.first())\n";
+    let mut db = cpl_check::Database::new();
+    db.set_file("probe.cp", src);
+    let analysis = db.analyze("probe.cp").unwrap();
+    let error = analysis
+        .diagnostics
+        .iter()
+        .find(|d| d.code.0 == "E0304")
+        .unwrap();
+    assert!(!error.fixes.is_empty(), "{error:?}");
+    let lints = crate::lint_analysis(&analysis, &crate::Config::default());
+    assert!(lints.iter().all(|d| d.code.0 != "L0206"), "{lints:?}");
+}
