@@ -7162,3 +7162,19 @@ removing the counter.
 
 `p.up`, `p.down`, `p.left`, `p.right` on any `(R, C)` cell are `@get` fns in `std/grid.cp` returning `?(R, C)`, written without parens like `r.prev`, and `Dir4.up` (and `right`, `down`, `left`) are `pub const`s, so `p.step(Dir4.up) == p.up` and `p.step(d)` stays for a computed `d`. Each getter is one `R.at(p.0 - 1)`-style bounds test and one add, an inline C++ fn. Matches `spec/lib/graphs-trees.md` (spec's wording). Reverse: turn the consts back into `fn up() -> Dir4` and drop the four getters; `cpl fix` rewrites `p.up` to `p.step(Dir4.up())`.
 
+## 328. Lints for hand-written number theory, trees, geometry and counting (2026-11-22)
+
+`trial_division` (L0561), `memo_by_hand` (L0554), `lca_by_hand` (L0555),
+`cross_by_hand` (L0556), `binom_by_hand` (L0557), `runs_by_hand` (L0558),
+`diff_by_hand` (L0559) and `components_by_dfs` (L0560), in
+`crates/cpl-lint/src/rules/hand_math.rs`, point at `divisors`/`factor`,
+`@memo`, `Rooted.lca`, `Pt`/`area2`, `Comb.choose`, `runs()`, `Diff` and
+`components` for the shapes the `corpus/newcomer/` set marks. All are `idiom`,
+`warn`, help only: each rewrite moves data into a std type first.
+`diff_by_hand` needs the one-off shift (`d[r + 1]` or `d[l - 1]`), so moving an
+amount between two cells (`excess[v] += f; excess[u] -= f` in `std/flow.cp`)
+is not reported. The 2 `trial_division` findings in `spec/std` are
+`std/math.cp`'s own `factor` and `divisors` and enter the baseline. Shared
+shape readers moved to `rules/shapes.rs`. Reverse: delete the eight records,
+`rules/hand_math.rs` and the baseline line.
+

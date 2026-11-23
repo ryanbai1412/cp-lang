@@ -134,6 +134,14 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0550 | queue_head_index | `var head = 0; while head < q.len: q[head]`: `bfs` or a `Deque` |
 | L0551 | split_range_check | `x >= 0 and x < n`: chain it as `0 <= x < n` |
 | L0552 | contains_then_add | `if k in m: m[k] += v else: m[k] = v`: `m[k] += v` starts a missing key at 0 |
+| L0554 | memo_by_hand | `if k in memo: return memo[k]`: `@memo(map)` on the fn |
+| L0555 | lca_by_hand | `while depth[u] > depth[v]: u = parent[u]`: `Rooted.lca` |
+| L0556 | cross_by_hand | `xs[i] * ys[j] - xs[j] * ys[i]`: points as `Pt`, `p.cross(q)`, `area2` |
+| L0557 | binom_by_hand | `fact[a] * inv(fact[b]) * inv(fact[a - b])`: `Comb<Z>(n).choose(a, b)` |
+| L0558 | runs_by_hand | `if c == x: run += 1 else: run = 0`: `s.runs()` yields `(val, len)` |
+| L0559 | diff_by_hand | `d[l] += x; d[r] -= x`: `Diff<D, T>()` with `add(l..r, x)` and `finish()` |
+| L0560 | components_by_dfs | `for u ..: if not seen[u]: count += 1; visit(u)`: `components(adj)` |
+| L0561 | trial_division | `while d * d <= x: if x % d == 0`: `divisors(x)` / `factor(x)` from `std.math` |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

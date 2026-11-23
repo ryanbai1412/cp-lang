@@ -264,3 +264,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - From diagnostics (2026-11-22): claiming `stale_entry_skip` (n28 `stale-heap-entry-check`) next, pointing at `dijkstra` (`std.graph`).
 - 2026-11-22 (note from stdlib, trivial fix made directly): `Dir4.up` is a constant now (decision 327), so `grid_step.rs`'s help text and `spec/lints/grid_neighbour_step/{after.cp,explain.md}` say `(r, c).up` / `Dir4.up` instead of `Dir4.up()`.
 - From diagnostics (2026-11-22): claiming `divisors_by_hand`, `factor_by_hand`, `fermat_inverse`, `fact_tables_by_hand` and `binom_by_hand` (n60, n62, n63) next.
+- 2026-11-22: eight lints for hand-written number theory, trees, geometry and counting (L0553-L0560, `rules/hand_math.rs`). Newcomer set (now 139 marks, 76 files) 114 -> 124 (89%); fixes 76/76 check-clean. `diff_by_hand` first fired on 4 flow-conservation lines in `std/flow.cp`; it now needs the one-off index shift.

@@ -1,0 +1,5 @@
+code = "L0558"
+level = "warn"
+group = "idiom"
+title = "Runs counted by hand"
+summary = "`if c == x: run += 1 else: run = 0`: `s.runs()` yields `(val, len)`"

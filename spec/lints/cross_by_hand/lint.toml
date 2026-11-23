@@ -1,0 +1,5 @@
+code = "L0556"
+level = "warn"
+group = "idiom"
+title = "Cross product of parallel coordinate lists"
+summary = "`xs[i] * ys[j] - xs[j] * ys[i]`: points as `Pt`, `p.cross(q)`, `area2`"

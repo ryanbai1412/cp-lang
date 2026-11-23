@@ -1,0 +1,5 @@
+code = "L0561"
+level = "warn"
+group = "idiom"
+title = "Trial division by hand"
+summary = "`while d * d <= x: if x % d == 0`: `divisors(x)` / `factor(x)` from `std.math`"

@@ -1,0 +1,5 @@
+code = "L0559"
+level = "warn"
+group = "idiom"
+title = "Difference array by hand"
+summary = "`d[l] += x; d[r] -= x`: `Diff<D, T>()` with `add(l..r, x)` and `finish()`"

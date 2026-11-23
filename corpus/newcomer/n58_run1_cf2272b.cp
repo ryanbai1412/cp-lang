@@ -8,7 +8,7 @@ let down = bot.count(c => c == 'f')
 fn pairs(row: Str) -> Int:
     var total = 0
     var run = 0
-    for c in row:  // expect: missing manual-run-length
+    for c in row:  // expect: runs_by_hand
         if c == 'f':
             run += 1
         else:

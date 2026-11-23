@@ -12,6 +12,7 @@ mod floats;
 mod grid;
 mod grid_step;
 mod hand_loops;
+mod hand_math;
 mod heap_skip;
 mod imports;
 mod isqrt;
@@ -26,6 +27,7 @@ mod reverse;
 mod scopes;
 mod sentinel;
 mod sentinel_scalar;
+mod shapes;
 mod spelled;
 mod taste;
 mod types;
@@ -62,5 +64,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(literals::check(file));
     findings.extend(spelled::check(file));
     findings.extend(hand_loops::check(file));
+    findings.extend(hand_math::check(file));
     findings
 }

@@ -1,0 +1,5 @@
+code = "L0555"
+level = "warn"
+group = "idiom"
+title = "Lowest common ancestor by hand"
+summary = "`while depth[u] > depth[v]: u = parent[u]`: `Rooted.lca`"

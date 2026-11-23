@@ -9,7 +9,7 @@ for _ in 0..q:
     let (u0, v0): (1..=n, 1..=n) = read()
     var u = u0
     var v = v0
-    while depth[u] > depth[v]:  // expect: missing lca_by_hand
+    while depth[u] > depth[v]:  // expect: lca_by_hand
         u = parent[u]
     while depth[v] > depth[u]:
         v = parent[v]

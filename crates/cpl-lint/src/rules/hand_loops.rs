@@ -13,6 +13,8 @@ use crate::{
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
 
+use super::shapes::{compare, int, is_step, name, single};
+
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandLoops {
         src: file.src,
@@ -32,27 +34,6 @@ struct HandLoops<'a> {
     /// `and` chains already read whole, so their inner `and`s are skipped.
     chains: Vec<Span>,
     out: Vec<Finding>,
-}
-
-fn name(e: &Expr) -> Option<&str> {
-    match &unparen(e).kind {
-        ExprKind::Name(n) => Some(n),
-        _ => None,
-    }
-}
-
-fn int(e: &Expr) -> Option<i128> {
-    match unparen(e).kind {
-        ExprKind::Int(v) => Some(v),
-        _ => None,
-    }
-}
-
-fn single(block: &Block) -> Option<&Stmt> {
-    match block.stmts.as_slice() {
-        [s] => Some(s),
-        _ => None,
-    }
 }
 
 /// `if c: body` with no other branch.
@@ -82,22 +63,6 @@ fn index1(e: &Expr) -> Option<(&str, &str)> {
         [x] => Some((name(base)?, name(x)?)),
         _ => None,
     }
-}
-
-/// `x op y` as one comparison.
-fn compare(e: &Expr) -> Option<(&Expr, CmpOp, &Expr)> {
-    let ExprKind::Compare { first, rest } = &unparen(e).kind else {
-        return None;
-    };
-    match rest.as_slice() {
-        [(op, rhs)] => Some((first, *op, rhs)),
-        _ => None,
-    }
-}
-
-fn is_step(stmt: &Stmt, var: &str) -> bool {
-    matches!(&stmt.kind, StmtKind::Assign { target, op: AssignOp::Binary(BinOp::Add), value }
-        if name(target) == Some(var) && int(value) == Some(1))
 }
 
 impl HandLoops<'_> {

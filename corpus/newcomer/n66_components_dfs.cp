@@ -12,7 +12,7 @@ fn visit(u: Int):
             visit(v)
 var comps = 0
 for u in 1..=n:
-    if not seen[u]:  // expect: missing components_by_dfs
+    if not seen[u]:  // expect: components_by_dfs
         comps += 1
         visit(u)
 print(comps)

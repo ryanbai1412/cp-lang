@@ -17,4 +17,4 @@ for _ in 0..q:
     if b > a:
         print(0)
     else:
-        print(fact[a] * inv(fact[b]) % 998244353 * inv(fact[a - b]) % 998244353)  // expect: missing binom_by_hand
+        print(fact[a] * inv(fact[b]) % 998244353 * inv(fact[a - b]) % 998244353)  // expect: binom_by_hand

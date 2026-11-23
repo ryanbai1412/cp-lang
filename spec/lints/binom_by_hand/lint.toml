@@ -1,0 +1,5 @@
+code = "L0557"
+level = "warn"
+group = "idiom"
+title = "Binomial from factorial tables by hand"
+summary = "`fact[a] * inv(fact[b]) * inv(fact[a - b])`: `Comb<Z>(n).choose(a, b)`"
