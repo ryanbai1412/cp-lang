@@ -3,29 +3,22 @@
 // Problem: a tree on n <= 2e5 vertices (sum), rooted at 1. An operation colours a set of
 //   vertices with pairwise distinct depths and no edge between them. Print the fewest
 //   operations that colour every vertex once, and the sets. Multitest.
-// Solution: the answer is max over depths of (layer size + 1 if the whole layer, below the
-//   root, hangs off one parent): that parent conflicts with all of it. Build it bottom-up,
-//   slots = operations: in each layer, vertices with a child in a slot (all distinct slots)
-//   take another slot - one not used one layer down if there is a single such vertex, else
-//   a cyclic rotation of their forbidden slots - and the rest fill slots unused at this
-//   depth. O(n * ans) worst case for the free-slot scans.
+// Solution: slots = operations. A layer of sz vertices needs sz slots, and one more if it
+//   lies below the root and hangs off a single parent, which conflicts with all of it; the
+//   max over layers suffices. Fill layers bottom-up. A vertex whose child took slot s must
+//   avoid s: one such vertex takes a slot unused one layer down; several swap their
+//   forbidden slots by a cyclic rotation. The rest take free slots among the first sz,
+//   where at most sz - (rest) are taken. O(n).
 
 @!multitest
 let n: 2..=200_000 = read()
 domain V = 1..=n
-let g = Graph.undirected(read<[n - 1](V, V)>())
-var par: [V]?V = None
-var by_depth: [0..n]List<V> = []
-fn dfs(u: V, p: ?V, depth: Int):
-    par[u] = p
-    by_depth[depth].push(u)
-    for nb in g[u] if Some(nb) != p: dfs(nb, u, depth + 1)
-dfs(V.first!, None, 0)
+let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first!)
+let layers = t.bfs.runs(by: t.depth).collect()
 
 let ans = [
-    layer.len + Int(
-        d > 0 and layer.all(u => par[u] == par[layer[0]])
-    ) for (d, layer) in by_depth.items if not layer.is_empty
+    layer.len + Int(d > 0 and layer.all(u => t.parent(u) == t.parent(layer.first!)))
+    for (d, layer) in layers.items
 ].max()!
 
 domain Slot = 0..ans
@@ -33,23 +26,23 @@ var resp: [Slot]List<V> = []
 var last_depth: [Slot]?Int = None
 var forbidden_loc: [V]?Slot = None
 
-for (d, layer) in by_depth.items.rev if not layer.is_empty:
-    fn place(u: V, loc: Slot):
-        resp[loc].push(u)
-        last_depth[loc] = d
-        if let p = par[u]: forbidden_loc[p] = loc
+fn place(u: V, loc: Slot, d: Int):
+    resp[loc].push(u)
+    last_depth[loc] = d
+    if let p = t.parent(u): forbidden_loc[p] = loc
 
+for (d, layer) in layers.items.rev:
     let forbiddens = [(u:, loc: fl) for u in layer if let fl = forbidden_loc[u]]
     if forbiddens.len == 1:
-        let s = Slot.find(x => last_depth[x] != Some(d + 1))!
-        place(forbiddens[0].u, s)
+        place(forbiddens[0].u, Slot.find(s => last_depth[s] != Some(d + 1))!, d)
     elif forbiddens.len >= 2:
-        let rotated = forbiddens.map(f => f.loc).rotated_left(1)
-        for k in 0..forbiddens.len: place(forbiddens[k].u, rotated[k])
+        for (f, loc) in zip(forbiddens, forbiddens.map(f => f.loc).rotated_left(1)):
+            place(f.u, loc, d)
 
     let unconstrained = [u for u in layer if forbidden_loc[u] == None]
-    let free_slots = [s for s in Slot if last_depth[s] != Some(d)]
-    for k in 0..min(unconstrained.len, free_slots.len): place(unconstrained[k], free_slots[k])
+    let free_slots = [s for s in Slot.take(layer.len) if last_depth[s] != Some(d)]
+    for (u, s) in zip(unconstrained, free_slots):
+        place(u, s, d)
 
 print(ans)
 for group in resp:
