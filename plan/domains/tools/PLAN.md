@@ -2,14 +2,13 @@
 
 The detail behind the [README](README.md): workstreams and their order, why each milestone, alternatives considered, risks, what comes first.
 
-## Milestone 1 order (from 2026-11-22)
-[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md) sets the order; the workstreams below serve it and anything not on this path waits.
-1. **Run is the sample runner.** `cpl run a` with no input and a terminal on stdin runs `a.tests/` like `cpl test`; a number or file name picks one case; piped input runs once as today. Why first: Ryan's experience doc makes it the default loop (J6), and today `cpl run a` waits on stdin.
-2. **Short forms.** `cpl b` for `build`, `-c` for `--copy`; generalise to a small alias table in the command table, not one-off cases.
-3. **Custom tests.** `cpl test a --add [FILE|-]` writes the next `a.tests/<n>.in` (and `.out` with `--expect`); VS Code `CP: Add Test`.
-4. **Companion from the editor.** VS Code `CP: Listen for Competitive Companion` runs `cpl new --listen` and opens the new file.
-5. **VS Code install and polish.** Release `.vsix` (with infra), format on save default for `.cp`, a cold-install probe of steps 3-6, every stumble fixed.
-6. **Contest-flow golden test.** One test drives new → run → test --add → stress → b -c on a Companion fixture, so the scenario cannot regress.
+## Milestone 1 order (from 2026-11-22, deadline 09:30 PST 2026-11-23)
+[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md) and Ryan's 21:30 update set the order; anything not on this path waits. Checkpoint in worklog.md every 2 hours.
+1. **Neovim LSP.** The friend uses Neovim/Vim. `editors/neovim/test/smoke.lua` gains completion, formatting and go-to-definition; `editors/README.md` gets one copy-paste setup; CI runs the smoke test headless (nvim is pinned in mise.toml). Vim's setup checked by `smoke_vim.sh`.
+2. **Windows CLI.** CRLF in inputs and `.out` files, Windows paths in file resolution and messages, `clip.exe` for `-c`; tests that run on the Windows runner.
+3. **Contest-flow golden test** on all three platforms: new (Companion fixture) → run → test --add → stress → b -c.
+4. **Done already:** `cpl run` runs the samples (440aa2111), `cpl b -c` and short forms (dc8a5c361), `cpl test --add` (b6394311a).
+5. **VS Code**: release `.vsix`, format on save, Companion listen and Add Test commands.
 
 Deferred: workstream 3 (explain), the rest of 2 (shared parser beyond new flags), and tier-2 editor polish.
 
