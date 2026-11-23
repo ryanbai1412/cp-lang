@@ -292,3 +292,34 @@ impl Def {
         }
     }
 }
+
+/// A `let` with no annotation whose value lost a piece mid-expression
+/// (`read<[n - * 1]Int>()` parses as comparisons): its type is a guess, so
+/// its name gives no further errors. A half-typed end (`let total = n +`)
+/// or a broken call argument keeps the type of what is there.
+pub(crate) fn guessed(stmt: &cpl_syntax::ast::Stmt) -> bool {
+    use cpl_syntax::ast::{Expr, ExprKind, StmtKind};
+    #[derive(Default)]
+    struct Holes(Vec<cpl_diag::Span>, Vec<cpl_diag::Span>);
+    impl cpl_syntax::visit::Visitor for Holes {
+        fn expr(&mut self, e: &Expr) {
+            match &e.kind {
+                ExprKind::Missing | ExprKind::Error => self.0.push(e.span),
+                ExprKind::Call { args, .. } => self.1.extend(args.iter().map(|a| a.value.span)),
+                _ => {}
+            }
+        }
+    }
+    let StmtKind::Let {
+        ty: None,
+        init: Some(e),
+        ..
+    } = &stmt.kind
+    else {
+        return false;
+    };
+    let mut holes = Holes::default();
+    cpl_syntax::visit::walk_expr(e, &mut holes);
+    let in_arg = |h: &cpl_diag::Span| holes.1.iter().any(|a| a.start <= h.start && h.end <= a.end);
+    holes.0.iter().any(|h| h.end < e.span.end && !in_arg(h))
+}

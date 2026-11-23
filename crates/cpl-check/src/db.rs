@@ -1733,7 +1733,7 @@ impl FileCtx<'_> {
                             .poisoned
                             .iter()
                             .any(|p| p.start < ty.span.end && p.end > ty.span.start),
-                        _ => matches!(stmt.kind, ast::StmtKind::Let { .. }),
+                        _ => crate::def::guessed(stmt),
                     } || head_leaves_open(&item.text, stmt);
                     defs.extend(
                         found
