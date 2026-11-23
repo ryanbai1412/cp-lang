@@ -1938,7 +1938,7 @@
         "noip14p6": "pass",
         "noip18p3": "error",
         "noip20p3": "error",
-        "noip99p1": "untested",
+        "noip99p1": "pass",
         "sac22cc2p5": "error",
         "sac22cc3jp2": "pass",
         "sac22cc3jp4": "untested",
@@ -2157,12 +2157,12 @@
       ],
       "counts": {
         "error": 38,
-        "pass": 19,
+        "pass": 20,
         "trap": 2,
-        "untested": 40,
+        "untested": 39,
         "wrong": 1
       },
-      "passed": 19,
+      "passed": 20,
       "total": 100
     },
     "diff": {
