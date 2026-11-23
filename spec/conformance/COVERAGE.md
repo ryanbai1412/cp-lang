@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2208 (995 passing). Rules: 531.
+Cases: 2209 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 2208 (995 passing). Rules: 531.
 - R05 (05-ownership.md): 43 rules, 143 cases; 0 uncovered, 3 happy-path only, 3 negative only
 - R06 (06-control-functions.md): 24 rules, 72 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R07 (07-sequences.md): 88 rules, 105 cases; 0 uncovered, 2 happy-path only, 2 negative only
-- R08 (08-traits-generics.md): 29 rules, 71 cases; 0 uncovered, 2 happy-path only, 5 negative only
+- R08 (08-traits-generics.md): 29 rules, 72 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 66 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 27 cases; 0 uncovered, 1 happy-path only, 2 negative only
@@ -492,7 +492,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R08: 08-traits-generics.md
 
-- R08.1.1 [12+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
+- R08.1.1 [13+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
 - R08.1.2 [3+ 1-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
 - R08.1.3 [1+ 1-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
 - R08.1.4 [2+ 1-]: Method lookup: inherent first, then traits in scope that the type implements; two candidat...

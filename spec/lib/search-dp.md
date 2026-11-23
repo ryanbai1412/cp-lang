@@ -73,6 +73,7 @@ for i in Pos.cuts:
 - **`min=` / `max=` return whether they improved**, so the argmin is kept
   where it's found:
 
+<!-- spec-only: fragment over a DP's `dp`, `from` and `cost` -->
 ```python
 if dp[i] min= dp[j] + cost(j..i): from[i] = j
 ```
@@ -122,6 +123,7 @@ sum-over-subsets transforms, O(2^n · n); with `op` inverse, `unfold_*`.
 
 ### Top-down: `@memo fn`
 
+<!-- spec-only: fragment over a digit DP's `Pos`, `digit` and `k` -->
 ```python
 @memo(array) fn ways(i: Pos.cuts, tight: Bool, sum: 0..=9 * 18) -> Mod:
     if i == Pos.cuts.last!: return Mod(sum % k == 0)
