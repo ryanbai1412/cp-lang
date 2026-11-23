@@ -104,21 +104,19 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         )
 
     fn put(mut self, p: Int, f: F):
-        let a = act!
         unchecked:
             if span[p] == 0: return
-            if p >= size or not dual: t[p] = a.apply(f, t[p], span[p])
+            if p >= size or not dual: t[p] = act!.apply(f, t[p], span[p])
             if p < size:
-                lz[p] = a.compose(f, lz[p])
+                lz[p] = act!.compose(f, lz[p])
                 has_lz[p] = true
 
     fn push(mut self, p: Int):
-        let a = act!
         unchecked:
             if not has_lz[p]: return
             self.put(2 * p, lz[p])
             self.put(2 * p + 1, lz[p])
-            lz[p] = a.id
+            lz[p] = act!.id
             has_lz[p] = false
 
     fn open(mut self, l: Int, h: Int):
@@ -135,8 +133,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     // The tags pending above `p`'s children: `pend`, after `p`'s own.
     fn below(self, pend: ?F, p: Int) -> ?F:
         if act == None or not has_lz[p]: return pend
-        let a = act!
-        if let f = pend: return Some(a.compose(f, lz[p]))
+        if let f = pend: return Some(act!.compose(f, lz[p]))
         Some(lz[p])
 
     // Walk right from `from` under node `p` (covering `nl..nr`): the first leaf where `ok` fails,
@@ -168,12 +165,11 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     // `x`, folded over `n` leaves under node `p`, with the tags of `p`'s ancestors applied.
     fn lift(self, x: T, n: Int, p: Int) -> T:
         if n == 0: return x
-        let a = act!
         var (v, q) = (x, p)
         unchecked:
             while q > 1:
                 q /= 2
-                if has_lz[q]: v = a.apply(lz[q], v, n)
+                if has_lz[q]: v = act!.apply(lz[q], v, n)
         v
 
     fn pull_node(mut self, p: Int):
@@ -343,11 +339,10 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
     pub fn get(self, i: D) -> T:
         let p = size + i.ord
         if act == None: return t[p]
-        let a = act!
         var v = t[p]
         unchecked:
             for k in 1..=log:
-                if has_lz[p >> k]: v = a.apply(lz[p >> k], v, 1)
+                if has_lz[p >> k]: v = act!.apply(lz[p >> k], v, 1)
         v
 
     /// Make position `i` hold `x`, replacing any tags applied to it, and update its ancestors.
