@@ -5,6 +5,17 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind};
 
 impl Checker<'_> {
+    /// `s.reverse()` on a `let`: the reversed view needs no `var`.
+    pub(super) fn reverse_view_help(&mut self, name: &str, base: &Expr) {
+        let rev = format!("{}.rev", self.text(base.span));
+        let codes = [codes::MUT_OF_IMMUTABLE, codes::ASSIGN_TO_LET];
+        let last = self.sink.last_mut();
+        if let Some(d) = last.filter(|d| name == "reverse" && codes.contains(&d.code)) {
+            let help = d.help.take().unwrap_or_default();
+            d.help = Some(format!("{help}, or read it reversed with `{rev}`"));
+        }
+    }
+
     /// `enumerate(xs)`, `reversed(xs)`, `pow(a, b)`, `s.charAt(i)`: foreign
     /// functions for what CP Lang spells as a member or an operator, so the
     /// unresolved name gets `xs.items` or `a ** b`.

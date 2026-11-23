@@ -200,3 +200,11 @@ fn foreign_case_functions_become_to_upper_and_to_lower() {
     let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixes, ["to_upper", "to_lower"], "{d:?}");
 }
+
+#[test]
+fn reversing_a_let_offers_the_view() {
+    let d = check("let s = \"abc\"\ns.reverse()\n");
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert!(d[0].help.as_deref().unwrap().ends_with("`s.rev`"), "{d:?}");
+    assert!(d[0].fixes.iter().any(|f| f.edits[0].1 == "var"), "{d:?}");
+}

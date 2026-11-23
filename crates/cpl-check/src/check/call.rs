@@ -954,6 +954,7 @@ impl<'a> Checker<'a> {
                         return Some(Ty::Error);
                     }
                     self.require_mutable(base, "changed in place (needs `mut`)");
+                    self.reverse_view_help(&name.text, base);
                 }
                 "sort" if matches!(base_ty, Ty::Domain(_)) => {
                     return Some(Ty::list(elem));
