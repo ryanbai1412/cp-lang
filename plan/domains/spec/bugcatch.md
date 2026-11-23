@@ -100,3 +100,7 @@ New compiler commits since A1: edc93adad (`Int(x)`/`F64(x)` through `impl Into`)
 ## Adversarial round A3 (2026-11-23)
 
 Keyed views through generic params and struct fields, nested generators with early `return`, multitest reset with a shared `Map`, i64 products of `0..=1e9` reads, `0..=65535` shifts, and 850 KB of mixed `print` forms: 13 probes under ASan, UBSan and `_GLIBCXX_DEBUG`, all agree. 1 case added. Separately, a sanitizer sweep over all 2,024 runnable `ok` cases is in progress.
+
+## Round 16 result (2026-11-23)
+
+7 of 8 revertible fixes caught (87%); 2 no longer build when reverted (`2f89a5fa`, `7814a504`). Missed: `262b230b`, the `cpl fix` quick fix for `K`/`to_idx`/`from_idx`. `core-04/impl-index-old-names-fix` still passes with it reverted, so another path also writes the fix. Round 17 runs on the 9 newest check/codegen/interp/syntax commits.
