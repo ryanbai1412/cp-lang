@@ -4661,12 +4661,14 @@ impl<'a> Lowerer<'a> {
                         n,
                         len,
                         nth,
+                        recv,
                         rev,
                     } => Iter::Walk {
                         k,
                         n,
                         len,
                         nth,
+                        recv,
                         rev: !rev,
                     },
                     Iter::TreeRange {
@@ -4772,6 +4774,53 @@ impl<'a> Lowerer<'a> {
                                 span,
                             );
                             return (Iter::Seq(call, false), *elem);
+                        }
+                    }
+                    // A struct with `len` and `nth(self, j)` (an `Indexed` view such
+                    // as `Stepped<S>`) walks `nth(j)` for `j` in `0..len`.
+                    let len_fn = self.structs[sid].methods.get("len").copied();
+                    let nth_fn = self.structs[sid].methods.get("nth").copied().or_else(|| {
+                        // `nth<T>(self, j) -> T` over a sequence parameter: `T` is its element.
+                        let gfid = *self.structs[sid].gen_methods.get("nth")?;
+                        if self.gen_fns[gfid].decl.generics.len() != 1 {
+                            return None;
+                        }
+                        let elem = self.structs[sid].env.values().find_map(|a| match a {
+                            GenArg::Ty(t) => t.seq_elem(),
+                            _ => None,
+                        })?;
+                        Some(self.instantiate_fn(
+                            gfid,
+                            vec![GenArg::Ty(elem)],
+                            &[],
+                            &[],
+                            Vec::new(),
+                        ))
+                    });
+                    if let (Some(len_fn), Some(nth_fn)) = (len_fn, nth_fn) {
+                        if self.sigs[len_fn].params.is_empty()
+                            && self.sigs[nth_fn].params.len() == 1
+                        {
+                            self.queue_fn(len_fn);
+                            self.queue_fn(nth_fn);
+                            let elem = self.ret_of(nth_fn, span);
+                            let recv = self.temp(value.ty.clone());
+                            let at = self.mk(ExprKind::Local(recv), value.ty.clone(), span);
+                            self.cx.pending.push(Stmt::Let(recv, Some(value)));
+                            let len = self.mk(
+                                ExprKind::Call(len_fn, vec![Arg::Value(at.clone())]),
+                                Ty::Int,
+                                span,
+                            );
+                            let iter = Iter::Walk {
+                                k: self.temp(Ty::Int),
+                                n: self.temp(Ty::Int),
+                                len,
+                                nth: nth_fn,
+                                recv: Some(at),
+                                rev: false,
+                            };
+                            return (iter, elem);
                         }
                     }
                 }

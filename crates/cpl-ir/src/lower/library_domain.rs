@@ -161,6 +161,7 @@ impl<'a> Lowerer<'a> {
             n: self.temp(Ty::Int),
             len: self.mk(ExprKind::DomainLen(dom), Ty::Int, span),
             nth,
+            recv: None,
             rev: false,
         }
     }
@@ -233,6 +234,7 @@ impl<'a> Lowerer<'a> {
                         n,
                         len,
                         nth,
+                        recv,
                         rev,
                     },
                     mut body,
@@ -249,7 +251,13 @@ impl<'a> Lowerer<'a> {
                 };
                 let ty = self.sigs[nth].ret.clone().unwrap_or(Ty::Unit);
                 let value = Expr {
-                    kind: ExprKind::Call(nth, vec![Arg::Value(at(k))]),
+                    kind: ExprKind::Call(
+                        nth,
+                        recv.map(Arg::Value)
+                            .into_iter()
+                            .chain([Arg::Value(at(k))])
+                            .collect(),
+                    ),
                     ty,
                     span,
                 };

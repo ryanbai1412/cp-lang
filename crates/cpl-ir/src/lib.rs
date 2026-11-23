@@ -1100,12 +1100,14 @@ pub enum Iter {
     /// The values of a library domain in ordinal order, or backward when
     /// `rev`: `nth(k)` for each `k` in `0..len`, with `k` in slot `k` and
     /// `len` read once into slot `n`. Lowering expands it into an `Int`
-    /// range loop before any backend sees it.
+    /// range loop before any backend sees it. With `recv` (a read of the
+    /// walked value), `nth` is its method: `nth(recv, k)`.
     Walk {
         k: Slot,
         n: Slot,
         len: Expr,
         nth: FnId,
+        recv: Option<Expr>,
         rev: bool,
     },
     /// Keys (for `Set`) or `(key, value)` pairs (for `Map`) in a bounded range,
