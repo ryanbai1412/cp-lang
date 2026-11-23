@@ -1810,8 +1810,7 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                self.intern_grid_products(pty, &concrete);
-                self.unify_ast_ty(pty, &concrete, tpl_mod, &gen_names, &mut inferred);
+                self.unify_arg(pty, &concrete, arg, tpl_mod, &gen_names, &mut inferred);
                 // If this argument bound a `Seq`/`Indexed`/`IndexedMut` container generic
                 // (e.g. `resized<S: Indexed, T>(self: S, n: Int, fill: T)`), deduce `T` now so
                 // subsequent arguments (like `0` for `Mod<M>`) get the element type as hint.

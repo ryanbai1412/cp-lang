@@ -5,6 +5,52 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// Unify argument `arg`'s type with its parameter's. A bare generic standing where the
+    /// argument's type is a range (`List<R>` given a `List<0..2>`) is bound to that range, so the
+    /// generic can be used as the anonymous domain the range is (R04.4.30).
+    pub(super) fn unify_arg(
+        &mut self,
+        pty: &ast::Type,
+        concrete: &Ty,
+        arg: &ast::Arg,
+        tpl_mod: ModId,
+        gen_names: &[String],
+        env: &mut GenEnv,
+    ) {
+        self.intern_grid_products(pty, concrete);
+        self.unify_ast_ty(pty, concrete, tpl_mod, gen_names, env);
+        if !matches!(arg.value.kind, ast::ExprKind::Name(_)) {
+            return;
+        }
+        let saved = self.diags.len();
+        let lowered = self.expr(&arg.value, None);
+        self.diags.truncate(saved);
+        if let Some(info) = self.expr_range(&lowered) {
+            bind_range_generics(pty, &info, gen_names, env);
+        }
+    }
+
+    /// Whether generic `name` is bound to a range type with constant ends.
+    pub(super) fn range_generic(&self, name: &str) -> bool {
+        matches!(
+            self.gen_env.get(name),
+            Some(GenArg::Range(Some(_), Some(_)))
+        )
+    }
+
+    /// `[R]T` for a generic `R`: when `R` is a range type, its `Int`s are the positions
+    /// (R04.4.30); anything else is not a domain.
+    pub(super) fn generic_dim(&mut self, name: &str, arg: &GenArg, span: Span) -> Option<DimSpec> {
+        if let GenArg::Range(Some(lo), Some(hi)) = *arg {
+            let len = Box::new(self.int_lit((hi - lo + 1).max(0), span));
+            return Some(match lo {
+                0 => DimSpec::Int(len),
+                _ => DimSpec::IntFrom(lo, len),
+            });
+        }
+        self.not_a_domain(name, arg, span)
+    }
+
     /// Whether generic `at` of `decl` is a domain: the struct or one of its
     /// `impl` blocks (`impl Index for Pair<V>: let count = V.count ...`)
     /// uses it as one.
@@ -341,5 +387,31 @@ impl<'a> Lowerer<'a> {
             );
             out.push(Stmt::Give(res));
         })
+    }
+}
+
+/// Bind each bare generic of `pty` that stands where `info` records a constant range.
+fn bind_range_generics(pty: &ast::Type, info: &RangeInfo, gen_names: &[String], env: &mut GenEnv) {
+    match (&pty.kind, info) {
+        (ast::TypeKind::Named { name, args }, RangeInfo::Scalar(b))
+            if args.is_empty() && gen_names.contains(&name.text) =>
+        {
+            if let (Some(lo), Some(hi), None | Some(GenArg::Ty(Ty::Int))) =
+                (b.lo_const, b.hi_const, env.get(&name.text))
+            {
+                env.insert(name.text.clone(), GenArg::Range(Some(lo), Some(hi)));
+            }
+        }
+        (ast::TypeKind::Named { args, .. }, RangeInfo::Elem(inner)) if args.len() == 1 => {
+            bind_range_generics(&args[0], inner, gen_names, env);
+        }
+        (
+            ast::TypeKind::Array { elem, .. } | ast::TypeKind::OwnDomain { elem, .. },
+            RangeInfo::Elem(inner),
+        ) => bind_range_generics(elem, inner, gen_names, env),
+        (ast::TypeKind::Optional(inner_ty), RangeInfo::Opt(inner)) => {
+            bind_range_generics(inner_ty, inner, gen_names, env);
+        }
+        _ => {}
     }
 }

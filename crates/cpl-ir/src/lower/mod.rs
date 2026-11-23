@@ -3046,10 +3046,10 @@ impl<'a> Lowerer<'a> {
         }
         if let ast::TypeKind::Named { name, args } = &ty.kind {
             if let (true, Some(arg @ (GenArg::Ty(_) | GenArg::Range(..)))) = (
-                values && args.is_empty(),
+                args.is_empty() && (values || self.range_generic(&name.text)),
                 self.gen_env.get(&name.text).cloned(),
             ) {
-                return self.not_a_domain(&name.text, &arg, name.span);
+                return self.generic_dim(&name.text, &arg, name.span);
             }
         }
         // Anything else is a length: `[n]Int`, `[2 * n]Int`, `[0..n]Int`, `[V.cuts]Int`.
