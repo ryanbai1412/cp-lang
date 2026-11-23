@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Stage cache for scripts/check.sh --fast.
+Rule: handbook/guidelines/ci-checklist.md#cir16.
 
 A stage's key hashes the whole working tree (every file git tracks or would
 track) minus the stage's explicit exclude patterns, plus the toolchain. A

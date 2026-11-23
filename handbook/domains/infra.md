@@ -7,22 +7,62 @@
 | Status | Active |
 | Describes | `.github/`, `scripts/check.sh`, `scripts/land.sh`, `.githooks/`, `scripts/release/`, `web/public/install.{sh,ps1}` |
 
-## Mission
+Infra is the machinery between a commit and a user: landing a commit on
+main, the checks that run on it, and the releases and installers that put
+`cpl` on a contestant's machine. Every other domain depends on it, so its
+first job is to stay out of their way.
 
-Keep every other domain shipping. A lane lands a commit in seconds and never
-waits on a person. CI tells within minutes whether main works and, when it
-doesn't, which commit broke it. Edge publishes at least hourly from a working
-commit. One command installs a working `cpl` on Linux, macOS and Windows:
+## What good looks like
+
+A lane commits a change and runs `scripts/land.sh`; about 7 seconds later
+the commit is on main. Within minutes CI says whether main still works. If
+it doesn't, infra names the commit that broke it from the failing log, and
+its lane fixes it or infra reverts it. Within the hour, edge ships from the
+newest commit whose shipping checks pass, and a stranger installs it with
+one line:
 
 ```sh
 curl -fsSL https://cp-lang.org/install.sh | sh      # Linux, macOS
 irm https://cp-lang.org/install.ps1 | iex           # Windows
 ```
 
-Throughput beats a green badge. Main stays green through infra's own work
-(regenerate, fix forward, revert), never through a cost on the lanes: no
-blocking pre-merge gate, no pre-push cost, and under 5% of any lane's time
-spent on landing, CI and tooling.
+## How it fits together
+
+- **Landing** is cheap on purpose. A pre-commit hook runs only the tests the
+  change can affect, within 25 seconds, and `land.sh` only rebases and
+  pushes. There is no review gate.
+- **CI** checks every main tip with the full gate, sharded across hosted
+  runners. One run goes at a time and the newest commit waits; each
+  commit's `ci/covered` status says which run covered it.
+- **The sheriff** is infra's own loop: read each red run, name the culprit,
+  get it fixed or reverted.
+- **Releases** build every target from the commit `shippable.sh` picks,
+  publish edge hourly, smoke-test the installers on three OSes, and leave
+  stable to Ryan.
+
+The ideas behind these, and every rule, are in
+[the CI guideline](../guidelines/ci.md) and
+[its checklist](../guidelines/ci-checklist.md).
+
+## How we know it is good
+
+`land_stats.py` tracks landing time and commits per hour; `devex_stats.py`
+tracks how much lane time goes to tooling. The scripts have their own unit
+tests, and every edge release is install-smoked on Linux, macOS and
+Windows. The weakest areas today: main CI takes about 8 minutes against a
+3-minute goal, there is no alert when edge or the site falls behind, no
+release signing, and no automatic flake detection. The quality register
+below lists every quality with its check, `missing` where there is none.
+
+## Where to start
+
+- **A red main:** [landing and CI](../process/landing-and-ci.md), "When main
+  goes red".
+- **A slow commit or CI step:** `python3 scripts/affected.py <paths>`, then
+  `.github/workflows/ci.yml`.
+- **A release question:** [release](../process/release.md).
+
+# Reference
 
 ## Scope
 
@@ -89,7 +129,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 |---|---|---|---|
 | CI answers fast | main run minutes, push to result p50 | Sharded gate, restored `target/`, `ci-mtime.sh`, C++ cache; non-blocking reports in `ci-slow.yml` | GitHub run times; **missing**: a budget that fails when a run exceeds 3 min |
 | A hung job can't block the queue | step minutes over its cap | Every long step has `timeout-minutes` | **missing**: a lint that every step over 2 min has a cap |
-| Every main commit has a result | commits on main with no pass/fail status | Run-level queue (one running, newest waiting) | **missing**: a "covered by run N" status on each commit |
+| Every main commit has a result | commits on main with no `ci/covered` status | [ci/R10](../guidelines/ci-checklist.md#cir10): `scripts/commit_status.py`, `.github/workflows/commit-status.yml` | built; first production run pending |
 | CI results match a local run | reds that don't reproduce on a fresh `origin/main` build | Pinned toolchains, hermetic std path, deterministic tests | **missing**: a check that tests don't read wall-clock budgets in the gate |
 | No flaky tests | tests that both pass and fail on the same commit | **missing**: rerun-on-fail detection and a quarantine list that only shrinks | none |
 | A red names its culprit fast | minutes from red to named commit | Bisect of the failing tests over the run's range, then a verified revert (`culprit.yml`); direct log reading first | `scripts/test_culprit.py`; **missing**: a recorded red-to-culprit time per red |

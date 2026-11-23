@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Rule: handbook/guidelines/ci-checklist.md#cir22.
 # Builds the compiler for the browser: crates/cpl-wasm as a WebAssembly
 # module, with the JavaScript that loads it, into dist/wasm/ (not tracked).
 #

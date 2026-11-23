@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Pick what the commit tier of the gate runs for a set of changed paths.
+Rule: handbook/guidelines/ci-checklist.md#cir3.
 
     affected.py [--json] [path ...]     default: the staged paths
     affected.py [--json] --base REV     the paths changed between REV and HEAD

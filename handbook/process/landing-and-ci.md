@@ -27,51 +27,7 @@ scripts/land.sh
 - Work lands straight on main. There are no pull requests and no review
   gate.
 
-## What runs before a commit
-
-The pre-commit hook runs `scripts/check.sh --commit`, the commit tier: only
-what the staged paths can affect.
-
-| You changed | It runs |
-|---|---|
-| A crate's `.rs` files | fmt, clippy and the tests of that crate and every crate depending on it |
-| `std/`, `Cargo.toml`, toolchain files | every crate's tests |
-| `corpus/problems/*/spec.cp` or `port.cp` | the corpus lint ratchet and `cpl check` on each touched file |
-| `spec/conformance/*.cp` | those conformance cases |
-| `handbook/` | the handbook checker |
-| A script with a `scripts/test_<name>.py` | that test |
-| Prose (`plan/`, `research/`, `decisions.md`) | nothing beyond the secrets scan |
-| Anything else | the whole fast gate |
-
-`python3 scripts/affected.py <paths>` prints the selection. The tier has a
-25 s budget: past it the hook warns, logs the slow step to
-`.git/cpl-commit-slow.log` and lets the commit through, since CI runs the
-rest.
-
-Every commit tier also scans added lines for secrets, home paths and
-unlisted hosts (`scripts/public-hosts.txt`): the history is public.
-
-## What CI runs
-
-`ci.yml` runs on every push to main.
-
-| Job | What it checks |
-|---|---|
-| `gate` (12 shards) | `scripts/check.sh --fast`: clippy, nextest split 6 ways by hash, conformance and interpreter-vs-C++ diff split 3 ways, corpus, docs, generated files, ratchets |
-| `cli` (Linux, macOS, Windows) | `cpl-cli` end-to-end tests on each OS |
-| `vscode`, `neovim`, `jetbrains`, `editors` | each editor integration against the real `cpl lsp` |
-| `acceptance` (3 shards) | every committed acceptance solution still gets AC with the release build |
-| `site build` | the site builds and every snippet on it runs |
-| `regen` | rewrites stale generated files and commits them |
-| `edge` | the published edge release is installable (not blocking) |
-
-`ci-slow.yml` runs reports that never block main: wall-clock budgets and
-LSP latency.
-
-Run what CI runs with `scripts/check.sh --fast` (or `just check`);
-`--full` adds fuzzing, judge flags and wasm and editor smoke.
-
-### The queue
+## The queue
 
 ```text
 push A ──► run A starts
@@ -126,6 +82,52 @@ Never weaken or delete a test to turn main green. A slow test moves to
   minutes later and compare commits per 15 minutes with the hour before
   (`python3 scripts/devex_stats.py`). If it hurts them, revert first and
   diagnose after.
+
+# Reference
+
+## What runs before a commit
+
+The pre-commit hook runs `scripts/check.sh --commit`, the commit tier: only
+what the staged paths can affect.
+
+| You changed | It runs |
+|---|---|
+| A crate's `.rs` files | fmt, clippy and the tests of that crate and every crate depending on it |
+| `std/`, `Cargo.toml`, toolchain files | every crate's tests |
+| `corpus/problems/*/spec.cp` or `port.cp` | the corpus lint ratchet and `cpl check` on each touched file |
+| `spec/conformance/*.cp` | those conformance cases |
+| `handbook/` | the handbook checker |
+| A script with a `scripts/test_<name>.py` | that test |
+| Prose (`plan/`, `research/`, `decisions.md`) | nothing beyond the secrets scan |
+| Anything else | the whole fast gate |
+
+`python3 scripts/affected.py <paths>` prints the selection. The tier has a
+25 s budget: past it the hook warns, logs the slow step to
+`.git/cpl-commit-slow.log` and lets the commit through, since CI runs the
+rest.
+
+Every commit tier also scans added lines for secrets, home paths and
+unlisted hosts (`scripts/public-hosts.txt`): the history is public.
+
+## What CI runs
+
+`ci.yml` runs on every push to main.
+
+| Job | What it checks |
+|---|---|
+| `gate` (12 shards) | `scripts/check.sh --fast`: clippy, nextest split 6 ways by hash, conformance and interpreter-vs-C++ diff split 3 ways, corpus, docs, generated files, ratchets |
+| `cli` (Linux, macOS, Windows) | `cpl-cli` end-to-end tests on each OS |
+| `vscode`, `neovim`, `jetbrains`, `editors` | each editor integration against the real `cpl lsp` |
+| `acceptance` (3 shards) | every committed acceptance solution still gets AC with the release build |
+| `site build` | the site builds and every snippet on it runs |
+| `regen` | rewrites stale generated files and commits them |
+| `edge` | the published edge release is installable (not blocking) |
+
+`ci-slow.yml` runs reports that never block main: wall-clock budgets and
+LSP latency.
+
+Run what CI runs with `scripts/check.sh --fast` (or `just check`);
+`--full` adds fuzzing, judge flags and wasm and editor smoke.
 
 ## Changes
 

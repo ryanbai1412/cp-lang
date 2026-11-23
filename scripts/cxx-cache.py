@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """A g++ that reuses its last output for the same source and flags.
+Rule: handbook/guidelines/ci-checklist.md#cir16.
 
 scripts/check.sh puts this first on PATH as `g++` for the fast gate. Most
 commits leave most emitted C++ unchanged, and the test suites compile the same
