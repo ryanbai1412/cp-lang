@@ -1211,3 +1211,44 @@ fn b_is_build() {
         text(&out.stderr)
     );
 }
+
+/// `cpl test a --add in --expect out` writes the next numbered case and
+/// runs only it.
+#[test]
+fn test_adds_a_custom_case_and_runs_it() {
+    let dir = scratch("test-add");
+    std::fs::write(dir.join("a.cp"), "let n: Int = read()\nprint(n * 2)\n").unwrap();
+    std::fs::create_dir_all(dir.join("a.tests")).unwrap();
+    std::fs::write(dir.join("a.tests/1.in"), "1\n").unwrap();
+    std::fs::write(dir.join("a.tests/1.out"), "2\n").unwrap();
+    std::fs::write(dir.join("mine.in"), "21\n").unwrap();
+    std::fs::write(dir.join("mine.out"), "42\n").unwrap();
+    let out = cpl(
+        &dir,
+        &["test", "a", "--add", "mine.in", "--expect", "mine.out"],
+    );
+    let stdout = text(&out.stdout);
+    assert_eq!(out.status.code(), Some(0), "{stdout}{}", text(&out.stderr));
+    assert!(
+        stdout.starts_with("  2  ok ") && stdout.ends_with("  1/1 passed\n"),
+        "{stdout}"
+    );
+    assert!(
+        text(&out.stderr).contains("cpl: added "),
+        "{}",
+        text(&out.stderr)
+    );
+    assert_eq!(
+        std::fs::read_to_string(dir.join("a.tests/2.out")).unwrap(),
+        "42\n"
+    );
+
+    let out = cpl(&dir, &["test", "a", "--add", "nope.in"]);
+    assert_eq!(out.status.code(), Some(EXIT_ERRORS as i32));
+    assert!(
+        text(&out.stderr).contains("can't read `nope.in`"),
+        "{}",
+        text(&out.stderr)
+    );
+    assert!(!dir.join("a.tests/3.in").exists());
+}

@@ -11,19 +11,17 @@ pub(crate) fn should_run_unit_tests(args: &[&str]) -> bool {
     if args.is_empty() {
         return false;
     }
-    if args.iter().any(|a| {
-        matches!(
-            *a,
-            "-h" | "--help"
-                | "--format"
-                | "--tests"
-                | "--fast"
-                | "--checker"
-                | "--interactor"
-                | "--time-limit"
-                | "--memory-limit"
-        )
-    }) {
+    // An option of `cpl test` names a problem's cases, not unit tests.
+    let case_option = |a: &str| {
+        a.starts_with("--")
+            && cpl_contest::test::USAGE
+                .lines()
+                .any(|line| line.trim_start().starts_with(&format!("{a} ")))
+    };
+    if args
+        .iter()
+        .any(|a| matches!(*a, "-h" | "--help") || case_option(a))
+    {
         return false;
     }
     let paths: Vec<&str> = args

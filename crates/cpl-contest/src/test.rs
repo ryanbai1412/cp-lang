@@ -29,6 +29,8 @@ output is shown instead of judged.
 options:
   --tests DIR        read cases from DIR instead of <problem>.tests/
   --case NAME        run only the case NAME (`2` for 2.in)
+  --add FILE         add FILE (`-`: standard input) as the next numbered case,
+                     then run it; with --expect OUT, OUT is its answer
   --fast PROG        run this instead of building the problem
   --checker PROG     judge with `PROG <input> <output> <answer>`; exit 0 accepts
   --interactor PROG  judge by talking to `PROG <input>`; exit 0 accepts
@@ -231,6 +233,35 @@ pub(crate) const VALUED: &[&str] = &[
     "--memory-limit",
 ];
 
+/// Writes the next numbered case into `dir`: `from` (a file, or `-` for
+/// standard input) as `N.in` and, with `expect`, that file as `N.out`.
+fn add_case(dir: &Path, from: &str, expect: Option<&str>) -> Result<String, String> {
+    let read = |path: &str| {
+        let mut bytes = Vec::new();
+        match path {
+            "-" => std::io::Read::read_to_end(&mut std::io::stdin(), &mut bytes).map(|_| bytes),
+            path => std::fs::read(path),
+        }
+        .map_err(|e| format!("can't read `{path}`: {e}"))
+    };
+    let input = read(from)?;
+    let expected = expect.map(read).transpose()?;
+    let numbers = cases_in(dir)
+        .into_iter()
+        .filter_map(|c| c.name.parse::<u64>().ok());
+    let name = (numbers.max().unwrap_or(0) + 1).to_string();
+    let write = |ext: &str, bytes: &[u8]| {
+        std::fs::create_dir_all(dir)
+            .and_then(|()| std::fs::write(dir.join(format!("{name}.{ext}")), bytes))
+            .map_err(|e| format!("can't write to {}: {e}", dir.display()))
+    };
+    write("in", &input)?;
+    if let Some(expected) = expected {
+        write("out", &expected)?;
+    }
+    Ok(name)
+}
+
 pub(crate) fn ready(source: &Path, src: &str, args: &Args) -> Result<Ready, String> {
     let name = source.display().to_string();
     let path = |flag: &str| args.value(flag).map(Path::new);
@@ -258,17 +289,21 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
         let _ = write!(stdout, "{USAGE}");
         return 0;
     }
-    let parsed =
-        Args::parse(args, &[VALUED, &["--format", "--case"]].concat(), &[]).and_then(|args| {
-            let json = match args.value("--format") {
-                None | Some("text") => false,
-                Some("json") => true,
-                Some(other) => return Err(format!("`--format` is text or json, not `{other}`")),
-            };
-            args.file("test")
-                .map(source_path)
-                .map(|source| (args, source, json))
-        });
+    let parsed = Args::parse(
+        args,
+        &[VALUED, &["--format", "--case", "--add", "--expect"]].concat(),
+        &[],
+    )
+    .and_then(|args| {
+        let json = match args.value("--format") {
+            None | Some("text") => false,
+            Some("json") => true,
+            Some(other) => return Err(format!("`--format` is text or json, not `{other}`")),
+        };
+        args.file("test")
+            .map(source_path)
+            .map(|source| (args, source, json))
+    });
     let (args, source, json) = match parsed {
         Ok(parsed) => parsed,
         Err(message) => {
@@ -283,8 +318,18 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
                 .value("--tests")
                 .map(PathBuf::from)
                 .unwrap_or_else(|| find_tests_dir(&source));
+            let mut only = args.value("--case").map(str::to_string);
+            if let Some(from) = args.value("--add") {
+                let name = add_case(&dir, from, args.value("--expect"))?;
+                let _ = writeln!(
+                    stderr,
+                    "cpl: added {}",
+                    dir.join(format!("{name}.in")).display()
+                );
+                only = Some(name);
+            }
             let mut cases = cases_in(&dir);
-            if let Some(name) = args.value("--case") {
+            if let Some(name) = only.as_deref() {
                 let names: Vec<&str> = cases.iter().map(|c| c.name.as_str()).collect();
                 if !names.contains(&name) {
                     return Err(format!(

@@ -11,7 +11,7 @@ most recently edited `.cp` file in the folder.
 | `cpl check d...` | every error in the files: names, types, borrows, input ranges; nothing runs |
 | `cpl fix d...` | applies each error's suggested fix and reports what is left |
 | `cpl run d [files]` | checked build in the interpreter, on files or stdin; with neither (stdin a terminal) it runs every sample in `d.tests/` as `cpl test d` does, and `cpl run d 2` runs the sample `2`; compares with `.out` files if present; `--release` runs the judge's C++ (`--checks` as for `build`; traps by default); `--trace` writes the HTML trace (`tools/trace-debug.md`); on a file with an `@interactor` it runs the program against it |
-| `cpl test d` | every case in `d.tests/`, inline `@sample`s and `@test` fns |
+| `cpl test d` | every case in `d.tests/`, inline `@sample`s and `@test` fns; `--case 2` runs one; `--add FILE [--expect OUT]` adds the next numbered case and runs it |
 | `cpl stress d` | alternatives, generators, checkers, law sampling; shrinks and saves failures (`tools/stress.md`) |
 | `cpl locate d` | the smallest failing input and the first part whose alt disagrees |
 | `cpl judge d input [output answer]` | runs the file's `@interactor` as a judge program, or its `@checker` on an output; exit 0 accepts |
