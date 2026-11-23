@@ -1,7 +1,7 @@
 //! `cpl run --trace`, `cpl run --format json` and the tracing half of
 //! `cpl stress`: a run in the debug interpreter, recorded.
 
-use cpl_interp::trace::{document, first_divergence, stages, Recording, TraceConfig};
+use cpl_interp::trace::{document, first_divergence, stages, Divergence, Recording, TraceConfig};
 use std::path::Path;
 
 /// The trace viewer: one page with nothing to fetch. A trace is put in
@@ -135,16 +135,30 @@ pub fn against_brute(
     let mut db = cpl_check::Database::new();
     db.set_file(&name, source.as_str());
     let analysis = db.analyze(&name).ok_or("the file can't be checked")?;
-    let brute_fn = cpl_ir::brute(&analysis).map(|(name, _)| name);
     let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
         diagnostics
             .first()
             .map_or("the file does not build".to_string(), |d| d.message.clone())
     };
     let fast = cpl_ir::lower(&analysis).map_err(first)?;
-    let slow = match &brute_fn {
-        Some(brute_fn) => Some(cpl_ir::lower_brute(&analysis, brute_fn).map_err(first)?),
-        None => None,
+    // The brute is the file's `@alt(program)` fn, else the file with each
+    // `@alt(f)` fn in `f`'s place; its lines stay where they were.
+    let (brute_fn, slow) = match cpl_ir::brute(&analysis) {
+        Some((brute_fn, _)) => {
+            let slow = cpl_ir::lower_brute(&analysis, &brute_fn).map_err(first)?;
+            (Some(brute_fn), Some(slow))
+        }
+        None => match cpl_stress::cli::swap_in_part_brutes(&source) {
+            Some(swapped) => {
+                let mut swapped_db = cpl_check::Database::new();
+                swapped_db.set_file(&name, swapped.as_str());
+                let analysis = (swapped_db.analyze(&name))
+                    .ok_or("the file with its `@alt` fns swapped in can't be checked")?;
+                let slow = cpl_ir::lower(&analysis).map_err(first)?;
+                (Some("its @alt fns".to_string()), Some(slow))
+            }
+            None => (None, None),
+        },
     };
     let record = |program: &cpl_ir::Program| {
         let mut sink = Vec::new();
@@ -181,7 +195,12 @@ pub fn against_brute(
         .collect();
     Ok(cpl_stress::cli::Traced {
         stages,
-        divergence: explain.then(|| first_divergence(&fast, &slow)).flatten(),
+        divergence: explain
+            .then(|| {
+                first_call_divergence(&source, &fast, &slow)
+                    .or_else(|| first_divergence(&fast, &slow))
+            })
+            .flatten(),
         html: html(&versus(&name, &source, &brute_fn, &fast, &slow)),
     })
 }
@@ -218,4 +237,43 @@ pub fn run_report(
     }
     out.push_str("}\n");
     out
+}
+
+/// With `@alt(f)` fns swapped in, the first call of a part `f` that returns
+/// something else than the same call of its alt: where the two first
+/// disagree, in the terms of the part's own arguments.
+fn first_call_divergence(source: &str, fast: &Recording, slow: &Recording) -> Option<Divergence> {
+    let alts = cpl_stress::cli::part_alts(source);
+    let line_of = |name: &str| {
+        let head = format!("fn {name}(");
+        (source
+            .lines()
+            .position(|line| line.trim_start().starts_with(&head)))
+        .map_or(0, |at| at as u32 + 1)
+    };
+    fast.calls.iter().find_map(|ours| {
+        let (_, alt) = alts.iter().find(|(part, _)| *part == ours.name)?;
+        let theirs = (slow.calls.iter())
+            .find(|call| call.name == ours.name && call.ordinal == ours.ordinal)?;
+        let (Some(a), Some(b)) = (&ours.returned, &theirs.returned) else {
+            return None;
+        };
+        (a != b && ours.args == theirs.args).then(|| Divergence {
+            name: format!("{}({})", ours.name, shown_args(&ours.args)),
+            nth: ours.ordinal,
+            fast: Some((line_of(&ours.name), a.clone())),
+            brute: Some((line_of(alt), b.clone())),
+        })
+    })
+}
+
+/// A call's arguments, JSON by name, as `k: 1, a: [2, 1]`.
+fn shown_args(json: &str) -> String {
+    match cpl_json::parse(json) {
+        Ok(cpl_json::Value::Object(args)) => (args.iter())
+            .map(|(name, value)| format!("{name}: {}", cpl_json::to_string(value)))
+            .collect::<Vec<_>>()
+            .join(", "),
+        _ => json.to_string(),
+    }
 }

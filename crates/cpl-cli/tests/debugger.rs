@@ -238,6 +238,29 @@ fn stress_finds_the_planted_bug_with_the_files_own_brute_and_traces_both() {
 }
 
 #[test]
+fn stress_explain_names_the_first_call_of_a_part_its_alt_answers_differently() {
+    let path = program("stress-explain-part", "part_planted.cp");
+    let out = cpl(
+        &["stress".as_ref(), path.as_os_str(), "--explain".as_ref()],
+        b"",
+    );
+    let report = text(&out.stdout);
+    assert_eq!(out.status.code(), Some(1), "{report}{}", text(&out.stderr));
+    assert!(
+        report.contains("first differing value: `tri(k: 1)`, its 1st value"),
+        "{report}"
+    );
+    assert!(
+        report.contains("solution tri(k: 1) = 0 at line 4"),
+        "{report}"
+    );
+    assert!(
+        report.contains("brute    tri(k: 1) = 1 at line 10"),
+        "{report}"
+    );
+}
+
+#[test]
 fn stress_explain_names_the_first_value_the_solution_and_brute_give_differently() {
     let path = program("stress-explain", "sum_planted.cp");
     let args = |json: bool| {

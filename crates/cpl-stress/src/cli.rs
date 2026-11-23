@@ -209,12 +209,12 @@ pub fn solution(file: &Path, fast: Option<&Path>) -> Result<Program, String> {
 /// `f`'s name, `f` steps aside and the decorator is blanked. Lines stay
 /// where they were, so `debug(...)` lines still pair up. `None` when the
 /// file pairs no fn with a brute.
-pub(crate) fn swap_in_part_brutes(src: &str) -> Option<String> {
+pub fn swap_in_part_brutes(src: &str) -> Option<String> {
     swap_in_part_brutes_of(src, None)
 }
 
 /// Each `(part, alt)` the file pairs, `@alt(part) fn alt`, in file order.
-pub(crate) fn part_alts(src: &str) -> Vec<(String, String)> {
+pub fn part_alts(src: &str) -> Vec<(String, String)> {
     pairs(src)
         .into_iter()
         .map(|(_, alt, part)| {
@@ -615,7 +615,9 @@ pub fn run_with(
         .and_then(|failure| save(&args.file, failure).ok());
     // The failing case again, both sides in the debug interpreter: the
     // `debug(...)`s they share, and with `--trace` the two traces.
-    let in_file = own_brute.is_some() || (args.brute.is_none() && judge != Judge::Tokens);
+    let in_file = own_brute.is_some()
+        || part_brute.is_some()
+        || (args.brute.is_none() && judge != Judge::Tokens);
     // Not a case the solution never finished: the debug interpreter has no time limit.
     let finished =
         |failure: &crate::run::Failure| !matches!(failure.verdict, crate::Verdict::TimeLimit);
@@ -630,12 +632,14 @@ pub fn run_with(
         _ => (&[][..], None),
     };
     let explained = match (&report.failure, &traced) {
-        (Some(_), Some(Ok(traced))) if args.explain && own_brute.is_some() => {
+        (Some(_), Some(Ok(traced)))
+            if args.explain && (own_brute.is_some() || part_brute.is_some()) =>
+        {
             Some(Ok(traced.divergence.clone()))
         }
         (Some(_), Some(Err(why))) if args.explain => Some(Err(why.clone())),
         (Some(_), _) if args.explain => Some(Err(
-            "`--explain` runs the file against its own `@alt(program)` fn".to_string(),
+            "`--explain` runs the file against its own `@alt` fns".to_string(),
         )),
         _ => None,
     };
