@@ -20,5 +20,5 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "@memo(array) over I.ranges; Range<V> passes as V.ranges (parser gap)."
+ "notes": "Bottom-up [I.ranges] table; @memo(array) over I.ranges is E0311 (compiler worklog)."
 }
