@@ -4,6 +4,7 @@
 mod adjacency;
 mod answers;
 mod assign;
+mod bag;
 mod bounds;
 mod ceil;
 mod count_until;
@@ -42,6 +43,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     let mut findings = Vec::new();
     findings.extend(adjacency::check(file));
     findings.extend(heap_skip::check(file));
+    findings.extend(bag::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

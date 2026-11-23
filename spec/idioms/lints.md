@@ -212,7 +212,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| map_as_multiset | `Map<T, Int>` used as a multiset with min/max reads | `SortedBag<T>` | fix? | #1 | ty | |
+| map_as_multiset | `Map<T, Int>` used as a multiset with min/max reads | `SortedBag<T>` | fix? | #1 | ty | ✓map_as_multiset |
 | counter_by_map | `Map<T, Int>` with `+= 1` / `get ?? 0` | `Counter<T>` | fix | #1 | ty | |
 | prev_of_lower_bound | "one before first `>= x`" | `last_lt(x)` / `last_le(x)` | fix | #1 | ty | |
 | erase_one_by_find | find then erase a single copy | `bag.remove(x)` | fix | #1 | ty | |

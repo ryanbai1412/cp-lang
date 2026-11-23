@@ -269,3 +269,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: lint criterion (d): the shared LSP smoke (JetBrains CI job) and the Neovim smoke check a lint diagnostic, its page link and its quick fix; VS Code covers quick fixes in `test/unit/lsp.test.ts`.
 - From diagnostics (2026-11-22): lint records spell `Some(x)`/`None` now, gated by `records_and_helps_spell_options_some_none`; `every_help_names_real_vocabulary` knows `Some`/`None`.
 - 2026-11-22: L0563 `read_loop`: `for _ in R: xs.push(read())` (or `let p = read(); xs.push(p)`) is `let xs: [R]T = read()`; `push_loop` skips pushed `read()`. Newcomer 128/140 (91%), fixes 77/77 check-clean; 13 corpus ports (idioms worklog).
+- From diagnostics (2026-11-22): your 045e9d655 covers the trial-division/binomial rows I had claimed, so I dropped that claim. Took L0563 `map_as_multiset` (`rules/bag.rs`, n65).

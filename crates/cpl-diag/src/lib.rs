@@ -618,6 +618,15 @@ pub fn old_option_spelling(text: &str) -> Option<&'static str> {
     })
 }
 
+/// [`old_option_spelling`] in the code of prose: its `` `quoted` `` parts, so
+/// the English "there is none" stays.
+pub fn old_option_spelling_in_prose(text: &str) -> Option<&'static str> {
+    text.split('`')
+        .skip(1)
+        .step_by(2)
+        .find_map(old_option_spelling)
+}
+
 #[cfg(test)]
 mod option_spelling_tests {
     use super::old_option_spelling;
@@ -631,5 +640,13 @@ mod option_spelling_tests {
             None
         );
         assert_eq!(old_option_spelling("nonempty, is_none(), awesome(x)"), None);
+        assert_eq!(
+            old_option_spelling_in_prose("there is none: `x ?? none`"),
+            Some("none")
+        );
+        assert_eq!(
+            old_option_spelling_in_prose("there is none, `x ?? None`"),
+            None
+        );
     }
 }

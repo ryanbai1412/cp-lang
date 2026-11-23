@@ -352,8 +352,13 @@ fn records_and_helps_spell_options_some_none() {
         for file in std::fs::read_dir(entry.unwrap().path()).unwrap() {
             let path = file.unwrap().path();
             let text = std::fs::read_to_string(&path).unwrap();
+            let code = path.extension().is_some_and(|e| e == "cp");
             for line in text.lines() {
-                let old = cpl_diag::old_option_spelling(line);
+                let old = if code {
+                    cpl_diag::old_option_spelling(line)
+                } else {
+                    cpl_diag::old_option_spelling_in_prose(line)
+                };
                 assert!(
                     old.is_none(),
                     "{}: `{}` is `None`/`Some(x)` now: {line}",
@@ -370,7 +375,7 @@ fn records_and_helps_spell_options_some_none() {
                 .flatten()
                 .chain(&d.notes)
             {
-                let old = cpl_diag::old_option_spelling(text);
+                let old = cpl_diag::old_option_spelling_in_prose(text);
                 assert!(
                     old.is_none(),
                     "{}: `{}` is `None`/`Some(x)` now: {text}",

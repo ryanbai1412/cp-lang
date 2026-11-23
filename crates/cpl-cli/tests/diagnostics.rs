@@ -137,7 +137,7 @@ fn golden_messages_spell_options_some_none() {
             let message = ["error", "warning", "= help", "= note"]
                 .iter()
                 .any(|p| t.starts_with(p));
-            if let (true, Some(old)) = (message, cpl_diag::old_option_spelling(t)) {
+            if let (true, Some(old)) = (message, cpl_diag::old_option_spelling_in_prose(t)) {
                 panic!(
                     "{}: `{old}` is `None`/`Some(x)` now: {line}",
                     path.display()
