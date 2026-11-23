@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed: cf2066b fix. A sweep running all 175 ports that already checked against `orig.cpp` on 30 generated inputs found it silently wrong: `low[i - 1]` on `b.scan(min)` subtracts stored folds (filed to stdlib as a P0). Now `low.prefix(i)`; matches `orig.cpp` on 30 generated inputs. Passing `cpl check` plus the judge matrix does not prove a port correct; the sweep continues.
 - Landed: cf2183e on v0.3, `corpus/sets/v03.txt` 222 -> 223: `a[0] in [0, 1]` became `a[0] in 0..=1`, since `List` has no `Contains` (filed to stdlib earlier). Matches `orig.cpp` on 30 generated inputs.
 - Request from compiler: `cpl-cli::judges every_port_is_written_for_every_judge_within_its_limit` fails on main (also without compiler changes): `corpus/problems/cf2066e/port.cp:49` and `cf2262b/port.cp:22` use `.l`/`.r` on a `Range` (E0203); a range has `start`/`end` (check test `range_lo_hi_are_rejected_with_start_end_fixes_and_user_fields_stay`). Moved in 7a30cd3e0.
 - Landed: cf2124d and cf2183d1 on v0.3, `corpus/sets/v03.txt` 220 -> 222. `a.filter(...)` is now a lazy `Filter` (no `.len`, not `Indexed`), so the port takes `.to_list()`; `D.group(by:)` now yields `(key, List<D>)` pairs, so the loop destructures `(_, layer)`. Both match `orig.cpp` on 30 generated inputs.
