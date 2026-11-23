@@ -19,6 +19,15 @@ use std.seq.{dedup, first_true, span}
 use std.rand.{Rng}
 use std.dsu.{Dsu}
 
+/// A BFS spanning tree rooted at `V.first`, as a `Rooted`. Each vertex's parent is the
+/// vertex whose arc first reached it, scanning vertices in BFS order and arcs in input
+/// order. A forest is `spanning_forest`.
+///
+/// cost: O(n + m)
+/// traps: when the graph is not connected from `V.first`, or `V` is empty
+/// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; let t = Graph.undirected(es).spanning_tree(); t.parent(2) == Some(1) and t.parent(0) == None`
+pub fn spanning_tree<V, A>(self: Graph<V, A>) -> Rooted<V, _> = Rooted.new(self, V.first!)
+
 /// A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre`.
 /// Built in O(n) without recursion; memory is seven `[V]` arrays, one `[Pre]` array and child
 /// lists.

@@ -61,7 +61,6 @@ Fields: `start: [V.cuts]Int`, `arcs: List<A>`.
 - `fn next(self, u: V) -> yields V` — O(1) per vertex yielded; Where `u`'s arcs lead: `out(u)` mapped to `.to`, repeats kept.
 - `fn only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self>` — O(1) to make; `keep` and `from` run per arc walked; The induced view on the vertices `keep` accepts: arcs from or to a rejected vertex are skipped.
 - `fn weighted<W>(self, f: A -> W) -> lends Reweighted<Graph<V, A>, A -> W>` — O(1) to make; `f` runs on every arc read; The same graph with each arc's `.w` read as `f(a)`; `.to` and `.e` pass through, so it is a `WeightedNext` and stays `Edged`.
-- `fn spanning_tree(self) -> Rooted<V, _>` — O(n + m); A BFS spanning tree rooted at `V.first`, as a `Rooted`.; traps: when the graph is not connected from `V.first`, or `V` is empty
 - `fn has(self, u: V, v: V) -> Bool` — O(deg u); True when some arc `u -> v` exists.
 - `fn lists(self) -> [V]List<V>` — O(n + m); The targets of every vertex as plain lists, `lists()[u] == next(u).collect()`: the shape `std.flow` matchings take.
 - `fn hops(self) -> [V, V]Int` — O(n (n + m)) time, O(n^2) memory; The fewest arcs between every ordered pair, by a BFS from each vertex; `0` on the diagonal.; traps: when some vertex cannot reach another
