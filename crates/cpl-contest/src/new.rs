@@ -33,7 +33,8 @@ options:
                        stdin): its title, limits and samples
   --listen             wait for the Competitive Companion browser extension
                        to send the problem (or every problem of a contest)
-                       and create it; <name> is optional
+                       and create it; <name> is optional, and a whole
+                       contest goes in a folder named after it
   --port N             the port `--listen` waits on (default 10043, one of
                        the ports the extension sends to out of the box)
   --time-limit MS      the problem's time limit in milliseconds
@@ -469,14 +470,19 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
         let scaffold = Scaffold::from_companion(text)?;
         // The name given is for the first problem; the rest of a contest
         // are named after their own URLs.
-        let name = named
-            .take()
-            .or_else(|| scaffold.short_name())
-            .ok_or("the problem has no URL to name it after: give a name, `cpl new d --listen`")?;
+        let source = match named.take() {
+            Some(name) => crate::problem::source_path(&name),
+            None => {
+                let cwd = std::env::current_dir().unwrap_or_default();
+                contest_source(&scaffold, batch_size(text), &cwd).ok_or(
+                    "the problem has no URL to name it after: give a name, `cpl new d --listen`",
+                )?
+            }
+        };
         let mut errors = Vec::new();
         code = code.max(report(
             &scaffold,
-            &crate::problem::source_path(&name),
+            &source,
             args.has("--json"),
             stdout,
             &mut errors,
@@ -496,6 +502,22 @@ fn run_listen(args: &Args, stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8
             1
         }
     }
+}
+
+/// Where a problem the extension sent goes when no name was given: named
+/// after its title, in a folder named after its contest when the extension
+/// sends a whole contest, unless `cwd` already is that folder.
+pub(crate) fn contest_source(scaffold: &Scaffold, batch: usize, cwd: &Path) -> Option<PathBuf> {
+    let file = crate::problem::source_path(&scaffold.short_name()?);
+    let contest = scaffold
+        .url
+        .as_deref()
+        .and_then(crate::fetch::contest_of)
+        .filter(|contest| batch > 1 && cwd.file_name().and_then(|n| n.to_str()) != Some(contest));
+    Some(match contest {
+        Some(contest) => Path::new(&contest).join(file),
+        None => file,
+    })
 }
 
 /// Creates the problem and says what was made.

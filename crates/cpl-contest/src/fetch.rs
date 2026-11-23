@@ -66,6 +66,23 @@ pub fn judge_profile_of(url: &str) -> Option<&'static str> {
     }
 }
 
+/// The contest a problem page belongs to, as its judge names it in the URL:
+/// `1950` for `codeforces.com/contest/1950/problem/A`, `abc300` for
+/// `atcoder.jp/contests/abc300/tasks/abc300_a`.
+pub fn contest_of(url: &str) -> Option<String> {
+    let rest = url.split_once("://").map_or(url, |(_, rest)| rest);
+    let path: Vec<&str> = rest.split(['?', '#']).next()?.split('/').skip(1).collect();
+    let key = match judge_of(url)? {
+        Judge::Codeforces => ["contest", "gym"].as_slice(),
+        Judge::AtCoder => ["contests"].as_slice(),
+    };
+    let at = path.iter().position(|part| key.contains(part))?;
+    let id = path.get(at + 1).filter(|id| !id.is_empty())?;
+    id.chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        .then(|| id.to_string())
+}
+
 /// The title, limits and samples on a problem page.
 pub fn parse(judge: Judge, url: &str, html: &str) -> Result<Scaffold, String> {
     let (title, limits, samples) = match judge {
@@ -387,6 +404,18 @@ mod tests {
         );
         assert_eq!(judge_of("https://notcodeforces.com/x"), None);
         assert_eq!(judge_of("https://example.com/?u=codeforces.com"), None);
+        for (url, contest) in [
+            (cf, Some("4")),
+            ("https://codeforces.com/gym/104/problem/B", Some("104")),
+            ("https://codeforces.com/problemset/problem/1/D", None),
+            (
+                "atcoder.jp/contests/abc300/tasks/abc300_a?lang=en",
+                Some("abc300"),
+            ),
+            ("https://example.com/contest/7", None),
+        ] {
+            assert_eq!(contest_of(url).as_deref(), contest, "{url}");
+        }
         for (url, judge) in [
             (cf, Some("codeforces")),
             ("atcoder.jp/contests/abc300/tasks/abc300_a", Some("atcoder")),

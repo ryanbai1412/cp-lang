@@ -6784,3 +6784,9 @@ delete `scripts/gen.py`.
   the output on the judge. Over corpus ports and dreams it fires 50 times.
 - **Reverse.** Give lint the resolved profile's `answers` (from `cpl-cli`)
   and add a fix when the words match them.
+
+## 302. A whole contest from Competitive Companion gets its own folder (2026-11-22)
+
+- **Decision.** `cpl new --listen` with no name puts the problems of a contest batch in a folder named after the contest's id in the URL (`1950/a.cp`, `abc300/a.cp`), unless the current folder already has that name. A single problem, or a URL with no contest, stays in the current folder.
+- **Why.** Two contests both have an `a.cp`; the second batch failed with "already exists". One folder per contest is the layout most contest tools use, and `cd 1950` first still gives a flat folder.
+- **Reverse.** Make `new::contest_source` return the bare file name.

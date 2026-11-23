@@ -725,6 +725,25 @@ fn a_watch_round_checks_then_tests_and_recovers_after_a_fix() {
 }
 
 #[test]
+fn a_whole_contest_from_the_extension_gets_its_own_folder() {
+    use crate::new::contest_source;
+    let mut scaffold = Scaffold::from_companion(COMPANION).unwrap();
+    scaffold.url = Some("https://codeforces.com/contest/1950/problem/D".into());
+    let home = Path::new("/contests");
+    assert_eq!(contest_source(&scaffold, 1, home), Some("d.cp".into()));
+    assert_eq!(contest_source(&scaffold, 7, home), Some("1950/d.cp".into()));
+    // Already in the contest's folder: no folder inside it.
+    assert_eq!(
+        contest_source(&scaffold, 7, &home.join("1950")),
+        Some("d.cp".into())
+    );
+    scaffold.url = Some("https://example.com/round/3".into());
+    assert_eq!(contest_source(&scaffold, 7, home), Some("d.cp".into()));
+    scaffold.title = None;
+    assert_eq!(contest_source(&scaffold, 7, home), None);
+}
+
+#[test]
 fn listen_takes_a_problem_posted_by_the_extension() {
     use std::io::{Read, Write};
     // A free port: bind to 0, read the port, release it.
