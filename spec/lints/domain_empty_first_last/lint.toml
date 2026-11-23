@@ -1,0 +1,6 @@
+code = "L0304"
+level = "warn"
+group = "correctness"
+title = "First or last of a domain that can be empty"
+summary = "`D.first!` / `D.last!` where `D`'s declared bounds let it be empty: the unwrap traps on that input; guard with `if let` or tighten the bound"
+no_fix = "whether the empty case needs handling or the bound is too loose is the contestant's call; the help shows both"

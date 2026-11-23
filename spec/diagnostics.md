@@ -175,6 +175,7 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0599 | int_div_possible_zero | `a / b` or `a % b` where `b`'s declared range includes 0: guard it or narrow the range |
 | L0302 | int_shift_overflow_at_bounds | `x << k` where `k`'s declared range lets the shift leave `Int`: narrow `k`, shift a `U64`, or use `Bitset` |
 | L0303 | reversed_range_literal | `for i in n..0` where the declared start is always above the end: the loop never runs; reverse the range with `.rev` |
+| L0304 | domain_empty_first_last | `D.first!` / `D.last!` where `D`'s declared bounds let it be empty: the unwrap traps on that input; guard with `if let` or tighten the bound |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

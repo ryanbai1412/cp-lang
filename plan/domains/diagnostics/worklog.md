@@ -525,3 +525,7 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   now shared as `cpl_lint::apply_lint_fixes`. Test: cpl-wasm parity
   `fix_matches_cpl_fix` (fixed text, stderr and exit status equal to
   `cpl fix`'s on 5 cases). smoke.mjs not run here: no wasm32 target.
+- Lint L0304 `domain_empty_first_last` (lints.md bound row): `D.first!` /
+  `D.last!` where `D = lo..hi` has ends from declared inputs and literals
+  whose ranges (or a relation between them) let it be empty. Help: `if let`
+  or tighten the bound; no fix. 0 hits on corpus, newcomer and std.

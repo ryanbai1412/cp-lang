@@ -752,7 +752,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| domain_empty_first_last | `D.first!` / `D.last!` when `D`'s declared bound allows size `0` (`n >= 0`) | guard `if let f = D.first:` or tighten `n: 1..=N` | warn | #5 | bound | |
+| domain_empty_first_last | `D.first!` / `D.last!` when `D`'s declared bound allows size `0` (`n >= 0`) | guard `if let f = D.first:` or tighten `n: 1..=N` | warn | #5 | bound | ✓domain_empty_first_last |
 | cut_difference_off_by_one | `r - l + 1` on half-open cuts or `r - l` on inclusive positions | use `.len` on the range `l..r` or `l..=r` | warn | #4 | ty | |
 | inclusive_range_empty_bound | `a..=b` where declared bounds allow `a > b` without emptiness check | handle empty case or use half-open cuts | warn | #4 | bound | |
 | mixed_zero_one_based_read | reading `1..=n` into `Int` and manually subtracting `1` on only some uses | declare `domain V = 1..=n` and `read<V>()` | warn | #3 | flow | |
