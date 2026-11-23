@@ -6,6 +6,7 @@ use crate::emit;
 mod lend;
 mod loops;
 mod runtime;
+mod widths;
 
 pub(crate) fn cpp(source: &str) -> String {
     let mut db = cpl_check::Database::new();

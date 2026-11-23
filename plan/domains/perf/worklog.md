@@ -311,3 +311,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - corpus: tuned variants for cf2201e (1.08x) and cf2084h (1.19-1.25x on its gen input, gap logged in PLAN.md).
 - corpus: cf2268e tuned variant (one forward NTT per bit, the dot taken in the transform domain): 1.03x against the idiomatic 2.20x; cf2115f1 is 1.09x, under the bar. Left over 1.1x in this set: cf2255e1/e2 (2.1x) and cf2084h tuned (1.19-1.25x).
 - codegen: `let b = o!` (the user's checked `!`) now lends the payload like `let b = o[i]` (`const Big& b = cpl::have(o)`); only the unchecked unwrap after a test lent before. Regression `let_of_a_checked_unwrap_lends_the_payload`.
+- ir: a struct field typed by a range alias (`type Sign = -1..=1; var s: Sign`) now narrows like the range written inline (`int8_t`, not `ll`). Regression `a_struct_field_of_a_range_alias_narrows_like_the_range`.
+- corpus: tuned variants for cf2255e1 (1.20x) and cf2255e2 (1.10x), from idiomatic 2.16x/2.13x: the reference's dual tree with one flat `Tag` per node composed in place, sign fields as `Sign`. Match the reference on 80 generated inputs and the 5e5 max.

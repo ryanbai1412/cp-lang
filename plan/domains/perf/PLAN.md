@@ -41,6 +41,7 @@ Milestone 1 steps 6 and 7 (Submit, Compete) set the order; see the README's Mile
 
 Local fixes that landed, and the mechanism that would remove the whole class.
 
+- cf2255e1/e2 idiomatic 2.1x: the lazy `SegTree` calls its `Action` through `std::function` and copies the `Action` on each `put`/`push`, and tags are nested tuples copied per push. General fix (codegen): specialize a struct's fn-value fields when every instance gets the same closures (static dispatch, as `devirt` does for locals), plus the fn-value effect summaries above. Tuned variants (flat `Tag` struct, in-place compose) are 1.20x/1.10x; what is left is the power-of-two tree's memory (52 MB against the reference's in-order layout at 39 MB), tunable in-language. Owner: perf.
 - `let a = act!` in `SegTree.put`/`push` still copies the whole `Action` (its `std::function`s and identity tag) on every call: `a.apply(..)` is a call through a fn value, so the rest of the block is opaque and the place may change. General fix (codegen): effect summaries for fn values, so a call through a value that captures nothing `mut` keeps a lent place lent. Owner: perf.
 | Instance | General fix | Owner |
 |---|---|---|

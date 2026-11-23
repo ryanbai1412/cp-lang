@@ -860,6 +860,16 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(super) fn narrow_range_width(&self, ty: &ast::Type) -> Option<IntWidth> {
+        // `type Sign = -1..=1`: a field of the alias narrows as its range would.
+        if let ast::TypeKind::Named { name, args } = &ty.kind {
+            let Some(Sym::Alias(aid)) = self.mod_syms[self.cur_mod].get(&name.text) else {
+                return None;
+            };
+            let (m, aliased, _) = self.aliases[*aid];
+            return (args.is_empty() && m == self.cur_mod)
+                .then(|| self.narrow_range_width(aliased))
+                .flatten();
+        }
         let ast::TypeKind::Range {
             lo: Some(lo),
             hi: Some(hi),
@@ -887,6 +897,9 @@ impl<'a> Lowerer<'a> {
         for (at, field) in decl.fields.iter().enumerate() {
             let width = match &field.ty.kind {
                 ast::TypeKind::Range { .. } => self.narrow_range_width(&field.ty),
+                ast::TypeKind::Named { args, .. } if args.is_empty() => {
+                    self.narrow_range_width(&field.ty)
+                }
                 ast::TypeKind::Array { index, elem } if index.len() == 1 => {
                     self.narrow_range_width(elem)
                 }
