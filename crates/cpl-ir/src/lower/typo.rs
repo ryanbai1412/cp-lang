@@ -37,6 +37,9 @@ impl<'a> Lowerer<'a> {
             Ty::Array { .. } => Some(Receiver::Array),
             _ => None,
         };
+        if let Some(own) = receiver.and_then(|r| cpl_check::foreign_member(r, name)) {
+            return self.suggest_last(span, own.into());
+        }
         let mut names: Vec<&str> = receiver
             .into_iter()
             .flat_map(cpl_check::builtin_members)

@@ -1081,6 +1081,9 @@ pub(crate) fn spec_member_typo(base: &Ty, name: &str) -> Option<String> {
         Ty::Named { name, .. } if name == "List" || name == "Range" => Some(Receiver::List),
         _ => None,
     };
+    if let Some(own) = receiver.and_then(|r| crate::builtins::foreign_member(r, name)) {
+        return Some(own.into());
+    }
     let own = receiver
         .into_iter()
         .flat_map(builtin_members)

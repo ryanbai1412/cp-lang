@@ -93,6 +93,22 @@ pub fn builtin_members(receiver: Receiver) -> impl Iterator<Item = &'static Buil
         .filter(move |member| member.receiver == receiver)
 }
 
+/// Another language's name for a member `receiver` has under its own name:
+/// Python's `append`, C++'s `size` or `push_back`, Java's `containsKey`.
+pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
+    let own = match name {
+        "append" | "push_back" | "add" => "push",
+        "pop_back" => "pop",
+        "size" | "length" => "len",
+        "contains_key" | "containsKey" | "has" | "includes" | "count_of" => "contains",
+        "erase" | "discard" | "delete" => "remove",
+        _ => return None,
+    };
+    builtin_members(receiver)
+        .any(|m| m.name == own)
+        .then_some(own)
+}
+
 /// The catalog row for `name` on the built-in type written `owner`
 /// (`List`, `Str`, `[D]T`).
 pub fn builtin_member(owner: &str, name: &str) -> Option<&'static BuiltinMember> {

@@ -89,3 +89,13 @@ fn another_languages_true_and_null_are_spelled_here() {
     let diags = check("let x: ?Int = null\nprint(x ?? 0)\n");
     assert_eq!(diags[0].help.as_deref(), Some("CP Lang spells it `none`"));
 }
+
+#[test]
+fn another_languages_member_names_point_at_ours() {
+    let diags = check("let xs = [3, 1]\nprint(xs.length())\n");
+    assert_eq!(
+        diags[0].help.as_deref(),
+        Some("did you mean `len`?"),
+        "{diags:?}"
+    );
+}
