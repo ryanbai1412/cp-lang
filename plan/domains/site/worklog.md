@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed `site: download buttons for the editor plugins on /setup` (Ryan: a link on the website to download the VS Code and JetBrains plugins): `web/scripts/downloads.mjs` (prebuild) writes `generated/downloads.json` from each channel's published `latest.json` (`stable` 404s today, so only edge shows), and the VS Code and JetBrains tabs get one Download button per channel that ships the file, plus the Install from VSIX / Install Plugin from Disk steps. A failed fetch keeps the last generated file.
 - Phone check covers the 6 new Language chapters: `CDP=http://localhost:29229 pnpm phone` 39/39 routes fit 390 px.
 - Landed `site: language chapter on library powers` (spec ch 12): 4 runnable examples (user `+`, `impl Show`, `Monoid` with `SegTree`, a generator with adapters), with a 'Why' citing decisions 127, 128 and 133. Every `spec/core` part from 02 to 12 now has a Language chapter. Filed with stdlib: W10's `SegTree(op:, id:)` doesn't exist.
 - Landed `site: language chapter on modules and the prelude` (spec ch 11): 4 runnable examples (hoisting, inline `mod`, `use std.segtree`, a local shadowing a prelude name), with a 'Why' citing decisions 150 and 241. Filed with compiler: a runtime domain used above its declaration reads as empty.

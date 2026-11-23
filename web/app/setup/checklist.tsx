@@ -1,9 +1,10 @@
 'use client';
 
-import { Check } from 'lucide-react';
+import { Check, Download } from 'lucide-react';
 import Link from 'next/link';
 import { type ReactNode, useEffect, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import published from '@/generated/downloads.json';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +12,31 @@ const key = 'cpl-setup';
 
 function Code({ children }: { children: string }) {
   return <pre className="mt-2 overflow-x-auto rounded-md border bg-muted/40 p-3 text-xs">{children}</pre>;
+}
+
+type Asset = { url: string; size: number } | undefined;
+const downloads = published as unknown as Record<string, Record<'vscode' | 'jetbrains', Asset>>;
+
+// One button per release channel that ships the file, from the releases' own latest.json.
+function Downloads({ asset, label }: { asset: 'vscode' | 'jetbrains'; label: string }) {
+  const shipped = Object.keys(downloads).filter((c) => downloads[c][asset]);
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {shipped.map((c) => {
+        const file = downloads[c][asset]!;
+        return (
+          <a
+            key={c}
+            href={file.url}
+            className="inline-flex items-center gap-1.5 rounded-md border bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:opacity-90"
+          >
+            <Download className="size-3.5" />
+            {label} ({c}, {Math.round(file.size / 1024)} KB)
+          </a>
+        );
+      })}
+    </div>
+  );
 }
 
 function Soon() {
@@ -28,9 +54,11 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
     body: (
       <>
         <p>
-          The extension is on the edge release; Marketplace and Open VSX (Cursor, Windsurf, VSCodium) installs <Soon />.
-          On Windows, run the same two lines in PowerShell.
+          Download the extension, then in VS Code (or Cursor, Windsurf, VSCodium) open Extensions → ⋯ → Install from
+          VSIX… and pick the file. Marketplace and Open VSX installs <Soon />.
         </p>
+        <Downloads asset="vscode" label="Download cp-lang.vsix" />
+        <p className="mt-3">Or from a terminal (on Windows, the same two lines in PowerShell):</p>
         <Code>
           {
             'curl.exe -fLO https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang.vsix\ncode --install-extension cp-lang.vsix'
@@ -138,9 +166,10 @@ const editors: { id: string; name: string; body: ReactNode }[] = [
       <>
         <p>
           IntelliJ IDEA Ultimate, CLion, PyCharm Professional or another commercial JetBrains IDE, 2024.3 or later: the
-          free Community editions lack the language server API the plugin uses. Marketplace install <Soon />. Download
-          the plugin from the edge release (on Windows, in PowerShell):
+          free Community editions lack the language server API the plugin uses. Marketplace install <Soon />.
         </p>
+        <Downloads asset="jetbrains" label="Download cp-lang-jetbrains.zip" />
+        <p className="mt-3">Or from a terminal (on Windows, in PowerShell):</p>
         <Code>
           {'curl.exe -fLO https://github.com/ryanbai1412/cp-lang/releases/download/edge/cp-lang-jetbrains.zip'}
         </Code>
