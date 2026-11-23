@@ -631,7 +631,9 @@ impl<'a> Lowerer<'a> {
             // `xs.items` kept as a value: the list of `(index, element)`.
             (Ty::Map(..) | Ty::HashMap(..), "items") => self.pairs_of_map(value, span),
             (Ty::Map(..) | Ty::HashMap(..), "keys") => self.proj_of_map(value, 0, span),
-            (Ty::ListView(..), "keys") if Self::reversed_list(&value) => {
+            (Ty::ListView(..), "keys")
+                if Self::reversed_list(&value) || self.named_reversed(&value) =>
+            {
                 self.reversed_keys(value, span)
             }
             (Ty::List(_) | Ty::ListView(..) | Ty::MutView(_) | Ty::Str | Ty::StrView, "keys") => {

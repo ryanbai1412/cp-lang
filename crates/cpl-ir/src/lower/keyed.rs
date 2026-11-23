@@ -221,10 +221,10 @@ impl<'a> Lowerer<'a> {
     }
 
     pub(super) fn reversed_keys(&mut self, value: Expr, span: Span) -> Expr {
-        let ExprKind::Builtin(Builtin::Reversed, mut args) = value.kind else {
-            unreachable!("only a reversed list is asked for")
+        let keys = match value.kind {
+            ExprKind::Builtin(Builtin::Reversed, mut args) => self.seq_keys(args.remove(0), span),
+            _ => self.seq_keys(value, span),
         };
-        let keys = self.seq_keys(args.remove(0), span);
         self.reversed_range(keys, span)
     }
 

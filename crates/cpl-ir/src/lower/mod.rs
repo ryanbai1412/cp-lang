@@ -12,6 +12,7 @@ mod cache;
 mod call;
 mod collect;
 mod comprehension;
+mod declare;
 mod expr;
 mod float_fn;
 mod fn_value;
@@ -609,6 +610,7 @@ struct FnCx {
     /// Constant bounds of an immutable `let x = e` with no declared type, from `e`.
     let_bounds: HashMap<Slot, (i64, i64)>,
     view_lo: HashMap<Slot, i64>,
+    view_rev: HashSet<Slot>,
     ret: Option<Ty>,
     new_domain_slots: Vec<DomainId>,
     /// `self`'s slot and struct inside a method.
@@ -783,6 +785,7 @@ struct Lowerer<'a> {
     globals: Vec<Global>,
     mut_globals: HashSet<GlobalId>,
     global_view_lo: HashMap<GlobalId, i64>,
+    global_view_rev: HashSet<GlobalId>,
     mut_slice_inits: HashSet<Span>,
     /// Annotated array `Spec`s for top-level globals (for `a.inverse()` on bounded-range elements).
     global_specs: HashMap<GlobalId, ast::Type>,
@@ -919,6 +922,7 @@ impl<'a> Lowerer<'a> {
             globals: Vec::new(),
             mut_globals: HashSet::new(),
             global_view_lo: HashMap::new(),
+            global_view_rev: HashSet::new(),
             mut_slice_inits: HashSet::new(),
             global_specs: HashMap::new(),
             global_bounds: HashMap::new(),
@@ -3309,56 +3313,6 @@ impl<'a> Lowerer<'a> {
             .iter()
             .rev()
             .find_map(|s| s.get(name).copied())
-    }
-
-    /// Declares `name` with the value `init`: a global at the top level of
-    /// the file, a local anywhere else.
-    fn declare(&mut self, name: &str, init: Expr, mutable: bool, out: &mut Vec<Stmt>) {
-        let slice_lo = match &init.kind {
-            ExprKind::Builtin(Builtin::ListSlice | Builtin::StrSlice, args) => {
-                args.get(1).and_then(|e| match &e.kind {
-                    ExprKind::Int(v) => Some(*v),
-                    _ => None,
-                })
-            }
-            _ => None,
-        };
-        if self.cx.is_main && self.cx.scopes.len() == 1 {
-            self.cx.recipes.remove(name);
-            let id = self.globals.len();
-            self.globals.push(Global {
-                name: name.to_string(),
-                ty: init.ty.clone(),
-                span: init.span,
-            });
-            self.mod_syms[self.cur_mod].insert(name.to_string(), Sym::Global(id));
-            if mutable {
-                self.mut_globals.insert(id);
-            }
-            if let Some(lo) = slice_lo {
-                self.global_view_lo.insert(id, lo);
-            }
-            let place = Place {
-                kind: PlaceKind::Global(id),
-                ty: init.ty.clone(),
-                span: init.span,
-            };
-            out.push(Stmt::Assign(place, AssignOp::Set, init));
-        } else {
-            let slot = self.new_slot(name, init.ty.clone());
-            if mutable {
-                self.cx.mut_slots.insert(slot);
-            }
-            if let Some(lo) = slice_lo {
-                self.cx.view_lo.insert(slot, lo);
-            }
-            self.cx
-                .scopes
-                .last_mut()
-                .expect("a scope")
-                .insert(name.to_string(), slot);
-            out.push(Stmt::Let(slot, Some(init)));
-        }
     }
 
     // ----- fns -----
