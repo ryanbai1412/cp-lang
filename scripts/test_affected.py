@@ -49,6 +49,11 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual((s["all"], s["conform_cases"]), (False, ["spec/conformance/lints/tree-order.cp"]))
         self.assertTrue(self.sel("spec/conformance/COVERAGE.md")["all"])
 
+    def test_handbook_docs_select_the_handbook_check(self):
+        s = self.sel("handbook/domains/infra.md")
+        self.assertEqual((s["all"], s["packages"]), (False, []))
+        self.assertEqual(s["script_tests"], ["scripts/test_check_handbook.py"])
+
     def test_corpus_programs_select_the_tests_that_read_them(self):
         s = self.sel("corpus/problems/cf1/spec.cp", "corpus/problems/cf2/port.cp")
         self.assertEqual((s["all"], s["packages"]), (False, []))

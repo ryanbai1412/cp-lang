@@ -94,6 +94,8 @@ def select(paths, dirs):
             sel["site"] = True
         elif path.startswith("scripts/") and (t := script_test(path)):
             tests.add(t)
+        elif path.startswith("handbook/"):
+            tests.add("scripts/test_check_handbook.py")
         elif path.startswith(".githooks/"):
             tests.add("scripts/test_check_cache.py")
         else:
