@@ -4,7 +4,7 @@
 
 import { BUILD_CALLS, BUILD_WASM, load } from "./cpl.js";
 
-const METHODS = new Set(["check", "lint", "run", "trace", "replay", "stress", "build", "explain", "hover", "definition", "symbols", "lsp"]);
+const METHODS = new Set(["check", "lint", "run", "trace", "replay", "stress", "sample", "build", "explain", "hover", "definition", "symbols", "lsp"]);
 const BUILD = new Set(BUILD_CALLS);
 let cpl = null;
 let full = null;

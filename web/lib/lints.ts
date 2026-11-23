@@ -44,8 +44,10 @@ export type Lint = {
   before: string;
   after: string;
   nearMiss: string;
-  /** Which examples can run as they stand: they pass `cpl check` and read no input. */
+  /** Which examples can run: they pass `cpl check`, and read no input or have one. */
   runs: { before: boolean; after: boolean; nearMiss: boolean };
+  /** A random input from each example's `read()` types (scripts/lint-inputs.mjs). */
+  inputs: { before: string; after: string; nearMiss: string };
 };
 
 function toml(text: string): Record<string, string> {
@@ -99,8 +101,11 @@ const cpl =
   process.env.CPL ?? ['target/release/cpl', 'target/debug/cpl'].map((p) => join(repoRoot, p)).find(existsSync) ?? 'cpl';
 let scratch: string | null = null;
 
-function runsAsIs(src: string): boolean {
-  if (!src || /\bread\w*\s*(\(|<|::)/.test(src)) return false;
+const generated = join(process.cwd(), 'content/generated/lint-inputs.json');
+const sampled: Record<string, string> = existsSync(generated) ? JSON.parse(readFileSync(generated, 'utf8')) : {};
+
+function runs(src: string, input: string): boolean {
+  if (!src || (/\bread\w*\s*(\(|<|::)/.test(src) && !input)) return false;
   scratch ??= mkdtempSync(join(tmpdir(), 'cpl-lints-'));
   const file = join(scratch, 'main.cp');
   writeFileSync(file, `${src}\n`);
@@ -136,10 +141,15 @@ export function lints(): Lint[] {
         before: file('before.cp'),
         after: file('after.cp'),
         nearMiss: file('near_miss.cp'),
+        inputs: {
+          before: sampled[`${root}/${e.name}/before.cp`] ?? '',
+          after: sampled[`${root}/${e.name}/after.cp`] ?? '',
+          nearMiss: sampled[`${root}/${e.name}/near_miss.cp`] ?? '',
+        },
         runs: {
-          before: runsAsIs(file('before.cp')),
-          after: runsAsIs(file('after.cp')),
-          nearMiss: runsAsIs(file('near_miss.cp')),
+          before: runs(file('before.cp'), sampled[`${root}/${e.name}/before.cp`] ?? ''),
+          after: runs(file('after.cp'), sampled[`${root}/${e.name}/after.cp`] ?? ''),
+          nearMiss: runs(file('near_miss.cp'), sampled[`${root}/${e.name}/near_miss.cp`] ?? ''),
         },
       };
     })

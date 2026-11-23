@@ -322,6 +322,27 @@ impl Playground {
         }
     }
 
+    /// A random input for `source`, made from its `read()` types as `cpl
+    /// stress` makes one: sizes at most `size`, drawn from `seed`.
+    /// `{"input": text}`, or `{"error": why}` when its types make none.
+    #[cfg(feature = "build")]
+    pub fn sample(&mut self, source: &str, seed: u64, size: u32) -> String {
+        let made = cpl_stress::InputSpec::from_source(source)
+            .map_err(|error| error.message)
+            .and_then(|spec| {
+                let size = cpl_stress::Size::Small(i128::from(size.max(1)));
+                cpl_stress::generate(&spec, &mut cpl_stress::Rng::new(seed), size)
+                    .ok_or_else(|| "no input fits its `read()` types".to_string())
+            });
+        match made {
+            Ok(case) => format!(
+                "{{\"input\":{}}}\n",
+                cpl_json::escape_string(&case.render())
+            ),
+            Err(error) => format!("{{\"error\":{}}}\n", cpl_json::escape_string(&error)),
+        }
+    }
+
     /// `cpl build`: checks `source`, then writes it as one C++17 file.
     /// `cpp` is `null` when there is none to show.
     #[cfg(feature = "build")]

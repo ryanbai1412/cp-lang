@@ -192,6 +192,12 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
         </details>
       )}
       <CodeEditor value={source} onChange={setSource} onRun={run} minHeight={editorHeight} className="border-b" checkOnLoad={checkOnLoad} prefix={setup} />
+      {compact && initialStdin && (
+        <details className="border-b px-3 py-2 text-xs">
+          <summary className="cursor-pointer text-muted-foreground">Input ({stdin.trimEnd().split('\n').length} lines)</summary>
+          <Textarea value={stdin} onChange={(e) => setStdin(e.target.value)} className="mt-2 min-h-16 font-mono text-xs" spellCheck={false} />
+        </details>
+      )}
       {compact ? (
         result.kind !== 'idle' && (
           <div className="px-3 py-2 text-xs">

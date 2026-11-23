@@ -72,6 +72,13 @@ export interface Symbol extends Located {
   selection: Located;
 }
 
+export interface SampleOptions extends Options {
+  /** Default 1. */
+  seed?: number;
+  /** Maximum size (`n`, `q`, ...) generated. Default 8. */
+  size?: number;
+}
+
 export interface StressOptions extends Options {
   /** How many cases to run. Default 200. */
   cases?: number;
@@ -181,6 +188,8 @@ export declare class Cpl {
   stress(source: string, options?: StressOptions): StressOutcome;
   build(source: string, options?: Options): BuildOutcome;
   explain(source: string, options?: Options): ExplainOutcome;
+  /** A random input for `source` from its `read()` types, as `cpl stress` makes one. */
+  sample(source: string, options?: SampleOptions): { input: string } | { error: string };
   hover(source: string, offset: number, options?: Options): Hover | null;
   definition(source: string, offset: number, options?: Options): Located | null;
   symbols(source: string, options?: Options): Symbol[];
@@ -188,14 +197,14 @@ export declare class Cpl {
 }
 
 export type Worker = {
-  [Method in "check" | "lint" | "run" | "trace" | "replay" | "stress" | "build" | "explain" | "hover" | "definition" | "symbols" | "lsp"]: (
+  [Method in "check" | "lint" | "run" | "trace" | "replay" | "stress" | "sample" | "build" | "explain" | "hover" | "definition" | "symbols" | "lsp"]: (
     ...args: Parameters<Cpl[Method]>
   ) => Promise<ReturnType<Cpl[Method]>>;
 } & { terminate(): void };
 
-/** Where `cpl-build.wasm`, the module with `build`, `explain` and `stress`, is. */
+/** Where `cpl-build.wasm`, the module with `build`, `explain`, `stress` and `sample`, is. */
 export declare const BUILD_WASM: URL;
 /** The methods only `cpl-build.wasm` has; on `cpl.wasm` they throw a `CplError` of kind "load". */
-export declare const BUILD_CALLS: readonly ["stress", "build", "explain"];
+export declare const BUILD_CALLS: readonly ["stress", "sample", "build", "explain"];
 export declare function load(wasm?: string | URL | BufferSource | WebAssembly.Module): Promise<Cpl>;
 export declare function spawn(options?: { timeoutMs?: number }): Worker;

@@ -182,6 +182,14 @@ pub extern "C" fn cpl_stress(cases: u32, seed_lo: u32, seed_hi: u32, size: u32, 
     });
 }
 
+/// A random input for `TEXT` from its `read()` types.
+#[cfg(feature = "build")]
+#[no_mangle]
+pub extern "C" fn cpl_sample(seed_lo: u32, seed_hi: u32, size: u32) {
+    let seed = u64::from(seed_lo) | (u64::from(seed_hi) << 32);
+    command(|playground, _, text, _, _| playground.sample(text, seed, size));
+}
+
 /// Builds `TEXT` into C++17.
 #[cfg(feature = "build")]
 #[no_mangle]

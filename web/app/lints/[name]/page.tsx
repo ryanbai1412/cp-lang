@@ -50,8 +50,8 @@ export default async function Page({ params }: Props) {
         <InlineMd text={l.summary} />
       </p>
       <div className="mt-6 grid gap-4 lg:grid-cols-2">
-        <Pane title="Flagged" source={l.before} run={l.runs.before} />
-        <Pane title="Write instead" source={l.after} run={l.runs.after} />
+        <Pane title="Flagged" source={l.before} stdin={l.inputs.before} run={l.runs.before} />
+        <Pane title="Write instead" source={l.after} stdin={l.inputs.after} run={l.runs.after} />
       </div>
       <h2 className="mt-8 text-xl font-semibold">Why</h2>
       <p className="mt-2 max-w-3xl leading-7">
@@ -85,7 +85,7 @@ export default async function Page({ params }: Props) {
       <h2 className="mt-8 text-xl font-semibold">Not flagged</h2>
       <p className="mt-2 text-sm text-muted-foreground">A near miss: close to the pattern, but not it.</p>
       <div className="mt-3">
-        <Pane title="Near miss" source={l.nearMiss} run={l.runs.nearMiss} />
+        <Pane title="Near miss" source={l.nearMiss} stdin={l.inputs.nearMiss} run={l.runs.nearMiss} />
       </div>
       <h2 className="mt-8 text-xl font-semibold">Turn it off</h2>
       <p className="mt-2 max-w-3xl leading-7">
@@ -103,11 +103,11 @@ export default async function Page({ params }: Props) {
   );
 }
 
-function Pane({ title, source, run }: { title: string; source: string; run: boolean }) {
+function Pane({ title, source, stdin, run }: { title: string; source: string; stdin: string; run: boolean }) {
   return (
     <section className="min-w-0 space-y-2">
       <h3 className="text-sm font-medium">{title}</h3>
-      <Runner source={source} compact lint run={run} />
+      <Runner source={source} stdin={stdin} compact lint run={run} />
     </section>
   );
 }

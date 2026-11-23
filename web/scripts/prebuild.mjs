@@ -3,7 +3,7 @@
 import { spawn } from 'node:child_process';
 
 const chains = [
-  ['wasm', 'wasm-size'],
+  ['wasm', 'wasm-size', 'lint-inputs'],
   ['stamp', 'releases', 'practice', 'downloads', 'gen-ref', 'gen-tools', 'gen-debug', 'facts', 'gate'],
 ];
 

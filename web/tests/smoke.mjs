@@ -93,6 +93,13 @@ await instead.getByRole('status').filter({ hasText: 'no warnings' }).waitFor({ t
 await instead.getByRole('button', { name: 'Run' }).click();
 await instead.getByRole('status').filter({ hasText: 'Yes' }).waitFor({ timeout: 30000 });
 console.log('a lint page lints and runs its examples');
+// An example that reads runs on a random input made from its read() types.
+await page.goto(base + '/lints/hand_rolled_gcd');
+const gcd = page.locator('section').filter({ hasText: 'Write instead' });
+await gcd.getByText(/^Input \(\d+ lines?\)$/).waitFor({ timeout: 30000 });
+await gcd.getByRole('button', { name: 'Run' }).click();
+await gcd.getByRole('status').filter({ hasText: /^\d+\s*$/ }).waitFor({ timeout: 30000 });
+console.log('a lint example that reads runs on a generated input');
 await page.close();
 console.log('page errors:', errors);
 process.exit(errors.length ? 1 : 0);

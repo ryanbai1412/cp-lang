@@ -36,11 +36,11 @@ export class CplError extends Error {
   }
 }
 
-/** Where `cpl-build.wasm`, the module with `build`, `explain` and `stress`, is. */
+/** Where `cpl-build.wasm`, the module with `build`, `explain`, `stress` and `sample`, is. */
 export const BUILD_WASM = new URL("./cpl-build.wasm", import.meta.url);
 
 /** The methods only `cpl-build.wasm` has. */
-export const BUILD_CALLS = ["stress", "build", "explain"];
+export const BUILD_CALLS = ["stress", "sample", "build", "explain"];
 
 /**
  * Loads the compiler. `wasm` is where `cpl.wasm` is (a URL, by default next
@@ -165,6 +165,12 @@ export class Cpl {
     }
   }
 
+  /** A random input for `source` from its `read()` types, as `cpl stress` makes one. */
+  sample(source, options = {}) {
+    const { seed = 1, size = 8 } = options;
+    return this.#call("cpl_sample", { ...options, source }, seed >>> 0, Math.floor(seed / 0x100000000) >>> 0, size);
+  }
+
   /** `cpl build`: checks `source`, then turns it into one C++17 file. */
   build(source, options = {}) {
     const result = this.#call("cpl_build", { ...options, source });
@@ -260,7 +266,7 @@ export class Cpl {
   }
 }
 
-const METHODS = ["check", "lint", "run", "trace", "replay", "stress", "build", "explain", "hover", "definition", "symbols", "lsp"];
+const METHODS = ["check", "lint", "run", "trace", "replay", "stress", "sample", "build", "explain", "hover", "definition", "symbols", "lsp"];
 
 /**
  * The compiler in a Web Worker: the same methods as `Cpl`, each returning a

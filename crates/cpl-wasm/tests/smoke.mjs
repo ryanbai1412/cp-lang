@@ -362,6 +362,15 @@ test("stress finds and shrinks a planted bug in wasm with first differing value"
 });
 
 
+test("sample makes an input a program's read() types accept", () => {
+  const program = "let n: 1..=5 = read()\nlet a: [0..n]1..=9 = read()\nprint(a.len)\n";
+  const { input } = cpl.sample(program, { seed: 3, size: 4 });
+  const [n, ...a] = input.trim().split(/\s+/).map(Number);
+  assert.ok(n >= 1 && n <= 4 && a.length === n && a.every((x) => x >= 1 && x <= 9), input);
+  assert.equal(cpl.run(program, input).stdout, `${n}\n`);
+  assert.deepEqual(cpl.sample(program, { seed: 3, size: 4 }), { input });
+});
+
 test("the worker client has every method the worker answers", () => {
   const methods = (file) => /METHODS = (?:new Set\()?\[([^\]]+)\]/.exec(readFileSync(join(dist, file), "utf8"))[1];
   assert.equal(methods("cpl.js"), methods("cpl.worker.js"));
