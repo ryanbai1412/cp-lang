@@ -23,9 +23,9 @@ compiler ARCHITECTURE, "std names are debt to remove").
 A type is a domain when it implements the prelude trait `Domain`:
 
     pub trait Domain:
-        fn count() -> Int          // number of values; may read its type arguments' counts
-        fn ord(self) -> Int        // the value's ordinal, in 0..count
-        fn nth(k: Int) -> Self     // the inverse of ord, for k in 0..count
+        @get fn count() -> Int        // number of values; may read its type arguments' counts
+        @get fn ord(self) -> Int      // the value's ordinal, in 0..count
+        fn nth(k: Int) -> Self        // the inverse of ord, for k in 0..count
 
 R-new.1: `impl Domain for T` (std or user, same rule) makes `T` a domain.
 `count` is evaluated once, when the domain is sized: at start, or when a
@@ -34,11 +34,14 @@ runtime-sized type argument is bound (the decision 124 slot). `ord` and
 `ord` leaves `0..count`.
 
 R-new.2: a library domain gets exactly the domain members that need no
-order: `[T]E` (`count` cells, `a[x]` is cell `x.ord`), `for x in T` and
-`T.rev` (walk by ordinal), `T.count`, `T.first`, `T.last`, `T.nth(k)`,
-`T.at(k)`/`T(k)` (ordinal to value, `None`/trap outside `0..count`),
-`x.ord`, `Int(x)` (= `x.ord`), `T.wrap`, every `Seq` method on `T`, and
-`D: Domain` in generics (`Dsu<T>`, `SegTree<T>`, `@memo` keys, `[T]E` fields).
+order, each meaning what its core namesake means: `[T]E` (`count` cells,
+`a[x]` is cell `x.ord`), `for x in T` and `T.rev` (walk by ordinal),
+`T.count`, `T.first`, `T.last`, `T.nth(k)` (trap outside `0..count`),
+`x.ord`, every `Seq` method on `T`, and `D: Domain` in generics (`Dsu<T>`,
+`SegTree<T>`, `@memo` keys, `[T]E` fields). Not derived, because the core
+spellings take a value, not an ordinal: `T(k)`, `T.at(k)`, `Int(x)`,
+`T.wrap`. Read, print and `Int(x)` come from the type's own `Show`, read and
+conversions (`Subset` prints and converts as its mask, decision 291).
 
 R-new.3: neighbours (`.prev`/`.next`), cuts (`T.cuts`, `.l`/`.r`), `Range<T>`
 and position arithmetic stay with the ordered core domains (ranges, `Char`,
@@ -53,17 +56,18 @@ for both kinds. Today `Domain` is a marker only the checker knows
 Subset under the rule, no compiler knowledge:
 
     impl Domain for Subset<B>:
-        fn count() -> Int = 1 << B.count      // [Subset<B>]T over |B| > 26 is the ordinary array-size trap
-        fn ord(self) -> Int = Int(bits)
+        @get fn count() -> Int = 1 << B.count   // [Subset<B>]T over |B| > 26 is the ordinary array-size trap
+        @get fn ord(self) -> Int = Int(bits)
         fn nth(k: Int) -> Subset<B> = Subset(U64(k))
 
 `Int(s)` stays the mask and the walk stays `0, 1, ..., 2^|B| - 1`, as now.
 `Pair<V>` moves the same way (`count = n(n-1)/2`, `ord = hi(hi-1)/2 + lo`).
 
-Questions for spec: (1) the trait's member names: `count`/`ord`/`nth`
-match R04.2.2, R04.2.24 and R04.2.9. (2) Should `T(k)` on a library domain
-take the ordinal (this draft) or be left out? (3) Is the R-new.3 split
-right, or should neighbours come by default in ordinal order?
+Spec signed off on R-new.1-4 (2026-11-23), with R-new.2 amended as above.
+Compiler signed off on the interface below, with these conditions:
+- one `LibDomain` table with no Subset-only fields;
+- `D: Domain` resolved through mono's normal impl dispatch;
+- the interpreter in the cost gate.
 
 ## Interface (for compiler)
 
@@ -85,8 +89,9 @@ right, or should neighbours come by default in ordinal order?
   ordinary inline functions on a one-`uint64_t` struct, so `dp[s]` compiles
   to `dp[s.bits]`.
 - **Cost check before landing:** a mask DP (`[Subset<B>]Int` over `|B| = 20`,
-  a submask walk) must stay within 1.1x of the current builtin in the C++
-  build. The risk is std's `yields` generators (`s.subsets`, `s.items`) in
+  a submask walk) must stay within 1.1x of the current builtin, in both the
+  C++ build and `cpl run`. If `cpl run` is slow, inline small `ord` bodies in
+  IR. The risk is std's `yields` generators (`s.subsets`, `s.items`) in
   place of `Iter::Subsets`/`Iter::Bits`.
 
 ## Plan
@@ -95,11 +100,15 @@ right, or should neighbours come by default in ordinal order?
    reviews the split.
 2. Land `Domain` and library-domain lowering, with `Subset` moved to it, in one
    change, plus these conformance cases (each run in `cpl run` and C++):
-   - a user struct implementing `Domain`: arrays, walk, `count`, `at`,
+   - a user struct implementing `Domain`: `[T]E`, `for x in T`, `count`,
      `Dsu<T>`;
+   - `T.nth(k)` round-tripping `x.ord`;
+   - `t.next` on a library domain, an error naming the core-only rule;
    - `[Subset<B>]T` mask DP;
    - `Subset` methods from std;
    - a `D: Domain` generic over both kinds;
    - the ord-out-of-range trap.
 3. Move `Pair<V>`, then `Char` (128 written once), the same way.
-4. Fold the rule into spec/core/04 and 12, then delete this file.
+4. Fold the rule into spec/core/04 and 12, with a decision number from
+   `scripts/next-decision.py` and an R04 rule ID per item, then delete
+   this file.
