@@ -7,13 +7,13 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2888 (1010 passing). Rules: 582.
+Cases: 2935 (1057 passing). Rules: 582.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 173 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 24 rules, 69 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 177 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -211,8 +211,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.3.2 [1+ 0-]: **`max=` on `?Int` is branch-free**: `INT64_MIN` is below every `Int`, so `None` is alread...
 - R03.3.3 [1+ 1-]: **Producing a spare value is an overflow.** `Int` arithmetic that lands on `INT64_MIN` tra...
 - R03.3.4 [1+ 1-]: **Reading input** rejects a value equal to a spare (`read<Int>` of `-9223372036854775808` ...
-- R03.4.1 [1+ 6-]: **The rule for every check.** On the judge only valid programs matter, so release optimize...
-- R03.4.2 [1+ 1-]: Proofs are intraprocedural interval arithmetic on `let`s and declared ranges (already deci...
+- R03.4.1 [12+ 42-]: **The rule for every check.** On the judge only valid programs matter, so release optimize...
+- R03.4.2 [12+ 37-]: Proofs are intraprocedural interval arithmetic on `let`s and declared ranges (already deci...
 - R03.5.1 [4+ 3-]: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
 
 ### R04: 04-indices.md
@@ -940,7 +940,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0101 Index out of range: 23 case(s)
 - R0102 Value outside a domain: 5 case(s)
 - R0201 Range store out of range: 10 case(s)
-- R0202 Integer overflow: 10 case(s)
+- R0202 Integer overflow: 46 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
 - R0401 Assertion failed: 76 case(s)
