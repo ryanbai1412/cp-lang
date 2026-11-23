@@ -247,7 +247,7 @@ pub(crate) const COMMANDS: &[Command] = &[
             "(`cpl self --help`); `cpl +<toolchain> <command>` runs",
             "one command with another, e.g. `cpl +edge run a.cp`",
         ],
-        json: Json::None,
+        json: Json::Flag,
         options: None,
     },
 ];

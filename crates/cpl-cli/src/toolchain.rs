@@ -30,6 +30,11 @@ commands:
   install <toolchain>  download a toolchain now, for use offline later
   list                 list installed toolchains
 
+`--json` on any of them prints one JSON object: `list` gives `toolchains`,
+each with its `id` and `marks` (stable, edge, default, rollback), `channel`
+gives the `default` and its `toolchain` (null until installed), and the
+others give `ok` and the `message` (or the `error`) the text output gives.
+
 `cpl +<toolchain> <command>` runs one command with another toolchain. The
 toolchain a command uses is the first of: `+<toolchain>`, $CPL_VERSION,
 `version = \"...\"` or `channel = \"...\"` in a cpl.toml in the current folder
@@ -612,20 +617,49 @@ pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) 
         return EXIT_USAGE;
     };
     let mut settings = Settings::load(&home);
+    let json = args.contains(&"--json");
+    let args: Vec<&str> = args.iter().copied().filter(|a| *a != "--json").collect();
     let mut out = String::new();
-    let result = match args {
+    let result = match args.as_slice() {
         [] | ["-h" | "--help"] => {
             out += SELF_USAGE;
             Ok(())
         }
         ["update"] => update(&home, &mut settings, None, &mut out, stderr),
         ["update", channel] => update(&home, &mut settings, Some(channel), &mut out, stderr),
+        ["channel"] if json => {
+            let default = settings.default_selector();
+            default.map(|default| {
+                let id = find_installed(&home, &settings, &default);
+                out += &format!(
+                    "{{\"default\":{},\"toolchain\":{}}}\n",
+                    cpl_json::escape_string(&default.to_string()),
+                    id.map_or("null".into(), |id| cpl_json::escape_string(&id))
+                );
+            })
+        }
         ["channel"] => show_default(&home, &settings, &mut out),
         ["channel", toolchain] => set_default(&home, &mut settings, toolchain, &mut out, stderr),
         ["rollback"] => rollback(&home, &mut settings, &mut out),
         ["install", toolchain] => Selector::parse(toolchain)
             .and_then(|selector| ensure(&home, &mut settings, &selector, stderr))
             .map(|id| out += &format!("{id} is installed\n")),
+        ["list"] if json => {
+            let rows: Vec<String> = listing(&home, &settings)
+                .into_iter()
+                .map(|(id, marks)| {
+                    let marks: Vec<String> =
+                        marks.iter().map(|m| cpl_json::escape_string(m)).collect();
+                    format!(
+                        "{{\"id\":{},\"marks\":[{}]}}",
+                        cpl_json::escape_string(&id),
+                        marks.join(",")
+                    )
+                })
+                .collect();
+            out += &format!("{{\"toolchains\":[{}]}}\n", rows.join(","));
+            Ok(())
+        }
         ["list"] => {
             list(&home, &settings, &mut out);
             Ok(())
@@ -636,9 +670,22 @@ pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) 
             return EXIT_USAGE;
         }
     };
+    let structured = json && matches!(args.as_slice(), ["list"] | ["channel"]);
+    if json && !structured {
+        let (key, said) = match &result {
+            Ok(()) => ("message", out.trim_end()),
+            Err(e) => ("error", e.trim_end()),
+        };
+        out = format!(
+            "{{\"ok\":{},\"{key}\":{}}}\n",
+            result.is_ok(),
+            cpl_json::escape_string(said)
+        );
+    }
     let _ = stdout.write_all(out.as_bytes());
     match result {
         Ok(()) => 0,
+        Err(_) if json && !structured => EXIT_ERRORS,
         Err(e) => {
             *stderr += &format!("cpl: {e}\n");
             EXIT_ERRORS
@@ -754,30 +801,41 @@ fn rollback(home: &Path, settings: &mut Settings, out: &mut String) -> Result<()
 }
 
 fn list(home: &Path, settings: &Settings, out: &mut String) {
-    let default = settings
-        .default_selector()
-        .ok()
-        .and_then(|s| find_installed(home, settings, &s));
-    let ids = installed_ids(home);
-    if ids.is_empty() {
+    let rows = listing(home, settings);
+    if rows.is_empty() {
         *out += "no toolchains installed\n";
     }
-    for id in ids {
-        let mut marks: Vec<&str> = ["stable", "edge"]
-            .into_iter()
-            .filter(|c| settings.get(c) == Some(id.as_str()))
-            .collect();
-        if default.as_deref() == Some(id.as_str()) {
-            marks.push("default");
-        }
-        if settings.get("rollback-toolchain") == Some(id.as_str()) {
-            marks.push("rollback");
-        }
+    for (id, marks) in rows {
         match marks.is_empty() {
             true => *out += &format!("{id}\n"),
             false => *out += &format!("{id} ({})\n", marks.join(", ")),
         }
     }
+}
+
+/// Each installed toolchain with what points at it: `stable`, `edge`,
+/// `default` and `rollback`.
+fn listing(home: &Path, settings: &Settings) -> Vec<(String, Vec<&'static str>)> {
+    let default = settings
+        .default_selector()
+        .ok()
+        .and_then(|s| find_installed(home, settings, &s));
+    installed_ids(home)
+        .into_iter()
+        .map(|id| {
+            let mut marks: Vec<&str> = ["stable", "edge"]
+                .into_iter()
+                .filter(|c| settings.get(c) == Some(id.as_str()))
+                .collect();
+            if default.as_deref() == Some(id.as_str()) {
+                marks.push("default");
+            }
+            if settings.get("rollback-toolchain") == Some(id.as_str()) {
+                marks.push("rollback");
+            }
+            (id, marks)
+        })
+        .collect()
 }
 
 #[cfg(test)]

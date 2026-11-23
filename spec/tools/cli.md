@@ -62,6 +62,11 @@ that stopped formatting and any other `error` (`null` when none).
 `cpl setup <editor> --json` prints `{"editor", "ok", "message"}`, or
 `"error"` in place of `"message"` when the install or `--check` failed;
 `editor` is the canonical name (`code` reports `vscode`).
+`cpl self list --json` prints `{"toolchains": [{"id", "marks"}]}`, the
+marks among `stable`, `edge`, `default` and `rollback`; `cpl self channel
+--json` prints `{"default", "toolchain"}`, `toolchain` `null` until it is
+installed; every other `cpl self` command prints `{"ok", "message"}` or
+`{"ok", "error"}`.
 `cpl --help --json` prints `{"commands": [{"name", "usage", "summary",
 "json", "help"}]}`: `json` is how the command asks for JSON output
 (`"--json"` or `"--format json"`; both work) or `null` when it has none.

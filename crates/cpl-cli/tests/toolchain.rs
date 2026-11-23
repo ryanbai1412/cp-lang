@@ -300,6 +300,23 @@ fn self_update_switches_channels_and_rolls_back_offline() {
         ok(&world.cpl(&["self", "list"], &[])),
         "0.3.0 (stable)\nedge-2026-11-21-aaaaaaaa (rollback)\nedge-2026-11-22-bbbbbbbb (edge, default)\n"
     );
+    assert_eq!(
+        ok(&world.cpl(&["self", "list", "--json"], &[])),
+        concat!(
+            r#"{"toolchains":[{"id":"0.3.0","marks":["stable"]},"#,
+            r#"{"id":"edge-2026-11-21-aaaaaaaa","marks":["rollback"]},"#,
+            r#"{"id":"edge-2026-11-22-bbbbbbbb","marks":["edge","default"]}]}"#,
+            "\n"
+        )
+    );
+    assert_eq!(
+        ok(&world.cpl(&["self", "channel", "--json"], &[])),
+        "{\"default\":\"edge\",\"toolchain\":\"edge-2026-11-22-bbbbbbbb\"}\n"
+    );
+    assert_eq!(
+        ok(&world.cpl(&["self", "update", "--json"], &[])),
+        "{\"ok\":true,\"message\":\"edge is up to date: edge-2026-11-22-bbbbbbbb\"}\n"
+    );
 
     let offline = [("CPL_RELEASES_URL", "file:///cpl-offline-mirror-is-absent")];
     assert_eq!(
