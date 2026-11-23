@@ -59,6 +59,9 @@ C++ runs and the prefilled `issue_url`, `null` when there is none. `cpl fmt
 "error"}]}` in path order: `changed` when formatting changed the file (or
 would, under `--check`), `ok` when it is formatted, the lexer `diagnostics`
 that stopped formatting and any other `error` (`null` when none).
+`cpl setup <editor> --json` prints `{"editor", "ok", "message"}`, or
+`"error"` in place of `"message"` when the install or `--check` failed;
+`editor` is the canonical name (`code` reports `vscode`).
 `cpl --help --json` prints `{"commands": [{"name", "usage", "summary",
 "json", "help"}]}`: `json` is how the command asks for JSON output
 (`"--json"` or `"--format json"`; both work) or `null` when it has none.
