@@ -47,7 +47,7 @@ fn deeper_layers(n: Int) -> List<Layer>:
     out
 
 @!multitest
-let (n, m): (1..=200_000, 1..=200_000) = read()
+let (n, m): (3..=1_000_000, 3..=1_000_000) = read()
 let comb = Comb<Z>(n + m + 1)
 fn ways(a: Int) -> Z = comb.choose(n - a + m, m - 1)
 
