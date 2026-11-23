@@ -1,7 +1,7 @@
 // Codeforces 2124 G: Maximise Sum.
 // For each k in 0..n, maximise sum_t pref_min[t] after at most one operation
 // choosing i < pos with cost `pos - i >= k` (setting a[i] += a[pos], a[pos] = 0).
-// Storing each operation's total at `ans[pos - i]` and taking `suffix_scan(max)`
+// Storing each operation's total at `ans[pos - i]` and taking `suffix_fold(max, ...)`
 // propagates every cost >= k down to k.
 //
 // Invariants:
@@ -29,19 +29,22 @@
 //   over all prefix minima telescopes to `a[0] - pref_min[n - 1] <= 2n`, so
 //   the inner loop runs O(n) times total (`O(n log n)` with binary search).
 
-use std.seq.suffix_scan
+use std.prefix.{suffix_fold}
 
 @!multitest
 let n: 1..=1_000_000 = read()
 domain Pos = 0..n
 let a: [Pos]0..=2_000_000 = read()
 
-let pref_min = a.scan(min)
-let orig_suff = pref_min.suffix_scan(+)
-let base_ans = orig_suff[Pos.first]
+let pm = a.scan(min)
+let pref_min = [Pos] i => pm.prefix(i.ord + 1)
+let os = suffix_fold(+, pref_min)
+let orig_suff = [Pos] p => os[p.l]
+let base_ans = orig_suff[Pos.first!]
 
 // Strict suffix maxima in reverse order; `suffix_max_pos.last!` is the global max.
-let suff_max = a.suffix_scan(max)
+let sm = suffix_fold(max, a)
+let suff_max = [Pos] p => sm[p.l]
 let suffix_max_pos = [p for p in Pos.rev if p == Pos.last or a[p] > suff_max[p.next!]]
 let top_val = a[suffix_max_pos.last!]
 
@@ -56,13 +59,15 @@ for i in Pos.rev if pref_min[i] == a[i]:
     let blk_len = blk_end - i.ord
     let tail_loss = next_min.map(j => orig_suff[j]) ?? 0
     domain Blk = 0..blk_len
-    let lifted = ([Blk] t => if t == Blk.first: cap else: a[i.offset(t.ord)!]).scan(min)
-    let lifted_suff = lifted.suffix_scan(+)
+    let lm = ([Blk] t => if t == Blk.first: cap else: a[i.offset(t.ord)!]).scan(min)
+    let lifted = [Blk] t => lm.prefix(t.ord + 1)
+    let ls = suffix_fold(+, lifted)
+    let lifted_suff = [Blk] t => ls[t.l]
 
     for pos in suffix_max_pos if pos > i:
         let cur_cap = min(cap, ai + a[pos])
-        let last_capped = bsearch_last(Blk.first..=Blk.last, t => lifted[t] > cur_cap)
-        let first_uncapped = if let s = last_capped: s.next else: some(Blk.first)
+        let last_capped = Blk.range.last_true(t => lifted[t] > cur_cap)
+        let first_uncapped = if let s = last_capped: s.next else: Blk.first
         let capped_cnt = if let t = first_uncapped: t.ord else: blk_len
         let uncapped_gain = if let t = first_uncapped: lifted_suff[t] - ai * (blk_len - t.ord) else: 0
         let gain = (cur_cap - ai) * capped_cnt + uncapped_gain
@@ -72,4 +77,5 @@ for i in Pos.rev if pref_min[i] == a[i]:
 
     next_min = some(i)
 
-print(ans.suffix_scan(max))
+let sa = suffix_fold(max, ans)
+print([sa[i] for i in 0..n])
