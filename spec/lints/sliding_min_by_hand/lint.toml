@@ -1,0 +1,5 @@
+code = "L0566"
+level = "warn"
+group = "idiom"
+title = "Sliding-window minimum kept with a hand-written deque"
+summary = "`while dq.len > head and a[dq[dq.len - 1]] >= a[i]: dq.pop()`: `Window(min)`"

@@ -7227,3 +7227,24 @@ are the place to break, owed in PLAN.md. Reverse: drop `Emitter::chain`.
 ## 326. A fold costs what the receiver's type says (2026-11-22)
 
 Ryan rejected an O(1) special case for `(3..m).step(2).sum()`. The rule is general: an operation's cost belongs to the receiver's type, through ordinary method resolution. The generic folds (`sum`, `prod`, `count`, `min`, `max`, `fold`, `contains`, `last`, `nth`) are default methods of the capability trait that gives them. A type overrides one in its `impl`, in CP Lang, with its documented cost: `impl Seq for Range` gives closed forms, as `Prefix.fold` is O(1) and `Bitset.len` is a popcount. R08.1.4 stays as written (inherent methods first, then traits), and generic code calls the receiver's impl, so an override holds through generics (`core-08/trait-default-overridden-through-generic.cp`, which passes). A free extension function is final: a concrete `self: Range<Int>` and a generic `self: S` of one name are E0701. Today the compiler silently picks the generic one (`core-08/extension-concrete-and-generic-ambiguous.cp`). Parens still mean "may do work" (decision 140). Hover and `cpl explain` show the resolved method. The compiler's `range_sum` intrinsic (`crates/cpl-ir/src/lower/call.rs` `try_range_int_sum`) goes once std overrides `sum` on ranges. Lost: compiler pattern matching of pipelines (a privilege user types can't have, and the next fold needs another special case); "most specific `self` wins" over extension functions (that is specialization: concrete and generic calls on one type would differ). Reverse: allow concrete extensions to shadow generic ones at concrete receivers.
+## 334. Three hand-written graph and window algorithms teach their std names: L0565-L0567; `lint_std_names` 152 -> 159 (2026-11-22)
+
+`cycle_by_colors` (L0565): a fn that sets `c[u] = 1` first, `c[u] = 2` last and
+tests `c[v] == 1` is the three-colour DFS for a directed cycle; help names
+`find_cycle(g)` and `topo(g)`. A two-colouring (`paint(v, 3 - c)`) has no
+integer marks and is not reported. `sliding_min_by_hand` (L0566): a `for i`
+loop with `while .. back >= a[i]: q.pop()` then `q.push(i)` and a window
+start `i - ..` is the monotone deque; help names `Window(min)` (or `max`
+from the comparison). Without a window start it is a monotone stack and is
+not reported. `depth_by_hand` (L0567): `d[v] = d[p] + 1` or
+`d.push(d[p] + 1)` on a table named `dep*`/`level`/`lvl`; help names
+`Rooted.from_parents` / `Rooted.new`. All `idiom`, `warn`, help only (the
+graph or tree must be typed over a domain first). The help does not name
+`a.windows(k).fold(min)`, which std/dp.cp teaches, because `windows` on a
+`[0..n]Int` fails to check today (stdlib worklog). The 3 `std/tree.cp` hits
+are `Rooted`'s own depth tables (baselined; general fix owed: a rule skips
+the body of the std fn it teaches). The 7 new `lint_std_names` are the
+method and field names the shapes read (`push`, `pop`, `last`, `len`);
+the fact table removes them. Reverse: delete the three records and
+`rules/hand_graph.rs`.
+

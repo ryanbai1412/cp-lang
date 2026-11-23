@@ -144,6 +144,9 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0561 | trial_division | `while d * d <= x: if x % d == 0`: `divisors(x)` / `factor(x)` from `std.math` |
 | L0562 | count_until | `while p < n: p *= 3; k += 1`: `(0..).find(k => 3 ** k >= n)!` names the smallest `k` |
 | L0564 | read_loop | `for _ in 0..k: xs.push(read())`: `let xs: [0..k]T = read()` reads them all |
+| L0565 | cycle_by_colors | `color[u] = 1; ... color[v] == 1 ...; color[u] = 2` in a DFS: `find_cycle(g)` |
+| L0566 | sliding_min_by_hand | a monotone deque popped at the back and advanced past `i - k`: `Window(min)` / `Window(max)` |
+| L0567 | depth_by_hand | `depth[v] = depth[par[v]] + 1`: `Rooted.from_parents(par).depth(v)` |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

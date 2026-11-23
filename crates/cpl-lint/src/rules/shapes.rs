@@ -17,6 +17,17 @@ pub(crate) fn int(e: &Expr) -> Option<i128> {
     }
 }
 
+/// `t[i]` with one index: the table name and the index.
+pub(crate) fn index1(e: &Expr) -> Option<(&str, &Expr)> {
+    let ExprKind::Index { base, indices } = &unparen(e).kind else {
+        return None;
+    };
+    match indices.as_slice() {
+        [i] => Some((name(base)?, i)),
+        _ => None,
+    }
+}
+
 pub(crate) fn single(block: &Block) -> Option<&Stmt> {
     match block.stmts.as_slice() {
         [s] => Some(s),

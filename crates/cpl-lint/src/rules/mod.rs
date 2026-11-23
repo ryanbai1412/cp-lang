@@ -13,6 +13,7 @@ mod fields;
 mod floats;
 mod grid;
 mod grid_step;
+mod hand_graph;
 mod hand_loops;
 mod hand_math;
 mod heap_skip;
@@ -69,6 +70,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(spelled::check(file));
     findings.extend(hand_loops::check(file));
     findings.extend(hand_math::check(file));
+    findings.extend(hand_graph::check(file));
     findings.extend(count_until::check(file));
     findings.extend(read_loop::check(file));
     findings

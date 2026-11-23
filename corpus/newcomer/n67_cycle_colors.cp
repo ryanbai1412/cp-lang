@@ -3,7 +3,7 @@ var out: List<List<Int>> = [[] for _ in 0..=n]  // expect: missing adjacency_bui
 for _ in 0..m:
     let (u, v): (1..=n, 1..=n) = read()
     out[u].push(v)
-var color: List<Int> = [0 for _ in 0..=n]  // expect: missing cycle_by_colors
+var color: List<Int> = [0 for _ in 0..=n]  // expect: cycle_by_colors
 var cyc = false
 fn dfs(u: Int):
     color[u] = 1

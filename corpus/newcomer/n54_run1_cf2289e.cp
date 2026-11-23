@@ -9,7 +9,7 @@ for _ in 0..n - 1:
 var depth: [0..=m]Int = 0  // expect: missing int-node-ids
 for k in (n + 1..=m).rev:
     let (x, y) = kids[k - n - 1]
-    depth[x] = depth[k] + 1
+    depth[x] = depth[k] + 1  // expect: depth_by_hand
     depth[y] = depth[k] + 1
 var sets: List<SortedSet<Int>> = []
 var id: [0..=m]Int = 0

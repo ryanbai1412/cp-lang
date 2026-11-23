@@ -1,0 +1,5 @@
+code = "L0567"
+level = "warn"
+group = "idiom"
+title = "Tree depths stepped from the parent by hand"
+summary = "`depth[v] = depth[par[v]] + 1`: `Rooted.from_parents(par).depth(v)`"

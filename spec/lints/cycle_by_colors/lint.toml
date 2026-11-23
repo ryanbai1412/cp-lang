@@ -1,0 +1,5 @@
+code = "L0565"
+level = "warn"
+group = "idiom"
+title = "Directed cycle found by colouring a DFS by hand"
+summary = "`color[u] = 1; ... if color[v] == 1: cyc = true; ... color[u] = 2`: `find_cycle(g)`"

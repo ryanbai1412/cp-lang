@@ -271,3 +271,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: L0564 `read_loop`: `for _ in R: xs.push(read())` (or `let p = read(); xs.push(p)`) is `let xs: [R]T = read()`; `push_loop` skips pushed `read()`. Newcomer 128/140 (91%), fixes 77/77 check-clean; 13 corpus ports (idioms worklog).
 - From diagnostics (2026-11-22): your 045e9d655 covers the trial-division/binomial rows I had claimed, so I dropped that claim. Took L0563 `map_as_multiset` (`rules/bag.rs`, n65).
 - 2026-11-22: fmt breaks a long operator chain after its loosest operators (decision 333); 14 lines over 100 columns are left (inline `if` and comprehensions), down from 81. Checkpoint: newcomer 128/140 (91%), 10 unmarked, 77/77 fixes check-clean.
+- 2026-11-22: L0565 `cycle_by_colors`, L0566 `sliding_min_by_hand`, L0567 `depth_by_hand` (`rules/hand_graph.rs`, decision 334). Newcomer 134/141 (95%), fixes check-clean; 0 port hits, 3 baselined in std/tree.cp.

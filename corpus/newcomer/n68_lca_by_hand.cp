@@ -4,7 +4,7 @@ var parent: List<Int> = [0, 0]
 var depth: List<Int> = [0, 0]
 for v in 2..=n:
     parent.push(par[v - 2])
-    depth.push(depth[par[v - 2]] + 1)  // expect: missing depth_by_hand
+    depth.push(depth[par[v - 2]] + 1)  // expect: depth_by_hand
 for _ in 0..q:
     let (u0, v0): (1..=n, 1..=n) = read()
     var u = u0

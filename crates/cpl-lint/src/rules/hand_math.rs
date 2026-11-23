@@ -14,7 +14,7 @@ use crate::{
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
 
-use super::shapes::{compare, int, is_step, name, single};
+use super::shapes::{compare, index1, int, is_step, name, single};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandMath {
@@ -59,17 +59,6 @@ struct HandMath<'a> {
     /// (map, fn) for each `if k in map: return map[k]` at the top of a fn.
     memos: Vec<(String, String)>,
     out: Vec<Finding>,
-}
-
-/// `t[i]` with one index: the table name and the index.
-fn index1(e: &Expr) -> Option<(&str, &Expr)> {
-    let ExprKind::Index { base, indices } = &unparen(e).kind else {
-        return None;
-    };
-    match indices.as_slice() {
-        [i] => Some((name(base)?, i)),
-        _ => None,
-    }
 }
 
 fn binary(e: &Expr, want: BinOp) -> Option<(&Expr, &Expr)> {

@@ -10,5 +10,5 @@ for i in 0..n:
     if dq[head] <= i - k:
         head += 1
     if i >= k - 1:
-        out.push(a[dq[head]])  // expect: missing sliding_min_by_hand
+        out.push(a[dq[head]])  // expect: sliding_min_by_hand
 print(out)
