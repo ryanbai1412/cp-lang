@@ -30,6 +30,7 @@ import math
 import os
 import re
 import resource
+import shutil
 import signal
 import subprocess
 import sys
@@ -95,10 +96,18 @@ def same_tokens(a, b):
     return True
 
 
+# A child forked from this process starts with its resident set, so its own
+# `ru_maxrss` never reads below this interpreter's; `time` forks the program
+# from a small process and reports the program's peak alone.
+TIME = shutil.which("time", path="/usr/bin:/bin")
+
+
 def run_once(binary, inp, outp, timeout):
+    rss_file = outp + ".rss"
+    cmd = [TIME, "-f", "%M", "-o", rss_file, binary] if TIME else [binary]
     with open(inp, "rb") as fi, open(outp, "wb") as fo:
         pr = subprocess.Popen(
-            [binary],
+            cmd,
             stdin=fi,
             stdout=fo,
             stderr=subprocess.DEVNULL,
@@ -115,7 +124,11 @@ def run_once(binary, inp, outp, timeout):
         return timeout, "timeout", 0
     # Parallel jobs and other load inflate wall time, not CPU time.
     cpu = usage.ru_utime + usage.ru_stime
-    return cpu, "ok" if pr.returncode == 0 else f"exit {pr.returncode}", usage.ru_maxrss
+    rss = usage.ru_maxrss
+    if TIME:
+        with open(rss_file) as f:
+            rss = int(f.read().split()[-1])
+    return cpu, "ok" if pr.returncode == 0 else f"exit {pr.returncode}", rss
 
 
 CXX23_SHIM = os.path.join(ROOT, "bench", "cxx23-shim")
