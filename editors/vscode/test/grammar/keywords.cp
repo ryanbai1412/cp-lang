@@ -141,7 +141,7 @@ let t = f::<Int>()
 if const D.count <= 64:
 // ^^^^^ storage.modifier.const.cp
 //       ^ entity.name.type.cp
-//         ^ entity.name.type.cp
+//         ^^^^^ variable.other.property.cp
 
 // Words that are contextual keywords stay plain names elsewhere.
 let from = as + invariant
