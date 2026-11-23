@@ -80,3 +80,61 @@ Each local fix tonight, and the mechanism that would remove its whole class.
 
 ## Next
 Milestone 1 order, items 1-3, each a small commit with its golden test.
+
+# Folded from the old README and ARCHITECTURE
+
+## Milestone 1 (handbook/product/milestones.md): what it needs from tools
+Deadline about 09:30 PST 2026-11-23; ships on edge. Steps 3-6 of the acceptance scenario (install, solve, test, submit) run through this lane. Priorities follow it; the metrics below are means to it. No real judge submissions. `cpl b` gives one portable C++17 file; judge profiles stay working but get no new milestone time (Ryan, 21:38). Linux, macOS and Windows are all supported and tested.
+
+Exit criteria, each checked by a test or a recorded cold run:
+1. **Three editors, in this order: Neovim (with Vim), VS Code, JetBrains.** Each gets highlighting, diagnostics, completion, formatting and go-to-definition from a one-step setup documented in `editors/README.md`, checked by a CI smoke test. Neovim: `cpl setup neovim`, smoke-tested headless on Linux, macOS and Windows. VS Code: `cpl setup vscode` (the release `.vsix`), tested in the extension host in CI. JetBrains: the plugin zip from the release, over LSP. Full LSP is also Milestone 1 (Ryan: "as much lsp as possible"): type definition, implementations, call hierarchy, document links, pulled diagnostics, a code action for every lint fix and organize imports, range and on-type formatting, and hover with `cpl explain`'s representation. Each lands with an LSP test and the editor smoke tests.
+2. **Import**: Competitive Companion's button lands a problem (or a whole contest) as `a.cp` + `a.tests/` with title, URL, limits, judge and samples, via `cpl new --listen`; no flags needed.
+3. **Run**: `cpl run a` with no input runs every sample with the diff; `cpl run a 2` runs one; piped stdin still works. (Landed 440aa2111.)
+4. **Custom tests and checkers**: `cpl test a --add FILE [--expect OUT]` (landed b6394311a); `@check` judges multi-answer problems and `@interactor` interactive ones.
+5. **Submit**: `cpl b -c` (landed dc8a5c361) puts the portable C++17 file on the clipboard on all three platforms; size against 64 KB, checks and failed samples are said before you paste.
+6. **Windows**: paths, clipboard (`clip.exe`), CRLF input and sample files behave as on Linux, tested in CI.
+7. **Workspace**: one folder per contest, one file per problem, newest problem by default; no config file needed.
+8. **No surprises**: every command in the scenario has a golden test; every usage error names the right invocation.
+
+Deferring until after Milestone 1 (continues in parallel only when cheap): `explain` representation sections (tools-3), the shared parser/output refactor, the last `--json` gaps, editor polish beyond item 1, Zed/Helix/Emacs beyond staying working, debugger code moves.
+
+Top 3 next steps (setup for all three editors, the contest-flow golden test, VS Code Import and Add Test have landed):
+1. Make every editor job green on macOS and Windows: `neovim`, `vscode` and the new `cli` jobs in CI.
+2. Prove editor formatting and go-to-definition in the JetBrains smoke, not only that the LSP server is registered.
+3. A cold run of the scenario from `editors/README.md` and `cpl --help` alone, on a fresh machine.
+
+## Milestone 2 (handbook/product/milestones.md): the complete toolchain
+The most ambitious version: from the first Companion click to an accepted, understood submission, every step is one guessable command or one editor action, on every platform and editor a contestant uses, and each answers faster than the C++ setup it replaces.
+
+Exit criteria:
+1. **One contract:** every command shares one parser, one output layer and one `--json` schema, published as `cli.json`; 25 of 25 commands have JSON; every usage error names the right invocation (a test per command).
+2. **Editors as products:** VS Code and JetBrains have native UIs beyond LSP (test panel with sample diffs, stress and trace views, Companion import); Neovim, Vim, Zed, Helix and Emacs pass the same smoke as tier 1; marketplace listings for VS Code and JetBrains.
+3. **Explain everything:** `cpl explain` and hover show representation (bytes, niches), arrays and peak memory, specializations and remaining checks, from compiler's representation query.
+4. **Contest workspace:** a whole contest imports, times and submits as one folder; `fetch` covers Codeforces, AtCoder and CSES; judge profiles fix compiler, flags and limits per judge.
+5. **Speed:** LSP p95 under 50 ms at 5,000 lines in the release gate; every command's cold start under 100 ms; editor latency tests on all three platforms.
+6. **Release:** `stable` and `edge` channels, `cpl self update --channel`, signed installers and package managers on Linux, macOS and Windows.
+
+Next steps: the shared parser/output refactor, the `explain` sections once compiler's query lands, and the VS Code test panel.
+
+## Improve (highest impact first)
+1. Land `devin/wip-editor-lsp` (v0.3 `use std.` completion, corpus latency bench, VS Code/Vim smoke, fixes the stale prelude table).
+2. Reconcile `spec/tools/cli.md` with the binary and gate it ([Q tools-1](../../QUESTIONS.md)).
+3. One argument parser and one output layer for every command (`--json`, exit codes, `--help` from the same table); split `cpl-cli/src/lib.rs` by command.
+4. `cpl explain` to the spec, sharing its computation with LSP hover (needs a representation query from compiler/perf: request filed).
+5. LSP at 5,000 lines: incremental diagnostics on open; enforce the release-build latency test in the gate.
+6. Bundle under 32 KB everywhere: size gate at 32 KB with `--size` attribution (the bytes are perf's).
+7. Tier-1 editors in the gate; JetBrains in CI (network blocks it on VMs).
+8. Move debugger code (`dap.rs`, `trace.rs`, `live.rs`, `replay.rs`) into the debugger's `cpl-trace` when it splits out.
+
+## Ryan's role
+One design review: the command set and names, the toolchain model (`cpl self`, `cpl +edge`, pins), tier-1 editors, explain scope (the decisions above, plus [design/overview.md](design/overview.md)). After that the acceptance tests are the contract and the lane runs as a metric lane; Ryan sees milestone demos (a recording of the editor flow, a sample `explain`).
+
+## Known debt
+1. **Spec and binary disagree on the command set**: 14 mismatches (`measure.py spec-sync`). Spec-only: `debug`, `fetch`, `interact`, `locate`, `migrate`, `selftest`, `trace`; binary-only: `check`, `dap`, `fix`, `judge`, `replay`, `report`, `self`. Nothing checks it. [Q tools-1]
+2. **No single command table**: the help text in `lib.rs`, the dispatch `match`, and each crate's own flag parsing are separate; flags, `--json` and exit codes vary by command (18 of 23 commands offer JSON in `--help`, `measure.py json`). `cli.json` is generated from `cpl --help --json` and `cpl judges --json` (`web/scripts/gen-tools.mjs`), but the flags inside each command's `help` are still free text.
+3. **Large files**: `crates/cpl-lsp/src/tests.rs` is at the 2,000-line cap and `crates/cpl-lsp/src/server.rs` 1,966; `crates/cpl-cli/src/lib.rs` is down to 1,422 (build, check, explain and inline tests moved out).
+4. **`cpl explain` is a stub of its spec**: `explain_file` (`crates/cpl-cli/src/explain.rs:96`) prints only `cpl_codegen::explain_closures` and `explain_dropped_fields`; `spec/tools/explain.md`'s sizes, niches, peak memory, specializations and checks are missing, and hover computes its own (`cpl_check::Hover`). No representation query exists in the shared core yet.
+5. **LSP latency at 5,000 lines has little room**: `tests/latency.rs` in release passes (cold check median 39-48 ms vs 50, open to first diagnostics 37-43 ms vs 100, two runs on `c8b9333e4`). The open is the cold check: on the 149 KB `didOpen`, parsing and printing the JSON take about 1 ms, so further headroom is in `cpl-check` [compiler worklog]. A debug build enforces the budget only at 500 lines (`latency.rs:96`), and the gate runs it in debug [infra worklog].
+6. **Debugger code in `cpl-cli`**: `dap.rs`, `trace.rs`, `live.rs`, `replay.rs` (1,829 lines) belong to the debugger lane.
+7. **Other lanes' tests live in `crates/cpl-cli/tests/`** because they need the binary; ownership of a failure there is unclear.
+8. **Editor coverage is mostly unverified here**: on this VM `editors/smoke.sh` skips Neovim, Emacs, Helix, Zed, tree-sitter (binaries missing) and the JetBrains build fails resolving Gradle artifacts (network). VS Code unit tests: 36/37, a stale `PRELUDE_VALUES` table (`skip_while`, `reach_sets`), fixed on `devin/wip-editor-lsp`.

@@ -1,5 +1,5 @@
 //! Cold start: every `cpl` command answers within 100 ms (the M2 speed row in
-//! plan/domains/tools/README.md). Each sample is a fresh process, so the
+//! handbook/product/milestones.md). Each sample is a fresh process, so the
 //! number is what a contestant waits for from the shell or an editor's task.
 //!
 //! The median of several samples is asserted, and the 90th percentile must

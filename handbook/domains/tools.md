@@ -251,7 +251,16 @@ their front ends.
 | `CPL=target/release/cpl editors/smoke.sh` | each installed editor's smoke test, and keyword parity |
 | `python3 plan/domains/tools/measure.py golden` (also `help`, `json`, `spec-sync`, `corpus`) | the numbers in `plan/domains/tools/metrics.toml` |
 
+## Judgment rubric
+A cold agent scores each 1-5 with a reason, on fixed samples; the trend is the signal.
+1. **Guessable**: could you have typed this command and flag without reading the help? Probe: given only `cpl --help`, do 8 fixed tasks (run sample 2 only, build for Codeforces and copy, see why line 12 is slow, find what no test reaches, ...); count wrong guesses and help lookups.
+2. **Usage errors at 3am**: does each usage error name the right invocation? Probe: 12 fixed wrong invocations; score each message.
+3. **Explain answers the question**: can you say why a value takes its bytes, or why a call is O(n), from `cpl explain` or hover alone? Probe: 3 questions on each of 5 ports, answers checked against the emitted C++.
+4. **Editor in 5 minutes**: from `editors/README.md` alone, get hover, completion, rename and a quick fix working. Probe: cold agent on a fresh VM with VS Code and Neovim; time and steps.
+5. **One vocabulary**: do help, errors, hover and explain use the spec's words (`spec/GLOSSARY.md`)? Probe: list every term in help and hover texts that the glossary does not define.
+
 ## Changes
 
-- 2026-11-23: first version, folding in the stable parts of
-  `plan/domains/tools/README.md` and `plan/domains/tools/ARCHITECTURE.md`.
+- 2026-11-23: first version, folding in the stable parts of the tools
+  lane's old README and architecture notes.
+- 2026-11-23: the judgment rubric moved here from the lane README.

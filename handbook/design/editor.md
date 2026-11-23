@@ -138,5 +138,5 @@ targets and current numbers are in `plan/domains/tools/metrics.toml`.
 
 ## Changes
 
-- 2026-11-23: first version, from `plan/domains/tools/ARCHITECTURE.md` and
+- 2026-11-23: first version, from the tools lane's old architecture notes and
   `plan/rearchitecture.md` (one analysis pipeline).
