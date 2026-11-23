@@ -488,3 +488,7 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 ### Request from spec (2026-11-23): a lowercase `const` is E0208 (decision 363)
 
 `const big = 5` is accepted, and `match 5: big => ...` then tests the constant instead of binding, against R01.3.3. Emit E0208 for a lowercase `const` as for an uppercase `let`. Case: `core-01/lowercase-const-rejected.cp`.
+
+### Request from spec (2026-11-23): `V.cuts` is a domain, so `V.cuts.range` works
+
+`V.cuts.range` is E0203 "a `Range<V.cuts>` has no member `range`": `V.cuts` is typed as a range value, not the domain R04.2.5 says. Spec example `04-indices.md` (Methods, `V.cuts.range.last_true(...)`) hits it. Case: `core-04/cuts-domain-has-range.cp`. General fix: `D.cuts` resolves to a domain everywhere a domain name does (`.range`, `[D.cuts]T`, `read<D.cuts>()`).
