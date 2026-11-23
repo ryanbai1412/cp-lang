@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2396 (994 passing). Rules: 559.
+Cases: 2397 (994 passing). Rules: 559.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 2396 (994 passing). Rules: 559.
 - R04 (04-indices.md): 66 rules, 107 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 76 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 89 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -378,7 +378,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.8.2 [3+ 4-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
 - R05.8.3 [1+ 1-]: Different projections of one receiver always conflict (`g.row(r)` and `g.col(c)`).
 - R05.8.4 [1+ 8-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
-- R05.9.1 [3+ 5-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
+- R05.9.1 [3+ 6-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
 - R05.9.2 [1+ 2-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
 - R05.9.3 [1+ 1-]: `break`, `continue` and `return` in `B` act on the loop and the enclosing fn, through recu...
 - R05.9.4 [1+ 4-]: Walking a `mut`-lent generator value twice is legal and linted: the second walk sees what ...
@@ -766,7 +766,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0605 Invalid `Index` implementation: 1 case(s)
 - E0606 Missing trait implementation for operator: 21 case(s)
 - E0607 Moved while captured by a closure: 3 case(s)
-- E0608 Use of moved value: 12 case(s)
+- E0608 Use of moved value: 13 case(s)
 - E0701 Ambiguous trait method: 1 case(s)
 - E0702 Overload by type: 2 case(s)
 - E0703 Operator tuple: 1 case(s)
@@ -829,8 +829,7 @@ prepends it.
   - line 247: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
 - 04b-keys.md: 13 blocks, 8 with a case, 4 spec-only, 1 neither
   - line 165: `let t = s[l..r].rebase`
-- 05-ownership.md: 56 blocks, 53 with a case, 2 spec-only, 1 neither
-  - line 985: `fn evens(xs: [V]Int) -> lends Seq<Int> = xs.filter(x => x % `
+- 05-ownership.md: 56 blocks, 54 with a case, 2 spec-only, 0 neither
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
 - 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
@@ -838,7 +837,7 @@ prepends it.
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-4 of 108 blocks have neither a case nor a spec-only reason.
+3 of 108 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 
