@@ -16,6 +16,12 @@ Lanes never block on an entry: they work on the default and on everything else. 
 
 ## Open
 
+### tools: are struct fields private to their module unless `pub`?
+Today `field := 'var'? NAME ...` has no `pub`, so `t.lz` on a std `SegTree` checks; non-`pub` methods (`t.push(1)`) check from another module too.
+Recommendation: a field or method is private to its module unless `pub`, as top-level names are; std marks its API fields (`Rooted`'s `parent`, `SegTree`'s `source`) `pub`. It keeps a type's state its own and makes completion the checker's rule, not an editor heuristic.
+Reverse: drop the check; existing code keeps working, since only cross-module access changes.
+Meanwhile: editors show `pub` methods and documented fields of another module's type (decision 351); the checker is unchanged.
+
 ### site: should the landing show 0.3 programs the compiler cannot run yet?
 Options: (a) keep them as tabs with a "0.3 spec" badge and no Run, as today; the syntax and library tabs show no Run button; 4 of their 8 programs now run with a sample input (`web/content/landing/syntax/records.cp`), 4 are still `spec` (`web/content/landing/library/ioi05p2.spec.cp`); (b) show only programs that run, adding the rest as the compiler catches up; (c) lead each tab group with runnable programs, spec ones after.
 Recommendation: (c). The first thing a visitor clicks should run; the 0.3 shape still shows, labelled.

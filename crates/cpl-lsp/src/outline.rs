@@ -128,6 +128,21 @@ impl Outline {
         self.entries.iter().find(|e| e.name == name)
     }
 
+    /// Whether another module sees `member` of the type `name` declared
+    /// here: a `pub` method, or a documented field. A type with no `pub`
+    /// methods is plain data, and shows every field.
+    pub fn offers(&self, name: &str, member: &Entry) -> bool {
+        match member.kind {
+            Kind::Field => {
+                !member.doc.is_empty()
+                    || self
+                        .members_of(name)
+                        .all(|m| m.kind == Kind::Field || !m.public)
+            }
+            _ => member.public,
+        }
+    }
+
     /// The members of the type `name` declared here, its own and its impls'.
     pub fn members_of<'a>(&'a self, name: &'a str) -> impl Iterator<Item = &'a Entry> + 'a {
         let own = self.find(name).into_iter().flat_map(|e| e.members.iter());
@@ -169,7 +184,16 @@ impl Reader<'_> {
 
     /// The `///` lines above a declaration, skipping its decorators.
     fn doc(&self, stmt: &Stmt) -> String {
-        let start = (self.base + stmt.span.start) as usize;
+        self.doc_at(stmt.span.start)
+    }
+
+    /// The `///` lines above the declaration starting at `start`.
+    fn doc_at(&self, start: u32) -> String {
+        let start = (self.base + start) as usize;
+        // From the start of its line, past `var` or a decorator before it.
+        let start = self.text[..start.min(self.text.len())]
+            .rfind('\n')
+            .map_or(0, |i| i + 1);
         let mut lines = Vec::new();
         for line in self.text[..start.min(self.text.len())].lines().rev() {
             let line = line.trim();
@@ -233,7 +257,7 @@ impl Reader<'_> {
                         kind: Kind::Field,
                         public: true,
                         detail: format!("{}: {}", f.name.text, squash(self.slice(f.ty.span))),
-                        doc: String::new(),
+                        doc: self.doc_at(f.name.span.start),
                         params: Vec::new(),
                         instance: true,
                         members: Vec::new(),
@@ -243,6 +267,10 @@ impl Reader<'_> {
             }
             StmtKind::Struct(s) => {
                 let mut e = entry(&s.name, Kind::Struct, self.header(s.name.span));
+                let line_of = |at: cpl_diag::Span| {
+                    let at = ((self.base + at.start) as usize).min(self.text.len());
+                    self.text[..at].rfind('\n')
+                };
                 e.members = s
                     .fields
                     .iter()
@@ -251,7 +279,12 @@ impl Reader<'_> {
                         kind: Kind::Field,
                         public: true,
                         detail: format!("{}: {}", f.name.text, squash(self.slice(f.ty.span))),
-                        doc: String::new(),
+                        // A parameter on the struct's own line has the struct's doc.
+                        doc: if line_of(f.name.span) == line_of(s.name.span) {
+                            String::new()
+                        } else {
+                            self.doc_at(f.name.span.start)
+                        },
                         params: Vec::new(),
                         instance: true,
                         members: Vec::new(),

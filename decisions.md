@@ -7463,3 +7463,8 @@ The spec has spelled optionals `Some(x)`/`None` since decision 157, but the chec
 ## 350. A `Str` counts with `count(p)`; `count(c: Char)` leaves the spec (2026-11-23)
 
 `spec/lib/strings.md` and `std/strings.cp` gave `Str` a `count(c: Char)` beside every sequence's `count(p)`, an overload R06.1.6 rules out, and under decision 326 the type's own method would hide the predicate form on `Str` (rebuild 7, H-COUNT-STR). Rule: one `count(p)`; a character is `s.count(c => c == 'a')`. Reason: one spelling per idea, and the predicate form already works on every `Str`. Reverse: put `count(c: Char)` back in `spec/lib/strings.md` and name it apart (`count_char`) so it overloads nothing.
+
+## 351. Editors show a library type's API, not its internals (2026-11-23)
+
+Completion, hover and signature help on a type from another module (std included) offer only its `pub` methods and its documented fields; a type with no `pub` methods is plain data and shows every field. `SegTree` offered `m`, `t` and `lz` above `fold`. Methods rank before such a type's fields. The language has no `pub` on fields, and today `t.lz` and a non-`pub` `t.push(1)` still check (QUESTIONS: field visibility). Reason: completion lists what a contestant should call. Reverse: drop `Outline::offers` from `type_members` and the hover filter in `cpl-lsp`.
+

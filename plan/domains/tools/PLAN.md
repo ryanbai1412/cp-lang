@@ -66,6 +66,7 @@ Each local fix tonight, and the mechanism that would remove its whole class.
 | Windows Neovim: `:Cpl check` and the run lens draw nothing in a headless terminal buffer | done: every terminal check in smoke.lua goes through `terminal_shows`, which runs the command itself on Windows | tools |
 | VS Code: a debug session one integration test left stopped added Replay lenses to the lens test | done: the runner stops debugging after every test | tools |
 | LSP range and on-type formatting format the whole file and send back only the changed lines that touch the selection; a file that does not parse gets no edits, so on-type formatting is silent mid-edit | `cpl-fmt` formats each top-level item that parses and leaves the rest as written | lint-fmt |
+| `SegTree` completion and hover listed internal `m`, `t`, `lz`: editors now show only `pub` methods and documented fields of another module's type (decision 351) | visibility in the language: fields and methods private to their module unless `pub`, enforced by the checker, so editors use the checker's rule (QUESTIONS) | spec + compiler |
 
 ## Next
 Milestone 1 order, items 1-3, each a small commit with its golden test.

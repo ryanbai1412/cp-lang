@@ -417,3 +417,58 @@ fn signature_help_shows_defaults_and_named_only_parameters() {
     let (label, ..) = signature("use std.mod.{Comb}\nlet c = Comb<7>.new(|)\n");
     assert!(label.starts_with("new(limit: Int = 0) -> Comb<"), "{label}");
 }
+
+#[test]
+fn a_library_type_offers_its_api_not_its_internals() {
+    let src = "domain V = 0..5\nvar t = SegTree(max, [V] v => 0)\nt.|\n";
+    let items = completions(src);
+    let shown = labels(&items);
+    for internal in [
+        "m",
+        "t",
+        "lz",
+        "has_lz",
+        "span",
+        "log",
+        "build",
+        "push",
+        "pull_node",
+    ] {
+        assert!(!shown.contains(&internal), "{internal} shown: {shown:?}");
+    }
+    // Its methods rank first, and a documented field is still offered.
+    assert!(
+        shown.contains(&"fold") && shown.contains(&"source"),
+        "{shown:?}"
+    );
+    let sorted = ask_at("textDocument/completion", src);
+    let sort_of = |label: &str| {
+        let items = sorted.at(&["items"]).as_array().unwrap_or(&[]);
+        let item = items
+            .iter()
+            .find(|i| i.at(&["label"]).as_str() == Some(label));
+        item.and_then(|i| i.at(&["sortText"]).as_str())
+            .unwrap_or("")
+            .to_string()
+    };
+    assert!(
+        sort_of("fold") < sort_of("source"),
+        "{} {}",
+        sort_of("fold"),
+        sort_of("source")
+    );
+    // Hover on the type shows the same.
+    let (mut server, _) = open(&src.replace("t.|\n", "print(t)\n"));
+    let hover = hover_at(&mut server, 1, 10);
+    let text = hover.at(&["contents", "value"]).as_str().unwrap_or("");
+    assert!(
+        text.contains("fn fold(") && text.contains("source:"),
+        "{text}"
+    );
+    for internal in ["\n  lz:", "\n  m:", "fn push(", "fn build("] {
+        assert!(!text.contains(internal), "{internal} in {text}");
+    }
+    // A type of this file shows everything it has.
+    let items = completions(&format!("{ROAD}fn f(r: Road) -> Int = r.|\n"));
+    assert!(labels(&items).contains(&"to"), "{items:?}");
+}

@@ -696,13 +696,20 @@ fn type_members(
 ) -> Vec<(Entry, u8)> {
     let mut seen = HashSet::new();
     let mut out = Vec::new();
-    for outline in outlines_for(cursor, std, name) {
+    for (index, outline) in outlines_for(cursor, std, name).into_iter().enumerate() {
+        // The first outline is this file's; any other is another module's,
+        // where only what it offers its users is shown.
+        let foreign = index > 0;
+        let offered = |m: &Entry| !foreign || outline.offers(name, m);
         let Some(def) = outline.find(name) else {
             if outline.impls.iter().all(|(target, _)| target != name) {
                 continue;
             }
             for member in outline.members_of(name) {
-                if member.instance == instance && seen.insert(member.name.clone()) {
+                if member.instance == instance
+                    && offered(member)
+                    && seen.insert(member.name.clone())
+                {
                     out.push((member.clone(), 1));
                 }
             }
@@ -722,7 +729,7 @@ fn type_members(
                 Kind::Variant | Kind::Domain | Kind::Const => !instance,
                 _ => member.instance == instance,
             };
-            if !wanted || !seen.insert(member.name.clone()) {
+            if !wanted || !offered(member) || !seen.insert(member.name.clone()) {
                 continue;
             }
             let mut member = member.clone();
@@ -730,7 +737,10 @@ fn type_members(
             for param in &mut member.params {
                 param.ty = substitute(&param.ty, &bindings);
             }
+            // A library type's own fields are its state; what it offers is
+            // its methods, so they come first.
             let sort = match member.kind {
+                Kind::Field if foreign => 2,
                 Kind::Field | Kind::Getter => 0,
                 _ => 1,
             };

@@ -6,6 +6,7 @@
 //! (or an internal-error diagnostic) and the server keeps running.
 
 use crate::complete::{self, Cursor, StdLib};
+use crate::outline::Outline;
 use crate::rename;
 use crate::uri::uri_of_path;
 use cpl_check::{Database, DeclKind, Definition};
@@ -232,6 +233,12 @@ impl Server {
                 let Some(mut hover) = self.db.hover(&uri, offset) else {
                     return Ok(Reply::default());
                 };
+                if let Some(def) = self.db.definition_location(&uri, offset) {
+                    if def.path != uri {
+                        let text = self.db.file_text(&def.path).unwrap_or_default();
+                        hover.text = offered_lines(&hover.text, &Outline::of_source(&text));
+                    }
+                }
                 let declared = self
                     .db
                     .definition(&uri, offset)
@@ -1222,6 +1229,34 @@ fn annotated(rest: &str) -> bool {
         c.is_alphanumeric() || c == '_' || c == ',' || c == ')' || c.is_whitespace()
     })
     .starts_with(':')
+}
+
+/// A struct from another module, as hover shows it: what it offers its
+/// users, without its internal fields and methods.
+fn offered_lines(text: &str, outline: &Outline) -> String {
+    let Some(name) = text
+        .strip_prefix("struct ")
+        .map(|rest| rest.split(['<', '\n', ' ']).next().unwrap_or(rest))
+    else {
+        return text.to_string();
+    };
+    let members: Vec<_> = outline.members_of(name).collect();
+    text.lines()
+        .filter(|line| {
+            let Some(member) = line.strip_prefix("  ") else {
+                return true;
+            };
+            let member = member.strip_prefix("fn ").unwrap_or(member);
+            let word = member
+                .split(|c: char| !(c.is_alphanumeric() || c == '_'))
+                .next();
+            members
+                .iter()
+                .find(|m| Some(m.name.as_str()) == word)
+                .is_none_or(|m| outline.offers(name, m))
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 fn hover_markdown(hover: &cpl_check::Hover) -> String {
