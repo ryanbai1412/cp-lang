@@ -37,6 +37,25 @@ Not covered (owner instead):
 5. Prelude matches the chapter tables (decisions 150, 281); std modules acyclic.
 6. Probes: a cold agent writes unseen problems from the docs alone with std calls that compile first time.
 
+## Milestone 1 (plan/product/MILESTONE-1.md)
+
+What it needs from stdlib: the foundational containers, algorithms and math for representative contests (steps 4 Solve and 7 Compete), and documentation examples that work (step 1 and "Documentation examples must actually work").
+
+The **core set** is 20 modules: `seq io math mod heap deque hashmap bag dsu fenwick segtree lazy graph strings prefix search bitset grid ntt sparse`. Today 1761/1883 of their doc examples pass (`cpl-conform docs <m>`, 2026-11-22); all 40 modules 2533/2765; std conformance 909/918.
+
+Exit criteria:
+1. Every doc example in the core set passes `cpl-conform docs` (1883/1883), in the interpreter and in C++.
+2. No `todo` body is reachable from a core-set public fn (`cpl-conform docs` R0402 count 0 for the core set).
+3. Every std gap the idioms acceptance runs and writable-from-docs runs hit (a missing or wrong std call) is fixed or has a GAPS.md line with an open compiler request; none left untriaged.
+4. Matched C++ time for core containers is not a contest disadvantage: no core std fn above 1.5x its builtin or hand-written C++ on the perf gate.
+
+Deferred (milestone "what can wait"): breadth beyond the core set (`geometry`, `flow`, `tree`, `persistent`, `poly`, `subset`, `mo`, `slope`, ...) unless an acceptance run needs it; the 1.2x Library Checker target; builtin-to-body moves that don't fix a user-visible bug (Q3 ratchet work continues only when cheap); prelude trimming; the 12/40 standalone `cpl check` metric.
+
+Top 3 next steps:
+1. `io`: 38 of 127 examples fail, and input/output is on every problem's path.
+2. Triage the std misses in the idioms acceptance runs and `research/writable-from-docs.md` (49/55 full pass) into fixes or compiler requests.
+3. Clear the rest of the core set: `seq` (19 failing), `graph` (17), `bag` (12), `fenwick` (7), `strings` (7).
+
 ## Milestones
 
 - **M1 Land and settle** (phase 2, first hours). Exit: the 4 in-flight branches are on main or noted superseded (`git cherry`); `std_acyclic` runs in the gate; `stdlib_todo` <= 200 (the branches cut 30, 82 and 8 on their own bases; re-measured after rebase); std conformance >= 815/832.
