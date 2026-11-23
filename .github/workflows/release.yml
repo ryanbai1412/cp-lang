@@ -39,7 +39,7 @@ concurrency:
 
 jobs:
   plan:
-    if: github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
+    if: github.event_name != 'workflow_run' || ((github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure') && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
     outputs:
       go: ${{ steps.green.outputs.go }}
@@ -61,11 +61,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           EVENT: ${{ startsWith(github.ref, 'refs/tags/v') && 'stable-tag' || github.event_name }}
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
+          RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
         run: |
           go=true
           case "$EVENT" in
             workflow_run)
               sha=$RUN_SHA
+              if [ "$RUN_CONCLUSION" != success ]; then
+                # Red CI: GitHub drops most hourly crons on this repo, so a
+                # red run ships the newest shippable commit instead
+                # (decision 408), at most once an hour and one at a time.
+                last=$(gh release view edge -R "$GITHUB_REPOSITORY" --json publishedAt --jq .publishedAt 2>/dev/null || true)
+                age=$(( $(date +%s) - $(date -d "${last:-1970-01-01T00:00:00Z}" +%s) ))
+                busy=$(gh run list -R "$GITHUB_REPOSITORY" --workflow release.yml --status in_progress \
+                  --json databaseId --jq "[.[] | select(.databaseId != $GITHUB_RUN_ID)] | length")
+                if [ "$age" -lt 3600 ] || [ "$busy" != 0 ]; then
+                  echo "edge is ${age}s old and $busy other release run(s) are going; skipping"; go=false
+                else
+                  sha=$(scripts/release/shippable.sh || true)
+                  [ -n "$sha" ] || { echo "no shippable main commit yet; skipping"; sha=$RUN_SHA; go=false; }
+                fi
+              fi
               # Publish whenever edge is behind this green commit; the
               # concurrency group keeps one release in flight, and the newest
               # waiting trigger replaces any older one.
