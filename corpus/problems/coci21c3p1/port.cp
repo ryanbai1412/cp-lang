@@ -1,4 +1,8 @@
-// Lista, in the forms proto/cpc builds today. See ../coci21c3p1.cp.
+// Source: COCI 2021/2022 Contest 3 #1 (Lampice), https://dmoj.ca/problem/coci21c3p1
+// Problem: n <= 50 lamp colours 1 <= a_i <= 1000 and 1 <= k <= n. Cut lamps off both ends so some
+//   pattern repeats k times in a row; print the pattern's length and the pattern (any one), or -1.
+// Solution: brute force: for every start l and pattern length len with k len lamps left, check
+//   a[i] == a[i + len] across the block; print the first hit. O(n^3).
 // original: corpus/submissions/4196130.cpp
 let n: Int = read()
 let k: Int = read()

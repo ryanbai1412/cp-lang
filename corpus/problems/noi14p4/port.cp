@@ -1,6 +1,10 @@
-// NOI 2014 Zoo: for every prefix, count its borders (a proper prefix that is
-// also a suffix) that are at most half as long; print the product of
-// (count + 1) over all prefixes.
+// Source: NOI 2014 P4 (Zoo), https://dmoj.ca/problem/noi14p4
+// Problem: for a lowercase string S (|S| <= 1e6), num[i] counts the borders of the prefix S[..i]
+//   (proper, both prefix and suffix) of length <= i / 2. Print the product of (num[i] + 1) over
+//   all i, mod 1e9 + 7. Up to 5 strings (multitest).
+// Solution: with the prefix function pi, depth[j] = depth[pi[j - 1]] + 1 counts the borders of
+//   prefix j, itself included. A second KMP pointer `half` follows the longest border, falling
+//   back along pi until 2 half <= i + 1; then num = depth[half]. Amortised O(|S|).
 use std.strings.{prefix_function}
 
 type Z = Mod<1_000_000_007>

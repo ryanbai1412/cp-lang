@@ -1,11 +1,10 @@
-// Codeforces 2229 D — 2xN Threshold Binary Search
-//
-// `a0` and `a1` hold a `2 x n` grid of values in `1..=2 * n`. For a threshold
-// `v`, map each column `i` to its net sign `s = Int(a0[i] >= v) + Int(a1[i] >= v) - 1`
-// in `{-1, 0, +1}` and drop zeros. Consecutive `-1` columns merge into a single
-// `-1` run, so `v` is achievable iff `+1` columns outnumber `-1` runs.
-// Raising `v` only decreases column signs (shrinking `+1`s and creating/widening
-// `-1` runs), so `is_good(v)` is monotone non-increasing on `1..=2 * n`.
+// Source: Codeforces 2229D (Me When Median Problem), https://codeforces.com/contest/2229/problem/D
+// Problem: arrays a, b of n <= 1e5 values in 1..=2n. n - 1 times pick adjacent columns i, i + 1,
+//   sort a_i, a_(i+1), b_i, b_(i+1) as s1..s4 and merge them into one column (s2, s3). Print the
+//   largest final min(a_1, b_1). Multitest, sum of n <= 1e5.
+// Solution: binary search the threshold v (feasibility only falls as v grows). A column scores +1
+//   if both values are >= v, -1 if both are below, 0 otherwise; drop the zeros and merge runs of
+//   -1 into one. v is reachable iff the +1 columns outnumber the -1 runs. O(n log n).
 
 @!multitest
 let n: 1..=200_000 = read()

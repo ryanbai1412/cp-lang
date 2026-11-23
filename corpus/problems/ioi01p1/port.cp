@@ -1,7 +1,8 @@
-// IOI 2001 Mobile Phones: an n by n grid of base stations, all at 0.
-// "1 x y a" adds a to the count of cell (x, y); "2 l b r t" asks for the
-// total in the rectangle l..=r by b..=t. "0 n" opens the session and "3"
-// ends it.
+// Source: IOI 2001 P1 (Mobile Phones), https://dmoj.ca/problem/ioi01p1
+// Problem: an S x S grid (S <= 1024) of counts, all 0. Commands: "0 S" starts, "1 X Y A" adds A
+//   (possibly negative) to cell (X, Y), "2 L B R T" prints the sum over L <= X <= R,
+//   B <= Y <= T, "3" ends. At most 60002 commands; cells stay in 0..=32767.
+// Solution: a 2D Fenwick tree over X x Y: point add and rectangle sum in O(log^2 S) each.
 
 let (_, n): (Int, Int) = read()
 domain X = 0..n

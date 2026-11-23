@@ -1,8 +1,10 @@
-// IOI 2009 Raisins: a chocolate slab of n by m pieces, each with some
-// raisins. Cut it into single pieces with straight full cuts; a cut costs
-// the raisins on the slab being cut. Print the least total cost.
-// pay(r1, r2, c1, c2) = cheapest way to take rows r1..=r2, columns c1..=c2
-// apart: its raisins, plus the best first cut.
+// Source: IOI 2009 P4 (Raisins), https://dmoj.ca/problem/ioi09p4
+// Problem: an n x m chocolate (n, m <= 50), 1..=1000 raisins per piece. Cut it into single pieces
+//   with straight end-to-end cuts of one block at a time; each cut costs the raisins on the block
+//   being cut. Print the least total cost.
+// Solution: pay(r1, r2, c1, c2), memoised over all O(n^2 m^2) sub-blocks, is 0 for one piece, else
+//   the block's raisins (2D prefix sums) plus the best split by a row cut or a column cut.
+//   O(n^2 m^2 (n + m)).
 // original: corpus/submissions/4817803.cpp
 let n: 1..=50 = read()
 let m: 1..=50 = read()
