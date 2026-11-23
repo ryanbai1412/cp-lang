@@ -588,3 +588,14 @@ fn a_bare_variant_two_enums_declare_needs_an_expected_type() {
         assert!(check(ok).is_empty(), "{ok}: {:?}", check(ok));
     }
 }
+
+#[test]
+fn a_typo_is_never_offered_a_fn_whose_self_is_another_type() {
+    let d = one("let a = [3, 1, 2]\nprint(a.hlve())\n");
+    assert_eq!(d.code.0, "E0203");
+    assert!(
+        !d.help.as_deref().unwrap_or("").contains("halve"),
+        "{:?}",
+        d.help
+    );
+}

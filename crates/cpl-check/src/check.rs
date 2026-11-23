@@ -1322,7 +1322,13 @@ pub(crate) fn leading_name(text: &str) -> &str {
 }
 
 /// The member meant by `.name` of a `base` the spec has no such member on.
-pub(crate) fn spec_member_typo(base: &Ty, name: &str) -> Option<String> {
+/// The closest member `base` has to the typo `name`, among those `keep`
+/// accepts (`keep` turns down a std fn whose `self` is another type).
+pub(crate) fn spec_member_typo(
+    base: &Ty,
+    name: &str,
+    keep: &mut dyn FnMut(&str) -> bool,
+) -> Option<String> {
     use crate::builtins::{builtin_members, Receiver, BUILTIN_MEMBERS};
     // A generator has only what std declares on sequences (R07.1.1).
     if matches!(base, Ty::Named { name, .. } if name == "Gen") {
@@ -1358,11 +1364,20 @@ pub(crate) fn spec_member_typo(base: &Ty, name: &str) -> Option<String> {
     let range = matches!(base, Ty::Named { name, .. } if name == "Range");
     if receiver.is_some() && !range {
         let methods = prelude::spec_receiver_method_names();
-        return closest(name, own.chain(methods.iter().map(String::as_str)));
+        return closest(
+            name,
+            own.chain(methods.iter().map(String::as_str))
+                .filter(|m| keep(m)),
+        );
     }
     let spec = prelude::spec_member_names();
     let all = BUILTIN_MEMBERS.iter().map(|m| m.name);
-    closest(name, own.chain(spec.iter().map(String::as_str)).chain(all))
+    closest(
+        name,
+        own.chain(spec.iter().map(String::as_str))
+            .chain(all)
+            .filter(|m| keep(m)),
+    )
 }
 
 /// Where a statement `back` bytes before the item being checked moves

@@ -135,6 +135,49 @@ pub fn spec_receiver_method_names() -> &'static std::collections::HashSet<String
     })
 }
 
+/// The `self` each top-level std `fn name(self: T, ..)` takes, by name:
+/// `Some(head)` for a named type (`Range`, `List`, `[` for an array) and
+/// `None` for one of the fn's own type parameters, which takes any receiver.
+pub fn std_self_heads() -> &'static std::collections::HashMap<String, Vec<Option<String>>> {
+    static HEADS: OnceLock<std::collections::HashMap<String, Vec<Option<String>>>> =
+        OnceLock::new();
+    HEADS.get_or_init(|| {
+        let mut heads: std::collections::HashMap<String, Vec<Option<String>>> = Default::default();
+        for (_, text) in crate::modules::std_modules() {
+            for line in text.lines() {
+                let Some(rest) = line.strip_prefix("pub fn ") else {
+                    continue;
+                };
+                let name: String = rest
+                    .chars()
+                    .take_while(|c| c.is_alphanumeric() || *c == '_')
+                    .collect();
+                let rest = &rest[name.len()..];
+                let (generics, rest) = match rest.strip_prefix('<') {
+                    Some(g) => g.split_once(">(").unwrap_or(("", "")),
+                    None => ("", rest.strip_prefix('(').unwrap_or("")),
+                };
+                let rest = rest.strip_prefix("mut ").unwrap_or(rest);
+                let Some(ty) = rest.strip_prefix("self: ") else {
+                    continue;
+                };
+                let head: String = match ty.strip_prefix('[') {
+                    Some(_) => "[".into(),
+                    None => ty
+                        .chars()
+                        .take_while(|c| c.is_alphanumeric() || *c == '_')
+                        .collect(),
+                };
+                let own = generics
+                    .split(',')
+                    .any(|g| g.split(':').next().unwrap_or("").trim() == head);
+                heads.entry(name).or_default().push((!own).then_some(head));
+            }
+        }
+        heads
+    })
+}
+
 /// The top-level std methods that do work and need nothing but `self`:
 /// every `pub fn name(self: S, ..)` of that name gives the rest defaults and
 /// is not `@get`, so reading one without `()` hides work (R07.1.7).
