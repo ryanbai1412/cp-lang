@@ -256,7 +256,7 @@ Language features, with the modules that need them:
   algebraic laws.
 
 Still missing from the core and wanted here, owned by the core lane:
-variadic `print`/`read` for the `Read`/`Print` derives, a niche trait so
+variadic `print`/`read` for the `Read`/`Show` derives, a niche trait so
 user optionals are 8 bytes, and overloading on argument labels (would let the
 four-name family become `first(after:)` if we ever want it).
 

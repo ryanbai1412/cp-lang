@@ -35,11 +35,11 @@ impl Ord for Frac:
   both, resolved by `Trait.m(x, ...)`. No auto-ref or auto-deref. (R08.1.4)
 - Operators are trait methods (`Add`, `Sub`, `Mul`, `Div`, `Rem` with
   `Rhs` and `Out`, `Neg`, `BitAnd`, ..., `Index`, `Ord`, `Eq`, `Hash`,
-  `Print`, `Read`, `Unwrap`). Compound assignment comes from the
+  `Show`, `Read`, `Unwrap`). Compound assignment comes from the
   operator. (R08.1.5)
 - **Derived impls are structural**: tuples, records, structs and enums
   get `Eq`, `Ord` (lexicographic in declaration order, variants in
-  declaration order), `Hash`, `Print` and `Read` when every field has
+  declaration order), `Hash`, `Show` and `Read` when every field has
   them, unless the type writes its own impl. Tuples and records (not
   structs, whose fields may be private) also get `+`, `-` and `Zero`
   fieldwise when every field has them, so a rerooting DP over

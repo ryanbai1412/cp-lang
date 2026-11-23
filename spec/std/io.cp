@@ -4,7 +4,7 @@
 /// The answer word for `ok`: `io.answers.0` when true, else `io.answers.1`.
 ///
 /// The words default to `("YES", "NO")`; a judge profile or `with io(answers: ("Yes", "No"))`
-/// changes them for a scope, and `answers:` overrides them for one call. `Bool` is not `Print`,
+/// changes them for a scope, and `answers:` overrides them for one call. `Bool` is not `Show`,
 /// so `print(ok)` is an error that suggests `print(yes(ok))`. The result is a `Str`, so it also
 /// works in interpolation.
 ///

@@ -59,7 +59,7 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   on read like a range (decision 134). (R02.3.2)
 - `+` concatenates (allocating; the cost is visible as a new value);
   `s.push(c)` appends in place. (R02.3.3)
-- Interpolation `"{x}"` formats through the `Print` trait (chapter 10).
+- Interpolation `"{x}"` formats through the `Show` trait (chapter 10).
 
 ## 2.4 Optionals
 

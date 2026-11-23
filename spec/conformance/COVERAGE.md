@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2203 (995 passing). Rules: 531.
+Cases: 2205 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 2203 (995 passing). Rules: 531.
 - R07 (07-sequences.md): 88 rules, 105 cases; 0 uncovered, 2 happy-path only, 2 negative only
 - R08 (08-traits-generics.md): 29 rules, 71 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
-- R10 (10-io.md): 16 rules, 63 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R10 (10-io.md): 16 rules, 65 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 26 cases; 0 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 25 cases; 0 uncovered, 3 happy-path only, 0 negative only
@@ -563,10 +563,10 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.2.6 [1+ 4-]: A bad token traps with the input position and the expected type.
 - R10.2.7 [2+ 1-]: `read_all<T>()` reads every remaining `T` until the input ends, for statements that give n...
 - R10.3.1 [1+ 1-]: `print(x, y, ...)` joins by `io.sep` and ends the line; `print(xs)` prints a sequence on o...
-- R10.3.2 [3+ 0-]: Interpolated strings format each piece through `Print`; positions print in the file's base...
-- R10.3.3 [1+ 2-]: `Bool` is not `Print`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word...
+- R10.3.2 [3+ 0-]: Interpolated strings format each piece through `Show`; positions print in the file's base;...
+- R10.3.3 [1+ 2-]: `Bool` is not `Show`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word ...
 - R10.3.4 [2+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`.
-- R10.3.5 [1+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
+- R10.3.5 [3+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
 - R10.3.6 [2+ 0-] *happy-path only*: Output mirrors input, shape for shape, except that counts are never written for you. `[R, ...
 
 ### R11: 11-modules-prelude.md

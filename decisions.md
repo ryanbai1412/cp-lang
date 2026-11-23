@@ -5905,3 +5905,13 @@ does); `core-03/runtime-modulus-read.cp` covers R03.5.1. The parser also
 takes `Mod<p>` as the same type, an undocumented second spelling logged
 here as debt. Reason: rebuild round 3's H-RUNTIME-MODULUS-SPELLING.
 Reverse: write `Mod<p>` at the same sites and in R03.5.1.
+
+## 233. The printing trait is `Show` (2026-11-22)
+
+Chapters 2, 8, 10 and 12 named it `Print`; every stdlib impl (`std/mod.cp`,
+`algebra.cp`, `bitset.cp`, `geometry.cp`, `math.cp`) and the checker use
+`Show` (`impl Print` is E0204, no such trait). The spec now says `Show`,
+with `fn show(self) -> Str`, and `core-10/show-impl-*.cp` cover R10.3.5.
+Reason: rebuild round 3's H-PRINT-TRAIT-NAME; `print` the function and
+`Show` the trait no longer share a name. Reverse: rename back in those
+chapters and add `Print` to the checker.

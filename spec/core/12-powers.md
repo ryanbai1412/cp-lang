@@ -278,7 +278,7 @@ an inline bound is E0204).
 
 ## W11. Reading and printing (P11)
 
-`read<T>()` and `print(x)` go through `Read` and `Print`, derived for
+`read<T>()` and `print(x)` go through `Read` and `Show`, derived for
 records (W3) and defined by hand for anything else. Format options are
 named arguments: `read<[n]Int>(base: 1)`, `print(xs, sep: "\n")`.
 `read<Graph<V, E>>(directed: false, weighted: true)` is ordinary library

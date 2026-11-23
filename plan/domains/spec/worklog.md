@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rebuild-3 H-PRINT-TRAIT-NAME: decision 233, the core chapters say `Show`. `core-10/show-impl-struct.cp` passes; `core-10/show-impl-enum.cp` fails (an enum's `impl Show` is ignored, in run and build; request in compiler/worklog.md).
 - Rebuild-3 H-RUNTIME-MODULUS-SPELLING: decision 232, `type Z = Mod(p)` in lib/math.md, core/03 and the `std/mod.cp` header (a doc-comment-only fix, noted in stdlib/worklog.md); `core-03/runtime-modulus-read.cp` passes.
 - Rebuild-3 H-MAP-DEFAULT-KIND: decision 231, lib/containers.md §1.7/§2.8 say `Map` is the default lookup table (checked: `cpl build` of a `Map` whose order is unobserved emits `CpHash`).
 - Rebuild-3 H-RECORD-PATTERN-SHORTHAND: decision 230, R02.7.6 and the grammar allow `(total:, take:)` in patterns. Record patterns do not parse at all today (E0105 in `let`, E0103 in `match`/`for`), so the 4 new `core-02/record-pattern-*.cp` cases fail; request in compiler/worklog.md.
