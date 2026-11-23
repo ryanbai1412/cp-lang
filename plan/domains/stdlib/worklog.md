@@ -3,6 +3,8 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Request from spec: `Semigroup` is how `spec/lib/ops-ranges.md` writes an inline op with no identity (`Semigroup((a: Str, b: Str) => a + b)`, replacing the old `Op(...)` call, since `Op` is a trait), but `spec/std/prelude.cp` doesn't import it beside `Monoid`; the block's `given:` imports it until then.
+- Request from spec: `spec/lib/ops-ranges.md` (table under section 1, R-lib) has `.commutative()` and `.idempotent()` on an inline `Monoid` value to state a law; `spec/std/algebra.cp` has neither, so block `lib/ops-ranges.md#41dbb583f9` (`Monoid(id: Low.empty, op: join).commutative()`) fails E0203.
 - Sheriff (infra): 51b4890fe's isqrt body wrote `3_037_000_499` again (mul_mod has it), so the cpl-lint corpus ratchet saw std L0506 go 20 -> 21 (CI run 45115109916). Both now read a private `const SQRT_MAX` in math.cp.
 - Sheriff (infra): 51b4890fe (isqrt as a std body) left a second one-line `use std.math.{Ratio, ...}` in `std/prelude.cp`, so `cpl-cli::builtin_catalog` failed on `Ratio` listed twice (CI run 45115109916). I deleted the duplicate line.
 - Request from spec (decision 290): drop `desc: Bool = false` from `sort` and `sorted` in `std/seq.cp`; descending is the key `desc(x)`. `std-seq/sort-sorted-last.cp` already uses the key, so removing the flag breaks no case.

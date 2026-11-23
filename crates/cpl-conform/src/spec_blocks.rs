@@ -56,7 +56,13 @@ fn parse_marker(inner: &str) -> Marker {
     } else if let Some(c) = inner.strip_prefix("rejects:") {
         Marker::Rejects(c.trim().to_string())
     } else if let Some(c) = inner.strip_prefix("given:") {
-        let lines: Vec<&str> = c.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
+        let lines: Vec<&str> = c.lines().filter(|l| !l.trim().is_empty()).collect();
+        let indent = lines
+            .iter()
+            .map(|l| l.len() - l.trim_start().len())
+            .min()
+            .unwrap_or(0);
+        let lines: Vec<&str> = lines.iter().map(|l| l[indent..].trim_end()).collect();
         Marker::Given(lines.join("\n"))
     } else {
         Marker::None

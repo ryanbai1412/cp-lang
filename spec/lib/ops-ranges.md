@@ -88,10 +88,16 @@ only an `Op`: structures over it still build, and their folds return
 
 Inline, for the common case with no extra laws:
 
-<!-- spec-only: fragment: `Low` is the reader's own struct (fields, `empty`, `join`) -->
+<!-- given:
+  use std.algebra.{Semigroup}
+  struct Low(cover: Int, len: Int)
+  impl Low:
+      @get pub fn empty() -> Low = Low(0, 0)
+      pub fn join(self, o: Low) -> Low = Low(min(cover, o.cover), len + o.len)
+-->
 ```python
 let lo = Monoid(id: Low.empty, op: (a, b) => a.join(b))
-let cat = Op((a: Str, b: Str) => a + b)     // no identity: a semigroup
+let cat = Semigroup((a: Str, b: Str) => a + b)  // no identity: a semigroup
 ```
 
 With laws, as a named type. The `impl` with no body states a law. It is a
@@ -113,7 +119,13 @@ impl Idempotent<Int> for Lcm
 Or adding a law to an inline value with a wrapper. These are plain library
 fns returning wrapper types, so user libraries can write more of them:
 
-<!-- spec-only: fragment: `Low` is the reader's own struct (fields, `empty`, `join`) -->
+<!-- given:
+  struct Low(cover: Int, len: Int)
+  impl Low:
+      @get pub fn empty() -> Low = Low(0, 0)
+      pub fn join(self, o: Low) -> Low = Low(min(cover, o.cover), len + o.len)
+  fn join(a: Low, b: Low) -> Low = a.join(b)
+-->
 ```python
 let lo = Monoid(id: Low.empty, op: join).commutative()
 ```

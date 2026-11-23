@@ -53,7 +53,10 @@ costs `steps` calls.
 
 ## Tables
 
-<!-- spec-only: fragment over the input's `n` and a `cost` -->
+<!-- given:
+  let n = 6
+  fn cost(r: Range<Pos>) -> Int = r.len * r.len
+-->
 ```python
 domain Pos = 0..n
 var dp: [Pos.cuts]Int = inf          // prefix DP: dp[c] is the best for a[..c]
