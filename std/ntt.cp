@@ -274,7 +274,7 @@ pub const subset = Disjoint()
 /// for `max`, slopes merged; `Right`: only `b`, `monotone_minima`; `Neither`: the \(O(n m)\) loop by
 /// name). Leaving `shape:` out there, or giving it with `Semiring(+, *)`, is a compile error.
 ///
-/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two); \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
+/// cost: \(O(n \log n)\) bitwise and for the product over a [`FastProduct`] type (NTT for `Mod<P>` when `P - 1` has the power of two; three NTT primes for `Int` while `max |a| * max |b| * min(n, m)` is under 1e25), the cyclic form included; \(O(n + m)\) `Both`; \(O(n m)\) today for any other product, `subset`, `gcd`/`lcm`, `Right`, `Neither` and any `IndexOp` (the transforms are planned)
 /// empty: `[]` for the linear product when either input is empty
 /// order: by output index `0..len`; a new `List`, keyed from 0
 /// traps: when `cyclic: true` and `a.len != b.len`; when a bitwise or `subset` input is not a power-of-two length equal to the other's; when an `Int` output overflows
@@ -321,8 +321,10 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
         return fa
     if na == 0 or nb == 0: return []
     if T: FastProduct:
-        if same(on, +) and not cyclic:
-            if let c = T.product(a, b): return c
+        if same(on, +):
+            if let c = T.product(a, b):
+                if not cyclic: return c
+                return [if k + na < c.len: c[k] + c[k + na] else: c[k] for k in 0..na]
     let by_divisor = same(on, gcd) or same(on, lcm)
     var n_out = if by_divisor: max(na, nb) elif cyclic: na else: na + nb - 1
     if O: IndexOp:
@@ -376,6 +378,38 @@ impl FastProduct for Mod<P>:
         ntt(mut fa, inverse: true, bit_reversed: true)
         fa.truncate(n_out)
         Some(fa)
+
+impl FastProduct for Int:
+    /// Three NTT primes and CRT. Their product is about 7.9e25, so the result is exact while
+    /// `max |a| * max |b| * min(a.len, b.len)` stays under 1e25; past that it is `None` and
+    /// `convolve` runs its loop, which traps on an overflow.
+    fn product(a: List<Int>, b: List<Int>) -> ?List<Int>:
+        let (na, nb) = (a.len, b.len)
+        if min(na, nb) <= 60: return None
+        var (ma, mb) = (0, 0)
+        for x in a: ma = max(ma, abs(x))
+        for x in b: mb = max(mb, abs(x))
+        if I128(ma) * I128(mb) * I128(min(na, nb)) >= I128(10_000_000_000_000) * I128(1_000_000_000_000):
+            return None
+        type P1 = Mod<998_244_353>
+        type P2 = Mod<167_772_161>
+        type P3 = Mod<469_762_049>
+        let r1 = convolve([P1(x) for x in a], [P1(x) for x in b])
+        let r2 = convolve([P2(x) for x in a], [P2(x) for x in b])
+        let r3 = convolve([P3(x) for x in a], [P3(x) for x in b])
+        let (p1, p2) = (998_244_353, 167_772_161)
+        let inv1 = P2(p1).inv()
+        let inv12 = (P3(p1) * P3(p2)).inv()
+        let whole = I128(p1) * I128(p2) * I128(469_762_049)
+        var out = List.filled(na + nb - 1, 0)
+        for k in 0..out.len:
+            let x1 = r1[k].v
+            let x2 = ((P2(r2[k].v) - P2(x1)) * inv1).v
+            let x3 = ((P3(r3[k].v) - P3(x1) - P3(x2) * P3(p1)) * inv12).v
+            var c = I128(x1) + I128(x2) * I128(p1) + I128(x3) * I128(p1) * I128(p2)
+            if c * I128(2) > whole: c -= whole
+            out[k] = Int(c)
+        Some(out)
 
 /// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
 /// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).
@@ -744,6 +778,26 @@ fn convolve_matches_brute_force_for_every_value_type():
         let got = convolve(af, bf)
         assert got.len == want.len
         for k in 0..want.len: assert abs(got[k] - F64(want[k])) < 1e-6
+
+@test
+fn int_convolve_takes_three_primes_and_folds_the_cyclic_form():
+    for _ in 0..6:
+        let (n, m) = (rand(61, 140), rand(61, 140))
+        let big = if rand(0, 1) == 0: 50 else: 50_000_000
+        let a = [rand(-big, big) for _ in 0..n]
+        let b = [rand(-big, big) for _ in 0..m]
+        var want = List.filled(n + m - 1, 0)
+        for i in 0..n:
+            for j in 0..m: want[i + j] += a[i] * b[j]
+        assert convolve(a, b) == want
+        let c = [rand(-big, big) for _ in 0..n]
+        var want_cyc = List.filled(n, 0)
+        for i in 0..n:
+            for j in 0..n: want_cyc[(i + j) % n] += a[i] * c[j]
+        assert convolve(a, c, cyclic: true) == want_cyc
+        let z = [Mod<998_244_353>(x) for x in a]
+        let zc = [Mod<998_244_353>(x) for x in c]
+        assert convolve(z, zc, cyclic: true) == [Mod<998_244_353>(x) for x in want_cyc]
 
 @test
 fn sos_and_bitwise_convolutions():
