@@ -39,7 +39,12 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
 
 | Instance | General fix | Owner |
 |---|---|---|
-| Lanes `git push` directly and skip land.sh, so the debt ratchet, fmt and clippy reds reach main (5 allowlisted files grew, 2026-11-22) | A `pre-push` hook (installed by `install-hooks.sh`) running land.sh's fast checks, so a plain `git push` is gated too | infra |
+| Lanes `git push` directly and skip land.sh, so the debt ratchet, fmt and clippy reds reach main (5 allowlisted files grew, 2026-11-22) | No new gate (Ryan: throughput first). Infra absorbs it: regen heals derived files, the sheriff fixes or reverts within one CI cycle, and checks only fail on the lane's own diff | infra |
+| Hand-picked lint codes collide across lanes (L0553, L0563, 2026-11-22) | `cpl lint --new` allocates the next free code | lint-fmt |
+| `cpl fmt` with no path or with stdin rewrote the whole repo (461-file revert, 2026-11-22) | No path means stdin only; never the tree in place | lint-fmt |
+| A std/*.cp edit forces a 60 s release rebuild because std is embedded (2026-11-22) | Dev builds read std/ from disk | tools / compiler |
+| cpl.wasm at 2,098,812 of its 2,100,000 B gz cap (2026-11-22) | Cap set from a size budget per feature, with headroom, or cut size | site |
+| Queued main CI runs get cancelled by newer pushes, so platform fixes take 15-20 min to verify (2026-11-22) | A dispatchable per-SHA platform run, outside the main concurrency group | infra |
 | A std change raised the corpus lint baseline (L0204/L0206/L0210/L0509) | The commit tier lints the touched `std/*.cp` against the baseline in seconds | infra (wiring), lint-fmt (check) |
 | `IndexOp` in `std/ntt.cp` missing from the VS Code tables | Generate the std names in `languageData.ts` and the grammar from `std/` in regen, instead of a hand list checked by a test | tools |
 | L0206 fired on a user `rev` method | Getter lints read the receiver's checked type, not a syntactic guess | lint-fmt |
