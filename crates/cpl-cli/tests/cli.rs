@@ -1628,3 +1628,24 @@ fn a_reader_that_stops_early_is_not_a_cpl_bug() {
     assert!(out.status.code().is_some(), "{:?}", out.status);
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn test_on_a_contest_folder_runs_every_problem_in_it() {
+    let a = scratch("test-contest-folder", "a.cp", b"print(0.625)\n");
+    let dir = a.parent().unwrap();
+    std::fs::write(dir.join("b.cp"), b"print(2)\n").unwrap();
+    for (problem, answer) in [("a", "0.625000000\n"), ("b", "3\n")] {
+        let cases = dir.join(format!("{problem}.tests"));
+        std::fs::create_dir_all(&cases).unwrap();
+        std::fs::write(cases.join("1.in"), b"").unwrap();
+        std::fs::write(cases.join("1.out"), answer).unwrap();
+    }
+    let out = cpl(&["test".as_ref(), dir.as_os_str()], b"");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert_eq!(out.status.code(), Some(1), "{stdout}");
+    assert!(
+        stdout.contains("1 of 2 problems pass every case"),
+        "{stdout}"
+    );
+    assert!(stdout.contains("expected `3`, got `2`"), "{stdout}");
+}

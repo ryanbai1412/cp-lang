@@ -11,7 +11,8 @@
 //!   2/3 passed
 //! ```
 
-use crate::problem::{cases_in, find_tests_dir, source_path, Limits, TestCase};
+use crate::problem::{cases_in, find_tests_dir, source_path, tests_dir, Limits, TestCase};
+use cpl_diag::Shown;
 use cpl_stress::args::Args;
 use cpl_stress::cli::{select_judge, solution};
 use cpl_stress::{Judge, Program, Verdict};
@@ -23,7 +24,8 @@ pub const USAGE: &str = "\
 usage: cpl test <problem> [options]
 
 Runs the solution on every case in <problem>.tests/ (or a sibling tests/
-folder). A case is N.in with an optional N.out or N.ans; without one, the
+folder). A contest folder (`cpl fetch <contest page>`) runs each problem in it
+with cases, then says how many pass. A case is N.in with an optional N.out or N.ans; without one, the
 output is shown instead of judged.
 
 options:
@@ -292,12 +294,81 @@ pub(crate) fn ready(source: &Path, src: &str, args: &Args) -> Result<Ready, Stri
     })
 }
 
+/// `cpl test <folder>`: every problem in a contest folder with cases, one
+/// after another; exits with the worst problem's code.
+fn run_folder(
+    folder: &Path,
+    rest: Vec<String>,
+    json: bool,
+    stdout: &mut dyn Write,
+    stderr: &mut dyn Write,
+) -> u8 {
+    let mut sources: Vec<PathBuf> = std::fs::read_dir(folder)
+        .map(|entries| entries.flatten().map(|e| e.path()).collect())
+        .unwrap_or_default();
+    sources.retain(|p| p.extension().is_some_and(|e| e == "cp") && tests_dir(p).is_dir());
+    sources.sort();
+    if sources.is_empty() {
+        let _ = writeln!(
+            stderr,
+            "cpl: {} has no problem with cases (a `.cp` file with its `.tests/` folder)",
+            folder.shown()
+        );
+        return 1;
+    }
+    let (mut worst, mut passed, mut rows) = (0, 0, Vec::new());
+    for source in &sources {
+        let mut problem_args = vec![source.to_string_lossy().into_owned()];
+        problem_args.extend(rest.iter().cloned());
+        let mut out = Vec::new();
+        let code = run(&problem_args, &mut out, stderr);
+        worst = worst.max(code);
+        passed += usize::from(code == 0);
+        let out = String::from_utf8_lossy(&out);
+        if json {
+            rows.push(format!(
+                "{{\"path\":{},\"report\":{}}}",
+                cpl_json::escape_string(&source.shown()),
+                if out.trim().is_empty() {
+                    "null"
+                } else {
+                    out.trim()
+                }
+            ));
+        } else {
+            let _ = writeln!(stdout, "{}:", source.shown());
+            let _ = write!(stdout, "{out}");
+        }
+    }
+    let total = sources.len();
+    if json {
+        let _ = writeln!(
+            stdout,
+            "{{\"problems\":[{}],\"passed\":{passed},\"total\":{total}}}",
+            rows.join(",")
+        );
+    } else {
+        let _ = writeln!(stdout, "{passed} of {total} problems pass every case");
+    }
+    worst
+}
+
+/// `args` again, as strings, without the positional `file`.
+fn args_without(args: Vec<String>, file: &str) -> Vec<String> {
+    let mut rest = args;
+    if let Some(at) = rest.iter().position(|a| a == file) {
+        rest.remove(at);
+    }
+    rest
+}
+
 /// Runs `cpl test`. Returns the exit code: 0 when every case passed.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
     if args.iter().any(|arg| arg == "-h" || arg == "--help") {
         let _ = write!(stdout, "{USAGE}");
         return 0;
     }
+    let raw = args;
     let parsed = Args::parse(
         "test",
         args,
@@ -310,12 +381,26 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
             Some("json") => true,
             Some(other) => return Err(format!("`--format` is text or json, not `{other}`")),
         };
-        args.file("test")
-            .map(source_path)
-            .map(|source| (args, source, json))
+        let file = args.file("test")?.to_string();
+        Ok((args, file, json))
     });
     let (args, source, json) = match parsed {
-        Ok(parsed) => parsed,
+        Ok((args, file, json)) if Path::new(&file).is_dir() => {
+            if args.value("--case").is_some() || args.value("--add").is_some() {
+                let message =
+                    "`--case` and `--add` pick one problem: name its file, not the folder";
+                let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
+                return 2;
+            }
+            return run_folder(
+                Path::new(&file),
+                args_without(raw.to_vec(), &file),
+                json,
+                stdout,
+                stderr,
+            );
+        }
+        Ok((args, file, json)) => (args, source_path(&file), json),
         Err(message) => {
             let _ = write!(stderr, "cpl: {message}\n\n{USAGE}");
             return 2;

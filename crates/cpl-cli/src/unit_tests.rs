@@ -37,7 +37,13 @@ pub(crate) fn should_run_unit_tests(args: &[&str]) -> bool {
     }
     let p = std::path::Path::new(paths[0]);
     if p.is_dir() {
-        return true;
+        // A contest folder (`cpl fetch` of a contest page) runs each
+        // problem's cases; any other folder runs its `@test` fns.
+        let problem = |e: std::fs::DirEntry| {
+            let f = e.path();
+            f.extension().is_some_and(|x| x == "cp") && cpl_contest::problem::tests_dir(&f).is_dir()
+        };
+        return !std::fs::read_dir(p).is_ok_and(|mut es| es.any(|e| e.is_ok_and(problem)));
     }
     if p.extension().is_some_and(|e| e == "cp") && p.is_file() {
         if cpl_contest::problem::find_tests_dir(p).is_dir() {
