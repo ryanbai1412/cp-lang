@@ -195,7 +195,7 @@
       "lane": "tools",
       "summary": "`cpl setup jetbrains` on a freshly unpacked IntelliJ IDEA CE fails until the IDE has been launched once to create its config dir; the site does not mention this.",
       "minutes_lost": 2,
-      "evidence": "PowerShell: `cpl setup jetbrains` -> `cpl: no JetBrains IDE found (open one once first), or pass --dir PLUGINS` (exit 1); after starting idea64.exe once and quitting: `installed CP Lang for IdeaIC2025.2 in C:/Users/Administrator/AppData/Roaming/JetBrains/IdeaIC2025.2/plugins, with LSP4IJ for `cpl lsp``"
+      "evidence": "PowerShell: `cpl setup jetbrains` -> `cpl: no JetBrains IDE found (open one once first), or pass --dir PLUGINS` (exit 1); after starting idea64.exe once and quitting: `installed CP Lang for IdeaIC2025.2 in %USERPROFILE%/AppData/Roaming/JetBrains/IdeaIC2025.2/plugins, with LSP4IJ for `cpl lsp``"
     },
     {
       "id": "vim-completion-not-demonstrated",
@@ -204,7 +204,7 @@
       "lane": "tools",
       "summary": "After `cpl setup vim` (which says it wires completion) native gVim 9.2 has `omnifunc=` empty, so ^X^O completes nothing until `:setlocal omnifunc=lsp#complete` is set by hand.",
       "minutes_lost": 3,
-      "evidence": "cpl setup vim -> `with vim-lsp in C:/Users/Administrator/vimfiles/pack/cpl/start/vim-lsp for `cpl lsp`: diagnostics, completion, hover and go to definition`; gvim e.cp, `:set omnifunc?` -> `omnifunc=`; `print(tw<C-x><C-o>` no menu; after `:setlocal omnifunc=lsp#complete` menu shows twice/two_color/two_edge_components. ftplugin/cp.vim sets only commentstring, formatprg, compiler."
+      "evidence": "cpl setup vim -> `with vim-lsp in %USERPROFILE%/vimfiles/pack/cpl/start/vim-lsp for `cpl lsp`: diagnostics, completion, hover and go to definition`; gvim e.cp, `:set omnifunc?` -> `omnifunc=`; `print(tw<C-x><C-o>` no menu; after `:setlocal omnifunc=lsp#complete` menu shows twice/two_color/two_edge_components. ftplugin/cp.vim sets only commentstring, formatprg, compiler."
     },
     {
       "id": "vscode-restricted-mode-plain-text",
@@ -310,7 +310,7 @@
       "step": "test",
       "kind": "hesitation",
       "lane": "compiler",
-      "summary": "A run from `.runs()` keeps the parent's keys, so the C++-habit `r[0]` traps in `cpl test` (`index -1 is outside a list of length 1`) but the Codeforces build silently prints wrong elements instead of trapping.",
+      "summary": "OPEN ON EDGE 68a1a48e, FIXED ON MAIN 845ce7572 (decision 388): on edge, a literal `r[0]` on a run compiles and the Codeforces C++ still prints the elements before the run. On main 38f04e5ba, literal `r[0]` is E0305, and a dynamic out-of-view key traps in both `cpl run` and the Codeforces C++ (\"key 0 is not one of the view's keys 2..3\"). Agent's report: A run from `.runs()` keeps the parent's keys, so the C++-habit `r[0]` traps in `cpl test` (`index -1 is outside a list of length 1`) but the Codeforces build silently prints wrong elements instead of trapping.",
       "minutes_lost": 4,
       "evidence": "rt/runs.cp: `for r in xs.sorted().runs(): print(r.len, r[0])` input `8 / 3 1 3 2 3 1 5 5`; `cpl test runs` -> error[R0101]: index -1 is outside a list of length 1 --> runs.cp:4:18; `cpl build runs.cp --judge codeforces -o runs.cpp; g++ -std=c++17 -O2` prints `2 1 / 1 1 / 3 2 / 2 3` (expected first elements 1 2 3 5); correct spelling per docs `r[r.keys.first!]`",
       "p0": true
@@ -358,14 +358,14 @@
       "lane": "debugger",
       "summary": "On Windows I wrapped my Python generator/checker in `.cmd` files for `cpl stress --gen/--checker`, and the first shim's echoed prompt line was fed to the solution as input (`expected a number, found C:\\...\\sol>python`) until I added `@`.",
       "minutes_lost": 2,
-      "evidence": "dgen.cmd `python C:/Users/Administrator/cplrun/dgen.py %*`; `cpl stress cf2272D.cp --gen ../dgen.cmd --checker ../dchk.cmd` -> error[R0501]: reading the number of tests: expected a number, found `C:\\Users\\Administrator\\cplrun\\sol>python` (input line 2, column 1); fixed by `@python ...`; then 300 cases agree"
+      "evidence": "dgen.cmd `python %USERPROFILE%/cplrun/dgen.py %*`; `cpl stress cf2272D.cp --gen ../dgen.cmd --checker ../dchk.cmd` -> error[R0501]: reading the number of tests: expected a number, found `%USERPROFILE%\\cplrun\\sol>python` (input line 2, column 1); fixed by `@python ...`; then 300 cases agree"
     },
     {
       "id": "rev-view-index-not-reversed",
       "step": "design",
       "kind": "blocker",
       "lane": "spec",
-      "summary": "`a.rev[0]` compiles and returns the unreversed `a[0]`, while the spec chapter says indexing a reversed view is an error and the std reference says keys survive, so the docs contradict each other and my prediction (`30`) was wrong.",
+      "summary": "OPEN ON EDGE 68a1a48e, FIXED ON MAIN 845ce7572 (decision 388): on edge, `a.rev[0]` still compiles and prints `a[0]`; on main 38f04e5ba, `a.rev[0]` and `a.rev[k]` are E0305 (\"`a.rev` walks backwards, out of key order, so it can't be indexed\"). 845ce7572 is not an ancestor of 68a1a48ef. Agent's report: `a.rev[0]` compiles and returns the unreversed `a[0]`, while the spec chapter says indexing a reversed view is an error and the std reference says keys survive, so the docs contradict each other and my prediction (`30`) was wrong.",
       "minutes_lost": 3,
       "evidence": "design/p5_rev_index.cp: `let a = [10, 20, 30]` `print(a.rev[0], a.rev[2])` -> `cpl run` prints `10 30`; llms-full.txt: 'a.rev, can't be indexed: a.rev[0] is an error and a.rev.nth(0) reads' / 'a.rev[i] is an error' (spec, decision 354) vs std ref `rev`: 'Keys survive: a.rev[i] is still a[i]'"
     },
@@ -377,7 +377,9 @@
       "p0": true,
       "summary": "JUDGE (offline, not the agent): the shipped cf2285E's `cand[q].partition_point(...)` copies the inner list of a List of Lists on each call, so it takes > 12 s (2x TL) on n = 6666, k = 1500, a_i = i^2 + 1, on edge e9c6b2eb and 11 s on main ad995c5c; it would TLE on Codeforces.",
       "minutes_lost": 0,
-      "evidence": "research/acceptance/open-repros/2026-11-23-6/windows/cf2285E-shipped-partition-point-copies.cp; research/acceptance/problems/cf2285e/max.py (third case)"
+      "evidence": "research/acceptance/open-repros/2026-11-23-6/windows/cf2285E-shipped-partition-point-copies.cp; research/acceptance/problems/cf2285e/max.py (third case)",
+      "status": "fixed",
+      "recheck": "Recheck on edge 68a1a48e and main 38f04e5ba with `cpl build --judge codeforces`: the Linux draft cf2285E partition-point-copies (`ends[r].partition_point(...)`) is AC, max input 1.09 s on edge and 0.77 s on main (was 25 s); Windows' shipped cf2285E (`cand[q].partition_point(...)`) is AC, 1.30 s on edge and 1.16 s on main (was 11 s). Both now live in solutions/2026-11-23-6/repro/."
     }
   ],
   "fixed": [

@@ -253,7 +253,9 @@
       "summary": "Still present for a list element of a List of Lists: `ends[r].partition_point(...)` copies the inner vector on every call (generated `std::vector<...> t1 = cpl::at(ends, ...); return t1;`), so 2285E took 12.45 s on a 6666x1500 case until I wrote the binary search by hand (0.28 s).",
       "minutes_lost": 8,
       "evidence": "drafts/cf2285E.partition-point-copies-12s.cp; cpl build --judge codeforces; g++ -std=c++17 -O2; ./a.out < e_sq.in (n=6666,k=1500,a_i=i*i+1) -> 12.45s; cf2285E.cp with manual lo/hi loop -> 0.28s",
-      "p0": true
+      "p0": true,
+      "status": "fixed",
+      "recheck": "Recheck on edge 68a1a48e and main 38f04e5ba with `cpl build --judge codeforces`: the Linux draft cf2285E partition-point-copies (`ends[r].partition_point(...)`) is AC, max input 1.09 s on edge and 0.77 s on main (was 25 s); Windows' shipped cf2285E (`cand[q].partition_point(...)`) is AC, 1.30 s on edge and 1.16 s on main (was 11 s). Both now live in solutions/2026-11-23-6/repro/."
     },
     {
       "id": "let-list-element-copies",
@@ -262,8 +264,10 @@
       "lane": "compiler",
       "summary": "Spec R05.3.5 says `let row = rows[i]` on a heap element binds a lend, not a copy, but codegen deep-copies it (`std::vector<ll> r; r = cpl::at(rows, 0);`), which made 2285E's `let prev = ends[p % w]` O(k) per lookup (10.4 s); I had to repeat `ends[r][...]` everywhere instead.",
       "minutes_lost": 4,
-      "evidence": "design/p5.cp: var rows = [[1, 2], [3]]; let r = rows[0]; rows[1].push(9); print(r.len) -> cpl build --judge codeforces: `std::vector<ll> r;` ... `r = cpl::at(rows, 0);`; drafts/cf2285E.let-prev-copies-10s.cp 10.38s on e_sq.in; spec /docs/ref/core/05-ownership \u00a73 R05.3.5",
-      "p0": true
+      "evidence": "design/p5.cp: var rows = [[1, 2], [3]]; let r = rows[0]; rows[1].push(9); print(r.len) -> cpl build --judge codeforces: `std::vector<ll> r;` ... `r = cpl::at(rows, 0);`; drafts/cf2285E.let-prev-copies-10s.cp 10.38s on e_sq.in; spec /docs/ref/core/05-ownership §3 R05.3.5",
+      "p0": true,
+      "status": "fixed",
+      "recheck": "Recheck on edge 68a1a48e and main 38f04e5ba: the Linux draft cf2285E let-prev-copies (`let prev = ends[p % w]`), now solutions/2026-11-23-6/repro/, built with `cpl build --judge codeforces`, is AC (sample, 200 generated, max input 0.89 s on edge, 0.84 s on main, against a 6 s TL; was 25 s on e9c6b2eb)."
     },
     {
       "id": "hashmap-tuple-key-memory",
@@ -342,7 +346,7 @@
       "step": "test",
       "kind": "blocker",
       "lane": "stdlib",
-      "summary": "CONFIRMED (still broken on 0878bfa8): indexing a `.rev` view returns the unreversed element (`a.rev[0]` is a[0]) while iterating it and `.first!` are reversed, in both `cpl run` and the g++ build.",
+      "summary": "OPEN ON EDGE 68a1a48e, FIXED ON MAIN 845ce7572 (decision 388): on edge, `a.rev[0]` still compiles and prints `a[0]`; on main 38f04e5ba, `a.rev[0]` and `a.rev[k]` are E0305 (\"`a.rev` walks backwards, out of key order, so it can't be indexed\"). 845ce7572 is not an ancestor of 68a1a48ef. Agent's report: CONFIRMED (still broken on 0878bfa8): indexing a `.rev` view returns the unreversed element (`a.rev[0]` is a[0]) while iterating it and `.first!` are reversed, in both `cpl run` and the g++ build.",
       "minutes_lost": 2,
       "evidence": "reg/rev2.cp: let a = [10, 20, 30]; print(a.rev[0], a.rev[2]); print([x for x in a.rev]); let r = a.rev; print(r[0], r.first!, r.last!) -> `10 30` / `30 20 10` / `10 30 10` (cpl run and cpl build --judge codeforces + g++ -std=c++17 -O2 agree); expected `30 10` and `30 30 10`"
     },
