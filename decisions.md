@@ -8383,3 +8383,9 @@ tag move fatal again.
 - **Call.** `traced fn:take_all(feeding)` (yields_mut_arg_feeds) and `traced stmt:Return` (yields_generic_from_body) stay in `crates/cpl-cli/tests/vm_fallbacks.txt` as interim lines owned by compiler lane (d). `vm_fallbacks` goes from 74 to 75, still below the 79 main had before 5f43ce3df. Their untraced kinds already run on the VM (ad6b6eb34, 930b17e19).
 - **Why.** A traced run hands a fed loop to the tree-walker, so the traced kinds can't go until the traced feed runs on the VM. Reverting 5f43ce3df would also break stdlib's ordered_drain case.
 - **Reverse.** Run traced fed loops on the VM, delete both lines and their comments, and lower `vm_fallbacks`.
+
+## 429. `cpl stress` with nothing to compare still runs (debugger, 2026-11-23)
+
+- **Call.** With no brute, checker, interactor or `@cache` field, `cpl stress` no longer refuses: it runs the generated cases and a case fails only on a runtime error or the time limit, shrunk and saved as usual. The header says answers aren't checked and that an `@alt(program)` fn would check them. Every failure report also names the next commands (`cpl run <file> --trace`, then `cpl test` and `cpl stress` after a fix), and a runtime error in the report shows the locals and help that `cpl run` shows.
+- **Why.** Most contestants with a WA have no brute yet, and a crash on a generated input is the cheapest counterexample there is. The first blind contest simulation stopped at "there is nothing to compare". Use case `stress/U4` in `handbook/product/cli/stress-usecases.md`.
+- **Reverse.** Restore the refusal in `crates/cpl-stress/src/cli.rs` and `engine.rs`.

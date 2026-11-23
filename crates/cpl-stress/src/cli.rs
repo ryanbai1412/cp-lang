@@ -597,16 +597,13 @@ pub fn run_with(
         && args.file.extension().is_some_and(|e| e == "cp")
         && src.contains("@cache")
         && analysis.as_deref().is_some_and(cpl_ir::has_cached_fields);
-    if args.brute.is_none()
+    // With nothing to judge an answer by, a case still fails on a runtime
+    // error or the time limit.
+    let unjudged = args.brute.is_none()
         && own_brute.is_none()
         && part_brute.is_none()
         && !has_cached
-        && judge == Judge::Tokens
-    {
-        return fail(format!(
-            "there is nothing to compare {name} with: write an `@alt(program)` fn in it, pass `--brute <program>`, or give it a `@check` or an `@interactor` that can judge an output on its own"
-        ));
-    }
+        && judge == Judge::Tokens;
     // The file's own `@gen` fn, unless `--gen` names another.
     let own_gen = match &args.gen {
         None => analysis.as_deref().and_then(cpl_ir::generator),
@@ -786,6 +783,7 @@ pub fn run_with(
         return report.failure.is_some() as u8;
     }
     let judged_by = match &judge {
+        Judge::Tokens if unjudged => "checker: none; only runtime errors and the time limit fail a case, and an `@alt(program)` fn would check the answers".to_string(),
         Judge::Tokens => "checker: none".to_string(),
         Judge::Checker(program) => format!("checker: {}", program.name),
         Judge::Interactor(program) => format!("interactor: {}", program.name),
@@ -800,11 +798,14 @@ pub fn run_with(
             0 => String::new(),
             n => format!(" ({n} seeds made no valid case)"),
         };
-        let _ = writeln!(
-            stdout,
-            "  {} cases agree{skipped}",
-            report.cases - report.skipped
-        );
+        let ran = report.cases - report.skipped;
+        let _ = match unjudged {
+            true => writeln!(
+                stdout,
+                "  {ran} cases ran with no runtime error or time limit{skipped}"
+            ),
+            false => writeln!(stdout, "  {ran} cases agree{skipped}"),
+        };
         if report.discarded > 0 {
             let inputs = if report.discarded == 1 {
                 "1 input"
@@ -927,13 +928,22 @@ pub fn run_with(
     match saved {
         Some(path) => {
             let _ = writeln!(stdout, "  saved {}", path.shown());
+            let file = args.file.shown();
             if !part_alts(&src).is_empty() && explained.is_none() {
                 let _ = writeln!(
                     stdout,
-                    "  next: `cpl locate {}` names the first part whose alt disagrees",
-                    args.file.shown()
+                    "  next: `cpl locate {file}` names the first part whose alt disagrees"
+                );
+            } else if trace_path.is_none() {
+                let _ = writeln!(
+                    stdout,
+                    "  next: `cpl run {file} --trace` steps through this case"
                 );
             }
+            let _ = writeln!(
+                stdout,
+                "  after a fix: `cpl test {file}` reruns it, then `cpl stress {file}` again"
+            );
         }
         None => {
             let _ = writeln!(

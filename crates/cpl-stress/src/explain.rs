@@ -44,6 +44,27 @@ pub fn runtime_error(path: &Path, input: &str) -> Option<String> {
         return None;
     }
     let lines = cpl_diag::LineIndex::new(&text);
-    let diagnostic = cpl_diag::Diagnostic::error(trap.code(), trap.span, trap.message);
+    let mut diagnostic = trap.to_diagnostic(&name, &lines);
+    // The locals where it stopped, as `cpl run` names them.
+    let config = cpl_interp::trace::trap_config(&text);
+    let tail = cpl_interp::trace::resumed_tail(
+        &program,
+        input.as_bytes(),
+        &mut std::io::sink(),
+        config,
+        1,
+    );
+    let at = text
+        .get(trap.span.start as usize..trap.span.end as usize)
+        .unwrap_or("");
+    let locals = match (tail.trap, tail.recording) {
+        (Some(again), Some(recording)) if again.message == trap.message => {
+            cpl_interp::trace::trap_locals(&recording, &text, at)
+        }
+        _ => None,
+    };
+    if let Some(locals) = locals {
+        diagnostic = diagnostic.with_note(format!("locals: {locals}"));
+    }
     Some(cpl_diag::render(&diagnostic, &name, &text, &lines))
 }

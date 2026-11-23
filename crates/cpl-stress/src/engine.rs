@@ -412,12 +412,6 @@ pub fn stress_source(
         None => None,
     };
 
-    if brute.is_none() && checker.is_none() {
-        return Err(StressError(format!(
-            "there is nothing to compare {name} with: write an `@alt(program)` fn or a `@check` fn"
-        )));
-    }
-
     let own_gen = cpl_ir::generator(&analysis);
     let interp_choices = match &own_gen {
         Some((gen_fn, _)) => {

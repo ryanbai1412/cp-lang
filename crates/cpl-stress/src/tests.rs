@@ -688,9 +688,13 @@ mod cli {
         let path = file.to_str().unwrap();
         let good = script(&dir, "good", MAX);
 
-        let (code, _, err) = stress(&[path, "--fast", &good]);
-        assert_eq!(code, 1);
-        assert!(err.contains("there is nothing to compare"), "{err}");
+        let (code, out, _) = stress(&[path, "--fast", &good, "--cases", "20"]);
+        assert_eq!(code, 0, "{out}");
+        assert!(
+            out.contains("only runtime errors and the time limit fail a case")
+                && out.contains("20 cases ran with no runtime error or time limit"),
+            "{out}"
+        );
         std::fs::write(&file, "let x: Set<Int> = read()\n").unwrap();
         let (code, _, err) = stress(&[path, "--fast", &good, "--brute", &good]);
         assert_eq!(code, 1);
