@@ -58,6 +58,8 @@ signatures and costs; these chapters are the model and the examples):
 
 What Milestone 1 promises, section by section, and its known gaps:
 `SUBSET.md`.
+Why each area is the way it is, with the alternatives that lost:
+`RATIONALE.md`.
 
 Tools, one contract per tool (`tools/`): CLI, judge profiles, stress and
 shrinking, explain, trace and debugger, fmt and lint, LSP, bundler.
