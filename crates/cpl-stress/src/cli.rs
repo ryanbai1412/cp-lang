@@ -806,11 +806,18 @@ pub fn run_with(
     match &explained {
         Some(Ok(Some(d))) => {
             let ordinal = ordinal(d.nth);
-            let _ = writeln!(
-                stdout,
-                "  first differing value: `{}`, its {ordinal} value",
-                d.name
-            );
+            let _ = match d.name.split_once('(').filter(|_| d.call) {
+                Some((f, _)) => writeln!(
+                    stdout,
+                    "  first wrong call: `{}`, the {ordinal} call of `{f}`",
+                    d.name
+                ),
+                None => writeln!(
+                    stdout,
+                    "  first differing value: `{}`, its {ordinal} value",
+                    d.name
+                ),
+            };
             for (who, side) in [("solution", &d.fast), ("brute", &d.brute)] {
                 let _ = match side {
                     Some((line, value)) => {

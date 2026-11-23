@@ -717,7 +717,7 @@ fn stress_throws_away_inputs_that_stop_both_programs_and_narrows_the_guess() {
     let part = "fn f(n: Int) -> Int = if n == 3: 0 else: n\n@brute(f)\nfn f_slow(n: Int) -> Int = n\nlet n: 1..=9 = read()\nprint(f(n))\n";
     let text = stress("narrow-part-wrong", part);
     assert!(
-        text.contains("first differing value: `f(n: 3)`")
+        text.contains("first wrong call: `f(n: 3)`")
             && text.contains("solution f(n: 3) = 0 at line 1")
             && text.contains("brute    f(n: 3) = 3 at line 3"),
         "{text}"

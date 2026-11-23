@@ -297,6 +297,7 @@ fn first_call_divergence(source: &str, fast: &Recording, slow: &Recording) -> Op
     inside.reverse();
     Some(Divergence {
         inside,
+        call: true,
         name: format!("{}({})", ours.name, shown_args(&ours.args)),
         nth: ours.ordinal,
         fast: Some((line_of(&ours.name), a.clone())),

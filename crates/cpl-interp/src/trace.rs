@@ -2254,6 +2254,8 @@ mod tests {
                 nth: 1,
                 fast: Some((3, "5".to_string())),
                 brute: Some((9, "6".to_string())),
+                inside: Vec::new(),
+                call: false,
             })
         );
     }

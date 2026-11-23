@@ -247,7 +247,7 @@ fn stress_explain_names_the_first_call_of_a_part_its_alt_answers_differently() {
     let report = text(&out.stdout);
     assert_eq!(out.status.code(), Some(1), "{report}{}", text(&out.stderr));
     assert!(
-        report.contains("first differing value: `tri(k: 1)`, its 1st value"),
+        report.contains("first wrong call: `tri(k: 1)`, the 1st call of `tri`"),
         "{report}"
     );
     assert!(
@@ -274,7 +274,7 @@ fn stress_explain_names_the_innermost_wrong_call_of_a_recursive_part() {
     let report = text(&out.stdout);
     assert_eq!(out.status.code(), Some(1), "{report}{}", text(&out.stderr));
     assert!(
-        report.contains("first differing value: `fib(k: 3)`"),
+        report.contains("first wrong call: `fib(k: 3)`, the 2nd call of `fib`"),
         "{report}"
     );
     assert!(

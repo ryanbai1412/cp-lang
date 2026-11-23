@@ -26,6 +26,8 @@ pub struct Divergence {
     /// The solution's own last steps in a wrong call, not those of the
     /// calls it makes: each line and its locals, as `k: 1, s: 0`.
     pub inside: Vec<(u32, String)>,
+    /// `name` is a call, `f(k: 1)`, and `nth` which call of `f` it is.
+    pub call: bool,
 }
 
 /// The first value the solution gives one of the variables both runs
@@ -86,6 +88,7 @@ pub fn first_divergence(fast: &Recording, slow: &Recording) -> Option<Divergence
         fast: side(&ours[name]),
         brute: side(&theirs[name]),
         inside: Vec::new(),
+        call: false,
     })
 }
 
