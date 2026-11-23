@@ -272,7 +272,11 @@ impl<'a> Checker<'a> {
                 });
                 self.infer(walk)
             }
-            ExprKind::Call { callee, args } => self.call(expr, callee, args),
+            ExprKind::Call { callee, args } => {
+                let ty = self.call(expr, callee, args);
+                self.member_for_call(expr, callee, args);
+                ty
+            }
             ExprKind::Index { base, indices } => self.index(expr, base, indices),
             ExprKind::Field { base, name } => self.field(expr, base, name),
             ExprKind::Generic { base, args } => {

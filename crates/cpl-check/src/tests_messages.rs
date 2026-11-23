@@ -160,3 +160,11 @@ fn in_on_a_list_offers_the_scan() {
     let scans: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(scans, ["xs.contains(2)", "not xs.contains(4)"], "{d:?}");
 }
+
+#[test]
+fn enumerate_and_reversed_become_members() {
+    let src = "let xs = [1, 2]\nfor (i, x) in enumerate(xs):\n    print(i, x)\nfor x in reversed(xs):\n    print(x)\n";
+    let d = check(src);
+    let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixes, ["xs.items", "xs.rev"], "{d:?}");
+}

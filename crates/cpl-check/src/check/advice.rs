@@ -5,6 +5,34 @@ use cpl_diag::Fix;
 use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind};
 
 impl Checker<'_> {
+    /// `enumerate(xs)`, `reversed(xs)`: Python's free functions for what
+    /// CP Lang reads as a member, so the unresolved name gets `xs.items`.
+    pub(super) fn member_for_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) {
+        let (ExprKind::Name(name), [arg]) = (&callee.kind, args) else {
+            return;
+        };
+        let (member, what) = match name.as_str() {
+            "enumerate" => ("items", "index-element pairs are"),
+            "reversed" => ("rev", "the reversed view is"),
+            _ => return,
+        };
+        let xs = self.text(arg.value.span);
+        let xs = if xs.contains(' ') && !(xs.starts_with('[') && xs.ends_with(']')) {
+            format!("({xs})")
+        } else {
+            xs.to_string()
+        };
+        let Some(diag) = self.sink.last_mut().filter(|d| {
+            d.code == codes::UNRESOLVED_NAME && d.span == callee.span && arg.name.is_none()
+        }) else {
+            return;
+        };
+        let ours = format!("{xs}.{member}");
+        diag.help = Some(format!("{what} a member in CP Lang: `{ours}`"));
+        diag.fixes.clear();
+        diag.fix(format!("write `{ours}`"), call.span, ours);
+    }
+
     /// `x in xs` on a list: `in` is sub-linear only, so a scan is spelled
     /// out as `xs.contains(x)`.
     pub(super) fn list_in(&mut self, op: CmpOp, x: &Expr, xs: &Expr, ty: &Ty, alone: bool) {
