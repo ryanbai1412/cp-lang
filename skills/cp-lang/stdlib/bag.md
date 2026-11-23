@@ -52,6 +52,8 @@ An ordered multiset (bag) of `K` backed by a randomized treap over a single flat
 - `fn prev_cursor(self, c: BagCursor) -> ?BagCursor` — \(O(1)\) amortized, \(O(\log n)\) worst case; Cursor to the next smaller distinct key, or `None`.; traps: never in release; debug traps when the node of `c` has been freed
 - `fn entries(self) -> yields (key: K, count: Int)` — \(O(1)\) amortized per step; Visit every distinct `(key, count)` in ascending order.
 - `fn entries_rev(self) -> yields (key: K, count: Int)` — \(O(1)\) amortized per step; Visit every distinct `(key, count)` in descending order.
+- `fn each(self) -> yields K` — \(O(1)\) amortized per step; Visit every element, duplicates included, in ascending order; `for x in b` uses this.
+- `fn each_rev(self) -> yields K` — \(O(1)\) amortized per step; Visit every element, duplicates included, in descending order.
 - `fn to_list(self) -> List<K>` — \(O(n)\); Every element in ascending order, repeated by multiplicity.
 - `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the pool grows, \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` distinct keys.
 - `fn split_at(mut self, k: K) -> SortedBag<K>` — \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys; Split off and return all elements `>= k`, keeping `< k` in `self`.
