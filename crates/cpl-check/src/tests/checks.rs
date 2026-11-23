@@ -897,3 +897,16 @@ fn an_unproven_literal_view_key_offers_the_position_and_the_source_key() {
         |e: &str| format!("let a = [1, 1, 2, 3]\nfor r in a.runs(by: x => x):\n    print({e})\n");
     assert_eq!(fixed, [line("r.nth(0)"), line("a[0]")]);
 }
+
+/// L0610 waits for a body that is still `todo`: what it will change isn't
+/// written yet.
+#[test]
+fn an_unwritten_body_does_not_flag_its_mut_params() {
+    let call = "var a = [1, 2]\nprint(f(mut a))\n";
+    let todo = format!("fn f(mut xs: List<Int>) -> Int = todo\n{call}");
+    assert!(!codes(&todo).contains(&"L0610"), "{:?}", codes(&todo));
+    let block = format!("fn f(mut xs: List<Int>) -> Int:\n    let n = xs.len\n    todo\n{call}");
+    assert!(!codes(&block).contains(&"L0610"), "{:?}", codes(&block));
+    let read = format!("fn f(mut xs: List<Int>) -> Int = xs.len\n{call}");
+    assert!(codes(&read).contains(&"L0610"), "{:?}", codes(&read));
+}

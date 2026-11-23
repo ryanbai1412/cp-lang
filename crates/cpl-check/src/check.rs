@@ -1088,6 +1088,19 @@ impl<'a> Checker<'a> {
     /// L0610: a `mut` parameter the body never changes. Its callers must
     /// pass a place as `mut` for nothing.
     pub(crate) fn unchanged_mut_params(&mut self, f: &cpl_syntax::ast::FnDecl) {
+        // A body still ending in `todo` is unwritten: what it will change is
+        // not known yet.
+        let is_todo = |e: &cpl_syntax::ast::Expr| matches!(&e.kind, cpl_syntax::ast::ExprKind::Name(n) if n == "todo");
+        let unwritten = match &f.body {
+            cpl_syntax::ast::FnBody::Expr(e) => is_todo(e),
+            cpl_syntax::ast::FnBody::Block(b) => b.stmts.last().is_some_and(
+                |s| matches!(&s.kind, cpl_syntax::ast::StmtKind::Expr(e) if is_todo(e)),
+            ),
+            cpl_syntax::ast::FnBody::None => false,
+        };
+        if unwritten {
+            return;
+        }
         let lends_mut = |name: &str| {
             f.lends.as_ref().is_some_and(|l| {
                 l.mutable && (l.sources.is_empty() || l.sources.iter().any(|s| s.text == name))
