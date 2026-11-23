@@ -802,7 +802,8 @@ prepends it.
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither
 - 04b-keys.md: 13 blocks, 5 with a case, 8 spec-only, 0 neither
-- 05-ownership.md: 56 blocks, 53 with a case, 3 spec-only, 0 neither
+- 05-ownership.md: 56 blocks, 52 with a case, 3 spec-only, 1 neither
+  - line 972: `fn evens(xs: [V]Int) -> lends Filtered<[V]Int> = xs.filter(x`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
   - line 196: `fn divisors(n: Int) -> yields Int:`
@@ -811,7 +812,7 @@ prepends it.
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-1 of 108 blocks have neither a case nor a spec-only reason.
+2 of 108 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 

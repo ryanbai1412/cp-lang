@@ -970,7 +970,7 @@ a[l] = 0
 
 **33.**
 ```python
-fn evens(xs: [V]Int) -> lends Filter<[V]Int, Int -> Bool> = xs.filter(x => x % 2 == 0)
+fn evens(xs: [V]Int) -> lends Filtered<[V]Int> = xs.filter(x => x % 2 == 0)
 for x in evens(a): a[l] += x
 ```
 <details><summary>Answer</summary>No. The result borrows <code>a</code> for the loop, and the body writes <code>a</code> (R12).</details>

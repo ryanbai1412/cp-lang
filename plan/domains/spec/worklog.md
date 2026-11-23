@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `core/05-ownership.md` quiz 33 named a `Filter<[V]Int, Int -> Bool>` type; spec/std's view is `Filtered<S>`, so the quiz now says that. It still fails (`Filtered` not in scope); stdlib request.
 - `lib/containers.md` named a free `subset_sums<D>(ws)`; `spec/std/bitset.cp` has the static `Bitset<D>.subset_sums(ws)`, so the table and the cf2187d excerpt now use that (the excerpt is marked spec-only: its m, half_gaps, end_f come from the port's earlier lines).
 - Chapters 6 and 7 wrote `n.isqrt()`, but `std.math.isqrt(x: Int)` is a free function (no `self`); now `isqrt(n)`. spec-blocks 68/185 (34 error, 83 skip). Asked stdlib to export the free `dot`/`cross` that `lib/geometry.md` promises.
 - Reject case for R07.2.5 (E0408, `core-07/assign-into-range.cp`); fails today (no diagnostic), compiler request.
