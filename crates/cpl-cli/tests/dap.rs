@@ -564,3 +564,21 @@ fn dap_replays_one_call_with_the_edited_fn() {
     );
     dap.finish();
 }
+
+#[test]
+fn a_message_without_a_content_length_ends_the_session_with_exit_1() {
+    let mut client = DapClient::spawn();
+    use std::io::Write;
+    client
+        .stdin
+        .write_all(b"Content-Type: x\r\n\r\n{}")
+        .unwrap();
+    drop(client.stdin);
+    let out = client.child.wait_with_output().unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    let stderr = String::from_utf8_lossy(&out.stderr);
+    assert!(
+        stderr.contains("cpl dap: missing or oversized Content-Length"),
+        "{stderr}"
+    );
+}

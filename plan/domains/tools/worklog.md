@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): golden tests for `cpl dap` ending with exit 1 on a message without a Content-Length, and `cpl judges` rejecting an unknown judge (`// judge:` line or cp.toml) as misuse; `measure.py golden` now credits a command run through a helper type's methods (`DapClient::spawn`) and records that `judges` has no failing outcome: 23/23 commands with help, usage, success and exit asserted. Open: an unknown judge in cp.toml is a config error that exits 2 like misuse; part of tools-4.
 - Landed (this): `cpl test` on `.cp` files (inline test blocks) moves from `crates/cpl-cli/src/lib.rs` to `src/unit_tests.rs` (lib.rs 1,801 -> 1,572 lines); also put `check`'s doc comment back on `check` (the previous move left it on `dap`).
 - Landed (this): `cpl check` and `cpl fix` move from `crates/cpl-cli/src/lib.rs` to `src/check.rs` (lib.rs 1,939 -> 1,801 lines), PLAN.md phase-2 step 3; no behaviour change (`cargo nextest run -p cpl-cli`: 248 passed).
 - Landed (this): golden tests that `lint` exits 1 on a lint set to deny in cp.toml, and `replay` replays a recorded call (exit 0) and exits 1 at a step with no call; 21/23 commands assert all four (`measure.py golden`).

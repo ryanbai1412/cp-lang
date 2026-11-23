@@ -525,3 +525,24 @@ fn a_program_with_an_error_or_a_failing_case_exits_1() {
     fails(&["test", "a.cp"], "0/1 passed");
     fails(&["submit", "a.cp"], "not ready to send");
 }
+
+#[test]
+fn judges_rejects_a_judge_it_does_not_know_as_misuse() {
+    let dir = scratch("judges_unknown");
+    std::fs::write(dir.join("a.cp"), "// judge: nope\nprint(1)\n").unwrap();
+    let out = cpl(&dir, &["judges", "a.cp"]);
+    assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
+    let says = text(&out.stderr);
+    assert!(
+        says.contains("cpl: the `// judge:` line names judge `nope`"),
+        "{says}"
+    );
+    assert!(says.contains("generic, codeforces"), "{says}");
+    std::fs::write(dir.join("b.cp"), "print(1)\n").unwrap();
+    std::fs::write(dir.join("cp.toml"), "[judge]\njudge = \"nope\"\n").unwrap();
+    let out = cpl(&dir, &["judges", "b.cp"]);
+    assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
+    assert!(text(&out.stderr).contains("names judge `nope`"));
+    let out = cpl(&dir, &["judges", "b.cp", "--json"]);
+    assert_eq!(out.status.code(), Some(EXIT_USAGE.into()));
+}

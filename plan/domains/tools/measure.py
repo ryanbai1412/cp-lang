@@ -87,7 +87,12 @@ def golden():
         for body in fns:
             name = re.match(r"(?:#\[test\]\n)?(?:pub )?fn (\w+)", body)
             if name:
-                uses[name.group(1)] = (body.startswith("#[test]"), body, {c for c in arg.findall(body) if c in counts})
+                test = body.startswith("#[test]")
+                found = {c for c in arg.findall(body) if c in counts}
+                uses[name.group(1)] = (test, body, found)
+                if not test:  # the methods of a helper type in the chunk
+                    for method in re.findall(r"\n\s+(?:pub )?fn (\w+)", body):
+                        uses.setdefault(method, (False, body, found))
         for test, body, direct in uses.values():
             if not test:
                 continue
@@ -97,7 +102,7 @@ def golden():
             for c in direct | called:
                 counts[c] += 1
             helpers = "".join(b for h, (t, b, _) in uses.items() if not t and re.search(rf"\b{h}\(", body))
-            for c in direct:
+            for c in direct | called:
                 covered[c] |= {k for k, r in kinds.items() if r.search(body + helpers)}
     print("  ".join(f"{c} {n}" for c, n in counts.items()))
     print(f"commands {len(cmds)}  with a test {sum(n > 0 for n in counts.values())}  without {sorted(c for c, n in counts.items() if n == 0)}")
@@ -105,8 +110,14 @@ def golden():
     if every:
         for c in cmds:
             covered[c] |= {"help", "usage"}
+    # Commands with no outcome but success or misuse: nothing to exit 1 or 3 on.
+    no_failure = {"judges": "only lists profiles; an unknown file or judge is misuse"}
+    for c in no_failure:
+        covered[c].add("exit")
     full = [c for c in cmds if len(covered[c]) == len(kinds)]
     print(f"commands with help, usage, success and exit tested: {len(full)}/{len(cmds)}")
+    for c, why in no_failure.items():
+        print(f"  {c}: no failing exit to test ({why})")
     for c in cmds:
         if c not in full:
             print(f"  {c} lacks {', '.join(k for k in kinds if k not in covered[c])}")
