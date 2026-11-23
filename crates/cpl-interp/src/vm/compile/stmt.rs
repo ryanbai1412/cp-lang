@@ -9,6 +9,13 @@ use cpl_ir::{
     Stmt, Ty,
 };
 
+/// What a traced call calls: a fn, or the fn value an expression gives.
+#[derive(Clone, Copy)]
+pub(super) enum Callee<'p> {
+    Fn(FnId),
+    Value(&'p Expr),
+}
+
 impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn compile_stmts(&mut self, stmts: &'p [Stmt]) {
         if let Some((slot, span)) = self.traced_loop_var.take() {
@@ -289,7 +296,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     /// A call a traced chunk makes itself: by-value arguments, and a
     /// result kept in one register.
-    pub(super) fn traced_call(&self, e: &'p Expr) -> Option<(FnId, &'p [Arg])> {
+    pub(super) fn traced_call(&self, e: &'p Expr) -> Option<(Callee<'p>, &'p [Arg])> {
+        if let ExprKind::CallExpr(callee, args) = &e.kind {
+            let ok = self.traced
+                && matches!(callee.ty, Ty::Fn(..))
+                && args.iter().all(|a| matches!(a, Arg::Value(_)));
+            return ok.then_some((Callee::Value(callee), args.as_slice()));
+        }
         let ExprKind::Call(fn_id, args) = &e.kind else {
             return None;
         };
@@ -298,14 +311,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
             && args.len() == f.params.len()
             && (args.iter().zip(&f.params)).all(|(a, p)| matches!(a, Arg::Mut(_)) == p.mutable)
             && !self.program.judge_fns.contains(fn_id);
-        ok.then_some((*fn_id, args.as_slice()))
+        ok.then_some((Callee::Fn(*fn_id), args.as_slice()))
     }
 
     /// [`quiet`], but for the calls a traced chunk makes itself, and a
     /// `do` block, whose statements each compile as traced statements.
     pub(super) fn traced_quiet(&self, e: &'p Expr) -> bool {
         let ok = match &e.kind {
-            ExprKind::Call(..) => self.traced_call(e).is_some(),
+            ExprKind::Call(..) | ExprKind::CallExpr(..) => self.traced_call(e).is_some(),
             ExprKind::Do(block) => self.gives_natively(&block.stmts),
             // Made on the VM as `MakeClosure`, which writes nothing.
             ExprKind::Closure(cid) => (self.program.closures[*cid].captures.iter())
@@ -344,10 +357,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
     pub(super) fn emit_traced_call(
         &mut self,
         e: &'p Expr,
-        fn_id: FnId,
+        callee: Callee<'p>,
         args: &'p [Arg],
         scalar: bool,
     ) -> u16 {
+        let (fn_id, callee_v) = match callee {
+            Callee::Fn(fn_id) => (fn_id as u16, 0),
+            Callee::Value(callee) => (u16::MAX, self.compile_expr_v(callee)),
+        };
         let regs: Vec<u16> = args.iter().map(|_| self.alloc_v()).collect();
         let mut indices = Vec::new();
         for arg in args {
@@ -380,7 +397,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let dst_i = if scalar { self.alloc_i() } else { u16::MAX };
         self.emit(
             Op::CallTraced {
-                fn_id: fn_id as u16,
+                fn_id,
+                callee_v,
                 arg_base_v: regs.first().copied().unwrap_or(0),
                 argc: args.len() as u8,
                 dst_v,

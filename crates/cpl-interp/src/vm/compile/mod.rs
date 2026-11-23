@@ -413,6 +413,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 ScalarKind::of_ty(ret(fn_id), self.program)?,
             )),
             Op::CallTraced {
+                fn_id: u16::MAX, ..
+            } => return None,
+            Op::CallTraced {
                 fn_id,
                 dst_i,
                 dst_v,

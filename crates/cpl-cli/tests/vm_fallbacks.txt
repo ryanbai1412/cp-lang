@@ -39,14 +39,12 @@ traced stmt:Expr(Sort)
 traced stmt:For(Range)
 traced stmt:For(Seq)
 traced stmt:For(SeqRev)
-traced stmt:If
 traced stmt:Let(Binary)
 traced stmt:Let(Call)
 traced stmt:Let(CallExpr)
 traced stmt:Let(Closure)
 traced stmt:Let(Uninit)
 traced stmt:Let(Unwrap)
-traced stmt:Return
 traced stmt:Trap
 traced stmt:While
 untraced fn:SortedBag_Int.drain(part)
@@ -61,11 +59,9 @@ untraced stmt:Assign(Global,Binary(Mul))
 untraced stmt:Assign(Global,Binary(Sub))
 untraced stmt:Assign(Global,Min)
 untraced stmt:Assign(Index1D,Binary(Mul))
-untraced stmt:Assign(Index1D,Set)
 untraced stmt:Assign(Index2D,Max)
 untraced stmt:Assign(IndexND,Set)
 untraced stmt:Assign(Local,Binary(Add))
-untraced stmt:Assign(Local,Set)
 untraced stmt:DefDomain
 untraced stmt:Expr(Call)
 untraced stmt:Expr(CallExpr)
@@ -76,5 +72,4 @@ untraced stmt:Expr(Sort)
 untraced stmt:For(Range)
 untraced stmt:For(Seq)
 untraced stmt:Let(Uninit)
-untraced stmt:Return
 untraced stmt:Trap

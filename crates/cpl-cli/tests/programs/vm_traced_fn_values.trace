@@ -1,0 +1,16 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"k":{"name":"k","type":"Int","kind":"scalar"},"s":{"name":"s","type":"Int","kind":"scalar"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"let n: Int = read()","stage":"main","values":{"stdout":[],"n":4},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":4,"label":"var k = 3","stage":"main","values":{"stdout":[],"n":4,"k":3},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":2,"line":5,"label":"let add = (x: Int) => x + k","stage":"main","values":{"stdout":[],"n":4,"k":3},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":3,"line":6,"label":"let pick = (x: Int) => if x % 2 == 0: Some(x) else: None","stage":"main","values":{"stdout":[],"n":4,"k":3},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":4,"line":7,"label":"var s = 0","stage":"main","values":{"stdout":[],"n":4,"k":3,"s":0},"locals":{},"frames":[{"fn":"main","line":7}]},
+{"id":5,"line":9,"label":"s += add(i)","stage":"main","values":{"stdout":[],"n":4,"k":3,"s":3},"locals":{"i":0},"frames":[{"fn":"main","line":9}]},
+{"id":6,"line":10,"label":"if let Some(v) = pick(i): s += v","stage":"main","values":{"stdout":[],"n":4,"k":3,"s":3},"locals":{"i":0,"v":0},"frames":[{"fn":"main","line":10}]},
+{"id":7,"line":9,"label":"s += add(i)","stage":"main","values":{"stdout":[],"n":4,"k":3,"s":7},"locals":{"i":1,"v":0},"frames":[{"fn":"main","line":9}]},
+{"id":8,"line":9,"label":"s += add(i)","stage":"main","values":{"stdout":[],"n":4,"k":3,"s":12},"locals":{"i":2,"v":0},"frames":[{"fn":"main","line":9}]},
+{"id":9,"line":10,"label":"if let Some(v) = pick(i): s += v","stage":"main","values":{"stdout":[],"n":4,"k":3,"s":14},"locals":{"i":2,"v":2},"frames":[{"fn":"main","line":10}]},
+{"id":10,"line":9,"label":"s += add(i)","stage":"main","values":{"stdout":[],"n":4,"k":3,"s":20},"locals":{"i":3,"v":2},"frames":[{"fn":"main","line":9}]},
+{"id":11,"line":11,"label":"print → 20 13","stage":"main","values":{"stdout":["20 13"],"n":4,"k":3,"s":20},"locals":{"i":3,"v":2},"checkpoint":"print 1","frames":[{"fn":"main","line":11}]},
+{"id":12,"line":12,"label":"let show = (x: Int) => print(\"got\", x)","stage":"main","values":{"stdout":["20 13"],"n":4,"k":3,"s":20},"locals":{"i":3,"v":2},"frames":[{"fn":"main","line":12}]},
+{"id":13,"line":12,"label":"print → got 20","stage":"main","values":{"stdout":["20 13","got 20"],"n":4,"k":3,"s":20},"locals":{"x":20},"checkpoint":"print 2","frames":[{"fn":"\u003cclosure>","line":12},{"fn":"main","line":13}]},
+{"id":14,"line":13,"label":"the program ended","stage":"main","values":{"stdout":["20 13","got 20"],"n":4,"k":3,"s":20},"locals":{"i":3,"v":2},"checkpoint":"end","frames":[{"fn":"main","line":13}]}]}}}
+stderr:

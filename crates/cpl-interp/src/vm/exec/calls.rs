@@ -634,6 +634,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::CallTraced {
                 fn_id,
+                callee_v,
                 arg_base_v,
                 argc,
                 dst_v,
@@ -641,9 +642,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 lends,
             } => {
                 let id = usize::from(fn_id);
-                let f = &self.program.fns[id];
                 let span = spans[cur_pc];
-                self.stack_left(span, Some(&f.name))?;
+                let callee = (fn_id == u16::MAX).then(|| regs_v[callee_v as usize].clone());
+                if callee.is_none() {
+                    self.stack_left(span, Some(&self.program.fns[id].name))?;
+                }
                 let abv = arg_base_v as usize;
                 let mut args: Vec<Value> = regs_v[abv..abv + argc as usize]
                     .iter_mut()
@@ -664,12 +667,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.show_lent();
                 // Lent once the globals and lent values are back in place.
                 let returned = match self.lend_args(lent, &mut args, regs_v, index_regs) {
-                    Ok(()) => {
-                        let base = self.stack.len();
-                        self.stack.extend(args);
-                        self.stack.resize(base + f.locals.len(), Value::Unit);
-                        self.call_at(id, base, span, None)
-                    }
+                    Ok(()) => match callee {
+                        Some(fv) => self.call_lending(fv, args, &[], span).map(|(v, _)| v),
+                        None => {
+                            let base = self.stack.len();
+                            self.stack.extend(args);
+                            let locals = self.program.fns[id].locals.len();
+                            self.stack.resize(base + locals, Value::Unit);
+                            self.call_at(id, base, span, None)
+                        }
+                    },
                     Err(e) => Err(e),
                 };
                 self.hide_lent();

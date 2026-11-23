@@ -725,7 +725,9 @@ pub(crate) enum Op {
     /// arguments lend their places, their indices in the registers after
     /// the arguments.
     CallTraced {
+        /// `u16::MAX` for a call to the fn value in `callee_v`.
         fn_id: u16,
+        callee_v: u16,
         arg_base_v: u16,
         argc: u8,
         dst_v: u16,
