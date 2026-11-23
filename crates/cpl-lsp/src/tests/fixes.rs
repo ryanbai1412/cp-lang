@@ -278,3 +278,17 @@ fn fix_all_rewrites_removed_syntax_then_the_lints_it_uncovers() {
         .unwrap_or(&[]);
     assert_eq!(edits[0].at(&["newText"]).as_str(), Some(original.as_str()));
 }
+
+/// The editor reads the checker's facts as `cpl lint` does: `x = x + 1` is
+/// `x += 1` on an `Int`, but on a `?Int` `+=` is an error (decision 19.5).
+#[test]
+fn compound_self_ref_is_offered_only_where_the_place_is_not_optional() {
+    let src = "var n = 2\nvar x: ?Int = Some(3)\nfor d in [1, 2]:\n    n = n + d\n    x = x + d\nprint(n, x ?? 0)\n";
+    let (_, diagnostics) = open(src);
+    let lines: Vec<_> = diagnostics
+        .iter()
+        .filter(|d| d.at(&["code"]).as_str() == Some("L0210"))
+        .map(|d| d.at(&["range", "start", "line"]).as_u32())
+        .collect();
+    assert_eq!(lines, [Some(3)], "{diagnostics:?}");
+}

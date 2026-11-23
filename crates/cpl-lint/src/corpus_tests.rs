@@ -165,3 +165,33 @@ fn fixes_never_add_checker_errors() {
         "no longer made worse, drop from KNOWN_WORSE: {fixed:?}"
     );
 }
+
+/// `cpl lint` and the editor refine the syntax findings with the same
+/// checker facts, so they report the same lints on every std file.
+#[test]
+fn the_cli_and_the_editor_read_the_same_facts() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let config = Config::default();
+    let key = |d: &Diagnostic| (d.code, d.span.start, d.span.end);
+    for path in files(&root, crate::STD_DIR, "") {
+        let src = std::fs::read_to_string(&path).unwrap();
+        let mut db = cpl_check::Database::new();
+        db.set_file("<lint>.cp", src.as_str());
+        let Some(analysis) = db.analyze("<lint>.cp") else {
+            continue;
+        };
+        if analysis.has_syntax_errors {
+            continue;
+        }
+        let items: Vec<_> = analysis
+            .items
+            .iter()
+            .map(|i| (i.offset, &i.syntax.parsed))
+            .collect();
+        let mut editor = lint_parsed(&analysis.text, &items, &config);
+        refine_with_analysis(&mut editor, &analysis);
+        let cli: Vec<_> = lint(&src, &config).iter().map(key).collect();
+        let editor: Vec<_> = editor.iter().map(key).collect();
+        assert_eq!(editor, cli, "{}", path.display());
+    }
+}
