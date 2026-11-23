@@ -4,30 +4,30 @@
 [[metric]]
 name = "conformance pass"
 command = "./target/release/cpl-conform conformance"
-today = "1617/1711"
-target = "1711/1711"
-milestone = "M2"
+today = "2604/2777 (fbdca4be1)"
+target = "100% of the full suite"
+milestone = "M1"
 
 [[metric]]
 name = "interpreter == C++"
 command = "./target/release/cpl-conform diff"
-today = "1242/1336 pass, 94 skip"
-target = "1336/1336 pass, 0 skip"
-milestone = "M2"
+today = "2053/2192 pass, 138 skip, 1 error (fbdca4be1)"
+target = "all pass, 0 skip, 0 fail"
+milestone = "M1"
 
 [[metric]]
 name = "distinct conformance failure causes"
 command = "./target/release/cpl-conform conformance --causes | grep 'causes ('"
-today = "47"
+today = "97 (fbdca4be1)"
 target = "0"
-milestone = "M2"
+milestone = "M1"
 
 [[metric]]
 name = "VM fallback to tree-walker, corpus"
 command = "for d in corpus/problems/*/; do i=$(ls $d/tests/*.in 2>/dev/null | head -1); [ -n \"$i\" ] && CPL_VM_STATS=json timeout 10 ./target/release/cpl run $d/spec.cp $i 2>&1 >/dev/null | grep -o '\"total_fallbacks\":[0-9]*'; done"
-today = "13 of 13 runnable programs fall back; 4522 fallback executions"
+today = "3,835 / 15.65M / 2.02M dynamic fallbacks over programs / corpus / conformance (tech-debt, 2026-11-23)"
 target = "0 programs, 0 executions; tree-walker deleted"
-milestone = "M3"
+milestone = "M1"
 
 [[metric]]
 name = "std type names as string literals in check/ir/interp"

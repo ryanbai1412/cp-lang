@@ -12,6 +12,9 @@ Every program the spec defines means exactly what the spec says, in the interpre
 
 | Exit criterion | Command | Today | Exit |
 |---|---|---|---|
+| Conformance 100% (Ryan, 2026-11-23) | `cpl-conform conformance --causes` | 2604/2777, 173 fail, 97 causes (`fbdca4be1`) | every case passes; never weaken a case |
+| Interp == C++, 0 skips | `cpl-conform diff` | 2053/2192, 138 skip, 1 error (`fbdca4be1`) | 0 skipped, 0 failing |
+| One engine | `CPL_VM_STATS=json`, untraced and traced | 3,835 / 15.65M / 2.02M fallbacks over programs / corpus / conformance (tech-debt baseline) | 0 fallbacks; tree-walker deleted (split with tech-debt and debugger) |
 | Interpreter == C++ wherever both run | `cpl-conform diff` | 1 mismatch (`corpus/dmopc21c5p2`: interp `1`, C++ `32441352192`) | 0 |
 | No silent wrong answer in conformance | `cpl-conform conformance --causes`, `wrong output` | 11 cases | 0: fixed, or rejected with a named error |
 | No wrong answer or internal trap on a real problem | `cpl-conform corpus` | 1 wrong (`aac5p4`), 1 internal trap (`etsr23r4p2`, `expected closure`) | 0 whose cause is in compiler crates |
@@ -20,7 +23,7 @@ Every program the spec defines means exactly what the spec says, in the interpre
 | Windows line endings | a CRLF source and CRLF input through `cpl run` and `cpl build` + `g++ -O2 -std=c++17` | both print `8 3` (Linux; macOS/Windows CI is tools') | stays so, with a regression test |
 | `cpl run` and stress don't feel slow | sample runs of the corpus | not measured | no runnable corpus sample over 1 s in `cpl run` |
 
-Deferring (milestone "can wait", or not on the friend's path): interpreter snapshot/restore for trace replay (time-travel debugging; the shared value-register stack is parked), deleting the tree-walker and VM coverage work beyond what a slow `cpl run` needs, VM speed work, edition branches, std-name table and giant-file splits except where a fix needs them, the long tail of `matrix/index` method cases.
+Deferring (milestone "can wait", or not on the friend's path): interpreter snapshot/restore for trace replay (time-travel debugging; the shared value-register stack is parked), VM speed work, edition branches, std-name table and giant-file splits except where a fix needs them, the long tail of `matrix/index` method cases.
 
 Order of work (hours, not days): divergences, then wrong outputs, then traps and corpus errors; a checkpoint in [worklog.md](worklog.md) every 2 hours. Top 3 next steps:
 1. `dmopc21c5p2`: find where the interpreter and C++ first disagree, fix the wrong side with a diff regression.
@@ -32,11 +35,11 @@ Order of work (hours, not days): divergences, then wrong outputs, then traps and
 [Milestone 2](../../product/MILESTONE-2.md), the stable release, which starts once the Milestone 1 table passes. The most ambitious complete compiler: every program the spec defines runs and means the same thing in the interpreter and the C++. Every program it rejects gets one error naming the rule and the fix. There is one front end and one interpreter engine, std has no privilege in the compiler, and the shared core answers every editor query from the incremental database.
 
 Exit criteria:
-- `cpl-conform conformance` passes every case with `--causes` empty; `cpl-conform diff` has 0 skipped and 0 failing; `cpl-conform corpus` has 0 wrong, trapping or erroring programs with a compiler cause.
+- `cpl-conform corpus` has 0 wrong, trapping or erroring programs with a compiler cause (conformance 100% and diff with 0 skips moved to Milestone 1).
 - No known correctness bugs: every entry under General fixes owed in [PLAN.md](PLAN.md) is done or handed to spec as a decision, and a differential program generator runs 100k programs with 0 interpreter/C++ mismatches, checked builds trapping alike.
 - No std privilege: closed forms such as range `sum`/`min`/`max`/`count` live in std and resolve by ordinary method resolution; `ir_builtin_names`, `prelude_privilege` and `backend_std_names` in `scripts/debt-ratchet.py` are 0; `cpl check std/*.cp` reports 0 errors, gated.
 - Refinements are types: range bounds, non-empty `V.ranges` keys and view keys (`rev`, `filter`, `zip`) are part of the IR type, so they flow through bindings and generics.
-- One engine: the tree-walker is deleted, the VM runs every IR construct (also on wasm) within 5x of C++, and it supports snapshot/restore for time-travel debugging (deferred from Milestone 1).
+- One engine (deletion is Milestone 1): the VM runs every IR construct (also on wasm) within 5x of C++, and it supports snapshot/restore for time-travel debugging (deferred from Milestone 1).
 - The front end stays under 500 ms on every corpus program. LSP type-definition, implementations, call hierarchy and representation (including peak memory) all come from the shared core, each with a cpl-lsp consumer test.
 - No edition branches, and no owned non-test file over 2000 lines.
 
@@ -66,9 +69,8 @@ Not covered (owner instead):
 
 ## Milestones
 
-- **M1 Queue landed, known bugs fixed.** Exit: `wip-split-vm`, `wip-conformance-queue`, `wip-product-domain` on main or deleted as superseded; `std-seq/slice-max-optional`, `diagnostics/max-of-a-slice-is-optional`, `std-compress/wrapper-fn-fresh-domain`, `core-04/rebase-fresh-domain` and every `core-04/prod-*` and `core-04/f*` product case pass; conformance >= 1660/1711.
-- **M2 Spec-complete.** Exit: conformance 1711/1711; diff 0 skipped and 0 failing; `wrong output` and `E0302` causes in `--causes` both 0.
-- **M3 One engine, no privilege.** Exit: `CPL_VM_STATS` fallback count 0 over corpus and conformance, tree-walker code deleted, cpl-wasm on the VM; std-name literals 0 outside the intrinsics table; edition call sites 0; owned files over 2000 lines 0 (tests excepted).
+- **M1 Queue landed, known bugs fixed, spec-complete, one engine.** Exit: `wip-split-vm`, `wip-conformance-queue`, `wip-product-domain` on main or deleted as superseded; `std-seq/slice-max-optional`, `diagnostics/max-of-a-slice-is-optional`, `std-compress/wrapper-fn-fresh-domain`, `core-04/rebase-fresh-domain` and every `core-04/prod-*` and `core-04/f*` product case pass; conformance 100% of the full suite; diff 0 skipped and 0 failing; `CPL_VM_STATS` fallback count 0 over programs, corpus and conformance, tree-walker code deleted, cpl-wasm on the VM.
+- **M3 No privilege.** Exit: std-name literals 0 outside the intrinsics table; edition call sites 0; owned files over 2000 lines 0 (tests excepted).
 
 ## Metrics
 
@@ -76,10 +78,10 @@ Every value measured 2026-11-22 on main `4b8f504f`; commands in [metrics.toml](m
 
 | Metric | Command (short) | Today | Target | M |
 |---|---|---|---|---|
-| Conformance | `cpl-conform conformance` | 1617/1711 | 1711/1711 | M2 |
-| Interp == C++ | `cpl-conform diff` | 1242/1336, 94 skip | 1336/1336, 0 skip | M2 |
-| Distinct failure causes | `cpl-conform conformance --causes` | 47 | 0 | M2 |
-| VM fallbacks (corpus) | `CPL_VM_STATS=json cpl run` each runnable `spec.cp` | 13/13 programs, 4522 executions | 0 | M3 |
+| Conformance | `cpl-conform conformance` | 2604/2777 (`fbdca4be1`) | 100% | M1 |
+| Interp == C++ | `cpl-conform diff` | 2053/2192, 138 skip, 1 error (`fbdca4be1`) | 0 skip, 0 fail | M1 |
+| Distinct failure causes | `cpl-conform conformance --causes` | 97 (`fbdca4be1`) | 0 | M1 |
+| VM fallbacks | `CPL_VM_STATS=json cpl run` over programs / corpus / conformance | 3,835 / 15.65M / 2.02M (tech-debt, 2026-11-23) | 0; tree-walker deleted | M1 |
 | Std names in compiler | std type names as `"Name"` literals in check/ir/interp | 146 (35 names) | 0 outside table | M3 |
 | Edition branches | `grep is_v03()/spec_edition()` | 120 | 0 | M3 |
 | Owned files > 2000 lines | `debt-ratchet.json` allowlist, owned crates | 14 | 0 non-test | M3 |
