@@ -3,9 +3,12 @@
 // people of letter x sitting in letter y's block. A two-cycle costs one swap and each leftover
 // three-cycle two.
 enum Who = A | B | C
-let s = read<Str>()
+let s = read<Str of "ABC">()
 domain Seat = [s.len]
-let who = [Seat] i => s[Int(i)].to_str().parse<Who>()!
+let who: [Seat]Who = [Seat] i => match s[Int(i)]:
+    'A' => A
+    'B' => B
+    _ => C
 let pre = [Who] x => ([Seat] i => Int(who[i] == x)).scan(+)
 let size = [Who] x => pre[x].all
 
