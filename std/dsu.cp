@@ -15,7 +15,7 @@ pub struct Dsu<V>:
     @cache p: List<-2_147_483_648..=2_147_483_647>
     pub parts: Int
     /// Pairs `[child_ord, old_neg_size]` pushed flat since the first `mark`.
-    pub joined: List<Int>
+    pub joined: List<-2_147_483_648..=2_147_483_647>
     marked: Bool
 
     /// A union-find over `V` with every position in its own set. Pass `rollback: true` to switch
@@ -34,11 +34,13 @@ pub struct Dsu<V>:
     fn find_ord(self, start: Int) -> Int:
         var x = start
         unchecked:
-            while p[x] >= 0:
-                let par = p[x]
-                if not marked and p[par] >= 0:
-                    p[x] = p[par]
-                x = par
+            if marked:
+                while p[x] >= 0: x = p[x]
+            else:
+                while p[x] >= 0:
+                    let par = p[x]
+                    if p[par] >= 0: p[x] = p[par]
+                    x = par
         x
 
     /// The representative of `v`'s set: the root that union by size kept. Two positions are in one
