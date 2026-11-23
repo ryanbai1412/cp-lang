@@ -269,8 +269,9 @@ fn decode(text: &str) -> String {
 fn number_before(text: &str, unit: &str) -> Option<f64> {
     let head = text[..text.find(unit)?].trim_end();
     let start = head
-        .rfind(|c: char| !(c.is_ascii_digit() || c == '.'))
-        .map_or(0, |i| i + 1);
+        .char_indices()
+        .rfind(|&(_, c)| !(c.is_ascii_digit() || c == '.'))
+        .map_or(0, |(i, c)| i + c.len_utf8());
     head[start..].parse().ok()
 }
 

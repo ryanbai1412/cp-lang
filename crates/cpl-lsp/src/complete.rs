@@ -130,8 +130,9 @@ fn is_ident(c: char) -> bool {
 /// The identifier ending at `end`.
 fn ident_before(text: &str, end: usize) -> &str {
     let start = text[..end]
-        .rfind(|c: char| !is_ident(c))
-        .map_or(0, |i| i + 1);
+        .char_indices()
+        .rfind(|&(_, c)| !is_ident(c))
+        .map_or(0, |(i, c)| i + c.len_utf8());
     &text[start..end]
 }
 
@@ -1272,5 +1273,15 @@ impl Visitor for Calls<'_> {
                     .push((arg.value.span.start, format!("{}:", param.name)));
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod ident_tests {
+    #[test]
+    fn the_identifier_before_the_cursor_starts_after_a_multibyte_char() {
+        assert_eq!(super::ident_before("é", 2), "");
+        assert_eq!(super::ident_before("café x.ab", 10), "ab");
+        assert_eq!(super::ident_before("éab", 4), "ab");
     }
 }
