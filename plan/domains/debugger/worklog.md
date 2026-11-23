@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- VM in the browser (PLAN workstream 4): measured, then asked site, since the bundle cap is theirs. Enabling `mod vm` on wasm32 adds 572,473 bytes raw and 154,859 gzipped to `cpl_wasm.wasm`. Held until site answers.
 - Trap evidence: `every_runtime_code_traps_with_the_message_the_spec_shows` in `crates/cpl-cli/tests/runtime_errors.rs` traps once with each of the 12 runtime codes in spec/diagnostics.md (R0001-R0601), checking the code, the table's message and exit status 3. All 12 already matched; before this the suite checked only R0203 by code.
 - CI: `trace_browser` runs on CI, not skipped: run 45092808001 (c4f5436f8) passed all 3 browser tests. That run's `gate (checks)` failed on two clippy errors in `cpl-interp` from my trap-frame commit 582b653c8 (a complex type, an identity map); fixed in 7fa67de25 (`unwind::TrapFrame`, and an allow with its reason, since the map shortens `'p`). Its `cpl-lsp` fixture failure is not mine.
 - Replay's recording cost measured: an observer that logs only span and depth per step costs 2.56x (scalar, 303.2 vs 118.3 ms) and 2.53x (array, 447.2 vs 177.1 ms) untraced on the budget loops, against 5.6-5.9x for the full recorder. Replay would put the budget test under 3x; still waiting on compiler for Interp snapshot/restore. Numbers in `design/trace-replay.md`.
