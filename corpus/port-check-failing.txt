@@ -17,4 +17,3 @@ ioi18p1
 mccc4j5
 noi21p4
 noip01p4
-noip20p1

@@ -5,26 +5,24 @@
 //
 // A path has up to 11 splits, so a reduced denominator reaches 60^11,
 // about 3.6e19: one factor past `Int`. Every denominator is 2^a 3^b 5^c,
-// so an amount is a wide numerator over three exponents, and nothing
+// so an amount is an `I128` numerator over three exponents, and nothing
 // needs a gcd.
 // input: n m, then per junction its pipe count d and d targets
 // original: corpus/submissions/5445672.cpp
-use scout.wide.{Wide}
-
 domain Small = 0..3
 let primes = [Small] p => [2, 3, 5][p.ord]
-type Amount = (num: Wide, exp: [Small]Int)
+type Amount = (num: I128, exp: [Small]Int)
 
 /// `x` rewritten over the denominator with exponents `exp`.
-fn raised(x: Amount, exp: [Small]Int) -> Wide:
+fn raised(x: Amount, exp: [Small]Int) -> I128:
     var num = x.num
     for p in Small:
-        for _ in x.exp[p]..exp[p]: num = num.times(primes[p])
+        for _ in x.exp[p]..exp[p]: num *= I128(primes[p])
     num
 
 fn plus(x: Amount, y: Amount) -> Amount:
     let exp = [Small] p => max(x.exp[p], y.exp[p])
-    (num: raised(x, exp).plus(raised(y, exp)), exp:)
+    (num: raised(x, exp) + raised(y, exp), exp:)
 
 /// `x` split over `d` pipes, `d` from 1 to 5.
 fn shared(x: Amount, d: Int) -> Amount:
@@ -48,7 +46,7 @@ for u in Junction:
         waiting[v] += 1
 
 var holds: [Junction]Amount = [Junction] u => (
-    num: Wide.of(if u.label <= m: 1 else: 0),
+    num: I128(if u.label <= m: 1 else: 0),
     exp: [Small] p => 0,
 )
 var ready = [u for u in Junction if waiting[u] == 0]
@@ -63,8 +61,8 @@ while ready.len > 0:
 
 for u in Junction:
     if pipes[u].len > 0: continue
-    var (num, den) = (holds[u].num, Wide.of(1))
+    var (num, den): (I128, I128) = (holds[u].num, 1)
     for p in Small:
         for _ in 0..holds[u].exp[p]:
-            if num.rem(primes[p]) == 0: num = num.over(primes[p]) else: den = den.times(primes[p])
-    print(num.show(), den.show())
+            if num % I128(primes[p]) == 0: num /= I128(primes[p]) else: den *= I128(primes[p])
+    print(num, den)
