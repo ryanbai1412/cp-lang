@@ -86,8 +86,7 @@ Identifiers are `[A-Za-z_][A-Za-z0-9_]*`. Case is part of the grammar:
 
 The 33 keywords are:
 
-<!-- spec-only: keyword list, not a program -->
-```
+```text
 let var const fn struct enum domain type use pub if elif else for while
 in match return break continue and or not assert mut self unchecked
 true false trait impl lends yield

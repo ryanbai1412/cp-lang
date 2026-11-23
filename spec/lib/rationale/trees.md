@@ -97,7 +97,7 @@ struct Rooted<V, Pre>
 ```
 
 `adj` is anything with `Neighbours` (a `Graph`, `[V]List<V>`, a closure),
-so `Rooted(Graph.undirected(read<Tree<V>>()), root: V.first)` reads a tree.
+so `Rooted(Graph.undirected(read<Tree<V>>()), root: V.first!)` reads a tree.
 `new` on a graph with cycles roots its breadth-first tree (documented,
 tested), so `depth` is the distance from the root; back edges and low-links
 are graph algorithms (`std.graph`). A vertex the search never reaches traps;
@@ -353,7 +353,7 @@ children of `down[c] + 1`. The all-roots DP is the same three arguments.
 let n: 1..=1e5 = read()
 let m: 2..=1e9 = read()
 domain V = 1..=n
-let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first)
+let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first!)
 
 // a child either is all white or contributes a set containing it
 let ways = t.reroot(Monoid(1, (a, b) => a * b % m), (d, c, p) => d + 1, (acc, v) => acc)
@@ -370,7 +370,7 @@ Recolour a subtree; count distinct colours (at most 60) in a subtree.
 ```cp
 domain V = read(1..=4e5)
 let c: [V]1..=60 = read()
-let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first)
+let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first!)
 
 let assign = Action(None, (f, g) => f ?? g, (f, s, len) => f ?? s, over: |)
 var colours = LazySegTree(assign, t.reorder([V] v => 1 << c[v]))
@@ -388,7 +388,7 @@ Point updates of vertex values, maximum on a path.
 domain V = read(1..=2e5)
 let q: 1..=2e5 = read()
 let x: [V]1..=1e9 = read()
-let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first)
+let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first!)
 
 var best = SegTree(max, t.reorder(x))
 for _ in 0..q:
@@ -430,7 +430,7 @@ vertex: every vertex is added O(log n) times.
 ```cp
 domain V = read(1..=1e5)
 let c: [V]1..=V.count = read()
-let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first)
+let t = Rooted(Graph.undirected(read<Tree<V>>()), root: V.first!)
 
 var cnt: [1..=V.count]Int = 0
 var (top, sum) = (0, 0)

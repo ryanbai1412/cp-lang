@@ -41,7 +41,7 @@ All values measured 2026-11-22 on `4b8f504f` with a release build; commands in [
 
 | Metric | Command (short) | Today | Target | M |
 |---|---|---|---|---|
-| Conformance cases passing (compiler's number, spec's suite) | `cpl-conform conformance` | 2118/2286 | 100% | - |
+| Conformance cases passing (compiler's number, spec's suite) | `cpl-conform conformance` | 2130/2297 | 100% | - |
 | Cases (only grows) | same | 2286 | ratchet up | - |
 | Rules cited by >= 1 case | `cpl-conform --rules` | 528/528 | 100% | M1 |
 | Forbidding rules with no reject case | `conformance-coverage.py` | 3 | 0 | M1 |

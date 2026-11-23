@@ -3,6 +3,8 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Measured: conformance 2130/2297 (167 fail); spec-blocks 80/185 (32 error, 73 skip).
+- For diagnostics: `lib/rationale/trees.md` used `root: V.first` (a `?V`) in 5 places, now `V.first!`; core/01's keyword list is a `text` fence, so spec-blocks has 184 blocks.
 - search-dp's argmin-recovery fragment runs with `given:`. spec-blocks 80/185 (32 error, 73 skip).
 - 4 more fragments run with `given:` (04-indices x2, 04b-keys, 05-ownership); 04-indices' D&C example used `min_by`, a `_by` variant the design rules forbid, now `min(by:)`. spec-blocks 79/185 (32 error, 74 skip).
 - 6 spec-only fragments now run with `given:` setup (04b-keys x3, 04-indices, 05-ownership, search-dp interval DP); 04-indices' binary-search tour had two `let k`, now `let reach`. spec-blocks 75/185 (32 error, 78 skip). The 3 new errors are std/compiler: `Rebased` indexing and `V.cuts.range` (already in stdlib worklog), `V.ranges` (new request there).
