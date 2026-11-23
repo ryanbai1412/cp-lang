@@ -2,6 +2,15 @@
 
 The detail behind [README.md](README.md). Numbers are from [metrics.toml](metrics.toml) (2026-11-22, main `4b8f504f`).
 
+## Milestone 1 order
+
+Milestone 1 ([README](README.md#milestone-1)) sets the order; the workstreams below serve it or wait.
+1. **The stress loop, CLI.** An end-to-end test: a planted WA, `cpl stress` against the file's `@alt(program)`, the shrunk case saved to `<file>.tests/`, the fix, then `cpl test` and `cpl stress` green. Then the same for multitest, `@check` and `@interactor` problems. Whatever it trips on is fixed first.
+2. **The cold run.** Three unfamiliar problems taken through the loop from the docs alone; every friction fixed or logged in the worklog.
+3. **The stress loop, VS Code.** The Stress command and lens, the failing-case overlay and rerun, with an extension test; the extension's wording moved to `@alt(program)` and `@check` (tools owns `editors/`: request in their worklog).
+4. **Keep it green.** Seeded bugs (workstream 3) and trap evidence (workstream 2) are done; their tests stay in the gate.
+Deferred: workstream 4 (trace speed, replay, the split, the VM on wasm) and workstream 6 (generators beyond a row), per the milestone's "what can wait". Workstream 5 only for regressions.
+
 ## Workstreams
 
 1. **Land and repair (M1).** Rebase and land the in-flight branches; delete the superseded ones with a `git cherry` note in the worklog.
@@ -37,10 +46,6 @@ The detail behind [README.md](README.md). Numbers are from [metrics.toml](metric
 - `@brute` -> `@alt(program)` touches corpus and bench files other domains own; the stress-gen-alt branch already did the migration, so it needs a careful rebase, not a redo.
 - Screenshots go stale silently; the browser test in workstream 5 is what keeps them honest.
 
-## Phase 2, first
+## First
 
-1. `git cherry` each in-flight branch against main; delete superseded ones with a worklog note.
-2. Rebase and land `devin/wip-v03-debug-demos`; rerun `ten_million` and `debug_demos_compile`; recapture `shortest_path` and the VS Code step-back screenshot.
-3. Rebase and land `devin/wip-stress-gen-alt`; rerun the seeded and budget metrics.
-4. Rebase and land `devin/wip-trace-raw-cells`; rerun the overhead metric.
-5. Post the observer-interface request in `plan/domains/compiler/worklog.md`.
+Item 1 of the Milestone 1 order: the end-to-end stress-loop test on the CLI.
