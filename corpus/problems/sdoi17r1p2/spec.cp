@@ -10,18 +10,13 @@ let t = Rooted(Graph.undirected(read<[n - 1](u: V, v: V)>()), root: V.first!)
 let lca = LcaTable(t)
 var colours = SegTree(max, t.reorder([V] v => t.depth(v) + 1), act: add)
 var paths = PreferredPaths(t)
-// `access` doesn't yield the cut below `x` (stdlib worklog), so track each preferred child
-var below: [V]?V = None
 
 for op in read<[q]Op>():
     match op:
         Paint(x) =>
-            if let c = below[V(x)]: colours.apply(t.sub(c), 1)
-            below[V(x)] = None
             for (lost, gained) in paths.access(V(x)):
                 if let top = lost: colours.apply(t.sub(top), 1)
-                colours.apply(t.sub(gained), -1)
-                below[t.parent(gained)!] = Some(gained)
+                if let g = gained: colours.apply(t.sub(g), -1)
         Path(x, y) =>
             let at = (v: V) => colours.fold(t.pos(v)..=t.pos(v))
             print(at(V(x)) + at(V(y)) - 2 * at(lca.lca(V(x), V(y))) + 1)

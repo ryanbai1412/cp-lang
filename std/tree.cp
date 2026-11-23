@@ -2339,23 +2339,23 @@ pub struct PreferredPaths<V>:
 
     /// Makes the path from the root to `v` one preferred path, yielding each switch bottom-up:
     /// `gained` is the top vertex of the path just joined to its parent, `lost` the top vertex of
-    /// the path that parent stopped preferring, if any. Counting "how many paths lie between `v`
-    /// and the root" reads off the switches.
+    /// the path that parent stopped preferring, if any. The first switch may be the cut below
+    /// `v` (`gained: None`), so the switches account for every path that changed.
     ///
     /// cost: amortized \(O(\log n)\) switches
-    /// empty: nothing when `v` is already on the root's preferred path
+    /// empty: nothing when the root's preferred path already ends at `v`
     /// order: bottom-up
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var pp = PreferredPaths(t); pp.access(3).collect() == [(lost: None, gained: 3), (lost: None, gained: 1)] and pp.access(4).collect() == [(lost: Some(3), gained: 4)]`
-    pub fn access(mut self, v: V) -> yields (lost: ?V, gained: V):
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var pp = PreferredPaths(t); pp.access(3).collect() == [(lost: None, gained: Some(3)), (lost: None, gained: Some(1))] and pp.access(1).collect() == [(lost: Some(3), gained: None)]`
+    pub fn access(mut self, v: V) -> yields (lost: ?V, gained: ?V):
         var last: ?V = None
         var y: ?V = Some(v)
         while let u = y:
             self.splay(u)
-            if let g = last:
-                var lost: ?V = None
-                if let c = rc[u]: lost = Some(hd[c])
-                yield (lost:, gained: hd[g])
+            var lost: ?V = None
+            if let c = rc[u]: lost = Some(hd[c])
+            if let g = last: yield (lost:, gained: Some(hd[g]))
+            elif lost != None: yield (lost:, gained: last)
             rc[u] = last
             self.pull(u)
             last = Some(u)
@@ -3116,12 +3116,14 @@ fn preferred_paths_switch_like_preferred_children():
         var pref: [V]?V = [V] _ => None
         for _ in 0..60:
             let v = V.nth(rand(0, n - 1))
-            var want: List<(lost: ?V, gained: V)> = []
+            var want: List<(lost: ?V, gained: ?V)> = []
+            let cut: ?V = None
+            if pref[v] != None: want.push((lost: pref[v], gained: cut))
             pref[v] = None
             var c = v
             while let p = r.parent(c):
                 if pref[p] != Some(c):
-                    want.push((lost: pref[p], gained: c))
+                    want.push((lost: pref[p], gained: Some(c)))
                     pref[p] = Some(c)
                 c = p
             assert pp.access(v).collect() == want

@@ -16,7 +16,8 @@ for op in read<[q]Op>():
             for (lost, gained) in paths.access(x):
                 if lost is Some(top):
                     colours.apply(t.subtree(top), 1)
-                colours.apply(t.subtree(gained), -1)
+                if gained is Some(g):
+                    colours.apply(t.subtree(g), -1)
         Path(x, y) =>
             let at = (v: V) => colours.get(t.pre(v))
             print(at(x) + at(y) - 2 * at(lca(x, y)) + 1)
