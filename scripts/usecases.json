@@ -1,10 +1,7 @@
 {
   "baseline": [
     "play/U4",
-    "seq/U13",
-    "seq/U14",
     "seq/U15",
-    "seq/U2",
     "seq/U24",
     "seq/U25",
     "seq/U3",
@@ -14,7 +11,7 @@
   ],
   "high_water": {
     "play": 12,
-    "seq": 25,
+    "seq": 70,
     "stress": 27
   }
 }
