@@ -472,7 +472,7 @@ L0513 guessed from syntax what E0304 and E0201/E0204 already report.
   3. lint-fmt: `cpl-lint` takes a session's facts instead of building its
      own (`checker.rs`, `facts.rs`, `lib.rs`); each rule that restates a
      checker code is retired for that code's fix, as L0206 and L0513 were.
-  4. diagnostics: `cpl_check::fix` re-checks and applies in rounds over
+  4. diagnostics: `cpl_ir::fix` re-checks and applies in rounds over
      `cpl_diag::apply_fixes`, and a checker diagnostic carries its fixes, so `cpl fix`, the
      editor's fix-all and the playground apply the same edits.
   5. tools (stress, explain, trace, migrate) and perf (`checks.rs`): the
@@ -532,6 +532,6 @@ row (owner tools).
 |---|---|---|---|
 | check | `cpl_check::Session::diagnostics` | 36 `Database::new()` sites | compiler |
 | lint | `cpl_lint::lint` on a session's facts | `lint`, `lint_parsed`, `lint_named` build their own | lint-fmt |
-| fix | `cpl_check::fix` (checked, in rounds), over `cpl_diag::apply_fixes` (text edits) | `apply_error_fixes_in` (cli), `checked_fix` (lsp), `fix_checked_removed_syntax`, `apply_fixes` (lint) | diagnostics |
+| fix | `cpl_ir::fix` (checked, in rounds), over `cpl_diag::apply_fixes` (text edits) | landed ebea73d60; lint's `fix_checked_removed_syntax` left | diagnostics |
 | run | `cpl_interp::run_with` | `run`, `run_with`, `run_observed`, `run_profiled` | compiler |
 | trace | `cpl_interp::observe_on_this_thread` | plus `checkpoint::record_*` | debugger |
