@@ -191,7 +191,7 @@ with no real check yet. Targets and current values are in
 |---|---|---|---|
 | A trap names the values, the line, the call stack and the test case | R-codes missing a part | `errors/R11`: hand-written goldens | `crates/cpl-cli/tests/runtime_errors.rs` |
 | The interpreter and the built C++ stop on the same trap | traps that differ | `errors/R11`: differential suite | `crates/cpl-cli/tests/trap_parity.rs` |
-| Every trap says the CP Lang fix | R-codes with no fix in help | `errors/R11`: `missing` | — |
+| Every trap says the CP Lang fix | R-codes with no fix in help | `errors/R11`: hand-written, one trap per R-code, each required to carry help | `crates/cpl-cli/tests/runtime_errors.rs` `every_runtime_code_traps_with_the_message_the_spec_shows` |
 
 ### Every tool, every platform
 

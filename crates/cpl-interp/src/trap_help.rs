@@ -52,6 +52,27 @@ pub(crate) fn help(message: &str) -> Option<String> {
                 .into(),
         );
     }
+    if let Some((_, range)) = m
+        .split_once(" is not in `")
+        .and_then(|(_, r)| r.split_once(", which is "))
+    {
+        if m.contains("(input line") {
+            return Some("the input breaks a domain you declared: check it against the statement's constraints".into());
+        }
+        let range = range.split(" (").next().unwrap_or(range);
+        return Some(format!(
+            "the value is outside the domain: check it with `if x in {range}:` first, or give the variable the domain's range"
+        ));
+    }
+    if m.starts_with("assertion failed") {
+        return Some(
+            "the condition was false for the values below: fix the code that computed them, or the assertion if it is wrong"
+                .into(),
+        );
+    }
+    if m.starts_with("`todo` reached") {
+        return Some("this input reaches an unwritten branch: replace `todo` with its code".into());
+    }
     if let Some((_, range)) = m.split_once(" is outside `") {
         return Some(if range.contains("(input line") {
             "the input breaks a range you declared: check the type against the statement's constraints"

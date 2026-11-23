@@ -32,3 +32,4 @@ error[R0102]: 6 is not in `D_0`, which is 1..=5
    |
 38 | print(b.at(n + 1))
    |            ^^^^^
+   = help: the value is outside the domain: check it with `if x in 1..=5:` first, or give the variable the domain's range

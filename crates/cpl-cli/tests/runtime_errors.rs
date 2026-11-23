@@ -997,6 +997,7 @@ fn every_runtime_code_traps_with_the_message_the_spec_shows() {
             "the stack ran out: `f` never stops calling itself?",
         ),
     ];
+    let mut no_help = Vec::new();
     for (code, source, input, message) in cases {
         let (status, err) = run_stderr(source, input);
         let expected = format!("error[{code}]: {message}");
@@ -1005,7 +1006,16 @@ fn every_runtime_code_traps_with_the_message_the_spec_shows() {
             "expected `{expected}`, got:\n{err}"
         );
         assert_eq!(status, 3, "{code}: {err}");
+        if !err.contains("help: ") {
+            no_help.push(format!("{code}: {err}"));
+        }
     }
+    // `errors/R11`: every trap says the CP Lang way out.
+    assert!(
+        no_help.is_empty(),
+        "traps with no help:\n{}",
+        no_help.join("\n")
+    );
 }
 
 #[test]
