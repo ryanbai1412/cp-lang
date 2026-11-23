@@ -243,7 +243,7 @@ impl<'a> Lowerer<'a> {
                     ),
                     _ => "x => x".to_string(),
                 };
-                self.help(&format!(
+                self.help(format!(
                     "take one element and return its key, e.g. `{key}`; wrap a part in `desc(..)` to reverse it"
                 ));
                 return self.err_expr(span);
