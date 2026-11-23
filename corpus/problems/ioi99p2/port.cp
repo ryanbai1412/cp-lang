@@ -1,10 +1,14 @@
-// IOI 1999 P2 Hidden Codes: given m dictionary words and a target ASCII text s,
-// find a maximum-total-length set of non-overlapping occurrences of words as
-// subsequences of s, where each occurrence spans at most 1001 characters
-// (end - start <= 1000). Output total length and (word_id, start, end) triples.
-// Index word character positions in reverse per ASCII byte (0..256) so one left-
-// to-right scan updates the latest valid start for every word prefix in O(1),
-// driving a linear DP with backtracking reconstruction.
+// Source: IOI 1999 Day 1 P2 (Hidden Codes), https://dmoj.ca/problem/ioi99p2
+// Problem: N <= 100 case-sensitive code words (length <= 100, IDs 1..=N) and a text of
+//   length <= 1e6. A covering sequence of a word is a substring that starts and ends with
+//   the word's first and last letters and contains it as a subsequence, of length <= 1000.
+//   Choose non-overlapping covering sequences maximizing the total word length; print the
+//   sum, then one "id start end" line per item (1-based, any order).
+// Solution: for an end position the latest start is best. Scan the text once; for each
+//   letter, the (word, index) pairs it matches (stored in reverse index order) update
+//   start_pos[word, index], the latest start of that word prefix so far, in O(1). When a
+//   word completes at i within the span limit, dp[i] = max(dp[i - 1], len + dp[start - 1]);
+//   walk the choices back to print. O(|text| * matching letter slots).
 // original: corpus/submissions/4896839.cpp
 let m: 1..=1000 = read()
 var by_char: [0..256]List<(Int, Int)> = []
