@@ -310,8 +310,69 @@ impl<'p> Devirt<'p> {
                 break;
             }
         }
+        self.elide_unread_fn_params();
         self.drop_unread_fields();
         self.drop_dead_locals();
+    }
+
+    /// A fn-valued parameter the body never names (`Heap.new`'s `by:` when
+    /// it was specialized for `None`) holds nothing anyone calls. When every
+    /// call passes it a value that runs nothing, it is elided like a known
+    /// closure: a `bool` placeholder, and callers pass `false`.
+    fn elide_unread_fn_params(&mut self) {
+        let program = self.program;
+        let mut kept: BTreeSet<(FnId, usize)> = BTreeSet::new();
+        let mut scan = |block: &Block| {
+            walk::deep_exprs(block, &mut |e| {
+                if let ExprKind::Call(id, args) = &e.kind {
+                    for (slot, arg) in args.iter().enumerate() {
+                        if !matches!(arg, Arg::Value(v) if self.skippable_value(v)) {
+                            kept.insert((*id, slot));
+                        }
+                    }
+                }
+            });
+        };
+        scan(&program.setup);
+        scan(&program.main);
+        program.fns.iter().for_each(|f| scan(&f.body));
+        program.closures.iter().for_each(|c| scan(&c.body));
+        for (id, f) in program.fns.iter().enumerate() {
+            if program.entry_fns.contains(&id)
+                || program.judge_fns.contains(&id)
+                || is_hook_fn(program, id)
+            {
+                continue;
+            }
+            let named = crate::scope::named_params(&f.body, f.params.len());
+            let mut captured = BTreeSet::new();
+            walk::deep_exprs(&f.body, &mut |e| {
+                if let ExprKind::Closure(cid) = &e.kind {
+                    captured.extend(
+                        program.closures[*cid]
+                            .captures
+                            .iter()
+                            .filter(|c| !c.is_global)
+                            .map(|c| c.outer),
+                    );
+                }
+            });
+            for (slot, param) in f.params.iter().enumerate() {
+                let fn_valued = match &f.locals[slot].ty {
+                    Ty::Fn(..) => true,
+                    Ty::Opt(inner) => matches!(**inner, Ty::Fn(..)),
+                    _ => false,
+                };
+                if fn_valued
+                    && !param.mutable
+                    && !named.contains(&slot)
+                    && !captured.contains(&slot)
+                    && !kept.contains(&(id, slot))
+                {
+                    self.elidable.insert(Home::Param(id, slot));
+                }
+            }
+        }
     }
 
     /// A field no expression reads is left out of its struct, and every

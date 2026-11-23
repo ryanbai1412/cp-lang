@@ -16,3 +16,17 @@ print(t.reroot(Monoid(0, (a, b) => a + b), (c, _, _) => c + 1, (s, _) => s))
         "every `Monoid<Int>` holds the same `op`, so `f(..)` calls it directly:\n{out}"
     );
 }
+
+#[test]
+fn a_fn_parameter_the_body_never_names_is_not_a_std_function() {
+    let out = cpp("use std.heap.{Heap}
+var h = Heap<Int>()
+h.push(3)
+h.push(1)
+print(h.pop()!)
+");
+    assert!(
+        !out.contains("std::function"),
+        "`Heap.new` without `by:` never reads it, so it is a `bool` placeholder:\n{out}"
+    );
+}
