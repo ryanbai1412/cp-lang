@@ -94,7 +94,6 @@ pub(super) struct TraitInfo<'a> {
     pub offset: u32,
     pub name: String,
     pub methods: Vec<&'a ast::FnDecl>,
-    pub fields: Vec<String>,
     /// `@on_unimplemented("{T} can't ...")`: the trait's own words for a
     /// type with no `impl` of it.
     pub unimplemented: Option<String>,
@@ -2194,20 +2193,8 @@ impl<'a> Lowerer<'a> {
                             || (matches!(ty, Ty::Struct(_))
                                 && self.implements(ty, tr_name.text.as_str()))
                     }
-                    name => {
-                        self.implements(ty, name)
-                            || match (ty, self.get_sym(name)) {
-                                (Ty::Record(rfields), Some(Sym::Trait(tid)))
-                                    if !self.traits[tid].fields.is_empty() =>
-                                {
-                                    self.traits[tid]
-                                        .fields
-                                        .iter()
-                                        .all(|req| rfields.iter().any(|(rn, _)| rn == req))
-                                }
-                                _ => false,
-                            }
-                    }
+                    // Any other bound, by impl or by shape, the checker has verified.
+                    _ => true,
                 };
                 if !ok {
                     self.error(

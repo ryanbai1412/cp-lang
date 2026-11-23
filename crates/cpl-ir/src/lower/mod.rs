@@ -1465,36 +1465,11 @@ impl<'a> Lowerer<'a> {
                                     .get(abs.start as usize..abs.end as usize)?;
                                 Some(raw.trim_matches('"').to_string())
                             });
-                        let fields: Vec<String> = body
-                            .stmts
-                            .iter()
-                            .filter_map(|s| match &s.kind {
-                                ast::StmtKind::Let {
-                                    pat:
-                                        ast::Pattern {
-                                            kind: ast::PatternKind::Name(fname),
-                                            ..
-                                        },
-                                    ty: Some(_),
-                                    init: None,
-                                    ..
-                                } => Some(fname.clone()),
-                                ast::StmtKind::Fn(f)
-                                    if s.decorators.iter().any(|d| d.name.text == "get")
-                                        && f.params.len() == 1
-                                        && f.params[0].name.text == "self" =>
-                                {
-                                    Some(f.name.text.clone())
-                                }
-                                _ => None,
-                            })
-                            .collect();
                         self.traits.push(TraitInfo {
                             mod_id: m,
                             offset,
                             name: name.text.clone(),
                             methods,
-                            fields,
                             unimplemented,
                             alias_of,
                         });
