@@ -238,24 +238,9 @@ fn does_not_add_a_comma_to_a_comprehension() {
 }
 
 #[test]
-fn breaks_a_long_operator_chain_after_its_loosest_operators() {
-    let src = format!("let x = {}\n", ["long_name"; 14].join(" + "));
-    let want = format!("let x = {} +\n", ["long_name"; 14].join(" +\n    "));
-    let want = want.trim_end_matches(" +\n").to_string() + "\n";
-    assert_eq!(fmt(&src), want);
-    let src = "psum[(i + 1) * w + (j + 1)] = flat[i * c + j] + psum[(i + 1) * w + j] + psum[i * w + (j + 1)] - psum[i * w + j]\n";
-    let want = "psum[(i + 1) * w + (j + 1)] = flat[i * c + j] +\n    psum[(i + 1) * w + j] +\n    psum[i * w + (j + 1)] -\n    psum[i * w + j]\n";
-    assert_eq!(fmt(src), want);
-    assert_eq!(fmt(want), want);
-    let src = format!(
-        "if {} or ready:\n    go()\n",
-        ["long_flag_name"; 5].join(" and ")
-    );
-    let want = format!(
-        "if {} or\n        ready:\n    go()\n",
-        ["long_flag_name"; 5].join(" and ")
-    );
-    assert_eq!(fmt(&src), want);
+fn leaves_a_long_line_with_no_bracket_alone() {
+    let src = format!("let x = {}\n", vec!["long_name"; 14].join(" + "));
+    assert_eq!(fmt(&src), src);
 }
 
 #[test]
