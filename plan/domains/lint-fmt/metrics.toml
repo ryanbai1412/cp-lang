@@ -120,4 +120,4 @@ name = "fixes_that_add_errors"
 command = "cargo test -q -p cpl-lint fixes_never_add_checker_errors"
 today = 0
 target = 0
-note = "files in spec/std and corpus spec.cp whose checker error count rises after cpl fix; dream.cp (not gated): 1 of 151 swept, cf2262d, waits on the checker typing find(p)"
+note = "files in spec/std, corpus spec.cp and dream.cp whose checker error count rises after cpl fix; the one known dream case (cf2262d, 1 -> 16, waits on the checker typing find(p)) is listed in KNOWN_WORSE, which only shrinks"

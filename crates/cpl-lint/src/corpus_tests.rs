@@ -104,29 +104,64 @@ fn checker_errors(path: &Path, src: &str) -> usize {
     })
 }
 
-/// A verified autofix never makes a file worse: `cpl fix` on idiomatic code
-/// leaves the checker with no more errors than before.
+/// Dream ports a fix still makes worse, each waiting on another domain. The
+/// list only shrinks: an entry that stops getting worse fails the test.
+const KNOWN_WORSE: &[(&str, &str)] = &[(
+    "corpus/problems/cf2262d/dream.cp",
+    "the checker types `find` as an index search, not `find(p)` (compiler worklog)",
+)];
+
+/// A verified autofix never makes a file worse: `cpl fix` leaves the checker
+/// with no more errors than before, on idiomatic code and on dream ports.
 #[test]
 fn fixes_never_add_checker_errors() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut worse = Vec::new();
-    for (_, dir, leaf) in SETS {
-        for file in files(&root, dir, leaf) {
-            let src = std::fs::read_to_string(&file).unwrap();
-            let (config, _) = Config::discover(&file);
-            let (fixed, applied) = fix_at(Some(&file), &src, &config);
-            if applied == 0 {
-                continue;
-            }
-            let (before, after) = (checker_errors(&file, &src), checker_errors(&file, &fixed));
-            if after > before {
-                worse.push(format!("{}: {before} -> {after}", file.display()));
-            }
+    let dream = ("dream", "corpus/problems", "dream.cp");
+    let all: Vec<PathBuf> = SETS
+        .iter()
+        .chain([&dream])
+        .flat_map(|(_, dir, leaf)| files(&root, dir, leaf))
+        .collect();
+    let made_worse = |file: &PathBuf| {
+        let src = std::fs::read_to_string(file).unwrap();
+        let (config, _) = Config::discover(file);
+        let (fixed, applied) = fix_at(Some(file), &src, &config);
+        if applied == 0 {
+            return None;
         }
-    }
+        let (before, after) = (checker_errors(file, &src), checker_errors(file, &fixed));
+        let rel = file.strip_prefix(&root).unwrap().to_string_lossy();
+        (after > before).then(|| (rel.into_owned(), before, after))
+    };
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let chunk = all.len().div_ceil(threads).max(1);
+    let found: Vec<(String, usize, usize)> = std::thread::scope(|scope| {
+        let jobs: Vec<_> = all
+            .chunks(chunk)
+            .map(|files| {
+                scope.spawn(move || files.iter().filter_map(made_worse).collect::<Vec<_>>())
+            })
+            .collect();
+        jobs.into_iter().flat_map(|j| j.join().unwrap()).collect()
+    });
+    let (known, worse): (Vec<_>, Vec<_>) = found
+        .into_iter()
+        .partition(|(rel, _, _)| KNOWN_WORSE.iter().any(|(k, _)| k == rel));
+    let worse: Vec<String> = worse
+        .iter()
+        .map(|(rel, before, after)| format!("{rel}: {before} -> {after}"))
+        .collect();
     assert!(
         worse.is_empty(),
         "fixes add checker errors:\n{}",
         worse.join("\n")
+    );
+    let fixed: Vec<_> = KNOWN_WORSE
+        .iter()
+        .filter(|(k, _)| !known.iter().any(|(w, _, _)| w == k))
+        .collect();
+    assert!(
+        fixed.is_empty(),
+        "no longer made worse, drop from KNOWN_WORSE: {fixed:?}"
     );
 }

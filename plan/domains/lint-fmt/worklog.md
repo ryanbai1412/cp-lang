@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- lint: `fixes_never_add_checker_errors` now also covers the 421 `dream.cp` ports, files split across threads (5.4 s, was 17 s single-threaded in debug). cf2262d (1 -> 16, `find(p)` typing, compiler worklog) is the one `KNOWN_WORSE` entry; the test fails if a new file gets worse or if a known one stops getting worse (checked both ways by editing the list).
 - plan: the 4 wasm gates are all the prover; decisions.md 235 logs keeping it native, and the metric target becomes 4.
 - lint: L0506 `repeated_literal` skips literals in `@test` functions (test data, not facts the program keeps; same rule as L0302 and L0412). `cpl lint spec/std`: 254 -> 235 warnings, L0506 32 -> 13; the ratchet is re-blessed down. Pinned by a `@test` in `spec/lints/repeated_literal/near_miss.cp` that fails `every_lint_record_fires_on_before_only` without the change. The 13 left (read at each site) are real: an LCG modulus `2147483648` written twice, the NTT prime table repeated in an `if const` chain, `2_000_000_000` as a bound and a generator limit.
 - lint: corpus ratchet re-blessed down: std L0414 111 -> 103 (`CPL_LINT_BLESS=1 cargo test -p cpl-lint corpus_warnings_only_go_down`); `cpl lint spec/std` now 254 warnings, corpus spec.cp 34, dream.cp 99.
