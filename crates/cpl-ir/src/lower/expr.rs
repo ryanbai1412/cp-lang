@@ -2626,6 +2626,7 @@ impl<'a> Lowerer<'a> {
                     | ast::ExprKind::Paren(_)
                     | ast::ExprKind::Block(_)
                     | ast::ExprKind::Tuple(_)
+                    | ast::ExprKind::Record(_)
                     | ast::ExprKind::Range { .. }
             ) || operands
                 .last()
@@ -2642,8 +2643,7 @@ impl<'a> Lowerer<'a> {
                     ast::ExprKind::Call { callee, .. }
                         if matches!(&callee.kind, ast::ExprKind::Name(n) if n == "some" || n == "Some")
                 ) {
-                    let prev_ty = operands.last().unwrap().0.ty.clone();
-                    self.expr(e, Some(&prev_ty))
+                    self.expr(e, operands.last().map(|(prev, _)| &prev.ty))
                 } else {
                     self.expr_maybe_opt_reduce(e)
                 }

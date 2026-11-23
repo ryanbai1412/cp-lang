@@ -493,3 +493,10 @@ Round 12's cold reader hit again: `tally` returning `HashMap` (R07.11.4 says `Co
   source keys per R04a.9.2. Case `core-04/rev-keyed-counts-in-walk-order`. General fix owed (compiler/interp):
   a view flag for "keys follow the walk" so the reversed case stays \(O(1)\).
 - Routed from idioms (2026-11-23, header-audit bounds burn-down at full statement size): std `ntt` sets itself up again on every transform: ucup5s06a with 1e5 tests of n = 2 takes 0.78 s vs 0.02 s for the C++ (gprof: 97% in the setup). Cache the roots per modulus and size.
+- 2026-11-23: 4c7432acf (lint copy_comprehension fix) wrote `.collect()` into 7 std modules that
+  don't import `std.seq.collect`: 47 conformance cases regressed (`List<V>` has no `collect`).
+  Added the imports; the owed lint fix (add the `use`) is already in PLAN.
+- 2026-11-23: compared record literals take the other side's field types (`div_mod(a, b) == (q: .., r: [])`),
+  case `core-07/record-literal-compared-takes-other-side-type`; the doc runner retries any
+  failing example with its module imported (prelude `sqrt` shadowed `poly.sqrt`). Docs 2714/2780,
+  33 error, 27 todo, 4 trap; 0 conform regressions.
