@@ -316,10 +316,16 @@ fn apply(src: &str, edits: &[(cpl_diag::Span, String)]) -> String {
 /// How `b` scores, and the code of its first error with what its fix does.
 fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
     let errs = errors(&b.path, &b.src);
-    if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == b.edit) && errs.len() > 1 {
+    if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == b.edit) && errs.len() != 1 {
         let index = LineIndex::new(&b.src);
         let lines: Vec<&str> = b.src.lines().collect();
-        println!("--- broke line {}: {}", b.line + 1, lines[b.line as usize]);
+        let silent = if errs.is_empty() { " (silent)" } else { "" };
+        println!(
+            "--- {} line {}{silent}: {}",
+            b.path,
+            b.line + 1,
+            lines[b.line as usize]
+        );
         for d in &errs {
             let l = index.line_of(d.span.start);
             println!(
