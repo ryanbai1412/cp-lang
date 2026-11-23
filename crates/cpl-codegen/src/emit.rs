@@ -1278,10 +1278,8 @@ impl<'p> Emitter<'p> {
         let mut fns = String::new();
         let mut judge_decls = String::new();
         let mut entries = String::new();
-        for (id, f) in program.fns.iter().enumerate() {
-            if !reachable.contains(&id) {
-                continue;
-            }
+        for id in crate::order::callee_first(program, &reachable) {
+            let f = &program.fns[id];
             let start = fns.len();
             let part = if program.library_fns.get(id).copied().unwrap_or(false) {
                 crate::Part::Library

@@ -12,6 +12,7 @@ mod inline;
 mod lend;
 mod names;
 mod niche;
+mod order;
 mod presize;
 mod prune;
 mod ranges;

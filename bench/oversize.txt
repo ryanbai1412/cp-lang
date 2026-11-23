@@ -1,3 +1,2 @@
 # v0.3 programs whose C++ for judge `codeforces` is over the 32 KB bar, until it fits.
 # bench/sizes.py --check fails on one over the bar that is not listed, or one listed that fits.
-corpus/problems/noi17p2/spec.cp  # 36130 bytes

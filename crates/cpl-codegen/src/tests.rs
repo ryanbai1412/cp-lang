@@ -779,13 +779,20 @@ fn a_loop_to_the_length_of_a_list_indexes_it_unchecked() {
 
 #[test]
 fn a_fn_is_declared_ahead_only_when_it_is_named_before_it_is_defined() {
-    let cpp = cpp("fn first(n: Int) -> Int: n + 1\n\
+    // A fn is written after the fns it calls, so only a cycle needs one.
+    let cpp = cpp("fn first(n: Int) -> Int: second(n) + 1\n\
+         fn second(n: Int) -> Int: n * 2\n\
          fn even(n: Int) -> Bool: n == 0 or odd(n - 1)\n\
          fn odd(n: Int) -> Bool: n != 0 and even(n - 1)\n\
          print(first(2), yes(even(4)))\n");
-    assert!(cpp.contains("\nbool odd(ll n);\n"), "{cpp}");
+    let ahead = |sig: &str| cpp.contains(&format!("\n{sig};\n"));
+    assert!(ahead("bool odd(ll n)") != ahead("bool even(ll n)"), "{cpp}");
     assert!(
-        !cpp.contains("\nbool even(ll n);\n") && !cpp.contains("\nll first(ll n);\n"),
+        !ahead("ll first(ll n)") && !ahead("ll second(ll n)"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.find("ll second(").unwrap() < cpp.find("ll first(").unwrap(),
         "{cpp}"
     );
 }
