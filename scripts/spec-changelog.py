@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Enforces handbook/guidelines/spec-rules-checklist.md#spec-rules7-a-removed-spelling-is-in-the-changelog
+# Enforces handbook/guidelines/spec-rules-checklist.md#spec-rulesr7-a-removed-spelling-is-in-the-changelog
 """Fail if a spelling the spec removes (E0503) is missing from the changelog.
 
 Reads the `old` is `new` pairs in spec/diagnostics.md's E0503 row and
