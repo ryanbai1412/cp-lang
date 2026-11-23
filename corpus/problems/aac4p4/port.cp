@@ -1,22 +1,21 @@
 // Source: An Animal Contest 4 P4 Reindeer Racing, https://dmoj.ca/problem/aac4p4
 // Problem: n lanes, m hurdles (n, m <= 2000); the baton starts in lane s, and when its holder hits
 //   hurdle j it passes to lane k_j. A banana at (lane i, hurdle j) makes lane i hit hurdle j.
-//   Print a count X in L..=R and an n x m 0/1 matrix of X bananas leaving the baton in lane f,
-//   or -1 if impossible.
+//   Given 0 <= L <= R <= nm, print a count X in L..=R and an n x m 0/1 matrix of X bananas
+//   leaving the baton in lane f, or -1 if impossible.
 // Solution: greedy on j, the last hurdle with k_j = f. Without one the baton must never move:
 //   need s = f and throw only at other lanes. With R = 0 need s = f. If L <= n, hit hurdle j in
 //   lane s plus up to L - 1 other lanes. Otherwise hit hurdle j in every lane (whoever holds the
 //   baton passes it to f), then fill any cell except lane f after hurdle j until L. O(nm).
 // original: corpus/submissions/4140376.cpp
-// Runnable subset: the bounds here are cut to n, m, s, f <= 50.
 
-let n: 1..=50 = read()
-let m: 1..=50 = read()
-let s: 1..=50 = read()
-let f: 1..=50 = read()
-let l: 0..=2500 = read()
-let r: 0..=2500 = read()
-let arr: [0..m]Int = read()
+let n: 1..=2000 = read()
+let m: 1..=2000 = read()
+let s: 1..=n = read()
+let f: 1..=n = read()
+let l: 0..=n * m = read()
+let r: l..=n * m = read()
+let arr: [0..m]1..=n = read()
 
 var ans: [0..n, 0..m]Int = 0
 

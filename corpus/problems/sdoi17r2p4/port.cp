@@ -1,6 +1,6 @@
 // Source: SDOI 2017 Round 2 Genius Hacker (Luogu P3783), https://dmoj.ca/problem/sdoi17r2p4
 // Problem: T <= 10 tests: a directed graph, n, m <= 5e4 (self-loops and multi-edges allowed), each
-//   edge with a cost c <= 2e4 and a word, a node of a trie of k <= 2e4 nodes. Taking an edge costs
+//   edge with a cost 0 <= c <= 2e4 and a word, a node of a trie of k <= 2e4 nodes. Taking an edge costs
 //   c plus the LCP length of its word and the previous edge's word (the empty word at the start,
 //   town 1). Print the cheapest cost from town 1 to every other town.
 // Solution: Dijkstra over edges, without an arc per pair of edges at a town: sort the edges at
@@ -9,7 +9,7 @@
 //   step between neighbours at cost 0, and cross from arrived to leave at their LCP (an LCA
 //   depth). O(m) nodes and arcs, O(m log m).
 // original: corpus/submissions/5515890.cpp
-let tests: 1..=3 = read()
+let tests: 1..=10 = read()
 for _ in 0..tests:
     let n: 2..=5e4 = read()
     let m: n - 1..=5e4 = read()
@@ -19,19 +19,19 @@ for _ in 0..tests:
     domain Word = 1..=k
     domain Letter = 1..k
 
-    fn reaching() -> [Road](u: Town, v: Town, cost: 1..=5e4, word: Word):  // generator: every town can be reached
+    fn reaching() -> [Road](u: Town, v: Town, cost: 0..=2e4, word: Word):  // generator: every town can be reached
         [Road] r => (
             if r.idx < n - 1: (
                 Town(rand(1, r.idx + 1)),
                 Town(r.idx + 2),
-                rand(1, 50000),
+                rand(0, 20000),
                 Word(rand(1, k)),
-            ) else: (Town(rand(1, n)), Town(rand(1, n)), rand(1, 50000), Word(rand(1, k)))
+            ) else: (Town(rand(1, n)), Town(rand(1, n)), rand(0, 20000), Word(rand(1, k)))
         )
     fn random_tree() -> [Letter](u: Word, v: Word, ch: 1..=2e4):
         [Letter] l => (Word(rand(1, l.label)), Word(l.label + 1), l.label)
 
-    let roads: [Road](u: Town, v: Town, cost: 1..=5e4, word: Word) = read(gen: reaching)
+    let roads: [Road](u: Town, v: Town, cost: 0..=2e4, word: Word) = read(gen: reaching)
     let letters: [Letter](u: Word, v: Word, ch: 1..=2e4) = read(gen: random_tree)
     let words = Rooted(Graph.undirected(letters), Word.first!)
 

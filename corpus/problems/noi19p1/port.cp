@@ -9,7 +9,7 @@
 //   from a dynamic Li Chao tree per station over 0..=max time; a departure inserts its line. A
 //   dummy train 1 -> 1 at time 0 holds the answer. O(m log T).
 // original: corpus/submissions/3790564.cpp
-let (n, m, ax, bx, cx): (1..=100_000, 1..=200_000, 0..=10, 0..=10_000, 0..=10_000) = read()
+let (n, m, ax, bx, cx): (2..=100_000, 1..=200_000, 0..=10, 0..=1_000_000, 0..=1_000_000) = read()
 domain Station = 1..=n
 type Route = (u: Station, v: Station, s: 0..=1000, e: 0..=1000)
 

@@ -1,5 +1,5 @@
 // Source: NOI 2023 Day 1 Square Coloring, https://dmoj.ca/problem/noi23p1
-// Problem: an n x m grid (n, m <= 1e9), q <= 1e5 strokes painting the cells of a horizontal,
+// Problem: a grid of n columns and m rows (n, m <= 1e9), q <= 1e5 strokes painting the cells of a horizontal,
 //   vertical or diagonal (x and y both rising) segment black; at most 5 strokes are diagonal.
 //   Print the number of black cells. The first input number is the test id.
 // Solution: merge overlapping or touching strokes on the same line and add up their lengths.
@@ -11,19 +11,19 @@
 // Strokes are (line, lo, hi) tuples in three lists, and the sweep carries a
 // hand-rolled Fenwick over the sorted vertical lines: the prototype has no
 // compress(...).first_ge and no Set.rank.
-let tc: Int = read()
-let rows: 1..=1e9 = read()
+let _test_id: 0..=20 = read()
 let cols: 1..=1e9 = read()
-let n: 1..=2e5 = read()
+let rows: 1..=1e9 = read()
+let q: 1..=1e5 = read()
 var hori_in: List<(Int, Int, Int)> = []  // (y, x from, x to)
 var vert_in: List<(Int, Int, Int)> = []  // (x, y from, y to)
 var diag_in: List<(Int, Int, Int)> = []  // (y - x, x from, x to)
-for _ in 0..n:
+for _ in 0..q:
     let kind: 1..=3 = read()
-    let x1: Int = read()
-    let y1: Int = read()
-    let x2: Int = read()
-    let y2: Int = read()
+    let x1: 1..=cols = read()
+    let y1: 1..=rows = read()
+    let x2: 1..=cols = read()
+    let y2: 1..=rows = read()
     if kind == 1: hori_in.push((y1, min(x1, x2), max(x1, x2)))
     elif kind == 2: vert_in.push((x1, min(y1, y2), max(y1, y2)))
     else: diag_in.push((y1 - x1, min(x1, x2), max(x1, x2)))
