@@ -7,7 +7,7 @@ file.
 ## 0.3.0 (unreleased)
 
 The 0.3.0 language runs on the edge channel (`cpl --version` prints
-`0.3.0-dev+<commit>`). Its normative source is `spec/`; `spec/STATUS.md`
+`cpl 0.3.0-edge+<commit>`). Its normative source is `spec/`; `spec/STATUS.md`
 lists what is still open.
 
 ### Language

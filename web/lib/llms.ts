@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { installMarkdown } from '@/components/install';
 import { decisions } from '@/lib/decisions';
 import { source } from '@/lib/source';
 
@@ -15,6 +16,14 @@ function pages() {
   return source.getPages().sort((a, b) => rank(a.url) - rank(b.url));
 }
 
+const builtFrom = (() => {
+  try {
+    return (JSON.parse(readFileSync(join(process.cwd(), 'public/version.json'), 'utf8')) as { commit: string }).commit.slice(0, 9);
+  } catch {
+    return '';
+  }
+})();
+
 export function llmsIndex(): string {
   return [
     '# CP Lang',
@@ -22,6 +31,7 @@ export function llmsIndex(): string {
     '> A competitive-programming language that compiles to one readable C++17 file. Beta (0.3).',
     '',
     'The full documentation as one file: /llms-full.txt',
+    ...(builtFrom ? ['', `This site was built from commit ${builtFrom} of main (/version.json).`] : []),
     '',
     '## Docs',
     '',
@@ -41,6 +51,7 @@ export function llmsFull(): string {
     .map((p) => {
       const raw = readFileSync(join(process.cwd(), 'content/docs', p.path), 'utf8')
         .replace(/^---[\s\S]*?---\n/, '')
+        .replace(/^<Install \/>$/m, installMarkdown())
         // MDX cards read as a plain link list.
         .replace(/^[ \t]*<\/?Cards>\n/gm, '')
         .replace(/^[ \t]*<Card title="([^"]*)" href="([^"]*)" description="([^"]*)" \/>$/gm, '- [$1]($2): $3');

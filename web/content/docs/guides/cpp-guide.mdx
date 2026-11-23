@@ -56,7 +56,7 @@ Notice what disappeared: `ios_base::sync_with_stdio`, manual `while (T--)` (repl
 | `ios::sync_with_stdio(false); cin.tie(nullptr);` | Automatic | Fast buffered I/O is always on; `flush()` flushes interactive prompts. |
 | `int T; cin >> T; while (T--) solve();` | `@!multitest` | Precomputation above `@!multitest` runs once; per-test state and `@memo` caches reset automatically. |
 | `int n; cin >> n; vector<long long> a(n + 1);` | `let n: 1..=2e5 = read()` / `domain V = 1..=n` / `let a: [V]Int = read()` | Bounds are declared once and eliminate off-by-one and cross-index bugs. |
-| `const long long INF = 1e18; dist[v] = min(dist[v], d);` | `var dist: [V]?Int = none` / `dist[v] min= d` | Niche-packed `?Int` uses `INT64_MIN` (0 extra bytes) and prevents `INF + w` overflow. |
+| `const long long INF = 1e18; dist[v] = min(dist[v], d);` | `var dist: [V]?Int = None` / `dist[v] min= d` | Niche-packed `?Int` uses `INT64_MIN` (0 extra bytes) and prevents `INF + w` overflow. |
 | `((a % m) + m) % m` | `a % m` | `%` is Euclidean (`0 <= a % m < m`) for all integers. |
 | `dx[4] / dy[4]` + bounds check | `type Cell = (Row, Col)` + `for q in p.adj4:` | Grid neighbors are guaranteed in-bounds without manual `0 <= nx && nx < h`. |
 | `sort(a.begin(), a.end(), cmp)` | `a.sort(by: x => (x.r, desc(x.l)))` | Key functions compose tuples and `desc(...)` without writing strict-weak-order structs. |

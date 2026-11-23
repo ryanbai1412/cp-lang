@@ -9,13 +9,7 @@ You can try CP Lang immediately with zero setup in the [browser playground](/pla
 
 One line installs a prebuilt `cpl` for Linux, macOS or Windows. Until the first stable release, both channels install edge, the newest build of main that passed every check.
 
-```sh
-curl -fsSL https://cp-lang.org/install.sh | sh -s -- --edge   # Linux and macOS
-```
-
-```powershell
-& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Channel edge   # Windows PowerShell
-```
+<Install />
 
 `cpl self update` updates it later. To build from source instead (any Rust toolchain):
 
@@ -26,7 +20,7 @@ cargo install --locked --git https://github.com/ryanbai1412/cp-lang cpl-cli
 Verify the installation:
 
 ```sh
-cpl --version
+cpl --version   # cpl 0.3.0-edge+<commit> on edge
 cpl --help
 ```
 

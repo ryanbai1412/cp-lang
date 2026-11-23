@@ -108,19 +108,11 @@ print(pts[0].0, pts[0].1, freq[2], h.pop() ?? -1)
 
 ## 6. Binary search and prefix sums
 
-Use integer binary search on a monotone predicate with explicit `lo`/`hi` invariants, or `lower_bound` / `upper_bound` on sorted lists:
+Binary search is a method on the range you search: `r.first_true(ok)` returns the first value where the monotone predicate `ok` turns true (or `None`), with no `lo`/`hi` bookkeeping to get off by one. On a sorted list, `lower_bound` / `upper_bound` give the cut:
 
 ```cp
 // First x in 1..=100 whose square is at least 50.
-var lo = 1
-var hi = 100
-while lo < hi:
-    let mid = lo + (hi - lo) / 2
-    if mid * mid >= 50:
-        hi = mid
-    else:
-        lo = mid + 1
-print(lo)
+print((1..=100).first_true(x => x * x >= 50)!)
 ```
 
 ## 7. Standard data structures: DSU, Fenwick, and Segment Trees
