@@ -9,7 +9,7 @@ const chains = [
 
 // A stage that hangs fails by name instead of running into CI's job timeout
 // with no log; each stage's time is printed so slow ones show.
-const limit = Number(process.env.PREBUILD_STAGE_SECONDS ?? 600);
+const limit = Number(process.env.PREBUILD_STAGE_SECONDS ?? 240);
 const run = (name) =>
   new Promise((resolve, reject) => {
     const start = Date.now();
