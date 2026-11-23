@@ -3,6 +3,8 @@
 use super::stmt::place_to_expr;
 use super::*;
 
+mod unwrap_cells;
+
 /// True for a bare `..`, which as an index is all of one axis.
 pub(super) fn is_whole(index: &ast::Expr) -> bool {
     matches!(index.kind, ast::ExprKind::Range { step: None, .. })
@@ -732,17 +734,7 @@ impl<'a> Lowerer<'a> {
                         self.mk(ExprKind::Unwrap(Box::new(value), true), *inside, span)
                     }
                     Ty::Error => value,
-                    Ty::Array { dims, elem }
-                        if matches!(dims[..], [Dim::Pos(_)]) && matches!(*elem, Ty::Opt(_)) =>
-                    {
-                        let [Dim::Pos(d)] = dims[..] else {
-                            unreachable!()
-                        };
-                        let Ty::Opt(inside) = *elem else {
-                            unreachable!()
-                        };
-                        self.unwrap_array(value, d, *inside, span)
-                    }
+                    ref ty if Self::unwraps_cells(ty) => self.unwrap_cells(value, span),
                     // Inside a generic function (e.g. `bsearch_first<I>` instantiated with `I = Int`),
                     // `(base + mid)!` is a no-op when `base + mid` is already non-optional `Int`.
                     _ if !self.gen_env.is_empty() => value,
@@ -4830,67 +4822,6 @@ impl<'a> Lowerer<'a> {
                 (Iter::Seq(value, false), elem)
             }
         }
-    }
-}
-
-impl Lowerer<'_> {
-    /// `a!` on `[D]?T`: one pass that traps at the first absent cell.
-    fn unwrap_array(&mut self, value: Expr, d: DomainId, inside: Ty, span: Span) -> Expr {
-        let at = self.span(span);
-        let mut stmts = Vec::new();
-        let src = self.hold(value, &mut stmts);
-        let ty = Ty::Array {
-            dims: vec![Dim::Pos(d)],
-            elem: Box::new(inside.clone()),
-        };
-        let acc = self.temp(ty.clone());
-        let slot = self.temp(Ty::Pos(d));
-        let id = self.next_loop;
-        self.next_loop += 1;
-        let i = self.local(slot, span);
-        let cell = self.mk(
-            ExprKind::Index(Box::new(src.clone()), vec![i.clone()]),
-            Ty::Opt(Box::new(inside.clone())),
-            span,
-        );
-        let got = self.mk(ExprKind::Unwrap(Box::new(cell), true), inside.clone(), span);
-        let place = Place {
-            kind: PlaceKind::Index(
-                Box::new(Place {
-                    kind: PlaceKind::Local(acc),
-                    ty: ty.clone(),
-                    span: at,
-                }),
-                vec![i],
-            ),
-            ty: inside,
-            span: at,
-        };
-        let iter = Iter::Range {
-            lo: self.int_lit(0, span),
-            hi: self.mk(ExprKind::DomainLen(d), Ty::Int, span),
-            step: None,
-            rev: false,
-            closed: false,
-        };
-        stmts.push(Stmt::Let(
-            acc,
-            Some(self.mk(
-                ExprKind::Fill(vec![DimSpec::Pos(d)], None),
-                ty.clone(),
-                span,
-            )),
-        ));
-        stmts.push(Stmt::For(
-            id,
-            slot,
-            iter,
-            Block {
-                stmts: vec![Stmt::Assign(place, AssignOp::Set, got)],
-            },
-        ));
-        stmts.push(Stmt::Give(self.local(acc, span)));
-        self.mk(ExprKind::Do(Block { stmts }), ty, span)
     }
 }
 

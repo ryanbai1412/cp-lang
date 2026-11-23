@@ -788,7 +788,7 @@ impl<'a> Checker<'a> {
             ExprKind::Try(inner) | ExprKind::Unwrap(inner) => match self.infer_optional(inner) {
                 Ty::Optional(inner) => *inner,
                 Ty::Error => Ty::Error,
-                _ => Ty::Unknown,
+                other => Self::unwrapped_cells(other),
             },
             ExprKind::Missing | ExprKind::Error => Ty::Error,
         }

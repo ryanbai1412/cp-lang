@@ -627,3 +627,9 @@ fn a_comprehension_over_a_range_is_not_called_a_list_of_one_range() {
     let d = one("let n = 3\nprint([1..=n].shuffled())\n");
     assert!(d.help.unwrap_or_default().contains("holding one range"));
 }
+
+#[test]
+fn unwrapping_an_array_or_list_of_optionals_unwraps_every_cell() {
+    let src = "fn f(n: Int) -> Int:\n    var at: [0..n]?Int = None\n    let at = at!\n    at[0] + 1\nvar xs: List<?Int> = []\nlet ys: List<Int> = xs!\nprint(f(1), ys.len)\n";
+    assert!(check(src).is_empty(), "{:?}", check(src));
+}

@@ -1,4 +1,4 @@
-//! `?` and its extent (R02.4.7).
+//! `?` and its extent (R02.4.7), and `!` on a whole array or list (R02.4.8).
 
 use super::*;
 use cpl_syntax::ast::{ExprKind, Stmt, StmtKind};
@@ -29,5 +29,23 @@ impl Checker<'_> {
         let ty = self.stmt_body(stmt, top_level);
         self.rhs_extent = outer;
         ty
+    }
+
+    /// `xs!` on `[D]?T` or `List<?T>` checks every cell: `[D]T`, `List<T>`.
+    pub(super) fn unwrapped_cells(ty: Ty) -> Ty {
+        match ty {
+            Ty::Array { index, elem } => match *elem {
+                Ty::Optional(inner) => Ty::Array { index, elem: inner },
+                _ => Ty::Unknown,
+            },
+            Ty::Named { name, mut args } if name == "List" && args.len() == 1 => match args.pop() {
+                Some(Ty::Optional(inner)) => Ty::Named {
+                    name,
+                    args: vec![*inner],
+                },
+                _ => Ty::Unknown,
+            },
+            _ => Ty::Unknown,
+        }
     }
 }
