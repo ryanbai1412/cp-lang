@@ -376,9 +376,9 @@ fn bare_operators_bring_their_identity():
 fn a_monoid_of_your_own_is_a_pair():
     let cat = Monoid<Str>("", (a, b) => a + b)
     assert laws_hold(cat, ["", "ab", "c"])
-    assert fold::<Str>(cat, ["ab", "c", "de"]) == "abcde"
-    assert fold::<Int>(+, [1, 2, 3]) == 6
-    assert fold::<Int>(max, [1, 5, 3]) == 5
+    assert fold<Str>(cat, ["ab", "c", "de"]) == "abcde"
+    assert fold<Int>(+, [1, 2, 3]) == 6
+    assert fold<Int>(max, [1, 5, 3]) == 5
     let xs = [12, 18, 30]
     assert xs.fold(gcd) == 6
     assert xs[1..].fold(gcd) == 6
@@ -429,9 +429,9 @@ fn named_arguments_build_the_same_monoid_and_action():
 @test
 fn desc_reverses_one_part_of_a_key():
     var xs = [(3, 1), (1, 2), (3, 0), (2, 2)]
-    sort(mut xs, by: p => (p.0, desc(p.1)))
+    xs.sort(by: p => (p.0, desc(p.1)))
     assert xs == [(1, 2), (2, 2), (3, 1), (3, 0)]
-    sort(mut xs, by: p => desc(p))
+    xs.sort(by: p => desc(p))
     assert xs == [(3, 1), (3, 0), (2, 2), (1, 2)]
     assert desc(2) < desc(1) and desc(1) == desc(1)
 

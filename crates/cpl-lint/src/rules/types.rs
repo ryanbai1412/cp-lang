@@ -451,7 +451,7 @@ impl Visitor for Types<'_> {
                             name.text.as_str(),
                             "len" | "is_empty" | "first" | "last" | "rev" | "items"
                         )
-                        && (!matches!(name.text.as_str(), "first" | "last")
+                        && (!matches!(name.text.as_str(), "first" | "last" | "rev")
                             || self.is_sequence(base))
                     {
                         let callee_span = callee.span.shift(self.base);

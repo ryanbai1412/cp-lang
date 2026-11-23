@@ -313,7 +313,7 @@ pub fn convolve<T, O, R>(
         else:
             sos(mut fa, over: Sup)
             sos(mut fb, over: Sup)
-        for i in 0..na: fa[i] = fa[i] * fb[i]
+        for i in 0..na: fa[i] *= fb[i]
         if same(on, ^): fwht(mut fa, inverse: true)
         elif same(on, |): sos(mut fa, inverse: true)
         else: sos(mut fa, over: Sup, inverse: true)
@@ -330,7 +330,7 @@ pub fn convolve<T, O, R>(
                 if let x = on.at(i, j): k = x
             else:
                 k = on(i, j)
-            if cyclic and k >= 0: k = k % na
+            if cyclic and k >= 0: k %= na
             if k >= 0 and k < n_out:
                 out[k] = out[k] + a[i] * b[j]
     out
