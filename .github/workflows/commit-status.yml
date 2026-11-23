@@ -1,0 +1,38 @@
+name: commit-status
+# After each finished main CI run, give every commit it covered a
+# `ci/covered` status (scripts/commit_status.py): main CI runs only the
+# newest tip, so the commits before it show "cancelled" on their own.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+permissions:
+  contents: read
+  statuses: write
+  actions: read
+jobs:
+  mark:
+    if: >-
+      github.event.workflow_run.event == 'push' &&
+      contains(fromJSON('["success","failure"]'), github.event.workflow_run.conclusion)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      RUN_ID: ${{ github.event.workflow_run.id }}
+      HEAD: ${{ github.event.workflow_run.head_sha }}
+      CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+      URL: ${{ github.event.workflow_run.html_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
+          filter: blob:none
+      - name: Mark the commits since the previous finished run
+        run: |
+          prev=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?branch=main&event=push&status=completed&per_page=50" \
+              --jq "[.workflow_runs[] | select(.id < $RUN_ID and (.conclusion == \"success\" or .conclusion == \"failure\"))][0].head_sha // empty")
+          python3 scripts/commit_status.py --run "$RUN_ID" --conclusion "$CONCLUSION" \
+              --head "$HEAD" ${prev:+--prev "$prev"} --url "$URL" | tee -a "$GITHUB_STEP_SUMMARY"

@@ -83,7 +83,17 @@ run A ends ──► run C starts, testing A..C's newest tip
 A run that has started always finishes; a newer push never cancels it. At
 most one run waits, so CI always tests the newest tip next. The commits in
 between show "cancelled" on GitHub: they were never run, and the next run's
-result covers them. Every long step has a `timeout-minutes` cap, so a hung
+result covers them. To see what a commit's state is, read its `ci/covered`
+status (`scripts/commit_status.py`, set after each finished run):
+
+| Status | Means |
+|---|---|
+| success, "passed, covered by run N" | a later green run tested a tree containing it |
+| pending, "untested: run N failed at ..." | the run covering it went red; not yet known whether this commit broke it |
+| failure, "run N failed here" | the red run's tip |
+| failure, "culprit of run N: ..." | the culprit finder bisected the failing tests to it |
+
+Every long step has a `timeout-minutes` cap, so a hung
 job ends instead of holding the queue.
 
 ## When main goes red
