@@ -468,7 +468,7 @@ pub struct CostFlow<V>:
     /// min-cost circulation plus the `s`-`t` flows already sent, and returns the cost added (zero or
     /// negative). Negative cycles are allowed here; afterwards `min_cost_flow` is safe.
     ///
-    /// cost: O(V E log V) worst case, by cost scaling
+    /// cost: O(V E) per cancelled cycle (Bellman-Ford), at most `|c|` cycles for the returned cost `c`
     /// traps: never
     /// example: `var g = CostFlow<0..2>(); g.add(0, 1, Some(1), -2); g.add(1, 0, Some(1), 1); g.cancel_cycles() == -1`
     /// example: `var g = CostFlow<0..2>(); g.add(0, 1, Some(1), 2); g.cancel_cycles() == 0`
@@ -2157,7 +2157,7 @@ pub trait Matroid<E>:
     fn can_add(self, e: E) -> Bool
     fn can_swap(self, out: E, e: E) -> Bool
 
-/// O(E α) per rebuild. Independent sets are forests of the edges' endpoints.
+/// O(V + E) per rebuild. Independent sets are forests of the edges' endpoints.
 pub struct GraphicMatroid<V, E>:
     edges: [E](u: V, v: V)
     var take: [E]Bool
@@ -2167,7 +2167,7 @@ pub struct GraphicMatroid<V, E>:
     below: [E]?V
     /// The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
     ///
-    /// cost: O(1); each `rebuild` is O(E alpha(V))
+    /// cost: O(1); each `rebuild` is O(V + E), a DFS of the chosen forest
     /// traps: never
     /// example: `let es: [0..3](u: 0..3, v: 0..3) = [(u: 0, v: 1), (u: 1, v: 2), (u: 0, v: 2)]; var m = GraphicMatroid(es); m.rebuild([true, true, false]); not m.can_add(2) and m.can_swap(0, 2)`
     pub fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E> =

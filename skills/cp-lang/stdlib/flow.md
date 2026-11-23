@@ -51,7 +51,7 @@ Fields: `head: [V]List<Arc>`, `to: List<V>`, `left: List<Int>`, `cap0: List<Int>
 - `fn target(self, a: Arc) -> V` — O(1); The vertex `a` points to.
 - `fn set_cap(mut self, a: Arc, cap: ?Int)` — O(1); Changes arc `a`'s capacity, keeping its flow, as [`FlowGraph.set_cap`](FlowGraph.set_cap).; traps: when the flow on `a` exceeds the new capacity, or `cap` is negative
 - `@get fn arcs(self) -> yields Arc` — O(E) for the whole walk; Every arc `add` returned, lazily; never a reverse arc.
-- `fn cancel_cycles(mut self) -> Int` — O(V E log V) worst case, by cost scaling; Saturates every negative-cost cycle of the residual network, so the stored flow becomes a min-cost circulation plus the `s`-`t` flows already sent, and returns the cost added (zero or negative).
+- `fn cancel_cycles(mut self) -> Int` — O(V E) per cancelled cycle (Bellman-Ford), at most `|c|` cycles for the returned cost `c`; Saturates every negative-cost cycle of the residual network, so the stored flow becomes a min-cost circulation plus the `s`-`t` flows already sent, and returns the cost added (zero or negative).
 - `fn min_cost_flow(mut self, s: V, t: V, limit: ?Int = None) -> (flow: Int, cost: Int)` — O(F E log V) for F augmenting paths, plus O(V E) once when a residual arc has a negative cost; Sends the most flow from `s` to `t`, up to `limit` in this call, at the least cost among flows of that amount, on top of the flow already there.; traps: when `s == t`, `limit` is negative, or the residual network has a negative-cost cycle
 - `fn slope(mut self, s: V, t: V, limit: ?Int = None) -> List<(flow: Int, cost: Int)>` — as `min_cost_flow`; The breakpoints of the cheapest cost of sending each amount from `s` to `t`, up to `limit`: `(0, 0)` first, then one `(flow, cost)` per change of slope, ending at the largest amount.; traps: as `min_cost_flow`
 
@@ -77,11 +77,11 @@ An independence oracle for `matroid_intersection`.
 
 ## `struct GraphicMatroid<V, E>`
 
-O(E α) per rebuild.
+O(V + E) per rebuild.
 
 Fields: `edges: [E](u: V, v: V)`, `comp: [V]Int`, `tin: [V]Int`, `tout: [V]Int`, `below: [E]?V`.
 
-- `fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E>` — O(1); each `rebuild` is O(E alpha(V)); The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
+- `fn new(edges: [E](u: V, v: V)) -> GraphicMatroid<V, E>` — O(1); each `rebuild` is O(V + E), a DFS of the chosen forest; The graphic matroid of `edges`: a set of edges is independent when it is a forest on `V`.
 
 ## `struct ColorMatroid<E, C>`
 
