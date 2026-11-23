@@ -317,6 +317,9 @@ impl<'a> Lowerer<'a> {
             (Ty::Error, _) => value,
             (Ty::Struct(id), method) if self.structs[*id].methods.contains_key(method) => {
                 let fn_id = self.structs[*id].methods[method];
+                if !self.ensure_sig(fn_id, Some(span)) {
+                    return self.err_expr(span);
+                }
                 if self.structs[*id].getters.contains(method) || self.sigs[fn_id].params.is_empty()
                 {
                     self.method_call(fn_id, Some((base, value)), &[], span)

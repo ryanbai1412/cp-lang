@@ -8,6 +8,9 @@ impl<'a> Lowerer<'a> {
     /// `id`, or its copy taking each read-only `[V]T` argument that is a
     /// view over `V` as that view.
     pub(super) fn view_param_fn(&mut self, id: FnId, args: &[ast::Arg]) -> FnId {
+        if !self.ensure_sig(id, None) {
+            return id;
+        }
         let params = self.sigs[id].params.clone();
         let mut given: Vec<Option<&ast::Arg>> = vec![None; params.len()];
         let mut next = 0;

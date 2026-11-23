@@ -47,11 +47,13 @@ impl<'a> Lowerer<'a> {
             return None;
         }
         let span = Span::new(base.span.start, index.span.end + 1);
-        let index = match self.structs[sid]
-            .methods
-            .get("at")
-            .map(|&f| &self.sigs[f].params)
-        {
+        let at = self.structs[sid].methods.get("at").copied();
+        if let Some(f) = at {
+            if !self.ensure_sig(f, Some(span)) {
+                return None;
+            }
+        }
+        let index = match at.map(|f| &self.sigs[f].params) {
             Some(params) if matches!(params.last().map(|p| &p.ty), Some(Ty::Bound(_))) => {
                 let Some(Ty::Bound(d)) = params.last().map(|p| p.ty.clone()) else {
                     unreachable!()

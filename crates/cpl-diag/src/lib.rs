@@ -133,6 +133,7 @@ pub mod codes {
     pub const UNRESOLVED_MODULE: Code = Code("E0206");
     pub const PRIVATE_NAME: Code = Code("E0207");
     pub const VALUE_NAME_CASE: Code = Code("E0208");
+    pub const DEFINITION_CYCLE: Code = Code("E0209");
 
     pub const WRONG_DOMAIN: Code = Code("E0301");
     pub const TYPE_MISMATCH: Code = Code("E0302");

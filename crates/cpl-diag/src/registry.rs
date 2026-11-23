@@ -942,6 +942,16 @@ pub const REGISTRY: &[CodeInfo] = &[
         input: "",
     },
     CodeInfo {
+        code: Code("E0209"),
+        title: "Definition cycle",
+        summary: "A function's parameter types depend on a call of that same function.",
+        explanation: "To know `f`'s parameter types the compiler must first size a domain, and sizing it calls `f`, so neither can come first. Give the dependent value an explicit type, or move the call out of the definition it sizes.",
+        trigger: "domain V = 0..3\nstruct S<B>():\n    x: Int\nimpl Index for S<B>:\n    let count = f(B.count)\n    @get fn ord(self) -> Int = x\n    fn nth(k: Int) -> S<B> = S(k)\nfn f(n: Int, x: ?S<V> = None) -> Int = n\nprint(f(1))\n",
+        fix: "domain V = 0..3\nstruct S<B>():\n    x: Int\nimpl Index for S<B>:\n    let count = B.count\n    @get fn ord(self) -> Int = x\n    fn nth(k: Int) -> S<B> = S(k)\nfn f(n: Int, x: ?S<V> = None) -> Int = n\nprint(f(1))\n",
+        mode: "check",
+        input: "",
+    },
+    CodeInfo {
         code: Code("E0405"),
         title: "Assigning a fixed field",
         summary: "A field not declared `var` is assigned.",

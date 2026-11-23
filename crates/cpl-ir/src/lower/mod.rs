@@ -908,6 +908,8 @@ struct Lowerer<'a> {
     /// The user's expression being lowered: where an error inside the
     /// library code it asks for is shown.
     asked_at: report::Asked,
+    /// The parameter type each signature is resolving, for E0209.
+    sig_param_at: HashMap<FnId, Span>,
     /// The messages of the errors found inside library code.
     in_library: HashSet<String>,
     next_loop: LoopId,
@@ -1025,6 +1027,7 @@ impl<'a> Lowerer<'a> {
             self_struct: None,
             offset: 0,
             asked_at: report::Asked::default(),
+            sig_param_at: HashMap::new(),
             in_library: HashSet::new(),
             next_loop: 0,
             filled: HashSet::new(),
@@ -2166,11 +2169,7 @@ impl<'a> Lowerer<'a> {
         self.attach_impls_for_builtins();
         let num_sigs = self.sigs.len();
         for id in 0..num_sigs {
-            if self.sigs[id].ret.is_none() && self.sigs[id].sig == SigState::Resolved {
-                self.resolve_fn_sig(id, None);
-            } else {
-                self.ensure_sig(id);
-            }
+            self.ensure_sig(id, None);
         }
         self.cur_mod = 0;
         self.offset = 0;
@@ -2183,20 +2182,51 @@ impl<'a> Lowerer<'a> {
     /// Reads `id`'s signature the first time anything needs it: a call made
     /// while other signatures are still being read (a domain sized from a
     /// parameter type) gets the callee's types, not an empty list.
-    pub(super) fn ensure_sig(&mut self, id: FnId) {
+    /// `false` when it is already being read, and the caller should give
+    /// up: a `call` closes a definition cycle and reports it (E0209); a
+    /// probe (`None`) leaves the report to the call.
+    pub(super) fn ensure_sig(&mut self, id: FnId, call: Option<Span>) -> bool {
         match self.sigs[id].sig {
-            SigState::Resolved => {}
+            SigState::Resolved => true,
             SigState::Resolving => {
-                let span = self.sigs[id].decl.name.span;
-                let name = self.sigs[id].decl.name.text.clone();
-                self.error(
-                    codes::TYPE_MISMATCH,
-                    span,
-                    format!("`{name}`'s parameter types depend on `{name}` itself"),
-                );
+                if let Some(call) = call {
+                    self.definition_cycle(id, call);
+                }
+                false
             }
-            SigState::Unresolved => self.resolve_fn_sig(id, None),
+            SigState::Unresolved => {
+                self.resolve_fn_sig(id, None);
+                true
+            }
         }
+    }
+
+    fn definition_cycle(&mut self, id: FnId, call: Span) {
+        let sig = &self.sigs[id];
+        let name = sig.decl.name.text.clone();
+        let at = self
+            .sig_param_at
+            .get(&id)
+            .copied()
+            .unwrap_or(sig.decl.name.span);
+        let at = if sig.mod_id == 0 {
+            at.shift(sig.offset)
+        } else {
+            self.asked_at.at
+        };
+        let diag = Diagnostic::error(
+            codes::DEFINITION_CYCLE,
+            at,
+            format!("`{name}`'s parameter types depend on `{name}` itself"),
+        )
+        .with_label(
+            self.span(call),
+            format!("this call needs `{name}`'s parameter types while they are being worked out"),
+        )
+        .with_help(
+            "give the dependent value an explicit type, or move the call out of the definition it sizes",
+        );
+        self.diags.push(diag);
     }
 
     pub(super) fn resolve_fn_sig_with(
@@ -2233,7 +2263,10 @@ impl<'a> Lowerer<'a> {
                 t.clone()
             } else {
                 match &param.ty {
-                    Some(ty) => self.resolve_ty(ty),
+                    Some(ty) => {
+                        self.sig_param_at.insert(id, ty.span);
+                        self.resolve_ty(ty)
+                    }
                     None => {
                         if i == 1 {
                             if let Some(rt) = rhs_ty {

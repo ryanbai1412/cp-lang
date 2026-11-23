@@ -1204,7 +1204,9 @@ impl<'a> Lowerer<'a> {
             }
             None => args,
         };
-        self.ensure_sig(id);
+        if !self.ensure_sig(id, Some(span)) {
+            return self.err_expr(span);
+        }
         let params = self.sigs[id].params.clone();
         let name = self.sigs[id].decl.name.text.clone();
         let mut given: Vec<Option<&ast::Arg>> = vec![None; params.len()];

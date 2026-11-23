@@ -2681,16 +2681,16 @@ impl<'a> Lowerer<'a> {
             None
         }
         let (outer_name, arg_idx) = find_passed(fn_name, rest)?;
-        if let Some(Sym::Fn(fid)) = self.get_sym(outer_name) {
-            if let Some(param) = self.sigs[fid].params.get(arg_idx) {
-                if let Ty::Fn(ps, _) = &param.ty {
-                    if ps.len() == arity {
-                        return Some(ps.clone());
-                    }
-                }
-            }
+        let Some(Sym::Fn(fid)) = self.get_sym(outer_name) else {
+            return None;
+        };
+        if !self.ensure_sig(fid, None) {
+            return None;
         }
-        None
+        match &self.sigs[fid].params.get(arg_idx)?.ty {
+            Ty::Fn(ps, _) if ps.len() == arity => Some(ps.clone()),
+            _ => None,
+        }
     }
 
     fn peek_map_kv_types(&mut self, var_name: &str, rest: &[ast::Stmt]) -> (Ty, Ty) {
