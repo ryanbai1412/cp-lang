@@ -80,7 +80,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.trace_local(slot, span);
                 self.trace_assigned_local(slot, span);
             }
-            TracePoint::LoopEnd(_) => {}
+            TracePoint::LoopEnd(_) | TracePoint::Tick => {}
         }
     }
 

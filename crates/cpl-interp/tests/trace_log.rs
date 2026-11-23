@@ -397,6 +397,8 @@ fn raw_ints_read_back_as_written() {
 /// in under 50 ms, recording makes the run at most 1.2x slower, and the
 /// recording takes a few hundred MB. `cargo test --release -p cpl-interp
 /// --test trace_log -- --ignored --nocapture`.
+const RUNS: usize = 7;
+
 #[test]
 #[ignore = "takes a minute in release; run by hand"]
 fn ten_million_steps_fit_the_debugging_budgets() {
@@ -412,24 +414,35 @@ fn ten_million_steps_fit_the_debugging_budgets() {
         ),
     ] {
         let program = program(source);
-        let started = Instant::now();
         let mut out = Vec::new();
-        cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut out, None);
-        let plain = started.elapsed();
+        // The least of several runs, so a busy machine does not decide it.
+        let least = |run: &mut dyn FnMut()| {
+            (0..RUNS)
+                .map(|_| {
+                    let started = Instant::now();
+                    run();
+                    started.elapsed()
+                })
+                .min()
+                .unwrap()
+        };
+        let plain = least(&mut || {
+            cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut Vec::new(), None);
+        });
         // The tracer runs on the tree-walking engine: the same run, observed but not recorded.
         let observed = TraceConfig {
             source: source.into(),
             only_fn: Some("not_a_fn".into()),
             ..TraceConfig::default()
         };
-        let started = Instant::now();
-        cpl_interp::run_observed(
-            &program,
-            cpl_interp::Io::fixed(b""),
-            &mut out,
-            Some(observed),
-        );
-        let walked = started.elapsed();
+        let walked = least(&mut || {
+            cpl_interp::run_observed(
+                &program,
+                cpl_interp::Io::fixed(b""),
+                &mut Vec::new(),
+                Some(observed.clone()),
+            );
+        });
         // The last 20,000 steps, kept by running again: what time travel to the end costs.
         let started = Instant::now();
         let tail = TraceConfig {
@@ -446,12 +459,18 @@ fn ten_million_steps_fit_the_debugging_budgets() {
             max_steps: Some(10_000_000),
             ..TraceConfig::default()
         };
+        let traced = least(&mut || {
+            cpl_interp::run_observed(
+                &program,
+                cpl_interp::Io::fixed(b""),
+                &mut Vec::new(),
+                Some(config.clone()),
+            );
+        });
         out.clear();
         let before = IN_USE.load(Ordering::Relaxed);
-        let started = Instant::now();
         let observed =
             cpl_interp::run_observed(&program, cpl_interp::Io::fixed(b""), &mut out, Some(config));
-        let traced = started.elapsed();
         let rec = observed.recording.unwrap();
         let held = IN_USE.load(Ordering::Relaxed) - before;
         let mut back = std::time::Duration::ZERO;
@@ -637,7 +656,18 @@ for i in 0..40:
 
 #[test]
 fn a_traced_run_that_never_ends_stops_at_its_time_limit() {
-    let source = "var i = 0\nwhile i >= 0:\n    i = (i + 1) % 2\nprint(i)\n";
+    // One that writes, one the tree-walker runs (its condition calls),
+    // one that writes nothing.
+    for source in [
+        "var i = 0\nwhile i >= 0:\n    i = (i + 1) % 2\nprint(i)\n",
+        "fn f(x: Int) -> Int = x\nvar i = 0\nwhile f(i) >= 0:\n    i = i\nprint(i)\n",
+        "var i = 0\nwhile i >= 0:\n    if i < 0: i = 1\nprint(i)\n",
+    ] {
+        stops_at_its_time_limit(source);
+    }
+}
+
+fn stops_at_its_time_limit(source: &str) {
     let config = TraceConfig {
         source: source.to_string(),
         time_limit: Some(std::time::Duration::from_millis(200)),

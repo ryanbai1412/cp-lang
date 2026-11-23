@@ -401,6 +401,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 for c in lt.continues {
                     self.patch(c, head);
                 }
+                if self.traced {
+                    self.emit_trace(TracePoint::Tick, cond.span);
+                }
                 self.emit(Op::Jmp { target: head }, cond.span);
                 let end = self.ops.len() as u32;
                 self.patch(j_exit, end);

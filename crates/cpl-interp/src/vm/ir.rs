@@ -1464,6 +1464,8 @@ pub(crate) enum TracePoint<'p> {
     Loop(Slot, Span),
     /// After the loop the variable keeps its last value, not one past the end.
     LoopEnd(Slot),
+    /// The back edge of a `while`: a loop that writes nothing still meets the time limit.
+    Tick,
 }
 
 #[derive(Clone, Copy, Debug)]

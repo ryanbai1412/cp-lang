@@ -916,6 +916,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     // ----- statements -----
 
     fn block(&mut self, block: &'p Block) -> Res<Flow> {
+        self.in_time()?;
         for stmt in &block.stmts {
             match self.stmt(stmt)? {
                 Flow::Next => {}
@@ -3072,9 +3073,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 };
                 tracer.leave_call(returned);
             });
-            if flow.is_ok() && self.tracer.as_ref().is_some_and(|tracer| tracer.stopped()) {
-                flow = trap(span, trace::STOPPED);
-            }
+            flow = flow.and_then(|flow| self.unstopped(span).map(|()| flow));
         }
         if flow.is_err() {
             self.keep_trap_frame();

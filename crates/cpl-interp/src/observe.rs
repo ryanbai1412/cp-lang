@@ -144,6 +144,28 @@ impl<O: Observer> Interp<'_, '_, O> {
         O::ON && self.tracer.is_some()
     }
 
+    /// A trap once the tracer has what it wanted, as after the call to replay.
+    pub(crate) fn unstopped(&self, span: Span) -> crate::Res<()> {
+        match &self.tracer {
+            Some(tracer) if tracer.stopped() => crate::trap(span, trace::STOPPED),
+            _ => Ok(()),
+        }
+    }
+
+    /// A trap once a traced run is past its time limit: the tree-walker
+    /// asks at every block it runs, so every loop round and call.
+    pub(crate) fn in_time(&mut self) -> crate::Res<()> {
+        if self.observed()
+            && self
+                .tracer
+                .as_mut()
+                .is_some_and(|tracer| tracer.out_of_time())
+        {
+            return crate::trap(Span::default(), trace::OUT_OF_TIME);
+        }
+        Ok(())
+    }
+
     /// Runs `record` on the tracer, when the run is traced.
     pub(crate) fn traced(&mut self, record: impl FnOnce(&mut O, &trace::View)) {
         if !O::ON {
