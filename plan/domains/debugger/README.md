@@ -83,14 +83,11 @@ Numbers can't say whether the evidence is the evidence a contestant needed. Each
 
 ## Decisions for Ryan
 
-Filed in [plan/QUESTIONS.md](../../QUESTIONS.md):
-1. ~~What the trace overhead bar is measured against.~~ Answered by Ryan: recording at most +20% over the untraced interpreter, and the interpreter within 5x of C++.
-2. The command surface: the spec's `cpl trace` / `cpl debug` / `cpl snap` vs today's `cpl run --trace` / `cpl dap` / `cpl replay`.
-3. Where the viewer lives: one self-contained `tools/trace/index.html`, or a built `web/packages/trace-viewer`.
+None open. Decided on their recommendations (decisions.md 272-274): tracing at most +20% over the interpreter (Ryan's target), tracing as a flag on `run` and `stress` plus `cpl replay` and `cpl dap`, and the viewer as one file in `tools/trace/`.
 
 ## Ryan's role
 
-Align on the loop above and on what generators must describe; answer the three questions; review rounds on screenshots and recordings of the loop (worklog). Current screens, recaptured 2026-11-22 from main with `cpl stress --trace` and `cpl run --trace`:
+Align on the loop above and on what generators must describe; review rounds on screenshots and recordings of the loop (worklog). Current screens, recaptured 2026-11-22 from main with `cpl stress --trace` and `cpl run --trace`:
 
 | ![knapsack](../../../examples/debugging/screenshots/knapsack-trace.png) | ![shows](../../../examples/debugging/screenshots/shows-trace.png) |
 |---|---|

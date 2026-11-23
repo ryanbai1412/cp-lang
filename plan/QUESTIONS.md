@@ -138,28 +138,6 @@ Recommendation: (a), the "no privileged stdlib" rule in AGENTS.md; the perf gate
 How to reverse it: a moved name goes back into the builtin table; its std body stays as the reference.
 Meanwhile: move nothing; std bodies become the reference the builtins are tested against, and the list is classified with tech-debt.
 
-### debugger: what is the trace overhead bar measured against?
-The 10^7-step budget test (`crates/cpl-interp/tests/trace_log.rs`) runs `var x = 0` / `for i in 0..10000000: x += i % 7`. Today: untraced 150 ms, observed-only 596 ms, recorded 996 ms.
-Options: (a) recorded <= 3x untraced (today 6.65x scalar, 8.28x array; the hooks alone are 3.98x, so every VM speedup makes it harder); (b) recorded <= 3x the observed-only run (today 1.67x, passes); (c) an absolute budget: 10^7 recorded steps in <= 1 s, < 500 MB, step back < 50 ms, with the ratio to untraced reported but not gated.
-Recommendation: (c). The contestant feels seconds, not ratios, and traced runs are on small shrunk inputs (the knapsack demo traces at 1.18x); a ratio to an ever-faster VM punishes VM wins.
-How to reverse it: the assertion in `trace_log.rs` is one line; switch it back to the ratio.
-Meanwhile: (c) is gated, (a) stays the M3 stretch target and is reported in `plan/domains/debugger/metrics.toml`.
-Answered (2026-11-22, Ryan): neither; "at most like +20% to interpreter speeds" for tracing, and "debug mode within 5x of c++" for the interpreter. The budget test asserts 1.2x.
-
-### debugger: which commands make up the debugging surface?
-`spec/tools/trace-debug.md` names `cpl trace d input`, `cpl snap` + `cpl run d --stage snap`, `cpl debug`. The CLI has `cpl run --trace knapsack.cp` (and `--live`), `cpl stress knapsack.cp --trace`, `cpl replay <file> --trace t.json --step n`, `cpl dap`.
-Options: (a) the spec's commands, as aliases or renames; (b) today's: tracing is a flag on the command that ran (`run`, `stress`, `test`), `cpl replay` covers snapshots, `cpl dap` is the debugger; the spec is updated; (c) both.
-Recommendation: (b). One flag on the commands a contestant already types is guessable, and `replay` of a recorded call already does what `snap` describes, without a second file format.
-How to reverse it: add `cpl trace` / `cpl debug` as thin commands over the same code in `crates/cpl-cli`.
-Meanwhile: (b); the lane asks the spec domain to update `spec/tools/trace-debug.md` and adds nothing new.
-
-### debugger: where does the trace viewer live?
-Today `tools/trace/index.html` is one self-contained 103 KB file (inline CSS and JS, no build), inlined by `crates/cpl-cli/src/trace.rs` (`include_str!`), loaded by `web/scripts/gen-debug.mjs` and the VS Code webview. `plan/DOMAINS.md` names a `web/packages/trace-viewer` that does not exist.
-Options: (a) keep the one file in `tools/trace/`, add a browser test, and fix `plan/DOMAINS.md`; (b) a `web/packages/trace-viewer` TypeScript package with a build that emits the same single file for the CLI; (c) render traces in the site's React app and drop the offline file.
-Recommendation: (a) for v0.3. Offline traces from `cpl run --trace` and VS Code need no build step, and 62 node tests already cover its state logic; (b) once the file passes about 3000 lines or needs shared components with the site.
-How to reverse it: (b) is a move of `tools/trace/` plus a build step whose output the CLI includes.
-Meanwhile: (a).
-
 ### spec: descending sort, a key only or also a `desc:` flag?
 Chapter 7 (line 315) says "Descending is a key, not a flag: `by: x => desc(x.score)`", but `spec/std/seq.cp` gives `sort`/`sorted` a `desc: Bool = false`, and `spec/conformance/std-seq/sort-sorted-last.cp` uses it. Two spellings for one idea (rebuild round 2 hole H-SORT-DESC).
 - A, key only: `copies.sorted(by: c => (c.start, desc(c.end)))` (corpus/problems/btoi18p4/spec.cp); plain descending is `xs.sorted(by: x => desc(x))`.

@@ -31,7 +31,7 @@ Layout: this file is the index. Every domain uses the same layout, copied from `
 | 9 | D | [stdlib](domains/stdlib/README.md) | `spec/std` (-> `std/`) | Every std body written in CP Lang, documented, tested |
 | 10 | D | [idioms](domains/idioms/README.md) | skill, principles, idiom catalog, `research/dryrun`, `corpus/`, `crates/cpl-judge`, scoreboard | A model writes correct, idiomatic CP Lang; 305 ports proven on every judge |
 | 11 | E | [site](domains/site/README.md) | `web/` (content, playground, UI) | A cold reader writes correct code from the docs alone |
-| 12 | E | [debugger](domains/debugger/README.md) | `crates/cpl-stress`, `cpl-trace` (split out), `web/packages/trace-viewer` | Doubt to evidence: WA to a minimal counterexample, traps, traces |
+| 12 | E | [debugger](domains/debugger/README.md) | `crates/cpl-stress`, `cpl-trace` (split out), `tools/trace/` (the viewer) | Doubt to evidence: WA to a minimal counterexample, traps, traces |
 
 Lane boundaries follow what one agent can hold in context: one body of code, one feedback loop, one set of concepts.
 

@@ -6411,3 +6411,20 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   for the judge.
 - **Reverse.** The order is one list in `crates/cpl-codegen/src/lib.rs`.
 
+## 272. The trace's overhead bar is +20% over the untraced interpreter (2026-11-22)
+
+- **Decision.** Recording a run may make it at most 1.2x slower than the same run untraced (`ten_million_steps_fit_the_debugging_budgets` in `crates/cpl-interp/tests/trace_log.rs` asserts it); tracing off costs nothing, since the interpreter is built once over a no-op observer.
+- **Why.** Ryan's target: "at most like +20% to interpreter speeds". It replaces the debugger lane's proposed absolute budget (10^7 steps in 1 s). Per-step hooks cannot meet it (dispatch alone is 1.30x / 1.49x), so the path is snapshot-and-replay (`plan/domains/debugger/design/trace-replay.md`).
+- **Reverse.** Change the `1.2` bound in that test.
+
+## 273. Tracing stays a flag on the commands that run; no `cpl trace`, `cpl snap`, `cpl debug` (2026-11-22)
+
+- **Decision.** The debugging surface is `cpl run --trace` (and `--live`), `cpl stress --trace`, `cpl replay <file> --trace t.json --step n`, and `cpl dap`; `spec/tools/trace-debug.md` is updated to name them (request in the spec worklog).
+- **Why.** One flag on the commands a contestant already types is guessable, and `replay` of a recorded call already does what `snap` describes without a second file format. Decided on the lane's recommendation under the standing rule for reversible calls.
+- **Reverse.** Add `cpl trace` / `cpl debug` as thin commands over the same code in `crates/cpl-cli`.
+
+## 274. The trace viewer stays one self-contained file, `tools/trace/index.html` (2026-11-22)
+
+- **Decision.** For v0.3 the viewer is one offline HTML file with inline CSS and JS and no build step, inlined by `crates/cpl-cli/src/trace.rs` and loaded by the site and the VS Code webview; node tests and a headless-Chrome browser test cover it. `plan/DOMAINS.md` names it instead of a `web/packages/trace-viewer` that never existed.
+- **Why.** Offline traces from `cpl run --trace` and VS Code need no build. Revisit (a TypeScript package that builds the same single file) once the file passes about 3000 lines or needs components shared with the site.
+- **Reverse.** Move `tools/trace/` into a package with a build step whose output the CLI includes.

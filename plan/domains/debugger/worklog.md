@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Questions: all three debugger entries left plan/QUESTIONS.md as decisions.md 272-274 (trace bar per Ryan; command surface and single-file viewer on the recommendations); plan/DOMAINS.md now names `tools/trace/`; spec asked to update trace-debug.md.
 - Targets from Ryan: recording at most 1.2x untraced, interpreter within 5x of C++. README, metrics.toml, QUESTIONS and the budget test (now 1.2x) updated. Measured: tracing off costs 0 (no-op observer since 7fa67de25); recording 6.10x / 6.01x; hook dispatch alone 1.30x / 1.49x, so only snapshot-and-replay (design/trace-replay.md) reaches 1.2x. Interpreter vs g++ -O2 on the same loops: 16.4x / 33.2x; asked compiler.
 - Trap locals: the terminal note lists first the locals the trapping code names, so the offending index survives the 8-local cap (`the_locals_a_trap_names_come_first` in `crates/cpl-cli/tests/runtime_errors.rs`; runtime_errors 19 passed, cpl-wasm parity 9 passed).
 - Screenshots: recaptured the 4 viewer screenshots in `examples/debugging/screenshots/` from the current build (headless Chrome at 1440x900): the knapsack, shortest_path and shows stress traces at their first divergence, and trap.cp at its trap step. They now show the v0.3 wording ("through its brute") and the version `cpl` reports (0.2.2, the crate version), not the old viewer's hard-coded one.
