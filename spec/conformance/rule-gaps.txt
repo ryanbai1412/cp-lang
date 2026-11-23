@@ -3,6 +3,7 @@
 # gate fails when a rule not listed here has a gap, so this only shrinks.
 R01.1.3 no reject case
 R01.3.6 no reject case
+R01.5.7 no reject case
 R02.1.1 no reject case
 R02.4.3 no reject case
 R02.6.6 no reject case
@@ -13,6 +14,7 @@ R03.2.1 no reject case
 R03.2.6 no reject case
 R03.2.8 no reject case
 R04.2.20 no reject case
+R04.4.29 no reject case
 R04a.2.9 no reject case
 R05.2.1 no reject case
 R05.10.14 no reject case

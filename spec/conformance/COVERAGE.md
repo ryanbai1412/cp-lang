@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2262 (995 passing). Rules: 533.
+Cases: 2270 (995 passing). Rules: 535.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 51 rules, 109 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 52 rules, 110 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 106 cases; 0 uncovered, 4 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 60 cases; 0 uncovered, 5 happy-path only, 0 negative only
-- R04 (04-indices.md): 61 rules, 90 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R04 (04-indices.md): 62 rules, 91 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 148 cases; 0 uncovered, 2 happy-path only, 0 negative only
@@ -35,10 +35,10 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 51 | 51 (100%) | 29 | 27 (93%) | 49 (96%) |
+| R01 | 52 | 52 (100%) | 30 | 27 (90%) | 49 (94%) |
 | R02 | 51 | 51 (100%) | 29 | 25 (86%) | 47 (92%) |
 | R03 | 24 | 24 (100%) | 17 | 12 (70%) | 19 (79%) |
-| R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
+| R04 | 62 | 62 (100%) | 15 | 13 (86%) | 60 (96%) |
 | R04a | 39 | 39 (100%) | 4 | 3 (75%) | 38 (97%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 23 | 21 (91%) | 41 (95%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
-| all | 533 | 532 (99%) | 227 | 198 (87%) | 503 (94%) |
+| all | 535 | 534 (99%) | 229 | 198 (86%) | 503 (94%) |
 
 ## Rules
 
@@ -86,6 +86,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.5.4 [1+ 0-]: Operands and arguments evaluate left to right. Assignment evaluates the right side first, ...
 - R01.5.5 [1+ 0-]: `and`, `or`, `+`, `*`, `min`, `max`, `gcd`, `^`, `&`, `|` are also operation values (`xs.f...
 - R01.5.6 [1+ 1-]: `??` written next to `+ - * / %` without parentheses is an error: `a ?? 0 + 1` must be wri...
+- R01.5.7 [1+ 0-] *happy-path only*: `and` and `or` evaluate their right side only when the left side does not decide the resul...
 - R01.6.1 [1+ 0-]: `let p = e` binds immutably; `var p = e` mutably; `const N = e` is a compile-time constant...
 - R01.6.2 [7+ 2-]: `let p = e else: block` binds or runs the block, which must leave (`return`, `break`, `con...
 - R01.6.3 [1+ 0-]: `var` inside a pattern makes that one binding mutable: `for (var left, v) in items:`.
@@ -218,6 +219,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.3.3 [1+ 1-]: Arithmetic on a position gives an `Int` (`v + 1`); getting back into the domain is explici...
 - R04.4.1 [4+ 0-]: | written | `l..r`, `l..=r` with position ends | `j..i`, `j..=i` with cut ends
 - R04.4.2 [1+ 0-]: | elements (`for`, `in`, `len`) | positions | cuts
+- R04.4.29 [1+ 0-] *happy-path only*: **The rule: a range's elements are the kind of its ends.** Cuts in, cuts out: `for k in a....
 - R04.4.5 [1+ 2-]: Only the literal `a..b` does it. A stored cut range never becomes a piece: `let s = j..i; ...
 - R04.4.6 [1+ 1-]: Only half-open: `j..=i` on cuts names no piece, so it's an error where a `Range<V>` is exp...
 - R04.4.8 [2+ 0-]: | `..i` | `D.first..i`, where `i: D` | everything before `i`
