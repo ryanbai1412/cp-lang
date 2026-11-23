@@ -5,7 +5,7 @@ r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 M = 10 ** 9
 if size >= 1000:
-    mode = r.randrange(5)
+    mode = int(sys.argv[1]) % 5
     if mode == 0:
         tests = [(18, r.randint(1, 18), [M] * 18)]
     elif mode == 1:

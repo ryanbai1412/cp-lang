@@ -21,7 +21,7 @@ def case(n, p):
 
 
 if size >= 1000:
-    mode = r.randrange(5)
+    mode = int(sys.argv[1]) % 5
     if mode == 0:
         tests = [case(100000, 0.5)]
     elif mode == 1:

@@ -14,7 +14,8 @@ use std.math.{splitmix64}
 enum Side: Left | Right
 
 @!multitest
-let (n, q): (1..=200_000, 1..=200_000) = read()
+let n: 2..=2e6 = read()
+let q: 1..=min(n * n, 2e6) = read()
 domain Row = 1..=n
 var row: [Side, Row]Int = 0
 var freq: [Side, 0..q]Int = 0

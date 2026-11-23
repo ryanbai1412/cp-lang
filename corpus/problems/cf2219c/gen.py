@@ -20,7 +20,7 @@ def case(n, shape, red):
 
 
 if size >= 1000:
-    mode = r.randrange(5)
+    mode = int(sys.argv[1]) % 5
     N = 200000
     tests = [[case(N, "path", 0)], [case(N, "star", 0)], [case(N, "rand", 0.1)],
              [case(N, "cat", 0.02)], [case(1, "rand", 1) for _ in range(1000)]][mode]
