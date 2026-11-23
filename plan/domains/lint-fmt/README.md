@@ -45,6 +45,12 @@ idiomatic corpus, so a finding there is a bug in the lint, not the port.
    with `@lint` (Ryan: yes), and user libraries can too.
 5. **One engine everywhere.** CLI, LSP and playground give the same findings
    (today the browser loses the checker-backed lints).
+6. **Fmt "just works"** (Ryan's target): it is configurable, and its defaults
+   are very opinionated. It runs on save with nothing set, and a `cp.toml
+   [fmt]` table changes the few layout choices a project may want.
+7. **Lint is highly configurable** (Ryan's target): it is easy to turn off a
+   rule you don't like. A lint, or a whole group of them, is turned off with
+   one `cp.toml [lints]` line or one `with lint(name: allow)`.
 
 ## Milestones
 **M1 Fmt gate on main (first; days).** Land `devin/wip-fmt`; fix the one
@@ -125,20 +131,15 @@ Measured 2026-11-22 on main (98618e1b5) with a release `cpl`; commands in full i
 6. Sorted `use` lines and the line-1 stamp, each behind its own verify step.
 
 ## Ryan's role
-- **Lint.** Reviews `design/overview.md`, the v0.3 lint list and the severity
-  policy (error vs warning vs off); then a demo on real ports.
-- **Fmt.** Picks the few style calls the spec leaves open, once.
+- **Lint and fmt.** Ryan set the targets in success criteria 6 and 7 and sees a
+  demo on real ports. The calls that were with him are decided (see
+  "Decided"), and he can reverse any of them.
 
-## Decisions for Ryan
-Each is also in `plan/QUESTIONS.md` with options and a reversible default.
+## Decided
+The three questions this packet put to Ryan were decided by their
+recommendations (Ryan's rule: an owner makes reversible calls):
+- severity groups and the v0.3 lint set: decisions.md 275;
+- what `cpl fmt` formats, and where the stamp goes: decisions.md 276;
+- the design: decisions.md 277.
 
-1. **Severity policy and v0.3 lint scope.** Recommend: `correctness` deny
-   (fails `cpl lint`, never `cpl build`), the rest warn after the corpus gate;
-   v0.3 = the 38 as records + L0601-L0609 + P0 / bound-aware families.
-2. **What fmt may touch.** Recommend: one mechanical commit formats corpus,
-   `spec/std`, examples and docs; layout tests in `spec/conformance` and
-   `crates/*/tests/fixes` are exempt; the stamp goes only on formatted files
-   outside those.
-3. **Approve the design** ([design/overview.md](design/overview.md)): facts
-   from one checker table, lints as data records, fmt stays token-preserving.
-   Recommend: approve; M1 and M2 hold under any answer.
+Nothing in lint-fmt is waiting on Ryan.

@@ -6428,3 +6428,60 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
 - **Decision.** For v0.3 the viewer is one offline HTML file with inline CSS and JS and no build step, inlined by `crates/cpl-cli/src/trace.rs` and loaded by the site and the VS Code webview; node tests and a headless-Chrome browser test cover it. `plan/DOMAINS.md` names it instead of a `web/packages/trace-viewer` that never existed.
 - **Why.** Offline traces from `cpl run --trace` and VS Code need no build. Revisit (a TypeScript package that builds the same single file) once the file passes about 3000 lines or needs components shared with the site.
 - **Reverse.** Move `tools/trace/` into a package with a build step whose output the CLI includes.
+
+## 275. Lint severity: correctness denies in `cpl lint`, never in `cpl build` (2026-11-22)
+
+- **Decision.** Lints sit in groups: `correctness`, `perf`, `idiom`, `style`,
+  `pedantic`. By default `correctness` is deny (`cpl lint` exits 1), `perf`,
+  `idiom` and `style` warn, and `pedantic` is allow. No lint ever fails
+  `cpl build` or `cpl run`. `cp.toml [lints]` sets a level for a whole group
+  or for one lint, and `with lint(name: allow)` silences one lint in code.
+  The v0.3 set is the existing records, plus L0601-L0609, plus the idiom
+  catalog's P0 and bound-aware families. Every new lint stays opt-in until a
+  corpus run shows 0 false positives.
+- **Why.** This was the recommendation of the lint-fmt question in
+  `plan/QUESTIONS.md`, decided under Ryan's rule that reversible calls are
+  made by their owner. A deny group makes `cpl lint` usable as a CI gate
+  without ever blocking a submission. Ryan's lint target is "highly
+  configurable; easy to turn off rules you don't like", and group levels
+  turn off a whole family in one `cp.toml` line.
+- **Reverse.** Levels are data, one `level` line in each
+  `spec/lints/<name>/lint.toml`, plus the group defaults in
+  `crates/cpl-lint/src/config.rs`.
+
+## 276. `cpl fmt` formats the corpus ports and `spec/std` in one mechanical commit (2026-11-22)
+
+- **Decision.** One commit runs `cpl fmt` over `corpus/problems/*/port.cp`
+  and `spec.cp`, `spec/std`, `corpus/lib` and `examples`. Exempt:
+  - test inputs, whose layout or line numbers are the test (`spec/conformance`,
+    `crates/*/tests`);
+  - `dream.cp` drafts, which are kept as written;
+  - `bench`.
+
+  The line-1 `// cpl 0.3.0` stamp goes only on formatted files outside the
+  exempt trees, never on conformance cases or goldens.
+- **Why.** This was the lint-fmt recommendation in `plan/QUESTIONS.md`. The
+  corpus is the style reference agents learn from, so it should be
+  fmt-clean. `scripts/fmt_check.py` proves the reformat is idempotent and
+  preserves meaning on every tracked file. A stamp on line 1 of a test input
+  would shift every expected line number.
+- **Reverse.** `git revert` the formatting commit (it is mechanical), and
+  edit the exempt list.
+
+## 277. The v0.3 linter and formatter design is approved (2026-11-22)
+
+- **Decision.** `plan/domains/lint-fmt/design/overview.md` stands:
+  1. One fact table, owned by `cpl-check`, is read by lint, LSP and
+     `cpl explain`; the linter does no analysis of its own.
+  2. Each lint is a data record in `spec/lints/<name>/`, and the Rust
+     registry is generated from the records (done: `crates/cpl-lint/build.rs`).
+  3. The formatter stays token-preserving and changes order only through
+     separately verified passes.
+- **Why.** This was the recommendation in `plan/QUESTIONS.md`, and tech-debt
+  reviewed it against the code (`plan/domains/tech-debt/worklog.md`; its six
+  points are taken in the design). (1) removes the duplicated analysis and
+  the stdlib privilege, (2) turns each lint's contract into a test, and (3)
+  keeps 0 non-idempotent files and formats broken code on save.
+- **Reverse.** (1) holds until `rules/bounds.rs` is deleted. (2) The records
+  can be compiled back into Rust consts. (3) A pretty-printer can replace
+  `layout.rs` behind the same `format` API.
