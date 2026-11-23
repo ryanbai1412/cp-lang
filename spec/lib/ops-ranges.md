@@ -46,12 +46,10 @@ pub trait Op<T>:
     fn op(self, a: T, b: T) -> T
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
 
-pub trait Monoid<T> = Op<T> + HasId<T>
 pub trait HasId<T>:
     @get fn id(self) -> T
     law ident(a: T) = op(id, a) == a and op(a, id) == a
 
-pub trait Group<T> = Monoid<T> + HasInv<T>
 pub trait HasInv<T>:
     fn inv(self, a: T) -> T
     law inverse(a: T) = op(a, inv(a)) == id
@@ -59,6 +57,10 @@ pub trait HasInv<T>:
 pub trait Commutative<T>: Op<T>        // op(a, b) == op(b, a)
 pub trait Idempotent<T>: Op<T>         // op(a, a) == a
 pub trait Selective<T>: Idempotent<T>  // op(a, b) is a or b
+
+// Monoids and groups are values, not traits (decisions 26.4, 42.6):
+pub struct Monoid<T>(id: T, op: (T, T) -> T)              // Op + HasId
+pub struct Group<T>(id: T, op: (T, T) -> T, inv: T -> T)  // Op + HasId + HasInv
 ```
 
 `op(a, b)` puts `a` on the left. Every fold runs left to right in domain
@@ -96,11 +98,14 @@ With laws, as a named type. The `impl` with no body states a law. It is a
 promise: `cpl stress` samples it and `laws_hold` tests it (the `law` tier
 in 05-ownership.md).
 
+<!-- given:
+  use std.algebra.HasId -->
 ```python
 struct Lcm
-impl Monoid<Int> for Lcm:
-    @get fn id(self) = 1
+impl Op<Int> for Lcm:
     fn op(self, a, b) = lcm(a, b)
+impl HasId<Int> for Lcm:
+    @get fn id(self) = 1
 impl Commutative<Int> for Lcm
 impl Idempotent<Int> for Lcm
 ```
@@ -255,13 +260,12 @@ to a folded value of `n` leaves. Tags compose **in time order**,
 its `compose(new, old)` applies `old` first, so `compose(new, old) ==
 tags.op(old, new)`. With add-3 then assign-5, both give assign-5.
 
+<!-- spec-only: excerpt of spec/std -->
 ```python
-pub trait Action<M, F>:              // M is the fold op's type, e.g. type of `+`
-    type Tags: Monoid<F>
-    @get fn tags(self) -> Self.Tags
-    fn apply(self, f: F, x: M.T, n: Int) -> M.T
-    law hom(f, a, b) = apply(f, op(a, b), 2) == op(apply(f, a, 1), apply(f, b, 1))
-    law comp(f, g, x) = apply(tags.op(f, g), x, 1) == apply(g, apply(f, x, 1), 1)
+// a value, not a trait (decision 42.6); T is the folded value, F the tag
+pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>)
+// hom:  apply(f, over.op(a, b), 2) == over.op(apply(f, a, 1), apply(f, b, 1))
+// comp: apply(compose(g, f), x, 1) == apply(g, apply(f, x, 1), 1)
 ```
 
 **Stock actions are generic over the fold op**, so one name works on every
@@ -294,12 +298,11 @@ costs nothing extra. A lambda that takes `(f, x)` without `n` is accepted.
 Two ops, where `mul` distributes over `add`: what matrix products, path
 algebras and convolutions are generic over.
 
+<!-- spec-only: excerpt of spec/std and its stock values -->
 ```python
-pub trait Semiring<T>:
-    type Add: Monoid<T> + Commutative<T>
-    type Mul: Monoid<T>
-    law distrib(a, b, c) = mul(a, add(b, c)) == add(mul(a, b), mul(a, c))
-    law absorb(a) = mul(add.id, a) == add.id
+pub struct Semiring<A, M>(add: A, mul: M)   // a value (decision 42.6)
+// distrib: mul(a, add(b, c)) == add(mul(a, b), mul(a, c))
+// absorb:  mul(add.id, a) == add.id
 
 Semiring(+, *)            // counting; the default for numbers
 Semiring(min, +)          // shortest paths (tropical)
