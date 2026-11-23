@@ -14,7 +14,7 @@ for t in 1..=k:
     if n >= 2 and not found:
         var parent: [1..=n]Int = 0
         var order: List<Int> = [1]
-        var j = 0  // expect: missing manual-queue-head-index
+        var j = 0  // expect: queue_head_index
         while j < order.len:
             let u = order[j]
             j += 1

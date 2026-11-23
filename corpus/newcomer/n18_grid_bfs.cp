@@ -5,7 +5,7 @@ let dy = [0, 0, 1, -1]
 var dist: [h, w]Int = -1  // expect: sentinel_table
 var qx: List<Int> = []
 var qy: List<Int> = []
-var head = 0  // expect: missing manual-queue-head-index
+var head = 0  // expect: queue_head_index
 qx.push(0)
 qy.push(0)
 dist[0, 0] = 0

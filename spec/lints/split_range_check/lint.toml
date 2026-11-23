@@ -1,0 +1,5 @@
+code = "L0551"
+level = "warn"
+group = "idiom"
+title = "Range check written as two comparisons"
+summary = "`x >= 0 and x < n`: chain it as `0 <= x < n`"

@@ -7124,3 +7124,20 @@ Reverse: drop the `hoist_constant_domains` call.
 - **326.1 Each `example:` line becomes a program.** `gen-ref` splits it at top-level `;`, puts the module's `use std.<module>.*` and the setup most of a type's examples share in a collapsed Setup, and ends with `print(expr)`, or `assert(expr == value)` when the value can't be printed; the stated value is shown as the Result. Each program is run at build time (16 at a time, cached by hash) and only one that runs is shown runnable; the rest stay static and are listed in `web/node_modules/.cache/doc-examples-failing.txt` for stdlib (286 of 2,767 today). Why: Ryan found one-line wrapped examples unreadable, and a runnable example has to be one that runs. Reverse: render `example:` lines as list items again in `renderItem`.
 - **326.2 Math is LaTeX in `\( ... \)`, rendered with KaTeX at build time** (remark-math with single dollars off, rehype-katex; KaTeX CSS only on docs and lint pages, so `/` is unchanged). Until stdlib converts its doc comments, `cost:` lines in the old `O(n log n)` form are converted (`log`, `·`, `α`, `²`, `sqrt`). The build fails on a math span KaTeX can't render. Reverse: drop the two plugins and `texSpans`.
 - **326.3 Signatures over 72 columns are laid out one parameter per line**, defaults kept, as `cpl fmt` lays out a long call. Reverse: `layoutSignature` returns its input.
+
+## 326. Lints for newcomer loops std names: argmax, mex, copy, queue, range, map count (2026-11-22)
+
+`loop_argmax` (L0547), `manual_mex` (L0548), `copy_comprehension` (L0549),
+`queue_head_index` (L0550), `split_range_check` (L0551) and
+`contains_then_add` (L0552), in `crates/cpl-lint/src/rules/hand_loops.rs`,
+teach the std call for loop and guard shapes the `corpus/newcomer/` set marks.
+All are `idiom`, `warn`, help only: each rewrite depends on a type (a `Map`, a
+domain) or on what the loop goes on to compute. `split_range_check` fires on
+one name bounded by two adjacent `and` terms only; two coordinates checked together are diagnostics'
+`grid_bounds_check` (L0535). `queue_head_index` matches `.len` by name, so
+`lint_std_names` goes from 149 to 151 (the other line is `05f4013dc`'s adjacency rule, which landed without raising it). Their findings in `spec/std` (L0549 91,
+mostly `[x for x in s]` in tests; L0551 75, mostly `0 <= i and i < cap` asserts; L0550 6; L0547 1) and the corpus specs
+(L0551 2) are real spellings and enter the shrink-only baseline. Reverse:
+delete the six records and `rules/hand_loops.rs`, and restore
+`corpus_warnings.txt` and the ratchet baseline.
+

@@ -11,6 +11,7 @@ mod fields;
 mod floats;
 mod grid;
 mod grid_step;
+mod hand_loops;
 mod imports;
 mod isqrt;
 mod lists;
@@ -58,5 +59,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(taste::check(file));
     findings.extend(literals::check(file));
     findings.extend(spelled::check(file));
+    findings.extend(hand_loops::check(file));
     findings
 }

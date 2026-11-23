@@ -1,0 +1,5 @@
+code = "L0552"
+level = "warn"
+group = "idiom"
+title = "Key tested before `+=` on a map"
+summary = "`if k in m: m[k] += v else: m[k] = v`: `m[k] += v` starts a missing key at 0"

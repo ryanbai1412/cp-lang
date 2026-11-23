@@ -128,6 +128,12 @@ prefix_sum}, L0522 copy_sort_writeback, L0523 chmin_chmax_if, L0524 bool_ternary
 | L0544 | manual_digit_loop | `while y > 0:` with `y /= 10`; use `y.digits()` |
 | L0545 | hand_rolled_pow | a square-and-halve loop; use `pow_mod` or `Mod<P>` |
 | L0546 | hand_rolled_gcd | `f(b, a % b)`; use `gcd` |
+| L0547 | loop_argmax | `for i ..: if a[i] > a[j]: j = i`: `D.max(by: i => a[i])` names the index of the largest |
+| L0548 | manual_mex | `while seen[m]: m += 1`: `(lo..=hi).find(m => not seen[m])` names the search |
+| L0549 | copy_comprehension | `[x for x in a]`: `a.collect()` copies a sequence into a `List` |
+| L0550 | queue_head_index | `var head = 0; while head < q.len: q[head]`: `bfs` or a `Deque` |
+| L0551 | split_range_check | `x >= 0 and x < n`: chain it as `0 <= x < n` |
+| L0552 | contains_then_add | `if k in m: m[k] += v else: m[k] = v`: `m[k] += v` starts a missing key at 0 |
 | L0601 | same_place_read_write | `a[l] += inc(mut a[l])`, `xs[0] = xs.pop()!` |
 | L0602 | chain_walked_twice | a lazy chain value consumed twice |
 | L0603 | map_recomputed | `.map(f)` view read many times by index |

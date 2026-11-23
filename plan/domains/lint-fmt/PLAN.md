@@ -69,6 +69,9 @@ architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
 
 | Instance | General fix | Owner |
 |---|---|---|
+| `contains_then_add` and `copy_comprehension` only teach, because the rewrite is right only for a `Map` (or a sequence) | Read the checker's type of the place from the fact table (as `typed.rs` does for L0540/L0542) and attach the fix where it is a `Map` / sequence | lint-fmt |
+| `queue_head_index` matches `.len` by name (`lint_std_names` 149 -> 150) | Match the resolved std fn through the fact table, one mechanism for every rule that names std | lint-fmt, compiler (fact table) |
+| `grid_neighbour_step` (L0534) existed when I wrote a second grid-edge rule; dropped mine | Before a new rule, grep `spec/lints/*/lint.toml` summaries for the shape; a record test could reject two records whose `before.cp` fire each other | lint-fmt |
 | Lint codes collided twice (L0530-L0532) when two lanes added records at once | `record_codes_are_unique` fails a duplicate; lanes take code blocks (lint-fmt L054x, diagnostics L053x). Next: `cpl lint --new <name>` picks the lane's next free code | lint-fmt |
 | L0521's running total, L0542 and L0504's `x = f(x, e)` match `push`, `last`, `len` and a parameter name as text | rules match resolved symbols from the fact table (callee is a fn, a parameter or a std method), so no rule reads a name | lint-fmt, with compiler for the fact table |
 | L0522 knows three copy spellings (`to_list`, comprehension, push loop), each matched separately | one "value is a copy of `xs[l..r]`" recognizer shared by every rule that reads a copy | lint-fmt |

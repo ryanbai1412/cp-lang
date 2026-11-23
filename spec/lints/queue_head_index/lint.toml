@@ -1,0 +1,5 @@
+code = "L0550"
+level = "warn"
+group = "idiom"
+title = "Queue run by a head index"
+summary = "`var head = 0; while head < q.len: q[head]`: `bfs` or a `Deque`"

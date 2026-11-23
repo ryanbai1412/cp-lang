@@ -1,0 +1,5 @@
+code = "L0549"
+level = "warn"
+group = "idiom"
+title = "List copied by a comprehension"
+summary = "`[x for x in a]`: `a.collect()` copies a sequence into a `List`"

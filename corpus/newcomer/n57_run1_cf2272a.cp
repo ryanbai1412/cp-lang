@@ -7,13 +7,13 @@ var seen: [0..=n]Bool = false
 for i in 0..p:
     seen[a[i]] = true
 var m = 0
-while seen[m]:  // expect: missing manual-mex-loop
+while seen[m]:  // expect: manual_mex
     m += 1
 if m == p:
     print(-1)
 else:
     var j = 0
-    for i in 0..p if a[i] > a[j]:  // expect: missing manual-argmax-loop
+    for i in 0..p if a[i] > a[j]:  // expect: loop_argmax
         j = i
     let q = (0..n).find(i => a[i] == m)!
     print(j + 1, q + 1)
@@ -29,7 +29,7 @@ fn valid():
         while s[x]:
             x += 1
         return x
-    var best = mex_at([x for x in a])  // expect: missing list-copy-by-comprehension
+    var best = mex_at([x for x in a])  // expect: copy_comprehension
     for i in 0..n:
         for j in i + 1..n:
             var b = [x for x in a]

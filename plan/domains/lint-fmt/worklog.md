@@ -259,3 +259,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   | 28 | `depth_by_hand` | 1 | no |
   | 29 | `lca_by_hand` | 1 | no |
   | 30 | `float_sqrt_for_int` | 1 | yes, did not fire |
+- 2026-11-22: six newcomer loop lints (L0547-L0552, `rules/hand_loops.rs`): argmax loop, `while seen[m]: m += 1`, `[x for x in a]`, a queue walked by a head index, `x >= 0 and x < n`, `if k in m: m[k] += v else: m[k] = v`. Newcomer 88/110 -> 96/110 (87%), fixes still 59/59 check-clean. Renamed the newcomer marks those rules (and diagnostics' L0534/L0535) now catch. Fixed a clippy `redundant_pattern_matching` in diagnostics' `rules/grid_step.rs` that kept `cargo clippy -p cpl-lint -D warnings` red (note in diagnostics' worklog).

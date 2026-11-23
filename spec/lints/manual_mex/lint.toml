@@ -1,0 +1,5 @@
+code = "L0548"
+level = "warn"
+group = "idiom"
+title = "Hand-written first-unmarked search"
+summary = "`while seen[m]: m += 1`: `(lo..=hi).find(m => not seen[m])` names the search"

@@ -1,0 +1,1 @@
+A comprehension whose body is its own loop variable, `[x for x in a]`, only copies `a`. `a.collect()` says that: it copies any sequence (a list, a table, a range, a string, a filtered view) into a new `List`. A comprehension that transforms or filters is not reported. There is no automatic fix yet, because a set or a map is not a sequence and needs its own spelling.
