@@ -8,8 +8,8 @@
 let n: 1..=1e6 = read()
 let m: 0..=1e6 = read()
 domain V = 1..=n
-let a: [V]1..=1e9 = read()
-let roads: [m](u: V, v: V, toll: 1..=1e9) = read()
+let a: [V]0..=1e9 = read()
+let roads: [m](u: V, v: V, toll: 0..=1e9) = read()
 
 var adj: [V]List<(V, Int)> = []
 for (u, v, toll) in roads:

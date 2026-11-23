@@ -2,8 +2,8 @@
 //   https://codeforces.com/contest/2089/problem/C1
 // Problem: n <= 100 players in turn try one key on one lock, among l <= 5000 locks and their l
 //   keys (k = 0 fakes), always a pair most likely to match given all past tries, ties at
-//   random. Print each player's expected number of opened locks mod 1e9+7. Multitest,
-//   sum l <= 5000.
+//   random. Print each player's expected number of opened locks mod 1e9+7. t <= 100
+//   tests, sum l <= 5000.
 // Solution: with i locks left the next match comes at try s, uniform over 0..i, and the player
 //   after it starts the next search. dp[j], player j's expectation when player 0 moves first,
 //   averages shifted[(j - s) mod n] over s, where shifted[j] = dp_(i-1)[j - 1] + [j == 0].
@@ -14,7 +14,7 @@ type Z = Mod<MOD>
 let comb = Comb<Z>()
 
 @!multitest
-let (n, l, _k): (1..=5_000, 1..=5_000, 0..=0) = read()
+let (n, l, _k): (1..=100, 1..=5_000, 0..=0) = read()
 var dp: [0..n]Z = 0
 for i in 1..=l:
     let pref = prefix([0..n] j => if j == 0: dp[n - 1] + 1 else: dp[j - 1])
