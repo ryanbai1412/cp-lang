@@ -1,7 +1,7 @@
 error[E0503]: a map literal is written in brackets, `[k: v]`, not braces
-  --> map_literal_in_braces.cp:1:9
+  --> map_literal_in_braces.cp:2:9
   |
-1 | let m = {1: 2}
+2 | let m = {k: 2}
   |         ^^^^^^
   = help: braces make a block; brackets make lists and maps
 
