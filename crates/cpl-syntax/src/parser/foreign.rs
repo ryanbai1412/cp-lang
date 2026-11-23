@@ -604,11 +604,7 @@ impl<'a> Parser<'a> {
             span,
             "unpacking a tuple takes parentheses in CP Lang",
         )
-        .with_help(if end == T::In {
-            "write `for (i, x) in xs.items:`"
-        } else {
-            "write `let (a, b) = t`"
-        });
+        .with_help(format!("write `({})`", self.item_text(span)));
         diag.fixes.push(cpl_diag::Fix {
             title: "add the parentheses".into(),
             edits: vec![
@@ -645,11 +641,7 @@ impl<'a> Parser<'a> {
                 self.span(),
                 format!("a header ends with `:` in CP Lang, not `{word}`"),
             )
-            .with_help(if word == "do" {
-                "write `while n > 0:`"
-            } else {
-                "write `if x == 3:`"
-            })
+            .with_help(format!("the condition stays; `{word}` becomes `:`"))
             .with_fix("write `:`", gap, ":"),
         );
         self.bump();
