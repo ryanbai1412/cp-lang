@@ -17,7 +17,7 @@
 // the next chosen element must lie in `i + 1..need[i]`, whose running sum is
 // maintained in `tot` by shrinking `hi` down to `need[i]`.
 
-use std.seq.{suffix_scan_in_place}
+use std.prefix.{suffix_fold}
 
 const MOD = 1e9 + 7
 type Z = Mod<MOD>
@@ -32,7 +32,7 @@ for i in 1..=n:
     diff[min(n, a[i] * i)] += 1
     diff[min(n, a[i] * i + i)] -= 1
 let cover = prefix(diff)
-suffix_scan_in_place(mut need, min)
+let need_suf = suffix_fold(min, need)
 
 var ways: [0..=n]Z = 0
 ways[n] = 1
@@ -42,7 +42,7 @@ for i in (0..n).rev:
     if cover.prefix(i + 1) == 0:
         ways[i] = tot
         tot += ways[i]
-    while hi > need[i]:
+    while hi > need_suf[i]:
         hi -= 1
         tot -= ways[hi]
 print(tot)

@@ -15,7 +15,7 @@
 // k and k + 1 overlap on [bad_l[k + 1] + 1 ..= k] x [k + 1 .. bad_r[k]], so
 // subtracting adjacent overlaps counts every cute subarray once in O(n).
 
-use std.seq.{suffix_scan_in_place}
+use std.prefix.{suffix_fold}
 
 @!multitest
 let n: 1..=200_000 = read()
@@ -34,13 +34,13 @@ fn first_bad(xs: [Pos]Int) -> [Pos]Int:
             cur[Pos(min(x.pos, y.pos))] min= i.ord
         lo.push((v, i.ord))
         hi.push((v, i.ord))
-    cur.suffix_scan_in_place(min)
-    cur
+    let suf = suffix_fold(min, cur)
+    [Pos] i => suf[i.l]
 
 let bad_r = first_bad([Pos] i => a[i])
 let bad_l_rev = first_bad([Pos] i => a[Pos(n - 1 - i.ord)])
 let bad_l = [Pos] i => n - 1 - bad_l_rev[Pos(n - 1 - i.ord)]
 
 let total = sum((bad_r[i] - i.ord) * (i.ord - bad_l[i]) for i in Pos)
-let overlap = sum((bad_r[k] - (k.ord + 1)) * (k.ord - bad_l[k.next!]) for k in Pos if k < Pos.last)
+let overlap = sum((bad_r[k] - (k.ord + 1)) * (k.ord - bad_l[k.next!]) for k in Pos if k < Pos.last!)
 print(total - overlap)
