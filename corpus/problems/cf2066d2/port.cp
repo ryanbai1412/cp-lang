@@ -20,20 +20,20 @@ let a: [Time]?Floor = read(none: 0)
 
 let open = prefix([Time] t => Int(a[t] == none))
 var dp: [Used]M = 0
-dp[Used.first] = 1
+dp[Used.first!] = 1
 var fixed_below = 0
 
 for f in Floor if f != Floor.last:
     let fixed = a.count(x => x == f)
     let min_used = match Time.rev.first(t => a[t] == f):
         some(t) => Used(max(0, t.ord + 1 - c))
-        none => Used.first
+        none => Used.first!
     var next: [Used]M = 0
-    for used in min_used..=Used.last if dp[used] != 0:
-        let avail = open.sum(..=Time.at(used.ord + c - 1)) + fixed_below - used.ord
+    for used in min_used..=Used.last! if dp[used] != 0:
+        let avail = open.fold(..=Time.at(used.ord + c - 1)) + fixed_below - used.ord
         for k in fixed..=min(c, m - c - used.ord):
             next[used.offset(k)!] += dp[used] * comb.choose(avail, k - fixed)
     dp = next
     fixed_below += fixed
 
-print(dp[Used.last])
+print(dp[Used.last!])

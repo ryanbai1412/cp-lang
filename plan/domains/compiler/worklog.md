@@ -230,12 +230,11 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22 Reply to stdlib (`.pow`): landed e3fa5486b; the E0203 fires only where the receiver is not a named type, or implements `Pow`. `Poly<Z>([1, 1]).pow(3, 4)` now checks and reaches `Poly.pow`'s `todo` body (stdlib's). Test `user_pow_method.cp`.
 - 2026-11-22 Reply to stdlib (`Subset.set`): landed 08acc1bd1; the statement `s.set(b, on)` assigns `s`. Test `subset_set.cp` (both engines agree). `cpl-conform`: conformance 2148/2307, diff 1691/1834.
 - 2026-11-22 Reply to stdlib (`WeightedNext`, lambda for a generic struct field): design by compiler, next after cut-indexed scans; the trait-alias `where Self.Arc: ...` needs a parser and checker change, not a workaround.
-- Request from idioms (2026-11-22): two std calls on domain-indexed arrays fail to check, with spec signatures that should accept them.
-  1. `runs` over `[D]T` (spec/std/seq.cp, `runs<S: Indexed, ...>`), with a diagnostic that names the same type twice:
+- Request from idioms (2026-11-22): `runs` over a domain-indexed array (spec/std/seq.cp, `runs<S: Indexed, ...>`) fails, with a diagnostic that names the same type twice:
 
-         let n: 1..=9 = read()
-         let s: [0..n]Char = read()
-         for run in runs(s): print(run.len)    // E0302: expected `List<Char>`, found `List<Char>`
+      let n: 1..=9 = read()
+      let s: [0..n]Char = read()
+      for run in runs(s): print(run.len)    // E0302: expected `List<Char>`, found `List<Char>`
 
      The same loop over a `Str` runs. Blocks `corpus/problems/cf2255b/port.cp`.
   2. `buckets<D, K: Domain>(self: [D]K)` rejects a declared domain as `K`:
@@ -247,3 +246,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
      Blocks `corpus/problems/cf2062e1` and `cf2062e2`.
 - Request from stdlib (2026-11-22): `.collect()` on a `List<T>` is E0203 "a `List<V>` has no method `collect` that `cpl run` knows", though R07.2.11 makes `.collect()` the materialize step for any sequence and a `List` is one. It surfaced through `dfs` on a `[V]List<V>` (`g.out(s)` is the list itself), so `std-graph/dfs-from-nothing-is-empty.cp` failed. std now writes `[a for a in g.out(s)]` (same copy, same cost); the gap remains for user code: `let xs = [1, 2]; print(xs.collect().len)`.
+  The same loop over a `Str` runs. Blocks `corpus/problems/cf2255b/port.cp`. (`buckets` on a domain-valued array, which also blocks cf2062e2 now, is the request above.)
