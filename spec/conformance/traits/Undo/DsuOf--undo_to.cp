@@ -1,4 +1,5 @@
 // expect: ok, output "NO YES"
+use std.dsu.{DsuOf}
 domain V = 0..3
 var d = DsuOf<V, Int>(init: v => Int(v) + 1, join: (x, y) => x + y)
 let m = d.mark()

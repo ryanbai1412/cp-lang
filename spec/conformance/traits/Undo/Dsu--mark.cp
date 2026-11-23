@@ -1,4 +1,5 @@
 // expect: ok, output "YES NO"
+use std.dsu.{Dsu}
 domain V = 0..3
 var d = Dsu<V>()
 d.unite(V(0), V(1))
