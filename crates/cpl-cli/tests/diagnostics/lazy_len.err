@@ -1,0 +1,8 @@
+error[E0606]: `.len` requires `Sized`, which `Filter<Int>` does not implement
+  --> lazy_len.cp:2:29
+  |
+2 | print(xs.filter(x => x > 2).len)
+  |                             ^^^
+  = help: a lazy sequence has no stored length: `.count()` walks it once
+
+lazy_len.cp: 1 error

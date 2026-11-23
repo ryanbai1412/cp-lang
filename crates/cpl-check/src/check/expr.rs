@@ -2005,7 +2005,13 @@ impl<'a> Checker<'a> {
                         let message = format!(
                             "`.len` requires `Sized`, which `{base_ty}` does not implement"
                         );
-                        self.error(codes::MISSING_IMPL, name.span, message);
+                        if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
+                            diag.help = Some(
+                                "a lazy sequence has no stored length: `.count()` walks it once"
+                                    .into(),
+                            );
+                            diag.fix("write `.count()`", name.span, "count()");
+                        }
                         return Ty::Error;
                     }
                     return Ty::Int;
