@@ -18,7 +18,7 @@ if k > 0:
         if ds.last != Some(m - i - 1):
             a[i] = max(a[i], 1)
         ds.push_front(-i - 1)
-        for _ in 0..p:
+        for _ in 0..min(p, ds.len):
             ds.pop_front()
     if k > n and a.min()! == 0:
         a.rotate_right(k % n)

@@ -1852,7 +1852,7 @@
     },
     "corpus": {
       "cases": {
-        "aac4p6": "untested",
+        "aac4p6": "pass",
         "aac5p4": "wrong",
         "apio09p2": "untested",
         "apio09p3": "error",
@@ -2156,12 +2156,12 @@
       ],
       "counts": {
         "error": 37,
-        "pass": 24,
+        "pass": 25,
         "trap": 2,
-        "untested": 36,
+        "untested": 35,
         "wrong": 1
       },
-      "passed": 24,
+      "passed": 25,
       "total": 100
     },
     "diff": {
