@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- 4 more fragments run with `given:` (04-indices x2, 04b-keys, 05-ownership); 04-indices' D&C example used `min_by`, a `_by` variant the design rules forbid, now `min(by:)`. spec-blocks 79/185 (32 error, 74 skip).
 - 6 spec-only fragments now run with `given:` setup (04b-keys x3, 04-indices, 05-ownership, search-dp interval DP); 04-indices' binary-search tour had two `let k`, now `let reach`. spec-blocks 75/185 (32 error, 78 skip). The 3 new errors are std/compiler: `Rebased` indexing and `V.cuts.range` (already in stdlib worklog), `V.ranges` (new request there).
 - Sig gate was red on main after stdlib gave `runs` its `link:` (`uv run scripts/conformance-sigs.py --check`: 1 fixed); shrank `sig-gaps.txt` to 5.
 - R09.1.3 now says top-level fns, public or not, don't infer `uses` and pass their own lexical value; case `core-09/uses-not-inferred-top-level.cp` fails (`cpl run` infers it, prints `1,1`; compiler worklog). R09.1.3 moves to permits.txt: its constraint is behaviour, not a rejection.

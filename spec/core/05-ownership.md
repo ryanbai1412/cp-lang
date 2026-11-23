@@ -510,7 +510,10 @@ two comparable, so no struct needs its own checker.
 - Shared ownership (two owners of one mutable value) stays out: pass
   `mut x` to each call, or capture `x`.
 
-<!-- spec-only: fragment: `build_dsu` and `edges` come from the text -->
+<!-- given:
+  domain V = 0..3
+  let edges = [(V(0), V(1))]
+  fn build_dsu(es: List<(V, V)>) -> Dsu<V> = Dsu<V>() -->
 ```python
 let d = build_dsu(edges)            // a let
 for v in V: print(d.find(v))        // fine: find takes read self

@@ -146,7 +146,13 @@ when `v.next` exists, or `for j in a[v.r..].keys`; see Open. `..i` needs no
 `!`: `i` existing proves its domain is non-empty. Cost: O(1) to build, like
 any range.
 
-<!-- spec-only: fragment: `dp`, `cost`, `i` and `c` come from the text -->
+<!-- given:
+  domain V = 0..6
+  var dp: [V.cuts]Int = 0
+  fn cost(r: Range<V>) -> Int = r.len
+  let i = V.cuts.last!
+  let c = V.cuts.last!
+  let a: [V]Int = 1 -->
 ```python
 for j in ..i:                        // every cut before i
     dp[i] min= dp[j] + cost(j..i)
@@ -251,7 +257,11 @@ they never call `ok` more often than release does (see R09.2.3). Answer spaces t
 anonymous domain whose positions and cuts are both `Int`:
 `(0..=1e18).first_true(t => fits(t))`.
 
-<!-- spec-only: fragment: `cross`, `cost` and `dp` come from the text -->
+<!-- given:
+  domain Pos = 0..6
+  fn cross(l: Range<Pos>, r: Range<Pos>) -> Int = 0
+  fn cost(k: Pos, m: Pos) -> Int = 0
+  var dp: [Pos]Int = 0 -->
 ```python
 fn inversions(r: Range<Pos>) -> Int:          // merge-sort shape
     let (left, right) = r.halve() else: return 0
@@ -260,7 +270,7 @@ fn inversions(r: Range<Pos>) -> Int:          // merge-sort shape
 fn solve(rows: Range<Pos>, opts: Range<Pos>): // D&C DP optimisation
     if rows.is_empty: return
     let m = rows.mid.r!
-    let best = opts.clip(..m.r).min_by(k => cost(k, m))!
+    let best = opts.clip(..m.r).min(by: k => cost(k, m))!
     dp[m] = cost(best, m)
     solve(rows.l..m.l, opts.l..best.r)
     solve(m.r..rows.r, best.l..opts.r)

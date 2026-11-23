@@ -63,7 +63,10 @@ Diagnostics:
 **Divide and conquer on the maximum (B1).** The position found inside the
 slice is a position of `a`, so it indexes `b` and splits the range directly.
 
-<!-- spec-only: fragment: `a` and `b` come from the text -->
+<!-- given:
+  domain V = 0..5
+  let a: [V]Int = [3, 1, 4, 1, 5]
+  let b: [V]Int = 1 -->
 ```python
 fn solve(r: Range<V>) -> Int:
     if r.len == 0: return 0
