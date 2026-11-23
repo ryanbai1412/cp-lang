@@ -35,7 +35,6 @@ coci20c6p2
 coci20c6p3
 coci25c3p4
 coi06p2
-cpc21c1p5
 dmopc20c7p5
 dwite10c3p3
 egoi22p3
@@ -56,7 +55,6 @@ ioi11p2
 ioi12p3
 ioi13p3io
 ioi13p4
-ioi13p5
 ioi14p2
 ioi14p6
 ioi15p4
@@ -91,7 +89,6 @@ noip20p1
 noip21p1
 noip22p3
 noip22p4
-oly23practice5
 sac22cc2p5
 sac22cc3p5
 saspeed

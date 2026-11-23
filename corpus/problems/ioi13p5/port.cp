@@ -31,5 +31,5 @@ fn done_in(minutes: Int) -> Bool:
     left.len == 0
 
 domain Minutes = 1..=t
-if let m = Minutes.first_where(m => done_in(m.label)): print(m)
+if let m = Minutes.first_true(m => done_in(m.label)): print(m)
 else: print(-1)
