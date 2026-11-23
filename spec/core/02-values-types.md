@@ -47,7 +47,7 @@ Whether a value is owned or lent is not part of its type (chapter 5). (R02.1.4)
 | `I128` | signed 128-bit | products past `Int` |
 | `F64` | IEEE double | `==` is exact; `close(a, b, eps:)` is the tolerant compare |
 | `Bool` | `true`, `false` | 1 byte; packed in `Bits`; `Int(b)` is 1 or 0 |
-| `Char` | ASCII `0..=127` | 1 byte; `Int(c)`, `Char(i)` (traps outside `0..=127`), `c.is_digit`, ... |
+| `Char` | ASCII `0..=127` | 1 byte; `Int(c)`, `Char(i)` (traps outside `0..=127`), `c.is_digit`, ...; ordered by code, so `'b' < 'c'` and `max` work |
 | `()` | the unit value | what statements and `print` return |
 | `Never` | no values | the type of `return`, `break`, traps, `todo` |
 
@@ -219,7 +219,8 @@ enum Ev:
   `g[r, c]`; `[(R, C)]T` is the same type. `g[r]` is the row place. A
   counted dimension `[n]T` means `[0..n]T`. (R02.8.1)
 - `List<T>` grows, is indexed by `0..len` positions, and its slices keep
-  source positions. (R02.8.2)
+  source positions. A counted array `[n]T` passes where a `List<T>` is
+  read (same `0..n` positions); it still never grows. (R02.8.2)
 - `[D]T` arrays are built by tables (`[V] v => 0`), typed reads
   (`read<[V]Int>()`), comprehensions with an expected array type, or
   `[D].filled(x)`, or a scalar `x: T` where a `[D]T` is expected (a fill,

@@ -129,14 +129,14 @@ is the index of a value; the element a test holds for is `first(p)`.
 Lint L0509 (`free_fold`) rewrites the rest (decisions.md §53).
 
 **Options are named arguments, not `_by` variants.** `runs(a, by: key)`,
-`a.sort(by: key)`, `bsearch_first(r, ok)`. Today's `runs_by`,
+`a.sort(by: key)`, `r.first_true(ok)`. Today's `runs_by`,
 `first_ge_by` and `last_le_by` are [rename]s to `runs(a, by:)`,
 `first_ge(xs, x, by:)` and `last_le(xs, x, by:)`.
 
-**`bsearch_first`/`bsearch_last` are the O(log n) monotone form of
-`first`/`last`.** `first(xs, p)` scans: O(n) calls of any `p`.
-`bsearch_first(r, ok)` asks O(log n) questions and needs `ok` false then
-true along `r` (`bsearch_last`: true then false); both answer `?` a
+**`r.first_true(ok)`/`r.last_true(ok)` are the O(log n) monotone form of
+`first`/`last`** (spec R04.8.3). `first(xs, p)` scans: O(n) calls of any `p`.
+`r.first_true(ok)` asks O(log n) questions and needs `ok` false then
+true along `r` (`last_true`: true then false); both answer `?` a
 position of the space searched. Reach for the scan unless the predicate
 is monotone and the range is large.
 
@@ -283,8 +283,8 @@ Free functions over `List<T>`, `[D]T`, and `Str`, the four-name sorted-lookup
 family, prefix/suffix/exclusive scans, permutations, monotone-stack and
 sliding-window helpers, coordinate compression, and binary/ternary searches.
 Full design and contest survey in `spec/lib/rationale/seq.md`. The searches return
-the boundary, not a found flag: `bsearch_first(lo..hi, ok)` is the first `i`
-with `ok(i)` for a monotone `ok`, or `none`.
+the boundary, not a found flag: `(lo..hi).first_true(ok)` is the first `i`
+with `ok(i)` for a monotone `ok`, or `None`.
 
 ```cp
 type Perm<V> = [V]V

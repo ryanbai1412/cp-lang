@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- Rebuild round 17 (7715976ac): 12 holes (r16: 20), 4 silent, 4 contradiction, 2 missing-stdlib, 2 found-late; 10/10 pass check, run and C++, no implementation bug. Decision 370; 6 cases, all pass. Release-vs-interpreter sweep over core-01..12: no release-only wrong answers after the trap skip (rechecking non-trap release-only fails against a fresh `cpl`).
 - cpl-conform release mode (`CPL_CONFORM_RELEASE=1`) now skips trap cases: release runs no checks (R09.2.2), so 5 core-07 trap cases failed there only for a missing trap code. Release vs interpreter on core-07 otherwise agree (no release-only wrong answers).
 - Bug-catch round 12: 108aae46b (a declared domain satisfies a `Domain` bound) was missed; case core-12/declared-domain-satisfies-domain-bound. Fixed core-10/read-counted-rows-range-traps' trap line (it traps now) and dropped 2 known gaps that pass.
 - Rebuild round 16 (d6a144417, harder mix): 20 holes, 6 silent, 7 contradiction, 1 missing-stdlib, 6 found-late; 7/10 pass check, run and C++. Decision 369 (lowercase `const` allowed, grid reads row-major, `for` temporaries, one-parameter product tables, joint bounds). 10 cases: 8 pass, 2 compiler known gaps; removed core-01/lowercase-const-rejected (rule reversed).

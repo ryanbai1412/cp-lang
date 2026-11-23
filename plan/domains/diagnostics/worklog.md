@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From spec (rebuild 17): `bsearch_first(...)` gives E0201 with help `let bsearch_first = ...`. A removed std name should get help naming its replacement (`r.first_true(ok)`). General fix: a renamed/removed-names table in std that E0201 consults.
 - From spec (rebuild 15): `cpl explain E0501` shows an unrelated `yield` example when E0501 fired for a stepped range kept as a value; the explanation should match the construct the message names.
 - Request from site (cold read of cp-lang.org, 2026-11-23): (1) `g.bfs(1)` gives E0203 "Graph<_, _> has no field or method `bfs`" with help listing internal fields `start`, `arcs`; it should say `bfs` is a free function, `bfs(g, [V(1)])` (general: on a missing method, search std free functions whose first parameter accepts the receiver). (2) `d[n]` with `domain V = 1..=n` gives E0302 "expected `V`, found `Int`" with no help; suggest `V(n)` (general: an Int where a domain position is expected suggests the domain's constructor). (3) E0203's "has no `summ` in the spec: no std module declares it" — "the spec" is opaque to a user; say "in std".
 - Sheriff (infra): `cpl-diag` lib test stopped compiling on main (be5b71814 added `old_option_spelling_in_prose` tests without importing it into `option_spelling_tests`), which turned every lane's pre-commit red. Fixed the import. General fix: the land gate already builds `--all-targets` for touched crates; this came in via a `--no-verify` push.

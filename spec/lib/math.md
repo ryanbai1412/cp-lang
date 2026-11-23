@@ -125,7 +125,11 @@ fn choose(n: Int, k: Int) -> Int             // O(min(k, n - k)); 0 outside 0..=
 fn choose2(n: Int) -> Int                    // O(1); n * (n - 1) / 2, 0 for n < 2
 
 // Bit and digit helpers
-fn bit_len(x: Int) -> Int                          // O(1); 0 for x == 0
+fn bit_len(x: Int) -> Int                          // O(1); 0 for x == 0; in the prelude
+fn popcount(x: Int) -> Int                         // O(1); core builtin, 1 bits of the 64-bit pattern
+fn ctz(x: Int) -> Int                              // O(1); core builtin, trailing zero bits, x != 0
+fn bit_width(x: Int) -> Int                        // O(1); core builtin, same as bit_len
+fn bit_ceil(x: Int) -> Int                         // O(1); core builtin, least power of 2 >= x
 fn digits(self: Int, base: Int = 10) -> List<Int>  // O(log_base x); lowest digit first
 @get fn sign(self: Int) -> Sign                    // O(1); Neg, Zero or Pos
 fn bit(self: Int, i: Int) -> Bool                  // O(1); bit 0 is lowest

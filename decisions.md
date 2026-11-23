@@ -7781,3 +7781,18 @@ Rebuild round 16 found 20 holes (6 silent, 7 contradiction, 1 missing-stdlib,
 - `let x = x!` shadows in the per-test region too (R02.4.8, R01.9.1).
 - `Prefix(a)` is the one constructor spelling (chapter 3 said `Prefix(+, a)`).
 Reverse: edit the named rules and cases.
+
+## 370. Rebuild-17 rulings: bit builtins, prelude math, `Char` order (2026-11-23)
+
+Rebuild round 17 found 12 holes (4 silent, 4 contradiction, 2 missing-stdlib,
+2 found-late) and no implementation bug. Rulings:
+- `popcount`, `ctz`, `bit_width`, `bit_ceil` are core builtins, documented in
+  R11.3.3 and spec/lib/math.md (std/bitset.cp already used `popcount`).
+- `divisors` and `bit_len` join the prelude beside `gcd` and `bit`; a user's
+  own definition still shadows a prelude name.
+- `Char` is ordered by code (R02.2.1).
+- A counted array `[n]T` passes where a `List<T>` is read (R02.8.2), which the
+  compiler already did; it never grows.
+- A record read takes one token per field, `Str` fields too (R10.2.1).
+- std/README.md's binary search text now says `first_true`/`last_true`.
+Reverse: edit the named rules, the prelude list and the cases.
