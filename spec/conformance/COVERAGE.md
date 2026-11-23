@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3113 (1092 passing). Rules: 583.
+Cases: 3117 (1092 passing). Rules: 589.
 
 ## Summary per chapter
 
@@ -33,6 +33,7 @@ Cases: 3113 (1092 passing). Rules: 583.
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlsp (lsp.md): 5 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rtrace (trace-debug.md): 6 rules, 4 cases; 3 uncovered, 1 happy-path only, 0 negative only
 
 27 rules match a forbidding word but only permit or define something;
 `permits.txt` lists them with the reason, so they need no reject case.
@@ -67,7 +68,8 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 583 | 583 (100%) | 234 | 234 (100%) | 583 (100%) |
+| Rtrace | 6 | 3 (50%) | 4 | 1 (25%) | 2 (33%) |
+| all | 589 | 586 (99%) | 238 | 235 (98%) | 585 (99%) |
 
 ## Rules
 
@@ -722,6 +724,15 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - Rstress.1 [2+ 1-]: On failure, shrink the recorded `gen` choices to a minimal input that still fails, then re...
 
+### Rtrace: trace-debug.md
+
+- Rtrace.1 [1+ 1-]: **Traps** (checked builds) print the rule, the place and local values in source terms (pos...
+- Rtrace.2 [0+ 0-] **uncovered**: **`cpl run d input --trace`** writes one HTML file: every top-level statement and part cal...
+- Rtrace.3 [0+ 0-] **uncovered**: **Stage snapshots**: `cpl snap` saves a part's inputs; `cpl run d --stage snap` reruns onl...
+- Rtrace.4 [1+ 0-]: **`debug(x)`** prints with a source location in checked builds and is removed from submiss...
+- Rtrace.5 [0+ 0-] **uncovered**: **The debugger** (the editors' debugger over `cpl dap`) runs on the interpreter: breakpoin...
+- Rtrace.6 [2+ 0-] *happy-path only*: Interpreter and C++ agree on every program, including on input they reject; the differenti...
+
 ## Diagnostics
 
 Codes from `crates/cpl-diag/src/registry.rs`, `crates/cpl-lint/src/lib.rs`
@@ -940,7 +951,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
 - R0001 Runtime trap: 12 case(s)
-- R0101 Index out of range: 26 case(s)
+- R0101 Index out of range: 27 case(s)
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
 - R0202 Integer overflow: 46 case(s)
