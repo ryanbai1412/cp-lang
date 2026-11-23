@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Screenshots: recaptured the 4 viewer screenshots in `examples/debugging/screenshots/` from the current build (headless Chrome at 1440x900): the knapsack, shortest_path and shows stress traces at their first divergence, and trap.cp at its trap step. They now show the v0.3 wording ("through its brute") and the version `cpl` reports (0.2.2, the crate version), not the old viewer's hard-coded one.
 - `cpl stress` messages and help now name `@alt(program)` and `@check`, not the legacy `@brute(main)` and `@checker` (E0503 spellings). Flags such as `--brute` and `--checker` are unchanged, per the CLI-names default in plan/QUESTIONS.md. cpl-stress (83) and cpl-cli debugger, stress_bench and cli pass.
 - Demos: the 3 `examples/debugging` programs spell `@alt(program)`, not the legacy `@brute(main)` (E0503 in spec/core/06 R06.4.3). Each still checks clean, and `cpl stress` still finds its planted bug (knapsack and shortest_path: expected `1`, got `2`; shows: expected `2`, got `1`). dap, replay, trace_browser and trace_log pass. Screenshots that show the old spelling are not recaptured yet.
 - VM in the browser (PLAN workstream 4): measured, then asked site, since the bundle cap is theirs. Enabling `mod vm` on wasm32 adds 572,473 bytes raw and 154,859 gzipped to `cpl_wasm.wasm`. Held until site answers.
