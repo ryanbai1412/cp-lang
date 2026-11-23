@@ -221,6 +221,9 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         hint: Option<&Ty>,
     ) -> Expr {
+        if let Some(call) = self.lexical_call(whole, callee, args, hint) {
+            return call;
+        }
         let span = whole.span;
         match &callee.kind {
             ast::ExprKind::Paren(inner) => self.call(whole, inner, args, hint),

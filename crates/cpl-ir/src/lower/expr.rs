@@ -1132,9 +1132,7 @@ impl<'a> Lowerer<'a> {
             return self.mk(ExprKind::DomainVal(d), Ty::DomainVal, span);
         }
         match self.get_sym(name) {
-            Some(Sym::Global(id)) => {
-                return self.mk(ExprKind::Global(id), self.globals[id].ty.clone(), span)
-            }
+            Some(Sym::Global(id)) => return self.global_read(id, span),
             Some(Sym::ModConst(mcid)) => return self.ensure_mod_const(mcid, span),
             Some(Sym::Variant(id, tag)) => {
                 if let Some(&d) = self.enum_to_sum_domain.get(&id) {

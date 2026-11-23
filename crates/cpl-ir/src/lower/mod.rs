@@ -21,6 +21,7 @@ mod hoist;
 mod index_set;
 mod keyed;
 mod lambda_infer;
+mod lexical_ctx;
 mod library_domain;
 mod memo;
 mod mono;
@@ -583,6 +584,8 @@ struct FnCx {
     /// The name about to be lowered stands where an optional is asked for.
     as_written: bool,
     uses_io: bool,
+    /// A top-level fn's `uses`: the contexts it follows its caller in.
+    lexical_uses: Option<Vec<String>>,
     scopes: Vec<HashMap<String, Slot>>,
     /// Block-scoped type aliases, local domains, etc. (e.g. `domain V = 1..=6`, `type M = Mod<7>`).
     local_syms: Vec<HashMap<String, Sym>>,
@@ -735,6 +738,7 @@ struct Lowerer<'a> {
     range_keyed: HashSet<DomainId>,
     view_fns: HashMap<(FnId, Vec<(usize, Ty)>), FnId>,
     io_global: Option<GlobalId>,
+    lexical_call_at: Option<Span>,
     context_defs: HashMap<String, (GlobalId, Vec<(String, Ty)>)>,
     /// Inside `g[r, ..]`: the loop variable that stands where the `..` is.
     whole_axes: Vec<Slot>,
@@ -965,6 +969,7 @@ impl<'a> Lowerer<'a> {
             range_keyed: HashSet::new(),
             view_fns: HashMap::new(),
             io_global: None,
+            lexical_call_at: None,
             context_defs: HashMap::new(),
             whole_axes: Vec::new(),
             own_domains: HashSet::new(),
@@ -3708,6 +3713,7 @@ impl<'a> Lowerer<'a> {
         let saved_fn_unchecked = std::mem::replace(&mut self.unchecked, 0);
         let saved_fn_overflow = std::mem::replace(&mut self.overflow_checks_off, 0);
         self.cx.uses_io = decl.uses.iter().any(|u| u.text == "io");
+        self.cx.lexical_uses = Some(decl.uses.iter().map(|u| u.text.clone()).collect());
 
         match &decl.body {
             ast::FnBody::Block(block) => {
