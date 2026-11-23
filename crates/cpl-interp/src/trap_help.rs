@@ -25,6 +25,41 @@ pub(crate) fn help(message: &str) -> Option<String> {
                 .into(),
         );
     }
+    if m.starts_with("integer overflow:") {
+        return Some(if m.contains("(64 bits)") {
+            "if the answer is asked mod P, keep it in `Mod<P>` values; otherwise widen this value to `I128`"
+        } else {
+            "if the answer is asked mod P, keep it in `Mod<P>` values, which never overflow"
+        }
+        .into());
+    }
+    if m.starts_with("division by zero:") {
+        return Some(
+            "the divisor can be 0 here: guard it with `if b != 0:`, \
+                 or give it a type that leaves 0 out, as in `1..=n`"
+                .into(),
+        );
+    }
+    if m.starts_with("expected a number, found") {
+        return Some(
+            "the reads don't line up with the input: check their order and count against the input format"
+                .into(),
+        );
+    }
+    if m.starts_with("the stack ran out") {
+        return Some(
+            "each call must get closer to a case that returns without calling again: check the base case"
+                .into(),
+        );
+    }
+    if let Some((_, range)) = m.split_once(" is outside `") {
+        return Some(if range.contains("(input line") {
+            "the input breaks a range you declared: check the type against the statement's constraints"
+        } else {
+            "the value leaves the range its variable was declared with: widen the type, or check the value first"
+        }
+        .into());
+    }
     let (idx, rest) = m.strip_prefix("index ")?.split_once(" is outside ")?;
     let len: i64 = rest.rsplit(' ').next()?.parse().ok()?;
     if idx.starts_with('-') {

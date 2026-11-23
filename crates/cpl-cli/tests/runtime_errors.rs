@@ -290,6 +290,7 @@ print(spin(0))
     let (code, err) = run_stderr(source, "");
     assert_eq!(code, 3);
     assert!(err.contains("never stops calling itself?"), "got:\n{err}");
+    assert!(err.contains("check the base case"), "got:\n{err}");
     let stack = err
         .lines()
         .find(|l| l.contains("call stack:"))
@@ -1069,4 +1070,43 @@ fn a_shift_past_the_width_says_the_range_and_the_way_out() {
         err.contains("help: `a << k` and `a >> k` need `k` from 0"),
         "got:\n{err}"
     );
+}
+
+#[test]
+fn common_traps_say_the_cpl_fix() {
+    let cases = [
+        (
+            "let a: Int = read()\nprint(a * a)\n",
+            "4000000000\n",
+            "widen this value to `I128`",
+        ),
+        (
+            "let a: Int = read()\nprint(42 / a)\n",
+            "0\n",
+            "guard it with `if b != 0:`",
+        ),
+        (
+            "let a: Int = read()\nprint(a)\n",
+            "abc\n",
+            "the reads don't line up with the input",
+        ),
+        (
+            "let n: 1..=5 = read()\nprint(n)\n",
+            "9\n",
+            "the input breaks a range you declared",
+        ),
+        (
+            "var x: 0..10 = 0\nlet k: Int = read()\nx = k * 2\nprint(x)\n",
+            "7\n",
+            "widen the type, or check the value first",
+        ),
+    ];
+    for (src, input, help) in cases {
+        let (code, err) = run_stderr(src, input);
+        assert_eq!(code, 3, "for {help}: {err}");
+        assert!(
+            err.contains("help: ") && err.contains(help),
+            "expected `{help}`, got:\n{err}"
+        );
+    }
 }
