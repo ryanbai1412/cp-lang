@@ -1,7 +1,6 @@
 //! String algorithms. They only compare elements, so they work on a `Str`
 //! (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
 
-
 /// `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.
 ///
 /// cost: O(|self| * n)
@@ -1984,8 +1983,17 @@ pub struct DynamicHash<D>:
             inv1[i] = inv1[i - 1] * ib1 % RH_M1
             inv2[i] = inv2[i - 1] * ib2 % RH_M2
         var h = DynamicHash<D>(
-            (b1, b2), List.filled(n, 0), List.filled(n, 0), List.filled(n + 1, 0), List.filled(n + 1, 0),
-            List.filled(n + 1, 0), List.filled(n + 1, 0), pow1, pow2, inv1, inv2
+            (b1, b2),
+            List.filled(n, 0),
+            List.filled(n, 0),
+            List.filled(n + 1, 0),
+            List.filled(n + 1, 0),
+            List.filled(n + 1, 0),
+            List.filled(n + 1, 0),
+            pow1,
+            pow2,
+            inv1,
+            inv2,
         )
         var i = 0
         for x in seq:
@@ -2338,7 +2346,7 @@ pub struct SuffixAutomaton<A>:
     ///
     /// cost: O(|other|)
     /// empty: `(0, 0)` for an empty `other`; also when nothing is shared
-/// ties: the smallest `end`
+    /// ties: the smallest `end`
     /// traps: when an element of `other` is not in `A`
     /// example: `SuffixAutomaton<Char>.of("abb").lcs("xbbx") == (2, 3)`
     pub fn lcs<S: Seq>(self, other: S) -> (len: Int, end: Int):
@@ -2503,7 +2511,10 @@ pub struct PalindromicTree<A>:
     last: 0..=2_000_000_000
     front: List<A>
     first: 0..=2_000_000_000
-    undo: List<(last: Int, first: Int, edge: Int, fronts: Int)>
+    undo: List<0..=2_000_000_000>
+    made: List<0..=2_000_000_000>
+    firsts: List<0..=2_000_000_000>
+    barrier: Int
 
     /// An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the
     /// even root `1`. Call it as `PalindromicTree<A>()`.
@@ -2513,7 +2524,23 @@ pub struct PalindromicTree<A>:
     /// example: `PalindromicTree<Char>().len == 2`
     pub fn new() -> PalindromicTree<A>:
         let k = A.K
-        PalindromicTree(k, List.filled(2 * k, -1), [0, 0], [-1, 0], [0, 0], [0, 0], [0, 0], [], 1, [], 1, [])
+        PalindromicTree(
+            k,
+            List.filled(2 * k, -1),
+            [0, 0],
+            [-1, 0],
+            [0, 0],
+            [0, 0],
+            [0, 0],
+            [],
+            1,
+            [],
+            1,
+            [],
+            [],
+            [],
+            0,
+        )
 
     /// The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.
     /// New states are numbered from `2` in creation order.
@@ -2544,9 +2571,8 @@ pub struct PalindromicTree<A>:
                 let prev = pos - plen[cur] - 1
                 if prev >= 0 and self.at(prev) == a: break
                 cur = slink[cur]
-            var edge = -1
             if next[cur * alpha + c] == -1:
-                edge = cur * alpha + c
+                made.push(cur * alpha + c)
                 let link_to = if cur == 0:
                     1
                 else:
@@ -2557,10 +2583,12 @@ pub struct PalindromicTree<A>:
                         f = slink[f]
                     next[f * alpha + c]
                 self.grow(cur, c, link_to)
-            undo.push((last:, first:, edge:, fronts: front.len))
+            undo.push(last)
             last = next[cur * alpha + c]
             cnt[last] += 1
-            if plen[last] == pos + 1: first = last
+            if plen[last] == pos + 1:
+                firsts.push(first)
+                first = last
         last
 
     fn size(self) -> Int = front.len + chars.len
@@ -2669,6 +2697,7 @@ pub struct PalindromicTree<A>:
     pub fn push_front(mut self, a: A) -> Int:
         let c = a.to_idx
         front.push(a)
+        barrier = undo.len
         let n = self.size()
         unchecked:
             var cur = first
@@ -2700,12 +2729,12 @@ pub struct PalindromicTree<A>:
     /// example: `var t = PalindromicTree<Char>.of("ab"); t.pop(); t.distinct == 1 and t.last_state == 2`
     pub fn pop(mut self):
         assert not undo.is_empty, "`pop` needs a `push` to undo"
-        let u = undo.pop()!
-        assert u.fronts == front.len, "`pop` can't undo a `push` made before a `push_front`"
+        assert undo.len > barrier, "`pop` can't undo a `push` made before a `push_front`"
         unchecked:
+            if plen[last] == self.size(): first = firsts.pop()!
             cnt[last] -= 1
-            if u.edge != -1:
-                next[u.edge] = -1
+            if cnt[last] == 0:
+                next[made.pop()!] = -1
                 for _ in 0..alpha: next.pop()
                 slink.pop()
                 plen.pop()
@@ -2713,8 +2742,7 @@ pub struct PalindromicTree<A>:
                 ser_link.pop()
                 cnt.pop()
         chars.pop()
-        last = u.last
-        first = u.first
+        last = undo.pop()!
 
     /// The state of the longest palindromic suffix of the current string; the even root `1`
     /// when the string is empty.
@@ -2768,7 +2796,10 @@ pub struct PalindromicTree<A>:
                 dp[i] = i
                 while t.plen[v] > 0:
                     series[v] = dp[i - (t.plen[t.ser_link[v]] + t.diff_val[v])]
-                    if t.diff_val[v] == t.diff_val[t.slink[v]]: series[v] = min(series[v], series[t.slink[v]])
+                    if t.diff_val[v] == t.diff_val[t.slink[v]]: series[v] = min(
+                        series[v],
+                        series[t.slink[v]],
+                    )
                     dp[i] = min(dp[i], series[v] + 1)
                     v = t.ser_link[v]
         dp
@@ -3191,7 +3222,13 @@ pub struct DynamicAhoCorasick<A>:
     /// cost: O(1)
     /// traps: never
     /// example: `DynamicAhoCorasick<Char>().is_empty`
-    pub fn new() -> DynamicAhoCorasick<A> = DynamicAhoCorasick<A>(A.K, 0, Trie<A>(), AcBuckets<A>([], [], []), AcBuckets<A>([], [], []))
+    pub fn new() -> DynamicAhoCorasick<A> = DynamicAhoCorasick<A>(
+        A.K,
+        0,
+        Trie<A>(),
+        AcBuckets<A>([], [], []),
+        AcBuckets<A>([], [], []),
+    )
 
     /// The number of patterns stored, copies counted.
     ///
@@ -3589,7 +3626,9 @@ fn rolling_hash_lcp_lcs_and_hash2d_match_brute():
             rand(0, 5 - hgt),
             rand(0, 6 - wid),
         )
-        let same = (0..hgt).all(i => (0..wid).all(j => g[R(r1 + i), C(c1 + j)] == g[R(r2 + i), C(c2 + j)]))
+        let same = (0..hgt).all(
+            i => (0..wid).all(j => g[R(r1 + i), C(c1 + j)] == g[R(r2 + i), C(c2 + j)])
+        )
         let a = h2.rect(R(r1)..=R(r1 + hgt - 1), C(c1)..=C(c1 + wid - 1))
         let b = h2.rect(R(r2)..=R(r2 + hgt - 1), C(c2)..=C(c2 + wid - 1))
         assert (a == b) == same
@@ -3709,7 +3748,9 @@ fn aho_corasick_matches_counts_and_avoidance_dp():
         for i in 0..text.len:
             for w in 0..patterns.len:
                 let k = patterns[w].len
-                if i + k <= text.len and (0..k).all(j => text[i + j] == patterns[w][j]): want.push((i, w))
+                if i + k <= text.len and (0..k).all(
+                    j => text[i + j] == patterns[w][j]
+                ): want.push((i, w))
         let got = [(m.at, m.pattern) for m in ac.find_all(text)]
         assert got.sorted() == want.sorted()
         assert ac.counts(text) == [sum(Int(p.1 == w) for p in want) for w in 0..patterns.len]

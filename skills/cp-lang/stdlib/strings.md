@@ -163,7 +163,7 @@ Fields: `prefix: List<Bool>`, `letters: List<?A>`.
 
 O(n * \|A\|) space, O(1) amortized push.
 
-Fields: `chars: List<A>`, `front: List<A>`, `undo: List<(last: Int, first: Int, edge: Int, fronts: Int)>`.
+Fields: `chars: List<A>`, `front: List<A>`, `barrier: Int`.
 
 - `fn new() -> PalindromicTree<A>` — O(|A|); An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the even root `1`.
 - `fn of<S: Seq>(s: S) -> PalindromicTree<A>` — O(|s| * |A|) memory, O(|s|) amortized time; The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
