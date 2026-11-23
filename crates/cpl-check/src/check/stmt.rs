@@ -1837,6 +1837,7 @@ impl<'a> Checker<'a> {
                 if let (Some(value), Some(value_ty)) = (value, value_ty) {
                     if !(self.fns.is_empty() && matches!(value_ty, Ty::Unit)) {
                         self.returns(value, &value_ty);
+                        self.undeclared_return(value, &value_ty);
                         if !self.fn_lends.last().copied().unwrap_or(false) {
                             self.no_escape(value, "`return`");
                         }
@@ -2616,6 +2617,7 @@ impl<'a> Checker<'a> {
             self.local_effects
                 .insert(f.name.text.clone(), super::lends::own_effects(f));
         }
+        self.note_ret_slot(f);
         let fn_depth = self.scopes.len().saturating_sub(1);
         self.fns.push((
             f.name.text.clone(),

@@ -2,7 +2,7 @@
 
 use super::*;
 use cpl_diag::Fix;
-use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind, Name};
+use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
 
 impl Checker<'_> {
     /// `s.reverse()` on a `let`: the reversed view needs no `var`.
@@ -243,6 +243,40 @@ impl Checker<'_> {
             span,
             format!("\"{{{}}}{}", self.quote(lhs.span), &text[1..]),
         ))
+    }
+
+    /// A block fn with no `-> T` and no value on its last line gives
+    /// nothing (R06.1.1), so a `return` with a value there needs `-> T`.
+    pub(super) fn note_ret_slot(&mut self, f: &FnDecl) {
+        let FnBody::Block(block) = &f.body else {
+            return;
+        };
+        let tail_value = matches!(block.stmts.last().map(|s| &s.kind), Some(StmtKind::Expr(_)));
+        if f.ret.is_none() && !tail_value {
+            let slot = f.uses.is_empty().then(|| Span::point(f.sig_span.end));
+            self.ret_slots.insert(f.name.text.clone(), slot);
+        }
+    }
+
+    /// `return x` in a fn with no `-> T`, which gives nothing. Reported
+    /// once per fn: every other `return` has the same cause.
+    pub(super) fn undeclared_return(&mut self, value: &Expr, ty: &Ty) {
+        let Some((name, _, false, _)) = self.fns.last().cloned() else {
+            return;
+        };
+        if name.is_empty() || matches!(ty, Ty::Unit | Ty::Unknown | Ty::Error) {
+            return;
+        }
+        let Some(slot) = self.ret_slots.remove(&name) else {
+            return;
+        };
+        let message = format!("`{name}` returns a value, but its signature has no return type");
+        if let Some(diag) = self.error(codes::TYPE_MISMATCH, value.span, message) {
+            diag.help = Some(format!("a fn without `-> T` gives nothing: add `-> {ty}`"));
+            if let Some(slot) = slot {
+                diag.fix(format!("add `-> {ty}`"), slot, format!(" -> {ty}"));
+            }
+        }
     }
 }
 

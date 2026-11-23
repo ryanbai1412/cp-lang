@@ -141,6 +141,8 @@ pub(crate) struct Checker<'a> {
     shapes: Vec<(Span, Ty)>,
     /// Name, return type, whether declared, and scope depth at fn entry.
     fns: Vec<(String, Ty, bool, usize)>,
+    /// Where `-> T` goes in each fn declared without one.
+    ret_slots: HashMap<String, Option<Span>>,
     /// For each of `fns`: whether its body has given a value so far.
     gives: Vec<bool>,
     /// Inside a fn signature or body, where a single capital letter is a
@@ -226,6 +228,7 @@ impl<'a> Checker<'a> {
             io_costs: Vec::new(),
             shapes: Vec::new(),
             fns: Vec::new(),
+            ret_slots: HashMap::default(),
             gives: Vec::new(),
             in_fn: 0,
             branch: 0,
