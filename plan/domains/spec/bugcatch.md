@@ -92,3 +92,7 @@ Walked the last 2 h of check/codegen/interp/stdlib commits (9ed9de9b7 lending, e
 - Bugs: 2. A walk over a view generator or lazy adapter (`chunks`, `windows`, `runs`, `filter`, `map`, `take`, `adjacent`, `with_prev`, `cyclic_pairs`) does not lend its source (compiler, P0; heap-use-after-free in C++). `List.step(k)` from R07.7.11 is missing from std (stdlib).
 - Held: element, field, closure-capture and map-entry lending reject every conflicting write tried (12 probes); heap-let moves under conditional and pushed-before-reassign fields agree; narrow-width arithmetic, multitest shared state with per-test domains, >64 KiB mixed output and domain comprehensions agree.
 - Cases added: 7 (4 known gaps, 3 regression guards for 9ed9de9b7/e4180a2bc).
+
+## Adversarial round A2 (2026-11-23)
+
+New compiler commits since A1: edc93adad (`Int(x)`/`F64(x)` through `impl Into`), 0fbf88e3c (sum of ranged cells typed `Int`). 8 probes under ASan, UBSan and `_GLIBCXX_DEBUG`: Into in comprehensions, generic `T: Into<Int>` bounds, generic structs with both `Into<Int>` and `Into<F64>`, a heap-field struct after mutation, and the missing-impl help; sums of `0..=200`/`0..=255` cells in lists, struct fields and arithmetic. All agree; 0 bugs. 3 regression cases added.
