@@ -3,7 +3,7 @@
 let n = read<2..=1_000_000>()
 var sign = 1
 var c = 0
-var ok = 1..=inf
+var ok = 1..
 for a in read<[n - 1]Int>():
     sign = -sign
     c = a - c
