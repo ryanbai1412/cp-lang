@@ -10,7 +10,7 @@ Every rule a site page, the std reference rendering or a browser editor must fol
 
 ## site/R1: Every program on a page is checked
 
-Every `cp` fence and `.cp` file under `web/content` is checked, built and run, and its measured status (runs, checks, spec, rejects) must be at least what the page declares. Output shown on a page is the output of that run. Std doc `example:` lines run where they are rendered.
+Every `cp` fence and `.cp` file under `web/content` is checked, built and run, and its measured status (runs, checks, spec, rejects) must be at least what the page declares. Output shown on a page is the output of that run, and the browser build gives the same output and the same C++. Std doc `example:` lines run where they are rendered.
 
 - **Why:** a reader who copies a program that does not work stops trusting every other page.
 - **Example:** a guide prints `a.max()!`; when `max()` started returning an optional, the build failed on the guides that still printed `a.max()`, before a reader saw them.

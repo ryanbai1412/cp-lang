@@ -221,7 +221,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Run gives the CLI's answer | programs whose browser output, trap or exit differs from `cpl run` | **missing**: a differential over the gate's snippets in wasm | none |
+| Run gives the CLI's answer | programs whose browser output, trap or exit differs from `cpl run` | [site/R1](../guidelines/site-checklist.md); every program the gate runs also runs in `cpl-build.wasm`, and a different output or exit fails the build; programs too slow for the browser's time limit are listed in `web/.gate/browser-slow.json` | `web/scripts/gate.mjs`, `crates/cpl-wasm/tests/parity.rs` |
 | Runaway programs stop cleanly | infinite loops or huge output that freeze the page; time to a usable editor after a timeout | Runs in a Web Worker with a 10 s limit | `web/lib/cpl.ts`; **missing**: a browser test |
 | Traps read in source terms | traps shown without the line and local values | Shown from the wasm trap | `web/tests/smoke.mjs` (one trap) |
 | Stress finds the counterexample | planted bugs Stress misses in the browser | Debugger's suite for the engine; **missing**: browser test of the Stress tab | none |
@@ -234,7 +234,7 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Browser C++ matches the CLI | programs whose browser C++ differs from `cpl build` | **missing**: a differential over the gate's snippets | none |
+| Browser C++ matches the CLI | programs whose browser C++ differs from `cpl build` | [site/R1](../guidelines/site-checklist.md); every program the gate builds is built again by `cpl-build.wasm`, and any byte of difference fails the build | `web/scripts/gate.mjs`, `crates/cpl-wasm/tests/parity.rs` |
 | Submissions can be traced back | generated C++ whose source cannot be recovered on `/s` | Hand-written unit suite | `web/lib/extract.test.ts` |
 
 ### Contributors

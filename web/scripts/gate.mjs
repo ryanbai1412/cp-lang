@@ -18,6 +18,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSy
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { availableParallelism, tmpdir } from 'node:os';
+import { Worker } from 'node:worker_threads';
 
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
@@ -138,6 +139,7 @@ for (const id of readdirSync(join(web, 'content/practice'))) {
 }
 // Each worker gets its own folder, so parallel runs never share a main.cp.
 const slots = snippets.map(() => null);
+const cli = snippets.map(() => null);
 const errorsOf = snippets.map(() => []);
 async function gate(k, dir) {
   const s = snippets[k];
@@ -161,6 +163,7 @@ async function gate(k, dir) {
   }
   const build = await shAsync(['build', file, '-o', join(dir, 'main.cpp')]);
   const run = build.status === 0 && (s.stdin || s.expected != null) ? await shAsync(['run', file], s.stdin) : build;
+  if (build.status === 0) cli[k] = { cpp: readFileSync(join(dir, 'main.cpp'), 'utf8'), stdout: run === build ? null : run.stdout, status: run.status };
   const matches = s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd();
   let status = 'fails';
   let note = '';
@@ -190,6 +193,59 @@ await Promise.all(
     while (next < snippets.length) await gate(next++, dir);
   }),
 );
+// The browser build must mean what the CLI means (site/R1): every program
+// that runs gets the same output and the same C++ from cpl-build.wasm.
+const wasmDir = [join(repo, 'dist/wasm'), join(web, 'public/wasm')].find((d) => existsSync(join(d, 'cpl-build.wasm')));
+if (!wasmDir) console.log('gate: no browser build (scripts/build-wasm.sh); skipping the browser differential');
+else {
+  const started = Date.now();
+  const todo = snippets.map((s, k) => k).filter((k) => cli[k] && slots[k]?.status === 'runs' && !/^\s*use lib\b/m.test(snippets[k].source));
+  const spawnWorker = () => new Worker(join(web, 'scripts/wasm-worker.mjs'), { workerData: { dir: wasmDir } });
+  // The page stops a program after its time limit; a program the CLI ran that
+  // the browser cannot finish in 20 s differs.
+  const ask = (w, msg) =>
+    new Promise((resolve) => {
+      const timer = setTimeout(() => resolve({ error: 'timeout: no answer in 20 s' }), 20000);
+      w.once('message', (m) => (clearTimeout(timer), resolve(m)));
+      w.once('error', (e) => (clearTimeout(timer), resolve({ error: String(e) })));
+      w.postMessage(msg);
+    });
+  let at = 0;
+  const slow = [];
+  await Promise.all(
+    Array.from({ length: Math.min(availableParallelism(), todo.length) }, async () => {
+      let w = spawnWorker();
+      while (at < todo.length) {
+        const k = todo[at++];
+        const s = snippets[k];
+        const c = cli[k];
+        const r = await ask(w, { source: s.source, stdin: s.stdin, run: c.stdout !== null });
+        const differs = [];
+        // Too slow for the browser's time limit is a performance gap, counted
+        // and listed below; a different answer is a failure.
+        const outOfTime = r.error?.startsWith('timeout') || /took longer than its time limit/.test(r.stderr ?? '');
+        if (outOfTime) {
+          slow.push(s.id);
+          if (r.error) (await w.terminate(), (w = spawnWorker()));
+        } else if (r.error) {
+          differs.push(r.error);
+          await w.terminate();
+          w = spawnWorker();
+        } else {
+          if (r.cpp !== c.cpp) differs.push('its C++');
+          if (c.stdout !== null && (r.stdout !== c.stdout || r.ok !== (c.status === 0)))
+            differs.push(`its output (${JSON.stringify(r.stdout?.slice(0, 80))} vs ${JSON.stringify(c.stdout.slice(0, 80))})`);
+        }
+        if (differs.length) errorsOf[k].push(`gate: ${s.id} differs in the browser from cpl: ${differs.join(', ')}`);
+      }
+      await w.terminate();
+    }),
+  );
+  console.log(`gate: browser differential: ${todo.length} programs in ${((Date.now() - started) / 1000).toFixed(1)}s; ${slow.length} too slow for the browser's time limit`);
+  for (const id of slow) console.log(`gate:   too slow in the browser: ${id}`);
+  mkdirSync(join(web, '.gate'), { recursive: true });
+  writeFileSync(join(web, '.gate/browser-slow.json'), JSON.stringify(slow, null, 2) + '\n');
+}
 snippets.forEach((s, k) => {
   results[s.id] = slots[k];
   for (const e of errorsOf[k]) {
