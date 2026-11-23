@@ -1,7 +1,7 @@
 use super::*;
 
 /// The codes `src` is reported for, in source order.
-fn codes(src: &str) -> Vec<&'static str> {
+pub(crate) fn codes(src: &str) -> Vec<&'static str> {
     codes_with(src, &Config::default())
 }
 
@@ -9,7 +9,7 @@ fn codes_with(src: &str, config: &Config) -> Vec<&'static str> {
     lint(src, config).iter().map(|d| d.code.0).collect()
 }
 
-fn only(src: &str) -> Diagnostic {
+pub(crate) fn only(src: &str) -> Diagnostic {
     let mut found = lint(src, &Config::default());
     assert_eq!(found.len(), 1, "{found:#?}");
     found.remove(0)
@@ -322,42 +322,6 @@ fn bounds_follow_consts_and_arithmetic() {
         found.notes,
         ["one entry per combination of arguments: 4000000 for `c` x 4000000 for `d` x 2 for `b`"]
     );
-}
-
-#[test]
-fn unproven_list_index_wants_two_loops_and_an_unproven_index() {
-    let nest = |index: &str| {
-        format!("var ws: List<Int> = []\nws.push(read())\nvar total = 0\nfor i in 0..ws.len:\n    for j in ws.indices:\n        total += {index}\nprint(total)\n")
-    };
-    let found = only(&nest("ws[j + 1]"));
-    assert_eq!(found.code.0, "L0414");
-    assert_eq!(
-        found.message,
-        "`ws[j + 1]` is bounds-checked on every pass of a nested loop"
-    );
-    // Loop variables over the list's own indices are proven.
-    assert_eq!(codes(&nest("ws[i] * ws[j]")), Vec::<&str>::new());
-    // One loop is not hot, and an array indexed by a domain is not a list.
-    let single = "var ws: List<Int> = []\nws.push(read())\nfor i in 0..3:\n    print(ws[i + 1])\n";
-    assert_eq!(codes(single), Vec::<&str>::new());
-    assert_eq!(codes(&nest("ws[i..j].len")), Vec::<&str>::new());
-    // A name is judged by its nearest binding: a list in one fn does not make
-    // an array of the same name in another a list.
-    let shadowed = "fn f(seen: List<Bool>) -> Bool = seen[0]\ndomain V = 0..9\nvar seen: [V]Bool = false\nfor u in V:\n    for v in V:\n        seen[v] = seen[u]\nprint(f([true]))\n";
-    assert!(!codes(shadowed).contains(&"L0414"));
-    let inner = "domain V = 0..9\nvar ws: [V]Int = 0\nfn g():\n    var ws: List<Int> = []\n    ws.push(read())\n    for i in 0..3:\n        for j in 0..3:\n            print(ws[i + j])\ng()\nprint(ws)\n";
-    assert!(codes(inner).contains(&"L0414"));
-    // A fn starts its own count.
-    let in_fn = "var ws: List<Int> = []\nws.push(read())\nfor i in 0..3:\n    for j in 0..3:\n        let f = k => ws[k]\n        print(f(i + j))\n";
-    assert_eq!(codes(in_fn), ["L0414"]);
-    // `while head < q.len` is the check, for a list that grows as it is read.
-    let worklist = "var q: List<Int> = [0]\nfor root in 0..3:\n    var head = 0\n    while head < q.len:\n        let u = q[head]\n        head += 1\n        if u < 3: q.push(u + 1)\n";
-    assert_eq!(codes(worklist), Vec::<&str>::new());
-    // A `@test` is not what a judge times; the code after it is.
-    let test = "@test\nfn t():\n    let ws = [1, 2, 3]\n    for i in 0..2:\n        for j in 0..2:\n            assert ws[i + j] > 0\n";
-    assert_eq!(codes(test), Vec::<&str>::new());
-    let after = format!("{test}fn f(ws: List<Int>):\n    for i in 0..2:\n        for j in 0..2:\n            print(ws[i + j])\nf([1, 2, 3])\n");
-    assert_eq!(codes(&after), ["L0414"]);
 }
 
 #[test]
