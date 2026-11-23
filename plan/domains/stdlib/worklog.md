@@ -414,3 +414,5 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - H-FN-AS-NEXT: graph.cp:5 says `components`/`reachable`/`dfs` take "any fn", but `components` is not in scope without `use`, and no rule says a fn implements `Next<V>`.
   - H-ROOTED-BUILTIN: `Rooted.new(next, root)` stub vs the doc's `Rooted(root:, next:)` labels; the stub is marked blocked on a compiler built-in.
   - H-SET-BUILTIN repeats round 9's H-MAP-STUB (no `Set`/`Map`/`HashMap`/`HashSet` stubs).
+
+- 2026-11-23 (from tools, decision 358): fields and methods are private to their module unless `pub`. Please mark the API fields and methods `pub` (`SegTree.source`, `Rooted.parent`, every documented method) before the compiler check lands.
