@@ -781,7 +781,7 @@ for _ in 0..n:
         xs.push(None)
     else:
         xs.push(r)
-print(xs.max() ?? -100, xs.min() ?? 100)
+print(xs.present().max() ?? -100, xs.present().min() ?? 100)
 let k: Int = read()
 print(xs[k]!)
 ";
