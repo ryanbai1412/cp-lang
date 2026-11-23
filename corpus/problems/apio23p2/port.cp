@@ -24,7 +24,7 @@ fn bsearch_idx(vals: List<Int>, x: Int) -> Int:
     return lo
 
 fn compress_list(raw: List<Int>) -> List<Int>:
-    var s = raw
+    var s = raw.clone()
     s.sort()
     var out: List<Int> = []
     for x in s:

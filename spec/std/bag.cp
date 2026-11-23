@@ -794,7 +794,7 @@ pub struct SortedBag<K>:
     pub fn join(mut self, other: SortedBag<K>):
         if let a = hi:
             if let b = other.lo: assert a < b, "`join` needs every key of `self` below every key of `other`"
-        var o = other
+        var o = other.clone()
         if self.sub_of(root) >= o.sub_of(o.root):
             o.move_out(o.root, mut self)
         else:

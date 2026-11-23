@@ -2,7 +2,7 @@ fn side(k: Int) -> Int:
     print("side", k)
     k
 fn idx(xs: List<Int>, x: ?Int, y: ?Int) -> ?Int:
-    var ys = xs
+    var ys = xs.clone()
     ys[x?] = 5
     ys[x?] += side(1)
     ys[side(0)] = y? + side(2)

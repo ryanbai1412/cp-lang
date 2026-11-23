@@ -1588,7 +1588,7 @@ impl Show for BigInt:
 const BIG_BASE = 1_000_000_000
 
 fn big_make(neg: Bool, limbs: List<Int>) -> BigInt:
-    var l = limbs
+    var l = limbs.clone()
     while not l.is_empty and l[l.len - 1] == 0: l.pop()
     BigInt(neg: neg and not l.is_empty, limbs: l)
 

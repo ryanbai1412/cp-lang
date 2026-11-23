@@ -467,7 +467,7 @@ pub struct SemiRelaxedConvolve<P>:
 /// example: `type Z = Mod<17>; let e: List<Z> = []; convolve_all([[Z(1), Z(1)], e]) == []`
 pub fn convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>:
     if polys.is_empty: return [Mod<P>(1)]
-    var layer = polys
+    var layer = polys.clone()
     while layer.len > 1:
         var up = List<List<Mod<P>>>()
         var k = 0

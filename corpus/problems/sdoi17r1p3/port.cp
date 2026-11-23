@@ -21,8 +21,8 @@ fn conv(a: Vec, b: Vec) -> Vec:
 
 // x convolved with itself e times, e >= 1
 fn power(x: Vec, e: Int) -> Vec:
-    var base = x
-    var acc = x
+    var base = x.clone()
+    var acc = x.clone()
     var t = e - 1
     while t > 0:
         if t % 2 == 1: acc = conv(acc, base)

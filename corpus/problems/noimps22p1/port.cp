@@ -33,7 +33,7 @@ fn expand(line: Str, active: Set<Str>) -> Str:
 
         if tok not in active:
             if let body = macros.get(tok):
-                var next_active = active
+                var next_active = active.clone()
                 next_active.insert(tok)
                 out += expand(body, next_active)
                 continue

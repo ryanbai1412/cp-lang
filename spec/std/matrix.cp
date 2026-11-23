@@ -890,7 +890,7 @@ pub struct MatPow<T>:
     pub fn new(a: Mat<T>, max_exp: Int) -> MatPow<T>:
         assert a.rows == a.cols and max_exp >= 0
         var pw = List<Mat<T>>()
-        var cur = a
+        var cur = a.clone()
         var k = 1
         while k <= max_exp:
             pw.push(cur)
@@ -908,7 +908,7 @@ pub struct MatPow<T>:
     /// example: `let p = MatPow(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(0, [1, 0]) == [1, 0]`
     pub fn apply_pow(self, e: Int, v: List<T>) -> List<T>:
         assert 0 <= e and (e == 0 or e < (1 << _pw.len))
-        var out = v
+        var out = v.clone()
         for k in 0.._pw.len:
             if ((e >> k) & 1) == 1: out = _pw[k].mul_vec(out)
         out
@@ -1217,7 +1217,7 @@ pub fn sparse_solve<P>(n: Int, entries: List<(Int, Int, Mod<P>)>, b: List<Mod<P>
         if w.singular: return None
         if w.f.len == n + 1:
             var y = List.filled(n, Mod<P>(0))
-            var t = b
+            var t = b.clone()
             for i in 1..=n:
                 for k in 0..n: y[k] += w.f[i] * t[k]
                 if i < n: t = sparse_apply(n, entries, w.diag, t)

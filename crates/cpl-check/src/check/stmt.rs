@@ -1182,6 +1182,10 @@ impl<'a> Checker<'a> {
                 if let (true, Some(init)) = (*mutable, init) {
                     let what = format!("`var {}`", self.quote(pat.span));
                     self.no_escape(init, &what);
+                    // A `var` parameter rebinds itself: the caller's copy is its own.
+                    if init.span != pat.span {
+                        self.no_var_of_lent_param(init, init_ty.as_ref());
+                    }
                 }
                 // A new binding of a name: what was known about the old
                 // one no longer applies.

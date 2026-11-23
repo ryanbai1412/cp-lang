@@ -12,7 +12,7 @@ fn size(h: Int) -> Int = (1 << h) - 1
 // Heap numbering: node i has children 2i and 2i + 1 and sits at s[i - 1].
 fn untwist(h: Int, s: Str) -> Str:
     var from: [1..=size(h)]Int = 1  // from[i]: the node of `s` that lands on node i
-    var out = s
+    var out = s.clone()
     for i in 1..=size(h):
         out[i - 1] = s[from[i] - 1]
         if 2 * i > size(h): continue

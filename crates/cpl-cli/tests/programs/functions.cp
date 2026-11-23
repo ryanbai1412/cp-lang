@@ -17,7 +17,7 @@ fn total(xs: List<Int>) -> Int:
     t
 
 fn bumped(xs: List<Int>) -> List<Int>:
-    var ys = xs
+    var ys = xs.clone()
     for i in 0..ys.len:
         ys[i] += 1
     ys

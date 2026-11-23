@@ -16,7 +16,7 @@ fn effort(piles: List<Int>) -> Int:
 
 @brute(effort)
 fn effort_slow(piles: List<Int>) -> Int:
-    var left = piles
+    var left = piles.clone()
     var total = 0
     while left.len > 1:
         left = sorted(left)

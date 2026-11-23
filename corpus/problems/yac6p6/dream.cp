@@ -37,7 +37,7 @@ var dp2: [D3, D3]Cell = empty_cell()
 // Relax a cell's skip-cost table from one neighbour: either pay `cost` with the
 // same skip count `k`, or skip this cell using `k - 1` skips from the neighbour.
 fn relax(cur: Cell, from: Cell, cost: Int) -> Cell:
-    var out = cur
+    var out = cur.clone()
     for k in KDom:
         out[k] min= from[k] + cost
         if let pk = k.prev: out[k] min= from[pk]

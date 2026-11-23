@@ -37,8 +37,8 @@ fn shiftr(arr: List<F64>, len: Int) -> List<F64>:
     out
 
 fn vor(a_in: List<F64>, b_in: List<F64>) -> List<F64>:
-    var a = a_in
-    var b = b_in
+    var a = a_in.clone()
+    var b = b_in.clone()
     if a.len < b.len:
         swap(mut a, mut b)
     for i in 0..b.len:

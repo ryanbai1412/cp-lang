@@ -24,7 +24,7 @@ struct P:
     b: Int
 fn mk(x: ?Int, y: ?Int) -> ?P = some(P(a: side(1) + x?, b: y? * 2))
 fn idx(xs: List<Int>, x: ?Int) -> ?Int:
-    var ys = xs
+    var ys = xs.clone()
     ys[0] = side(2) + x?
     ys.push(x? + 1)
     some(sum(ys) + min(x?, side(4)))

@@ -2,7 +2,7 @@
 use std.poly.{SubproductTree, compose_inv, compose, gcd_poly, div_mod, eval}
 type Z = Mod<998_244_353>
 fn trim(a: List<Z>) -> List<Z>:
-    var b = a
+    var b = a.clone()
     while not b.is_empty and b[b.len - 1] == Z(0): b.pop()
     b
 fn brute_gcd(a: List<Z>, b: List<Z>) -> List<Z>:
