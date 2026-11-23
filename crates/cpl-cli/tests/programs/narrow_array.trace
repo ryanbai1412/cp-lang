@@ -26,5 +26,5 @@
 {"id":25,"line":36,"label":"neg_sum += s[v] * s[v]","stage":"main","values":{"stdout":[],"n":5,"a":[999950,999999,999775,999700,999600],"prod_sum":4998048303126,"s":[-600000,-300000,0,300000,600000],"neg_sum":450000000000},"locals":{"v":5,"v":5,"v":5,"v":3},"frames":[{"fn":"main","line":36}]},
 {"id":26,"line":36,"label":"neg_sum += s[v] * s[v]","stage":"main","values":{"stdout":[],"n":5,"a":[999950,999999,999775,999700,999600],"prod_sum":4998048303126,"s":[-600000,-300000,0,300000,600000],"neg_sum":540000000000},"locals":{"v":5,"v":5,"v":5,"v":4},"frames":[{"fn":"main","line":36}]},
 {"id":27,"line":36,"label":"neg_sum += s[v] * s[v]","stage":"main","values":{"stdout":[],"n":5,"a":[999950,999999,999775,999700,999600],"prod_sum":4998048303126,"s":[-600000,-300000,0,300000,600000],"neg_sum":900000000000},"locals":{"v":5,"v":5,"v":5,"v":5},"frames":[{"fn":"main","line":36}]},
-... 51 more lines, 23965 bytes, fnv64 bf89cbecdbbb4f95
+... 51 more lines, 23965 bytes, fnv64 b1b8628b79be6665
 stderr:

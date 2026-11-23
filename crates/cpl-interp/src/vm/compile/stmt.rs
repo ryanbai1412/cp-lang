@@ -224,6 +224,21 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     *s = skip;
                 }
             }
+            Stmt::Expr(
+                e @ Expr {
+                    kind: ExprKind::Mutate(_, place, args),
+                    ..
+                },
+            ) if quiet_place(place, cpl_ir::walk::root(place))
+                && !self.yields_into(place)
+                && args.iter().all(|a| self.traced_quiet(a)) =>
+            {
+                let exprs = self.fallback_exprs.len();
+                self.compile_untraced_stmt(stmt);
+                if self.fallback_stmts.len() == fallbacks && self.fallback_exprs.len() == exprs {
+                    self.emit_trace(TracePoint::Mutated(place, e.span), e.span);
+                }
+            }
             // `print_values` tells the tracer what it printed, as in the tree-walker.
             Stmt::Expr(e) if Self::quiet_print(e) => self.compile_untraced_stmt(stmt),
             _ => {
@@ -308,6 +323,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
 
     /// A `yield` of the `yields` fn this chunk is: its list, the place
     /// and the value.
+    /// Whether `place` is this generator's yield list, which the tree-walker
+    /// drives while a fed loop runs it.
+    fn yields_into(&self, place: &Place) -> bool {
+        let acc = self.cur_fn.and_then(|f| self.feeds.pushers.get(&f));
+        acc.is_some_and(|&acc| cpl_ir::walk::root(place) == (false, acc))
+    }
+
     fn traced_yield(&self, e: &'p Expr) -> Option<(usize, &'p Place, &'p Expr)> {
         let acc = *self.feeds.pushers.get(&self.cur_fn?)?;
         match &e.kind {

@@ -1,12 +1,12 @@
 "variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"a":{"name":"a","type":"List\u003cInt>","kind":"array"},"b":{"name":"b","type":"List\u003cInt>","kind":"array"},"c":{"name":"c","type":"[Int]Int","kind":"array"},"r":{"name":"r","type":"Range\u003cInt>","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"var a = [5, 6, 7]","stage":"main","values":{"stdout":[],"a":[5,6,7]},"locals":{},"frames":[{"fn":"main","line":3}]},
-{"id":1,"line":5,"label":"print → 5 9 7","stage":"main","values":{"stdout":["5 9 7"],"a":[5,6,7]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
-{"id":2,"line":6,"label":"var b = [5, 6, 7, 8]","stage":"main","values":{"stdout":["5 9 7"],"a":[5,6,7],"b":[5,6,7,8]},"locals":{},"frames":[{"fn":"main","line":6}]},
-{"id":3,"line":8,"label":"print → 5 6 8 8","stage":"main","values":{"stdout":["5 9 7","5 6 8 8"],"a":[5,6,7],"b":[5,6,7,8]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":8}]},
-{"id":4,"line":9,"label":"var c: [1..=4]Int = 0","stage":"main","values":{"stdout":["5 9 7","5 6 8 8"],"a":[5,6,7],"b":[5,6,7,8],"c":[0,0,0,0]},"locals":{},"frames":[{"fn":"main","line":9}]},
-{"id":5,"line":11,"label":"print → 0 0 7 0","stage":"main","values":{"stdout":["5 9 7","5 6 8 8","0 0 7 0"],"a":[5,6,7],"b":[5,6,7,8],"c":[0,0,0,0]},"locals":{},"checkpoint":"print 3","frames":[{"fn":"main","line":11}]},
-{"id":6,"line":12,"label":"let r = 2..4","stage":"main","values":{"stdout":["5 9 7","5 6 8 8","0 0 7 0"],"a":[5,6,7],"b":[5,6,7,8],"c":[0,0,0,0],"r":"2..4"},"locals":{},"frames":[{"fn":"main","line":12}]},
-{"id":7,"line":14,"label":"print → 5 6 8 0 6","stage":"main","values":{"stdout":["5 9 7","5 6 8 8","0 0 7 0","5 6 8 0 6"],"a":[5,6,7],"b":[5,6,7,8],"c":[0,0,0,0],"r":"2..4"},"locals":{},"checkpoint":"print 4","frames":[{"fn":"main","line":14}]},
-{"id":8,"line":14,"label":"the program ended","stage":"main","values":{"stdout":["5 9 7","5 6 8 8","0 0 7 0","5 6 8 0 6"],"a":[5,6,7],"b":[5,6,7,8],"c":[0,0,0,0],"r":"2..4"},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":14}]}]}}}
+{"id":1,"line":5,"label":"print → 5 9 7","stage":"main","values":{"stdout":["5 9 7"],"a":[5,9,7]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
+{"id":2,"line":6,"label":"var b = [5, 6, 7, 8]","stage":"main","values":{"stdout":["5 9 7"],"a":[5,9,7],"b":[5,6,7,8]},"locals":{},"frames":[{"fn":"main","line":6}]},
+{"id":3,"line":8,"label":"print → 5 6 8 8","stage":"main","values":{"stdout":["5 9 7","5 6 8 8"],"a":[5,9,7],"b":[5,6,8,8]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":8}]},
+{"id":4,"line":9,"label":"var c: [1..=4]Int = 0","stage":"main","values":{"stdout":["5 9 7","5 6 8 8"],"a":[5,9,7],"b":[5,6,8,8],"c":[0,0,0,0]},"locals":{},"frames":[{"fn":"main","line":9}]},
+{"id":5,"line":11,"label":"print → 0 0 7 0","stage":"main","values":{"stdout":["5 9 7","5 6 8 8","0 0 7 0"],"a":[5,9,7],"b":[5,6,8,8],"c":[0,0,7,0]},"locals":{},"checkpoint":"print 3","frames":[{"fn":"main","line":11}]},
+{"id":6,"line":12,"label":"let r = 2..4","stage":"main","values":{"stdout":["5 9 7","5 6 8 8","0 0 7 0"],"a":[5,9,7],"b":[5,6,8,8],"c":[0,0,7,0],"r":"2..4"},"locals":{},"frames":[{"fn":"main","line":12}]},
+{"id":7,"line":14,"label":"print → 5 6 8 0 6","stage":"main","values":{"stdout":["5 9 7","5 6 8 8","0 0 7 0","5 6 8 0 6"],"a":[5,9,7],"b":[5,6,8,0],"c":[0,0,7,0],"r":"2..4"},"locals":{},"checkpoint":"print 4","frames":[{"fn":"main","line":14}]},
+{"id":8,"line":14,"label":"the program ended","stage":"main","values":{"stdout":["5 9 7","5 6 8 8","0 0 7 0","5 6 8 0 6"],"a":[5,9,7],"b":[5,6,8,0],"c":[0,0,7,0],"r":"2..4"},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":14}]}]}}}
 stderr:
 warning[L0605]: `a[1..3][1]` reads source key 1: a slice keeps its source's keys, so this is not its element 1
   --> mut_slice_index_is_source_key.cp:4:9

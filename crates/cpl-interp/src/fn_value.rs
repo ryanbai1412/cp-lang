@@ -146,6 +146,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.base = saved;
         let flow = flow?;
         self.call_frames.pop();
+        if let Some(tracer) = self.tracer.as_mut() {
+            tracer.globals_may_change();
+        }
         let back = lent
             .iter()
             .map(|i| std::mem::take(&mut self.stack[base + def.params[*i]]))

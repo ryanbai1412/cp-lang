@@ -26,6 +26,9 @@ pub(crate) trait Observer {
         (false, false)
     }
     fn leave_fn(&mut self, _entered: (bool, bool)) {}
+    /// A fn value ran: any global may have changed, through a capture or a
+    /// `mut` argument.
+    fn globals_may_change(&mut self) {}
     fn enter_call(&mut self, _name: &str, _args: impl FnOnce() -> String) {}
     /// Whether [`Observer::leave_call`] wants the returned value.
     fn keeps_call(&self) -> bool {
@@ -120,6 +123,9 @@ impl Observer for Tracer {
     }
     fn leave_fn(&mut self, entered: (bool, bool)) {
         Tracer::leave_fn(self, entered)
+    }
+    fn globals_may_change(&mut self) {
+        self.touch_all()
     }
     fn enter_call(&mut self, name: &str, args: impl FnOnce() -> String) {
         Tracer::enter_call(self, name, args)
@@ -222,6 +228,14 @@ impl<O: Observer> Interp<'_, '_, O> {
         }
         let Some(global) = root_global(place) else {
             if let Some(slot) = root_local(place) {
+                // A view or a reference writes through to what it names.
+                let through = matches!(
+                    self.stack[self.base + slot],
+                    Value::MutView(_) | Value::Part(_) | Value::Alias(..)
+                );
+                if let (true, Some(tracer)) = (through, self.tracer.as_mut()) {
+                    tracer.globals_may_change();
+                }
                 self.trace_local(slot, place.span);
             }
             return;
@@ -290,6 +304,21 @@ impl<O: Observer> Interp<'_, '_, O> {
 
     /// With [`trace::TraceConfig::assignments`], the value of the
     /// variable `place` is in, which was just given a value.
+    /// `mut` work on `place` (`push`, `sort`, ...) is done: a step for it.
+    pub(crate) fn trace_mutated(&mut self, place: &Place, span: Span) {
+        match root_global(place) {
+            Some(global) if self.observed() => {
+                self.traced(|tracer, view| tracer.mutated(global, view, span))
+            }
+            _ => {
+                if let Some(slot) = root_local(place) {
+                    self.trace_local(slot, span);
+                }
+            }
+        }
+        self.trace_assigned(place);
+    }
+
     pub(crate) fn trace_assigned(&mut self, place: &Place) {
         if !self.assignments() {
             return;

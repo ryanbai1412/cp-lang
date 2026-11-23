@@ -971,7 +971,7 @@ impl Tracer {
     }
 
     /// Any global may have changed, e.g. through a call's `mut` parameter.
-    fn touch_all(&mut self) {
+    pub(crate) fn touch_all(&mut self) {
         self.all_touched = true;
         self.touched.clear();
     }

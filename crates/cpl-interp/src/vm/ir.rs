@@ -1492,6 +1492,8 @@ pub(crate) enum Op {
 pub(crate) enum TracePoint<'p> {
     Let(Slot, &'p Expr),
     Assign(&'p Place),
+    /// A method that changed `place` in place, as `xs.push(x)`.
+    Mutated(&'p Place, Span),
     /// A write to a global or to a cell of one, with the registers its
     /// indices were evaluated into again after the write.
     Cell(&'p Place, Vec<u16>),

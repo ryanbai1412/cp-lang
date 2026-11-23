@@ -40,9 +40,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 // view, so no copy of the registers to the stack.
                 let local = match *point {
                     TracePoint::Let(slot, _) | TracePoint::Loop(slot, _) => Some(slot),
-                    TracePoint::Assign(place) | TracePoint::Cell(place, _) => {
-                        crate::root_local(place)
-                    }
+                    TracePoint::Assign(place)
+                    | TracePoint::Cell(place, _)
+                    | TracePoint::Mutated(place, _) => crate::root_local(place),
                     _ => None,
                 };
                 if local.is_some_and(|slot| self.trace_local_unseen(slot)) {
@@ -138,6 +138,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 self.trace_indices = indices;
                 self.trace_assigned(place);
             }
+            TracePoint::Mutated(place, span) => self.trace_mutated(place, span),
             TracePoint::Loop(slot, span) => {
                 self.trace_local(slot, span);
                 self.trace_assigned_local(slot, span);

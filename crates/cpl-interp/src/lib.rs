@@ -2144,13 +2144,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             ExprKind::Mutate(op, place, args) => {
                 let value = self.mutate(*op, place, args, span)?;
-                if self.observed() && root_global(place).is_some() {
-                    let global = root_global(place).unwrap_or_default();
-                    self.traced(|tracer, view| tracer.mutated(global, view, span));
-                } else if let Some(slot) = root_local(place) {
-                    self.trace_local(slot, span);
-                }
-                self.trace_assigned(place);
+                self.trace_mutated(place, span);
                 value
             }
             ExprKind::Sort(place, sort_by, desc) => {
@@ -2266,6 +2260,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             .collect();
                         *self.resolve(place, &mut indices.iter())? = Value::Str(Rc::new(bytes));
                     }
+                }
+                // Not a step of its own, as before: the next step shows it.
+                if let (Some(_), Some(tracer)) = (root_global(place), self.tracer.as_mut()) {
+                    tracer.globals_may_change();
                 }
                 Value::Unit
             }
