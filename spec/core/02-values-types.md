@@ -151,8 +151,9 @@ struct Tally:
   non-`var` field is an error naming the field (decision 136). (R02.6.1)
 - Constructors are generated: `Edge(a, b, 5)` or `Edge(u: a, v: b, w: 5)`;
   fields with defaults may be omitted (decision 134). A custom
-  constructor is a static fn (`Graph.read()`). A `type` alias constructs
-  as the type it names: `type Z = Mod<1e9 + 7>`, then `Z(a)`. There are no
+  constructor is a static fn (`Graph.read()`). A `type` alias is the type
+  it names everywhere: `type Z = Mod<1e9 + 7>`, then `Z(a)`; `type G =
+  Subset<R>`, then `for s in G` walks the subsets. There are no
   constructor side effects and no destructors. (R02.6.2)
 - **Two kinds of constructor, one rule each.** A generated constructor
   (`Edge(a, b, 5)`, a struct literal) stores its arguments, so it takes
