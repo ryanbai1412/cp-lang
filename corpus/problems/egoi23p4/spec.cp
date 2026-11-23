@@ -1,22 +1,30 @@
-// egoi23p4: rebuild a weighted graph from its all-pairs widest-path widths (bikes) and its
-// all-pairs narrowest-bottleneck widths (cars, given as k minus the width). Both matrices must
-// already be closed under their path algebra; an edge u-v may carry only weights between the two
-// bottlenecks, so try both ends, check the closures, and print the union of a minimum and a
-// maximum spanning forest of the candidates.
-let (n, k) = read<(1..=500, 1..=1_000_000_000)>()
+// Source: EGOI 2023 Day 1 P4 (Bikes vs Cars), https://dmoj.ca/problem/egoi23p4
+// Problem: n <= 500 places, streets of width k <= 1e6 split into a bike lane b and a car lane
+//   k - b. Given, per pair, the widest car C and the widest bike B that can travel between them
+//   (and no wider), print at most 2023 streets u v b that realise both, or NO.
+// Solution: in bike-lane terms B is a widest-path (max, min) matrix and k - C a narrowest-path
+//   (min, max) one, so both must be closed under their path algebra. A street u-v may carry only
+//   b between the two, so offer both ends where that range is non-empty; if the offers close
+//   back to both matrices, a minimum and a maximum spanning forest of them keep every
+//   bottleneck in at most 2(n - 1) streets. O(n^3).
+let (n, k) = read<(2..=500, 1..=1_000_000)>()
 domain V = [n]
-let narrow = read<[Pair<V>]0..=1_000_000_000>().map(x => Some(k - x)).symmetric(diag: None)
-let wide = read<[Pair<V>]0..=1_000_000_000>().map(Some).symmetric(diag: None)
-let widest = Semiring(max, min)
-let narrowest = Semiring(min, max)
-fn fits(u: V, v: V) -> Bool = (wide[u, v] ?? -1) >= (narrow[u, v] ?? inf)
-fn only_fits(d: [V, V]?Int) -> [V, V]?Int = [V, V] (u, v) => if u != v and fits(u, v): d[
-    u,
-    v,
-] else: None
-fn closes_to(d: [V, V]?Int, over: Semiring, want: [V, V]?Int) -> Bool:
+fn read_triangle(f: Int -> Int) -> [V, V]?Int:
+    var m: [V, V]?Int = None
+    for v in V:
+        for u in ..v:
+            let w = f(read<0..=k>())
+            (m[u, v], m[v, u]) = (Some(w), Some(w))
+    m
+let narrow = read_triangle(c => k - c)
+let wide = read_triangle(b => b)
+fn fits(u: V, v: V) -> Bool = u != v and wide[u, v]! >= narrow[u, v]!
+fn only_fits(d: [V, V]?Int) -> [V, V]?Int = [V, V] (u, v) => if fits(u, v): d[u, v] else: None
+fn closes_to<R>(d: [V, V]?Int, over: R, want: [V, V]?Int) -> Bool:
     let c = d.closure(over:)!
     (V, V).all((u, v) => u == v or c[u, v] == want[u, v])
+let widest = Semiring(max, min)
+let narrowest = Semiring(min, max)
 if not (
     closes_to(wide, widest, wide) and closes_to(narrow, narrowest, narrow) and closes_to(
         only_fits(wide),
