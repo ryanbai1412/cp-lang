@@ -364,6 +364,23 @@ jobs:
       - name: Rejudge the acceptance solutions
         run: python3 research/acceptance/regress.py target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/3
 
+  corpus-audit:
+    # handbook/guidelines/problem-packages-checklist.md R1-R4, compiling and
+    # running each problem's accepted C++; results are cached by content.
+    name: corpus packages pass the audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: target/corpus-audit
+          key: corpus-audit-${{ github.run_id }}
+          restore-keys: corpus-audit-
+      - name: Audit every problem package
+        timeout-minutes: 12
+        run: python3 corpus/audit.py --check -j "$(nproc)"
+
   site:
     name: site build
     runs-on: ubuntu-latest

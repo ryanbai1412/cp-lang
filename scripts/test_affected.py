@@ -54,6 +54,11 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual((s["all"], s["packages"]), (False, []))
         self.assertEqual(s["script_tests"], ["scripts/test_check_handbook.py"])
 
+    def test_a_corpus_problem_change_runs_the_package_audit(self):
+        self.assertTrue(self.sel("corpus/problems/cf2/checker.py")["audit"])
+        self.assertTrue(self.sel("corpus/problems/cf2/spec.cp")["audit"])
+        self.assertFalse(self.sel("research/acceptance/solutions/x/linux/cf1.cp")["audit"])
+
     def test_acceptance_and_perf_programs_get_cpl_check_only(self):
         s = self.sel("research/acceptance/solutions/2026-11-23-5/linux/cf1.cp",
                      "corpus/problems/cf2/perf.cp")

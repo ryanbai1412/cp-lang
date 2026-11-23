@@ -393,6 +393,11 @@ if [ "$mode" = commit ]; then
             "$cpl" check "$f" || fail "$f has check errors; cpl check's message above says how to fix it"
         done
     fi
+    if [ "${sel_audit:-0}" = 1 ]; then
+        step "corpus package audit, no compiles (corpus/audit.py --check --no-run)"
+        uv run --quiet python corpus/audit.py --check --no-run \
+            || fail "a corpus package breaks handbook/guidelines/problem-packages-checklist.md; the finding above names the rule"
+    fi
     if [ -n "$sel_script_tests" ]; then
         step "script unit tests: $sel_script_tests"
         read -ra tests <<<"$sel_script_tests"
