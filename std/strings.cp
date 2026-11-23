@@ -396,11 +396,12 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
     var l = 0
     var r = 0
     for i in 1..n:
-        if i < r: z[i] = if r - i < z[i - l]: r - i else: z[i - l]
-        while i + z[i] < n and s.nth(z[i]) == s.nth(i + z[i]): z[i] += 1
-        if i + z[i] > r:
+        var k = if i < r: min(r - i, z[i - l]) else: 0
+        while i + k < n and s.nth(k) == s.nth(i + k): k += 1
+        z[i] = k
+        if i + k > r:
             l = i
-            r = i + z[i]
+            r = i + k
     z.rekey(s.keys)
 
 /// The prefix function (failure function) of `s`: `p[i]` is the length of the longest
