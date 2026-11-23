@@ -1950,6 +1950,7 @@ impl<'a> Lowerer<'a> {
                 self.member_typo(&ty, method, name.span);
                 self.foreign_call_fix(&ty, base, method, span);
                 self.slice_call_fix(&ty, base, method, args, span);
+                self.free_call_fix(&ty, base, method, args, span);
                 // Without the method's signature the arguments (and the
                 // lambdas' parameters) have no types to check against.
                 let reported = self.diags.len();

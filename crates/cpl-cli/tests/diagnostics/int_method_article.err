@@ -3,5 +3,6 @@ error[E0203]: an `Int` has no method `gcd` that `cpl run` knows
   |
 2 | print(x.gcd(4))
   |         ^^^
+  = help: `gcd` is a free function, not a method: `gcd(x, 4)`
 
 int_method_article.cp: 1 error

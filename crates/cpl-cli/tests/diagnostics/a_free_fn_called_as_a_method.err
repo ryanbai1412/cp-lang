@@ -1,0 +1,8 @@
+error[E0203]: a `List<Int>` has no method `zip` that `cpl run` knows
+  --> a_free_fn_called_as_a_method.cp:3:14
+  |
+3 | print(List(a.zip(b)))
+  |              ^^^
+  = help: `zip` is a free function, not a method: `zip(a, b)`
+
+a_free_fn_called_as_a_method.cp: 1 error

@@ -567,3 +567,9 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   reasons the bounds don't carry. 0 hits on corpus, newcomer and std.
   The prover's lint results now live in one `hazards::Found`, so a new one
   costs `proven/mod.rs` no lines.
+- E0203 on `x.f(args)` where `f` is a free function in scope whose first
+  parameter isn't `self` (so no method call reaches it) and can take `x`:
+  help and machine fix `f(x, args)`. One rule for `a.zip(b)` (spec round
+  34 F7), `x.gcd(4)` and the rest. Golden: a_free_fn_called_as_a_method.
+  `zip(a, a.rev)` then fails E0606, since `Rev` isn't `Indexed`; sent to
+  stdlib.

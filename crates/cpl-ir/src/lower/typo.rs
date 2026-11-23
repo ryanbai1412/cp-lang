@@ -415,6 +415,61 @@ impl<'a> Lowerer<'a> {
         true
     }
 
+    /// `a.zip(b)` where `zip` is a free function, not a method (its first
+    /// parameter isn't `self`): the call is `zip(a, b)`.
+    pub(super) fn free_call_fix(
+        &mut self,
+        ty: &Ty,
+        base: &ast::Expr,
+        method: &str,
+        args: &[ast::Arg],
+        span: Span,
+    ) {
+        let sym = self
+            .get_sym(method)
+            .or_else(|| self.get_sym(&cpl_check::std_method(method)));
+        let decl = match sym {
+            Some(Sym::Fn(fid)) => self.sigs[fid].decl,
+            Some(Sym::GenFn(gfid)) => self.gen_fns[gfid].decl,
+            _ => return,
+        };
+        let Some(first) = decl.params.first() else {
+            return;
+        };
+        let required = decl.params.iter().filter(|p| p.default.is_none()).count();
+        if first.name.text == "self" || decl.params.len() <= args.len() || required > args.len() + 1
+        {
+            return;
+        }
+        let takes = first
+            .ty
+            .as_ref()
+            .and_then(|t| self.written_shape(t, &decl.generics));
+        if matches!((takes, self.shape(ty)), (Some(takes), Some(given)) if takes != given) {
+            return;
+        }
+        let rest: String = args
+            .iter()
+            .map(|a| {
+                let name = a
+                    .name
+                    .as_ref()
+                    .map_or(String::new(), |n| format!("{}: ", n.text));
+                let mutable = if a.mutable { "mut " } else { "" };
+                format!(", {name}{mutable}{}", self.source(a.value.span))
+            })
+            .collect();
+        let new = format!("{method}({}{rest})", self.source(base.span));
+        let edit = self.span(span);
+        if let Some(last) = self.diags.last_mut() {
+            last.help = Some(format!(
+                "`{method}` is a free function, not a method: `{new}`"
+            ));
+            last.fixes.clear();
+            last.fix(format!("write `{new}`"), edit, new);
+        }
+    }
+
     /// JavaScript's `xs.slice(a, b)` or `s.substring(a, b)`: a slice indexes a range, `xs[a..b]`.
     pub(super) fn slice_call_fix(
         &mut self,
