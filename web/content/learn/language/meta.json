@@ -1,5 +1,9 @@
 {
-  "title": "Language",
+  "title": "Language in depth",
   "defaultOpen": true,
-  "pages": ["index", "ownership-and-mutation"]
+  "pages": [
+    "index",
+    "ownership-and-mutation",
+    "domains-and-index-spaces"
+  ]
 }

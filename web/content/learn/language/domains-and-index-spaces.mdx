@@ -1,0 +1,137 @@
+---
+title: "Domains, ranges and index spaces"
+description: "Domains, positions and cuts, ranges, and why a slice keeps its source's keys."
+---
+
+Most index bugs in contest code are one of three: the right number in the wrong array (an edge
+id into a vertex array), an off-by-one between "element i" and "the gap before element i", or
+an index found in a slice and used on the whole array. CP Lang gives each its own type, so the
+first two are compile errors and the third can't happen. The normative rules are in
+<Spec file="core/04-indices">indices and ranges</Spec> and <Spec file="core/04b-keys">keys</Spec>.
+
+## Domains
+
+A **domain** is a finite, ordered index type, and its members are **positions**. An array over
+it is `[D]T`, and it can be indexed only by a `D`. Declare one per index space the statement
+names, and a vertex can no longer index an edge array. (<Spec file="core/04-indices" section="Domains" />)
+
+```cp run input="3 2\n1 2\n2 3\n" rejects=E0301
+let n: 1..=10 = read()
+let m: 0..=10 = read()
+domain V = 1..=n
+domain E = 0..m
+var deg: [V]Int = 0
+let ends: [E](V, V) = read()
+for e in E:
+    let (u, v) = ends[e]
+    deg[e] += 1
+print(deg)
+```
+
+`deg[e]` compiles in C++ and counts the wrong thing. Here it is an error naming both index
+spaces. Write `deg[u] += 1` and `deg[v] += 1` and it runs. The domain also gives `read()` its
+format and its check: `ends` is read as `m` pairs, each a vertex in `1..=n`, and an input outside
+that range stops with a message instead of indexing past the array.
+
+`V.first` and `V.last` are `?V`, because a domain can be empty. Write `V.first!` where you know
+it isn't, or handle the empty case:
+
+```cp run input="0\n"
+let n: 0..=10 = read()
+domain V = 0..n
+let a: [V]Int = read()
+if let v = V.first:
+    print(a[v])
+else:
+    print("empty")
+```
+
+## Positions and cuts
+
+Between and around the positions sit **cuts**: a domain of n positions has n + 1 cuts,
+`V.cuts`. A position `v` has the cuts `v.l` and `v.r` on its two sides. That is the whole of the
+prefix-sum off-by-one: a prefix table is indexed by cuts, so `pre[v.r] = pre[v.l] + a[v]` has no
+`+ 1` to get wrong, whether `V` starts at 0 or 1. (<Spec file="core/04-indices" section="Positions and cuts move the same way" />)
+
+```cp run input="4\n1 2 3 4\n"
+let n: 1..=10 = read()
+domain V = 1..=n
+let a: [V]Int = read()
+var pre: [V.cuts]Int = 0
+for v in V:
+    pre[v.r] = pre[v.l] + a[v]
+print(pre)
+print(pre[V.cuts.last!] - pre[V(2).l])
+```
+
+One rule covers every neighbour word: `.l` and `.r` switch kind (position to cut, cut to
+position), `.prev` and `.next` keep it. Arithmetic on a position gives an `Int` (`v + 1`), and
+getting back into the domain is explicit: `v.next` (a `?V`), `V(x)` (traps outside `V`) or
+`V.at(x)` (a `?V`).
+
+## Ranges
+
+A `Range<D>` is a contiguous run of `D`. **A range's elements are the kind of its ends:** `l..=r`
+with position ends walks positions, `j..i` with cut ends walks cuts. A range whose start is past
+its end is empty, never a trap. One literal form is special: a half-open `j..i` with cut ends,
+written where a `Range<V>` is expected, is the piece of the array between those cuts. That is
+what makes a partition DP read like its recurrence:
+(<Spec file="core/04-indices" section="One exception, in how a literal is typed: the piece" />)
+
+```cp run input="4\n1 -2 3 4\n"
+let n: 1..=10 = read()
+domain V = 0..n
+let a: [V]Int = read()
+var best: [V.cuts]Int = 0
+for i in V.cuts:
+    for j in ..i:
+        best[i] max= best[j] + a[j..i].sum()
+print(best[V.cuts.last!])
+```
+
+`..i` walks the cuts before `i`, and `a[j..i]` is the piece between cut `j` and cut `i`. Only the
+literal does this: a range stored in a variable keeps its kind, so there is never a silent
+conversion.
+
+## Keys: a slice keeps its source's indices
+
+**An index names the same element everywhere it is valid.** A slice narrows which indices are
+valid and never renames them, for domain arrays, `List` and `Str` alike. Functions answer in the
+keys they were given, so a position found in a slice is valid on the whole array.
+(<Spec file="core/04b-keys" section="The rules" />)
+
+```cp run
+let s: List<Int> = [10, 20, 30, 60, 50, 40]
+let w = s[2..5]
+print(w.first ?? -1)
+print(w.argmax() ?? -1)
+print(s[w.argmax()!])
+```
+
+`w.argmax()` is 3, the index of 60 in `s`, not 1, its offset in `w`. In C++, `max_element` on a
+subrange gives an offset you must remember to add `l` to. Here there is nothing to add, and
+`w[0]` is not "the first element of `w`": it traps, because 0 is not one of `w`'s keys, and the
+linter flags a literal index into a slice before you run it. The first element is `w.first`, the
+k-th is `w.nth(k)`, and a slice that should count from 0 is `w.rebase`.
+
+## Why it's designed this way
+
+**Domains instead of `Int` everywhere.** The wrong-array bug costs nothing to write and often
+passes the samples. A domain is declared once, where the statement defines the index space, and
+protects every array over it. That is the "structure pays for itself where it is introduced"
+goal: one line, and every later `deg[e]` is caught.
+
+**Positions and cuts, with one set of words.** <Decision n={137} /> chose `.l`/`.r` to switch
+kind and `.prev`/`.next` to keep it. It rejected four words for one idea
+(`.start`/`.end`/`.before`/`.after`), `.n`/`.p` (`n` reads as a count, `p` as a parent), and a
+`V.first` that always traps, which hides the empty case until a hidden test hits it. The piece
+literal `j..i` was kept because the position-only reading broke the most common DP shape,
+`dp[j] + cost(j..i)`.
+
+**Identity, not offset.** <Decision n={143} /> made every slice keep its source's keys,
+replacing a hybrid where `List` and `Str` slices counted from 0. The comparison of the options
+over contest, helper and library code is in <Spec file="core/04a-identity-vs-offset" section="Recommendation: identity everywhere (I)">identity vs offset</Spec>:
+an offset is silently wrong whenever an index crosses a slice boundary, while an identity key
+used wrongly traps. The rejected alternative, the hybrid, is the reversal path the decision
+records. Whether range keys stay identity keys is one of the calls still open with Ryan; this
+chapter follows the current decision.
