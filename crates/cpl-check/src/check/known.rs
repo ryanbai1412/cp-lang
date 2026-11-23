@@ -1,7 +1,7 @@
 //! Prelude fns the checker knows more about than their signatures say.
 
 use super::*;
-use cpl_syntax::ast::{Arg, Expr, ExprKind};
+use cpl_syntax::ast::{Arg, Expr, ExprKind, UnOp};
 
 impl<'a> Checker<'a> {
     /// What the checker knows about a prelude fn it otherwise takes on
@@ -470,5 +470,41 @@ fn optional_print_help(ty: &Ty, snippet: &str) -> Option<String> {
             ))
         }
         _ => None,
+    }
+}
+
+impl Checker<'_> {
+    /// R01.4.2: an integer literal takes `F64` where one is wanted, when the
+    /// float holds it exactly. `None` leaves an `Int` literal to the domain rules.
+    pub(super) fn literal_float(&mut self, at: &Expr, want: &Ty) -> Option<bool> {
+        let float = match want {
+            Ty::Optional(inner) => matches!(**inner, Ty::Float),
+            want => matches!(want, Ty::Float),
+        };
+        let v = match &at.kind {
+            ExprKind::Int(_) if !float => return None,
+            ExprKind::Int(v) => *v,
+            ExprKind::Unary {
+                op: UnOp::Neg,
+                expr,
+            } if float => match expr.kind {
+                ExprKind::Int(v) => -v,
+                _ => return Some(false),
+            },
+            _ => return Some(false),
+        };
+        if v.unsigned_abs() > 1 << 53 && (v as f64) as i128 != v {
+            let text = self.quote(at.span);
+            let message =
+                format!("`{text}` is not exactly an F64; write `F64({text})` to round it");
+            if let Some(diag) = self.error(codes::TYPE_MISMATCH, at.span, message) {
+                diag.fix(
+                    format!("write `F64({text})`"),
+                    at.span,
+                    format!("F64({text})"),
+                );
+            }
+        }
+        Some(true)
     }
 }

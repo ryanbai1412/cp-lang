@@ -3763,9 +3763,9 @@ impl Checker<'_> {
                 .flatten()
                 .all(|end| self.literal_position(end, &elem));
         }
-        let ExprKind::Int(_) = at.kind else {
-            return false;
-        };
+        if let Some(fits) = self.literal_float(at, want) {
+            return fits;
+        }
         let Some(domain) = want.literal_domain() else {
             return false;
         };

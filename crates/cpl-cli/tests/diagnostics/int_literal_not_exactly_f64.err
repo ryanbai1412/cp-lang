@@ -1,0 +1,16 @@
+error[E0302]: `9007199254740993` is not exactly an F64; write `F64(9007199254740993)` to round it
+  --> int_literal_not_exactly_f64.cp:1:14
+  |
+1 | let x: F64 = 9007199254740993
+  |              ^^^^^^^^^^^^^^^^
+  = help: write `F64(9007199254740993)`
+
+error[E0302]: `z` is declared an F64, but `n` is a 5..=5
+  --> int_literal_not_exactly_f64.cp:4:14
+  |
+3 | let n = 5
+  |     - `n` is declared as a 5..=5 here
+4 | let z: F64 = n
+  |              ^
+
+int_literal_not_exactly_f64.cp: 2 errors
