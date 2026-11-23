@@ -22,6 +22,21 @@ test('a bare name is found on PATH before the workspace build', () => {
     assert.equal(resolve('', ['/usr/bin/cpl']), undefined);
 });
 
+test('the newer of the release and debug builds wins', () => {
+    const debug = path.posix.join('/work/cp-lang', 'target', 'debug', 'cpl');
+    const release = path.posix.join('/work/cp-lang', 'target', 'release', 'cpl');
+    const newest = (newer: string) =>
+        resolveServer('cpl', {
+            pathEnv: '',
+            workspaceFolders: ['/work/cp-lang'],
+            platform: 'linux',
+            exists: file => file === debug || file === release,
+            modified: file => (file === newer ? 2 : 1),
+        });
+    assert.equal(newest(debug), debug);
+    assert.equal(newest(release), release);
+});
+
 test('a path is taken as written', () => {
     assert.equal(resolve('/abs/cpl', ['/abs/cpl']), '/abs/cpl');
     assert.equal(resolve('/abs/cpl', ['/usr/bin/cpl']), undefined);

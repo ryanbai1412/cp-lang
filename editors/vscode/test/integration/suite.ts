@@ -2,6 +2,7 @@
 // same commands the editor uses, against the real `cpl lsp`.
 
 import * as assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
@@ -131,7 +132,19 @@ const tests: [string, () => Promise<void>][] = [
             const document = await open('add.cp');
             const added = await vscode.commands.executeCommand<boolean>('cp.addTest', document.uri, '4', '8');
             const tests = file('add.tests').fsPath;
-            assert.equal(added, true, `add.tests holds ${fs.existsSync(tests) ? fs.readdirSync(tests).join(', ') || 'nothing' : 'nothing yet'}`);
+            if (!added) {
+                // Say why: what `cpl test --add` itself gives, and how long it takes.
+                const held = fs.existsSync(tests) ? fs.readdirSync(tests).join(', ') || 'nothing' : 'nothing yet';
+                const start = Date.now();
+                const direct = spawnSync(process.env.CPL_REAL!, ['test', document.uri.fsPath, '--add', '-'], {
+                    cwd: path.dirname(document.uri.fsPath),
+                    input: '4\n',
+                    encoding: 'utf8',
+                });
+                assert.fail(
+                    `add.tests held ${held}; \`cpl test --add -\` gives ${direct.status} in ${Date.now() - start} ms: ${direct.stdout}${direct.stderr}`,
+                );
+            }
             assert.equal(fs.readFileSync(file('add.tests/1.in').fsPath, 'utf8'), '4\n');
             assert.equal(fs.readFileSync(file('add.tests/1.out').fsPath, 'utf8'), '8\n');
         },
@@ -382,6 +395,8 @@ export async function run(): Promise<void> {
     await vscode.workspace
         .getConfiguration('cp')
         .update('server.path', process.env.CPL_REAL, vscode.ConfigurationTarget.Workspace);
+    // A cold CI runner can take seconds to check before `cpl` runs anything.
+    await vscode.workspace.getConfiguration('cp').update('run.timeoutMs', 60000, vscode.ConfigurationTarget.Workspace);
     const failed: string[] = [];
     for (const [name, test] of tests) {
         try {

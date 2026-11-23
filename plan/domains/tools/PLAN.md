@@ -55,6 +55,8 @@ Each local fix tonight, and the mechanism that would remove its whole class.
 | Stale `d.cp` fixture (`.after` as a cut) broke the VS Code integration | `cpl check` every editor fixture in the gate | tools |
 | clippy's `items_after_test_module` in cpl-lsp reached main | the land step runs `cargo clippy --all-targets -D warnings` on touched crates | infra |
 | `@vscode/test-electron` 2.5 couldn't launch VS Code 1.147 on macOS (moved to 3.1) | dependency updates for `editors/vscode` on a schedule | tools |
+| VS Code ran a stale `target/release/cpl` over a fresh debug build | done: `resolveServer` takes the newer workspace build | tools |
+| Edge release stays at an old commit while any CI job is red, so `cpl setup` isn't installable | publish edge from the newest commit whose required jobs pass, not only fully green runs | infra |
 | Headless Neovim on Windows draws no terminal output; the smoke runs the lens's command itself there | smoke tests check commands' output directly and the editor's terminal only where it renders | tools |
 
 ## Next

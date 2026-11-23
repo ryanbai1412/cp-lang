@@ -10,6 +10,16 @@ export interface ResolveOptions {
     workspaceFolders: readonly string[];
     platform?: NodeJS.Platform;
     exists?: (file: string) => boolean;
+    /** When `file` was last written, in ms. */
+    modified?: (file: string) => number;
+}
+
+function modifiedAt(file: string): number {
+    try {
+        return fs.statSync(file).mtimeMs;
+    } catch {
+        return 0;
+    }
 }
 
 function isFile(file: string): boolean {
@@ -24,8 +34,8 @@ function isFile(file: string): boolean {
  * The binary to run for the setting `cp.server.path`. A path is taken as
  * written (relative ones against each workspace folder). A bare name is
  * looked up on `PATH`, then in each workspace folder's `target/release` and
- * `target/debug`, so the extension works inside the cp-lang repository
- * without installing anything.
+ * `target/debug`, the newer build first, so the extension works inside the
+ * cp-lang repository without installing anything and never runs a stale build.
  */
 export function resolveServer(configured: string, options: ResolveOptions): string | undefined {
     const exists = options.exists ?? isFile;
@@ -53,10 +63,13 @@ export function resolveServer(configured: string, options: ResolveOptions): stri
         return firstIn(options.workspaceFolders);
     }
     const onPath = options.pathEnv.split(windows ? ';' : ':').filter(dir => dir !== '');
-    const built = options.workspaceFolders.flatMap(folder => [
-        paths.join(folder, 'target', 'release'),
-        paths.join(folder, 'target', 'debug'),
-    ]);
+    const modified = options.modified ?? modifiedAt;
+    const built = options.workspaceFolders.flatMap(folder =>
+        [paths.join(folder, 'target', 'release'), paths.join(folder, 'target', 'debug')]
+            .map(dir => ({ dir, at: Math.max(0, ...names.map(name => modified(paths.join(dir, name)))) }))
+            .sort((a, b) => b.at - a.at)
+            .map(({ dir }) => dir),
+    );
     return firstIn(onPath) ?? firstIn(built);
 }
 
