@@ -418,3 +418,47 @@ fn check_says_what_run_and_build_would() {
         assert!(text(&out.stderr).contains(message) || text(&out.stdout).contains(message), "{source}\n{}", text(&out.stderr));
     }
 }
+
+#[test]
+fn a_wrong_answer_goes_from_stress_to_a_saved_case_to_a_green_rerun() {
+    // Milestone 1's loop: WA, `cpl stress` against the file's own brute, the
+    // shrunk case saved, the fix, then `cpl test` and `cpl stress` both pass.
+    let demo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/debugging/knapsack.cp");
+    let planted = std::fs::read_to_string(demo).unwrap();
+    let path = scratch("stress-loop", "knapsack.cp", &planted);
+    let run = |args: &[&OsStr]| {
+        let out = cpl(args, b"");
+        (out.status.code(), text(&out.stdout) + &text(&out.stderr))
+    };
+
+    let (code, report) = run(&["stress".as_ref(), path.as_os_str()]);
+    assert_eq!(code, Some(1), "{report}");
+    assert!(report.contains("expected `1`, got `2`"), "{report}");
+    let saved = path.with_file_name("knapsack.tests");
+    let mut cases: Vec<_> = std::fs::read_dir(&saved)
+        .unwrap()
+        .map(|e| e.unwrap().file_name().into_string().unwrap())
+        .collect();
+    cases.sort();
+    assert_eq!(cases, ["stress-3.in", "stress-3.out"], "{report}");
+    assert_eq!(
+        std::fs::read_to_string(saved.join("stress-3.out"))
+            .unwrap()
+            .trim(),
+        "1"
+    );
+
+    let (code, report) = run(&["test".as_ref(), path.as_os_str()]);
+    assert_eq!(code, Some(1), "{report}");
+    assert!(report.contains("stress-3  WA"), "{report}");
+
+    let fixed = planted.replace("for c in 0..=cap:", "for c in (0..=cap).rev:");
+    assert_ne!(fixed, planted);
+    std::fs::write(&path, fixed).unwrap();
+    let (code, report) = run(&["test".as_ref(), path.as_os_str()]);
+    assert_eq!(code, Some(0), "{report}");
+    assert!(report.contains("1/1 passed"), "{report}");
+    let (code, report) = run(&["stress".as_ref(), path.as_os_str()]);
+    assert_eq!(code, Some(0), "{report}");
+    assert!(report.contains("cases agree"), "{report}");
+}
