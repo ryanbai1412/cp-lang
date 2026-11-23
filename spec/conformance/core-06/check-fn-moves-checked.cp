@@ -1,4 +1,4 @@
-// expect: E0608 at 9
+// expect: E0608 at 7
 // rule: 06.4.3
 // A `@check` fn is ordinary code under the ownership rules: a list moved in one round of a loop is moved for the next, as in the solution.
 let n: 1..=5 = read()

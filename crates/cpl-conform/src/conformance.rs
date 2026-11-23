@@ -650,9 +650,18 @@ pub fn run_one(db: &mut Database, case: &ConformanceCase) -> CaseOutcome {
                 } else {
                     runner::truncate_chars(diag.trim(), 200)
                 };
+                let hint = diag_line(&diag, &code)
+                    .filter(|&l| l > offset && l != target_line)
+                    .map(|l| {
+                        format!(
+                            " (it is on file line {l}: write `at {}`, counted from the first line after the headers)",
+                            l - offset
+                        )
+                    })
+                    .unwrap_or_default();
                 CaseOutcome {
                     status: "fail".into(),
-                    detail: format!("wanted {code} at {target_line}; got: {got}"),
+                    detail: format!("wanted {code} at {target_line}{hint}; got: {got}"),
                 }
             }
         }
@@ -853,5 +862,25 @@ mod release_tests {
     fn release_skips_trap_cases_and_checked_runs_them() {
         assert_eq!(release_trap_outcome(true).unwrap().status, "skip");
         assert!(release_trap_outcome(false).is_none());
+    }
+}
+
+/// The line of the first `--> file:L:C` after the first diagnostic with `code`.
+fn diag_line(diag: &str, code: &str) -> Option<usize> {
+    let at = diag.find(&format!("[{code}]"))?;
+    let arrow = diag[at..].find("-->")? + at;
+    let loc = diag[arrow + 3..].lines().next()?.trim();
+    let mut parts = loc.rsplitn(3, ':');
+    parts.next()?;
+    parts.next()?.parse().ok()
+}
+
+#[cfg(test)]
+mod diag_line_tests {
+    #[test]
+    fn finds_the_line_of_the_named_code() {
+        let d = "error[E0101]: x\n  --> a.cp:2:1\nerror[E0608]: y\n  --> /t/a.cp:9:17\n";
+        assert_eq!(super::diag_line(d, "E0608"), Some(9));
+        assert_eq!(super::diag_line(d, "E0999"), None);
     }
 }

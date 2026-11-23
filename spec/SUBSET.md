@@ -257,7 +257,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/sorted-has-no-desc-flag.cp: stdlib
 - core-07/fold-without-parens-warns.cp: compiler
 - core-07/grid-row-index-and-block-order.cp: compiler
-- core-07/keys-survive-filter.cp: compiler
 - core-07/prefix-scan-cuts.cp: compiler
 - core-07/rev-keeps-keys.cp: stdlib
 - core-07/rev-view-is-not-indexable.cp: compiler
@@ -287,13 +286,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-13/build-warns-near-size-limit.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
 - diagnostics/sum-of-str.cp: diagnostics
-- std-dp/ranges-key-first-is-not-optional.cp: stdlib
-- std-dp/backtrack-leaf-start-one-step.cp: stdlib
-- std-dp/backtrack-preorder-depths.cp: stdlib
-- std-dp/backtrack-prune-root.cp: stdlib
 - std-graph/dfs-shares-seen.cp: stdlib
-- std-graph/graph-only-and-transpose.cp: stdlib
 - std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
+- std-dp/interval-ranges-deque-game.cp: stdlib
 - std-grid/step-on-product-domain-position.cp: stdlib
 - std-prefix/first-ge-negative-element-traps.cp: stdlib
 - std-prefix/scan-at-position-folds-through.cp: stdlib
@@ -301,7 +296,3 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-prefix/scan-of-list-int-is-cut.cp: stdlib
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib
-- std-tree/from-prufer-empty-code-is-one-edge.cp: stdlib
-- std-tree/from-prufer-round-trip.cp: stdlib
-- std-tree/from-prufer-wrong-length-traps.cp: stdlib
-- std-math/bigint-matches-int-arithmetic.cp: stdlib

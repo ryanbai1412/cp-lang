@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- Three new cases from other lanes (core-06/check-fn-*, core-04/char-list-receiver-not-str) wrote `at N` as the file line; fixed. General fix: cpl-conform's failure now says which `at N` the diagnostic is on. Dropped 10 known gaps that pass; listed std-dp/interval-ranges-deque-game (E0302 on `!` of a position) for stdlib.
 - Rebuild 20 remaining holes: H14 (multiline `match` argument) now has a passing case; H11 (printing a position) was found-late, already R10.2.1 and core-10/print-position-as-its-integer; H5/H6/H16/H17 routed to stdlib; H7 (BigInt `isqrt`) and H8 (runtime-bounded `gen`) are known gaps for stdlib/stress.
 - Bug-catch round 13: interpreter 9/9 caught (1 no longer builds reverted). Release pass 0/4, but all four (4b3d07d40, 84c17db3d, 3671b8037, 2ac3605d9) are codegen optimisations whose revert changes speed, not output; their own codegen unit tests cover them. General fix: `conformance-bugcatch.py` now labels a non-fix subject that no case catches as an optimisation and leaves it out of the rate.
 - Checker and interactor APIs now run in conformance through `// tool: judge` / `// tool: run` cases: core-06/check-assert-rejects-wrong-output, check-accepts-valid-output, interactor-send-recv pass; check-bool-false-rejects fails (tools known gap: `-> Bool` returning `false` accepts). Closes the owed general fix from rebuild 20.
