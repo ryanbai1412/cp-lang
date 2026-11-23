@@ -207,7 +207,7 @@ partial function.)
 | `a.lis(strict: true)` | positions of one longest increasing subsequence, `List<D>` | \(O(n \log n)\) |
 | `a.prev_smaller()`, `a.next_smaller()` | `[D]?D` nearest smaller to each side (monotone stack); larger with `by: desc` | \(O(n)\) |
 | `Window<D>(enter, leave)`, `w.move(to: r)` | stateful sliding piece (two pointers, Mo, D&C costs) | \(O(\text{distance moved})\) |
-| `MonoDeque(min)`, `WindowFold(op)` | sliding min / fold of any monoid | \(O(1)\) amortized |
+| `Window(min)`, `Window(op)` | sliding min / fold of any monoid | \(O(1)\) amortized |
 | `backtrack(start, next)` | `yields Step<S>`; `step.prune()`, `break`, `return` | per node |
 
 ## Open

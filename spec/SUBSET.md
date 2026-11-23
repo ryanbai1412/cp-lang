@@ -255,6 +255,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/static-fn-default-param-mismatch.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
+- core-01/comprehension-filter-if-let.cp: compiler
 - core-09/deep-recursion-trap.cp: compiler
 - core-09/release-division-by-zero-fallback.cp: compiler
 - core-09/release-list-index-unchecked.cp: perf
@@ -278,7 +279,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-graph/undirected-unweighted-has-deg.cp: stdlib
 - core-10/tuple-dependent-bound-in-block.cp: compiler
 - std-seq/min-of-empty-list-is-none.cp: compiler
-- core-11/mod-uses-sibling.cp: compiler
 - core-11/prelude-has-components.cp: compiler
 - core-11/runtime-domain-use-before-definition.cp: compiler
 - core-11/strings-table-in-prelude.cp: compiler

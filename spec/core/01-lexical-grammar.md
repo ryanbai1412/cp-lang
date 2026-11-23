@@ -311,6 +311,8 @@ match d: L => -1, R => 1            // one-line match
   array when the expected type is `[D]T`. Several `for` clauses nest like
   a loop header's (`[(i, j) for i in V, j in V.after(i)]`), and the
   element may be an `if` expression (`[if c: x else: y for i in 0..k]`).
+  Its `if` takes what an `if` header takes, `let` binders and commas
+  included: `[y for x in xs if let y = x, y > 1]`.
   **Tables** `[D] i => e` build
   `[D]T` eagerly; `[(A, B)] (a, b) => e` and `[A, B]` are the same 2-D
   table. (R01.8.2)

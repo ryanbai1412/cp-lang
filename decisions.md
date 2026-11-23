@@ -8162,3 +8162,21 @@ tag move fatal again.
 
 - **Decision.** `CPL_VM_STATS=json` adds `kinds`, every fallback tag of the run, and the `vm_fallbacks` test reads it instead of `top`, which keeps only the 20 most frequent. A kind past the 20th was invisible to the ratchet and showed up as "new" when other kinds left. The baseline gains `traced fn:SortedBag_Int_14.merge(part)` and `traced fn:SortedBag_Int_14.remove(part)`, which were there but hidden, and `untraced fn:m7_find_all_Str_Str_Int_193(feeding)`, the `_192` line renamed by a mono numbering change on main.
 - **Reverse.** Read `top` again in `crates/cpl-cli/tests/vm_fallbacks.rs`.
+
+## 397. Rebuild round 30: holes and bugs (spec, 2026-11-23)
+
+- **Decision.** No new mechanism. Round 30 found 51 holes, up from round 29's 23. 38 are silent, and almost all of those were guessed right from existing general rules, among them chained comparisons (R01.5), `while let` with a condition, `Mod` beside an `Int`, `Str of` validation, and `?Int` stores.
+- **Spec changes.**
+  - H05 contradiction: `spec/lib/containers.md` and `search-dp.md` still specified `MonoDeque`, which became `Window(op)` (ops-ranges §8). Both now name `Window`.
+  - F04: a comprehension's `if` takes what an `if` header takes, `let` binders and commas included (R01.8.1).
+- **Routed.**
+  - Compiler:
+    - F02: the `(v, k) =>` tuple-state lambda; case `core-06/lambda-unpacks-tuple-vertex`.
+    - F04: `if let` in a comprehension filter.
+    - F07: `.runs()` in a loop allocates every round.
+    - F08: phantom `cpl explain` rows at 1:1.
+    - F09: interpreter `runs()` memory.
+  - Stdlib: F01 `maximal`, F05 `up_arc` todo, H03 window front key, H12 `SortedSet` predecessor and successor.
+  - Lint, F06: an `Int` product whose proven range exceeds i64 right before a `Mod` conversion (`s * k * Z(3).inv()`) behaves as chapter 3 §4 says: debug traps, release wraps. A lint should name `Z(s) * k`.
+- **Already fixed.** F03, `read<Str of "01?">()`, passes on main.
+- **Reverse.** Restore `MonoDeque` as a separate type beside `Window`.

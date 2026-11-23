@@ -141,9 +141,9 @@ greedy scheduling. Three gaps appear across contests:
 (`get`, `set`, `first`, `last(k)`). Two classic contest structures sit directly
 beside it in `examples/local-lib/ds/`:
 
-- **`MonoDeque<T>`** — sliding-window minimum or maximum in \(O(1)\) amortized per
-  element (`push(at, val)`, `drop_before(min_at)`, `best`). Used in sliding-window
-  DP, convex/Monge DP (`cf2183h`), and range-min sweeps.
+- **`Window(op)`** (`std.window`, `lib/ops-ranges.md` §8) — sliding-window minimum,
+  maximum or any monoid fold in \(O(1)\) amortized per element; it replaced
+  `MonoDeque`. Used in sliding-window DP, convex/Monge DP (`cf2183h`), and range-min sweeps.
 - **`TwoStackFold<T>`** — FIFO queue with \(O(1)\) `fold` over any `Monoid<T>`
   without requiring an inverse (gcd, bitwise OR, matrix products).
 
@@ -476,17 +476,7 @@ Laws: `MinHeap.of(xs)` pops elements in the exact order of `sorted(xs)`;
 <!-- spec-only: signatures and costs, not a program -->
 ```cp
 // Existing: Deque<T> (add set(mut self, i: Int, x: T) and to_list(self) -> List<T>)
-// Promoted from examples/local-lib/ds/:
-struct MonoDeque<T>                            // O(1) amortized sliding min/max
-    fn new(pick: (T, T) -> T) -> MonoDeque<T>  // pick is min or max
-    fn by(better: (T, T) -> Bool) -> MonoDeque<T>
-    @get fn len(self) -> Int               // O(1)
-    @get fn is_empty(self) -> Bool         // O(1)
-    fn clear(mut self)                     // O(1)
-    fn push(mut self, at: Int, val: T)     // O(1) amortized
-    fn drop_before(mut self, min_at: Int)  // O(1) amortized
-    @get fn best(self) -> ?T               // O(1)
-
+// Promoted from examples/local-lib/ds/ (sliding min/max is `Window(op)`, §8 of ops-ranges):
 struct TwoStackFold<T>                   // O(1) amortized queue monoid fold
     fn new<M>(op: M) -> TwoStackFold<T>  // op is a Monoid or bare op
     @get fn len(self) -> Int             // O(1)
