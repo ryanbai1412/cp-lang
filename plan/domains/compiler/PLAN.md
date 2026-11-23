@@ -60,6 +60,8 @@ Each local fix whose general mechanism is still owed: the instance, the general 
 
 - An array over an anonymous range (`[0..m]R`) has no domain of its own; each generic call that binds `E` from it gets one by call site or by fn (`bind_range_domain`), and a domain shared by fn can escape through a return type that names it only indirectly (`Graph<V, B>` with `B` holding `e: E`). General fix: an anonymous range in an array type is an anonymous domain at its declaration, as `Dsu<0..3>` already is (decision 255), so `E` binds to it like a named one. Owner: compiler.
 
+- Field-trait satisfaction (R08.1.7) is decided twice, by the checker for bounds and by IR `has_bound_by_shape` for `if A: Trait`, and neither matches field types against the trait's arguments (`(w: Str)` meets `Weighted<Int>`). General fix: one `satisfies(ty, trait, args)` in the checker that IR asks, checking each field's type. Owner: compiler, spec for the wording.
+- A slice of a `[lo..=hi]T` (`Dim::IntFrom`) still copies into a `List`; `[0..n]T` and `[D]T` are key views. General fix: slices of every one-axis array are key views (needs `ListView` keyed from `lo`). Owner: compiler.
 ## Next actions
 
 1. `dmopc21c5p2`: bisect the first differing value between `cpl run` and the C++, fix, regression.

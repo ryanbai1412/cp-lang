@@ -3887,14 +3887,19 @@ impl<'a> Lowerer<'a> {
             return self.slice_builtin(base, lo_e, hi_e, span);
         }
         // R04b.1.2: `a[V(2)..=V(4)]` keeps `a`'s positions as its keys.
+        // A `[0..n]T` is a view too, as `Slice<S>` says: its keys are its positions.
         if let Ty::Array { dims, .. } = &base.ty {
-            if let [Dim::Pos(d)] = &dims[..] {
-                let d = *d;
+            if let [dim @ (Dim::Pos(_) | Dim::Int)] = &dims[..] {
+                let d = match *dim {
+                    Dim::Pos(d) => Some(d),
+                    _ => None,
+                };
                 let base = self.hoist_view_base(base, span);
                 let to_ord = |lw: &mut Self, e: &ast::Expr, is_end: bool| -> Expr {
                     let v = lw.expr(e, None);
-                    let ord = match v.ty {
-                        Ty::Int => {
+                    let ord = match (v.ty.clone(), d) {
+                        (Ty::Int, None) => v,
+                        (Ty::Int, Some(d)) => {
                             let first = lw.domain_first_label(d, e.span);
                             lw.mk(
                                 ExprKind::Binary(BinOp::Sub, Box::new(v), Box::new(first)),
@@ -3902,8 +3907,8 @@ impl<'a> Lowerer<'a> {
                                 e.span,
                             )
                         }
-                        Ty::Pos(_) => lw.cast(Cast::Ord, v, Ty::Int),
-                        Ty::Bound(_) => return lw.cast(Cast::Ord, v, Ty::Int),
+                        (Ty::Pos(_), _) => lw.cast(Cast::Ord, v, Ty::Int),
+                        (Ty::Bound(_), _) => return lw.cast(Cast::Ord, v, Ty::Int),
                         _ => return lw.coerce(v, &Ty::Int, e.span),
                     };
                     lw.int_add(ord, i64::from(is_end && *inclusive))
@@ -3912,9 +3917,13 @@ impl<'a> Lowerer<'a> {
                     Some(l) => to_ord(self, l, false),
                     None => self.int_lit(0, span),
                 };
-                let hi_e = match hi {
-                    Some(h) => to_ord(self, h, true),
-                    None => self.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                let hi_e = match (hi, d) {
+                    (Some(h), _) => to_ord(self, h, true),
+                    (None, Some(d)) => self.mk(ExprKind::DomainLen(d), Ty::Int, span),
+                    (None, None) => {
+                        let at = vec![base.clone()];
+                        self.mk(ExprKind::Builtin(Builtin::Len, at), Ty::Int, span)
+                    }
                 };
                 return self.slice_builtin(base, lo_e, hi_e, span);
             }
