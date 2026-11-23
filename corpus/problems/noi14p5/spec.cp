@@ -12,26 +12,25 @@ let (n, m, q) = read<(1..=5000, 1..=5000, 0..=50_000)>()
 domain Row = 1..=n
 domain Col = 1..=m
 domain Grid = (Row, Col)
+domain Cell = 1..=n * m // a grid cell numbered in reading order, as the swaps name it
 domain Value = 1..=n * m
-var board: [Grid]Value = [Grid] p => Value.nth(0)
-for (k, p) in Grid.items:
-    board[p] = Value.nth(k)
+var board: [Cell]Value = [Cell] p => Value.nth(p.ord)
 var x = x0
-for (k, p) in Grid.items:
+for p in Cell:
     x = (a * x * x + b * x + c) % d
-    board.swap(p, Grid.nth(x % (k + 1)))
-for (u, v) in read<[q](Value, Value)>():
-    board.swap(Grid.nth(Int(u) - 1), Grid.nth(Int(v) - 1))
+    board.swap(p, Cell.nth(x % (p.ord + 1)))
+for (u, v) in read<[q](Cell, Cell)>():
+    board.swap(u, v)
 let at = board.inverse()
 var lo: [Row]Col = Col.first!
 var hi: [Row]Col = Col.last!
 var path: List<Value> = []
 for v in Value:
-    let (r, col) = at[v]
+    let (r, col) = Grid.nth(at[v].ord)
     if lo[r] <= col <= hi[r]:
         path.push(v)
-        for above in ..r:
+        for above in r.before:
             hi[above] min= col
-        for below in r.next..:
+        for below in r.after:
             lo[below] max= col
 print(path)

@@ -1,0 +1,11 @@
+import sys, random
+r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
+d = r.choice([1, 2, r.randint(1, 100), r.randint(1, 10**8), 10**8])
+x0 = r.randint(0, d - 1)
+a = r.choice([0, r.randint(0, 300), 300])
+b = r.choice([0, r.randint(0, 10**8), 10**8])
+c = r.choice([0, r.randint(0, 10**8), 10**8])
+n = r.randint(1, S); m = r.randint(1, S); q = r.randint(0, 3 * S)
+print(x0, a, b, c, d)
+print(n, m, q)
+for _ in range(q): print(r.randint(1, n * m), r.randint(1, n * m))
