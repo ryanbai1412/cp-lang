@@ -19,7 +19,6 @@ coi06p2
 etsr23r3p1
 ioi05p2
 ioi05p6
-ioi07p2
 ioi11p2
 ioi13p4
 ioi14p2

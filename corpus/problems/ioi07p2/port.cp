@@ -11,8 +11,6 @@
 // untouched group has outside on its lower-left side. BFS from there counts
 // the walls crossed, and a wall stands when both its faces are equally far.
 //
-// IDEAL SKETCH, not run: uses `Deque`, `argmin`-style helpers and the
-// `gen` / `assume` hooks proposed in the backlog (Q1, Q2).
 // original: corpus/submissions/5133897.cpp
 use std.dsu.{Dsu}
 use std.geometry.{Pt}
@@ -22,22 +20,15 @@ domain P = 1..=n
 let pts: [P]Pt = read()
 let m: 1..=2e5 = read()
 domain W = 1..=m
-let walls: [W](u: P, v: P) = read(gen: gen_walls)
-    assume all(pts[w.u].x == pts[w.v].x or pts[w.u].y == pts[w.v].y for w in walls)
-    assume no_two_cross(pts, walls)
+let walls: [W](u: P, v: P) = read()
 
-// Constructive generator: grow a random set of walls on a small lattice by
-// only ever joining lattice neighbours. Neighbouring points cannot have a
-// third point between them, and unit lattice walls cannot cross, so the
-// `assume` lines above hold by construction and reject nothing.
-fn gen_walls() -> [W](u: P, v: P):
-    let at = Map((pts[p].x, pts[p].y) => p for p in P)
-    let near = [(p, q) for p in P for d in [Pt(1, 0), Pt(0, 1)] if let q = at.get(pts[p] + d)]
-    sample(near, m)
-
-enum Dir: East, North, West, South  // counter-clockwise
+enum Dir = East | North | West | South  // counter-clockwise
 domain Side = 0..2 * m              // wall w has sides 2w and 2w + 1
 fn side(w: W, first: Bool) -> Side = Side.nth(2 * w.ord + if first: 0 else: 1)
+fn flip(s: Side) -> Side = Side.nth(s.ord ^ 1)  // the other side of the same wall
+
+let dirs = [d for d in Dir]
+fn turn(d: Dir, k: Int) -> Dir = dirs[((0..4).find(i => dirs[i] == d)! + k) % 4]  // k quarter turns counter-clockwise
 
 fn heading(a: Pt, b: Pt) -> Dir:
     if a.y == b.y: (if b.x > a.x: East else: West) else: (if b.y > a.y: North else: South)
@@ -49,14 +40,18 @@ for w in W:
     let (u, v) = walls[w]
     let d = heading(pts[u], pts[v])
     out[u, d] = side(w, true)
-    out[v, d.cyc(2)] = side(w, false)
+    out[v, turn(d, 2)] = side(w, false)
 
 var faces = Dsu<Side>.new()
 for p in P:
     for d in Dir:
         let here = out[p, d] else: continue
-        let next = first(out[p, d.cyc(k)] for k in 1..=4)!  // the next wall round p
-        faces.unite(here, next.flip)                        // WISH: Side.flip = the other side
+        var next = here  // the next wall round p
+        for k in 1..=4:
+            if let s = out[p, turn(d, k)]:
+                next = s
+                break
+        faces.unite(here, flip(next))
 
 var across: [Side]List<Side> = []
 for w in W:
@@ -67,10 +62,13 @@ for w in W:
 var wet_at: [Side]?Int = None
 var queue = Deque<Side>()
 for p in sorted(P, by: p => (pts[p].x, pts[p].y)):
-    // The leftmost, then lowest, point of a group: outside lies below its
-    // east wall, or left of its north wall if it has no east wall.
-    let outer = out[p, East] ?? out[p, North]?.flip else: continue
-    let f = faces.find(outer)
+    // The leftmost, then lowest, point of a group has no west or south wall:
+    // outside is the face turning counter-clockwise from its north wall, or
+    // from its east wall if it has no north wall.
+    var outer = out[p, North]
+    if outer == None: outer = out[p, East]
+    let start = outer else: continue
+    let f = faces.find(start)
     if wet_at[f] != None: continue
     wet_at[f] = 0
     queue.push(f)
