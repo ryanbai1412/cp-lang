@@ -1,14 +1,23 @@
 import sys, random
-if sys.argv[1] == "--max":
-    # One test at the limit (the sum of n over tests is at most 2e5): a random split of
-    # the permutation of 1..2n into the two rows.
-    r = random.Random(0); n = 200000; print(1); print(n)
-    p = list(range(1, 2 * n + 1)); r.shuffle(p); print(*p[:n]); print(*p[n:])
-    sys.exit()
-r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
-t = 5; print(t)
-for _ in range(t):
-    n = r.randint(1, 2 * S + 3); print(n)
-    p = list(range(1, 2 * n + 1)); r.shuffle(p)
-    print(*p[:n])
-    print(*p[n:])
+# gen.py seed size: t tests, rows a and b of n values in 1..=2n (repeats allowed), sum n <= 1e5.
+# No arguments, or size >= 1e5, uses the full limit; the seed picks one test of n = 1e5
+# (a permutation split, random repeats, or few distinct values) or t = 1e4 tests of n = 10.
+seed = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+S = int(sys.argv[2]) if len(sys.argv) > 2 else 10 ** 5
+r = random.Random(seed)
+def rows(n, kind):
+    if kind == 0:
+        p = list(range(1, 2 * n + 1)); r.shuffle(p); return p[:n], p[n:]
+    if kind == 1:
+        return [r.randint(1, 2 * n) for _ in range(n)], [r.randint(1, 2 * n) for _ in range(n)]
+    vals = [r.randint(1, 2 * n) for _ in range(3)]
+    return [r.choice(vals) for _ in range(n)], [r.choice(vals) for _ in range(n)]
+if S >= 10 ** 5:
+    kind = seed % 4
+    tests = [(10 ** 5, kind)] if kind < 3 else [(10, r.randint(0, 2)) for _ in range(10 ** 4)]
+else:
+    tests = [(r.randint(1, 2 * S + 3), r.randint(0, 2)) for _ in range(5)]
+print(len(tests))
+for n, kind in tests:
+    a, b = rows(n, kind)
+    print(n); print(*a); print(*b)

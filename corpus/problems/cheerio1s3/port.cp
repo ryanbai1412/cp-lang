@@ -1,13 +1,15 @@
 // Source: Cheerio Contest 1 S3 (Stock Trading), https://dmoj.ca/problem/cheerio1s3
-// Problem: n <= 5000 points (t_i, p_i) with t increasing, coordinates <= 1e9. Count the pairs
-//   i < j whose segment is a trendline: points i..=j all lie on or above it, or all on or below.
+// Problem: 2 <= n <= 5000 points (t_i, p_i), t strictly increasing, 0 <= t_i, p_i <= 1e9. Count
+//   the pairs i < j whose segment is a trendline: points i..=j all lie on or above it, or all on
+//   or below.
 // Solution: from each i, sweep j keeping the steepest and the shallowest direction to the points
 //   seen so far, compared by cross product: (i, j) counts when j's direction is at least the
 //   steepest (all below or on) or at most the shallowest (all above or on). O(n^2).
 use std.geometry.{cross}
 
-let n: 1..=2000 = read()
-let pts: [0..n]Pt = read()
+let n: 2..=5000 = read()
+let obs: [0..n](t: 0..=1e9, p: 0..=1e9) = read()
+let pts = [Pt(o.t, o.p) for o in obs]
 
 var pairs = 0
 for i in 0..n:

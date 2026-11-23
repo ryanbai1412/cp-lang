@@ -7,7 +7,7 @@
 //   -1 into one. v is reachable iff the +1 columns outnumber the -1 runs. O(n log n).
 
 @!multitest
-let n: 1..=200_000 = read()
+let n: 1..=1e5 = read()
 let a0: [0..n]1..=2 * n = read()
 let a1: [0..n]1..=2 * n = read()
 

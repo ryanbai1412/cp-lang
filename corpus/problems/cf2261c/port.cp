@@ -1,6 +1,6 @@
 // Source: Codeforces 2261C (I Know About a Million Things),
 //   https://codeforces.com/contest/2261/problem/C
-// Problem: n <= 1e6 positive integers (sum n <= 1e6, multitest). Moggity and Larpity alternate,
+// Problem: n <= 1e6 integers in 1..=1e6 (sum n <= 1e6, multitest). Moggity and Larpity alternate,
 //   Moggity first, removing a non-empty set that is one element or has an even sum; whoever
 //   cannot move loses. Print the winner.
 // Solution: only parities matter. With an even number of odds (or n = 1) Moggity removes it all.
@@ -9,8 +9,8 @@
 //   Moggity loses iff evens + odds / 2 == 1: count the odds, O(n).
 
 @!multitest
-let n: 1..=200_000 = read()
-let a: [0..n]0..=2 ** 30 - 1 = read()
+let n: 1..=1e6 = read()
+let a: [0..n]1..=1e6 = read()
 let odd = a.count(x => x % 2 == 1)
 let even = n - odd
 let win = odd % 2 == 0 or n == 1 or even + odd / 2 != 1
