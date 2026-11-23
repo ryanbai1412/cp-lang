@@ -84,7 +84,7 @@ target = "0"
 
 [[metric]]
 name = "rebuild holes (probe P1, cold agent, spec/ only)"
-command = "grep -m1 'There are' plan/domains/spec/delta/rebuild-6/HOLES.md"
+command = "grep -m1 'There are' research/rebuild-rounds/rebuild-6.md"
 today = "26 (round 6, round 5's ten problems at 136ca9833: 22 silent, 3 contradiction, 1 missing-stdlib; round 5: 31 with 18 contradiction)"
 target = "< 5"
 
