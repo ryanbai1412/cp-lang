@@ -20,7 +20,7 @@ let a: [0..n]1..=2e5 = read()
 if k == 1: return print("YES")
 
 let thresh = a.sorted()[k - 2]
-let small = a.filter(v => v < thresh)
+let small = a.filter(v => v < thresh).to_list()
 var gaps = List.filled(small.len + 1, 0)
 var before = 0
 for v in a:
