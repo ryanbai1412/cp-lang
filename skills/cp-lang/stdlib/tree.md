@@ -218,7 +218,7 @@ Fields: `deep: [V]?V`, `height: [V]Int`, `pos: [V]L`.
 
 Lowest common ancestors in O(1) after O(n log n) preprocessing, by a sparse table over the Euler tour: for many queries on a fixed tree when `Rooted.lca` is the bottleneck.
 
-Fields: `first: [V]Int`, `far: [V]Int`.
+Fields: `n: Int`, `pos: [V]Int`, `par: [V]?V`, `dep: [V]Int`, `far: [V]Int`, `tab: List<V>`.
 
 - `fn new<Pre>(t: Rooted<V, Pre>) -> LcaTable<V>` — O(n log n) time and memory; A sparse table over the Euler walk of `t`, for O(1) lowest common ancestors on a fixed tree.
 - `fn lca(self, a: V, b: V) -> V` — O(1); The lowest common ancestor of `a` and `b`.; traps: when `a` and `b` are in different trees

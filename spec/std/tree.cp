@@ -15,7 +15,7 @@ use std.dp.{Step}
 use std.algebra.{Monoid, MaxSub, Action}
 use std.segtree.{SegTree}
 use std.algebra.{add}
-use std.seq.{dedup}
+use std.seq.{dedup, first_true}
 use std.rand.{Rng}
 use std.dsu.{Dsu}
 
@@ -653,7 +653,20 @@ pub struct Rooted<V, Pre>:
     /// cost: O(log² n) calls of `pred`
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.jump_while(3, v => v != 0) == Some(1) and t.jump_while(3, v => v == 0) == None`
-    pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V = todo
+    pub fn jump_while(self, v: V, pred: V -> Bool) -> ?V:
+        if not pred(v): return None
+        var cur = v
+        while true:
+            let h = top[cur]
+            if pred(h):
+                if let p = par[h]:
+                    if pred(p):
+                        cur = p
+                        continue
+                return Some(h)
+            let i = (tin[h].to_idx + 1..=tin[cur].to_idx).first_true(i => pred(at[Pre.nth(i)]))!
+            return Some(at[Pre.nth(i)])
+        None
 
     /// The path from `a` to `b` as O(log n) heavy-chain ranges of `t.Pre`, in path order. A
     /// `rising` range is walked from its high end to its low end. With `edges`, the highest vertex
@@ -2629,29 +2642,59 @@ pub struct LongPaths<V, L>:
 /// Lowest common ancestors in O(1) after O(n log n) preprocessing, by a sparse table over the
 /// Euler tour: for many queries on a fixed tree when `Rooted.lca` is the bottleneck.
 pub struct LcaTable<V>:
-    first: [V]Int
+    n: Int
+    pos: [V]Int
+    par: [V]?V
+    dep: [V]Int
     far: [V]Int
+    /// Level `k` at `k * n`: the shallowest vertex of preorder positions `i..i + 2^k`.
+    tab: List<V>
 
     /// A sparse table over the Euler walk of `t`, for O(1) lowest common ancestors on a fixed tree.
     ///
     /// cost: O(n log n) time and memory
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lt = LcaTable(t); lt.lca(3, 4) == 1`
-    pub fn new<Pre>(t: Rooted<V, Pre>) -> LcaTable<V> = todo
+    pub fn new<Pre>(t: Rooted<V, Pre>) -> LcaTable<V>:
+        let n = V.count
+        let at = t.reorder([V] v => v)
+        var far: [V]Int = 0
+        var tab: List<V> = []
+        for p in Pre:
+            let v = at[p]
+            if let u = t.parent(v): far[v] = far[u] + t.w(v)
+            tab.push(v)
+        let dep = [V] v => t.depth(v)
+        var w = 1
+        var off = 0
+        while 2 * w <= n:
+            for i in 0..n:
+                if i + w < n:
+                    let (x, y) = (tab[off + i], tab[off + i + w])
+                    tab.push(if dep[y] < dep[x]: y else: x)
+                else: tab.push(tab[off + i])
+            off += n
+            w *= 2
+        LcaTable<V>(n, [V] v => t.pos(v).to_idx, [V] v => t.parent(v), dep, far, tab)
 
     /// The lowest common ancestor of `a` and `b`.
     ///
     /// cost: O(1)
     /// traps: when `a` and `b` are in different trees
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lt = LcaTable(t); lt.lca(3, 2) == 0 and lt.lca(4, 4) == 4`
-    pub fn lca(self, a: V, b: V) -> V = todo
+    pub fn lca(self, a: V, b: V) -> V:
+        if a == b: return a
+        let (i, j) = if pos[a] < pos[b]: (pos[a], pos[b]) else: (pos[b], pos[a])
+        let k = bit_width(j - i) - 1
+        let (x, y) = (tab[k * n + i + 1], tab[k * n + j + 1 - (1 << k)])
+        par[if dep[y] < dep[x]: y else: x]!
 
     /// The distance between `a` and `b`, weighted as the tree was built.
     ///
     /// cost: O(1)
     /// traps: when `a` and `b` are in different trees
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lt = LcaTable(t); lt.dist(3, 2) == 3`
-    pub fn dist(self, a: V, b: V) -> Int = todo
+    pub fn dist(self, a: V, b: V) -> Int = far[a] + far[b] - 2 * far[self.lca(a, b)]
 
 /// A forest that changes, with folds over whole trees and subtrees, by an Euler tour tree
 /// (a balanced sequence of each tree's tour). Where `LinkCut` folds paths, this folds

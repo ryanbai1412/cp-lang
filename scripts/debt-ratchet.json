@@ -20,7 +20,7 @@
     "crates/cpl-codegen/src/emit.rs": 2214,
     "crates/cpl-check/src/check/call.rs": 2012
   },
-  "stdlib_todo": 87,
+  "stdlib_todo": 83,
   "rust_ignore": 17,
   "pending_tests": 0,
   "edition_refs": 0,
