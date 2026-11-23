@@ -2,11 +2,12 @@
 // points, then id, and print each group's k-th team.
 let (n, m) = read<(1..=2_000, 1..=2_000)>()
 domain Team = 1..=n
+domain Group = 0..(n / m)
 enum Outcome:
     @tag("W") Win
     @tag("T") Tie
     @tag("L") Loss
-var groups = read<[n / m, m]Team>()
+let groups = read<[Group, m]Team>()
 var pts: [Team]Int = 0
 for g in read<[(m - 1) * n / 2](u: Team, v: Team, res: Outcome)>():
     match g.res:
@@ -16,6 +17,4 @@ for g in read<[(m - 1) * n / 2](u: Team, v: Team, res: Outcome)>():
             pts[g.u] += 1
             pts[g.v] += 1
 let k = read<1..=m>()
-for g in groups.keys.0:
-    groups[g].sort(by: t => (desc(pts[t]), t))
-print(groups.keys.0.map(g => groups[g, k - 1]))
+print(Group.map(g => groups[g].sorted(by: t => (desc(pts[t]), t))[k - 1]))
