@@ -205,11 +205,8 @@ impl<'a> Lowerer<'a> {
                         self.sorted_by(value, args, span)
                     };
                 }
-                ([], "min" | "max") if matches!(seq_ty, Some(Ty::ListView(..))) => {
-                    return self.min_max_reduce(name.text == "max", base, true, span);
-                }
                 ([], "min" | "max") if !matches!(seq_ty, Some(Ty::Set(_))) => {
-                    return self.min_max(name.text == "max", &[seq], span);
+                    return self.min_max_reduce(name.text == "max", base, true, span);
                 }
                 ([by_arg], "min" | "max")
                     if by_arg.name.as_ref().is_some_and(|n| n.text == "by") && !by_arg.mutable =>
