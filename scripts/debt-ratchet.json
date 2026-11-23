@@ -136,15 +136,15 @@
   "uncited_rules": 0,
   "register_rows_by_domain": {
     "compiler": 4,
-    "debugger": 33,
-    "diagnostics": 40,
+    "debugger": 31,
+    "diagnostics": 10,
     "idioms": 20,
     "infra": 15,
     "lint-fmt": 11,
     "perf": 8,
     "site": 17,
     "spec": 17,
-    "stdlib": 43,
+    "stdlib": 39,
     "tech-debt": 0,
     "tools": 38
   },

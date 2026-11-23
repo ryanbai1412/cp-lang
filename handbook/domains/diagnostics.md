@@ -200,7 +200,7 @@ with no real check yet. Targets and current values are in
 | The editor shows exactly what the CLI prints | files whose editor diagnostics differ | `errors/R12`: differential suite over every v0.3 file | `crates/cpl-lsp/src/tests/parity.rs`, `crates/cpl-cli/tests/lsp_parity.rs` |
 | The playground shows the same | differences | `errors/R12`: differential suite | `crates/cpl-wasm/tests/parity.rs` |
 | Neovim, VS Code and JetBrains show diagnostics and quick fixes on Linux, macOS and Windows | editor jobs failing | `errors/R12`: CI jobs | `.github/workflows/ci.yml` jobs `neovim`, `vscode`, `jetbrains` |
-| `cpl check`, `cpl run` and `cpl build` report the same errors | commands disagreeing | `errors/R12`: `missing` | — |
+| `cpl check`, `cpl run` and `cpl build` report the same errors | goldens whose errors differ between the three | `errors/R12`: differential suite over every failing diagnostics golden | `crates/cpl-cli/tests/command_parity.rs` |
 
 ### Robustness and speed
 
