@@ -1,0 +1,8 @@
+error[E0203]: a `Map<Int, Int>` has no method `has_key` that `cpl run` knows
+  --> map_has_key.cp:3:13
+  |
+3 | print(yes(m.has_key(1)))
+  |             ^^^^^^^
+  = help: did you mean `contains`?
+
+map_has_key.cp: 1 error

@@ -100,7 +100,7 @@ pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
         "append" | "push_back" | "add" => "push",
         "pop_back" => "pop",
         "size" | "length" => "len",
-        "contains_key" | "containsKey" | "has" | "includes" | "count_of" => "contains",
+        "contains_key" | "containsKey" | "has_key" | "has" | "includes" | "count_of" => "contains",
         "erase" | "discard" | "delete" => "remove",
         _ => return None,
     };
