@@ -225,6 +225,10 @@ fn wanted_space(prev: &Tok, prev_role: Role, next: &Tok, next_role: Role) -> boo
     if prev_role == Role::Glued {
         return prev.kind != K::Lt || next.space_before;
     }
+    // Written tight, so the next run reads the brackets as generic again.
+    if prev_role == Role::GenericOpen || next_role == Role::GenericClose {
+        return false;
+    }
     if prev_role == Role::ImportOpen || next_role == Role::ImportClose {
         return false;
     }

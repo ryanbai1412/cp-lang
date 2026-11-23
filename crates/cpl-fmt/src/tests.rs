@@ -295,6 +295,18 @@ fn never_fuses_two_tokens() {
 }
 
 #[test]
+fn a_generic_bracket_stays_tight_to_what_it_holds() {
+    for src in [
+        "var p = read<[V],>()\n",
+        "pub fn h<:>(a: T) -> U64:\n    a\n",
+        "let c = Comb<.>()\n",
+    ] {
+        let once = fmt(src);
+        assert_eq!(fmt(&once), once, "{src:?}");
+    }
+}
+
+#[test]
 fn refuses_a_file_the_lexer_cannot_read() {
     let err = format("let x = f(1, 2\nlet y = 3\n").unwrap_err();
     assert!(
