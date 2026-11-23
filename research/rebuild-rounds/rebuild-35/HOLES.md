@@ -17,7 +17,7 @@ cold commit). M1 = inside the Milestone 1 subset (`spec/SUBSET.md` row status
 | silent | 23 | 23 |
 | contradiction | 3 | 2 |
 | missing-stdlib | 1 | 1 |
-| found-late | TBD | TBD |
+| found-late | 3 | 1 |
 
 ## Problems
 
@@ -36,33 +36,34 @@ cold commit). M1 = inside the Milestone 1 subset (`spec/SUBSET.md` row status
 
 ## Silent holes (guess, and whether it held)
 
-"Held" is filled in after the tool runs.
+"Held" was filled in after the tool runs. 22 of 23 held; S10 held for `bfs`, `kruskal`,
+`prefix_function` and `Graph` but not for `bfs01` (F1).
 
 | id | Problem | Guess | M1 section | Held |
 |---|---|---|---|---|
-| S1 | 01 | `Counter<Int>(0)` is the `Track` for `maximal`; `c.len` is the distinct count (spec writes `Counter<C>(0)`, std `new(init:)`) | std-hashmap / std-window | TBD |
-| S2 | 01,02,05,09,10 | `read<[n]T>()` gives an array keyed `0..n` by `Int`: `p[0]`, `p[1..]`, `pt[i].x` | R10.2, R04.2 | TBD |
-| S3 | 02 | `[0..=e, 0..2]?Int` is indexed `dp[u, q]` with plain `Int`s and `dp[e]` is a row view with `.present()` | R04.2 | TBD |
-| S4 | 02,05 | `x min= y` with `x: ?Int` and `y: Int` (rhs not optional) | R02.4 | TBD |
-| S5 | 03 | a nested fn may mutate a top-level `var` it captures (`used += 1`) | R06.2, R05.10 | TBD |
-| S6 | 03 | `print("?", xs)` prints a `List<Int>` space-joined after the string | R10.3 | TBD |
-| S7 | 03 | `read()` as the tail of a fn takes its type from the declared return type | R10.2, R02.10 | TBD |
-| S8 | 04 | `read<[m](u: V, v: V)>()` has a count domain good enough for `Graph.undirected`'s `E: Domain` | R10.2, std-graph | TBD |
-| S9 | 04,10 | printing `V` positions (and a list of them) prints their values, 1-based | R10.3 | TBD |
-| S10 | 04,06,08,10 | `bfs`, `bfs01`, `kruskal`, `prefix_function`, `Graph` need no `use` | R10.1 | TBD |
-| S11 | 06 | `w + "#" + res[a..]` builds a new `Str` (slice on the right); `res.push(c)` appends a `Char` | R02.3 | TBD |
-| S12 | 06 | `prefix_function(key)[key.len - 1]` indexes by `Int` | std-strings | TBD |
-| S13 | 07 | `SegTree<Pos, Bal>(Monoid(id: x, op: f))` with no `a`/`fill` holds the identity; `t[i] = v`; `t.all` | std-segtree | TBD |
-| S14 | 07 | inline `if a: x elif b: y else: z` is an expression | R01.7 | TBD |
-| S15 | 07 | `cur.prev ?? cur` and `cur.next!` on a domain position | R04.3 | TBD |
-| S16 | 08 | a `-> yields (to: (R, C), w: Int)` fn is a `WeightedNext` for `bfs01`; the vertex type comes from `from:` | std-graph, R06.3 | TBD |
-| S17 | 08 | `.up/.down/.left/.right` on an `(R, C)` tuple give `?(R, C)`; `lefts[(r, c)]` reads `Paths` | std-grid | TBD |
-| S18 | 08 | `let r0: R = read()` reads a position by its value | R10.2 | TBD |
-| S19 | 08 | `for (q, w) in [(p.up, 0), ...]` destructures a list of `(?(R, C), Int)` | R01.7 | TBD |
-| S20 | 09 | `F64(Int)` converts; `print(v, precision: 9)` prints 9 decimals; `repeat k:` loops | R10.3, R02.11 | TBD |
-| S21 | 09 | `st.pop()` returns `?T`; `st.last!.sum` | R02.8 | TBD |
-| S22 | 10 | `abs` is a free fn on `Int` (not found in root std by name) | R02.2 | TBD |
-| S23 | 10 | `[E] e => es[e.ord]` turns a `List` into `[E]` (copied from a conformance case under `spec/`); `mst.take[e]` | R02.8, std-graph | TBD |
+| S1 | 01 | `Counter<Int>(0)` is the `Track` for `maximal`; `c.len` is the distinct count (spec writes `Counter<C>(0)`, std `new(init:)`) | std-hashmap / std-window | yes |
+| S2 | 01,02,05,09,10 | `read<[n]T>()` gives an array keyed `0..n` by `Int`: `p[0]`, `p[1..]`, `pt[i].x` | R10.2, R04.2 | yes |
+| S3 | 02 | `[0..=e, 0..2]?Int` is indexed `dp[u, q]` with plain `Int`s and `dp[e]` is a row view with `.present()` | R04.2 | yes |
+| S4 | 02,05 | `x min= y` with `x: ?Int` and `y: Int` (rhs not optional) | R02.4 | yes |
+| S5 | 03 | a nested fn may mutate a top-level `var` it captures (`used += 1`) | R06.2, R05.10 | yes |
+| S6 | 03 | `print("?", xs)` prints a `List<Int>` space-joined after the string | R10.3 | yes |
+| S7 | 03 | `read()` as the tail of a fn takes its type from the declared return type | R10.2, R02.10 | yes |
+| S8 | 04 | `read<[m](u: V, v: V)>()` has a count domain good enough for `Graph.undirected`'s `E: Domain` | R10.2, std-graph | yes |
+| S9 | 04,10 | printing `V` positions (and a list of them) prints their values, 1-based | R10.3 | yes |
+| S10 | 04,06,08,10 | `bfs`, `bfs01`, `kruskal`, `prefix_function`, `Graph` need no `use` | R10.1 | no: `bfs01` needs `use std.graph.{bfs01}` (F1) |
+| S11 | 06 | `w + "#" + res[a..]` builds a new `Str` (slice on the right); `res.push(c)` appends a `Char` | R02.3 | yes |
+| S12 | 06 | `prefix_function(key)[key.len - 1]` indexes by `Int` | std-strings | yes |
+| S13 | 07 | `SegTree<Pos, Bal>(Monoid(id: x, op: f))` with no `a`/`fill` holds the identity; `t[i] = v`; `t.all` | std-segtree | yes |
+| S14 | 07 | inline `if a: x elif b: y else: z` is an expression | R01.7 | yes |
+| S15 | 07 | `cur.prev ?? cur` and `cur.next!` on a domain position | R04.3 | yes |
+| S16 | 08 | a `-> yields (to: (R, C), w: Int)` fn is a `WeightedNext` for `bfs01`; the vertex type comes from `from:` | std-graph, R06.3 | yes |
+| S17 | 08 | `.up/.down/.left/.right` on an `(R, C)` tuple give `?(R, C)`; `lefts[(r, c)]` reads `Paths` | std-grid | yes |
+| S18 | 08 | `let r0: R = read()` reads a position by its value | R10.2 | yes |
+| S19 | 08 | `for (q, w) in [(p.up, 0), ...]` destructures a list of `(?(R, C), Int)` | R01.7 | yes |
+| S20 | 09 | `F64(Int)` converts; `print(v, precision: 9)` prints 9 decimals; `repeat k:` loops | R10.3, R02.11 | yes |
+| S21 | 09 | `st.pop()` returns `?T`; `st.last!.sum` | R02.8 | yes |
+| S22 | 10 | `abs` is a free fn on `Int` (not found in root std by name) | R02.2 | yes |
+| S23 | 10 | `[E] e => es[e.ord]` turns a `List` into `[E]` (copied from a conformance case under `spec/`); `mst.take[e]` | R02.8, std-graph | yes |
 
 ## Contradictions
 
@@ -80,7 +81,41 @@ cold commit). M1 = inside the Milestone 1 subset (`spec/SUBSET.md` row status
 
 ## Found-late
 
-Filled in after the cold commit.
+| id | Problem | Tool | What, with a minimal repro | Workaround | M1 | Known gap in SUBSET.md |
+|---|---|---|---|---|---|---|
+| F1 | 08 | `cpl check` | `bfs01` is not in the prelude while its siblings `bfs`, `dijkstra`, `kruskal` are (`std/prelude.cp` `use std.graph.{...}`). Repro: `domain V = 0..1` / `let p = bfs01((v: V) => [(to: v, w: 0)], from: [V(0)])` gives E0201 "no `bfs01` in scope". The diagnostic names the fix | added `use std.graph.{bfs01}` | yes (R11.3 prelude, std-graph) | no |
+| E1 | all | `cpl explain` | phantom entries at `1:1`: `explicit copy -> std::vector<Char>, O(n), owned` and `reverse view -> cpl::ListView<Char>` on 8 of 12 files (all but 02, 02-rev, 03, 05). Repro: `var xs: List<Int> = []` / `xs.push(1)` / `print(xs)`. A reader hunting copies in loops cannot tell whether it is theirs | none needed (ignored) | no (no `explain` row in SUBSET.md) | no |
+| E2 | 02 | `cpl explain` | a `let` whose type is inferred from a fold shows as `_  on the heap, as large as it grows`, and a table sized by it says "no bound on the count". Repro: `let a = read<[3]Int>()` / `let k = 1 - a.count(x => x > 0)` / `print(k)`: `k  _  on the heap` | none needed | no (no `explain` row) | no |
+
+No other tool needed a workaround: every file checked, passed its samples under `cpl test`
+(with the `verify/` checkers for 04, 09, 10 and `verify/inter03.py` as `--interactor` for 03; `verify/rt.py` is the random harness), built with
+`cpl build` + `g++ -O2`, and passed the sanitizer build.
+
+## Verification
+
+| File | check | samples (`cpl test`, native, ASan) | random vs brute (interp, native, ASan; interp == native) | max-size native |
+|---|---|---|---|---|
+| 01-1198A | ok | 3/3 ×3 | 200/200 | n = 4e5: 0.04 s |
+| 01-1198A-rev | ok | none (new requirement) | 200/200 | |
+| 02-1286A | ok | 2/2 ×3 | 200/200 (permutation brute) | |
+| 02-1286A-rev | ok | none (new requirement) | 200/200 (circular brute) | |
+| 03-1207E | ok | 3/3 via `--interactor` | 200/200 via `cpl test --interactor` on the interpreter, `--fast` native and `--fast` ASan; the interactor rejects a 3rd query or a non-distinct list | |
+| 04-1176E | ok | 1/1 ×3 (checker) | 200/200 (checker: dominating, at most n/2) | t = 1e5 tests: 0.04 s |
+| 05-1114C | ok | 4/4 ×3 | 200/200 (exact factorial for n ≤ 60, Python big ints to 1e18) | 0.00 s |
+| 06-1200E | ok | 2/2 ×3 | 200/200 | 1e5 words: 0.01 s |
+| 07-1263E | ok | 2/2 ×3 | 200/200 (O(n²) simulation) | n = 1e6: 0.08 s |
+| 08-1063B | ok after F1 | 2/2 ×3 | 200/200 (BFS over (cell, lefts, rights)) | 2000×2000: 0.44 s |
+| 09-1299C | ok | 3/3 ×3 (1e-9 checker) | 200/200 (exact fractions) | n = 1e6: 0.35 s |
+| 10-1245D | ok | 2/2 ×3 (checker) | 200/200 (Prim total + structural checker) | n = 2000 (2e6 edges): 0.57 s, 110 MB |
+
+Sanitizers: `g++ -std=c++17 -O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG`, every
+sample and every random input, no reports.
+
+`cpl explain`, heap copies in loops: none. The loop copies it lists are plain values
+(07 `t[cur]` a 24-byte `Bal`, 09 `st.pop()!` a 16-byte record); 02's `dp = next` is a move
+(not listed); 06's `w + "#" + res[a..]` is listed as one `O(n + m)` concat per word, bounded
+by twice the word length (the slice is a view). 01 and 08/10 copy a result once outside any
+loop. E1/E2 are explain's own errors.
 
 ## Revision test
 
