@@ -983,9 +983,13 @@ pub struct WaveletMatrix<D>:
 pub struct DynamicOrderTree<D, T>:
     n: Int
     val: List<T> = []
+    // `bit[j]` for `j >= 1` holds the values at positions `j - (j & -j)..j`; `bit[0]` holds
+    // every value, the candidates `kth` searches.
     bit: List<SortedBag<T>> = []
 
     fn bump(mut self, i: Int, x: T, put: Bool):
+        if put: bit[0].add(x)
+        else: bit[0].remove(x)
         var j = i + 1
         while j <= n:
             if put: bit[j].add(x)
@@ -1058,13 +1062,21 @@ pub struct DynamicOrderTree<D, T>:
     /// The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when
     /// `k >= r.len`.
     ///
-    /// cost: O(log^2 |D|)
+    /// cost: O(log^3 |D|): a binary search over all stored values, counting each in `r`
     /// empty: `None`
     /// ties: equal values are counted once each
     /// traps: when `k < 0`, or a non-empty `r` reaches outside `D`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 1) == Some(3)`
     /// example: `DynamicOrderTree([3, 1, 4]).kth(0..3, 3) == None`
-    pub fn kth(self, r: Range<D>, k: Int) -> ?T = todo
+    pub fn kth(self, r: Range<D>, k: Int) -> ?T:
+        assert k >= 0, "`kth` takes `k >= 0`"
+        if k >= r.len: return None
+        var (lo, hi) = (0, bit[0].len - 1)
+        while lo < hi:
+            let mid = (lo + hi) / 2
+            if self.span_count(r, bit[0].nth(mid)!, true) > k: hi = mid
+            else: lo = mid + 1
+        bit[0].nth(lo)
 
 /// O(q log |D|) space. Mergeable min-ordered set over domain `D` for lazily pruned
 /// minimum-alive queries (`MergeSeg.singleton`, `merge`, `first_alive`).
