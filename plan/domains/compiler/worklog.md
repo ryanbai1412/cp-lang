@@ -492,3 +492,4 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 ### Request from spec (2026-11-23): `V.cuts` is a domain, so `V.cuts.range` works
 
 `V.cuts.range` is E0203 "a `Range<V.cuts>` has no member `range`": `V.cuts` is typed as a range value, not the domain R04.2.5 says. Spec example `04-indices.md` (Methods, `V.cuts.range.last_true(...)`) hits it. Case: `core-04/cuts-domain-has-range.cp`. General fix: `D.cuts` resolves to a domain everywhere a domain name does (`.range`, `[D.cuts]T`, `read<D.cuts>()`).
+- check: `read<"add" | "del">()` — a literal union names a type, so a lowercase fn's `<…>` takes it as type arguments instead of reading `read < "add" | "del" > ()` (spec case core-02/literal-union-read). General: `names_a_type` lists every TypeKind that is unambiguously a type; checked the rest (Value, Infer, Fn) are not.
