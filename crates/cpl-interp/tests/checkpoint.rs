@@ -88,11 +88,11 @@ const SEQ: &str = "fn total(a: List<Int>, d: Int) -> Int:
         s = (s * 7 + x + d) % 1000003
     return s
 var a: List<Int> = []
-for i in 0..3000:
+for i in 0..1000:
     a.push(i * 37 % 101)
 let word = \"abcabdacab\"
 var t = 0
-for w in [3, 1, 4, 1, 5]:
+for w in [3, 1, 4, 1, 5, 9, 2, 6, 5, 3, 5, 8, 9, 7, 9, 3, 2, 3, 8, 4, 6]:
     t = (t + total(a, w)) % 1000003
     for c in word:
         if c == 'a':
@@ -233,12 +233,17 @@ fn config(source: &str) -> TraceConfig {
     }
 }
 
-fn step_text(recording: &Recording, step: usize) -> String {
-    let step = recording.step(step).unwrap();
-    format!(
-        "{} {} {} {}",
-        step.line, step.label, step.stage, step.locals
-    )
+/// `got`'s steps are `want`'s from step `from` on, as far as both go.
+/// Walks both in order, which rebuilds each step from the one before.
+fn same_steps(got: &Recording, want: &Recording, from: usize, at: &str) {
+    let pairs = got.steps(0..got.len()).zip(want.steps(from..want.len()));
+    for (step, (got, want)) in pairs.enumerate() {
+        assert_eq!(
+            (got.line, got.label, got.stage, got.locals),
+            (want.line, want.label, want.stage, want.locals),
+            "step {step}, {at}"
+        );
+    }
 }
 
 #[test]
@@ -319,14 +324,12 @@ fn a_traced_run_from_a_checkpoint_records_the_whole_trace_from_there() {
                 part.len(),
                 whole.len()
             );
-            for step in 0..part.len() {
-                assert_eq!(
-                    step_text(&part, step),
-                    step_text(&whole, skip + step),
-                    "step {step} from tick {}: {source}",
-                    from.ticks
-                );
-            }
+            same_steps(
+                &part,
+                &whole,
+                skip,
+                &format!("from tick {}: {source}", from.ticks),
+            );
         }
     }
 }
@@ -375,13 +378,7 @@ fn the_tail_from_a_checkpoint_is_the_whole_runs_last_steps() {
         );
         let tail = tail.recording.unwrap();
         assert_eq!(tail.len(), whole.len(), "{steps} steps of {source}");
-        for step in 0..tail.len() {
-            assert_eq!(
-                step_text(&tail, step),
-                step_text(&whole, step),
-                "step {step} of {source}"
-            );
-        }
+        same_steps(&tail, &whole, 0, source);
     }
 }
 
@@ -443,13 +440,7 @@ fn a_window_from_a_checkpoint_is_the_whole_runs_window() {
             assert_eq!(replayed.skipped, whole.skipped, "{at}");
             assert_eq!(replayed.truncated, whole.truncated, "{at}");
             assert_eq!(replayed.len(), whole.len(), "{at}");
-            for step in 0..whole.len() {
-                assert_eq!(
-                    step_text(&replayed, step),
-                    step_text(&whole, step),
-                    "step {step} {at}"
-                );
-            }
+            same_steps(&replayed, &whole, 0, &at);
         }
     }
 }
@@ -594,13 +585,7 @@ fn a_windowed_trace_is_the_full_traces_window_and_the_whole_run() {
                 (whole.skipped, whole.truncated, whole.len()),
                 "{at}"
             );
-            for step in 0..whole.len() {
-                assert_eq!(
-                    step_text(&rec, step),
-                    step_text(&whole, step),
-                    "{at}, step {step}"
-                );
-            }
+            same_steps(&rec, &whole, 0, &at);
         }
     }
 }
@@ -663,13 +648,7 @@ fn a_window_from_step_n_is_the_whole_traces_steps_from_n() {
             let part = part.recording.unwrap();
             let at = format!("from {from} of {source}");
             assert_eq!(part.skipped, from.min(whole.len()), "{at}");
-            for step in 0..part.len().min(whole.len().saturating_sub(from)) {
-                assert_eq!(
-                    step_text(&part, step),
-                    step_text(&whole, from + step),
-                    "{at}, step {step}"
-                );
-            }
+            same_steps(&part, &whole, from, &at);
         }
     }
 }
