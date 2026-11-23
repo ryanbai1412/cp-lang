@@ -772,7 +772,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0405 Assigning a fixed field: 1 case(s)
 - E0406 Recursive `var` lambda: 1 case(s)
 - E0407 Duplicate enum variant tag: 1 case(s)
-- E0408 Assign into a range: 1 case(s)
+- E0408 assign_into_range *(0.3)*: 1 case(s)
 - E0501 Unsupported construct in backend: 9 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 11 case(s)
