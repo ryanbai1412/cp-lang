@@ -46,6 +46,7 @@ Contract tests run alongside all of it: each interface change adds or updates th
 | Two-core VM makes the full gate slow | `--fast` per commit; trains via `scripts/land.sh` |
 
 ## General fixes owed
+- Slice `max()` typed separately in checker (`catalog_ret`) and IR (`ListView` arm). General fix: IR takes a call's type from the checker instead of re-deriving it; and spec R07.9.3 says every `Seq.min/max` is `?T`, while List/Str rows still give the trapping `T` (decision at decisions.md ~3913). Align the rows with spec once corpus is migrated. Owner: compiler.
 - LSP call hierarchy resolves calls by name in cpl-lsp. General fix: the checker records each fn's resolved callees, one call graph for callHierarchy, dead-code lint and explain. Owner: compiler.
 - `cpl explain` whole-program peak memory, specializations and remaining checks need IR data. General fix: an IR-level explain query beside `Database::representation`. Owner: compiler.
 

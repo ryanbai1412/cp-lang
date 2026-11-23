@@ -7385,6 +7385,15 @@ impl<'a> Lowerer<'a> {
                         self.sorted_by(value, args, span)
                     };
                 }
+                // A slice can be empty, so its `max()` is `?T`, as the checker types it (R07.9.3).
+                ([], "min" | "max") if matches!(seq_ty, Some(Ty::ListView(..))) => {
+                    let kind = if name.text == "max" {
+                        Reduce::Max
+                    } else {
+                        Reduce::Min
+                    };
+                    return self.reduce_opt(kind, base, true, span);
+                }
                 ([], "min" | "max") if !matches!(seq_ty, Some(Ty::Set(_))) => {
                     return self.min_max(name.text == "max", &[seq], span);
                 }
