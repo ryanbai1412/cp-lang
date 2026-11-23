@@ -39,6 +39,14 @@ fn main() {
         records.push((fields[0].clone(), name, fields, dir));
     }
     records.sort();
+    for pair in records.windows(2) {
+        if pair[0].0 == pair[1].0 {
+            panic!(
+                "spec/lints/{} and spec/lints/{} both claim {}; run scripts/new-lint.py --next for a free code",
+                pair[0].1, pair[1].1, pair[0].0
+            );
+        }
+    }
     let mut out = String::new();
     for (code, name, fields, dir) in &records {
         let level = match fields[1].as_str() {
