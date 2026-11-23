@@ -70,7 +70,7 @@ fn package_dir(editor: &str) -> Option<PathBuf> {
             .filter(|v| !v.is_empty())
             .map(PathBuf::from)
     };
-    let home = var("HOME").or_else(|| var("USERPROFILE"));
+    let home = cpl_check::home_dir();
     let site = match editor {
         "vim" if cfg!(windows) => home?.join("vimfiles"),
         "vim" => home?.join(".vim"),
@@ -200,7 +200,7 @@ fn jetbrains_plugin_dirs() -> Vec<PathBuf> {
             .filter(|v| !v.is_empty())
             .map(PathBuf::from)
     };
-    let home = var("HOME").or_else(|| var("USERPROFILE"));
+    let home = cpl_check::home_dir();
     type PluginsDir = Box<dyn Fn(&str) -> Option<PathBuf>>;
     let (config, plugins): (Option<PathBuf>, PluginsDir) = if cfg!(windows) {
         let roaming = var("APPDATA").map(|d| d.join("JetBrains"));

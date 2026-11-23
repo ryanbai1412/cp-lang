@@ -86,17 +86,10 @@ pub fn crash_dir() -> PathBuf {
             return PathBuf::from(dir);
         }
     }
-    if let Some(home) = home_dir() {
+    if let Some(home) = cpl_check::home_dir() {
         return home.join(".cpl").join("crashes");
     }
     std::env::temp_dir().join("cpl-crashes")
-}
-
-fn home_dir() -> Option<PathBuf> {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .filter(|v| !v.is_empty())
-        .map(PathBuf::from)
 }
 
 /// Installs the global panic hook that saves `~/.cpl/crashes/<ts>/` and prints
@@ -860,7 +853,7 @@ impl Redactor {
                 paths.push((s, "<cwd>".to_string()));
             }
         }
-        if let Some(home) = home_dir() {
+        if let Some(home) = cpl_check::home_dir() {
             let s = home.to_string_lossy().into_owned();
             if s.len() > 1 {
                 paths.push((format!("{s}/"), String::new()));

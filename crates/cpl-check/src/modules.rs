@@ -145,7 +145,8 @@ fn nearest_std(module: &[String]) -> Option<String> {
 }
 
 /// `HOME`, or `USERPROFILE` on Windows, where `HOME` is usually unset.
-fn home_dir() -> Option<PathBuf> {
+/// The one home lookup: libraries, setup, toolchains, crash reports, caches.
+pub fn home_dir() -> Option<PathBuf> {
     let var = |name| std::env::var_os(name).filter(|v| !v.is_empty());
     var("HOME")
         .or_else(|| var("USERPROFILE"))

@@ -203,8 +203,7 @@ pub fn home() -> Option<PathBuf> {
     if let Some(home) = std::env::var_os("CPL_HOME").filter(|h| !h.is_empty()) {
         return Some(PathBuf::from(home));
     }
-    let user = std::env::var_os("HOME").or_else(|| std::env::var_os("USERPROFILE"))?;
-    Some(PathBuf::from(user).join(".cpl"))
+    Some(cpl_check::home_dir()?.join(".cpl"))
 }
 
 fn toolchain_dir(home: &Path, id: &str) -> PathBuf {

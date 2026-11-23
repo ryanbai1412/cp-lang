@@ -59,7 +59,7 @@ fn bundled_std_file(path: &str) -> Option<std::path::PathBuf> {
     let text = cpl_check::bundled_std(&module)?;
     let cache = std::env::var_os("XDG_CACHE_HOME")
         .map(std::path::PathBuf::from)
-        .or_else(|| std::env::var_os("HOME").map(|home| std::path::Path::new(&home).join(".cache")))
+        .or_else(|| cpl_check::home_dir().map(|home| home.join(".cache")))
         .unwrap_or_else(std::env::temp_dir);
     let file = cache
         .join("cpl")
