@@ -230,9 +230,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      # The publish scripts come from this workflow's commit (main's tip for a
+      # workflow_run), not the built one, so an older build can't publish with
+      # an older, delete-first publish.sh.
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ needs.plan.outputs.commit }}
       - uses: actions/download-artifact@v4
         with:
           path: dist
