@@ -111,7 +111,15 @@ pub fn run_one(db: &mut Database, prob: &CorpusProblem) -> CaseOutcome {
                 };
             }
         };
-        let run = runner::run_interp(&compiled.program, &path_str, &text, &input);
+        let run = match runner::run_interp_bounded(&compiled.program, &path_str, &text, &input) {
+            Ok(run) => run,
+            Err(detail) => {
+                return CaseOutcome {
+                    status: "error".into(),
+                    detail,
+                }
+            }
+        };
         if run.trap.is_some() {
             let first = runner::first_line_trimmed(&run.trap_rendered, 160);
             let status = if first.contains("`todo` reached") {
