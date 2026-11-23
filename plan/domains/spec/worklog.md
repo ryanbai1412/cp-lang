@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Spec-block runner reads markers above indented fences and strips the fence's indent from the body (CommonMark); lib/geometry's two programs fixed (`F64(1e9)` for a `Vec` bound, a parenthesized two-line condition). spec-blocks 43 -> 45/185 pass, errors 87 -> 78. Ratchet tests 8/8.
 - lib/ops-ranges: 4 std excerpts and solution fragments marked `spec-only`, 3 blocks given `a`/`d`; spec-blocks errors 91 -> 87, passes 43/185. The given blocks now fail on stdlib gaps (dual SegTree, named `each`, matrix `pow`), filed in stdlib/worklog.md.
 - spec/lib signature listings (35 fences in geometry, containers, strings, math, graphs-trees, flows) marked `spec-only`: spec-blocks errors 119 -> 91, skips 23 -> 51, passes stay 43/185. The 91 left are programs that should run.
 - core/05 quiz blocks run with `<!-- given: -->` setup: spec-blocks 36 -> 43/185 pass. 6 marked blocks still fail on real disagreements (3 compiler, 2 stdlib, in their worklogs); the rest of core/05's failures are error examples that need a given and a rejects at once (not supported yet).

@@ -433,8 +433,8 @@ else:
         for x in -64..=64:
             for y in -64..=64:
                 let c = Vec(F64(x) / 64.0, F64(y) / 64.0)
-                if fits(c, p1) and fits(c, p2) and fits(c, start)
-                    and fits(c, t0) and fits(c, t1): return c
+                if (fits(c, p1) and fits(c, p2) and fits(c, start)
+                    and fits(c, t0) and fits(c, t1)): return c
         p1
     let s = side()
     let a = draw(1, 2, s)
@@ -475,7 +475,7 @@ Classic ICPC / Library Checker task: given `n` directed half-planes inside
 use std.geometry.{Vec, HalfPlane, half_plane_intersect, polygon_area}
 
 let n: 1..=2e5 = read()
-let bound = 1e9
+let bound = F64(1e9)
 var planes: List<HalfPlane> = [
     HalfPlane.through(Vec(-bound, -bound), Vec(bound, -bound)),
     HalfPlane.through(Vec(bound, -bound), Vec(bound, bound)),
