@@ -7006,3 +7006,7 @@ true.
 Reason: the layout doc (decision 303); a cold agent finds a crate's job,
 its invariants and where its tests are without reading `lib.rs`.
 Reverse: delete the 11 files.
+
+## 317. Unix-only test setup is `#[cfg(unix)]`, so the tests compile on Windows (2026-11-22)
+
+The `os` workflow builds the workspace tests on Windows; the shell-script helpers in cpl-stress and cpl-contest set the exec bit only on unix, which grows `cpl-stress/src/tests.rs` past its ratchet cap by 1 line. Reverse: gate those test modules on unix instead.

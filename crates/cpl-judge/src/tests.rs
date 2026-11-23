@@ -282,6 +282,7 @@ fn a_flag_and_its_value_or_a_whole_archive_span_are_kept_together() {
 }
 
 #[test]
+#[cfg(unix)] // the fake compiler is a shell script
 fn a_yes_from_the_probe_is_kept_across_processes_and_a_no_is_not() {
     use std::os::unix::fs::PermissionsExt;
     let root = dir("probe-memo", None);

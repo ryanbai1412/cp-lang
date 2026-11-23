@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- First `os` run: Windows failed to compile the tests (`std::os::unix` in cpl-judge, cpl-contest, cpl-stress tests). The unix-only probe test is `#[cfg(unix)]`, and the shell-script helpers set the exec bit only on unix.
 - Sheriff: two script-test reds of my own: 4b2c1959d's land.sh checks ran `scripts/debt-ratchet.py` in test repos without it (now skipped when absent). The clippy stage excluded `editors/*`, which tools' 6b97eec5e now `include_str!`s (`cpl setup`'s Neovim files); `editors/neovim/` and the tree-sitter queries are inputs again.
 - `release` and `site` shared one concurrency group with the workflow_run triggers of cancelled or failed ci runs, so those (most ci runs under load) displaced a waiting dispatch or green-ci release. They now get a group of their own. Milestone 1 now includes JetBrains; README updated.
 - Milestone 1, three OSes: release `install-smoke` runs the sh installer on clean Linux and macOS runners and the PowerShell one on Windows after each publish, then checks `cpl --version` names the commit, `cpl run` (LF and CRLF) and `cpl build`. New `os` workflow runs the workspace tests with GCC on macos-latest and windows-latest, separate from `ci` so it doesn't delay ci's result or edge. `GITHUB_ADMIN_TOKEN` dispatches workflows now (204).
