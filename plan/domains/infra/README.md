@@ -1,6 +1,6 @@
 # infra
 
-Segment: A. Service. Owns: CI and workflows (`.github/`), the gate (`scripts/check.sh`, `check_cache.py`, `cxx-cache.py`), landing (`scripts/land.sh`, rebase and push) and the sheriff duty of keeping main green, hooks (`.githooks/`), `scripts/` machinery, `justfile`, `mise.toml`, setup docs, the release pipeline (`release.yml`, `scripts/release/`), installers (`web/public/install.{sh,ps1}`), the site deploy workflow (`site.yml`), public-repo hygiene. Status 2026-11-22: warm gate 3.7 s unchanged / 77 s after a one-line crate edit; CI red; 0 releases; site deploy blocked on Actions secrets.
+Segment: A. Service. Owns: CI and workflows (`.github/`), the gate (`scripts/check.sh`, `check_cache.py`, `cxx-cache.py`), landing (`scripts/land.sh`, rebase and push) and the sheriff duty of keeping main green, hooks (`.githooks/`), `scripts/` machinery, `justfile`, `mise.toml`, setup docs, the release pipeline (`release.yml`, `scripts/release/`), installers (`web/public/install.{sh,ps1}`), the site deploy workflow (`site.yml`), public-repo hygiene. Status 2026-11-22: commit tier under 25 s; CI green on main (run 45111468382); site deploys from every green main CI run (first deploy 04:28Z, 72ef82a1); edge releases from green main CI at most hourly, stable from `v*` tags.
 
 Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · numbers: [metrics.toml](metrics.toml) · log: [worklog.md](worklog.md) · gate design: [design/gate-tiers.md](design/gate-tiers.md)
 

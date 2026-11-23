@@ -3,6 +3,8 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Correction: the site deploy is not blocked on a Cloudflare token; `site.yml` deployed from green CI at 04:28Z (72ef82a1). Earlier entries saying otherwise were wrong.
+- release.yml now runs after every green main CI run (skipped if `edge` was published under an hour ago) and on `v*` tag pushes (stable; the tag must be v<workspace version>). No release had ever been published: the nightly cron never fired and nobody dispatched it.
 - Sheriff: run 45111951302 (72ef82a16) red on stale COVERAGE.md and corpus `span` from stdlib aeccc9b9a (stdlib reverted it in 3b4557519). Regenerated COVERAGE.md.
 - Sheriff: prelude-gaps.txt stale after tech-debt ab626a6ef (choose2); regenerated with `conformance-prelude.py --update`.
 - Sheriff: run 45108912223 (bb4b92621) passed conform and all 4 test shards. Checks failed only on stale COVERAGE.md from stdlib direct pushes; regenerated.
