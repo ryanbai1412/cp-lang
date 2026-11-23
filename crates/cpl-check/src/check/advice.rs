@@ -108,6 +108,17 @@ impl Checker<'_> {
                 ),
                 _ => return,
             },
+            ("Float" | "Double", [x]) => (
+                format!("F64({})", self.text(x.value.span)),
+                "a conversion is named by its type",
+            ),
+            ("to_float" | "toFloat" | "toDouble", []) => match &callee.kind {
+                ExprKind::Field { base, .. } if simple(self.text(base.span)) => (
+                    format!("F64({})", self.text(base.span)),
+                    "a conversion is named by its type",
+                ),
+                _ => return,
+            },
             ("pow", [a, b]) => (
                 format!("{} ** {}", operand(self, a), operand(self, b)),
                 "power is the operator `**`",

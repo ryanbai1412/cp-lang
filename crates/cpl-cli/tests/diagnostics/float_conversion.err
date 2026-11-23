@@ -1,0 +1,8 @@
+error[E0201]: no `Float` in scope, and not in the stdlib (yet)
+  --> float_conversion.cp:2:7
+  |
+2 | print(Float(x) / 2.0)
+  |       ^^^^^
+  = help: a conversion is named by its type in CP Lang: `F64(x)`
+
+float_conversion.cp: 1 error

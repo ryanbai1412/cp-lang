@@ -1,0 +1,8 @@
+error[E0203]: Int has no `toDouble` in the spec: no std module declares it
+  --> to_double_conversion.cp:2:9
+  |
+2 | print(x.toDouble() / 2.0)
+  |         ^^^^^^^^
+  = help: a conversion is named by its type in CP Lang: `F64(x)`
+
+to_double_conversion.cp: 1 error
