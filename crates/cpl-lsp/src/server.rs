@@ -16,9 +16,11 @@ use diagnostics::lint_config;
 use diagnostics::lints;
 use std::collections::{BTreeMap, HashMap};
 use std::panic::{catch_unwind, AssertUnwindSafe};
-use std::sync::{Arc, OnceLock};
+use std::sync::Arc;
 
 mod diagnostics;
+mod proven;
+use proven::Proven;
 
 const METHOD_NOT_FOUND: i32 = -32601;
 const INVALID_PARAMS: i32 = -32602;
@@ -1960,87 +1962,5 @@ fn panic_text(panic: &(dyn std::any::Any + Send)) -> String {
         text.clone()
     } else {
         "unknown panic".to_string()
-    }
-}
-
-/// The bounds prover's results on one revision of a file, each computed on first use.
-struct Proven {
-    analysis: Arc<cpl_check::Analysis>,
-    ranges: OnceLock<Vec<(u32, i128, i128)>>,
-    sizes: OnceLock<Vec<cpl_lint::ProvenSize>>,
-    domains: OnceLock<Vec<(String, u128)>>,
-    fns: OnceLock<Vec<cpl_lint::ProvenFn>>,
-    loops: OnceLock<Vec<cpl_lint::ProvenLoop>>,
-    indexes: OnceLock<Vec<cpl_lint::ProvenIndex>>,
-    exprs: OnceLock<Vec<cpl_lint::ProvenExpr>>,
-}
-
-impl Proven {
-    fn new(analysis: Arc<cpl_check::Analysis>) -> Proven {
-        Proven {
-            analysis,
-            ranges: OnceLock::new(),
-            sizes: OnceLock::new(),
-            domains: OnceLock::new(),
-            fns: OnceLock::new(),
-            loops: OnceLock::new(),
-            indexes: OnceLock::new(),
-            exprs: OnceLock::new(),
-        }
-    }
-
-    fn text(&self) -> &str {
-        &self.analysis.text
-    }
-
-    fn with_items<T: Default>(
-        &self,
-        f: impl FnOnce(&str, &[(u32, &cpl_syntax::ParsedItem)]) -> T,
-    ) -> T {
-        if self.analysis.has_syntax_errors {
-            return T::default();
-        }
-        let items: Vec<(u32, &cpl_syntax::ParsedItem)> = self
-            .analysis
-            .items
-            .iter()
-            .map(|i| (i.offset, &i.syntax.parsed))
-            .collect();
-        f(&self.analysis.text, &items)
-    }
-
-    fn ranges(&self) -> &[(u32, i128, i128)] {
-        self.ranges
-            .get_or_init(|| self.with_items(cpl_lint::proven_ranges_parsed))
-    }
-
-    fn sizes(&self) -> &[cpl_lint::ProvenSize] {
-        self.sizes
-            .get_or_init(|| self.with_items(cpl_lint::proven_sizes_parsed))
-    }
-
-    fn domains(&self) -> &[(String, u128)] {
-        self.domains
-            .get_or_init(|| self.with_items(cpl_lint::domain_sizes_parsed))
-    }
-
-    fn fns(&self) -> &[cpl_lint::ProvenFn] {
-        self.fns
-            .get_or_init(|| self.with_items(cpl_lint::proven_fns_parsed))
-    }
-
-    fn loops(&self) -> &[cpl_lint::ProvenLoop] {
-        self.loops
-            .get_or_init(|| self.with_items(cpl_lint::proven_loops_parsed))
-    }
-
-    fn indexes(&self) -> &[cpl_lint::ProvenIndex] {
-        self.indexes
-            .get_or_init(|| self.with_items(cpl_lint::proven_indexes_parsed))
-    }
-
-    fn exprs(&self) -> &[cpl_lint::ProvenExpr] {
-        self.exprs
-            .get_or_init(|| self.with_items(cpl_lint::proven_expr_ranges_parsed))
     }
 }

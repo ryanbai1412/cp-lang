@@ -19,7 +19,6 @@
     "crates/cpl-interp/src/trace.rs": 2396,
     "crates/cpl-lint/src/tests.rs": 2384,
     "crates/cpl-codegen/src/emit.rs": 2214,
-    "crates/cpl-lsp/src/server.rs": 2046,
     "crates/cpl-check/src/check/call.rs": 2032
   },
   "stdlib_todo": 96,
