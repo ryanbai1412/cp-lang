@@ -887,6 +887,16 @@ impl<'a> Parser<'a> {
                     &format!("`=` and a value, or `: Type`, after the name in `{word}`"),
                     None,
                 );
+            } else {
+                let word = if mutable { "var" } else { "let" };
+                let span = self.span_from(stmt_start);
+                self.error(Diagnostic::error(
+                    codes::EXPECTED_TOKEN,
+                    span,
+                    format!(
+                        "`{word}` with a type and no value: write `=` and the value it starts with (R01.10.2)"
+                    ),
+                ));
             }
             None
         };

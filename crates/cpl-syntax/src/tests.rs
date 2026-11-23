@@ -1477,7 +1477,7 @@ let total = a +
     assert_eq!(stmts(same_indent).len(), 1);
 
     // `>` closes generic types, so it does not continue a line.
-    let gen_src = "var xs: List<Int>\n    let bad = 1\n";
+    let gen_src = "var xs: List<Int> = []\n    let bad = 1\n";
     assert_eq!(codes(gen_src), vec!["E0006"]);
 
     // Breaking *before* a binary operator in a condition gives a clear hint.
