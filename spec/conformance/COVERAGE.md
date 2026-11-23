@@ -7,17 +7,17 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2249 (995 passing). Rules: 531.
+Cases: 2252 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 104 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 102 cases; 0 uncovered, 7 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 24 rules, 58 cases; 0 uncovered, 6 happy-path only, 1 negative only
+- R03 (03-numbers-layout.md): 24 rules, 59 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R04 (04-indices.md): 61 rules, 89 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 144 cases; 0 uncovered, 3 happy-path only, 2 negative only
+- R05 (05-ownership.md): 43 rules, 145 cases; 0 uncovered, 3 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 75 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R07 (07-sequences.md): 88 rules, 110 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 76 cases; 0 uncovered, 2 happy-path only, 1 negative only
@@ -37,11 +37,11 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 |---|---|---|---|---|---|
 | R01 | 50 | 50 (100%) | 28 | 26 (92%) | 48 (96%) |
 | R02 | 51 | 51 (100%) | 29 | 22 (75%) | 44 (86%) |
-| R03 | 24 | 23 (95%) | 17 | 11 (64%) | 17 (70%) |
+| R03 | 24 | 24 (100%) | 17 | 11 (64%) | 18 (75%) |
 | R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
 | R04a | 39 | 39 (100%) | 4 | 3 (75%) | 38 (97%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
-| R05 | 43 | 41 (95%) | 23 | 20 (86%) | 38 (88%) |
+| R05 | 43 | 43 (100%) | 23 | 20 (86%) | 40 (93%) |
 | R06 | 24 | 24 (100%) | 17 | 16 (94%) | 23 (95%) |
 | R07 | 88 | 88 (100%) | 24 | 22 (91%) | 86 (97%) |
 | R08 | 29 | 28 (96%) | 15 | 13 (86%) | 26 (89%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 531 | 526 (99%) | 225 | 190 (84%) | 491 (92%) |
+| all | 531 | 529 (99%) | 225 | 190 (84%) | 494 (93%) |
 
 ## Rules
 
@@ -187,7 +187,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.3.3 [1+ 1-]: **Producing a spare value is an overflow.** `Int` arithmetic that lands on `INT64_MIN` tra...
 - R03.3.4 [1+ 1-]: **Reading input** rejects a value equal to a spare (`read<Int>` of `-9223372036854775808` ...
 - R03.4.1 [1+ 6-]: **The rule for every check.** On the judge only valid programs matter, so release optimize...
-- R03.4.2 [0+ 1-] *negative only*: Proofs are intraprocedural interval arithmetic on `let`s and declared ranges (already deci...
+- R03.4.2 [1+ 1-]: Proofs are intraprocedural interval arithmetic on `let`s and declared ranges (already deci...
 - R03.5.1 [3+ 3-]: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
 
 ### R04: 04-indices.md
@@ -365,10 +365,10 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.10.6 [1+ 1-]: **Spelling differences only.** A nested `fn` can take explicit type parameters (`fn go<T>(...
 - R05.10.7 [1+ 0-]: **`return`** inside a lambda returns from the lambda. (Non-local exit from closures is def...
 - R05.10.8 [2+ 1-]: **`@memo`** fns may not capture a `var` they could see change.
-- R05.10.9 [0+ 1-] *negative only*: **C1. No lend escapes.** No `lends` result, projection or stored value borrows the field, ...
+- R05.10.9 [1+ 1-]: **C1. No lend escapes.** No `lends` result, projection or stored value borrows the field, ...
 - R05.10.10 [1+ 1-]: **C2. Only the struct's own methods write it.** Outside code can't, even through `mut`.
 - R05.10.11 [2+ 1-]: **C3. Inside the struct, a cache write is a `mut` access to the field.** A method walking ...
-- R05.10.12 [0+ 1-] *negative only*: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
+- R05.10.12 [1+ 1-]: **C4. No unknown calls while the field is lent.** A method holding a lend into the field m...
 - R05.10.13 [2+ 0-]: **C5. Derived `==`, `hash`, `Ord` and `print` skip `@cache` fields.** Otherwise `d1 == d2`...
 - R05.10.14 [1+ 0-] *happy-path only*: **P1. Cache writes change no answer.** Every sequence of public calls gives the same resul...
 
