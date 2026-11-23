@@ -138,14 +138,14 @@ class CplRunConfiguration(project: Project, factory: ConfigurationFactory, name:
         }
 }
 
-/** The test tree of a `cpl test` run: each case of `STEM.tests/`, a wrong answer as a diff. */
+/** The test tree of a `cpl test` run: each case of [Cpl.testsDir], a wrong answer as a diff. */
 class CplTestConsoleProperties(private val config: CplRunConfiguration, executor: Executor) :
     SMTRunnerConsoleProperties(config, "CP Lang", executor), SMCustomMessagesParsing {
     override fun getTestLocator() = FileUrlProvider.INSTANCE
 
     override fun createTestEventsConverter(name: String, properties: TestConsoleProperties): OutputToGeneralTestEventsConverter {
         val source = File(config.options.file ?: "").absoluteFile
-        return CplTestEventsConverter(name, properties, File(source.parentFile, source.nameWithoutExtension + ".tests"))
+        return CplTestEventsConverter(name, properties, Cpl.testsDir(source))
     }
 }
 

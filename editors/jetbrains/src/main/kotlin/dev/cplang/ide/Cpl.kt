@@ -124,6 +124,17 @@ object Cpl {
         return out
     }
 
+    /**
+     * The cases folder `cpl test FILE` reads, as `cpl-contest`'s `find_tests_dir`: `STEM.tests/` if it
+     * exists, else a sibling `tests/` (as in `corpus/problems/<id>/tests/`), else `STEM.tests/`.
+     */
+    fun testsDir(source: File): File {
+        val dir = source.absoluteFile.parentFile
+        val own = File(dir, source.nameWithoutExtension + ".tests")
+        val sibling = File(dir, "tests")
+        return if (!own.isDirectory && sibling.isDirectory) sibling else own
+    }
+
     fun traceArgs(file: String, fn: String?) =
         listOf("run", file, "--trace") + listOfNotNull(fn) + listOf("--format", "html")
 
@@ -132,15 +143,15 @@ object Cpl {
 
     /**
      * The sample inputs of `DIR/STEM.cp` in the order the VS Code extension shows them:
-     * scratch `i1`, `i2`, ... beside the file, then `STEM.tests/N.in`, then `STEM.samples/N.in`.
+     * scratch `i1`, `i2`, ... beside the file, then the cases (`STEM.tests/N.in`, see [testsDir]), then `STEM.samples/N.in`.
      */
     fun samples(source: File): List<File> {
         val dir = source.absoluteFile.parentFile ?: return emptyList()
         val stem = source.nameWithoutExtension
         val byNumber = compareBy<File>({ it.name.filter(Char::isDigit).toLongOrNull() ?: Long.MAX_VALUE }, { it.name })
         val scratch = dir.listFiles { f -> f.isFile && Regex("i\\d+").matches(f.name) }.orEmpty().sortedWith(byNumber)
-        val cases = listOf("$stem.tests", "$stem.samples").flatMap { sub ->
-            File(dir, sub).listFiles { f -> f.isFile && f.name.endsWith(".in") }.orEmpty().sortedWith(byNumber)
+        val cases = listOf(testsDir(source), File(dir, "$stem.samples")).flatMap { sub ->
+            sub.listFiles { f -> f.isFile && f.name.endsWith(".in") }.orEmpty().sortedWith(byNumber)
         }
         return scratch + cases
     }
