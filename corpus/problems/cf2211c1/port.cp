@@ -25,7 +25,7 @@ fn ok() -> Bool:
         for i in n - k..k:
             cnt[a[i]] += 1
             if let bi = b[i]: cnt[bi] -= 1
-        return all(v >= 0 for v in cnt)
+        return cnt.all(v => v >= 0)
     true
 
 print(if ok(): "YES" else: "NO")

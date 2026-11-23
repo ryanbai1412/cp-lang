@@ -29,6 +29,6 @@ for x in xs: tot /= x
 for (q, e) in tot_qs:
     let inv_q = Z(q).inv()
     let prob_no_q = inv_q ** e
-    let has_q = any(x % q == 0 for x in xs)
+    let has_q = xs.any(x => x % q == 0)
     tot *= prob_no_q + (1 - prob_no_q) * (if has_q: 0 else: inv_q)
 print(tot)

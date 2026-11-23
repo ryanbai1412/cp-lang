@@ -10,4 +10,4 @@ let n: 1..=200_000 = read()
 let a: [0..n]1..=10 ** 9 = read()
 let b: [0..n]1..=10 ** 9 = read()
 let pairs = [(min(x, y), max(x, y)) for (x, y) in zip(a, b)]
-print(sum(hi for (_, hi) in pairs) + max(lo for (lo, _) in pairs)!)
+print(sum(hi for (_, hi) in pairs) + pairs.map((lo, _) => lo).max()!)

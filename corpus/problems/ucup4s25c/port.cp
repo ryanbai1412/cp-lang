@@ -31,5 +31,5 @@ for u in V: rep[comp[u]] ??= u
 let roots = [u for c in C if let u = rep[c]]
 let dist = bfs(u => [v for v in adj[u] if comp[v] == comp[u]], roots)
 
-let bad = any(comp[u] == comp[v] and dist[v]! % 3 != (dist[u]! + 1) % 3 for (u, v) in edges)
+let bad = edges.any((u, v) => comp[u] == comp[v] and dist[v]! % 3 != (dist[u]! + 1) % 3)
 print(if bad: "yes" else: "no")

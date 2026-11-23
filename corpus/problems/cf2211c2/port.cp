@@ -31,4 +31,4 @@ for m in 0..k:
                 return
             cnt[bv] -= 1
 
-print(if all(c >= 0 for c in cnt): "YES" else: "NO")
+print(if cnt.all(c => c >= 0): "YES" else: "NO")

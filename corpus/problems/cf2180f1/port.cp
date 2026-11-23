@@ -10,8 +10,8 @@
 type Z = Mod<1_000_000_007>
 
 let q: [0..read(1..=10_000)](n: 1..=5000, m: 1..=5000) = read()
-domain I = 0..max(x.n for x in q)!
-domain J = 0..max(x.m for x in q)!
+domain I = 0..q.map(x => x.n).max()!
+domain J = 0..q.map(x => x.m).max()!
 
 // ways[j]: corner choices so far that bring the car into (i, j), split by
 // which of floor and wall are shut. Different corners decide the floor and
@@ -22,7 +22,7 @@ type Ways = (open: Z, walled: Z, shut: Z, boxed: Z)
 fn state(open: Z, shut: Z, floor: Int, wall: Int) -> Ways =
     (open * floor * wall, open * floor, shut * wall, shut)
 var ways: [J]Ways = (0, 0, 0, 0)
-ways[J.first] = state(1, 1, floor: 3, wall: 3)
+ways[J.first!] = state(1, 1, floor: 3, wall: 3)
 // A stop in (i, j) has chosen 2(i + j) + 3 corners.
 let weight = [(Z(1) / 4) ** (2 * d + 3) for d in 0..I.len + J.len]
 // stopped[i, j]: stops in rows ..=i and columns ..=j; column[j] its last row.
