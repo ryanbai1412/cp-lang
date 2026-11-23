@@ -23,7 +23,7 @@ Spec writes cases, never compiler code: a failing case goes to the owning domain
 ## Success criteria for v0.3
 
 1. Every rule that forbids, traps or limits has a reject case; every rule has an accept case unless it only forbids. (35 forbidding rules lack a reject case today; 40 rule gaps in all.)
-2. Every case cites a rule, a std item or a diagnostic code that exists. (0 bad cites, 11 rule-less core cases today.)
+2. Every case cites a rule, a std item or a diagnostic code that exists. (0 bad cites, 0 rule-less core cases today.)
 3. The feature x consumer matrix and the trait x claimer x method table have no empty cell (case or written n/a reason).
 4. Every spec code block is a case or is marked spec-only. (19 of 185 tagged blocks pass, most fail as fragments naming undefined values; 27 untagged blocks are skipped.)
 5. A cold agent rebuilding from `spec/` alone finds fewer than 5 holes. (Round 2 found 32.)

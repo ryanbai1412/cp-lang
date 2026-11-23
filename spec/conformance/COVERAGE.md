@@ -7,11 +7,11 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2255 (995 passing). Rules: 531.
+Cases: 2257 (995 passing). Rules: 533.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 50 rules, 104 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 51 rules, 109 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R02 (02-values-types.md): 51 rules, 104 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 60 cases; 0 uncovered, 5 happy-path only, 0 negative only
 - R04 (04-indices.md): 61 rules, 90 cases; 0 uncovered, 1 happy-path only, 0 negative only
@@ -22,7 +22,7 @@ Cases: 2255 (995 passing). Rules: 531.
 - R07 (07-sequences.md): 88 rules, 110 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 76 cases; 0 uncovered, 2 happy-path only, 1 negative only
 - R09 (09-contexts-checks.md): 25 rules, 51 cases; 0 uncovered, 5 happy-path only, 0 negative only
-- R10 (10-io.md): 16 rules, 67 cases; 0 uncovered, 1 happy-path only, 0 negative only
+- R10 (10-io.md): 17 rules, 69 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 15 rules, 30 cases; 0 uncovered, 1 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 2 happy-path only, 0 negative only
@@ -35,7 +35,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 
 | Chapter | Rules | Accept | Forbidding | Reject | Complete |
 |---|---|---|---|---|---|
-| R01 | 50 | 50 (100%) | 28 | 26 (92%) | 48 (96%) |
+| R01 | 51 | 51 (100%) | 29 | 27 (93%) | 49 (96%) |
 | R02 | 51 | 51 (100%) | 29 | 23 (79%) | 45 (88%) |
 | R03 | 24 | 24 (100%) | 17 | 12 (70%) | 19 (79%) |
 | R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
@@ -46,11 +46,11 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R07 | 88 | 88 (100%) | 24 | 22 (91%) | 86 (97%) |
 | R08 | 29 | 28 (96%) | 15 | 13 (86%) | 26 (89%) |
 | R09 | 25 | 25 (100%) | 18 | 13 (72%) | 20 (80%) |
-| R10 | 16 | 16 (100%) | 8 | 7 (87%) | 15 (93%) |
+| R10 | 17 | 17 (100%) | 9 | 8 (88%) | 16 (94%) |
 | R11 | 15 | 14 (93%) | 9 | 8 (88%) | 13 (86%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 5 (71%) | 20 (90%) |
-| all | 531 | 529 (99%) | 225 | 193 (85%) | 497 (93%) |
+| all | 533 | 531 (99%) | 227 | 195 (85%) | 499 (93%) |
 
 ## Rules
 
@@ -107,6 +107,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.8.7 [1+ 1-]: Members without parentheses are O(1) (`xs.len`, `t.parent[v]`); anything that does work ha...
 - R01.9.1 [1+ 0-]: Decorators are `@name` or `@name(args)` on the next item; the set is closed and listed in ...
 - R01.10.1 [3+ 1-]: Call arguments: positional first, named after in any order, each parameter at most once; p...
+- R01.10.2 [1+ 4-]: A program the grammar does not derive is a syntax error, E0103: `var x: Int` with no `= ex...
 - R01.11.1 [2+ 3-]: Each of these gets an error with a machine-applicable fix:
 
 ### R02: 02-values-types.md
@@ -568,6 +569,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.3.4 [2+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`.
 - R10.3.5 [4+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
 - R10.3.6 [2+ 0-] *happy-path only*: Output mirrors input, shape for shape, except that counts are never written for you. `[R, ...
+- R10.3.7 [1+ 1-]: `?T` is not `Show`, like `Bool`: `print(x)` on a `?Int` is a compile error (E0606); write ...
 
 ### R11: 11-modules-prelude.md
 
@@ -679,6 +681,8 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0313 Fresh domain escapes its declaring block: 1 case(s)
 - E0314 Match is not exhaustive: 4 case(s)
 - E0315 Not a token type: 1 case(s)
+- E0316 field_bound_from_input *(0.3)*: **no case**
+- E0317 getter_needs_defaults *(0.3)*: **no case**
 - E0401 Assignment to immutable `let` binding: 3 case(s)
 - E0402 Missing `mut` at call site: 2 case(s)
 - E0403 `mut` of an immutable binding: 4 case(s)
@@ -686,6 +690,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0405 Assigning a fixed field: 1 case(s)
 - E0406 Recursive `var` lambda: 1 case(s)
 - E0407 Duplicate enum variant tag: 1 case(s)
+- E0408 assign_into_range *(0.3)*: **no case**
 - E0501 Unsupported construct in backend: 7 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 6 case(s)
@@ -778,7 +783,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-1 of 136 testable codes have no negative case.
+4 of 139 testable codes have no negative case.
 
 ## Spec code blocks
 
@@ -869,11 +874,3 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Tracked`, `Undo`
 
 2119 of 2245 std items are named by a case.
-
-## Core cases without a `// rule:` line
-
-- core-01/rb1-q09-lends-needs-arrow.cp
-- core-01/rb1-q36-no-comma-enum.cp
-- core-01/var-needs-initializer.cp
-- core-02/enum-comma-form-rejected.cp
-- core-10/rb1-q25-optional-not-print.cp
