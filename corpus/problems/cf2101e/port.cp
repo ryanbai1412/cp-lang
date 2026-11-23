@@ -1,22 +1,14 @@
-// Codeforces 2101 E: Longest Doubling Walk on a Tree.
-// For each '1'-vertex v, find the longest sequence v = v_1, v_2, ..., v_k of
-// '1'-vertices whose consecutive tree distances double:
-//   dist(v_{i+1}, v_{i+2}) >= 2 * dist(v_i, v_{i+1}).
-// ('0'-vertices cannot start a walk, so the statement outputs -1 for them.)
-//
-// Work backwards by round r = 1, 2, ... (at most O(log n) rounds since the
-// first step doubles each time):
-//   - `max_budget[v]` is the largest first-step budget D for which a valid walk
-//     of length r - 1 exists starting from v (n for '1', 0 for '0').
-//   - A '1'-vertex u extends to length r via w if dist(u, w) <= max_budget[w],
-//     giving next_dist[u] = max dist(u, w) and new budget next_dist[u] / 2.
-//
-// On `cd = Centroids.new(adj)`, every path (u, w) splits at its highest
-// centroid c into two different branches with dist(u, w) = depth(u) + depth(w).
-// Rewriting as `depth(u) <= max_budget[w] - depth(w)`, bucket each w at
-// `min(max_d, max_budget[w] - depth(w))` (clamping to `max_d` preserves every
-// query since `depth(u) <= max_d`), take suffix maxima of `Best` (deepest
-// vertex and deepest vertex in a different branch), and query `best_other(br)`.
+// Source: Codeforces 2101E (Kia Bakes a Cake), https://codeforces.com/contest/2101/problem/E
+// Problem: a tree on n <= 7e4 vertices and a binary string s. Over the vertices with s_i = 1,
+//   with tree distance as weight, a path is nice if each edge weighs at least twice the previous.
+//   For each i print the most vertices on a nice simple path starting at i, or -1 if s_i = 0.
+//   Multitest, sum n <= 7e4.
+// Solution: build the paths backwards, one round per extra vertex (O(log n) rounds as weights
+//   double). max_budget[w]: the largest first step a walk of r - 1 vertices from w allows; u
+//   extends via w when dist(u, w) <= max_budget[w], and its new budget is the best such distance
+//   halved. Each round, in every centroid piece bucket w at max_budget[w] - depth(w), keep
+//   suffix maxima of the deepest w in two different branches, and query each u at its depth.
+//   O(n log^2 n).
 
 use std.tree.Centroids
 

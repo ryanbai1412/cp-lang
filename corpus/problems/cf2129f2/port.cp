@@ -1,17 +1,13 @@
-// Codeforces 2129 F2: Top-K Everywhere (hard version, interactive).
-// Give each value 1..=890 a mask over 29 type-2 queries (capacity 60 each):
-//   - View bits 0..27 as a 9 x 3 grid `(row, col) = 3 * row + col`. Take the
-//     9 rows `{3i, 3i + 1, 3i + 2}` and the 9 shifted diagonals
-//     `{3i, 3((i + 1) % 9) + 1, 3((i + 2) % 9) + 2}` (18 triples). Each triple
-//     picks one bit per column with distinct row shifts 0, +1, +2 mod 9, so any
-//     two triples share at most one bit and each bit in 0..27 appears in 2.
-//   - Two copies of every set of size <= 2 on 0..29 (1 + 29 + 406 = 436 sets,
-//     covering values 19..=454 and 455..=890). Each bit is used at most
-//     2 + 2 * (1 + 28) = 60 times.
-// The 29 type-2 queries recover each position's mask, which identifies either
-// a single value or a pair `(v0, v1)` sharing a <= 2-bit mask. One type-3
-// query (returning up to `TYPE3_LIMIT = 300` values) on one random position
-// per pair resolves every pair in a single round.
+// Source: Codeforces 2129F2 (Top-K Tracker (Hard Version)),
+//   https://codeforces.com/contest/2129/problem/F2
+// Problem: interactive, multitest (t <= 40). Find a hidden permutation p of n <= 890 with at most
+//   30 queries on index sets: types 1/2 return the top min(60, m) of the p (resp. pos) values,
+//   types 3/4 the top min(300, m), and at most one query of type 3 or 4.
+// Solution: give each value a set of the 29 type-2 queries (a bit mask) so that every query
+//   holds at most 60 values: 18 triples meeting pairwise in at most one bit, then every mask of
+//   at most 2 bits twice. The type-2 answers spell each position's mask, which names a value or a
+//   pair of values (v, v + 436). Guess each pair at random and send one type-3 query with one
+//   position of each pair; the larger values it returns show which guesses to swap. O(n^2).
 use std.rand.{Rng}
 
 @!interactive

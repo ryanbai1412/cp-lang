@@ -1,6 +1,12 @@
-// CCO 2019 P3, Winter Driving: city v of a tree holds a[v] people. Make every
-// road one-way so that as many ordered pairs of people as possible can drive
-// from the first to the second.
+// Source: CCO 2019 P3 (Winter Driving), https://dmoj.ca/problem/cco19p3
+// Problem: a tree of N <= 2e5 cities given by parents, city i holding a_i <= 1e4 people; every
+//   city has at most 36 roads. Make each road one-way to maximise the ordered pairs of distinct
+//   people (x, y) such that x can drive to y (same city always counts). Print the maximum.
+// Solution: an optimum has a hub: each branch around it points all towards or all away from it.
+//   chain[v]: with hub v, the pairs inside one branch or ending at the hub; it is rerooted from
+//   parent to child in O(1). The cross pairs are s (everyone - a_hub - s), s the people in the
+//   inward branches, so pick s nearest half: one branch if it outweighs the rest, else a
+//   meet-in-the-middle over subset sums of the at most 36 branches. O(N + sum 2^(deg/2) deg).
 // original: corpus/submissions/3618571.cpp
 let n: 2..=2e5 = read()
 domain V = 1..=n

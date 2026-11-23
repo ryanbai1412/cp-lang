@@ -1,14 +1,14 @@
-// NOI 2010 P3, Altitude: an (n+1) x (n+1) lattice of junctions, every street
-// segment carrying a flow in each of its two directions. Heights are 0 at the
-// top-left and 1 at the bottom-right; choose the rest to minimise the total
-// climbing effort. The answer is a minimum cut, found as a shortest walk in
-// the dual: a walker threads between junctions from the left/bottom border
-// to the top/right border, and each turn pays for the segments it sweeps
-// across at the junction it passes.
-//
-// A state is (junction, direction the walker entered from); junctions one
-// step off the lattice are the exits, so coordinates run -1..=n+1 and are
-// stored shifted by one.
+// Source: NOI 2010 P3 (Altitude), https://dmoj.ca/problem/noi10p3
+// Problem: an (n+1) x (n+1) lattice of junctions, n <= 500; every street segment has a flow up
+//   to 1e6 in each direction (input: the east, south, west, north flows). Heights are 0 at the
+//   top-left and 1 at the bottom-right; climbing by h costs flow * h. Choose the other heights to
+//   minimise the total cost and print it, rounded.
+// Solution: some optimum uses only heights 0 and 1, so the answer is a minimum cut, found as a
+//   shortest walk in the dual: a walker threads between junctions from the left/bottom border
+//   to the top/right border, and each turn pays for the segments it sweeps across at the
+//   junction it passes. A state is (junction, direction it entered from, of 8); junctions one
+//   step off the lattice are the exits. Dijkstra on 8 (n+3)^2 states, O(n^2 log n).
+// Coordinates run -1..=n+1 and are stored shifted by one.
 // Runnable on proto/cpc today.
 // original: corpus/submissions/5672180.cpp
 let n0: 1..=500 = read()

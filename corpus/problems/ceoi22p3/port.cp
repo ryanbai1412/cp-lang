@@ -1,17 +1,13 @@
-// CEOI '22 P3 - Prize (25pt, interactive): two rooted trees on the same n
-// vertices with hidden positive edge lengths. Pick k vertices (one per line),
-// then ask k - 1 questions "? a b"; after "!" each is answered with four
-// numbers: the distances from a and from b to their lowest common ancestor,
-// in tree 1 and in tree 2. Then t pairs of picked vertices arrive and the
-// distance of each pair in both trees must be printed.
-//
-// Pick the first k vertices of a preorder of tree 1 (closed under parents)
-// and ask about adjacent pairs in tree 2's preorder. Those adjacent pairs'
-// LCAs are the branching points of the auxiliary tree of the picked set in
-// tree 2, and each answer ties two vertices by a known depth difference; in
-// tree 1 the same answers tie picked vertices to picked ancestors. Both tie
-// graphs are connected, so one BFS fixes every depth up to a shift, and each
-// query distance is `depth[a] + depth[b] - 2 * depth[lca(a, b)]`.
+// Source: CEOI 2022 P3 (Prize), https://dmoj.ca/problem/ceoi22p3
+// Problem: interactive. Two rooted trees on the same N <= 1e6 labels with hidden positive edge
+//   weights. Choose K <= 1e5 labels, ask Q questions (a, b), each answered by the distances of a
+//   and b to their LCA in both trees; then answer T <= 1e5 questions (p, q) on chosen labels with
+//   both distances. Full score needs Q = K - 1 (subtasks allow 2K - 2 or identical trees).
+// Solution: choose the first K vertices of tree 1's preorder (closed under parents) and ask the
+//   K - 1 pairs adjacent in tree 2's preorder. Each answer ties a and b to their LCA by a known
+//   depth difference; in tree 2 those LCAs are the branch points of the chosen set's auxiliary
+//   tree, in tree 1 they are chosen vertices, and both tie graphs are connected. One BFS per tree
+//   fixes the depths up to a shift; then d(p, q) = dep p + dep q - 2 dep lca. O((N + T) log N).
 // original: corpus/submissions/4728198.cpp
 
 let (n, k, _, t): (2..=1_000_000, 2..=100_000, 1..=100_000, 1..=100_000) = read()

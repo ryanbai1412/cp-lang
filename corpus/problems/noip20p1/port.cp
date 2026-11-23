@@ -1,13 +1,12 @@
-// NOIP 2020 P1, Drainage: a DAG of n junctions. Junctions 1..=m each
-// receive one ton of water; a junction splits what it holds evenly over
-// its 1 to 5 outgoing pipes. Print what each junction without outgoing
-// pipes ends up with, as a reduced fraction `p q`.
-//
-// A path has up to 11 splits, so a reduced denominator reaches 60^11,
-// about 3.6e19: one factor past `Int`. Every denominator is 2^a 3^b 5^c,
-// so an amount is an `I128` numerator over three exponents, and nothing
-// needs a gcd.
-// input: n m, then per junction its pipe count d and d targets
+// Source: NOIP 2020 P1 (Drainage System), https://dmoj.ca/problem/noip20p1
+// Problem: a DAG of n <= 1e5 junctions; junctions 1..m (m <= 10) each receive one ton of water,
+//   and a junction splits all it holds evenly over its 1 to 5 outgoing pipes. Any path has at
+//   most 10 inner junctions. For each junction with no outgoing pipe, in order, print the water
+//   it ends with as a reduced fraction "p q". Input: n m, then per junction d and d targets.
+// Solution: push amounts in topological order (Kahn). A path has up to 11 splits, so a reduced
+//   denominator reaches 60^11, about 3.6e19, past Int; but every denominator is 2^a 3^b 5^c, so
+//   an amount is an I128 numerator over three exponents and adding needs no gcd (raise both to
+//   the larger exponents). Reduce by 2, 3, 5 only at output. O(n + pipes).
 // original: corpus/submissions/5445672.cpp
 domain Small = 0..3
 let primes = [Small] p => [2, 3, 5][p.ord]

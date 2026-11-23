@@ -1,3 +1,12 @@
+// Source: NOI 2009 P4 (Plants vs. Zombies), https://dmoj.ca/problem/noi09p4
+// Problem: an N x M grid of plants (N <= 20, M <= 30), each with an energy score in
+//   [-10000, 10000] and a list of cells it protects. Zombies enter each row from the right and
+//   must eat a row's plants right to left, and cannot eat a protected plant before its
+//   protectors. Input: N M, then per plant its score, w, and w cells. Print the best total.
+// Solution: "x must be eaten before y" edges (right neighbour, protectors); a topological peel
+//   drops every plant on or behind a cycle. The rest is a maximum-weight closure: source -> plant
+//   with positive score, plant -> sink with negative, infinite edges to prerequisites; the
+//   answer is the positive sum minus the max flow (FlowGraph) on NM + 2 nodes.
 // Runnable port (proto/cp.py lib-run) of statement-first noi09p4.cp
 // original: corpus/submissions/5144326.cpp
 

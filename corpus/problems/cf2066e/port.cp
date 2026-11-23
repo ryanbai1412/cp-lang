@@ -1,14 +1,14 @@
-// Codeforces 2066 E: Tropical Season.
-// Two equal barrels either expose the poison or are both safe, so every barrel
-// whose amount repeats is safe water. Check the barrels with a unique amount,
-// lightest first. With `have` kilograms of safe water, a barrel b can be checked
-// if b <= have (pour until equal, compare), and two unchecked barrels can be if
-// their gap is <= have (top up the lighter, compare); each check adds to `have`.
-// Identification works iff this never gets stuck while two or more barrels are
-// unchecked. It can only get stuck at a unique barrel b with b > have; at the
-// next unique barrel b' > b, `have` has grown by at least b > have, so `have`
-// more than doubles every two steps and there are O(log(total)) stuck points.
-// At each, some gap among the unique barrels >= b must be <= have.
+// Source: Codeforces 2066E (Tropical Season), https://codeforces.com/contest/2066/problem/E
+// Problem: n barrels, a_i <= 1e6, one secretly poisoned. Scales compare any two barrels, and water
+//   may be poured from a barrel known to be safe. Can the poisoned barrel always be identified?
+//   Answer Yes/No before and after each of q queries "+ x" / "- x" (add/remove a barrel);
+//   n, q <= 2e5.
+// Solution: barrels whose amount repeats are safe. Check the unique amounts lightest first: with
+//   `have` kilograms of safe water, b is checkable if b <= have, or two unchecked barrels if their
+//   gap is <= have. It can only get stuck at a unique b > have, and then `have` at least doubles,
+//   so O(log sum) stuck points; at each, test the smallest gap among unique amounts >= b. Counts,
+//   a SortedSet of unique amounts, a Fenwick of their sums and a min SegTree of gaps give
+//   O(log V log sum) per answer.
 
 enum Delta: Add | Remove
 

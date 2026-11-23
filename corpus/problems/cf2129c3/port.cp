@@ -1,18 +1,13 @@
-// Codeforces 2129 C3: Interactive RBS (Hard Version).
-// Recover a bracket string `s` of length `n` (`n <= 1000`, containing at least
-// one `(` and one `)`) using queries of length at most `MAX_QUERY_LEN = 1000`
-// that return the number of balanced substrings of the queried subsequence.
-//
-// Phase 1: `ask(1..=p) > 0` is monotone in `p`. Its first true position `r`
-// must have `s[r - 1] = '('` and `s[r] = ')'`; if no prefix has a balanced
-// substring, `s` is `)))...(((` so `Pos.last` is `'('`.
-// Phase 2: build superincreasing triangular weights `tri(k) = k(k + 1) / 2`:
-// repeating `(open_i, pos)` `k` times followed by a separator `open_i` adds
-// `tri(k)` balanced substrings iff `s[pos] == ')'` (and `0` if `'('`), using
-// `2k + 1` query indices. Requiring `tri(k) > sum(prev)` makes the subset sum
-// uniquely decodable greedily from largest `k` down, fitting `blk = 13`
-// brackets per query under `MAX_QUERY_LEN = 1000`. The last partial block pads
-// remaining slots with `Pos.last`, harmlessly re-decoding `ans[Pos.last]`.
+// Source: Codeforces 2129C3 (Interactive RBS (Hard Version)),
+//   https://codeforces.com/contest/2129/problem/C3
+// Problem: interactive, multitest. A hidden bracket string s of length n <= 1000 with at least
+//   one '(' and one ')'. A query lists up to 1000 indices (repeats allowed) and returns the
+//   number of balanced substrings of that sequence; recover s in at most 100 queries.
+// Solution: "some prefix has a balanced substring" is monotone, so a binary search finds an
+//   index r with s[r-1] = '(' (or, if none, s ends with '('): a known open bracket o. Then each
+//   query tests 13 positions at once: k copies of "o p" then one o add k(k+1)/2 balanced
+//   substrings iff s[p] = ')'. The k are picked so each weight beats the sum of the smaller
+//   ones within 1000 indices, so the count decodes greedily, largest first. About 77 + 10 queries.
 
 @!interactive
 
