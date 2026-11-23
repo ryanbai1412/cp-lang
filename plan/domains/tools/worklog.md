@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Sheriff (infra): 3f14fbba4's `(Option<PathBuf>, Box<dyn Fn(&str) -> Option<PathBuf>>)` in `cpl-cli/src/setup.rs` failed clippy's type_complexity on main; it is now a local `PluginsDir` alias.
 - Sheriff (infra): ab0b391aa read a `/dev/null` stdin as nothing piped, so `cpl_cli::run_with_input` (input handed in, test stdin null) ran the samples instead: `judges::a_port_over_the_target...` failed on main. `run_with_input` now marks its input given for the thread, and `nothing_piped` says no.
 - Sheriff (infra): `neovim (macos-latest)` fails the smoke on main (hover on `n` is `""`, run 45119075609), so macOS joins Windows as `continue-on-error` in ci.yml; the job still runs and shows red. Milestone 1 needs both green: fix them and set it back to blocking.
 - Sheriff (infra): 6b97eec5e `include_str!`s `editors/neovim/*` and tree-sitter queries, which the clippy cache stage excluded (`test_no_stage_excludes_a_file_the_rust_build_reads` red). infra added them to `scripts/check_cache.py`; a new `include_str!` outside crates/ and std/ needs the same.

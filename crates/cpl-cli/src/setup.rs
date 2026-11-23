@@ -201,29 +201,29 @@ fn jetbrains_plugin_dirs() -> Vec<PathBuf> {
             .map(PathBuf::from)
     };
     let home = var("HOME").or_else(|| var("USERPROFILE"));
-    let (config, plugins): (Option<PathBuf>, Box<dyn Fn(&str) -> Option<PathBuf>>) =
-        if cfg!(windows) {
-            let roaming = var("APPDATA").map(|d| d.join("JetBrains"));
-            let r = roaming.clone();
-            (
-                roaming,
-                Box::new(move |ide| Some(r.clone()?.join(ide).join("plugins"))),
-            )
-        } else if cfg!(target_os = "macos") {
-            let support = home.map(|h| h.join("Library/Application Support/JetBrains"));
-            let s = support.clone();
-            (
-                support,
-                Box::new(move |ide| Some(s.clone()?.join(ide).join("plugins"))),
-            )
-        } else {
-            let config = var("XDG_CONFIG_HOME").or_else(|| Some(home.clone()?.join(".config")));
-            let data = var("XDG_DATA_HOME").or_else(|| Some(home.clone()?.join(".local/share")));
-            (
-                config.map(|c| c.join("JetBrains")),
-                Box::new(move |ide| Some(data.clone()?.join("JetBrains").join(ide))),
-            )
-        };
+    type PluginsDir = Box<dyn Fn(&str) -> Option<PathBuf>>;
+    let (config, plugins): (Option<PathBuf>, PluginsDir) = if cfg!(windows) {
+        let roaming = var("APPDATA").map(|d| d.join("JetBrains"));
+        let r = roaming.clone();
+        (
+            roaming,
+            Box::new(move |ide| Some(r.clone()?.join(ide).join("plugins"))),
+        )
+    } else if cfg!(target_os = "macos") {
+        let support = home.map(|h| h.join("Library/Application Support/JetBrains"));
+        let s = support.clone();
+        (
+            support,
+            Box::new(move |ide| Some(s.clone()?.join(ide).join("plugins"))),
+        )
+    } else {
+        let config = var("XDG_CONFIG_HOME").or_else(|| Some(home.clone()?.join(".config")));
+        let data = var("XDG_DATA_HOME").or_else(|| Some(home.clone()?.join(".local/share")));
+        (
+            config.map(|c| c.join("JetBrains")),
+            Box::new(move |ide| Some(data.clone()?.join("JetBrains").join(ide))),
+        )
+    };
     let Some(entries) = config.and_then(|c| std::fs::read_dir(c).ok()) else {
         return Vec::new();
     };
