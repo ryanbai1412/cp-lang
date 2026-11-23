@@ -82,3 +82,13 @@ pub(super) fn duplicate_tag(diag: &mut Diagnostic, first: Span) {
     });
     diag.help = Some("input names one variant per tag: give one of them another `@tag`".into());
 }
+
+/// `True` or `null` from another language, as CP Lang spells the value.
+pub(super) fn foreign_value(name: &str) -> Option<&'static str> {
+    match name {
+        "True" | "TRUE" => Some("true"),
+        "False" | "FALSE" => Some("false"),
+        "null" | "nil" | "None" | "NULL" | "nullptr" => Some("none"),
+        _ => None,
+    }
+}

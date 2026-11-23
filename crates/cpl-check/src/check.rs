@@ -840,6 +840,11 @@ impl<'a> Checker<'a> {
                         edits: vec![(Span::point(0), format!("{import}\n"))],
                     });
                 }
+                _ if advice::foreign_value(name).is_some() => {
+                    let s = advice::foreign_value(name).unwrap_or_default();
+                    diag.help = Some(format!("CP Lang spells it `{s}`"));
+                    diag.fix(format!("change to `{s}`"), span, s);
+                }
                 Some(s) => diag.suggest(span, s),
                 None if library.is_some() => {
                     let s = library.unwrap_or_default();

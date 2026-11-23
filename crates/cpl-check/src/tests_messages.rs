@@ -79,3 +79,13 @@ fn a_misspelled_stdlib_module_names_the_closest() {
     let diags = check("use std.no_such_module\nprint(1)\n");
     assert!(diags[0].fixes.is_empty(), "{diags:?}");
 }
+
+#[test]
+fn another_languages_true_and_null_are_spelled_here() {
+    assert_eq!(
+        fixed("let b = True\nprint(b)\n"),
+        "let b = true\nprint(b)\n"
+    );
+    let diags = check("let x: ?Int = null\nprint(x ?? 0)\n");
+    assert_eq!(diags[0].help.as_deref(), Some("CP Lang spells it `none`"));
+}
