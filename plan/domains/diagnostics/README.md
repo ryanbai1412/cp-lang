@@ -11,6 +11,34 @@ One error per root cause, naming the place, the rule and the fix, so a
 broken program costs the contestant one read and (where the fix is
 obvious) one keystroke. Runtime traps name source values and locations.
 
+## Milestone 1 (plan/product/MILESTONE-1.md, step 5 "Test")
+A 1500+ Codeforces newcomer writes C++ and Python habits into CPL; each
+error or trap tells them the CPL way, in one read, in the CLI and editor.
+Exit criteria:
+1. **Newcomer set gated.** A third scoreboard in
+   `crates/cpl-cli/tests/recovery.rs` over >= 100 mistakes mined from
+   the idioms dry runs (`research/dryrun/LOG-v03.md`) and the 23 site
+   practice problems (`web/content/learn/practice/`): first error on the
+   right line >= 99%, carries a fix >= 95%, and `cpl fix` then `cpl run`
+   on the sample gives the right output >= 90%. Today: not built.
+2. **No wrong fix.** Every fix on all three scoreboards restores a clean
+   program or is not offered (today one known: `fn f() -> Int {` gets a
+   bare `:` that does not check).
+3. **Traps in CPL terms.** Each R-code a practice problem can hit names
+   the values and the CPL fix, with a case in `cargo test -p cpl-cli
+   --test runtime_errors`.
+4. **Editor = CLI.** `cargo test -p cpl-cli --test lsp_parity` green and
+   every CLI fix is an LSP quick fix.
+
+Deferred (milestone "can wait", or not on the newcomer path): M3
+root-cause work (benchmark base from every `spec.cp`, `cpl-ir` sink
+suppression, cascades <= 2%), catalogue examples for codes newcomers
+don't hit, type-check-guided closer placement in `cpl fix`.
+
+Next 3: (1) build and gate the newcomer set; (2) fix the C++ brace
+habits left (`fn`/`struct` bodies in `{}`), then the set's worst rows;
+(3) run every practice problem's likely traps and fix their messages.
+
 ## Covers
 Error codes and their catalogue (`spec/diagnostics.md`, `cpl explain`),
 message wording, spans, parser and checker recovery, cascade suppression,

@@ -11,22 +11,26 @@ Main does not meet its own recovery bars: both scoreboards in
 not claimed here until rerun on the rebased tip.
 
 ## Workstreams, in order
-1. **Gate (M1).** Rebase and land `devin/wip-diag-recovery`; fix what
-   remains under the bars (E0203 near-name fix-its, dropped-colon E0006
-   cascade); delete the `#[ignore]`s so `check.sh` gates recovery.
-   Replace the 11 raw `cpl_diag::Code("E…")` sites with `codes::`
-   constants and update their *(0.3)* status (needs compiler: request in
-   its worklog; the edits are mechanical).
-2. **Fix-its (M2).** Walk the scoreboard's "first error by code" table
-   top-down, adding a fix-it where one is right; raise the bars in
-   `recovery.rs` as each lands. Fill the 33 empty catalogue examples from
-   the registry triggers (the catalogue test then checks them).
-3. **Messages (M2).** Replace generic `expected ...` first errors on spec
-   blocks with rule-naming messages; draft the style guide from the rubric
-   for Ryan's one sign-off.
-4. **Root cause (M3).** Cascade work per edit row; make the benchmark base
-   every `spec.cp` that checks clean (today a 37-entry list) so it grows
-   with the corpus; give `cpl-ir` lowering the same `Sink` suppression.
+Milestone 1 (`plan/product/MILESTONE-1.md`) orders the work: step 5,
+"diagnose ordinary mistakes", for a newcomer bringing C++ habits. M1 of
+the old list (gated recovery) has landed; M2/M3 numbers are means now.
+1. **Newcomer mistakes (Milestone 1).** Mine the first-attempt failures
+   in `research/dryrun/LOG-v03.md` and what a C++ contestant would type
+   for each of the 23 practice problems in `web/content/learn/practice/`;
+   check them in as a third scoreboard in `recovery.rs` whose bar is "the
+   fix runs the sample". Fix its worst rows top-down, one commit each.
+2. **No wrong fixes.** Any fix that leaves an error or changes meaning
+   is removed or corrected before new fixes are added (first:
+   `fn`/`struct` bodies in braces).
+3. **Runtime traps.** Every R-code reachable from the practice problems
+   names its values and the CPL fix; a `runtime_errors` case each.
+4. **Editor parity.** LSP shows the same errors and quick fixes as the
+   CLI (`lsp_parity`); requests to tools when it does not.
+5. **Fix-its and messages (old M2), only where the newcomer set or the
+   probes hit them.** Generic `expected ...` errors, catalogue examples.
+6. **Root cause (old M3), deferred.** Benchmark base from every
+   `spec.cp`, `cpl-ir` sink suppression, cascades <= 2%; done only when
+   cheap or when the newcomer set shows a cascade.
 
 Each workstream lands in small commits, each with the test or scoreboard
 row that moved.
@@ -58,10 +62,9 @@ row that moved.
 - Recovery changes cost front-end time. Guard: latency test (34 ms of 50).
 - Branch measurements went stale while main moved (already happened once).
 
-## Phase 2, first actions
-1. `git rebase origin/main devin/wip-diag-recovery`, run
-   `scripts/check.sh --fast` and the recovery scoreboards, land via
-   `CPL_LANE=diagnostics scripts/land.sh`, record before/after in the
-   worklog.
-2. If still under the bars: E0203 near-name fix-its, then the dropped
-   block colon cascade; then delete both `#[ignore]`s.
+## Milestone 1, first actions
+1. Write the newcomer cases from the dry-run log and practice problems
+   under `crates/cpl-cli/tests/newcomer/`, add the scoreboard, measure,
+   and gate it at the measured value.
+2. Fix brace-bodied `fn` and `struct` (today a wrong fix), then the
+   worst newcomer rows.
