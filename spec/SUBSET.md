@@ -252,7 +252,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib
 - std-seq/split-on-separator-predicate.cp: stdlib
-- core-07/step-on-list.cp: stdlib
+- core-07/step-on-list.cp: compiler
 - std-heap/drain-break-keeps-the-rest.cp: compiler
 - core-07/rev-does-not-satisfy-indexed.cp: compiler
 - core-05/map-entry-index-key-lends.cp: compiler

@@ -1520,6 +1520,34 @@ pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
 /// The view `rebase` returns.
 pub struct Rebased<S>(pub src: S)
 
+/// \(O(1)\). Every `k`-th element of `self`, starting with the first: `[3, 1, 2, 4].step(2)` walks
+/// `3, 2`. Keys survive (R04a.9.3): `a.step(2)[i]` reads `a[i]`, and a key the stride skips traps.
+///
+/// cost: \(O(1)\) to make, \(O(1)\) per step
+/// empty: an empty view
+/// order: source order, every `k`-th; source keys
+/// traps: when `k < 1`
+/// example: `[3, 1, 2, 4].step(2).collect() == [3, 2]`
+pub fn step<S: Indexed>(self: S, k: Int) -> Stepped<S>:
+    assert k >= 1, "step(k) requires k >= 1"
+    Stepped(self, k)
+
+/// \(O(1)\) to make. The view `s.step(k)`: `s` walked `k` elements at a time, keys unchanged.
+pub struct Stepped<S>(pub src: S, pub k: Int):
+    /// \(O(1)\). How many elements the walk visits: `ceil(src.len / k)`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `[3, 1, 2, 4, 5].step(2).len == 3`
+    @get pub fn len(self) -> Int = (src.len + k - 1) / k
+
+    /// \(O(1)\). The element `j` steps into the walk: `src`'s element `j * k`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: unless `0 <= j < self.len`
+    /// example: `[3, 1, 2, 4].step(2).nth(1) == 2`
+    pub fn nth<T>(self, j: Int) -> T = src.nth(j * k)
+
 /// \(O(1)\). The same cells keyed by `keys`, which must have the same length (traps otherwise):
 /// a table computed on offsets handed back in the caller's keys, `z.rekey(s.keys)`.
 ///
