@@ -13,7 +13,7 @@ pub(crate) fn uri_of_path(path: &str) -> String {
 
 /// A standard library module built into the compiler (`std/heap.cp`),
 /// written out under the user's cache directory so an editor can open it.
-/// The copy sits below `spec/std/`, so opening it is treated as the stdlib.
+/// The copy sits below `std/`, so opening it is treated as the stdlib.
 #[cfg(not(target_arch = "wasm32"))]
 fn bundled_std_file(path: &str) -> Option<std::path::PathBuf> {
     let rest = path.strip_prefix("std/")?.strip_suffix(".cp")?;
@@ -26,7 +26,7 @@ fn bundled_std_file(path: &str) -> Option<std::path::PathBuf> {
     let file = cache
         .join("cpl")
         .join(env!("CARGO_PKG_VERSION"))
-        .join("spec/std")
+        .join("std")
         .join(format!("{rest}.cp"));
     if std::fs::read_to_string(&file).ok().as_deref() != Some(text) {
         std::fs::create_dir_all(file.parent()?).ok()?;

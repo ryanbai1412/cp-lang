@@ -31,7 +31,7 @@ the repository. Delete this file once every step is done.
 | `AGENTS.md` | mission, goals with their tests, design rules, how agents work |
 | `decisions.md` | numbered design decisions, each with its reason and how to reverse it |
 | `spec/core`, `spec/lib`, `spec/tools` | the only normative source: language, library design, tool behaviour, with rule IDs |
-| `spec/std/` | documented signatures for every library function |
+| `std/` | documented signatures for every library function |
 | `spec/conformance/` | rule-linked cases: compiles or not, expected output or diagnostic |
 | `corpus/problems/<id>/` | `meta.json`, `dream.cp`, `spec.cp`, `port.cp` (until `spec.cp` runs), `notes.md`, `tests/` |
 | `corpus/submissions/` | every raw submission, kept; `meta.json` links to its originals here |
@@ -61,7 +61,7 @@ the repository. Delete this file once every step is done.
 | `plan/30`–`70` | preserved in `research/design-history/plan-v0.2/`; normative rules live in `spec/tools/` | Done |
 | `plan/80-validation.md` | `corpus/VALIDATION.md` | Done |
 | `plan/90-docs-and-playground.md` | `site/README.md` + `research/design-history/plan-v0.2/90-docs-and-playground.md` | Done |
-| `plan/STDLIB.md` | `spec/std/README.md` | Done |
+| `plan/STDLIB.md` | `std/README.md` | Done |
 | `proto/ports/*` | `corpus/problems/<id>/port.cp` (`dp*` renamed to `atcoder_dp_<letter>`) | Done |
 | `proto/` | deleted; all paths recorded in `research/MIGRATION.md` | Done |
 | `subs/` | deleted | Done |

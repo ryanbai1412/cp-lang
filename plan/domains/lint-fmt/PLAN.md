@@ -9,14 +9,14 @@ The detail behind [README.md](README.md). Target design:
    member keywords; `scripts/fmt_check.py` in the fast gate; a design note on
    line breaking). Fix the `c_operators.cp` meaning change with a regression
    case in `crates/cpl-fmt/src/tests.rs`. Then one mechanical commit formats
-   corpus ports, `spec/std`, examples and docs (layout tests exempt, per the
+   corpus ports, `std`, examples and docs (layout tests exempt, per the
    question in `plan/QUESTIONS.md`).
 2. **Lint as data (M2).** Land `devin/wip-idioms-lint`'s 38 `spec/lints/<name>/`
    records; generate `LINTS` from them (build script or a checked-in generated
    file with a drift test); add a test that the records and the lint table in
    `spec/diagnostics.md` agree. Behaviour unchanged.
 3. **False-positive ratchet (M2).** Classify each of the 50 corpus `spec.cp`
-   and 293 `spec/std` warnings: a false positive becomes a near-miss case and a
+   and 293 `std` warnings: a false positive becomes a near-miss case and a
    fix in the lint; a true finding becomes a request to corpus or stdlib. Gate
    the count in `scripts/check.sh --fast` so it only goes down.
 4. **Facts from the checker (M3, needs compiler).** Contract tests in

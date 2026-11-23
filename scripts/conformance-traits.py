@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """Check that every trait method of every claimer has a conformance case.
 
-Traits come from `pub trait` bodies in spec/std/*.cp and from the core traits
+Traits come from `pub trait` bodies in std/*.cp and from the core traits
 listed in spec/conformance/traits.toml. Claims come from `impl Trait for
-Type:` lines in spec/std/*.cp and from the core claimers in traits.toml.
+Type:` lines in std/*.cp and from the core claimers in traits.toml.
 Each (type, trait, method) needs a `[case]` in traits.toml, which becomes
 spec/conformance/traits/<trait>/<type>--<method>.cp, or a line in
 spec/conformance/trait-gaps.txt. `--check` fails when a generated case is
@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CONF = ROOT / "spec" / "conformance"
-STD = ROOT / "spec" / "std"
+STD = ROOT / "std"
 OUT = CONF / "traits"
 GAPS = CONF / "trait-gaps.txt"
 
@@ -53,7 +53,7 @@ PUB_TYPE = re.compile(r"pub (?:struct|enum|type) (\w+)")
 
 
 def std_claims():
-    """(type, trait) for every impl in spec/std on a public type; test-only types are skipped."""
+    """(type, trait) for every impl in std on a public type; test-only types are skipped."""
     texts = [f.read_text() for f in sorted(STD.glob("*.cp"))]
     public = {m.group(1) for t in texts for m in PUB_TYPE.finditer(t)}
     claims = set()
@@ -71,13 +71,13 @@ def triples(data):
     traits = std_traits()
     for t, v in data.get("trait", {}).items():
         if t in traits:
-            raise SystemExit(f"traits.toml: trait {t} is declared in spec/std; drop it here")
+            raise SystemExit(f"traits.toml: trait {t} is declared in std; drop it here")
         traits[t] = v["methods"]
     claims = std_claims() | {(c["type"], c["trait"]) for c in data.get("claim", [])}
     out, problems = set(), []
     for ty, tr in sorted(claims):
         if tr not in traits:
-            problems.append(f"{ty}: claims {tr}, which neither spec/std nor traits.toml declares")
+            problems.append(f"{ty}: claims {tr}, which neither std nor traits.toml declares")
             continue
         for m in traits[tr]:
             out.add((tr, ty, m))

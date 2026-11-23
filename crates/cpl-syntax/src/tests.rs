@@ -1281,7 +1281,7 @@ fn removed_spellings_say_what_replaces_them() {
         );
         assert!(text.contains(needle), "{src:?}: {text}");
     }
-    // The v2.1 `law` and `lend` statements are still read: `spec/std/` has them.
+    // The v2.1 `law` and `lend` statements are still read: `std/` has them.
     let diags = parse_file("struct B:\n    c: List<Int>\n    fn at(mut self, i: Int) lends mut Int:\n        law disjoint(i, j) = i != j\n        lend mut c[i]\n").diagnostics;
     assert!(diags.is_empty(), "{diags:#?}");
 }

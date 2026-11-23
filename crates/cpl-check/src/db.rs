@@ -2191,7 +2191,7 @@ fn is_prelude(path: &str) -> bool {
 /// Whether `path` is a standard-library module (which declares its own imports
 /// explicitly, so `BUILT_ON` must not introduce stdlib-to-stdlib cycles).
 fn is_std_path(path: &str) -> bool {
-    path.contains("/spec/std/") || path.starts_with("spec/std/") || path.starts_with("std/")
+    path.contains("/std/") || path.starts_with("std/")
 }
 
 /// The declaration of the top-level name that starts at `at`.

@@ -1,7 +1,7 @@
 # std.hashmap doc notes
 
 Choices made where the spec was silent, and contradictions found, while
-bringing `spec/std/hashmap.cp` to the doc standard (`spec/std/README.md`).
+bringing `std/hashmap.cp` to the doc standard (`std/README.md`).
 
 ## FlatMap
 

@@ -147,7 +147,7 @@ The ten most likely to hit a contestant, most likely first:
 ### H-DSU-UNITE-DROPPED
 
 - **Question:** is it fine to call `d.unite(a, b)` as a statement?
-- **Sources:** core/06-control-functions.md R06.4.8 (line 139) says dropping a non-unit result is the unused-result lint (W0101) unless the fn is `@droppable`; `Dsu.unite` returns `Bool` and is not `@droppable` (no `@droppable` appears anywhere in spec/std). The stub's own examples drop it: std/dsu.cp:48 `d.unite(2, 3); d.find(3) == 2`.
+- **Sources:** core/06-control-functions.md R06.4.8 (line 139) says dropping a non-unit result is the unused-result lint (W0101) unless the fn is `@droppable`; `Dsu.unite` returns `Bool` and is not `@droppable` (no `@droppable` appears anywhere in std). The stub's own examples drop it: std/dsu.cp:48 `d.unite(2, 3); d.find(3) == 2`.
 - **Readings:** (a) it warns and you write `let _ = ...`; (b) it is fine.
 - **Chose:** a bare statement (01).
 - **Cost if wrong:** a warning on the most common DSU line; no wrong answer.
@@ -164,7 +164,7 @@ The ten most likely to hit a contestant, most likely first:
 
 ### H-MAP-NO-STUB
 
-- **Question:** what is the `Map` / `HashMap` API? These are "builtin" (lib/containers.md §1.1, §1.7) with no stub in spec/std; std/GAPS.md:49 and :69 say the bodies "wait on the `Map` stub". I had to guess the empty literal (`[:]` from R01.4.5 with an annotation, or `Map<Int, I>()`), `get(k) -> ?V` (only seen in core/01 §1.7 `m.get(k)` and std/README.md:143), and the insert spelling.
+- **Question:** what is the `Map` / `HashMap` API? These are "builtin" (lib/containers.md §1.1, §1.7) with no stub in std; std/GAPS.md:49 and :69 say the bodies "wait on the `Map` stub". I had to guess the empty literal (`[:]` from R01.4.5 with an annotation, or `Map<Int, I>()`), `get(k) -> ?V` (only seen in core/01 §1.7 `m.get(k)` and std/README.md:143), and the insert spelling.
 - **Readings:** listed above; for insert, `m[k] = v` or `m.insert(k, v)` (std/seq.cp `insert` is `List`-only).
 - **Chose:** `var seen: Map<Int, I> = [:]`, `seen.get(k)`, `seen[k] = v` (03).
 - **Cost if wrong:** compile errors on any map program. No doc says what each operation costs.

@@ -1,5 +1,5 @@
 // Runs the grammar over every `.cp` file in `corpus/problems/`, `crates/cpl-cli/tests/cases/`,
-// `spec/std/` and `examples/local-lib/`: real programs, not lines written to
+// `std/` and `examples/local-lib/`: real programs, not lines written to
 // suit the grammar.
 
 import * as assert from 'node:assert/strict';
@@ -27,7 +27,7 @@ function has(token: Token, prefix: string): boolean {
 
 const VALID_NUMBER = /^(?:0[xX][0-9a-fA-F_]+|0[bB][01_]+|[0-9][0-9_]*(?:\.[0-9][0-9_]*)?(?:[eE][+-]?[0-9][0-9_]*)?)$/;
 
-test('the grammar cleanly tokenizes every .cp program in corpus/problems/, cases/, spec/std/ and examples/', async () => {
+test('the grammar cleanly tokenizes every .cp program in corpus/problems/, cases/, std/ and examples/', async () => {
     const files = [
         ...cpFiles(path.join(REPO_ROOT, 'corpus', 'problems')),
         ...cpFiles(path.join(REPO_ROOT, 'crates', 'cpl-cli', 'tests', 'cases')),

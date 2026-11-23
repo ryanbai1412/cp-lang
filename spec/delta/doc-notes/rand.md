@@ -1,7 +1,7 @@
 # std.rand doc notes
 
 Choices made where the spec is silent, and contradictions found, while bringing
-`spec/std/rand.cp` to the doc standard. Fixing the exact bit-level algorithms is
+`std/rand.cp` to the doc standard. Fixing the exact bit-level algorithms is
 deliberate: the module promises the same numbers from `cpl run` and the built C++,
 which only holds if every implementation draws identically.
 

@@ -9,14 +9,14 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
    and `devin/v02-delete*` (corpus and tests), `devin/wip-split-vm`,
    `devin/repo-layout-doc`. Rebase each on `main`, run
    `scripts/check.sh --fast`, land with `CPL_LANE=tech-debt scripts/land.sh`,
-   one logical change per commit. Then the moves still only planned: `spec/std`
+   one logical change per commit. Then the moves still only planned: `std`
    -> `std/` (with every path reference, `spec_std_refs` -> 0),
-   `crates/prover` -> `crates/cpl-prover` (the package already has that name),
+   `crates/cpl-prover` -> `crates/cpl-prover` (the package already has that name),
    uv for every Python call, `just gen --check` for generated files. For the
    57 branches with unlanded commits: those owned by another lane go to that
    lane's worklog; the rest are landed or deleted with the `git cherry` output
    in the worklog.
-   The `spec/std -> std/` move, measured on 2026-11-22: `spec_std_refs` is 300,
+   The `std -> std/` move, measured on 2026-11-22: `spec_std_refs` is 300,
    most of them prose (54 in `plan/domains/stdlib`, 41 in the generated
    `skills/cp-lang`, 25 in `plan/domains/lint-fmt`, 21 in `spec/delta`). Shipped
    code finds the directory in 7 places: `crates/cpl-check/build.rs:12`,
@@ -25,7 +25,7 @@ The detail behind [README.md](README.md). Dated 2026-11-22.
    `crates/cpl-lsp/build.rs:8`, `crates/cpl-lsp/src/uri.rs:29`. Order:
    (a) each owner names the path once, a constant per crate (requests in the
    compiler and lint-fmt worklogs); (b) one tech-debt commit runs
-   `git mv spec/std std` and updates the code and scripts, with a note in each
+   `git mv std std` and updates the code and scripts, with a note in each
    touched lane's worklog; (c) regenerate `skills/cp-lang` and rewrite the
    prose. The counter reaches 0 at (c); conformance must stay at 1661/1723.
 2. **Ratchets (M2; landed 2026-11-22).** Fold the counts into `scripts/debt-ratchet.py` (one

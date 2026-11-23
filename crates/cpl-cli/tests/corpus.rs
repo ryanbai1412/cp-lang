@@ -124,7 +124,7 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
             failures.push(out.stderr);
         }
     }
-    /// The `spec/std/*.cp` modules that currently pass standalone `cpl check` (ratchet: only grow).
+    /// The `std/*.cp` modules that currently pass standalone `cpl check` (ratchet: only grow).
     const SPEC_STD: &[&str] = &[
         "deque.cp",
         "dsu.cp",
@@ -140,7 +140,7 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
         "window.cp",
     ];
     for file in SPEC_STD {
-        let path = root().join(format!("spec/std/{file}"));
+        let path = root().join(format!("std/{file}"));
         checked += 1;
         let out = check(&path);
         if out.code != 0 {
@@ -232,7 +232,7 @@ const REWORDED: &[(&str, &str)] = &[
 /// Failing tests that state a limit of the prototype's code generator,
 /// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
 /// here (`tests/programs/semantics.cp`), and simultaneous tuple assignment
-/// `(a, b) = (b, a + b)` is supported across `spec/std/`.
+/// `(a, b) = (b, a + b)` is supported across `std/`.
 const PROTOTYPE_ONLY: &[&str] = &["rt_minassign_twice", "tuple_assign"];
 
 /// The reason a failing test states on its first line: `// error: <text>`.

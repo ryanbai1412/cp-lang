@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Check spec/std/*.cp, or reduce it to reference docs (every fn body `todo`).
+"""Check std/*.cp, or reduce it to reference docs (every fn body `todo`).
 
-spec/std is the standard library: signatures, docs, costs and bodies.
+std is the standard library: signatures, docs, costs and bodies.
 Without --check, only fn bodies change: headers, docs, traits, structs and bodiless
 trait methods are kept as written. `lends` fns keep their bodies, since the
 checker needs the `lend place` to type the place they return.
 
-Usage: scripts/spec-stub.py [--check] [FILE...]   (default spec/std/*.cp)
+Usage: scripts/spec-stub.py [--check] [FILE...]   (default std/*.cp)
 --check changes nothing and exits 1 if an
 `@get` member is documented as costing more than O(1) to make: anything
 that does work up front takes parentheses (decision 140), or if a fn that
@@ -201,7 +201,7 @@ def undocumented_prelude(root):
     """Prelude names no core or lib chapter shows in code: the prelude is the chapters'
     vocabulary (core 11.3), so each name needs a chapter row before it is imported."""
     spec = os.path.join(root, "spec")
-    text = open(os.path.join(spec, "std", "prelude.cp")).read()
+    text = open(os.path.join(root, "std", "prelude.cp")).read()
     names = [n.strip() for group in re.findall(r"use [\w.]+\.\{([^}]*)\}", text)
              for n in group.split(",") if n.strip()]
     docs = "".join(open(f).read() for d in ("core", "lib")
@@ -211,7 +211,7 @@ def undocumented_prelude(root):
 
 
 def audit(files, write):
-    base_path = os.path.join(os.path.dirname(__file__), "..", "spec", "std", "doc-baseline.json")
+    base_path = os.path.join(os.path.dirname(__file__), "..", "std", "doc-baseline.json")
     counts, total, fns = {}, 0, 0
     for f in files:
         lines = open(f).read().split("\n")
@@ -228,14 +228,14 @@ def audit(files, write):
 
 
 def over_baseline(files):
-    base_path = os.path.join(os.path.dirname(__file__), "..", "spec", "std", "doc-baseline.json")
+    base_path = os.path.join(os.path.dirname(__file__), "..", "std", "doc-baseline.json")
     base = json.load(open(base_path)) if os.path.exists(base_path) else {}
     out = []
     for f in files:
         n = len(doc_gaps(open(f).read().split("\n")))
         if n > base.get(os.path.basename(f), 0):
             out.append(f"{os.path.relpath(f)}: {n} pub fns lack doc labels, baseline "
-                       f"{base.get(os.path.basename(f), 0)} (spec/std/README.md)")
+                       f"{base.get(os.path.basename(f), 0)} (std/README.md)")
     return out
 
 
@@ -243,7 +243,7 @@ def main(argv):
     check = "--check" in argv
     flags = ("--check", "--audit", "--write-baseline")
     files = [a for a in argv if a not in flags] or sorted(glob.glob(
-        os.path.join(os.path.dirname(__file__), "..", "spec", "std", "*.cp")))
+        os.path.join(os.path.dirname(__file__), "..", "std", "*.cp")))
     if "--audit" in argv:
         return audit(files, "--write-baseline" in argv)
     total = 0
@@ -270,7 +270,7 @@ def main(argv):
             total += 1
     if check and len(files) > 1:
         for name in undocumented_prelude(os.path.join(os.path.dirname(__file__), "..")):
-            print(f"spec/std/prelude.cp: `{name}` is in no core or lib chapter (core 11.3)")
+            print(f"std/prelude.cp: `{name}` is in no core or lib chapter (core 11.3)")
             total += 1
     print(f"spec-stub: {total} {'problem(s)' if check else 'fn body(ies) stubbed'}")
     return 1 if check and total else 0

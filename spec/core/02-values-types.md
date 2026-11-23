@@ -226,7 +226,7 @@ type Z = Mod(read<Prime>())         // runtime modulus
   as `_`, `-> Rooted<V, _>`: the body's value fixes it, and the caller
   reads it as a member, `t.Pre`. The signature leaves the body's base out,
   so a function returning a fresh domain documents it; every one in
-  `spec/std` is counted from 0 (`0..k`), so `Int(c)` runs `0..C.count`
+  `std` is counted from 0 (`0..k`), so `Int(c)` runs `0..C.count`
   and 1-based output adds 1. (R02.9.3)
 - A fresh type carries runtime data (a domain's count, a modulus) in one
   static slot per declaration site, saved and restored when a recursive

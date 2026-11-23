@@ -77,7 +77,7 @@ today = "3 gaps of 118 (std and core claimers; the 3 wait on a range's keys in Q
 target = "0, over std and core claimers"
 
 [[metric]]
-name = "named args in spec/core and spec/lib that no spec/std fn takes"
+name = "named args in spec/core and spec/lib that no std fn takes"
 command = "uv run scripts/conformance-sigs.py --check"
 today = "5 (sig-gaps.txt: convolve(concave:), dijkstra(step:), each(sum:, hi:), pow(op:))"
 target = "0"

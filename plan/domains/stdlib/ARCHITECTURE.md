@@ -1,12 +1,12 @@
 # stdlib architecture
 
-The code as it is on main `4b8f504f` (2026-11-22). Plan and targets: [PLAN.md](PLAN.md). Normative rules for std code: [spec/std/README.md](../../../spec/std/README.md).
+The code as it is on main `4b8f504f` (2026-11-22). Plan and targets: [PLAN.md](PLAN.md). Normative rules for std code: [std/README.md](../../../std/README.md).
 
 ## Shape
 
-The standard library is 39 CP Lang modules in `spec/std/*.cp` plus the prelude list `spec/std/prelude.cp`: 40 files, 1,976 public items (`grep -cE '^\s*pub\s+(fn|struct|enum|trait|type)'`), 283 `@test` fns. A module is one file; `use std.<m>` names it. Bodies are CP Lang; a stub is `= todo` (294 today). `spec/std/GAPS.md` lists what the compiler can't run yet.
+The standard library is 39 CP Lang modules in `std/*.cp` plus the prelude list `std/prelude.cp`: 40 files, 1,976 public items (`grep -cE '^\s*pub\s+(fn|struct|enum|trait|type)'`), 283 `@test` fns. A module is one file; `use std.<m>` names it. Bodies are CP Lang; a stub is `= todo` (294 today). `std/GAPS.md` lists what the compiler can't run yet.
 
-Std modules import each other with explicit `use std.<m>` (57 edges, 0 cycles: `measure.py cycles`). Library modules never get the prelude (`spec/std/prelude.cp` header); only the program being checked does.
+Std modules import each other with explicit `use std.<m>` (57 edges, 0 cycles: `measure.py cycles`). Library modules never get the prelude (`std/prelude.cp` header); only the program being checked does.
 
 ## Modules
 
@@ -60,23 +60,23 @@ Lines and public items per file, purpose from each file's `//!` header.
 | Interface | Where | Consumers |
 |---|---|---|
 | Module text bundled into the compiler (with `@test` fns stripped by `without_tests`) | `crates/cpl-check/build.rs`, `crates/cpl-check/src/modules.rs` (`bundled_std`, `std_modules`) | every `cpl` command, LSP, playground |
-| The prelude list | `spec/std/prelude.cp`, read via `crates/cpl-check/src/prelude.rs`; size gate in `scripts/check.sh` | checker, LSP completion, lint L0208 `redundant_prelude_import` (`crates/cpl-lint/src/lib.rs`), `crates/cpl-cli/tests/vscode_sync.rs` |
+| The prelude list | `std/prelude.cp`, read via `crates/cpl-check/src/prelude.rs`; size gate in `scripts/check.sh` | checker, LSP completion, lint L0208 `redundant_prelude_import` (`crates/cpl-lint/src/lib.rs`), `crates/cpl-cli/tests/vscode_sync.rs` |
 | Names the compiler binds to std (`BUILT_ON`, `INTERNAL_BUILT_ON`, `std_module`, `std_names`) | `crates/cpl-check/src/prelude.rs` | checker, `cpl fix` import edits |
 | Module names for `use std.` completion | `crates/cpl-lsp/build.rs` | LSP |
-| `///` docs (cost, traps, example, ...) | `spec/std/README.md` §1 rules; `cpl doc --format json spec/std` | `web/scripts/gen-ref.mjs` (site reference), LSP hover, `scripts/spec-stub.py` |
+| `///` docs (cost, traps, example, ...) | `std/README.md` §1 rules; `cpl doc --format json std` | `web/scripts/gen-ref.mjs` (site reference), LSP hover, `scripts/spec-stub.py` |
 | `/// example:` lines as tests | `crates/cpl-conform/src/docs.rs` | `cpl-conform docs`, the scoreboard |
 | Conformance cases | `spec/conformance/std-*/` (38 dirs, one per module except `opt`) | `cpl-conform conformance`, `diff` (interp vs C++) |
-| Algebra laws | `spec/std/algebra.cp` | `crates/prover/src/laws.rs` |
+| Algebra laws | `std/algebra.cp` | `crates/cpl-prover/src/laws.rs` |
 | Standalone-check ratchet | `SPEC_STD` in `crates/cpl-cli/tests/corpus.rs` (12 modules) | `cargo test -p cpl-cli` |
 | `todo` count | `scripts/debt-ratchet.py` (`stdlib_todo`, baseline `scripts/debt-ratchet.json`) | `check.sh` |
 
 ## Invariants
 
 - Std is ordinary CP Lang: a module uses public language features, documented intrinsics and other std modules, nothing else (`plan/ARCHITECTURE.md`). **Partly broken today**, see debt.
-- One list of prelude names: `spec/std/prelude.cp`; nothing else adds a name to every program.
+- One list of prelude names: `std/prelude.cp`; nothing else adds a name to every program.
 - A library module gets no prelude; it `use`s what it needs.
 - Std imports are acyclic (0 explicit cycles today; a gate test is on `devin/wip-std-import-cycles`).
-- Every public fn carries `cost:`, `traps:`, `example:`, and `empty:` / `ties:` / `order:` where they apply (`spec/std/README.md`); enforced by `spec-stub.py --audit` (32 missing).
+- Every public fn carries `cost:`, `traps:`, `example:`, and `empty:` / `ties:` / `order:` where they apply (`std/README.md`); enforced by `spec-stub.py --audit` (32 missing).
 - Every `example:` is a test; every module has `spec/conformance/std-<m>/` cases (all but `opt`).
 - One spelling per idea: options are named arguments (`by:`), no `_by` twins (`spec-vocab.py`: 0 banned).
 - `todo` only goes down (`debt-ratchet.py`).
@@ -85,10 +85,10 @@ Lines and public items per file, purpose from each file's `//!` header.
 
 - **Builtin shadowing / privilege.** `crates/cpl-ir/src/lower/call.rs` (13.4k lines) string-matches 89 names in match arms (`ir_builtin_names`, the builtin count agreed with tech-debt); 40 are public std names (`sort`, `sorted`, `first`, `sum`, `prefix`, `runs`, ...), so the std body may not be what runs (`measure.py privilege`). `crates/cpl-check/src/prelude.rs` tables also list some std names (`Counter`, `Subset`, ...).
 - **Stubs.** 189 library-body and 105 `@test` `todo` (`measure.py todo-split`); largest in `tree`, `graph`, `geometry`, `strings` (`cpl-conform docs --causes`, R0402: 146 examples reach one).
-- **Examples ahead of the compiler.** 174 examples pass an int range where a domain is named (E0204), 89 fill `[D]T` from a list literal (R0001), e.g. in `spec/std/dsu.cp`, `spec/std/beats.cp`. `flow` and `dsu` pass 0 examples.
-- **Standalone check.** 28 of 40 files fail `cpl check spec/std/<m>.cp` (418 errors), including generic code the checker can't yet type (`spec/std/GAPS.md`, 88 entries).
+- **Examples ahead of the compiler.** 174 examples pass an int range where a domain is named (E0204), 89 fill `[D]T` from a list literal (R0001), e.g. in `std/dsu.cp`, `std/beats.cp`. `flow` and `dsu` pass 0 examples.
+- **Standalone check.** 28 of 40 files fail `cpl check std/<m>.cp` (418 errors), including generic code the checker can't yet type (`std/GAPS.md`, 88 entries).
 - **Prelude size.** 192 names vs the 80 in `scripts/check.sh` (a warning, not a failure).
-- **Doc gaps.** 32 public fns missing labels; `ternary_max`/`ternary_min` in `spec/std/prelude.cp` are in no spec chapter (`spec-stub.py --check`, 13 problems).
-- **Big files.** `spec/std/geometry.cp` 3599, `spec/std/seq.cp` 3373, `spec/std/strings.cp` 3347 lines.
+- **Doc gaps.** 32 public fns missing labels; `ternary_max`/`ternary_min` in `std/prelude.cp` are in no spec chapter (`spec-stub.py --check`, 13 problems).
+- **Big files.** `std/geometry.cp` 3599, `std/seq.cp` 3373, `std/strings.cp` 3347 lines.
 - **Location.** Std lives under `spec/` and is bundled into the compiler at build time; the move to `std/` and the removal of `CPL_SPEC`/`CPL_STD` mode switches are in `plan/ARCHITECTURE.md` (tech-debt runs it).
 - **Untracked no-privilege test.** No test copies a std module into a user library and runs it.

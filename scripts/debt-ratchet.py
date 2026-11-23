@@ -93,7 +93,7 @@ def _git(root: Path, *args: str) -> list[str]:
 def stdlib_todo(root: Path) -> list[str]:
     """Each `todo` stub as `path:line`, with ` @test` when it sits in an `@test` fn."""
     out = []
-    for sub in ("spec/std", "std", "stdlib"):
+    for sub in ("std", "stdlib"):
         for path_str in sorted(glob.glob(str(root / sub / "*.cp"))):
             p = Path(path_str)
             in_test = False
@@ -145,7 +145,7 @@ def prelude_privilege(root: Path) -> list[str]:
         if m:
             tables.update(re.findall(r'"(\w+)"', m.group(1)))
     public: set[str] = set()
-    for p in sorted((root / "spec/std").glob("*.cp")):
+    for p in sorted((root / "std").glob("*.cp")):
         public.update(re.findall(r"^\s*pub\s+(?:fn|struct|enum|trait|type)\s+(\w+)", p.read_text(), re.M))
     return sorted(tables & public)
 
@@ -153,7 +153,7 @@ def prelude_privilege(root: Path) -> list[str]:
 def lint_std_names(root: Path) -> list[str]:
     """String literals in lint rules that name a public std fn: lints keyed on library API."""
     public: set[str] = set()
-    for p in sorted((root / "spec/std").glob("*.cp")):
+    for p in sorted((root / "std").glob("*.cp")):
         public.update(re.findall(r"^\s*pub\s+fn\s+(\w+)", p.read_text(), re.M))
     return [f"{_rel(root, p)}:{i} {name}" for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False)
             for i, line in enumerate(_lines(p), 1) for name in re.findall(r'"([a-z_]\w*)"', line)
@@ -238,7 +238,7 @@ def v02_port_files(root: Path) -> list[str]:
 
 
 def spec_std_refs(root: Path) -> list[str]:
-    """`spec/std` mentions outside history (informational until `std/` moves)."""
+    """`spec/std` mentions outside history (the stdlib moved to `std/`; decision 307)."""
     return _git(root, "grep", "-n", "spec/std", "--", ".", ":!research", ":!decisions.md",
                 ":!plan/domains/tech-debt", ":!scripts/debt-ratchet.py")
 

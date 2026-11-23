@@ -7,7 +7,7 @@ The detail behind [README.md](README.md). Numbers are from the runs in [metrics.
 - **Bodies.** 294 `todo` stubs: 189 in library bodies, 105 in `@test` fns (`measure.py todo-split`). 146 doc examples reach a `todo` (`cpl-conform docs --causes`, R0402).
 - **Examples that don't compile.** Of 687 non-passing doc examples, two causes cover 263 (`--causes`): 174 E0204 "takes a domain by name, and `0..5` is a range" (an int range where a type argument names a domain), 89 R0001 "an array literal needs one value per position" (a list literal for `[D]T`, which spec R04.8.10 allows).
 - **Whole modules.** `flow` 0/72 and `dsu` 0/64 examples pass; `tree` 123/239, `graph` 87/141 (`cpl-conform docs <m>.cp`). Only 12 of 40 files pass standalone `cpl check` (the `SPEC_STD` ratchet in `crates/cpl-cli/tests/corpus.rs` lists the same 12).
-- **Compiler gaps.** 88 entries in `spec/std/GAPS.md`: bodies the compiler can't run yet.
+- **Compiler gaps.** 88 entries in `std/GAPS.md`: bodies the compiler can't run yet.
 - **Surface.** Prelude 192 names (`check.sh` still warns above 80, a budget decision 150 dropped; usage in `prelude-usage.md`); 32 public fns lack a doc label; 13 `spec-stub --check` problems (e.g. `ternary_max` is in no chapter).
 - **Privilege.** The builtin count, agreed with tech-debt, is `ir_builtin_names` (`scripts/debt-ratchet.py`): 89 distinct names string-matched in match arms of `cpl-ir/src/lower/call.rs`; 40 of them are public std names (`measure.py privilege`).
 
@@ -27,7 +27,7 @@ The detail behind [README.md](README.md). Numbers are from the runs in [metrics.
 4. **W4 Doc labels and `spec-stub --check`** (M2). Mechanical: 32 labels, 13 problems. One commit per module.
 5. **W5 Prelude budget** (M3, decision 281). Count use of each prelude name across gold ports (`corpus/`) and hill-climb solutions; cut by the rule; `cpl fix` migrates `use` lines (lint L0208 `redundant_prelude_import` in `cpl-lint` already knows the list).
 6. **W6 No privilege** (M3, with tech-debt and compiler). One definition of "privileged" (decision 266); the metric in `measure.py privilege` sharpened to it; a no-privilege test: copy a std module into a temp user library and run its conformance cases there; then the per-name moves.
-7. **W7 `spec/std` -> `std/`** (M3, run by tech-debt). The stdlib side: path updates in `spec/std/README.md`, `GAPS.md`, conformance case headers.
+7. **W7 `std` -> `std/`** (M3, run by tech-debt). The stdlib side: path updates in `std/README.md`, `GAPS.md`, conformance case headers.
 
 W2 runs before W3 because writing bodies whose examples fail for a compiler reason wastes the body's test.
 
@@ -59,5 +59,5 @@ W2 runs before W3 because writing bodies whose examples fail for a compiler reas
 
 1. `git cherry` each branch; rebase `devin/wip-std-import-cycles`; `check.sh --fast`; land; note the `cpl-check` change in the compiler worklog.
 2. Same for `wip-std-todos`, then `wip-stdlib-bodies`; re-run `debt-ratchet.py --update` with each.
-3. Split `wip-std-graph-batch-b`: land `spec/std/graph.cp` + `std-graph` cases; hand the `cpl-ir` diff to the compiler lane as a request.
+3. Split `wip-std-graph-batch-b`: land `std/graph.cp` + `std-graph` cases; hand the `cpl-ir` diff to the compiler lane as a request.
 4. Re-measure every metric in `metrics.toml`, then start W2 on `flow` and `dsu` (0 examples pass).

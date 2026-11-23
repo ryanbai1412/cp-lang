@@ -4,11 +4,11 @@
 //! over sequences that `plan/12-domains-and-sequences.md` writes bare
 //! (`sum`, `count`, `all`, `any`, `find`, `first`, `last`, `argmax`,
 //! `argmin`), and the intrinsics the libraries are written on top of
-//! (`rand`, `sort`, `swap`, `popcount`, ...; `spec/std/README.md` lists them).
+//! (`rand`, `sort`, `swap`, `popcount`, ...; `std/README.md` lists them).
 //!
 //! Everything else, `std` included, is cp source and resolves through
 //! `use`. The `std` names a program has without writing one are listed in
-//! `spec/std/prelude.cp`, which [`names`] reads.
+//! `std/prelude.cp`, which [`names`] reads.
 
 use std::sync::OnceLock;
 
@@ -17,13 +17,13 @@ use cpl_syntax::ast;
 
 use crate::ty::{Param, Ty};
 
-/// What `spec/std/prelude.cp` lists: each name, and the module its `use`
+/// What `std/prelude.cp` lists: each name, and the module its `use`
 /// takes it from (`std.mod`, `Mod`). The compiler has no list of its own.
 pub fn names() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static NAMES: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
     NAMES.get_or_init(|| {
         let text = crate::modules::bundled_std(&["prelude".to_string()])
-            .expect("spec/std/prelude.cp is built into the compiler");
+            .expect("std/prelude.cp is built into the compiler");
         let mut found = Vec::new();
         for (_, item) in cpl_syntax::parse_file(text).items {
             for stmt in item.stmts {
@@ -416,7 +416,7 @@ pub const TYPE_NAMES: &[&str] = &[
     "Indexed",
 ];
 
-/// The traits of `plan/19-index-and-lends.md` and `spec/std/README.md`.
+/// The traits of `plan/19-index-and-lends.md` and `std/README.md`.
 pub const TRAIT_NAMES: &[&str] = &[
     "Index",
     "Seq",

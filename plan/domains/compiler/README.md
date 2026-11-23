@@ -1,6 +1,6 @@
 # compiler
 
-Segment: B (metric). Owns: `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-ir`, `crates/cpl-interp`, `crates/prover` (proofs, range analysis), and the shared-core interfaces ([ARCHITECTURE.md](ARCHITECTURE.md#interfaces-other-domains-use)). Status 2026-11-22: review packet; three branches queued to land. Detail: [PLAN.md](PLAN.md). Numbers: [metrics.toml](metrics.toml). Log: [worklog.md](worklog.md).
+Segment: B (metric). Owns: `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-ir`, `crates/cpl-interp`, `crates/cpl-prover` (proofs, range analysis), and the shared-core interfaces ([ARCHITECTURE.md](ARCHITECTURE.md#interfaces-other-domains-use)). Status 2026-11-22: review packet; three branches queued to land. Detail: [PLAN.md](PLAN.md). Numbers: [metrics.toml](metrics.toml). Log: [worklog.md](worklog.md).
 
 ## Mission
 
@@ -17,7 +17,7 @@ Not covered (owner instead):
 - C++ emission, layout, C++ size and speed: **perf** (`cpl-codegen`). The interp-vs-C++ number is shared: a disagreement is fixed by whichever side is wrong.
 - Diagnostic wording, codes, the error index: **diagnostics** (`cpl-diag`). Compiler decides *when* an error fires; diagnostics decides *how it reads*.
 - What the language means and the cases themselves: **spec** (`spec/core`, `spec/conformance`). Compiler never edits a case; disputes go to the spec worklog.
-- Library bodies: **stdlib** (`spec/std`). Trace viewer, stress: **debugger**. LSP/CLI: **tools**.
+- Library bodies: **stdlib** (`std`). Trace viewer, stress: **debugger**. LSP/CLI: **tools**.
 
 ## Success criteria for v0.3
 
@@ -87,7 +87,7 @@ Filed in [plan/QUESTIONS.md](../../QUESTIONS.md) (1 and 2 by compiler, 3 by tech
 
 1. **How product positions lower:** a position of `domain P = (R, C)` is a tuple of factor positions in the IR (cheap neighbours, `(r, c)` destructures), with `nth` and array offsets computed row-major; not one packed row-major `Int`. Default: tuple (what `wip-product-domain` does).
 2. **One VM, no tree-walker:** delete the tree-walker once the VM covers everything, and let the C++ diff be the only second opinion; not keep it as a reference oracle. Default: keep both until fallbacks reach 0, then delete.
-3. **The builtin floor** (filed by tech-debt, "which names may the compiler know"): compiler backs option (a), a small floor declared in `spec/std` with an `@intrinsic` marker any library may use. Today 146 literals of 35 std type names in check/ir/interp, beyond the 89 call names tech-debt counts in `lower/call.rs`. Default: the names only go down; first step moves them into one table.
+3. **The builtin floor** (filed by tech-debt, "which names may the compiler know"): compiler backs option (a), a small floor declared in `std` with an `@intrinsic` marker any library may use. Today 146 literals of 35 std type names in check/ir/interp, beyond the 89 call names tech-debt counts in `lower/call.rs`. Default: the names only go down; first step moves them into one table.
 
 ## Ryan's role
 

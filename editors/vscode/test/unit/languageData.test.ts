@@ -1,6 +1,6 @@
 // The extension's word lists and TextMate grammar must match edition 0.3,
-// the one the server checks against: the compiler's prelude, `spec/std/*.cp`
-// and `spec/std/prelude.cp`, with zero stale v1/v2.1/v0.2 tokens.
+// the one the server checks against: the compiler's prelude, `std/*.cp`
+// and `std/prelude.cp`, with zero stale v1/v2.1/v0.2 tokens.
 
 import * as assert from 'node:assert/strict';
 import * as fs from 'node:fs';
@@ -70,7 +70,7 @@ function rustStrings(source: string, from: RegExp, end: string): string[] {
     return [...body.matchAll(/"([A-Za-z_][A-Za-z0-9_]*)"/g)].map(m => m[1]);
 }
 
-/** What edition 0.3 ships, read from the compiler and `spec/std`. */
+/** What edition 0.3 ships, read from the compiler and `std`. */
 function shipped() {
     const prelude = fs.readFileSync(path.join(REPO_ROOT, 'crates', 'cpl-check', 'src', 'prelude.rs'), 'utf8');
     const typeNames = rustStrings(prelude, /const TYPE_NAMES: &\[&str\] = &\[/, '];');
@@ -130,11 +130,11 @@ test('every table entry is a name edition 0.3 ships: no phantom symbols', () => 
     const phantoms = (names: readonly string[], known: (name: string) => boolean) => names.filter(name => !known(name));
     const fromPrelude = (name: string) => real.imported.has(name);
     assert.deepEqual(phantoms(PRELUDE_TYPES, name => real.builtinTypes.has(name)), [], 'PRELUDE_TYPES not in prelude.rs');
-    assert.deepEqual(phantoms(STDLIB_TYPES, name => real.stdlibTypes.includes(name)), [], 'STDLIB_TYPES not declared in spec/std/');
+    assert.deepEqual(phantoms(STDLIB_TYPES, name => real.stdlibTypes.includes(name)), [], 'STDLIB_TYPES not declared in std/');
     assert.deepEqual(
         phantoms(PRELUDE_VALUES, name => real.builtinValues.has(name) || (fromPrelude(name) && real.stdlibFns.includes(name))),
         [],
-        'PRELUDE_VALUES neither built in nor imported by spec/std/prelude.cp',
+        'PRELUDE_VALUES neither built in nor imported by std/prelude.cp',
     );
     assert.deepEqual(
         phantoms(STDLIB_VALUES, name => real.stdlibFns.includes(name) && !fromPrelude(name)),
@@ -144,7 +144,7 @@ test('every table entry is a name edition 0.3 ships: no phantom symbols', () => 
     assert.deepEqual(
         phantoms(PRELUDE_CONSTANTS, name => real.stdlibConsts.includes(name) && fromPrelude(name)),
         [],
-        'PRELUDE_CONSTANTS not a stdlib const imported by spec/std/prelude.cp',
+        'PRELUDE_CONSTANTS not a stdlib const imported by std/prelude.cp',
     );
     assert.deepEqual(
         phantoms(STDLIB_CONSTANTS, name => real.stdlibConsts.includes(name) && !fromPrelude(name)),
@@ -162,7 +162,7 @@ test('every name edition 0.3 ships is in a table: no missing symbols', () => {
     const builtins = [...real.builtinTypes, ...real.builtinValues].filter(name => !(name in UNLISTED_BUILTINS));
     assert.deepEqual(builtins.filter(name => !listed.has(name)), [], 'prelude.rs names missing from the tables');
     const stdlib = [...real.stdlibFns, ...real.stdlibTypes, ...real.stdlibConsts, ...real.imported];
-    assert.deepEqual(stdlib.filter(name => !listed.has(name)), [], 'spec/std/ names missing from the tables');
+    assert.deepEqual(stdlib.filter(name => !listed.has(name)), [], 'std/ names missing from the tables');
     for (const name of Object.keys(UNLISTED_BUILTINS)) {
         assert.ok(real.builtinValues.has(name) || real.builtinTypes.has(name), `UNLISTED_BUILTINS has ${name}, which prelude.rs no longer knows`);
     }

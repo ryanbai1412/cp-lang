@@ -6,9 +6,9 @@ building, what it owes the contestant, and the rules every change follows.
 Then read, in order:
 0. `spec/STATUS.md` and `spec/README.md`: where the 0.3.0 work stands today,
    how the spec and corpus fit together, the checks to run, and what is open.
-   `spec/` (`spec/core/`, `spec/lib/`, `spec/tools/`, `spec/std/`) is the
-   only normative language source; where anything else disagrees with it,
-   `spec/` wins.
+   `spec/` (`spec/core/`, `spec/lib/`, `spec/tools/`) and the stdlib in
+   `std/` are the only normative language sources; where anything else
+   disagrees with them, they win.
 1. `plan/OPERATING.md`: settled decisions and the loop we work in.
 2. `plan/DOMAINS.md`: the domains (one domain = one lane = one owner);
    find yours, then read `plan/domains/<domain>/` and `plan/QUESTIONS.md`.

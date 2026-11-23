@@ -1,4 +1,4 @@
-//! False-positive ratchet: code in `spec/std/` and the corpus's `spec.cp`
+//! False-positive ratchet: code in `std/` and the corpus's `spec.cp`
 //! files is idiomatic by definition, so every warning there is a lint bug or
 //! a finding someone has to act on. `corpus_warnings.txt` holds today's count
 //! per set and code; a count may not rise. `CPL_LINT_BLESS=1` rewrites it
@@ -197,7 +197,7 @@ fn the_cli_and_the_editor_read_the_same_facts() {
 }
 
 /// Proving one item gives what proving the whole file gives inside it, on
-/// every corpus port and spec and every `spec/std` module.
+/// every corpus port and spec and every `std` module.
 #[test]
 fn one_item_proves_what_the_whole_file_proves_there() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");

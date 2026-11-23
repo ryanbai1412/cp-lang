@@ -68,7 +68,7 @@ for (const [dir, title, description] of specDirs) {
 }
 
 const std = JSON.parse(
-  execFileSync(cpl, ['doc', '--format', 'json', 'spec/std'], {
+  execFileSync(cpl, ['doc', '--format', 'json', 'std'], {
     cwd: repo,
     encoding: 'utf8',
     maxBuffer: 64 << 20,
@@ -105,7 +105,7 @@ function renderItem(item, level, prefix, parentDoc, index, module) {
     for (const e of examples) lines.push(`- ${e}`);
     lines.push('');
   }
-  lines.push(`[Source](${blob}/spec/std/${module}.cp#L${item.line})`, '');
+  lines.push(`[Source](${blob}/std/${module}.cp#L${item.line})`, '');
   if (item.kind === 'fn' || item.kind === 'struct' || item.kind === 'enum' || item.kind === 'trait') {
     index.push({ name, module, kind: item.kind, cost: facts.find(([k]) => k === 'cost')?.[1] ?? '' });
   }
@@ -121,7 +121,7 @@ const modules = std.modules.filter((m) => m.items.some((i) => /^pub\b/.test(i.si
 for (const m of modules) {
   const fields = m.items.filter((i) => i.kind === 'field' || (i.kind !== 'impl' && !/^pub\b/.test(i.signature)));
   const body = [
-    `Generated from [spec/std/${m.name}.cp](${blob}/spec/std/${m.name}.cp) by \`cpl doc --format json\`.`,
+    `Generated from [std/${m.name}.cp](${blob}/std/${m.name}.cp) by \`cpl doc --format json\`.`,
     '',
     m.doc,
     '',
@@ -138,7 +138,7 @@ write(
     'Library',
     `Every public item in the ${modules.length} modules of the 0.3 standard library.`,
     [
-      `Generated from \`spec/std\` by \`cpl doc --format json\`. Costs and traps follow the [doc standard](${blob}/spec/std/README.md).`,
+      `Generated from \`std\` by \`cpl doc --format json\`. Costs and traps follow the [doc standard](${blob}/std/README.md).`,
       '',
       '## Modules',
       '',

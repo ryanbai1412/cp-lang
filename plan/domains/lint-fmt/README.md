@@ -34,10 +34,10 @@ idiomatic corpus, so a finding there is a bug in the lint, not the port.
 
 ## Success criteria for v0.3
 1. **Fmt is safe on everything.** Idempotent and meaning-preserving on all
-   tracked `.cp` files; `cpl fmt --check` clean on corpus ports, `spec/std` and
+   tracked `.cp` files; `cpl fmt --check` clean on corpus ports, `std` and
    docs snippets, enforced in `scripts/check.sh --fast`.
 2. **Lint has no false positives where it matters.** 0 warnings on
-   `corpus/problems/*/spec.cp` and `spec/std` at default levels, every
+   `corpus/problems/*/spec.cp` and `std` at default levels, every
    remaining hit classified (false positive fixed, or port fixed by corpus).
 3. **Every lint is a record.** Each lint has `before/after/near_miss` tests;
    every `fix` is verified (re-checks; interpreter and C++ agree).
@@ -56,14 +56,14 @@ idiomatic corpus, so a finding there is a bug in the lint, not the port.
 **M1 Fmt gate on main (first; days).** Land `devin/wip-fmt`; fix the one
 meaning change; one mechanical commit formats the owned trees.
 Exit: `python3 scripts/fmt_check.py` reports 0 not idempotent, 0 meaning
-changes, 0 bugs; `cpl fmt --check corpus/problems/*/spec.cp spec/std/*.cp`
+changes, 0 bugs; `cpl fmt --check corpus/problems/*/spec.cp std/*.cp`
 says 0 would change; `scripts/check.sh --fast` runs the fmt step.
 
 **M2 Lint as data, corpus-clean (the rebuild's spine).** One record per lint
 under `spec/lints/<name>/`, Rust registry generated from it; the 38 lints gain
 near-miss and fix tests; the false-positive ratchet runs in the gate.
 Exit: records = `cpl lint --list | wc -l`; `cpl lint corpus/problems/*/spec.cp`
-and `spec/std/*.cp` report 0 warnings; a test fails when a record and the
+and `std/*.cp` report 0 warnings; a test fails when a record and the
 registry or `spec/diagnostics.md` disagree.
 
 **M3 Facts from the checker, lints from libraries.** Bound facts come from a
@@ -84,13 +84,13 @@ Measured 2026-11-22 on main (98618e1b5) with a release `cpl`; commands in full i
 | Spec lint codes emitted by nothing | `comm` of `--list` vs `spec/diagnostics.md`, then grep `cpl-check` | 0 (9 in `cpl-check`) | 0 |
 | Implemented codes missing from spec | test `every_lint_matches_the_spec_lint_list` | 0 | 0 |
 | Warnings on corpus `spec.cp` (100) | `cpl lint corpus/problems/*/spec.cp` | 34, 1 not linted | 0, 0 |
-| Warnings on `spec/std` (40) | `cpl lint spec/std/*.cp` | 262, 5 not linted | 0, 0 |
+| Warnings on `std` (40) | `cpl lint std/*.cp` | 262, 5 not linted | 0, 0 |
 | Warnings on `dream.cp` (421) | `cpl lint corpus/problems/*/dream.cp` | 99, 84 not linted | 0 false positives |
 | Hard-coded stdlib names in rules | `grep -ohE '"[A-Z][A-Za-z]+"' rules/*.rs` | 16 | 0 |
 | Wasm-only gaps in cpl-lint | `git grep -c 'target_arch = "wasm32"'` | 4 (all the prover) | 4 (decisions.md 235) |
 | Fixed files with more checker errors (std + corpus spec) | test `fixes_never_add_checker_errors` | 0 | 0 |
-| Lint time, largest linted file (2,682 lines) | `time cpl lint spec/std/tree.cp` | 0.01 s | < 0.05 s |
-| Fmt time, same file | `time cpl fmt --check spec/std/tree.cp` | 0.00 s | < 0.05 s |
+| Lint time, largest linted file (2,682 lines) | `time cpl lint std/tree.cp` | 0.01 s | < 0.05 s |
+| Fmt time, same file | `time cpl fmt --check std/tree.cp` | 0.00 s | < 0.05 s |
 | `.cp` files fmt would change | `python3 scripts/fmt_check.py` | 585 / 5,176 | 0 outside exempt tests |
 | Not idempotent | same | 0 | 0 |
 | Meaning changes | same | 0 | 0 |

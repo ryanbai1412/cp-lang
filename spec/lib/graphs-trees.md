@@ -96,7 +96,7 @@ what to generate and shrink.
 
 ### Traits
 
-<!-- spec-only: excerpt of spec/std -->
+<!-- spec-only: excerpt of std -->
 ```python
 pub trait Next<V>:
     type Arc: Target<V>

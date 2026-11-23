@@ -22,7 +22,7 @@ Where everything lives: one line per top-level path.
 | `.cargo/`, `.config/` | Cargo settings and the nextest profiles. |
 | `.gitignore`, `.gitattributes` | Ignored build output; line endings and diff drivers. |
 | `spec/` | The normative language. |
-| `std/` | The standard library (target; today `spec/std/`). |
+| `std/` | The standard library. |
 | `crates/` | The toolchain (Rust). |
 | `corpus/` | Real contest problems. |
 | `bench/` | Performance harnesses (code only). |

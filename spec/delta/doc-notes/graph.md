@@ -1,7 +1,7 @@
 # graph.cp doc notes
 
 One bullet per contradiction or silent choice found while bringing
-`spec/std/graph.cp` to the doc standard.
+`std/graph.cp` to the doc standard.
 
 ## Contradictions
 

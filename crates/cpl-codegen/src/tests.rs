@@ -1161,7 +1161,7 @@ fn cheap_pure_sort_key_avoids_sort_by_buffers() {
 }
 
 #[test]
-#[ignore = "spec/std/bitset.cp stores `w: List<U64>`: no inline Row for small domains yet"]
+#[ignore = "std/bitset.cp stores `w: List<U64>`: no inline Row for small domains yet"]
 fn small_domain_bitset_uses_inline_row_and_fused_popcount() {
     let cpp = cpp(concat!(
         "let n: 1..=300 = read()\n",

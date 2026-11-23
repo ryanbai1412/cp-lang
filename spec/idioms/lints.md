@@ -1,7 +1,7 @@
 # Idiomatic CP Lang: lint families (draft 1)
 
 Status: non-normative. This is taste guidance, not the language: `spec/core`, `spec/lib`,
-`spec/std` and `spec/tools` define CP Lang, and where this file disagrees with them, they win.
+`std` and `spec/tools` define CP Lang, and where this file disagrees with them, they win.
 Whether it becomes Ryan's normative taste is open in `plan/QUESTIONS.md` (idioms). Changes go
 through the idioms lane; a lint in `spec/lints/` should cite the practice it serves.
 
@@ -1162,7 +1162,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | pub_struct_exposes_raw_index | `pub` field on a domain-keyed data structure exposing raw `Int` index instead of `D` | expose `D` position or keep raw index private | warn | #3 | ty | |
 | library_lint_foreign_name | library-declared lint rule referencing a symbol owned by a different module (`fmt-lint.md` ownership rule) | move lint to the module that owns the name | warn | #13 | ty | |
 | pub_cache_field_unsealed | `pub @cache` field directly writable by external callers | keep `@cache` fields private to the defining type | warn | #8 | ty | |
-| pub_mut_fn_ambiguous_name | `pub fn` that mutates `self` in place with a noun/past-participle name (`sorted`, `reversed`) instead of imperative (`sort`, `reverse`) | follow `sort`/`sorted` naming convention (`spec/std`) | warn | #13 | ty | |
+| pub_mut_fn_ambiguous_name | `pub fn` that mutates `self` in place with a noun/past-participle name (`sorted`, `reversed`) instead of imperative (`sort`, `reverse`) | follow `sort`/`sorted` naming convention (`std`) | warn | #13 | ty | |
 
 ---
 
@@ -1187,7 +1187,7 @@ Three recurring lint groups above point to practices not directly named by `#1`â
 3. **`std.math.rem_euclid`**: when contestants need non-negative Euclidean remainder modulo a dynamic `m` without `Mod<P>` (e.g. negative coordinate wrapping), they write `((a % m) + m) % m`; a `rem_euclid(a, m)` helper eliminates the C++ idiom.
 4. **`std.graph.read_edges` / `Graph.read`**: nearly every graph problem repeats `for _ in 0..m: let (u, v) = read<(V, V)>(); g.add(u, v)`; a typed edge-list reader would let `read_graph_edges_loop` autofix cleanly.
 
-### Spec/implementation gaps in `spec/std/GAPS.md` that affect lints
+### Spec/implementation gaps in `std/GAPS.md` that affect lints
 
 5. **`@cache` fields do not parse yet** (`GAPS.md` #1): blocks `cache_field_written_outside_cache`, `cache_field_observable_leak`, `pub_cache_field_unsealed`, and optimal `Dsu`/`Comb` implementations.
 6. **`Wire` lacks stdout flush-before-read mode** (`GAPS.md` #6): needed for `interactive_missing_flush` and `interactive_read_before_flush` to autofix cleanly onto `Wire`.

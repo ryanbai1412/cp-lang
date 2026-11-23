@@ -141,7 +141,7 @@ fn the_prelude_names_are_the_ones_a_file_can_use() {
             "`{name}` is a type"
         );
     }
-    // Only what `spec/std/prelude.cp` lists.
+    // Only what `std/prelude.cp` lists.
     let std = names
         .iter()
         .filter(|(_, kind)| matches!(kind, PreludeKind::Std(_)))
@@ -271,20 +271,20 @@ fn ordered_container_method_parity_and_range_len_guard() {
         "`Set` is missing `drain(after:/before:, while:)`"
     );
 
-    // `SortedSet` and `SortedBag` in `spec/std/bag.cp` must expose the ordered API surface.
+    // `SortedSet` and `SortedBag` in `std/bag.cp` must expose the ordered API surface.
     let bag_src = std::fs::read_to_string(
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/std/bag.cp"),
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std/bag.cp"),
     )
     .unwrap();
     for required in ["fn first_true(", "fn last_true(", "fn drain(", "fn range("] {
         assert!(
             bag_src.contains(required),
-            "`spec/std/bag.cp` is missing `{required}`"
+            "`std/bag.cp` is missing `{required}`"
         );
     }
     assert!(
         !bag_src.contains("fn first_where("),
-        "`spec/std/bag.cp` must not expose removed `first_where`"
+        "`std/bag.cp` must not expose removed `first_where`"
     );
 
     // `Set.range(r).len` and `Map.range(r).len` must fail typecheck with help naming SortedSet/SortedBag.

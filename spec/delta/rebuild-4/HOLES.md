@@ -1,6 +1,6 @@
 # Rebuild round 4: holes
 
-I read `ryanbai1412/cp-lang` at commit `f6ff5434d19e19fb709400ea0f22df2c0f25e9bb` (`f6ff5434d`), and only `spec/`: `spec/README.md`, `spec/core/`, `spec/lib/`, `spec/tools/`, `spec/std/` and `spec/diagnostics.md`. I did not open `spec/delta/`, `spec/conformance/` or anything outside `spec/`, and I did not run the compiler, so every program here is checked against the text alone.
+I read `ryanbai1412/cp-lang` at commit `f6ff5434d19e19fb709400ea0f22df2c0f25e9bb` (`f6ff5434d`), and only `spec/`: `spec/README.md`, `spec/core/`, `spec/lib/`, `spec/tools/`, `std/` and `spec/diagnostics.md`. I did not open `spec/delta/`, `spec/conformance/` or anything outside `spec/`, and I did not run the compiler, so every program here is checked against the text alone.
 
 ## Summary
 
@@ -159,7 +159,7 @@ The ten most likely to hit a contestant, most likely first:
 ### H-OPT-ARRAY-CHAIN
 
 - Question: what is `from.chain(v)` on a back-pointer table `from: [D]?D`? `lib/search-dp.md:83` names it as the reconstruction idiom ("walks the kept argmins: `for c in from.chain(Pos.cuts.last!)`").
-- Stubs: no `chain` method on `[D]?D` exists anywhere in `spec/std`. The only `chain`s are the free `chain(a, b)` sequence concatenation (`std/seq.cp:1584`, prelude) and `Rooted.chain` (heavy chain, `std/tree.cp:841`). The yield order and whether the last vertex (the one with `None`) is included are unstated.
+- Stubs: no `chain` method on `[D]?D` exists anywhere in `std`. The only `chain`s are the free `chain(a, b)` sequence concatenation (`std/seq.cp:1584`, prelude) and `Rooted.chain` (heavy chain, `std/tree.cp:841`). The yield order and whether the last vertex (the one with `None`) is included are unstated.
 - Readings: (a) it yields `v, from[v], from[from[v]], ...` through the vertex whose entry is `None`; (b) the same without `v`; (c) the same in root-first order; (d) it does not exist, so write the loop by hand.
 - Chose: (a), then `.collect().rev` to print the route from city 1 to city n.
 - Cost if wrong: the reconstruction is reversed, or off by one vertex (a wrong answer), or it fails to compile. Every "DP with path" problem hits this.
@@ -167,7 +167,7 @@ The ten most likely to hit a contestant, most likely first:
 ### H-SET-MAP-STUB
 
 - Question: what is the API of the builtin `Set`/`Map`/`HashSet`/`HashMap` (constructor from a sequence, `.len`, `insert`)? This matters for the "set" form of Distinct Numbers.
-- Stubs: `lib/containers.md:49,158-163` calls them builtin ("Write `Map` and `Set` for a lookup table"). `std/seq.cp:350` (`HashSet<K>()`) and `std/hashmap.cp:483` (`Set<Int>()`) use them. No `struct Set`/`HashSet`/`Map`/`HashMap` stub exists in `spec/std`.
+- Stubs: `lib/containers.md:49,158-163` calls them builtin ("Write `Map` and `Set` for a lookup table"). `std/seq.cp:350` (`HashSet<K>()`) and `std/hashmap.cp:483` (`Set<Int>()`) use them. No `struct Set`/`HashSet`/`Map`/`HashMap` stub exists in `std`.
 - Readings: (a) `Set(a).len`; (b) `var s = Set<Int>(); for x in a: s.insert(x)`; (c) avoid them and use `distinct` (`std/seq.cp:349`, prelude, documented O(n) expected, with salted hashing per `lib/containers.md:163`).
 - Chose: (c), `read<[n]Int>().distinct().len`.
 - Cost if wrong: any program that writes `Set`/`Map` directly is guessing method names. A wrong guess is a compile error on the most common container in contest code.

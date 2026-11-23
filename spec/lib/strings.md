@@ -539,7 +539,7 @@ print(dp[n])
 
 ## Coverage
 
-Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`string`), and strong contestant templates (Benq, jiangly, ecnerwala, tourist). Status: `have` (implemented body in `spec/std/strings.cp`), `new` (`= todo` spec addition), `out` (intentionally omitted).
+Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`string`), and strong contestant templates (Benq, jiangly, ecnerwala, tourist). Status: `have` (implemented body in `std/strings.cp`), `new` (`= todo` spec addition), `out` (intentionally omitted).
 
 | Reference item | Source(s) | Status | Our name / reason if omitted |
 | --- | --- | --- | --- |
@@ -590,7 +590,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 
 ## Powers
 
-Every power from `spec/core/12-powers.md` (and any gap beyond it) needed by `spec/std/strings.cp`:
+Every power from `spec/core/12-powers.md` (and any gap beyond it) needed by `std/strings.cp`:
 
 1. **W4 (Sequences, views, and index spaces — `Indexed`, `Seq`, `Range<D>`, cut ranges):**
    - Signatures: `starts_with`, `ends_with`, `z_function`, `prefix_function`, `find_all`, `borders`, `prefix_matches`, `overlap`, `lyndon_factorization`, `min_rotation`, `max_rotation`, `lyndon_runs`, `manacher`, `suffix_array`, `SuffixArray.{rank_range,find_all,count}`, `suffix_tree_edges`, `RollingHash.{new,get}`, `RollingHash61.{new,get}`, `DynamicHash.new`, `SuffixAutomaton.{of,find,contains,lcs,add_word}`, `PalindromicTree.{of,contains}`, `Trie.{find,add,remove,count,count_prefix,contains,count_less}`, `AhoCorasick.{new,find_all,counts}`, `DynamicAhoCorasick.{add,remove,count_matches}`.
@@ -602,7 +602,7 @@ Every power from `spec/core/12-powers.md` (and any gap beyond it) needed by `spe
    - Signatures: `DynamicHash.{get,set}` (so `dh[i] = c` updates the hashed element in O(log n) and `dh[l..r]` queries the range hash).
    - Smallest example: `dh[i] = 'a'; if dh.is_palindrome(l..r): ans += 1`.
 4. **W12 (Cost on first `///` line):**
-   - Signatures: All 191 public declarations in `spec/std/strings.cp`.
+   - Signatures: All 191 public declarations in `std/strings.cp`.
 5. **Defaulted named arguments (Decision 134 / `spec/delta/parser-gaps.md`):**
    - Signatures: `RollingHash.new(s, bases: ?(Int, Int) = None)`, `RollingHash61.new(s, base: ?Int = None)`, `DynamicHash.new(s, bases: ?(Int, Int) = None)`, `find_all_wildcard(self, pat, wildcard: Char = '?')`.
    - Smallest example: `let h2 = RollingHash.new(t, bases: h1.bases)`.

@@ -31,14 +31,14 @@ milestone = "M3"
 
 [[metric]]
 name = "std type names as string literals in check/ir/interp"
-command = "for n in $(grep -rhoE '^(pub )?(struct|enum|trait) [A-Z][A-Za-z0-9]*' spec/std | awk '{print $NF}' | sort -u | grep -vxE 'List|Str|Map|Set|Int|Bool|Char|Float'); do grep -rF \"\\\"$n\\\"\" crates/cpl-check/src crates/cpl-ir/src crates/cpl-interp/src --include=*.rs | grep -v /tests; done | wc -l"
+command = "for n in $(grep -rhoE '^(pub )?(struct|enum|trait) [A-Z][A-Za-z0-9]*' std | awk '{print $NF}' | sort -u | grep -vxE 'List|Str|Map|Set|Int|Bool|Char|Float'); do grep -rF \"\\\"$n\\\"\" crates/cpl-check/src crates/cpl-ir/src crates/cpl-interp/src --include=*.rs | grep -v /tests; done | wc -l"
 today = "146 occurrences of 35 names"
 target = "0 outside one intrinsics table"
 milestone = "M3"
 
 [[metric]]
 name = "edition branches"
-command = "grep -rE 'is_v03\\(\\)|spec_edition\\(\\)' crates/cpl-syntax/src crates/cpl-check/src crates/cpl-ir/src crates/cpl-interp/src crates/prover/src | wc -l"
+command = "grep -rE 'is_v03\\(\\)|spec_edition\\(\\)' crates/cpl-syntax/src crates/cpl-check/src crates/cpl-ir/src crates/cpl-interp/src crates/cpl-prover/src | wc -l"
 today = "120"
 target = "0"
 milestone = "M3"
@@ -52,7 +52,7 @@ milestone = "M3"
 
 [[metric]]
 name = "owned #[ignore] tests"
-command = "grep -rE '#\\[ignore' crates/cpl-syntax crates/cpl-check crates/cpl-ir crates/cpl-interp crates/prover | wc -l"
+command = "grep -rE '#\\[ignore' crates/cpl-syntax crates/cpl-check crates/cpl-ir crates/cpl-interp crates/cpl-prover | wc -l"
 today = "9"
 target = "0"
 milestone = "M3"

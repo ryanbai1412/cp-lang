@@ -33,7 +33,7 @@ Read from the code at `4e2de3cd` (2026-11-22). Line counts from `wc -l`.
 `Value` (objects are `BTreeMap`, so output is deterministic), `parse`, `to_string`, `to_string_pretty`, `escape_string`, `write_script_safe_string` (safe inside `<script>`), `obj`.
 
 ### `crates/cpl-lsp` (`cpl lsp`, ~4,200 lines of `src/` plus 2,868 of unit tests)
-`transport.rs` (stdio framing: `read_message`, `write_message`, `serve`), `server.rs` (`Server`: document store, dispatch, diagnostics, hover, definition, code actions, formatting, semantic tokens), `complete.rs` (completion, signature help, parameter hints), `outline.rs` (document symbols), `rename.rs` (references, rename), `build.rs` (generates the `use std.` names from `spec/std/`). Tests: `src/tests.rs`, `tests/{fixtures,fuzz,ports,latency}.rs`.
+`transport.rs` (stdio framing: `read_message`, `write_message`, `serve`), `server.rs` (`Server`: document store, dispatch, diagnostics, hover, definition, code actions, formatting, semantic tokens), `complete.rs` (completion, signature help, parameter hints), `outline.rs` (document symbols), `rename.rs` (references, rename), `build.rs` (generates the `use std.` names from `std/`). Tests: `src/tests.rs`, `tests/{fixtures,fuzz,ports,latency}.rs`.
 
 ### `editors/`
 `vscode/` (TypeScript client: `client.ts`, `completion.ts`, `inlayHints*.ts`, `lenses.ts`, `runner.ts`, `traceView.ts`, `languageData.ts` tables; TextMate grammar; snippets; tests in `test/`), `neovim/` (Lua, `test/smoke.lua`), `vim/`, `emacs/` (`smoke.el`), `helix/`, `zed/`, `jetbrains/` (Gradle, LSP4IJ), `tree-sitter-cp/`, `smoke.sh` (keyword parity with `crates/cpl-syntax/src/token.rs`, then each editor's smoke test when its binary exists).

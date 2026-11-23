@@ -28,7 +28,7 @@ prover: integer facts and laws; today called only by cpl-lint
 - `db.rs` (2519): the incremental `Database`: files, items, modules, per-item `Analysis`, and every query (diagnostics, hover, definition, references, symbols, `typed_index`, storage/cost).
 - `check.rs` + `check/{types,call,expr,stmt,lends}.rs` (largest `expr.rs` 4323): resolving types and `Def`s; calls and conversions; expressions; statements; lexical borrows (`plan/19-index-and-lends.md` §3.5-3.6).
 - `def.rs` (what a top-level name means: `Def`, `DeclKind`, `DomainInfo`), `ty.rs` (`Ty`, `Param`).
-- `modules.rs` (`Loader`, `FsLoader`: where `use std.x` / `use lib.x` lives); `build.rs` embeds every `spec/std` module so CLI, LSP and wasm resolve std identically.
+- `modules.rs` (`Loader`, `FsLoader`: where `use std.x` / `use lib.x` lives); `build.rs` embeds every `std` module so CLI, LSP and wasm resolve std identically.
 - `prelude.rs` (names without `use`), `builtins.rs` (the one table of members the language gives `List`, `Str`, `Map`, `Set`, arrays: `BUILTIN_MEMBERS`).
 - `hover.rs`: hover text, definitions, outline. `edition.rs`: `is_v03()`, now constant `true`.
 
@@ -45,7 +45,7 @@ prover: integer facts and laws; today called only by cpl-lint
 - `value.rs` (1386): run-time values. `input.rs`: one buffered token reader.
 - `trace.rs` (2350) + `trace/log.rs`: the trace document for `cpl run --trace`/`cpl stress --trace` (`tools/trace/trace-schema.json`). `replay.rs`: rerun one recorded call with its fn edited. `profile.rs`: per-statement counts and time.
 
-### `crates/prover` (package `cpl-prover`; integer reasoning)
+### `crates/cpl-prover` (package `cpl-prover`; integer reasoning)
 - `term.rs`, `parse.rs`, `lower.rs` (terms to polynomial constraints), `poly.rs`, `omega.rs` (Omega test, complete for linear integer conjunctions), `solve.rs` (case splits plus Omega), `context.rs` (proof context and questions).
 - `interval.rs` (open-ended integer intervals), `loops.rs` (loop invariants), `laws.rs` (Monoid/Group/Action/Order laws proved or refuted), `lends.rs` (`law disjoint`), `smtlib.rs` (export), `eval.rs`, `core.rs`.
 
@@ -60,7 +60,7 @@ The shared core. The compiler lane owns the code; every consumer lane adds contr
 | IR | `cpl_ir::{lower, Program, Function, Stmt, Expr, Ty, Builtin, pushed, show, sites}` | perf: `cpl-codegen`; compiler: `cpl-interp`; tools: `cpl-cli`, `cpl-lsp`, `cpl-wasm`; debugger: `cpl-stress`; judge: `cpl-contest`, `cpl-conform` |
 | Run, trace, replay | `cpl_interp::{run, run_with, run_observed, run_profiled, Trap, Limits, Io, trace, replay, profile}` | debugger: `cpl-stress`, trace viewer via `cpl-wasm`; tools: `cpl-cli`; judge: `cpl-conform` |
 | Diagnostics and fix API | `Database` diagnostics carry `cpl_diag` values (code, span, help, fix edits) | diagnostics: `cpl-diag`; lint-fmt: `cpl-lint`; tools: `cpl-lsp`, `cpl fix` |
-| Std/builtin boundary | `cpl-check/build.rs` (embedded `spec/std`), `prelude.rs`, `builtins.rs`, std names matched in `check/*.rs` and `lower/call.rs` | stdlib (`spec/std`); architecture & tech-debt |
+| Std/builtin boundary | `cpl-check/build.rs` (embedded `std`), `prelude.rs`, `builtins.rs`, std names matched in `check/*.rs` and `lower/call.rs` | stdlib (`std`); architecture & tech-debt |
 | Integer facts | `cpl_prover` (intervals, laws, lends, solve) | lint-fmt: `cpl-lint` only |
 
 Contracts each consumer may rely on (and where the test lives today):
@@ -87,6 +87,6 @@ Contracts each consumer may rely on (and where the test lives today):
 | Giant files: 13 owned files over the 2000-line cap, allowlisted in `scripts/debt-ratchet.json` | `lower/call.rs` 13357, `lower/stmt.rs` 6470, `lower/mod.rs` 6123, `lower/expr.rs` 6107, `cpl-interp/src/lib.rs` 5615, `lower/mono.rs` 4570, `check/expr.rs` 4323 | split by concern as code is touched, pure moves first, as `vm.rs` (15367) was (M3) |
 | std privilege: 146 string literals of 35 std type names (`Prefix` 16, `Gen` 16, `Bitset` 12, `Subset` 11, ...) | `cpl-check/src/prelude.rs` 27, `check/call.rs` 21, `check/types.rs` 18, `cpl-ir/src/lower/call.rs` 14, `check/expr.rs` 13, rest scattered | one intrinsics table, then a spec mechanism (M3; tech-debt's builtin-floor question) |
 | Edition switching left over: 120 `is_v03()`/`spec_edition()` call sites, always true | `crates/cpl-check/src/edition.rs` and callers | inline the 0.3 branch, delete the other (M3) |
-| Range facts in two places, prover unused by the compiler | `crates/cpl-ir/src/lower/range.rs`, `crates/cpl-codegen/src/ranges.rs`, `crates/prover/src/interval.rs` | one facts pass in `cpl-ir` over `prover::interval` (after M3) |
+| Range facts in two places, prover unused by the compiler | `crates/cpl-ir/src/lower/range.rs`, `crates/cpl-codegen/src/ranges.rs`, `crates/cpl-prover/src/interval.rs` | one facts pass in `cpl-ir` over `prover::interval` (after M3) |
 | Product domains half-built: position-as-tuple vs nominal paths disagree (16 `E0302`, 18 wrong outputs cluster in `core-04`) | `crates/cpl-check/src/check/call.rs`, `crates/cpl-ir/src/lower/call.rs`; `devin/wip-product-domain` | M1, Q1 |
 | 9 ignored tests in owned crates | `grep -rn '#\[ignore' crates/cpl-*` | fix or delete with reason (M3) |

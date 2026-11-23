@@ -1,6 +1,6 @@
 //! The VS Code extension's symbol tables (`editors/vscode/src/languageData.ts`)
 //! and its grammar (`syntaxes/cp.tmLanguage.json`) name exactly what the
-//! compiler's prelude and `spec/std/*.cp` (edition 0.3) ship. `npm test` in `editors/vscode`
+//! compiler's prelude and `std/*.cp` (edition 0.3) ship. `npm test` in `editors/vscode`
 //! checks the same and more, but only in the full suite; this runs in
 //! `scripts/check.sh --fast`, so a new stdlib name cannot leave them behind.
 
@@ -90,7 +90,7 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     builtins.extend(rust_strings(&prelude, "pub fn ty(", "\n}\n"));
 
     let mut imported = BTreeSet::new();
-    let prelude_cp = read("spec/std/prelude.cp");
+    let prelude_cp = read("std/prelude.cp");
     let mut rest = prelude_cp.as_str();
     while let Some(pos) = rest.find("use std.") {
         rest = &rest[pos + "use std.".len()..];
@@ -110,8 +110,8 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     // A `@get` fn is read as a field, so it is a name of its own only when
     // the prelude imports it.
     let mut declared: BTreeMap<String, &str> = BTreeMap::new();
-    let mut files: Vec<PathBuf> = fs::read_dir(root().join("spec/std"))
-        .expect("spec/std/")
+    let mut files: Vec<PathBuf> = fs::read_dir(root().join("std"))
+        .expect("std/")
         .map(|entry| entry.expect("an entry").path())
         .filter(|path| path.extension().is_some_and(|ext| ext == "cp"))
         .collect();
@@ -180,7 +180,7 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
     let phantom: Vec<&String> = listed.difference(&shipped).collect();
     assert!(
         phantom.is_empty(),
-        "editors/vscode/src/languageData.ts lists {phantom:?}, which neither prelude.rs nor spec/std/*.cp declares"
+        "editors/vscode/src/languageData.ts lists {phantom:?}, which neither prelude.rs nor std/*.cp declares"
     );
 
     let grammar = read("editors/vscode/syntaxes/cp.tmLanguage.json");

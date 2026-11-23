@@ -7,14 +7,14 @@
 name = "stdlib_todo"
 command = "python3 scripts/debt-ratchet.py --check"
 value = 294
-target = "0 outside spec/std/GAPS.md"
+target = "0 outside std/GAPS.md"
 milestone = "M2"
 
 [[metric]]
 name = "todo_in_library_bodies"
 command = "python3 plan/domains/stdlib/measure.py todo-split"
 value = 189
-target = "only lines listed in spec/std/GAPS.md"
+target = "only lines listed in std/GAPS.md"
 milestone = "M2"
 
 [[metric]]
@@ -96,14 +96,14 @@ milestone = "M3"
 
 [[metric]]
 name = "modules_pass_standalone_check"
-command = "n=0; for f in spec/std/*.cp; do ./target/release/cpl check $f >/dev/null 2>&1 && n=$((n+1)); done; echo $n"
+command = "n=0; for f in std/*.cp; do ./target/release/cpl check $f >/dev/null 2>&1 && n=$((n+1)); done; echo $n"
 value = "12/40"
 target = "40/40"
 milestone = "M3"
 
 [[metric]]
 name = "gaps_entries"
-command = "grep -c '^- ' spec/std/GAPS.md"
+command = "grep -c '^- ' std/GAPS.md"
 value = 88
 target = 0
 milestone = "M3"

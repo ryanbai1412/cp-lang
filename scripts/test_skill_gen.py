@@ -16,7 +16,7 @@ class SkillGenTests(unittest.TestCase):
         files = skill_gen.generate_all()
         expected = {
             skill_gen.STDLIB_OUT / f"{p.stem}.md"
-            for p in (ROOT / "spec/std").glob("*.cp")
+            for p in (ROOT / "std").glob("*.cp")
             if p.stem != "prelude"
         }
         expected.add(skill_gen.STDLIB_OUT / "README.md")
@@ -52,7 +52,7 @@ class SkillGenTests(unittest.TestCase):
         self.assertIsNotNone(skill_gen.FORBIDDEN_RE.search("set CPL_SPEC=1"))
         self.assertIsNotNone(skill_gen.FORBIDDEN_RE.search("CPL_EDITION=0.2"))
         self.assertIsNotNone(skill_gen.FORBIDDEN_RE.search("see stdlib/seq.cp"))
-        self.assertIsNone(skill_gen.FORBIDDEN_RE.search("see spec/std/seq.cp"))
+        self.assertIsNone(skill_gen.FORBIDDEN_RE.search("see std/seq.cp"))
         self.assertIsNone(skill_gen.FORBIDDEN_RE.search("see stdlib/seq.md"))
 
     def test_parse_output_lines(self) -> None:

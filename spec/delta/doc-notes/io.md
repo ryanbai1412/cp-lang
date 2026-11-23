@@ -1,7 +1,7 @@
 # std.io doc notes
 
 Choices made where the spec is silent, and contradictions found, while bringing
-`spec/std/io.cp` to the doc standard.
+`std/io.cp` to the doc standard.
 
 - `read_all` (no `until`): core says "reading after it is an error" without saying when; chose a runtime trap at the later read (reading past the end of input), since the read cannot be rejected statically in general.
 - `read_all(until: f)` with no matching value: chose to read to end of input and return everything, like the plain form; the sentinel is a stopping hint, not a required token, and trapping would make the two forms disagree on well-formed input.

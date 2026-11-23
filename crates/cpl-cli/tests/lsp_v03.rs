@@ -1,9 +1,9 @@
 //! End-to-end verification of every LSP feature on edition 0.3 (`cpl lsp --stdio`
 //! with no `CPL_SPEC`/`CPL_STD` env set):
-//! 1. hover types + costs (spec/std methods + user fns)
-//! 2. go-to-definition into `spec/std/`
+//! 1. hover types + costs (std methods + user fns)
+//! 2. go-to-definition into `std/`
 //! 3. completion including `use std.` modules, members after `.`, and auto-import
-//! 4. rename (user names succeed; `spec/std` names are refused)
+//! 4. rename (user names succeed; `std` names are refused)
 //! 5. inlay type hints
 //! 6. code actions from `cpl-lint` fixes (quickfix + `source.fixAll.cpl`)
 //! 7. formatting (`textDocument/formatting`)
@@ -92,7 +92,7 @@ fn completion_labels(reply: &Value) -> Vec<String> {
 
 #[test]
 fn every_lsp_feature_works_on_v03() {
-    // Document 1: hover types+costs, go-to-def into spec/std, member & auto-import completion,
+    // Document 1: hover types+costs, go-to-def into std, member & auto-import completion,
     // rename, inlay types.
     let main_uri = "file:///v03/main.cp";
     let main_src = concat!(
@@ -151,23 +151,23 @@ fn every_lsp_feature_works_on_v03() {
         open(main_uri, main_src),
         open(comp_uri, comp_src),
         open(fix_uri, fix_src),
-        // 1. Hover: spec/std struct, spec/std method (with cost), user fn (with cost/loops), array
+        // 1. Hover: std struct, std method (with cost), user fn (with cost/loops), array
         msg(Some(10), "textDocument/hover", doc_pos(main_uri, 8, 10)), // MinMaxHeap
         msg(Some(11), "textDocument/hover", doc_pos(main_uri, 9, 3)),  // push
         msg(Some(12), "textDocument/hover", doc_pos(main_uri, 3, 5)),  // tally_sum
         msg(Some(13), "textDocument/hover", doc_pos(main_uri, 10, 4)), // a: [V]Int
-        // 2. Go-to-definition into spec/std
+        // 2. Go-to-definition into std
         msg(
             Some(20),
             "textDocument/definition",
             doc_pos(main_uri, 8, 10),
-        ), // MinMaxHeap -> spec/std/heap.cp
-        msg(Some(21), "textDocument/definition", doc_pos(main_uri, 9, 3)), // push -> spec/std/heap.cp
+        ), // MinMaxHeap -> std/heap.cp
+        msg(Some(21), "textDocument/definition", doc_pos(main_uri, 9, 3)), // push -> std/heap.cp
         msg(
             Some(22),
             "textDocument/definition",
             doc_pos(main_uri, 12, 10),
-        ), // bsearch_real -> spec/std/search.cp
+        ), // bsearch_real -> std/search.cp
         // 3. Completion: `use std.`, member `h.`, auto-import `Lazy`
         msg(Some(30), "textDocument/completion", doc_pos(comp_uri, 0, 8)), // use std.
         msg(Some(31), "textDocument/completion", doc_pos(comp_uri, 3, 2)), // h.
@@ -176,7 +176,7 @@ fn every_lsp_feature_works_on_v03() {
             "textDocument/completion",
             doc_pos(comp_uri, 4, 12),
         ), // Lazy
-        // 4. Rename: user fn succeeds; spec/std symbol refused
+        // 4. Rename: user fn succeeds; std symbol refused
         msg(
             Some(40),
             "textDocument/rename",
@@ -257,7 +257,7 @@ fn every_lsp_feature_works_on_v03() {
     assert!(h_arr.contains("a: [V]Int"), "hover array type: {h_arr}");
     assert!(h_arr.contains("storage:"), "hover array storage: {h_arr}");
 
-    // 2. Go-to-definition into spec/std
+    // 2. Go-to-definition into std
     let def_uri = |id: u64| {
         replies[&id]
             .at(&["result", "uri"])
@@ -266,17 +266,17 @@ fn every_lsp_feature_works_on_v03() {
             .to_string()
     };
     assert!(
-        def_uri(20).ends_with("/spec/std/heap.cp"),
+        def_uri(20).ends_with("/std/heap.cp"),
         "def MinMaxHeap: {}",
         replies[&20]
     );
     assert!(
-        def_uri(21).ends_with("/spec/std/heap.cp"),
+        def_uri(21).ends_with("/std/heap.cp"),
         "def h.push: {}",
         replies[&21]
     );
     assert!(
-        def_uri(22).ends_with("/spec/std/search.cp"),
+        def_uri(22).ends_with("/std/search.cp"),
         "def bsearch_real: {}",
         replies[&22]
     );

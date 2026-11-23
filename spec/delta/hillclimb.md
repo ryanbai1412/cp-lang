@@ -83,7 +83,7 @@ and its notes in that record's `notes`.
 - ioi05p2: enums read by variant: `@tag("Q")` names a variant's token (default: its name), so a
   command stream is `read<Cmd>()` in a loop. Grammar allows decorators on variants; recorded in
   `parser-gaps.md`.
-- ioi09p6: `spec/std/grid.cp` now exists (the prelude imported `std.grid` with no spec stub);
+- ioi09p6: `std/grid.cp` now exists (the prelude imported `std.grid` with no spec stub);
   `adj4`, `adj8` and `ray` are generators, and `transposed` is a call because it is O(n²).
   `bfs` gained `enter: (V, Int) -> Bool`, so "the cell must still be safe at distance d" is a
   filter instead of a hand-written layered search.

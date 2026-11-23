@@ -22,7 +22,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 | Stdlib privilege: measuring it, proposing the floor | Moving builtins into std (compiler + stdlib) |
 | `scripts/debt-ratchet.py` and its baseline | The gate, land queue, rest of `scripts/` (infra) |
 | Cold reviews of every lane's diffs; change-cost probes | Fixing findings (owning lane, before its features) |
-| Repo restructure: `spec/std` -> `std/`, `cpl-prover` rename | Normative wording in `spec/` (spec) |
+| Repo restructure: `std` -> `std/`, `cpl-prover` rename | Normative wording in `spec/` (spec) |
 
 ## Success criteria for v0.3
 
@@ -37,7 +37,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 **M1. The 0.2 era and the in-flight restructure are landed** (phase 2, first).
 - [ ] `edition_refs` 0 (branch `devin/drop-edition`), `v02_port_files` 0
 - [ ] `vm.rs` split landed (`devin/wip-split-vm`); `rs_over_cap` <= 23
-- [ ] `std/` at the root, `spec_std_refs` 0; `crates/prover` -> `crates/cpl-prover`
+- [ ] `std/` at the root, `spec_std_refs` 0; `crates/cpl-prover` -> `crates/cpl-prover`
 - [ ] `direct_python` 0 (uv everywhere); `just gen --check` in the gate
 - [ ] `unlanded_branches` 0: each landed or deleted with a `git cherry` note
 
@@ -70,7 +70,7 @@ ratchet and counts: `scripts/debt-ratchet.py` (`--show`, `--list NAME`; 0.4 s, i
 | Layer violations (shipped) | `M layer_violations` | 1 (`cpl-lint -> cpl-prover`) | 0 |
 | Second interpreter engine | `M tree_walker` | 1 | 0 |
 | v0.2 `port.cp` files | `M v02_port_files` | 877 | 0 |
-| `spec/std` references | `M spec_std_refs` | 300 (counts docs too; was 149 on the narrower pattern) | 0 |
+| `std` references | `M spec_std_refs` | 300 (counts docs too; was 149 on the narrower pattern) | 0 |
 | Direct `python3` in gate/just | `M direct_python` | 13 | 0 |
 | Script tests the gate never runs | `M unrun_script_tests` | 3 | 0 |
 | Stale paths in architecture docs (not gated yet) | `M stale_arch_paths` | 9 (`--list stale_arch_paths`) | 0 |
@@ -107,12 +107,12 @@ of `git log --grep 'Domain: <lane>'`.
 | 1 | Stdlib privilege: 89 names matched in lowering, 74-variant `Builtin` enum | `crates/cpl-ir/src/lower/call.rs` (13,357 lines), `crates/cpl-ir/src/lib.rs` | compiler + stdlib |
 | 2 | Two interpreter engines; VM falls back to the tree-walker | `crates/cpl-interp/src/lib.rs` (`fn eval`), `vm.rs` | compiler |
 | 3 | Dead 0.2 edition switch, 92 refs | `crates/cpl-check/src/edition.rs`, `check/expr.rs` (32 refs) | compiler (branch ready) |
-| 4 | Two range/bound analyses; lint calls the prover directly | `crates/cpl-lint/src/rules/bounds.rs`, `crates/prover/` | lint-fmt + compiler |
+| 4 | Two range/bound analyses; lint calls the prover directly | `crates/cpl-lint/src/rules/bounds.rs`, `crates/cpl-prover/` | lint-fmt + compiler |
 | 5 | 24 files over 2,000 lines | `vm.rs` 15,367; `lower/{call,stmt,mod,expr}.rs` 6-13k | many; this lane moves |
 | 6 | Library type names known to IR and emitter | `lower/call.rs`, `lower/mod.rs:24`, `cpl-codegen/src/expr.rs:2780` | compiler + perf |
 | 7 | Std member catalog kept twice (checker list vs lowering match), stale rows | `crates/cpl-check/src/builtins.rs`, ignored test `crates/cpl-cli/tests/builtin_catalog.rs:32` | compiler + tools |
 | 8 | Browser lints compiled out, web and CLI disagree | `crates/cpl-lint/src/lib.rs:954`, `rules/bounds.rs:680` | lint-fmt |
-| 9 | Library source under `spec/`, 877 v0.2 ports, 57 stale branches | `spec/std/`, `corpus/problems/*/port.cp` | this lane + stdlib/idioms |
+| 9 | Library source under `spec/`, 877 v0.2 ports, 57 stale branches | `std/`, `corpus/problems/*/port.cp` | this lane + stdlib/idioms |
 | 10 | Copied helpers across crates | `cpl-{fmt,lint}/src/cli.rs` `collect` = `cpl-doc/src/cli.rs:163`; `refutable`, `prefix_shape_struct` in check and ir | tools, lint-fmt, compiler |
 
 ## Improve list (highest impact first)

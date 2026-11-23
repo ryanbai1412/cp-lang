@@ -99,7 +99,7 @@ class CheckCacheTest(unittest.TestCase):
 
     def test_no_stage_excludes_a_file_the_rust_build_reads(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        reads = ["spec/std/prelude.cp", "Cargo.toml", "Cargo.lock", "crates/cpl-cli/src/main.rs"]
+        reads = ["std/prelude.cp", "Cargo.toml", "Cargo.lock", "crates/cpl-cli/src/main.rs"]
         for d, _, names in os.walk(os.path.join(root, "crates")):
             for n in names:
                 if not n.endswith(".rs"):
@@ -110,7 +110,7 @@ class CheckCacheTest(unittest.TestCase):
                     path = os.path.relpath(os.path.normpath(os.path.join(d, target)), root)
                     self.assertTrue(os.path.exists(os.path.join(root, path)), path)
                     reads.append(path)
-        self.assertIn("spec/std/README.md", reads)
+        self.assertIn("std/README.md", reads)
         for stage, pats in cc.STAGES.items():
             for path in reads:
                 self.assertFalse(cc.excluded(path, pats), f"{stage} excludes {path}, which the build reads")

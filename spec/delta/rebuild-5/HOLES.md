@@ -1,6 +1,6 @@
 # Rebuild round 5: holes
 
-I read the CP Lang spec at commit 66f8d9c93 and nothing else: `spec/README.md`, `spec/core/`, `spec/lib/`, `spec/tools/`, `spec/std/` and `spec/diagnostics.md`. I did not open `spec/delta/`, `spec/conformance/`, `spec/GLOSSARY.md`, `spec/STATUS.md`, `spec/idioms/`, `spec/lints/` or anything outside `spec/`, and I did not run the compiler. The ten solutions (`01-labyrinth.cp` to `10-planets-and-kingdoms.cp`) are what the text says is idiomatic. Wherever I had to guess, even when the intent was clear, the guess is logged below.
+I read the CP Lang spec at commit 66f8d9c93 and nothing else: `spec/README.md`, `spec/core/`, `spec/lib/`, `spec/tools/`, `std/` and `spec/diagnostics.md`. I did not open `spec/delta/`, `spec/conformance/`, `spec/GLOSSARY.md`, `spec/STATUS.md`, `spec/idioms/`, `spec/lints/` or anything outside `spec/`, and I did not run the compiler. The ten solutions (`01-labyrinth.cp` to `10-planets-and-kingdoms.cp`) are what the text says is idiomatic. Wherever I had to guess, even when the intent was clear, the guess is logged below.
 
 ## Summary
 
@@ -207,6 +207,6 @@ The ten most likely to hit a contestant, most likely first:
 
 ### H-POW-GENERIC
 - Question: Where is the generic `pow(x, k, op:)`?
-- Readings: `lib/ops-ranges.md` §6 documents it for matrices, permutations and `Affine` maps. `spec/std` has only `std/poly.cp`'s `pow` over power series, and `std/prelude.cp` imports no `pow`.
+- Readings: `lib/ops-ranges.md` §6 documents it for matrices, permutations and `Affine` maps. `std` has only `std/poly.cp`'s `pow` over power series, and `std/prelude.cp` imports no `pow`.
 - Chose: `**` on `Mod` (09).
 - Cost if wrong: E0201 for anyone following ops-ranges.

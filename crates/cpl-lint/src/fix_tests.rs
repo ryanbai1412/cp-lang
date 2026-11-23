@@ -45,7 +45,7 @@ fn checker_errors(src: &str) -> Vec<String> {
 
 #[test]
 fn a_hand_rolled_search_becomes_a_search_the_checker_knows() {
-    // spec/std/prefix.cp: the fix once wrote `bsearch_first`, which is not in the stdlib.
+    // std/prefix.cp: the fix once wrote `bsearch_first`, which is not in the stdlib.
     let src = "fn f(a: List<Int>, k: Int) -> Int:\n    var lo = 0\n    var hi = a.len\n    while lo < hi:\n        let mid = (lo + hi) / 2\n        if a[mid] * a[mid] >= k: hi = mid\n        else: lo = mid + 1\n    lo\nfn g(ok: Int -> Bool, n: Int) -> Int:\n    var lo = 0\n    var hi = n - 1\n    while lo < hi:\n        let mid = lo + (hi - lo + 1) / 2\n        if ok(mid): lo = mid\n        else: hi = mid - 1\n    lo\nprint(f([1, 2, 3], 2), g(x => x < 3, 9))\n";
     assert!(checker_errors(src).is_empty());
     let (out, applied) = fix(src, &Config::default());

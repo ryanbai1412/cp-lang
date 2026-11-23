@@ -64,16 +64,16 @@ source --parse--> syntax tree --check--> checked tree + facts --> lint engine --
 ## Acceptance tests
 1. `python3 scripts/fmt_check.py`: 0 not idempotent, 0 meaning changes, 0
    bugs over every tracked `.cp` file, in `scripts/check.sh --fast`.
-2. `cpl fmt --check` clean on corpus ports, `spec/std`, examples, docs snippets.
+2. `cpl fmt --check` clean on corpus ports, `std`, examples, docs snippets.
 3. Per record: fires on `before.cp`, silent on `near_miss.cp`, `--fix` turns
    before into after byte for byte, both agree in interpreter and C++.
-4. `cpl lint` over `corpus/problems/*/spec.cp` and `spec/std`: 0 warnings
+4. `cpl lint` over `corpus/problems/*/spec.cp` and `std`: 0 warnings
    (the ratchet only goes down).
 5. Registry, `spec/diagnostics.md` and records agree (a test fails otherwise).
 6. A user-library `@lint` fires and fixes in a test; `crates/cpl-lint` names no
    stdlib API (a shrink-only `lint_std_names` ratchet, 42 literals today, tech-debt's count).
 7. Same findings from CLI, LSP and wasm on the corpus; wasm is compared on the
-   prover-free facts. CLI = LSP holds today on `spec/std`
+   prover-free facts. CLI = LSP holds today on `std`
    (`corpus_tests::the_cli_and_the_editor_read_the_same_facts`).
 8. Lint and fmt of the largest corpus file each under 50 ms.
 

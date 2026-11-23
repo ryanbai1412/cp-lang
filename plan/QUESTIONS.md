@@ -75,16 +75,16 @@ How to reverse it: move the files to `docs/`, drop the cite rule.
 Meanwhile: land them under `spec/idioms/` marked non-normative; lint cites them.
 
 ### stdlib: Q1 what earns a prelude name
-Today 192 names are in every program (`spec/std/prelude.cp`). Decision 150 (core R11.3.2) already dropped the 80-name budget: a name is in exactly when a `lib/` chapter's main tables list it, and the cost is a collision, not a count; `scripts/check.sh` still warns above 80. Usage (`python3 plan/domains/stdlib/measure.py prelude-usage`, table in `plan/domains/stdlib/prelude-usage.md`): of 305 reviewed ports and 100 hill-climb solutions, 5 names are used by at least 5% (`Mod`, `sum`, `Graph`, `Rooted`, `Comb`), 115 by at least one, 77 by none. The ports are v0.2 `port.cp` files, so they undercount v0.3-only names.
+Today 192 names are in every program (`std/prelude.cp`). Decision 150 (core R11.3.2) already dropped the 80-name budget: a name is in exactly when a `lib/` chapter's main tables list it, and the cost is a collision, not a count; `scripts/check.sh` still warns above 80. Usage (`python3 plan/domains/stdlib/measure.py prelude-usage`, table in `plan/domains/stdlib/prelude-usage.md`): of 305 reviewed ports and 100 hill-climb solutions, 5 names are used by at least 5% (`Mod`, `sum`, `Graph`, `Rooted`, `Comb`), 115 by at least one, 77 by none. The ports are v0.2 `port.cp` files, so they undercount v0.3-only names.
 - (a) Keep decision 150: membership by the chapter tables; retire the 80 warning; use the usage table to review what a chapter's main table lists.
 - (b) Decision 150 plus a usage floor: a table name used by no port or hill-climb solution needs a `use` (77 names today).
 - (c) Restore a fixed budget of 80 (decision 94), cut by judgment.
 Recommendation: (a). A rule a contestant can guess from the docs beats a usage cut that moves with the corpus; 5% would leave 5 names, which says usage alone is the wrong test. `cpl fix` (lint L0208) adds the `use` for any name that later leaves.
-How to reverse it: a name moved out goes back with one line in `spec/std/prelude.cp`.
+How to reverse it: a name moved out goes back with one line in `std/prelude.cp`.
 Meanwhile: keep 192; nothing removed until answered.
 
 ### stdlib: Q2 an int range where a type argument names a domain
-174 doc examples fail with E0204 "takes a domain by name, and `0..3` is a range", e.g. `spec/std/dsu.cp`: `let d = Dsu<0..3>(); d.components == 3`, `spec/std/beats.cp`: `BeatsSegTree<0..3>(fill: 2).all_sum == 6`.
+174 doc examples fail with E0204 "takes a domain by name, and `0..3` is a range", e.g. `std/dsu.cp`: `let d = Dsu<0..3>(); d.components == 3`, `std/beats.cp`: `BeatsSegTree<0..3>(fill: 2).all_sum == 6`.
 - (a) Accept the range as an anonymous domain argument (like decision 159's inline `(V, V)` domain). One-liners stay one line.
 - (b) Require a declared domain: `domain D = 0..3` then `Dsu<D>()`; rewrite the 174 examples.
 Recommendation: (a). It is how the examples and ports are written, and a named domain still works where the index space matters.

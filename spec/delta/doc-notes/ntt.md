@@ -1,7 +1,7 @@
 # std.ntt doc notes
 
 Choices made where the spec is silent, and contradictions found, while bringing
-`spec/std/ntt.cp` to the doc standard.
+`std/ntt.cp` to the doc standard.
 
 - `ntt`: chose the forward transform `â[k] = sum_j a[j] w^(jk)` with `w = primitive_root(P)^((P-1)/n)` in natural order, so two implementations give the same `â`, not just the same round trip.
 - `ntt(bit_reversed: true)`: chose "forward leaves bit-reversed output, inverse expects bit-reversed input"; that is the only reading under which the flag is useful (pointwise products without reordering).

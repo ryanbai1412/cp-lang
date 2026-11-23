@@ -12,7 +12,7 @@ Say exactly what CP Lang is, in one place, so that a contestant, a model or a se
 
 | Covers (spec) | Not covered (owner instead) |
 |---|---|
-| `spec/core/` chapters 00-13 and their `(Rnn.n.n)` rule ids | `spec/std/*.cp` signatures and bodies (stdlib) |
+| `spec/core/` chapters 00-13 and their `(Rnn.n.n)` rule ids | `std/*.cp` signatures and bodies (stdlib) |
 | `spec/lib/` library design chapters | `spec/diagnostics.md`, the error catalogue (diagnostics) |
 | `spec/tools/` tool contracts | Making failing cases pass (compiler, perf, tools) |
 | `spec/conformance/`: cases, `COVERAGE.md`, the matrix and trait generators' data; `crates/cpl-conform` (the runner) and `scripts/conformance-*.py` | Other `scripts/` and the gate itself (infra) |
@@ -66,7 +66,7 @@ What numbers miss. A cold agent scores fixed samples 1-5 with a reason; the tren
 
 1. **Rebuildable:** could an implementer build this rule from the chapter alone, with no guess?
 2. **Three answers:** does each checked operation say what it means, what the compiler proves, and what each build checks?
-3. **One spelling:** do the chapter, the `spec/std` signature, the error text and the cases say it the same way?
+3. **One spelling:** do the chapter, the `std` signature, the error text and the cases say it the same way?
 4. **Sharp case:** is each case minimal, about one rule, and would it fail on a plausible compiler bug (not just on today's)?
 5. **Worth the rule:** does each rule earn the thing a contestant must remember (AGENTS.md coherence)?
 

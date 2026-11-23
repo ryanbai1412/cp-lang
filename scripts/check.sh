@@ -17,7 +17,7 @@
 #            (--fast compiles C++ through scripts/cxx-cache.py, which reuses
 #            a binary built from the same source, flags and g++;
 #            CHECK_NO_CXX_CACHE=1 turns it off)
-#         4. the spec/std/prelude.cp name count (decision 281: no budget)
+#         4. the std/prelude.cp name count (decision 281: no budget)
 #            and every port in corpus/problems passes cpl check,
 #            cpl fmt --check and cpl lint with 0 warnings (under a second)
 #            and cpl build writes at most 65,536 bytes of C++ for each
@@ -429,8 +429,8 @@ else
     recovery_pid=$!
 fi
 
-step "spec/std/prelude.cp: name count"
-prelude=$(sed 's://.*::' spec/std/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
+step "std/prelude.cp: name count"
+prelude=$(sed 's://.*::' std/prelude.cp | tr -d '\n' | grep -o '{[^}]*}' | tr ',' '\n' | grep -c '[A-Za-z_]')
 echo "prelude: $prelude names"
 
 step "cpl fmt is idempotent and keeps meaning on every .cp file"
@@ -464,7 +464,7 @@ uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see ab
 step "conformance traits: every claimed trait method has a case or a gap line"
 uv run scripts/conformance-traits.py --check || fail "trait gate failed; see above"
 
-step "conformance sigs: named args in spec/core and spec/lib exist in spec/std"
+step "conformance sigs: named args in spec/core and spec/lib exist in std"
 uv run scripts/conformance-sigs.py --check || fail "sig gate failed; see above"
 
 step "conformance prelude: table fns of spec/lib chapters are prelude names (R11.3.2)"

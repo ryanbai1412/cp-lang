@@ -1,5 +1,7 @@
 # CP Lang domains: one domain = one lane = one owner
 
+Paths (2026-11-22, decision 307): the stdlib lives in `std/` (was `spec/std/`) and the prover in `crates/cpl-prover` (was `crates/prover`); `plan/LAYOUT.md` is the layout every lane follows.
+
 Domains are grouped by how much Ryan is involved and how the lane is managed. The segment decides how a lane starts, what Ryan sees, and what counts as evidence.
 
 | Segment | What it is | Ryan's involvement | Evidence | How it runs |
@@ -28,7 +30,7 @@ Layout: this file is the index. Every domain uses the same layout, copied from `
 | 6 | C | [lint-fmt](domains/lint-fmt/README.md) | `crates/cpl-lint`, `crates/cpl-fmt` | Lints from the idiom catalog; formatter stable on v0.3 |
 | 7 | C | [tools](domains/tools/README.md) | `crates/cpl-cli`, `cpl-contest`, `cpl-doc`, `cpl-json`, `cpl-lsp`, `editors/` | Every command and editor fast, guessable, working on v0.3 |
 | 8 | D | [spec](domains/spec/README.md) | `spec/core`, `spec/lib`, `spec/tools`, `spec/conformance`, `crates/cpl-conform`, `scripts/conformance-*.py` | What the language is, and tests that catch every compiler bug |
-| 9 | D | [stdlib](domains/stdlib/README.md) | `spec/std` (-> `std/`) | Every std body written in CP Lang, documented, tested |
+| 9 | D | [stdlib](domains/stdlib/README.md) | `std` (-> `std/`) | Every std body written in CP Lang, documented, tested |
 | 10 | D | [idioms](domains/idioms/README.md) | skill, principles, idiom catalog, `research/dryrun`, `corpus/`, `crates/cpl-judge`, scoreboard | A model writes correct, idiomatic CP Lang; 305 ports proven on every judge |
 | 11 | E | [site](domains/site/README.md) | `web/` (content, playground, UI) | A cold reader writes correct code from the docs alone |
 | 12 | E | [debugger](domains/debugger/README.md) | `crates/cpl-stress`, `cpl-trace` (split out), `tools/trace/` (the viewer) | Doubt to evidence: WA to a minimal counterexample, traps, traces |

@@ -1,6 +1,6 @@
 // CP Lang 0.2.2 language tables for fallback completion and grammar checks.
 // `test/unit/languageData.test.ts` checks them against the compiler's prelude
-// (`crates/cpl-check/src/prelude.rs`), `spec/std/*.cp` and `spec/std/prelude.cp`,
+// (`crates/cpl-check/src/prelude.rs`), `std/*.cp` and `std/prelude.cp`,
 // and keeps `syntaxes/cp.tmLanguage.json` in lockstep with them.
 
 /** 30 contestant keywords (including 3 literals) in CP Lang 0.2.2. */
@@ -36,7 +36,7 @@ export const PRELUDE_TYPES: readonly string[] = [
     'List', 'Map', 'Range', 'Seq', 'Set', 'SortedRange', 'Str', 'Subset', 'Sym', 'U64',
 ];
 
-/** Every public type and trait declared in `spec/std/*.cp`, whether `spec/std/prelude.cp` imports it or not. */
+/** Every public type and trait declared in `std/*.cp`, whether `std/prelude.cp` imports it or not. */
 export const STDLIB_TYPES: readonly string[] = [
     'Action', 'AddAction', 'Affine', 'AffineAction', 'AhoCorasick', 'Anchor', 'Arc', 'Arena', 'ArithDiff', 'AssignAction', 'AugSortedBag', 'AugSortedSet',
     'BagCursor', 'Barrett', 'BeatsSegTree', 'BigInt', 'BitMat', 'Bitset', 'BucketCount', 'ByAngle',
@@ -70,7 +70,7 @@ export const STDLIB_TYPES: readonly string[] = [
 
 /**
  * Functions a program can call without a `use`: the compiler's own (`prelude.rs`) and the
- * ones `spec/std/prelude.cp` imports.
+ * ones `std/prelude.cp` imports.
  */
 export const PRELUDE_VALUES: readonly string[] = [
     'abs', 'adj4', 'adj8', 'adjacency', 'adjacent', 'aliens', 'all', 'any', 'ask', 'atan2', 'bfs', 'bit',
@@ -92,7 +92,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'track', 'trunc', 'turn', 'undoing', 'upper', 'windows', 'yes', 'z_function', 'zip',
 ];
 
-/** Public `spec/std/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */
+/** Public `std/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */
 export const STDLIB_VALUES: readonly string[] = [
     'adjacency', 'adjacent_diff', 'all_some', 'angle_between', 'angle_less', 'any_segments_meet',
     'any_segments_meet_idx', 'arborescence', 'area2', 'area2_128', 'arg', 'argmax', 'argmin', 'argmins', 'backtrack',
@@ -149,12 +149,12 @@ export const STDLIB_VALUES: readonly string[] = [
     'upper_hull_idx', 'valleys', 'voronoi_cells', 'with_domain', 'with_next', 'zip_exact',
 ];
 
-/** Public `spec/std/*.cp` constants the prelude imports (no INF sentinel; use ?Int / none). */
+/** Public `std/*.cp` constants the prelude imports (no INF sentinel; use ?Int / none). */
 export const PRELUDE_CONSTANTS: readonly string[] = [
     'add', 'affine', 'assign', 'flip', 'inf', 'io',
 ];
 
-/** Public `spec/std/*.cp` constants that need a `use`. */
+/** Public `std/*.cp` constants that need a `use`. */
 export const STDLIB_CONSTANTS: readonly string[] = [
     'PI', 'subset',
 ];

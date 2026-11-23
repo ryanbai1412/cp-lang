@@ -7,7 +7,7 @@
 # (a measurement over history; rewritten only by its own command).
 # Measurements updated by an explicit `--update` are not generated files:
 # scripts/debt-ratchet.json, research/scoreboard.json,
-# research/reviews/baseline.json, spec/std/doc-baseline.json.
+# research/reviews/baseline.json, std/doc-baseline.json.
 
 [[gen]]
 name = "layout"
@@ -20,7 +20,7 @@ tier = "pre-commit"
 [[gen]]
 name = "skill"
 files = ["skills/cp-lang/stdlib/*.md"]
-inputs = ["spec/std/*.cp"]
+inputs = ["std/*.cp"]
 write = ["scripts/skill-gen.py"]
 check = ["scripts/skill-gen.py", "--drift"]
 tier = "pre-commit"
@@ -28,7 +28,7 @@ tier = "pre-commit"
 [[gen]]
 name = "coverage"
 files = ["spec/conformance/COVERAGE.md", "spec/conformance/rule-gaps.txt"]
-inputs = ["spec/core/*.md", "spec/lib/*.md", "spec/std/*.cp", "spec/conformance/**/*.cp"]
+inputs = ["spec/core/*.md", "spec/lib/*.md", "std/*.cp", "spec/conformance/**/*.cp"]
 write = ["scripts/conformance-coverage.py"]
 check = ["scripts/conformance-coverage.py", "--check"]
 tier = "pre-commit"
@@ -44,7 +44,7 @@ tier = "pre-commit"
 [[gen]]
 name = "traits"
 files = ["spec/conformance/traits/**/*.cp", "spec/conformance/trait-gaps.txt"]
-inputs = ["spec/conformance/traits.toml", "spec/std/*.cp"]
+inputs = ["spec/conformance/traits.toml", "std/*.cp"]
 write = ["scripts/conformance-traits.py"]
 check = ["scripts/conformance-traits.py", "--check"]
 tier = "pre-commit"
@@ -52,7 +52,7 @@ tier = "pre-commit"
 [[gen]]
 name = "sigs"
 files = ["spec/conformance/sig-gaps.txt"]
-inputs = ["spec/core/*.md", "spec/lib/*.md", "spec/std/*.cp"]
+inputs = ["spec/core/*.md", "spec/lib/*.md", "std/*.cp"]
 write = ["scripts/conformance-sigs.py"]
 check = ["scripts/conformance-sigs.py", "--check"]
 tier = "pre-commit"
@@ -60,7 +60,7 @@ tier = "pre-commit"
 [[gen]]
 name = "prelude"
 files = ["spec/conformance/prelude-gaps.txt"]
-inputs = ["spec/lib/*.md", "spec/std/prelude.cp"]
+inputs = ["spec/lib/*.md", "std/prelude.cp"]
 write = ["scripts/conformance-prelude.py", "--update"]
 check = ["scripts/conformance-prelude.py", "--check"]
 tier = "pre-commit"

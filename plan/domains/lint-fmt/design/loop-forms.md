@@ -51,7 +51,7 @@ table, requested in the compiler worklog. `cpl-lsp` never reads forms from
 ## Order, each a commit with findings unchanged
 1. Fold, Search and Build from `reduction`, `search` and `collect`. Proof:
    identical findings, compared by code, file and span, on corpus `spec.cp`,
-   `port.cp`, `dream.cp` and `spec/std` before and after. The record tests
+   `port.cp`, `dream.cp` and `std` before and after. The record tests
    and `corpus_warnings_only_go_down` must also pass.
 2. Scan and Bisect. Already one recognizer each, returning a structured
    match: `stdlib_algo::prefix_sum_loop` (`PrefixLoop`) and

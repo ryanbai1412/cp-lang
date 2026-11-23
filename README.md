@@ -203,8 +203,8 @@ The docs site labels every snippet as either runnable or specification.
   (`corpus/submissions/`).
 - `research/friction-queue.md`: every open friction item from the ports,
   clustered, with the next syntax batches.
-- `spec/std/`: the standard library, written in CP Lang.
-  `spec/std/README.md` is the tour.
+- `std/`: the standard library, written in CP Lang.
+  `std/README.md` is the tour.
 - `editors/vscode/`: the VS Code extension.
 - `web/`: the website: landing page, course, guides, reference and
   playground. `web/scripts/gate.mjs` checks every program on it.

@@ -1,7 +1,7 @@
 # std.mod doc notes
 
 Choices made where the spec is silent, and contradictions found, while bringing
-`spec/std/mod.cp` to the doc standard.
+`std/mod.cp` to the doc standard.
 
 - `Mod.try_inv` with `P == 1`: chose `Some(Mod<1>(0))`, since `gcd(0, 1) == 1` and 0 is `one` there; consistent with the stated rule `gcd(v, P) == 1`.
 - `Mod.from_int`: chose the same Euclidean reduction as `new` (negative inputs included); the stub only says "lift an `Int` literal".

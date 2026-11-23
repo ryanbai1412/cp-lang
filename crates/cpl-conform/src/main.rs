@@ -12,7 +12,7 @@ usage: cpl-conform [conformance|corpus|docs|spec-blocks|diff|all]... [options] [
 suites:
   conformance     spec/conformance/**/*.cp cases
   corpus          corpus/problems/<id>/spec.cp on tests/*.in vs *.ans
-  docs            /// example: lines in spec/std/*.cp
+  docs            /// example: lines in std/*.cp
   spec-blocks     fenced cp blocks in spec/core/*.md and spec/lib/*.md
   diff            interpreter vs g++ -O2 -std=c++17 differential
   all             all five suites (default if no suite is named)

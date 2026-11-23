@@ -15,9 +15,9 @@ pub struct DocExample {
     pub stdin: String,
 }
 
-/// Discovers `/// example:` lines in `spec/std/*.cp`.
+/// Discovers `/// example:` lines in `std/*.cp`.
 pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
-    let dir = root.join("spec").join("std");
+    let dir = root.join("std");
     let mut out = Vec::new();
     for path in runner::walk_files(&dir, "cp") {
         let Ok(text) = std::fs::read_to_string(&path) else {

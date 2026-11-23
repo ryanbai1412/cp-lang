@@ -2,7 +2,7 @@
 //!
 //! It reads the expression subset of `.cp` that a `law`, an `invariant`,
 //! an `assert` or an index can contain, so the text of
-//! `spec/std/algebra.cp` can be handed to the prover as it stands:
+//! `std/algebra.cp` can be handed to the prover as it stands:
 //!
 //! ```
 //! use cpl_prover::parse;

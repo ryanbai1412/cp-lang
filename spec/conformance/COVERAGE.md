@@ -788,7 +788,7 @@ prepends it.
 
 ## Standard library
 
-Every `pub` item in `spec/std`, counted as covered when a conformance
+Every `pub` item in `std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 

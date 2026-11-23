@@ -1,4 +1,4 @@
-//! Puts the text of every `spec/std` module into the compiler, so `use
+//! Puts the text of every `std` module into the compiler, so `use
 //! std.mod` resolves the same everywhere: the CLI, the editor and the
 //! browser, with no folder to find at run time.
 
@@ -9,7 +9,7 @@ fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
     println!("cargo:rerun-if-changed=build.rs");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo"));
-    bundle(&manifest.join("../../spec/std"), &out, "std", "std");
+    bundle(&manifest.join("../../std"), &out, "std", "std");
 }
 
 /// Writes `<prefix>_modules.rs`, the table of every module under `root`,
@@ -62,7 +62,7 @@ fn without_tests(text: &str) -> String {
     out
 }
 
-/// Every public name that exactly one `spec/std` module declares, with
+/// Every public name that exactly one `std` module declares, with
 /// that module, sorted by name: what the hint for a missing `use` reads.
 /// It is read off the files, so a new `pub fn` needs no second edit.
 fn std_names(modules: &[(String, PathBuf)]) -> String {

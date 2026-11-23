@@ -9,7 +9,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import affected  # noqa: E402
 
 DIRS = {"crates/cpl-fmt/": "cpl-fmt", "crates/cpl-check/": "cpl-check",
-        "crates/prover/": "cpl-prover"}
+        "crates/cpl-prover/": "cpl-prover"}
 
 
 class AffectedTest(unittest.TestCase):
@@ -17,9 +17,9 @@ class AffectedTest(unittest.TestCase):
         return affected.select(list(paths), DIRS)
 
     def test_a_crate_file_selects_its_package_by_name_not_directory(self):
-        s = self.sel("crates/prover/src/lib.rs")
+        s = self.sel("crates/cpl-prover/src/lib.rs")
         self.assertEqual((s["all"], s["packages"]), (False, ["cpl-prover"]))
-        self.assertEqual(s["rust_files"], ["crates/prover/src/lib.rs"])
+        self.assertEqual(s["rust_files"], ["crates/cpl-prover/src/lib.rs"])
 
     def test_prose_selects_nothing(self):
         s = self.sel("plan/QUESTIONS.md", "decisions.md", "research/x.md")
@@ -27,7 +27,7 @@ class AffectedTest(unittest.TestCase):
                          (False, [], [], False))
 
     def test_build_settings_and_std_select_every_crate(self):
-        for path in ("Cargo.lock", "spec/std/seq.cp", ".config/nextest.toml"):
+        for path in ("Cargo.lock", "std/seq.cp", ".config/nextest.toml"):
             self.assertEqual(self.sel(path)["packages"], sorted(DIRS.values()), path)
 
     def test_an_unknown_path_selects_the_whole_fast_gate(self):

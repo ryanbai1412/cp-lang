@@ -1,7 +1,7 @@
 # 11. Files, modules, prelude and versions
 
 Status: draft for 0.3.0. Sources: `plan/15-program-structure.md` §2, §12-14;
-decisions 72, 94; `spec/std/prelude.cp`.
+decisions 72, 94; `std/prelude.cp`.
 
 ## 11.1 Program files and library files
 

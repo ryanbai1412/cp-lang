@@ -208,7 +208,7 @@ costs a library author nothing.
 
 **Position queries return keys.**
 
-<!-- spec-only: excerpt of spec/std; the docs suite runs its examples -->
+<!-- spec-only: excerpt of std; the docs suite runs its examples -->
 ```python
 /// O(n). A key of the largest element, the first on ties; `None` when empty.
 pub fn argmax<K, T: Ord>(self: [K]T) -> ?K = self.keys.max(by: k => self[k])
@@ -221,7 +221,7 @@ pub fn search<S: Indexed<K, Char>, K, P>(self: S, p: P) -> ?K = todo
 offsets through `nth`, and `rekey` hands the table back in the caller's
 keys.
 
-<!-- spec-only: excerpt of spec/std; the docs suite runs its examples -->
+<!-- spec-only: excerpt of std; the docs suite runs its examples -->
 ```python
 /// O(n). `z[i]` is the longest common prefix of `s[i..]` and `s`, keyed by `s.keys`.
 pub fn z_function<K, T: Eq>(s: [K]T) -> [K]Int =
@@ -238,7 +238,7 @@ pub fn z_function<K, T: Eq>(s: [K]T) -> [K]Int =
 **Prefix tables use the input's cuts,** so `a[l..r].scan(+)[c]` takes a cut
 `c` of `a`:
 
-<!-- spec-only: excerpt of spec/std; the docs suite runs its examples -->
+<!-- spec-only: excerpt of std; the docs suite runs its examples -->
 ```python
 pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> = todo
 ```

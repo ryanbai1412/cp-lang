@@ -17,7 +17,7 @@ class DebtRatchetTest(unittest.TestCase):
     def _make_repo(self, root: Path) -> None:
         (root / "crates/demo/src").mkdir(parents=True)
         (root / "crates/cpl-cli/tests/pending").mkdir(parents=True)
-        (root / "spec/std").mkdir(parents=True)
+        (root / "std").mkdir(parents=True)
         (root / "stdlib").mkdir(parents=True)
 
         # Big file (25 lines, using max_rs_lines=20 in tests)
@@ -26,9 +26,9 @@ class DebtRatchetTest(unittest.TestCase):
         (root / "crates/demo/src/small.rs").write_text(
             "//! doc mentioning #[ignore]\n#[ignore = \"slow\"]\nfn t() {}\n"
         )
-        # stdlib var named todo is NOT a stub; spec/std `= todo` IS a stub
+        # stdlib var named todo is NOT a stub; std `= todo` IS a stub
         (root / "stdlib/dp.cp").write_text("var todo = [1]\ntodo.push(2)\n")
-        (root / "spec/std/seq.cp").write_text("pub fn foo() = todo\nfn bar():\n    todo\n")
+        (root / "std/seq.cp").write_text("pub fn foo() = todo\nfn bar():\n    todo\n")
         (root / "crates/cpl-cli/tests/pending/case1.cp").write_text("print(1)\n")
 
     def test_measure_counts_accurately(self) -> None:
@@ -108,7 +108,7 @@ class DebtRatchetTest(unittest.TestCase):
                         '[target.\'cfg(not(target_arch = "wasm32"))\'.dependencies]\ncpl-prover = "0"\n'
                         '[dev-dependencies]\ncpl-cli = "0"\n')
             self._write(root, "plan/ARCHITECTURE.md", "`crates/cpl-lint` and `crates/gone/x.rs`\n")
-            self._write(root, "spec/std/zz.cp", "pub fn rotate(self: Int) -> Int = self\n")
+            self._write(root, "std/zz.cp", "pub fn rotate(self: Int) -> Int = self\n")
             self._write(root, "crates/cpl-lint/src/rules/a.rs", 'if m == "rotate" || m == "tmp" {}\n')
             self._write(root, "crates/cpl-lint/src/rules/tests.rs", 'let _ = "rotate";\n')
             self.assertEqual(dr.lint_std_names(root), ["crates/cpl-lint/src/rules/a.rs:1 rotate"])
@@ -127,8 +127,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-check/src/prelude.rs",
                         'pub const VALUE_NAMES: &[&str] = &[\n    "sum", "print",\n];\n'
                         'pub const TYPE_NAMES: &[&str] = &["Counter"];\n')
-            self._write(root, "spec/std/seq.cp", "pub fn sum(xs: List<Int>) -> Int = todo\nfn print() = todo\n")
-            self._write(root, "spec/std/bag.cp", "pub struct Counter {}\n")
+            self._write(root, "std/seq.cp", "pub fn sum(xs: List<Int>) -> Int = todo\nfn print() = todo\n")
+            self._write(root, "std/bag.cp", "pub struct Counter {}\n")
             self.assertEqual(dr.prelude_privilege(root), ["Counter", "sum"])
 
     def test_unrun_script_tests(self) -> None:
@@ -170,10 +170,10 @@ class DebtRatchetTest(unittest.TestCase):
     def test_stdlib_todo_marks_stubs_in_test_fns(self):
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
-            self._write(root, "spec/std/seq.cp",
+            self._write(root, "std/seq.cp",
                         "pub fn a() = todo\n@test\nfn t():\n    todo\npub fn b() = todo\n")
             self.assertEqual(dr.stdlib_todo(root),
-                             ["spec/std/seq.cp:1", "spec/std/seq.cp:4 @test", "spec/std/seq.cp:5"])
+                             ["std/seq.cp:1", "std/seq.cp:4 @test", "std/seq.cp:5"])
 
     def test_cli_update_by_name_keeps_the_rest(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

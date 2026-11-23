@@ -1,7 +1,7 @@
 # std.geometry doc notes
 
 Choices made where the spec is silent, and contradictions found, while bringing
-`spec/std/geometry.cp` to the doc standard.
+`std/geometry.cp` to the doc standard.
 
 - `Pt.norm2`, `dot`, `cross`, `dist2`, `manhattan`, `chebyshev`, `area2`, `OnlineHull.area2`: chose to trap on `Int` overflow (the checked-arithmetic default), pointing to the `_128` forms in the prose.
 - `Pt.*_128`: trap only if `I128` itself overflows (coordinates near `Int.MIN`), rather than claiming "never".

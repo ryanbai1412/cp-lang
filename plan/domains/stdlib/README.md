@@ -1,8 +1,8 @@
 # stdlib
 
-Segment: D. Taste and co-design. Owns: `spec/std/` (moving to `std/` in the restructure), `plan/domains/stdlib/`. Status 2026-11-22: 1,976 public items in 39 modules; 294 `todo` stubs; 2012/2699 doc examples and 801/832 std conformance cases pass.
+Segment: D. Taste and co-design. Owns: `std/` (moving to `std/` in the restructure), `plan/domains/stdlib/`. Status 2026-11-22: 1,976 public items in 39 modules; 294 `todo` stubs; 2012/2699 doc examples and 801/832 std conformance cases pass.
 
-Detail: [PLAN.md](PLAN.md) (workstreams, alternatives, risks) · [ARCHITECTURE.md](ARCHITECTURE.md) (the code today) · [metrics.toml](metrics.toml) · [worklog.md](worklog.md) · normative surface and doc rules: [spec/std/README.md](../../../spec/std/README.md) · compiler gaps: [spec/std/GAPS.md](../../../spec/std/GAPS.md).
+Detail: [PLAN.md](PLAN.md) (workstreams, alternatives, risks) · [ARCHITECTURE.md](ARCHITECTURE.md) (the code today) · [metrics.toml](metrics.toml) · [worklog.md](worklog.md) · normative surface and doc rules: [std/README.md](../../../std/README.md) · compiler gaps: [std/GAPS.md](../../../std/GAPS.md).
 
 ## Mission
 
@@ -10,11 +10,11 @@ Every contest facility a contestant reaches for is one guessable call, written i
 
 ## Covers
 
-- Every `spec/std/*.cp` module: signatures, `///` docs (cost / traps / example / empty / ties / order), bodies in CP Lang, in-file `@test` fns.
-- The prelude list (`spec/std/prelude.cp`) and its budget.
-- One naming scheme across std (`spec/std/README.md` §2); `by:` options, never `_by` twins.
+- Every `std/*.cp` module: signatures, `///` docs (cost / traps / example / empty / ties / order), bodies in CP Lang, in-file `@test` fns.
+- The prelude list (`std/prelude.cp`) and its budget.
+- One naming scheme across std (`std/README.md` §2); `by:` options, never `_by` twins.
 - The `spec/conformance/std-*` cases (co-owned with spec: stdlib writes them, spec owns the harness rules).
-- `spec/std/GAPS.md`: each body the compiler can't run yet, with its request to the compiler lane.
+- `std/GAPS.md`: each body the compiler can't run yet, with its request to the compiler lane.
 
 Not covered (owner instead):
 
@@ -22,7 +22,7 @@ Not covered (owner instead):
 |---|---|
 | The library chapters `spec/lib/*.md` (model, examples) | spec |
 | Compiler builtins and intrinsics, `lower/call.rs`, the std/builtin boundary in the core | compiler (boundary held by stdlib contract tests) |
-| Removing privilege as a ratchet, moving `spec/std` -> `std/` | tech-debt (stdlib does the std side) |
+| Removing privilege as a ratchet, moving `std` -> `std/` | tech-debt (stdlib does the std side) |
 | C++ speed of std bodies, `cpl bench` | perf (stdlib supplies matched benches per module) |
 | `cpl doc`, LSP hover/completion over std | tools |
 | Site reference pages generated from std (`web/scripts/gen-ref.mjs`) | site |
@@ -59,7 +59,7 @@ All measured 2026-11-22 on main `4b8f504f` with fresh release binaries (`cargo b
 | Prelude names | `check.sh` prelude count | 192 | chapter tables (decisions 150, 281) | M3 |
 | Std names special-cased in the compiler | `measure.py privilege` (builtin count `ir_builtin_names`, agreed with tech-debt) | 89 builtins, 40 of them public std names | 0 std names | M3 |
 | Modules that pass standalone `cpl check` | loop in metrics.toml | 12/40 | 40 | M3 |
-| `GAPS.md` entries | `grep -c '^- ' spec/std/GAPS.md` | 88 | falling; 0 at M3 | M3 |
+| `GAPS.md` entries | `grep -c '^- ' std/GAPS.md` | 88 | falling; 0 at M3 | M3 |
 | Import cycles (explicit `use`) | `measure.py cycles` | 0 | 0 | M1 |
 | Modules without conformance cases | `measure.py uncovered` | 1 (`opt`) | 0 | M3 |
 | Std C++ time vs optimized C++ | Library Checker benches (`cpl bench`, perf) | not measured | within 1.2x | M3 |
@@ -79,8 +79,8 @@ A cold agent scores 10 sampled public fns 1-5 per question, with a reason; the t
 
 Probes (cold agent, docs only; pass/fail, time, files touched):
 
-- **P1 Write from the docs.** Solve 5 unseen problems using only `spec/std` docs; std calls compile and run first try (tests 1, 3).
-- **P2 Add a std fn.** Add `kth_smallest`-sized fn following `spec/std/README.md`; gate green first try, <= 3 files touched (tests 1, 4).
+- **P1 Write from the docs.** Solve 5 unseen problems using only `std` docs; std calls compile and run first try (tests 1, 3).
+- **P2 Add a std fn.** Add `kth_smallest`-sized fn following `std/README.md`; gate green first try, <= 3 files touched (tests 1, 4).
 - **P3 Copy a module.** Copy `std.fenwick` into a user library, run its cases from there (test 5).
 - **P4 Audit costs.** Given 10 bodies, find the one with a planted wrong `cost:` (test 2).
 
@@ -93,7 +93,7 @@ Probes (cold agent, docs only; pass/fail, time, files touched):
 5. Make the prelude match the `lib/` chapter tables (decision 281), using the usage data in chapter reviews.
 6. Fix the 32 missing doc labels and the 13 `spec-stub --check` problems.
 7. Get all 40 modules through standalone `cpl check` (12 today; 418 errors, part of them false self-cycles).
-8. With tech-debt: the intrinsics floor (decision 266), one name at a time, the no-privilege test, `spec/std` -> `std/`.
+8. With tech-debt: the intrinsics floor (decision 266), one name at a time, the no-privilege test, `std` -> `std/`.
 
 ## Ryan's role
 

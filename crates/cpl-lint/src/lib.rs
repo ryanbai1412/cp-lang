@@ -17,7 +17,7 @@
 /// Where std lives, relative to the repository root: the one place
 /// `cpl-lint` names it.
 #[cfg(test)]
-pub(crate) const STD_DIR: &str = "spec/std";
+pub(crate) const STD_DIR: &str = "std";
 
 /// The source of one std module, `std_source!("prelude.cp")`; the path
 /// repeats `STD_DIR` because `include_str!` needs a literal.
@@ -25,7 +25,7 @@ macro_rules! std_source {
     ($file:literal) => {
         include_str!(concat!(
             env!("CARGO_MANIFEST_DIR"),
-            "/../../spec/std/",
+            "/../../std/",
             $file
         ))
     };

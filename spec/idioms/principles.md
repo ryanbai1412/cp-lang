@@ -1,7 +1,7 @@
 # Idiomatic CP Lang (draft 2)
 
 Status: non-normative. This is taste guidance, not the language: `spec/core`, `spec/lib`,
-`spec/std` and `spec/tools` define CP Lang, and where this file disagrees with them, they win.
+`std` and `spec/tools` define CP Lang, and where this file disagrees with them, they win.
 Whether it becomes Ryan's normative taste is open in `plan/QUESTIONS.md` (idioms). Changes go
 through the idioms lane; a lint in `spec/lints/` should cite the practice it serves. Spellings follow `spec/` as of 2026-11-22.
 

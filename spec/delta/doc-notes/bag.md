@@ -1,7 +1,7 @@
 # std.bag doc notes
 
 Choices made where the spec was silent, and contradictions found, while
-bringing `spec/std/bag.cp` to the doc standard (`spec/std/README.md`).
+bringing `std/bag.cp` to the doc standard (`std/README.md`).
 
 ## Choices
 

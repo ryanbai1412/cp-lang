@@ -12,7 +12,7 @@ use cpl_syntax::ast::StmtKind;
 use std::collections::HashSet;
 use std::sync::OnceLock;
 
-/// `(module, name)` for each name `spec/std/prelude.cp` lists, the module
+/// `(module, name)` for each name `std/prelude.cp` lists, the module
 /// written `std.tree`.
 fn prelude() -> &'static HashSet<(String, String)> {
     static NAMES: OnceLock<HashSet<(String, String)>> = OnceLock::new();

@@ -22,7 +22,7 @@ fn a_generic_fn_takes_its_type_arguments_after_two_colons() {
 
 #[test]
 fn a_heap_starts_empty() {
-    // `MinHeap` is the prelude's: the struct of `spec/std/heap.cp`.
+    // `MinHeap` is the prelude's: the struct of `std/heap.cp`.
     let ok = "var h = MinHeap<(Int, Int)>()\nh.push((-3, 3))\nvar xs = List<Int>()\nxs.push(1)\n";
     assert!(codes(ok).is_empty(), "{:?}", check(ok));
 }
@@ -106,7 +106,7 @@ fn an_import_joins_its_module_line_or_the_file_header() {
 }
 
 /// `STD_NAMES` is what the hint for a missing `use` is read from. It is
-/// built from `spec/std/` itself, sorted for the binary search, without
+/// built from `std/` itself, sorted for the binary search, without
 /// the names that more than one module declares.
 #[test]
 fn the_std_name_table_is_read_off_the_standard_library() {
@@ -117,11 +117,11 @@ fn the_std_name_table_is_read_off_the_standard_library() {
     assert_eq!(crate::prelude::std_module("runs"), Some("seq"));
 }
 
-/// The compiler carries `spec/std/` without its tests, line for line, so
+/// The compiler carries `std/` without its tests, line for line, so
 /// a span into a bundled module still points at the right line.
 #[test]
 fn the_bundled_stdlib_drops_tests_and_keeps_every_line() {
-    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec/std");
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../std");
     let modules = crate::modules::std_modules();
     assert!(modules.iter().any(|(name, _)| *name == "seq"));
     for (name, bundled) in modules {
@@ -136,12 +136,12 @@ fn the_bundled_stdlib_drops_tests_and_keeps_every_line() {
     assert!(seq.contains("pub fn bsearch<D>"));
 }
 
-/// `spec/std/README.md` is the design of the whole surface, so a public
-/// name of `spec/std/` it never mentions is a name nobody designed.
+/// `std/README.md` is the design of the whole surface, so a public
+/// name of `std/` it never mentions is a name nobody designed.
 #[test]
-#[ignore = "spec/std/README.md does not name every public spec/std name yet"]
+#[ignore = "std/README.md does not name every public std name yet"]
 fn the_stdlib_design_names_every_public_name() {
-    let design = include_str!("../../../../spec/std/README.md");
+    let design = include_str!("../../../../std/README.md");
     let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
     let words: std::collections::HashSet<&str> = design.split(|c: char| !word(c)).collect();
     let missing: Vec<&str> = crate::prelude::std_names()
@@ -151,7 +151,7 @@ fn the_stdlib_design_names_every_public_name() {
         .collect();
     assert!(
         missing.is_empty(),
-        "spec/std/README.md does not mention {missing:?}"
+        "std/README.md does not mention {missing:?}"
     );
 }
 

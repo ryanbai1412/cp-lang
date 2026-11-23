@@ -40,7 +40,7 @@ let ps = Prefix(a)                          // static: O(1) range sums
 
 ### The traits
 
-<!-- spec-only: excerpt of spec/std -->
+<!-- spec-only: excerpt of std -->
 ```python
 pub trait Op<T>:
     fn op(self, a: T, b: T) -> T
@@ -174,7 +174,7 @@ An order is the other operation value every contest program passes around:
 `sort`, `min`/`max`/`argmax`, heaps, ordered sets, `bsearch` over sorted
 data and Dijkstra all take one. One trait and one argument cover them all.
 
-<!-- spec-only: excerpt of spec/std -->
+<!-- spec-only: excerpt of std -->
 ```python
 pub trait Ord:
     fn cmp(self, b: Self) -> Ordering
@@ -228,7 +228,7 @@ A shortest-path search needs two things from weights: how a path's cost
 grows by one arc, and which of two costs is better. That is a `Monoid` and
 an `Ord`, the same two concepts:
 
-<!-- spec-only: signature excerpt; the body is in spec/std -->
+<!-- spec-only: signature excerpt; the body is in std -->
 ```python
 pub fn dijkstra<V, W: Ord, G: WeightedNext<V, W>, M: Monoid<W> = Plus>(
     g: G, from: Seq<(V, W)>, step: M = +, until: ?V = None,
@@ -260,7 +260,7 @@ to a folded value of `n` leaves. Tags compose **in time order**,
 its `compose(new, old)` applies `old` first, so `compose(new, old) ==
 tags.op(old, new)`. With add-3 then assign-5, both give assign-5.
 
-<!-- spec-only: excerpt of spec/std -->
+<!-- spec-only: excerpt of std -->
 ```python
 // a value, not a trait (decision 42.6); T is the folded value, F the tag
 pub struct Action<T, F>(id: F, compose: (F, F) -> F, apply: (F, T, Int) -> T, over: Monoid<T>)
@@ -298,7 +298,7 @@ costs nothing extra. A lambda that takes `(f, x)` without `n` is accepted.
 Two ops, where `mul` distributes over `add`: what matrix products, path
 algebras and convolutions are generic over.
 
-<!-- spec-only: excerpt of spec/std and its stock values -->
+<!-- spec-only: excerpt of std and its stock values -->
 ```python
 pub struct Semiring<A, M>(add: A, mul: M)   // a value (decision 42.6)
 // distrib: mul(a, add(b, c)) == add(mul(a, b), mul(a, c))
@@ -438,7 +438,7 @@ tags apply doesn't matter.
 **How a library writes it.** A generic body can test a bound, and the test
 is decided when the fn is instantiated:
 
-<!-- spec-only: excerpt of spec/std -->
+<!-- spec-only: excerpt of std -->
 ```python
 pub fn apply(mut self, r: Range<D>, f: F):
     if A.Tags: Commutative<F>:

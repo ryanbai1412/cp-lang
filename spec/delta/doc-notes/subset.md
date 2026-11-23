@@ -1,7 +1,7 @@
 # Doc notes: `std.subset`
 
 Choices made where the spec is silent, and contradictions found, while bringing
-`spec/std/subset.cp` to the doc standard (`spec/std/README.md`).
+`std/subset.cp` to the doc standard (`std/README.md`).
 
 - `Subset.subsets`: chose the submask walk `g = (g - 1) & s` exactly, so the
   order is decreasing as words; the spec only fixes `s` first and `{}` last

@@ -6845,3 +6845,24 @@ restore the hand-written REPO.md, and give `gen.py` back its list.
   `spec/std` (`math.cp` segmented sieve) and none in corpus `spec.cp`.
 - **Reverse.** Delete `crates/cpl-lint/src/rules/ceil.rs` and
   `spec/lints/ceil_div_formula/`.
+||||||| parent of 9d92e72e3 (factory: move spec/std to std and crates/prover to crates/cpl-prover)
+
+
+## 307. The stdlib is `std/` and the prover is `crates/cpl-prover` (2026-11-22)
+
+Call: `git mv spec/std std` and `git mv crates/prover crates/cpl-prover` in one
+mechanical commit; every `spec/std` and `crates/prover` reference outside
+history (`decisions.md`, `research/`, `CHANGELOG.md`, worklog entries) is
+rewritten, plus the path joins that spelled them in pieces
+(`scripts/spec-stub.py`, `conformance-coverage.py`, `conformance-traits.py`,
+`cpl-conform/src/docs.rs`, the ratchet's std scans). The package name
+`cpl-prover` is unchanged. Ryan confirmed both renames.
+Evidence: `cargo check --workspace --all-targets` clean; nextest of
+cpl-check, cpl-lsp, cpl-lint, cpl-conform, cpl-prover and cpl-codegen 669
+passed, cpl-cli's path tests 7 passed; `scripts/gen.py --check` and the
+ratchet pass with unchanged counts. `spec-stub.py --check` reports the same
+6 prelude problems as main.
+Reason: `spec/` holds the rules and `std/` the implementation (plan/LAYOUT.md);
+the prover's directory now matches its package like every other crate.
+Reverse: `git mv std spec/std`, `git mv crates/cpl-prover crates/prover`, and
+the same reference rewrite in the other direction.

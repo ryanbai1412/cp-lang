@@ -4,8 +4,8 @@ use cpl_check::Database;
 
 #[test]
 fn no_spec_std_module_imports_itself_back() {
-    let std_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../spec/std");
-    let std_dir = std_dir.canonicalize().expect("spec/std exists");
+    let std_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../std");
+    let std_dir = std_dir.canonicalize().expect("std exists");
     // SAFETY: the only test in this binary, set before anything reads them.
     unsafe {
         std::env::set_var("CPL_SPEC", "1");
@@ -52,7 +52,7 @@ fn no_spec_std_module_imports_itself_back() {
     }
     assert!(
         cycles.is_empty(),
-        "spec/std modules import each other:\n{}",
+        "std modules import each other:\n{}",
         cycles.join("\n")
     );
 }

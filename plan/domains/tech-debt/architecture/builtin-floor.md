@@ -37,7 +37,7 @@ Two derived names need more than a body:
 
 `choose2` is the template. Delete its arms in `cpl-check`
 (`check/known.rs`, `prelude.rs` `value`/`value_doc`/`VALUE_NAMES`) and in
-`cpl-ir/src/lower/call.rs`; add the name to `spec/std/prelude.cp` so
+`cpl-ir/src/lower/call.rs`; add the name to `std/prelude.cp` so
 programs that used it without a `use` still compile; add a conformance
 case; run conformance before and after. Interpreter and C++ then run the
 same std body. The builtin had drifted from it: `choose2(-3)` was 6, the
@@ -53,7 +53,7 @@ documented answer is 0.
    `prefix` `counts` `adjacency`: hot in ports; move only with a bench
    row showing no regression over the builtin.
 4. The `*Action` types and `laws_hold`: owned by stdlib's algebra work;
-   the body must exist in `spec/std/algebra.cp` first.
+   the body must exist in `std/algebra.cp` first.
 
 A move that regresses the gate stays a builtin and is logged as debt
 here with the measured ratio.
@@ -61,16 +61,16 @@ here with the measured ratio.
 ## Measured
 
 - `choose2`: moved (`ab626a6ef`). Conformance 2141/2310 -> 2142/2311 (the new case).
-- `minmax`: moved to `spec/std/algebra.cp` as a generic over `Ord`. 50M calls: 0.11-0.13 s before and after
+- `minmax`: moved to `std/algebra.cp` as a generic over `Ord`. 50M calls: 0.11-0.13 s before and after
   (interleaved, `g++ -O2`); generated C++ 2,326 -> 2,600 bytes. The 9 corpus files using it have the same
   `cpl check` error counts before and after.
 - `first_ge` `first_gt` `last_le`: on `Set`/`Map` they are ordered-storage lookups (`Builtin::FirstGe`
-  and friends), so they stay. On `List` the builtin returns `?Int`, while `spec/std/seq.cp` declares
+  and friends), so they stay. On `List` the builtin returns `?Int`, while `std/seq.cp` declares
   `first_gt` on `[D]T` returning `?D` and has no `first_ge`/`last_le`; the list form moves once stdlib
   settles that signature.
 - `span`: not moved. The builtin is a hull of two positions or bounds in either order; the std body
   takes two cuts and traps when `lo > hi`. Asked stdlib which meaning is the spec.
-- `isqrt`: tried and backed out; it stays a builtin for now. With `spec/std/math.cp`'s body,
+- `isqrt`: tried and backed out; it stays a builtin for now. With `std/math.cp`'s body,
   30M calls took 0.26 s against 0.07 s for the builtin (3.7x, three runs each, `g++ -O2`).
   Generated C++ grew from 2,334 to 3,631 bytes. Conformance went from 2143/2313 to 2122/2311.
   The body divides (`cpl::ediv`) and goes through `cpl::fsqrt`/`cpl::to_int`; the runtime helper

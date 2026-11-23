@@ -142,7 +142,7 @@ what the libraries are written in:
 - **Traits and impls.** An impl must write every fn its trait leaves
   without a body and no fn the trait lacks, a bound must name a trait, and
   `a + b` on a struct needs `impl Add` for it.
-- **Modules.** `use std.dsu.{Dsu}` loads `spec/std/dsu.cp`, and a local
+- **Modules.** `use std.dsu.{Dsu}` loads `std/dsu.cp`, and a local
   library is found through its `lib.toml`. Only `pub` names can be
   imported, and a missing module or name is one error on the `use`.
   `cpl-check/src/modules.rs` says where modules are looked for.
@@ -155,7 +155,7 @@ what the libraries are written in:
   the sign of `x`, so it indexes a `0..7` domain.
 
 `crates/cpl-cli/tests/corpus.rs` holds this to the source in the
-repository: `spec/std/`, the ports in `proto/ports/`
+repository: `std/`, the ports in `proto/ports/`
 and `proto/ports/hillclimb_dp_graph/`, and the prototype's passing tests
 check with no diagnostics, and each file in `crates/cpl-cli/tests/cases/bad/` is
 rejected for the reason its first line states. The sketches in
@@ -168,7 +168,7 @@ Not checked yet: value ranges beyond literals and domains, whether a type
 argument satisfies the bounds of the parameter it fills, and laws beyond
 `law disjoint`.
 
-The prelude is [`spec/std/prelude.cp`](../stdlib/prelude.cp): the one list
+The prelude is [`std/prelude.cp`](../stdlib/prelude.cp): the one list
 of standard library names a program has without a `use`, as `use` lines.
 
 ```cp
@@ -181,7 +181,7 @@ that file, and each resolves a name to the cp source of its module, so
 none of them takes a name on trust. `cpl-check/src/prelude.rs` keeps only
 what is not cp source: the core types (`Int`, `List`, ...) and the
 intrinsics the libraries are written on (`print`, `read`, `sort`, ...).
-`Subset<D>` is still lowered by `cpl-ir` rather than declared in `spec/std/`.
+`Subset<D>` is still lowered by `cpl-ir` rather than declared in `std/`.
 
 The pipeline, in the order the crates will depend on each other (add the
 dependency when the code first needs it):
@@ -220,10 +220,10 @@ dependency when the code first needs it):
   no server (`plan/90-docs-and-playground.md`, `crates/cpl-wasm/README.md`).
   `scripts/build-wasm.sh` builds it into `dist/wasm/`.
 
-**`cpl-prover`** (`crates/prover/`) is the prover for `invariant`, `law`
+**`cpl-prover`** (`crates/cpl-prover/`) is the prover for `invariant`, `law`
 and the range checker: index bounds, overflow freedom, `law disjoint` and
 the algebraic laws of the standard library, each answered with a proof or
-a concrete counterexample (`crates/prover/README.md`). It stands alone
+a concrete counterexample (`crates/cpl-prover/README.md`). It stands alone
 until the checker calls it.
 
 ```text

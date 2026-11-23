@@ -682,7 +682,7 @@ fn stdlib_methods_hover_with_their_docs_and_jump_into_the_stdlib() {
         .as_str()
         .unwrap()
         .ends_with("std/mod.cp"));
-    let choose_line = include_str!("../../../spec/std/mod.cp")
+    let choose_line = include_str!("../../../std/mod.cp")
         .lines()
         .position(|l| l.trim_start().starts_with("pub fn choose("))
         .unwrap() as u32;

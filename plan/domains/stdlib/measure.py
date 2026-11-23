@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Stdlib metrics that no other script prints. Usage: measure.py <metric>.
 
-  todo-split   `todo` stubs in library bodies vs in `@test` fns (spec/std)
+  todo-split   `todo` stubs in library bodies vs in `@test` fns (std)
   privilege    the builtin count agreed with tech-debt: `ir_builtin_names` in
                scripts/debt-ratchet.py (distinct names string-matched in match
-               arms of cpl-ir's lower/call.rs), split into public spec/std
+               arms of cpl-ir's lower/call.rs), split into public std
                names (std privilege) and the rest
-  cycles       import cycles among spec/std modules via explicit `use`
-  uncovered    spec/std modules with no spec/conformance/std-<m>/ cases
+  cycles       import cycles among std modules via explicit `use`
+  uncovered    std modules with no spec/conformance/std-<m>/ cases
   prelude-usage  share of solutions that use each prelude name, written to
                plan/domains/stdlib/prelude-usage.md (for plan/QUESTIONS.md
                stdlib Q1): the reviewed ports (corpus/sets/ecnerwala.txt), the

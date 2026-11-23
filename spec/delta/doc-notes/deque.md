@@ -1,7 +1,7 @@
 # std.deque doc notes
 
 Choices made where the spec was silent, and contradictions found, while
-bringing `spec/std/deque.cp` to the doc standard (`spec/std/README.md`).
+bringing `std/deque.cp` to the doc standard (`std/README.md`).
 
 - `Deque.last(k)`: `None` when `k >= len`, traps when `k < 0`. A negative
   offset is a bug, not an absence; `None` for "not that many elements"

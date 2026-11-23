@@ -43,7 +43,7 @@ fn a_fn_is_not_told_to_call_itself() {
     assert!(codes(call).contains(&FREE_FOLD.code.0));
 }
 
-/// `spec/std` modules `cpl lint` refuses because `cpl_syntax` does not parse
+/// `std` modules `cpl lint` refuses because `cpl_syntax` does not parse
 /// them (requests in the compiler and stdlib worklogs). No other module may
 /// join the list; one that starts parsing can leave it.
 const NOT_PARSED: &[&str] = &[

@@ -1,7 +1,7 @@
 # Rebuild round 1: holes in the spec
 
 An independent implementer read only `spec/core`, `spec/lib` (skimmed),
-the `spec/std/*.cp` stubs it needed and `spec/conformance`, then wrote ten
+the `std/*.cp` stubs it needed and `spec/conformance`, then wrote ten
 solutions (`01-*.cp` to `10-*.cp`) and 42 snippet questions
 (`QUESTIONS.md`). This file lists every place where the reader had to
 guess. Each entry gives the question, the candidate readings, the rule IDs

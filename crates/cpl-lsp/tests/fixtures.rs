@@ -48,7 +48,7 @@ fn file(uri: &str, own: &str) -> String {
     if uri == own {
         return "here".to_string();
     }
-    match uri.find("/spec/std/") {
+    match uri.find("/std/") {
         Some(i) => uri[i + 1..].to_string(),
         None => uri.to_string(),
     }

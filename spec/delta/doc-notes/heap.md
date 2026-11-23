@@ -1,7 +1,7 @@
 # std.heap doc notes
 
 Choices made where the spec was silent, and contradictions found, while
-bringing `spec/std/heap.cp` to the doc standard (`spec/std/README.md`).
+bringing `std/heap.cp` to the doc standard (`std/README.md`).
 
 - Ties (module doc): no heap is stable. Among equal keys under `by:`, which
   element `peek` shows and `pop` returns is unspecified, but `peek` always

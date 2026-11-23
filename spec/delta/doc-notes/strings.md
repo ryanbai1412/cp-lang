@@ -1,7 +1,7 @@
 # Doc notes: `std.strings`
 
 Choices made where the spec was silent, and contradictions found, while bringing
-`spec/std/strings.cp` to the `spec/std/README.md` standard. One bullet each:
+`std/strings.cp` to the `std/README.md` standard. One bullet each:
 entry, what the docs now say, why.
 
 ## Contradictions

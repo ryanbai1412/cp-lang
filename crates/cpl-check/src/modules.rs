@@ -1,6 +1,6 @@
 //! Where the file behind `use std.segtree` or `use lib.graph.two_sat` is.
 //!
-//! A module is one `.cp` file (`plan/40-tooling.md`). `std` is `spec/std`,
+//! A module is one `.cp` file (`plan/40-tooling.md`). `std` is `std`,
 //! built into the compiler; any other first name is a
 //! library: a folder the nearest `cp.toml` above the importing file names
 //! under `[libs]`, or else a folder with a `lib.toml` that says
@@ -51,7 +51,7 @@ impl Loader for FsLoader {
     }
 }
 
-/// The modules of `spec/std` as they were when the compiler was built, by
+/// The modules of `std` as they were when the compiler was built, by
 /// their path below it (`"seq"`).
 const BUNDLED: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_modules.rs"));
 
@@ -76,7 +76,7 @@ pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
     let near = nearest_std(parts);
     let help = match (parts[0].as_str(), &near) {
         (_, Some(m)) => format!("did you mean `{m}`?"),
-        ("std", None) => "the standard library's modules are the files of `spec/std/`".to_string(),
+        ("std", None) => "the standard library's modules are the files of `std/`".to_string(),
         (lib, None) => format!(
             "`{lib}` is a library: name its folder under `[libs]` in a `cp.toml` at or above this file (`{lib} = \"path\"`), or put this file below a folder whose `lib.toml` says `name = \"{lib}\"`"
         ),

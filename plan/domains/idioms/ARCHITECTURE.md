@@ -26,7 +26,7 @@ their main user and asks infra before changing them (see QUESTIONS.md).
 | `crates/cpl-judge` | Judge profiles (785 + 312 test lines, no deps): `Profile` (compiler, flags, OS, stack, thread stack, size limit), `builtins()`, `builtin(name)`, `named_in(source)` (`// judge:`), `resolve(path, source, chosen)` (flag > file > `cp.toml` > `generic`), `project_config`/`Config` (`[judge.<name>]` overrides and `extends`), flag probing with a memo (`CPL_JUDGE_PROBE_DIR`), `TARGET_BYTES` 32 KB / `HARD_BYTES` 64 KB. |
 | `research/scoreboard.json` (corpus suite) | The committed corpus results `cpl-conform all --check` ratchets against. The crate `cpl-conform` runs it; its owner is not named in DOMAINS.md (see QUESTIONS.md). |
 | `research/writable-from-docs*.{json,md}`, `scripts/writable-from-docs.py` *(infra)* | The docs-only eval: a cold model writes programs from the docs; last run 49/55 passed (`latest` in the JSON). Shared with site. |
-| Skill (`skills/cp-lang/`, `scripts/skill-gen.py`) | **Not on main.** On `devin/skill-v2`: `SKILL.md` (123 lines, cap 160), topic pages (`idioms.md`, `io.md`, `domains-and-cuts.md`, ...), `stdlib/*.md` generated from `spec/std` doc comments, `skill-gen.py --check` (drift, front matter, every cp block checks). |
+| Skill (`skills/cp-lang/`, `scripts/skill-gen.py`) | **Not on main.** On `devin/skill-v2`: `SKILL.md` (123 lines, cap 160), topic pages (`idioms.md`, `io.md`, `domains-and-cuts.md`, ...), `stdlib/*.md` generated from `std` doc comments, `skill-gen.py --check` (drift, front matter, every cp block checks). |
 | Principles, idiom catalog | **Not on main.** On `devin/idioms-docs`: `spec/idioms/principles.md` (beliefs B1-B6, practices 1-17), `spec/idioms/lints.md` (catalogue). |
 
 ## Interfaces other domains use

@@ -1,7 +1,7 @@
 # std.math doc notes
 
 Choices made where the spec is silent, and contradictions found, while bringing
-`spec/std/math.cp` to the doc standard.
+`std/math.cp` to the doc standard.
 
 - `gcd`, `ext_gcd`: chose to trap when the result is `2^63` (`Int.MIN` with 0 or itself), the only overflow case.
 - `lcm`: "stops on overflow" read as a trap (math.md says "traps on overflow"); computed as `|a| / g * |b|` so only a true overflow traps.

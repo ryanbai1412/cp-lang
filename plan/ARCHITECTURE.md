@@ -337,12 +337,12 @@ and `plan/domains/compiler/metrics.toml`.
 - Conformance 1661/1723; interpreter == C++ on 1273 of 1348 (75 skipped);
   corpus 12/100 ports pass; 19/185 spec blocks pass
   (`cpl-conform conformance corpus spec-blocks diff` on `e069e99de`).
-- The stdlib is 40 modules in `spec/std/` with 162 `todo` stubs
-  (`ls spec/std/*.cp`; `debt-ratchet.py --show stdlib_todo`).
+- The stdlib is 40 modules in `std/` with 162 `todo` stubs
+  (`ls std/*.cp`; `debt-ratchet.py --show stdlib_todo`).
 
 | Target | Today |
 |---|---|
-| one `std/` tree | `spec/std/`, bundled into `cpl-check` by `build.rs` |
+| one `std/` tree | `std/`, bundled into `cpl-check` by `build.rs` |
 | no library names in the compiler | 89 names string-matched in `cpl-ir/src/lower/call.rs` (`ir_builtin_names`) |
 | operator table as data; every spec block parses | precedence in parser code and prose; 19/185 spec blocks pass |
 | coherent traits checked at definition; `Error` poisons | generics and traits partial; cascading errors |
@@ -389,7 +389,7 @@ its own.
    `lower/call.rs` move into `std/` as CP Lang or into the intrinsics
    table; the gate and the no-privilege test turn on. `lower/call.rs`
    shrinks to call resolution.
-4. **One library tree.** `spec/std` moves to `std/`; the remaining 0.2
+4. **One library tree.** `std` moves to `std/`; the remaining 0.2
    ports (`v02_port_files`) are deleted or rewritten. (One mode is done:
    0.2, `CPL_SPEC`, `CPL_STD` and `stdlib/` are deleted.)
 5. **Front end in place.** `cpl-check` gets coherent traits, local

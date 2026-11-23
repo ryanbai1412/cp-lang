@@ -1,7 +1,7 @@
 # Library doc notes
 
-One file per `spec/std` module, written while bringing it to the doc
-standard (`spec/std/README.md`). Each bullet is either a **choice** (the
+One file per `std` module, written while bringing it to the doc
+standard (`std/README.md`). Each bullet is either a **choice** (the
 spec was silent, so the docs pin a behaviour, with the reason) or a
 **contradiction** (the stub and `spec/lib`, `spec/core` or `decisions.md`
 disagree; the docs follow the stub until it is resolved).

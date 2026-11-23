@@ -20,7 +20,7 @@ text. (R01.1.1)
   Markdown; the first sentence is the summary shown by hover and
   `cpl doc`. Labelled lines after the prose (`cost:`, `traps:`,
   `example:`, `empty:`, `ties:`, `order:`) state the facts every public
-  library function documents (`spec/std/README.md`). (R01.1.3)
+  library function documents (`std/README.md`). (R01.1.3)
 
 ## 1.2 Layout
 

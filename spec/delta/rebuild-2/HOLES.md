@@ -10,7 +10,7 @@ There are 32 holes:
 
 - silent (the spec says nothing): 12
 - contradiction (two places disagree): 15
-- missing-stdlib (a name is used or needed but has no stub in `spec/std`): 5
+- missing-stdlib (a name is used or needed but has no stub in `std`): 5
 
 These are the ten a contestant is most likely to hit, most likely first:
 
@@ -260,7 +260,7 @@ Picked: see Q5, Q11 and Q23.
 `List`, `Str`, `Map` and `Set` are used throughout the spec, for example
 `List<T>()`, `xs.push`, `m.get(k)`, `m[k] += 1` (DREAM-BRIEF),
 `Set(s)`, `s.push(c)`, `xs.reserve`, `.take()` and `.replace(x)`. None of
-them has a stub in `spec/std`; `grep "struct List\|struct Map"` finds
+them has a stub in `std`; `grep "struct List\|struct Map"` finds
 nothing. R11.3 says the compiler has no built-in name list. Even so,
 `Map` and `Set` are not in `std/prelude.cp`.
 Picked: assumed they are core and always in scope.

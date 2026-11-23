@@ -26,7 +26,7 @@ PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "worklog.md", "research/*",
          ".github/*", "LICENSE*", "*.png"]
 # Inputs of every crate: build settings and the std library cpl-check embeds.
 EVERY_CRATE = ["Cargo.toml", "Cargo.lock", "rust-toolchain*", ".cargo/*",
-               ".config/nextest.toml", "spec/std/*", "clippy.toml", "rustfmt.toml"]
+               ".config/nextest.toml", "std/*", "clippy.toml", "rustfmt.toml"]
 SITE = ["web/*", "docs/*"]
 
 

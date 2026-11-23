@@ -111,7 +111,7 @@ def diag_codes():
 
 def std_items():
     items = defaultdict(list)
-    for path in sorted((SPEC / "std").glob("*.cp")):
+    for path in sorted((ROOT / "std").glob("*.cp")):
         owner = None
         for line in path.read_text().split("\n"):
             m = re.match(r"(?:pub )?(?:struct|enum|trait|impl)\s+(?:\w+ for )?(\w+)", line)
@@ -376,7 +376,7 @@ def main():
     w("")
     w("## Standard library")
     w("")
-    w("Every `pub` item in `spec/std`, counted as covered when a conformance")
+    w("Every `pub` item in `std`, counted as covered when a conformance")
     w("case names it. `/// example:` lines are also run by the `docs` suite of")
     w("`cpl-conform`; this list is about whole-program cases (edges, traps).")
     w("")

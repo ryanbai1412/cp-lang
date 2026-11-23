@@ -35,15 +35,14 @@ still on their way are in "Moves" at the end.
 | `spec/core/` | Syntax and semantics, one chapter per area. Every code block runs as a conformance case. |
 | `spec/lib/` | What the stdlib must offer per area, with rationale. |
 | `spec/tools/` | Tool contracts: CLI, fmt and lint, LSP, stress, trace and debug, explain, bundle, judge profiles. |
-| `spec/std/` | The standard library in CP Lang (moving to `std/`): signatures, `///` docs with `example:` lines, bodies. |
 | `spec/diagnostics.md` | Every error code: meaning, example, fix-it. |
 | `spec/conformance/` | The spec's test suite: handwritten cases (`// expect:` and `// rule:` headers), generated matrix and trait cases, gap lists and `COVERAGE.md` (all in `gen.toml`). Cases are never deleted or weakened. |
 
-## `std/`: the standard library (target; today `spec/std/`)
+## `std/`: the standard library
 
 | Path | Job |
 |---|---|
-| `std/*.cp` | The modules, written in CP Lang. The compiler names no stdlib item beyond the floor (decision 266); a ratchet holds the rest. |
+| `std/*.cp` | The modules, written in CP Lang: signatures, `///` docs with `example:` lines (normative), bodies. The compiler names no stdlib item beyond the floor (decision 266); a ratchet holds the rest. |
 | `std/README.md` | Module map and conventions (naming, `by:` options, cost in every doc). |
 
 ## `crates/`: the toolchain (Rust)
@@ -57,7 +56,7 @@ Pipeline: `cpl-syntax` -> `cpl-check` -> `cpl-ir` -> (`cpl-interp` | `cpl-codege
 | `crates/cpl-ir` | The typed IR, lowered once from the checked program. |
 | `crates/cpl-interp` | Register VM over the IR; deterministic traces. |
 | `crates/cpl-codegen` | IR to one deterministic C++17 file. |
-| `crates/prover` | Index bounds, overflow freedom, disjoint lends, laws, with counterexamples (moving to `cpl-prover`). |
+| `crates/cpl-prover` | Index bounds, overflow freedom, disjoint lends, laws, with counterexamples. |
 | `crates/cpl-diag` | Spans, stable codes, rendering shared by every tool. |
 | `crates/cpl-lint` | Lints over checker facts. |
 | `crates/cpl-fmt` | Formatter: opinionated defaults, configurable. |
@@ -167,10 +166,8 @@ Results belong in `research/perf/` (see Moves).
 
 | Today | Target | Step |
 |---|---|---|
-| `spec/std/` | `std/` | 2 |
 | `decisions.md` | `plan/DECISIONS.md` (current) + `research/archive/decisions-log.md` | 3 |
 | `spec/STATUS.md`, `spec/delta/`, `plan/RELEASE.md`, `plan/RESTRUCTURE.md`, `plan/OPERATING.md`, `plan/PORTING.md` | `plan/STATUS.md` (from `just status`), domain folders, `research/archive/` | 3 |
 | `bench/*-results.json`, `bench/*-report.md`, `bench/*-registry.json`, `bench/triage-analysis.md`, `research/perf/` | `research/perf/` | 4 |
 | ~140 flat `research/*.md` | topic folders and `research/archive/`, indexed by `research/README.md` | 4 |
 | 11 crates without `README.md` | one each | 5 |
-| `crates/prover` | `crates/cpl-prover` | compiler |
