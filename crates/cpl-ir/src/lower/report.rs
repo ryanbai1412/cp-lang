@@ -71,6 +71,64 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Range ends no range takes. `Len.first..=Len.last` has `?Len` ends:
+    /// the fix is `Len` itself, or `!` on each end. Two ends of one type
+    /// are not a mismatch, so they never read "expected `T`, found `T`".
+    pub(super) fn bad_range_ends(
+        &mut self,
+        (lo, hi): (Option<&ast::Expr>, Option<&ast::Expr>),
+        (l, r): (&Ty, &Ty),
+        inclusive: bool,
+        span: Span,
+    ) {
+        if l != r {
+            return self.mismatch(span, l, r);
+        }
+        let shown = self.show(l);
+        let Ty::Opt(inner) = l else {
+            let message =
+                format!("a range's ends are `Int`s or positions of one domain, not `{shown}`s");
+            return self.error(codes::TYPE_MISMATCH, span, message);
+        };
+        let message = format!("a range's ends can't be optional, and these are `{shown}`s");
+        self.error(codes::TYPE_MISMATCH, span, message);
+        let (Some(lo), Some(hi)) = (lo, hi) else {
+            return;
+        };
+        let (lo_text, hi_text) = (self.source(lo.span), self.source(hi.span));
+        let whole = match &**inner {
+            Ty::Pos(d) if inclusive => {
+                let d = self.show(&Ty::Pos(*d));
+                (lo_text == format!("{d}.first") && hi_text == format!("{d}.last")).then_some(d)
+            }
+            _ => None,
+        };
+        let (title, help, edits) = match whole {
+            Some(d) => (
+                format!("write `{d}`"),
+                format!("all of `{d}` is written `{d}`; `{d}.first` and `{d}.last` are `None` when `{d}` is empty"),
+                vec![(self.span(span), d)],
+            ),
+            None => (
+                "write `!` on each end".to_string(),
+                format!(
+                    "`{lo_text}!{}{hi_text}!` takes the values out, trapping if either is `None`",
+                    if inclusive { "..=" } else { ".." }
+                ),
+                vec![
+                    (self.span(Span::new(lo.span.end, lo.span.end)), "!".to_string()),
+                    (self.span(Span::new(hi.span.end, hi.span.end)), "!".to_string()),
+                ],
+            ),
+        };
+        self.help(help);
+        if self.cur_mod == 0 {
+            if let Some(last) = self.diags.last_mut() {
+                last.fixes.push(cpl_diag::Fix { title, edits });
+            }
+        }
+    }
+
     /// `type V = 0..n` then `V.first`: a range type has no positions, a
     /// `domain` does. `range` is the alias's right side, absolute in the
     /// user file; the fix rewrites its `type` keyword.

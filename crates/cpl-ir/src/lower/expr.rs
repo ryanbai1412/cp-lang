@@ -1488,7 +1488,7 @@ impl<'a> Lowerer<'a> {
                     self.err_expr(span)
                 }
                 _ => {
-                    self.mismatch(span, &l.ty, &r.ty);
+                    self.bad_range_ends((lo, hi), (&l.ty, &r.ty), inclusive, span);
                     self.err_expr(span)
                 }
             },

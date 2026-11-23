@@ -1,0 +1,8 @@
+error[E0302]: a range's ends can't be optional, and these are `?Len`s
+  --> optional_range_ends.cp:5:15
+  |
+5 | print(st.fold(Len.first..=Len.last))
+  |               ^^^^^^^^^^^^^^^^^^^^
+  = help: all of `Len` is written `Len`; `Len.first` and `Len.last` are `None` when `Len` is empty
+
+optional_range_ends.cp: 1 error
