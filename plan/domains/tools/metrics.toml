@@ -85,3 +85,27 @@ name = "unlanded commits on devin/wip-editor-lsp"
 command = "git cherry origin/main origin/devin/wip-editor-lsp | grep -c '^+'"
 target = "0"
 today = "5"
+
+[[metric]]
+name = "completion recall over the corpus (token-by-token replay)"
+command = "missing: see handbook/domains/tools.md"
+target = "ratchet up; every identifier offered after `.`, `(` and in scope"
+today = "not measured"
+
+[[metric]]
+name = "hover coverage of pub std items and syntax forms"
+command = "missing: see handbook/domains/tools.md"
+target = "ratchet up to all; signature with named options, cost, syntax meaning"
+today = "not measured"
+
+[[metric]]
+name = "go-to-definition coverage of names in the corpus, desktop and playground"
+command = "missing: see handbook/domains/tools.md"
+target = "ratchet up to all"
+today = "not measured"
+
+[[metric]]
+name = "quality register rows marked missing"
+command = "grep -c '`missing`' handbook/domains/tools.md"
+target = "only goes down"
+today = "see command"
