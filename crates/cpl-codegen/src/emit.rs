@@ -187,6 +187,8 @@ pub(crate) struct Emitter<'p> {
     pub spent: BTreeSet<usize>,
     /// Named `let o = m.get(k)` held as a `cpl::Lent`: see [`Emitter::lent_map_get`].
     pub lent: BTreeSet<usize>,
+    /// Locals bound as `const T&` to a place they read.
+    pub ref_bound: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
     pub fresh: usize,
     /// Loops that a `break` or `continue` names from an inner loop.
@@ -262,6 +264,7 @@ impl<'p> Emitter<'p> {
             in_setup: false,
             spent: BTreeSet::new(),
             lent: BTreeSet::new(),
+            ref_bound: BTreeSet::new(),
             taken: BTreeSet::new(),
             fresh: 0,
             break_targets: BTreeSet::new(),

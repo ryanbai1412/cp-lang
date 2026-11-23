@@ -50,6 +50,9 @@ pub(crate) struct Tail {
     pub(crate) tested: bool,
     /// Every read of the `let` works on a `cpl::Lent` (see [`Emitter::lendable_reads`]).
     pub(crate) lendable: bool,
+    /// Locals read whole, not only through an index, field or length: the
+    /// C++ may move them, so nothing may hold a reference into them.
+    pub(crate) whole: std::collections::BTreeSet<usize>,
 }
 
 impl Tail {
@@ -58,6 +61,7 @@ impl Tail {
             stmts: stmts.to_vec(),
         };
         let (mut calls, mut opaque, mut closures) = (false, false, Vec::new());
+        let mut whole = whole_reads(&block);
         walk::deep_exprs(&block, &mut |e| match e.kind {
             ExprKind::Call(..) => calls = true,
             ExprKind::CallExpr(..) => {
@@ -68,6 +72,10 @@ impl Tail {
             _ => {}
         });
         let mut effects = Effects::of_block(&block);
+        for &id in &closures {
+            let caps = program.closures[id].captures.iter();
+            whole.extend(caps.filter(|c| !c.is_global).map(|c| c.outer));
+        }
         for id in closures {
             opaque |= !closure_effects(&program.closures[id], &mut effects, &mut calls);
         }
@@ -77,8 +85,34 @@ impl Tail {
             opaque,
             tested: false,
             lendable: false,
+            whole,
         }
     }
+}
+
+/// Locals `block` reads whole, not only through an index, field or length.
+fn whole_reads(block: &Block) -> std::collections::BTreeSet<usize> {
+    let (mut uses, mut parts) = (Vec::new(), Vec::new());
+    walk::deep_exprs(block, &mut |e| match &e.kind {
+        ExprKind::Local(s) => uses.push(*s),
+        ExprKind::Index(..) | ExprKind::Field(..) | ExprKind::Builtin(cpl_ir::Builtin::Len, _) => {
+            let base = match &e.kind {
+                ExprKind::Builtin(_, args) if args.len() == 1 => &args[0],
+                ExprKind::Index(base, _) | ExprKind::Field(base, _) => &**base,
+                _ => return,
+            };
+            if let ExprKind::Local(s) = base.kind {
+                parts.push(s);
+            }
+        }
+        _ => {}
+    });
+    for s in parts {
+        if let Some(at) = uses.iter().position(|&u| u == s) {
+            uses.swap_remove(at);
+        }
+    }
+    uses.into_iter().collect()
 }
 
 /// Adds what running closure `c` can change to `effects`, with its
@@ -195,6 +229,34 @@ fn gives_outer_place(block: &cpl_ir::Block, ty: &Ty) -> bool {
             .all(|g| g.is_some_and(|slot| !own.contains(&slot)))
 }
 
+/// The locals `block` gives, when each give is a heap `let` of the block.
+fn gives_own_locals(block: &cpl_ir::Block, ty: &Ty) -> Option<Vec<usize>> {
+    if !matches!(
+        ty,
+        Ty::List(_) | Ty::Array { .. } | Ty::Str | Ty::Map(..) | Ty::HashMap(..)
+    ) {
+        return None;
+    }
+    let (mut own, mut out) = (Vec::new(), Vec::new());
+    walk::deep_stmts(block, &mut |stmt| match stmt {
+        Stmt::Let(slot, _) => own.push(*slot),
+        Stmt::Give(value) => out.push(match &value.kind {
+            ExprKind::Local(slot) => Some(*slot),
+            ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => match of.first() {
+                Some(Expr {
+                    kind: ExprKind::Local(slot),
+                    ..
+                }) => Some(*slot),
+                _ => None,
+            },
+            _ => None,
+        }),
+        _ => {}
+    });
+    let all = out.iter().all(|g| g.is_some_and(|s| own.contains(&s)));
+    (!out.is_empty() && all).then(|| out.into_iter().flatten().collect())
+}
+
 /// The variable `value` reads in place: a path, or a `Do` block that gives
 /// one (see [`gives_outer_place`]).
 pub(crate) fn given_root(value: &Expr) -> Option<(bool, usize)> {
@@ -224,10 +286,72 @@ impl<'p> Emitter<'p> {
         } else {
             ret
         };
-        let outer = std::mem::replace(&mut self.give_ref, by_ref);
-        let code = self.lambda(&ret, |this, out| this.block(block, out));
+        // A block that gives its own `let` of a place, `{ const auto& t =
+        // a[r]; D_len = t.size(); t }`, returns a reference when that `let`
+        // was bound as one.
+        let own = (!by_ref).then(|| gives_own_locals(block, ty)).flatten();
+        let placeholder = format!("@ret{:p}@", block);
+        let header = match &own {
+            Some(slots) => {
+                for slot in slots {
+                    self.ref_bound.remove(slot);
+                }
+                placeholder.clone()
+            }
+            None => ret.clone(),
+        };
+        let outer = std::mem::replace(&mut self.give_ref, by_ref || own.is_some());
+        let mut code = self.lambda(&header, |this, out| this.block(block, out));
         self.give_ref = outer;
+        if let Some(slots) = own {
+            let lent = slots.iter().all(|s| self.ref_bound.contains(s));
+            let ret = if lent { "decltype(auto)" } else { &ret };
+            code.text = code.text.replacen(&placeholder, ret, 1);
+        }
         code
+    }
+
+    /// Marks a `let f = closure` that may borrow its captures (see
+    /// [`Emitter::named_closure_borrows`]).
+    pub(crate) fn borrow_if_named_closure(&mut self, slot: usize, init: Option<&Expr>) {
+        if let Some(ExprKind::Closure(cid)) = init.map(|e| &e.kind) {
+            if self.named_closure_borrows(slot, *cid) {
+                self.borrow_closures.insert(*cid);
+            }
+        }
+    }
+
+    /// Whether the `let f = closure` of `slot` may borrow its immutable heap
+    /// captures: it is only ever called, and nothing in its fn changes a
+    /// captured variable or reads it whole (which could move it away).
+    pub(crate) fn named_closure_borrows(&self, slot: usize, cid: usize) -> bool {
+        let Some(id) = self.fn_id.filter(|_| self.closure_id.is_none()) else {
+            return false;
+        };
+        let f = &self.program.fns[id];
+        if self.facts.stores((Some(id), false, slot)) > 1
+            || !only_called(self.program, &f.body, slot, 3)
+        {
+            return false;
+        }
+        let effects = Effects::of_block(&f.body);
+        let whole = whole_reads(&f.body);
+        let mut by_ref = std::collections::BTreeSet::new();
+        walk::deep_exprs(&f.body, &mut |e| {
+            if let ExprKind::Closure(c) = e.kind {
+                let caps = self.program.closures[c].captures.iter();
+                by_ref.extend(caps.filter(|c| c.by_ref && !c.is_global).map(|c| c.outer));
+            }
+        });
+        let def = &self.program.closures[cid];
+        def.captures.iter().filter(|c| !c.is_global).all(|c| {
+            let o = c.outer;
+            !effects.locals.contains(&o)
+                && !whole.contains(&o)
+                && !by_ref.contains(&o)
+                && !self.sunk[id].contains(&o)
+                && f.params.get(o).is_none_or(|p| !p.mutable)
+        })
     }
 
     /// Marks each `m.get(k) ?? d` among `operands` to be written
@@ -725,7 +849,7 @@ pub(crate) fn fn_param_only_called(program: &cpl_ir::Program, fn_id: usize, slot
 /// Whether `slot` in `body` is only called: never stored, passed `mut`,
 /// or captured by a closure that may keep it. A closure that captures it
 /// and is itself passed where it is only called (`first_true(m =>
-/// ok(m))`) counts as a call.
+/// ok(m))`), or passed on itself (`bag.first_true(ok)`), counts as a call.
 fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
     let (mut uses, mut calls, mut escapes) = (0usize, 0usize, false);
     let mut passed_on = std::collections::BTreeSet::new();
@@ -747,14 +871,12 @@ fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) 
         ExprKind::Call(f, args) => {
             escapes |= lent(args);
             for (j, arg) in args.iter().enumerate() {
-                if let Arg::Value(Expr {
-                    kind: ExprKind::Closure(cid),
-                    ..
-                }) = arg
-                {
-                    if depth > 0 && fn_param_only_called_at(program, *f, j, depth - 1) {
-                        passed_on.insert(*cid);
-                    }
+                let Arg::Value(value) = arg else { continue };
+                let onward = || depth > 0 && fn_param_only_called_at(program, *f, j, depth - 1);
+                match value.kind {
+                    ExprKind::Closure(cid) if onward() => _ = passed_on.insert(cid),
+                    ExprKind::Local(s) if s == slot && onward() => calls += 1,
+                    _ => {}
                 }
             }
         }
@@ -782,4 +904,13 @@ fn fn_param_only_called_at(
 ) -> bool {
     let f = &program.fns[fn_id];
     slot < f.params.len() && !f.params[slot].mutable && only_called(program, &f.body, slot, depth)
+}
+
+/// The C++ naming map entry `e` (`it.` or `it->`) as loop variable `var`:
+/// an entry holding a list is a pair of names for it, not a copy.
+pub(crate) fn entry_binding(ty: &Ty, cpp: &str, var: &str, e: &str) -> String {
+    match matches!(ty, Ty::Tuple(parts) if parts.iter().any(|p| !p.is_scalar())) {
+        true => format!("auto {var} = std::tie({e}first, {e}second);"),
+        false => format!("{cpp} {var}({e}first, {e}second);"),
+    }
 }

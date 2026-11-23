@@ -890,12 +890,13 @@ impl<'p> Emitter<'p> {
                 if is_map {
                     let it = self.temp();
                     let mut opening = Vec::new();
+                    let entry = |e: &str| crate::lend::entry_binding(&ty, &cpp, &var, e);
                     if *rev {
                         self.line(out, &format!("for (auto {it} = {items}.rbegin(); {it} != {items}.rend(); ++{it}) {{"));
-                        opening.push(format!("{cpp} {var}({it}->first, {it}->second);"));
+                        opening.push(entry(&format!("{it}->")));
                     } else {
                         self.line(out, &format!("for (const auto& {it} : {items}) {{"));
-                        opening.push(format!("{cpp} {var}({it}.first, {it}.second);"));
+                        opening.push(entry(&format!("{it}.")));
                     }
                     opening.extend(first);
                     self.loop_body(id, &opening, body, out);
@@ -1261,7 +1262,8 @@ impl<'p> Emitter<'p> {
                         .any(|f| self.summaries[*f].writes.contains(&root))
             }
             // No fn sees a local it isn't passed `mut`, and that is a store.
-            false if named_local => !effects.locals.contains(&root),
+            // Nor may it read the local whole: that read could move it.
+            false if named_local => !effects.locals.contains(&root) && !tail.whole.contains(&root),
             // A parameter may be another name for a global a call writes.
             false => !effects.locals.contains(&root) && !tail.calls,
         }
@@ -1360,6 +1362,7 @@ impl<'p> Emitter<'p> {
                 self.line(out, &format!("auto {name} = cpl::rec({text});"));
             }
             Stmt::Let(slot, init) => {
+                self.borrow_if_named_closure(*slot, init.as_ref());
                 let tail = self.tail.take();
                 let ty = self.locals()[*slot].ty.clone();
                 let name = self.names[*slot].clone();
@@ -1522,6 +1525,7 @@ impl<'p> Emitter<'p> {
                     // `let sp = sorted[b]`: a name for what is already
                     // there. A copy would cost the whole list.
                     self.line(out, &format!("const {cpp}& {name} = {text};"));
+                    self.ref_bound.insert(*slot);
                 } else if let Some(args) = sized_ctor(&cpp, &text) {
                     // `std::vector<ll> f((size_t)(n), 1);`: the type once.
                     self.line(out, &format!("{cpp} {name}({args});"));

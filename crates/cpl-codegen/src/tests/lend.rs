@@ -262,3 +262,85 @@ fn an_entry_stored_back_longer_is_moved_out_unless_the_rest_reads_the_map() {
         "a value that reads the map keeps its copy: {copied}"
     );
 }
+
+#[test]
+fn a_list_of_lists_element_is_lent_to_a_method_on_it() {
+    let out = cpp(concat!(
+        "let w: 1..=10 = read()\n",
+        "var ends: [0..w]List<Int> = [0..w] _ => []\n",
+        "for i in 0..20: ends[i % w].push(i)\n",
+        "var s = 0\n",
+        "for q in 0..20:\n",
+        "    s += ends[q % w].partition_point(x => x < q)\n",
+        "print(s)\n",
+    ));
+    assert!(
+        out.contains("-> decltype(auto) {") && out.contains("return (t"),
+        "the element must reach partition_point as a reference: {out}"
+    );
+}
+
+#[test]
+fn let_of_an_element_lends_it_unless_the_list_changes() {
+    let src = |after: &str| {
+        format!(
+            "fn f(n: Int) -> Int:\n    var rows: List<List<Int>> = []\n    for i in 0..n: rows.push([i, i + 1])\n    var s = 0\n    for i in 0..n:\n        let row = rows[(i * 7) % n]\n        for x in row: s += x\n{after}    s\nprint(f(5))\n"
+        )
+    };
+    let lent = cpp(&src(""));
+    assert!(
+        lent.contains("const std::vector<ll>& row = "),
+        "R05.3.5: `let row = rows[i]` lends: {lent}"
+    );
+    let changed = cpp(&src("        rows[0] = []\n"));
+    assert!(
+        changed.contains("std::vector<ll> row = "),
+        "a list changed later in the loop keeps the copy: {changed}"
+    );
+}
+
+#[test]
+fn a_named_closure_in_a_fn_borrows_a_list_parameter() {
+    let out = cpp(concat!(
+        "fn count(xs: List<Int>, q: Int) -> Int:\n",
+        "    let f = i => xs[i] * 2\n",
+        "    var s = 0\n",
+        "    for i in 0..q: s += f(i % xs.len)\n",
+        "    s\n",
+        "print(count([1, 2, 3], 5))\n",
+    ));
+    assert!(
+        out.contains("[&xs_2 = xs]"),
+        "the lambda must not copy `xs`: {out}"
+    );
+    let kept = cpp(concat!(
+        "fn make(xs: List<Int>) -> (Int -> Int):\n",
+        "    let f = i => xs[i] * 2\n",
+        "    f\n",
+        "let g = make([1, 2, 3])\n",
+        "print(g(1))\n",
+    ));
+    assert!(
+        !kept.contains("[&xs"),
+        "a closure that outlives its fn keeps its own copy: {kept}"
+    );
+}
+
+#[test]
+fn walking_a_grouped_map_names_each_entry_without_copying() {
+    let out = cpp(concat!(
+        "let a = [0..20] i => i\n",
+        "let g = a.group(by: x => x % 10)\n",
+        "var s = 0\n",
+        "for (k, v) in g: s += k * v.len\n",
+        "print(s)\n",
+    ));
+    assert!(
+        out.contains("= std::tie("),
+        "each entry is a pair of names: {out}"
+    );
+    assert!(
+        !out.contains("cpl::map_get("),
+        "`out.get(k) == None` must not copy the entry: {out}"
+    );
+}

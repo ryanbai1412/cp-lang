@@ -552,6 +552,21 @@ impl<'p> Emitter<'p> {
         }
     }
 
+    /// Whether optional `x` holds a value. `m.get(k)` finds the entry and
+    /// copies nothing.
+    fn has_value(&mut self, x: &Expr) -> String {
+        if let ExprKind::Builtin(Builtin::MapGet, got) = &x.kind {
+            self.need("map_lend");
+            let (m, k) = (self.expr(&got[0]), self.expr(&got[1]));
+            return format!(
+                "cpl::map_lend({}, {}).has_value()",
+                m.at(PRIMARY),
+                k.at(PRIMARY)
+            );
+        }
+        format!("{}.has_value()", self.expr(x).at(PRIMARY))
+    }
+
     /// Emits `e` with a target `std::array<Cell, K>` representation when `fixed` is `Some(k)`.
     pub fn expr_with_fixed_len(&mut self, e: &Expr, fixed: Option<u32>) -> Code {
         let Some(k) = fixed else {
@@ -658,8 +673,7 @@ impl<'p> Emitter<'p> {
             | ExprKind::Cmp(op @ (CmpOp::Eq | CmpOp::Ne), none, x)
                 if none.kind == ExprKind::None && matches!(&x.ty, Ty::Opt(_)) =>
             {
-                let code = self.expr(x);
-                let has = format!("{}.has_value()", code.at(PRIMARY));
+                let has = self.has_value(x);
                 if *op == CmpOp::Ne {
                     Code::primary(has)
                 } else {
@@ -1090,10 +1104,7 @@ impl<'p> Emitter<'p> {
                 let code = self.expr(value);
                 Code::primary(format!("{}.{variant}_{index}", code.at(PRIMARY)))
             }
-            ExprKind::IsSome(value) => {
-                let code = self.expr(value);
-                Code::primary(format!("{}.has_value()", code.at(PRIMARY)))
-            }
+            ExprKind::IsSome(value) => Code::primary(self.has_value(value)),
             // The user's `!` is an assertion: on `none` it stops the
             // program, as it does in `cpl run`. After a test it is a plain read.
             ExprKind::Unwrap(value, true) => {
