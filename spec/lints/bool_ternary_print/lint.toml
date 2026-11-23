@@ -1,0 +1,5 @@
+code = "L0524"
+level = "warn"
+group = "idiom"
+title = "Answer words written out"
+summary = "`if ok: \"YES\" else: \"NO\"`: the answer word is `yes(ok)`"

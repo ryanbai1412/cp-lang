@@ -1,6 +1,7 @@
 //! The rules. Each is a function from a parsed file to what it found, in
 //! file positions; `lint` applies levels and `with lint` afterwards.
 
+mod answers;
 mod assign;
 mod bounds;
 mod fields;
@@ -24,6 +25,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));
+    findings.extend(answers::check(file));
     findings.extend(floats::check(file));
     findings.extend(imports::check(file));
     findings.extend(fields::check(file));

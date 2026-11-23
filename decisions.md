@@ -6771,3 +6771,16 @@ delete `scripts/gen.py`.
 - **Reverse.** Delete `Assigns::min_max` in
   `crates/cpl-lint/src/rules/assign.rs`, `spec/lints/chmin_chmax_if/`, and
   lower the ratchet.
+
+## 301. L0524 `bool_ternary_print` warns without a fix (2026-11-22)
+
+- **Decision.** `if ok: "YES" else: "NO"` (any case of the two words) is
+  a warning whose help names `yes(ok)`, and for words other than `YES`/`NO`
+  the `with io(answers: ...)` that keeps them. It has no autofix, although
+  the catalog row says `fix`.
+- **Why.** `yes(ok)` prints `io.answers`, which the judge profile sets
+  (`spec/tools/judge-profiles.md`); the linter does not resolve profiles, so
+  rewriting `"Yes"`/`"No"` (or even `"YES"`/`"NO"`) to `yes(ok)` could change
+  the output on the judge. Over corpus ports and dreams it fires 50 times.
+- **Reverse.** Give lint the resolved profile's `answers` (from `cpl-cli`)
+  and add a fix when the words match them.

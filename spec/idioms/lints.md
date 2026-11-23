@@ -801,7 +801,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 
 | Lint | Catches | Write instead | Tier | P | Engine | Status |
 |---|---|---|---|---|---|---|
-| bool_ternary_print | `print(if ok: "YES" else: "NO")` | `print(yes(ok))` | fix | #11 | syn | |
+| bool_ternary_print | `print(if ok: "YES" else: "NO")` | `print(yes(ok))` | fix | #11 | syn | ✓bool_ternary_print (warn: words follow the profile) |
 | answer_words_repeated | `yes(ok, answers: ("Yes", "No"))` at several calls | `with io(answers: ...)` once | fix | #7 | syn | |
 | join_loop | building a string with separators to print | `print(xs, sep:)` | fix | #11 | loop | |
 | print_end_loop | `print(x, end: " ")` loop then `print()` | `print(xs)` | fix | #11 | loop | |
