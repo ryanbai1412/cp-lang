@@ -62,9 +62,10 @@ let ulen = uniq.len
 domain U = 0..ulen
 let m_cell = Monoid<?Cell>(None, merge_cell)
 let act_cell = Action<?Cell, Op>(Op(false, 0, 1, 0, 0), compose_op, apply_op, over: m_cell)
-var st = LazySegTree<U, ?Cell, Op>(
-    act_cell,
-    [U] u => Cell(uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx]),
+var st = SegTree(
+    act_cell.over,
+    [U] u => Some(Cell(uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx], uniq[u.to_idx])),
+    act: act_cell,
 )
 
 for k in 0..n:
@@ -74,13 +75,13 @@ for k in 0..n:
     if t == 1: tag = Op(false, 0, 1, 0, x)
     elif t == 2: tag = Op(false, 0, 1, 0, -x)
     elif t == 3: tag = Op(false, 0, x, 0, 0)
-    st.apply(U.first.., tag)
+    st.apply(U.all, tag)
 
-    let left_end = st.max_right(U.first.l, c => if c == None: true else: c!.hi_val < ql)
-    st.apply(U.first.l..left_end, Op(true, ql, 1, 0, 0))
+    let left_end = st.right_while(U.first!.l, c => if c == None: true else: c!.hi_val < ql)
+    st.apply(U.first!.l..left_end, Op(true, ql, 1, 0, 0))
 
-    let right_start = st.min_left(U.last.r, c => if c == None: true else: c!.lo_val > qr)
-    st.apply(right_start..U.last.r, Op(true, qr, 1, 0, 0))
+    let right_start = st.left_while(U.last!.r, c => if c == None: true else: c!.lo_val > qr)
+    st.apply(right_start..U.last!.r, Op(true, qr, 1, 0, 0))
 
 var idx_of = Map<Int, Int>()
 for i in 0..ulen:
