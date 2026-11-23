@@ -253,27 +253,34 @@ fn run_bin(bin: &Path, input: &Path) -> Result<(f64, Vec<u8>), String> {
     Ok((secs, stdout))
 }
 
+/// The judge's comparison, the one `cpl test`, stress, submit and watch use.
 fn tokens_equal(a: &[u8], b: &[u8]) -> bool {
-    let sa = String::from_utf8_lossy(a);
-    let sb = String::from_utf8_lossy(b);
-    let mut ia = sa.split_whitespace();
-    let mut ib = sb.split_whitespace();
-    loop {
-        match (ia.next(), ib.next()) {
-            (None, None) => return true,
-            (Some(x), Some(y)) => {
-                if x == y {
-                    continue;
-                }
-                match (x.parse::<f64>(), y.parse::<f64>()) {
-                    (Ok(fx), Ok(fy))
-                        if (fx - fy).abs() <= 1e-6 * fx.abs().max(fy.abs()).max(1.0) => {}
-                    _ => return false,
-                }
-            }
-            _ => return false,
-        }
+    cpl_stress::judge::first_difference(&String::from_utf8_lossy(a), &String::from_utf8_lossy(b))
+        .is_none()
+}
+
+#[cfg(test)]
+#[test]
+fn bench_compares_answers_as_cpl_test_does() {
+    let pairs = [
+        ("0.625000000", "0.625"),
+        ("1e9", "1000000000.5"),
+        ("3", "3.0000001"),
+        ("0.5", "0.50001"),
+        ("10", "11"),
+        ("1e5", "inf"),
+        ("YES", "yes"),
+        ("e", "E"),
+    ];
+    for (a, b) in pairs {
+        assert_eq!(
+            tokens_equal(a.as_bytes(), b.as_bytes()),
+            cpl_stress::judge::first_difference(a, b).is_none(),
+            "{a} vs {b}"
+        );
     }
+    assert!(tokens_equal(b"0.625000000\n", b"0.625\n"));
+    assert!(!tokens_equal(b"0.5\n", b"0.50001\n"));
 }
 
 /// Verifies `perf.cp` passes every `tests/*.in` + `.out`/`.ans` case.
