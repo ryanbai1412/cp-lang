@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3100 (1092 passing). Rules: 583.
+Cases: 3102 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
@@ -939,7 +939,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0608 Parentheses do not match the cost: 2 case(s)
 - L0609 A `@cache` field written outside its type: 1 case(s)
 - L0610 A `mut` parameter the fn never changes: **no case**
-- R0001 Runtime trap: 11 case(s)
+- R0001 Runtime trap: 12 case(s)
 - R0101 Index out of range: 25 case(s)
 - R0102 Value outside a domain: 6 case(s)
 - R0201 Range store out of range: 10 case(s)
@@ -1086,9 +1086,11 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-04/domain-subsets-needs-no-import.cp
 - core-04/from-ord-after-a-checked-one-still-traps.cp
 - core-04/global-2d-str-array-col-past-end-traps.cp
+- core-04/global-2d-str-array-column-0-store.cp
 - core-04/library-domain-cxx-names-apart.cp
 - core-04/list-literal-sizes-a-generic-domain.cp
 - core-04/literal-range-table-int-keys.cp
+- core-04/second-position-of-a-user-index-is-checked-too.cp
 - core-04/subset-type-walk-binds-subsets.cp
 - core-04/subset-walk-empty-domain.cp
 - core-04/trap-in-a-small-fn-names-its-frame.cp
