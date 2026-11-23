@@ -155,10 +155,71 @@ fn golden_fixes() {
     }
 }
 
-/// Errors, help and notes teach `Some(x)` / `None`, the spec's spelling; the
-/// quoted source lines of a golden may still hold the old one.
+/// The spellings `spec/GLOSSARY.md` rules out (its "Never" column), found in
+/// `text`. A backticked term is code: a `quoted` span that is the term, or
+/// for punctuation starts with it and a space (`&mut x`). A plain term is prose, outside the
+/// quotes.
+/// Terms the glossary qualifies with a parenthesis need a reader to judge.
+fn off_glossary(text: &str) -> Option<String> {
+    static TERMS: std::sync::OnceLock<Vec<(String, bool)>> = std::sync::OnceLock::new();
+    let terms = TERMS.get_or_init(|| {
+        let glossary = include_str!("../../../spec/GLOSSARY.md");
+        let mut out = Vec::new();
+        for row in glossary.lines().filter(|l| l.starts_with("| ")).skip(1) {
+            let never = row
+                .trim()
+                .trim_matches('|')
+                .rsplit('|')
+                .next()
+                .unwrap_or("");
+            for t in never.split([',', ';']).map(str::trim) {
+                let code = t.len() > 2 && t.starts_with('`') && t.ends_with('`');
+                if t.is_empty() || t.contains('(') || (!code && t.contains('`')) {
+                    continue;
+                }
+                out.push((t.trim_matches('`').to_string(), code));
+            }
+        }
+        out
+    });
+    let pieces: Vec<&str> = text.split('`').collect();
+    for (term, code) in terms {
+        let hit = pieces.iter().enumerate().any(|(i, piece)| {
+            let quoted = i % 2 == 1;
+            if *code {
+                let piece = piece.trim();
+                let word = term.chars().all(char::is_alphanumeric);
+                quoted
+                    && (piece == term
+                        || !word
+                            && piece
+                                .strip_prefix(term.as_str())
+                                .is_some_and(|r| r.starts_with(' ')))
+            } else {
+                !quoted && {
+                    let lower = piece.to_lowercase();
+                    lower.match_indices(term.as_str()).any(|(at, _)| {
+                        let edge =
+                            |c: Option<char>| !c.is_some_and(|c| c.is_alphanumeric() || c == '-');
+                        edge(lower[..at].chars().next_back())
+                            && edge(lower[at + term.len()..].chars().next())
+                    })
+                }
+            }
+        });
+        if hit {
+            return Some(term.clone());
+        }
+    }
+    cpl_diag::old_option_spelling_in_prose(text).map(str::to_string)
+}
+
+/// Errors, help, notes, `cpl explain` pages and lint records use the
+/// glossary's terms. The quoted source lines of a golden may hold anything.
+/// Rule: `errors/R5`, handbook/guidelines/errors-checklist.md#r5-name-what-the-user-wrote-in-the-specs-words.
 #[test]
-fn golden_messages_spell_options_some_none() {
+fn messages_use_the_glossary() {
+    let mut bad = Vec::new();
     for entry in fs::read_dir(dir()).unwrap() {
         let path = entry.unwrap().path();
         if path.extension().is_none_or(|e| e != "err") {
@@ -169,14 +230,40 @@ fn golden_messages_spell_options_some_none() {
             let message = ["error", "warning", "= help", "= note"]
                 .iter()
                 .any(|p| t.starts_with(p));
-            if let (true, Some(old)) = (message, cpl_diag::old_option_spelling_in_prose(t)) {
-                panic!(
-                    "{}: `{old}` is `None`/`Some(x)` now: {line}",
-                    path.display()
-                );
+            if let (true, Some(term)) = (message, off_glossary(t)) {
+                bad.push(format!("{}: `{term}`: {line}", path.display()));
             }
         }
     }
+    for info in cpl_diag::REGISTRY {
+        for text in [info.title, info.summary, info.explanation] {
+            if let Some(term) = off_glossary(text) {
+                bad.push(format!("{} in the registry: `{term}`: {text}", info.code.0));
+            }
+        }
+    }
+    let spec = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec");
+    for kind in ["lints", "checker-lints"] {
+        for entry in fs::read_dir(spec.join(kind)).unwrap() {
+            let path = entry.unwrap().path().join("lint.toml");
+            let Ok(record) = fs::read_to_string(&path) else {
+                continue;
+            };
+            for line in record.lines() {
+                let prose = ["title", "message", "help", "note"]
+                    .iter()
+                    .any(|k| line.starts_with(k));
+                if let (true, Some(term)) = (prose, off_glossary(line)) {
+                    bad.push(format!("{}: `{term}`: {line}", path.display()));
+                }
+            }
+        }
+    }
+    assert!(
+        bad.is_empty(),
+        "spellings spec/GLOSSARY.md rules out:\n{}",
+        bad.join("\n")
+    );
 }
 
 /// Every fix a golden error offers names something that exists: after

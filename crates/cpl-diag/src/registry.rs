@@ -794,7 +794,7 @@ pub const REGISTRY: &[CodeInfo] = &[
     CodeInfo {
         code: Code("L0608"),
         title: "Parentheses do not match the cost",
-        summary: "An O(n) method is written without parentheses, or an O(1) property with them (`a.sorted`, `xs.len()`).",
+        summary: "An O(n) method is written without parentheses, or an O(1) getter with them (`a.sorted`, `xs.len()`).",
         explanation: "Parentheses mark work: `a.sorted()` allocates and sorts, while `xs.len` is a stored value. Write the spelling the cost calls for.",
         trigger: "let a = [3, 1, 2]\nprint(a.sorted.len)\n",
         fix: "let a = [3, 1, 2]\nprint(a.sorted().len)\n",

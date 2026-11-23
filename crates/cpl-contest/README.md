@@ -124,7 +124,7 @@ error[E0201]: no `m` in scope
   |
 2 | print(m)
   |       ^
-  = help: declare it first: `let m = ...`
+  = help: declare it first: `let m = todo`
 
 d.cp: 1 error
   check: 1 error to fix

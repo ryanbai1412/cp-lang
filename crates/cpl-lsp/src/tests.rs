@@ -166,7 +166,7 @@ fn diagnostics_carry_range_code_help_and_related_spans() {
     assert_eq!(d.at(&["severity"]).as_u32(), Some(1));
     assert_eq!(
         d.at(&["message"]).as_str(),
-        Some("no `w` in scope\nhelp: declare it first: `let w = ...`")
+        Some("no `w` in scope\nhelp: declare it first: `let w = todo`")
     );
     assert_eq!(d.at(&["range", "start"]), &pos(6, 18));
     assert_eq!(d.at(&["range", "end"]), &pos(6, 19));

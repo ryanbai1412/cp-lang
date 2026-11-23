@@ -3,6 +3,6 @@ error[E0201]: no `wanted` in scope, and not in the stdlib (yet)
   |
 2 | print(wanted + 1)
   |       ^^^^^^
-  = help: declare it first: `let wanted = ...`
+  = help: declare it first: `let wanted = todo`
 
 an_undeclared_name_is_one_error.cp: 1 error

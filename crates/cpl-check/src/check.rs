@@ -1014,7 +1014,7 @@ impl<'a> Checker<'a> {
                     });
                 }
                 None if value => {
-                    diag.help = Some(format!("declare it first: `let {name} = ...`"));
+                    diag.help = Some(format!("declare it first: `let {name} = todo`"));
                 }
                 None => {}
             }

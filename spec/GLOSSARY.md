@@ -10,13 +10,13 @@ spellings in the right column.
 | position | an element of a domain, `V` | index (as a type name), node id |
 | cut | a gap between positions, `V.cuts`; `0..=count` many | boundary, fencepost |
 | piece | the positions between two cuts, a `Range<V>` | segment (except in segment trees), interval (except the `interval` module) |
-| key | the domain value a sequence is indexed by, `s.keys` | offset |
+| key | the domain value a sequence is indexed by, `s.keys` | offset (for a key) |
 | `None`, `Some(x)` | the variants of `?T` | `none`, `some`, `null`, `nil` |
 | owned / lent | the two modes of every value; parameters are lent by default | borrowed, reference (as a mode) |
 | `mut` | a lent parameter or binding that may be written or drained | `&mut`, `inout` |
 | `-> lends T` | a return that lends from a parameter | `lends T` without the arrow |
 | operation value | a value that is a binary operation with laws (`+`, `max`, `Affine.compose`) | functor, op object |
-| `law` | a property an operation value promises; stress samples it | axiom, contract |
+| `law` | a property an operation value promises; stress samples it | axiom, contract (for a law) |
 | `Ordering` | the result of `cmp`: `Less`, `Equal`, `Greater` | `Order` |
 | `Mod<P>` | the modular integer type | `Mint`, `ModInt` |
 | getter | an O(1) member read without parentheses, declared `@get pub fn` | property; `pub @get fn` |
