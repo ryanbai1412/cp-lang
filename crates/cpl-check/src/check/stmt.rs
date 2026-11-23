@@ -126,9 +126,8 @@ impl<'a> Checker<'a> {
             Ty::Optional(Box::new(declared.clone())).with_article()
         );
         if let Some(diag) = self.error(codes::EMPTY_FOLD_NO_IDENTITY, init.span, message) {
-            diag.help = Some(format!(
-                "unwrap it: `{shown}!`, or `{shown} ?? d` for a default"
-            ));
+            diag.help = Some(format!("unwrap: `{shown}!`, or `?? d` for a default"));
+            diag.fix("unwrap it with `!`", Span::point(init.span.end), "!");
         }
     }
 

@@ -1,0 +1,3 @@
+let a = [3, 1, 2]
+let x: Int = a.fold((x, y) => x * 10 + y)
+print(x)

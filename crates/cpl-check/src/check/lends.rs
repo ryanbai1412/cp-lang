@@ -1605,8 +1605,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    /// Records that `src` was moved at `span`, rejecting moves of a variable
-    /// while a closure captures it (E0607) or a lend borrows it (E0602).
+    /// Records `src` moved at `span`; rejects it while captured (E0607) or lent (E0602).
     pub(crate) fn mark_moved(&mut self, src: &str, span: Span) {
         if let Some(hold) = self.lends.holds.iter().find(|h| h.root == src) {
             let lent_to = hold.name.clone();
@@ -1633,6 +1632,7 @@ impl<'a> Checker<'a> {
                     diag.help = Some(format!(
                         "clone it (`{src}.clone()`) or finish using `{lent_to}` before moving `{src}`"
                     ));
+                    diag.fix(format!("clone `{src}`"), Span::point(span.end), ".clone()");
                 }
             } else {
                 let message = format!(
