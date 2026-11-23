@@ -46,6 +46,7 @@ Each local fix tonight, and the mechanism that would remove its whole class.
 
 | Instance (local fix) | General fix | Owner |
 |---|---|---|
+| Windows 5,000-line cold check runs 61-81 ms against 50 ms; `latency.rs` gives that one case a 100 ms Windows budget (`WINDOWS_LARGE_CHECK_BUDGET`) | Profile the cold check on Windows (likely allocation-heavy: 2-3x macOS at 5,000 lines but 1.4x at 500) and close the gap, then delete the Windows budget | compiler (front end), tools runs the measurement |
 | `cpl test cf2272A` read the g++ binary `cf2272A` beside `cf2272A.cp` as source (BLOCKERS 41) | done: one resolver for every command that takes a file or problem; a bare name that is missing or not text is its `.cp` | tools |
 | `cpl listen` (BLOCKERS 14) was "unknown command" though `cpl new --listen` exists | done: every unknown command names the one meant, from other tools' spellings or within two edits; one `cpl_diag::edit_distance` replaces cpl-check's and cpl-lint's copies | tools |
 | VS Code grammar scoped `None` as a type after `none` became `None` (835de99a1), and the extension said 0.2.2 beside a 0.3.0 release | done: the grammar's literal words come from `cpl_syntax::token::LITERAL_WORDS` (tested to parse as literals) through `language-data.js`; the .vsix and plugin versions come from the workspace `Cargo.toml`. tree-sitter-cp now parses `None` (and the old `none`), and `editors/smoke.sh` fails when its literal words differ from `LITERAL_WORDS` | tools |

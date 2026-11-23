@@ -51,6 +51,12 @@ target = "check < 50 ms; open-to-diagnostics < 100 ms; test green"
 today = "check 39-48 ms (p90 43-63); open-to-diagnostics 37-43 ms; hover in the edited fn 17 ms; passes on c8b9333e4, little room on the cold check (next hot spots filed in compiler's worklog)"
 
 [[metric]]
+name = "LSP latency, 5,000-line cold check on Windows, median"
+command = "cargo test --release -p cpl-lsp --test latency -- --nocapture (CI job `lsp latency (windows-latest)`)"
+target = "< 50 ms, the budget every other OS and size meets; the test enforces < 100 ms on Windows until then"
+today = "61-81 ms (p90 73-84) on hosted windows-latest, against 24-39 ms on macOS at the same commits (runs 45155418174, 45165344430, 45166273112, 45169744238); not a regression: 0f82470ab and ff09d6219 measure the same on Linux"
+
+[[metric]]
 name = "LSP unit tests"
 command = "cargo test --release -p cpl-lsp --lib"
 target = "all pass"
