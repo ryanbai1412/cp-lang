@@ -4900,9 +4900,8 @@ impl<'a> Lowerer<'a> {
     // ----- members -----
 
     /// `base.name` that is not being called.
-    /// A number a generic struct was given, read off the type by the
-    /// parameter's name: with `struct Mod<P>` and `type Z = Mod<7>`,
-    /// `Z.P` is 7.
+    /// A number a generic struct was given, read off the type by the parameter's name: with
+    /// `struct Mod<P>` and `type Z = Mod<7>`, `Z.P` is 7.
     fn struct_number_param(&mut self, sid: StructId, name: &str, span: Span) -> Option<Expr> {
         let (gid, gargs) = self.structs[sid].origin_gen.clone()?;
         let at = self.gen_structs[gid]
@@ -6284,9 +6283,8 @@ impl<'a> Lowerer<'a> {
             _ => None,
         }
     }
-    /// `xs.items` in a `for` or a comprehension: the loop counts through
-    /// the indices and reads each element in place, so no list of pairs
-    /// is built.
+    /// `xs.items` in a `for` or a comprehension: the loop counts through the indices and reads
+    /// each element in place, so no list of pairs is built.
     pub(super) fn items_head(&mut self, e: &ast::Expr) -> Option<Items> {
         let ast::ExprKind::Field { base, name } = &e.kind else {
             return None;

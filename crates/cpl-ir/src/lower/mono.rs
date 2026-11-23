@@ -145,9 +145,8 @@ pub(super) struct StructConst<'a> {
 }
 
 impl<'a> Lowerer<'a> {
-    /// Whether `ty` has an `impl` of the library trait `name`. A name that
-    /// is not a trait declared in a module (a structural one), or an
-    /// `impl` over a generic type, is taken as met.
+    /// Whether `ty` has an `impl` of the library trait `name`. A name that is not a trait declared
+    /// in a module (a structural one), or an `impl` over a generic type, is taken as met.
     pub(super) fn implements(&mut self, ty: &Ty, name: &str) -> bool {
         let Some(Sym::Trait(tid)) = self.get_sym(name) else {
             return true;
@@ -2344,9 +2343,8 @@ impl<'a> Lowerer<'a> {
         self.user_call(fn_id, receiver, args, span)
     }
 
-    /// Whether the generic fn says its parameter `name` anywhere but as
-    /// the index of an array it takes: in what it returns, in another
-    /// parameter, or in its body.
+    /// Whether the generic fn says its parameter `name` anywhere but as the index of an array it
+    /// takes: in what it returns, in another parameter, or in its body.
     fn gen_fn_names(&self, gfid: GenFnId, name: &str) -> bool {
         let tpl = &self.gen_fns[gfid];
         let decl = tpl.decl;
@@ -2385,15 +2383,11 @@ impl<'a> Lowerer<'a> {
         })
     }
 
-    /// An array indexed by a plain range, `[0..n]T` or `[1..=n]T`, where
-    /// a `[D]T` (or `?[D]T`) is asked for: `D` is a domain sized by the
-    /// array where it is passed.
-    ///
-    /// A fn whose result does not name `D` (`of` gives the fn and what it
-    /// returns) has one such domain for all its calls, so it is one fn in
-    /// the C++; each call puts the size back when it returns. What can
-    /// outlive the call (a struct built from the array, a `[D]T` given
-    /// back) has a domain of its own per place it is made.
+    /// A `[0..n]T` or `[1..=n]T` passed where a `[D]T` (or `?[D]T`) is asked for: `D` is a domain
+    /// sized by the array. A fn whose result does not name `D` (`of` gives it) has one such domain
+    /// for all its calls, one fn in the C++, each call putting the size back when it returns; what
+    /// can outlive the call (a struct built from the array, a `[D]T` given back) has a domain of
+    /// its own per place it is made.
     pub(super) fn bind_range_domain(
         &mut self,
         pty: &ast::Type,
@@ -2561,8 +2555,7 @@ impl<'a> Lowerer<'a> {
         val
     }
 
-    /// Lower a local `fn name(params) -> R: body` inside a block as a closure bound to `name`.
-    /// A fn written inside another. `into` is the table of a
+    /// A fn written inside another, lowered as a closure bound to its name. `into` is the table of a
     /// `@memo(into: dp)`, which the caller has declared.
     pub(super) fn lower_local_fn(
         &mut self,
@@ -3285,14 +3278,13 @@ impl<'a> Lowerer<'a> {
             }
             ast::TypeKind::Tuple(items) => {
                 let cfields = concrete.fields().or_else(|| match concrete {
-                    Ty::Pos(d) => self.product_grid(*d).map(|dims| {
-                        dims.into_iter()
-                            .filter_map(|dim| match dim {
-                                Dim::Pos(f) => Some(Ty::Pos(f)),
-                                _ => None,
-                            })
-                            .collect()
-                    }),
+                    Ty::Pos(d) => Some(
+                        self.product_domains
+                            .get(d)?
+                            .iter()
+                            .map(|(_, f)| self.product_factor_ty(f))
+                            .collect(),
+                    ),
                     _ => None,
                 });
                 for (p, c) in items.iter().zip(cfields.iter().flatten()) {
@@ -3477,7 +3469,6 @@ impl<'a> Lowerer<'a> {
         )
     }
 
-    /// Wraps a named function `fn_id` as a `Ty::Fn` closure value.
     /// A named fn as a value. When the expected fn type takes fewer arguments
     /// and the rest have defaults, the value takes only those (`xs.map(yes)`).
     pub(super) fn fn_as_closure(&mut self, fn_id: FnId, hint: Option<&Ty>, span: Span) -> Expr {
