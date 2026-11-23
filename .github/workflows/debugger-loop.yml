@@ -15,6 +15,7 @@ on:
       - crates/cpl-cli/**
       - editors/neovim/**
       - editors/vscode/**
+      - editors/jetbrains/**
       - .github/workflows/debugger-loop.yml
   workflow_dispatch:
 
@@ -102,3 +103,32 @@ jobs:
         run: |
           npm ci --no-audit --no-fund
           if command -v xvfb-run >/dev/null; then xvfb-run -a npm run test:integration; else npm run test:integration; fi
+
+  # The run configurations' stress then test, on each OS's own JDK and paths.
+  jetbrains:
+    name: jetbrains (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: neovim
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Build cpl
+        run: cargo build -p cpl-cli
+      - name: Plugin smoke tests
+        shell: bash
+        working-directory: editors/jetbrains
+        run: |
+          if [ "$RUNNER_OS" = Windows ]; then export CPL="$(cygpath -w "$GITHUB_WORKSPACE/target/debug/cpl.exe")"; fi
+          ./gradlew --no-daemon test --tests dev.cplang.ide.CpPluginSmokeTest
