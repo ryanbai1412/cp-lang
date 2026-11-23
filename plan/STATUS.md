@@ -150,7 +150,7 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 | crate_tests_pass | cpl-lint 148 passed, cpl-fmt 60 passed, 0 failed | all pass |
 | fixes_that_add_errors | 0 | 0 |
 | newcomer_port_warnings_top10 | L0504 66, L0549 45, L0503 44, L0537 39, L0524 38, L0507 38, L0523 36, L0201 31, L0203 29, L0208 28 (750 in all) | each of the top 10 names real CPL vocabulary, has a fix where meaning allows and an explain page |
-| fmt_mutation_score | 0.843 | 0.95 |
+| fmt_mutation_score | 0.862 | 0.95 |
 
 ## perf
 
