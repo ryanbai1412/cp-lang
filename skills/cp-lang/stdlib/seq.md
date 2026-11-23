@@ -239,7 +239,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)` — \(O(n)\) calls of `eq`, \(O(1)\) memory; The value held by more than half the elements, with its count, or `None`.
-- `fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int>` — \(O(n)\) expected, \(O(\mathit{distinct})\) memory
+- `fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>` — \(O(n)\) expected, \(O(\mathit{distinct})\) memory
 - `fn group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> HashMap<K, List<U>>` — \(O(n)\) expected, \(O(n)\) memory
 - `fn min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory; traps: when `k < 0`; `k > n` gives every element
 - `fn max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory; traps: when `k < 0`; `k > n` gives every element
