@@ -221,13 +221,13 @@ jobs:
         run: python3 editors/lsp-smoke.py jetbrains target/debug/cpl lsp
 
   # A main push with stale generated files (skill pages, COVERAGE.md, fixed
-  # prelude gaps) gets them regenerated and committed here, under the pushed
+  # prelude gaps) or a machine-fixable clippy lint gets them regenerated and committed here, under the pushed
   # commit's Domain trailer, then CI is dispatched on the new tip: a push by
   # the Actions token starts no run by itself.
   regen:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     permissions:
       contents: write
       actions: write
@@ -255,6 +255,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           changed=$(scripts/regen.sh 2> >(tee regen.err >&2))
+          # Machine-applicable clippy fixes land here too, so a lint slipped
+          # past a `--no-verify` push heals without a lane's time. Best effort:
+          # a clippy that can't run leaves the gate to report it.
+          if CARGO_TARGET_DIR=target/clippy-fix cargo clippy -q --fix --allow-dirty --workspace --all-targets; then
+            crates=$(git diff --name-only -- crates | cut -d/ -f2 | sort -u)
+            for c in $crates; do cargo fmt -p "$c" || true; done
+            changed="$changed$(git diff --name-only -- crates)"
+          fi
           # The gate only warns on stale generated files on main, so a
           # generator that fails must turn this job red.
           failed() { ! grep -q 'regen: failed' regen.err || { echo "::error::a generator failed; see above"; exit 1; }; }
@@ -263,7 +271,7 @@ jobs:
           domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A -- skills spec/conformance pnpm-lock.yaml
+          git add -A -- skills spec/conformance pnpm-lock.yaml crates
           git commit -q -m "factory: regenerate generated files" -m "Domain: ${domain:-infra}"
           for try in 1 2 3 4 5; do
             git pull -q --rebase origin main && git push -q origin HEAD:main && break
