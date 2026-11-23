@@ -1,5 +1,8 @@
-// NOI 2015 Automated Program Analyzer (CP Lang 0.2.2): check satisfiability of
-// equality and disequality constraints over sparse variable IDs via `compress` + `Dsu`.
+// Source: NOI 2015 P1 (Automated Program Analyzer), https://dmoj.ca/problem/noi15p1
+// Problem: t independent instances, each n <= 1e5 constraints x_i = x_j or x_i != x_j with
+//   indices up to 1e9. For each, print YES if all its constraints can hold at once, else NO.
+// Solution: compress the indices, unite the two sides of every equality in a Dsu, then check
+//   that no inequality has both sides in one class. O(n log n) per instance.
 // original: corpus/submissions/3775616.cpp
 
 @multitest

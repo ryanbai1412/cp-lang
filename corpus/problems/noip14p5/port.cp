@@ -1,5 +1,10 @@
-// NOIP 2014 Finding the Way: shortest path from s to t that only visits
-// vertices all of whose out-neighbours can reach t.
+// Source: NOIP 2014 Senior Day 2 P2 (Finding the Way), Luogu P2296 (not on DMOJ)
+// Problem: a directed graph, n <= 1e4, m <= 2e5 unit edges (loops and multi-edges allowed), and
+//   s != t. Print the length of the shortest s-t path through vertices all of whose
+//   out-neighbours can reach t, or -1 if there is none.
+// Solution: BFS from t over reversed edges marks the vertices that reach t; a vertex is safe when
+//   all its out-neighbours are marked. If s is safe, BFS from s over the edges between safe
+//   vertices gives the answer. O(n + m).
 
 let n: 1..=10000 = read()
 let m: 0..=200000 = read()

@@ -1,5 +1,10 @@
-// AtCoder DP S Digit Sum: count the integers in 1..=K whose digit sum is a
-// multiple of d. K has up to 10000 digits.
+// Source: AtCoder Educational DP Contest S (Digit Sum), https://atcoder.jp/contests/dp/tasks/dp_s
+// Problem: K < 10^10000 (a decimal string) and d <= 100. Count the integers in 1..=K whose digit
+//   sum is a multiple of d, mod 1e9+7.
+// Solution: digit DP over K's digits: below[r] counts the numbers under K's prefix read so far
+//   (same length, leading zeros) with digit sum r mod d, and `own` is the prefix's own residue.
+//   A digit extends every number below by 0..=9 and K's prefix by the digits smaller than its
+//   own. Then add K itself and drop 0: O(10 d len(K)).
 type Z = Mod<1_000_000_007>
 let k: Str = read()
 let d: 1..=100 = read()

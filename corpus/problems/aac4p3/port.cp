@@ -1,5 +1,10 @@
-// An Animal Contest 4 P3, as it has to be written today: the pairs on a
-// line are counted with a map by hand. Builds; stress OK against 4140246.cpp.
+// Source: An Animal Contest 4 P3 (Snowy Slopes), https://dmoj.ca/problem/aac4p3
+// Problem: n <= 1e5 points with distinct x and distinct y (coordinates 1..=1e9) and m <= 20
+//   slopes k_i / d_i (nonzero, |k|, |d| <= 1e9). Count the pairs of points whose line has one
+//   of the given slopes.
+// Solution: reduce each slope by its gcd and drop repeats. Points on one line of slope a / b
+//   share b * y - a * x, so per slope a HashMap counts the earlier points on each line: O(m n).
+// Builds; stress OK against 4140246.cpp.
 let n: 1..=2000 = read()
 let m: 1..=2000 = read()
 let points: [n](x: 1..=1e9, y: 1..=1e9) = read()

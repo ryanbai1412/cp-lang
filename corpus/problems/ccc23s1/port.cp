@@ -1,4 +1,9 @@
-// Runnable today/ port of CCC '23 S1 (Trianglane) for proto/cpc.
+// Source: CCC 2023 S1 (Trianglane), https://dmoj.ca/problem/ccc23s1
+// Problem: two rows of c <= 2e5 unit triangle tiles (the first points up, neighbours alternate),
+//   each black (1) or white (0). Print the length of tape around the black area: the black
+//   tiles' sides not shared with another black tile.
+// Solution: each black tile adds 3, minus 1 for each black tile it shares a side with: its left
+//   and right neighbours, and at even columns the tile in the other row. O(c).
 // original: corpus/submissions/5350804.cpp
 
 fn main_solve():

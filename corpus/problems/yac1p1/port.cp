@@ -1,6 +1,10 @@
-// Yet Another Contest 1 P1: pair up a's with b's and add 1 to any element k
-// times to maximise the sum of products. Pair in sorted order and spend every
-// increment on the largest pair, keeping its two sides as level as possible.
+// Source: Yet Another Contest 1 P1 (Mixed Doubles), https://dmoj.ca/problem/yac1p1
+// Problem: n <= 2e5 men with skills a_i and n women with skills b_i (<= 2e9). Pair them up and
+//   add 1 to someone's skill k <= 1e9 times; a pair scores a_i * b_j. Print the largest total
+//   score mod 1e9+7.
+// Solution: pair in sorted order. An increment to one side of a pair gains the other side, and
+//   the top pair's larger side is the most anything gains, so every increment goes to the top
+//   pair: first level its two sides, then split the rest evenly. Sort: O(n log n).
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=2e5 = read()
