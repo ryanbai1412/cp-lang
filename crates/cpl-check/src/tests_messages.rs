@@ -649,3 +649,11 @@ fn a_top_level_unwrap_rebinds_its_name_and_other_redefinitions_stay_e0202() {
     let d = one("let a = 1\nlet a = 2\nprint(a)\n");
     assert_eq!(d.code.0, "E0202");
 }
+
+#[test]
+fn a_call_with_type_arguments_is_called_so_it_gets_no_parens_warning() {
+    let called = check("let s = \"12\"\nprint(s.parse<Int>()! + 1)\n");
+    assert!(called.iter().all(|d| d.code.0 != "L0608"), "{called:?}");
+    let bare = check("let a = [2, 1]\nprint(a.sorted)\n");
+    assert!(bare.iter().any(|d| d.code.0 == "L0608"), "{bare:?}");
+}

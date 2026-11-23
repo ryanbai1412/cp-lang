@@ -397,6 +397,55 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// Python's `a.pop(i)` and `m.get(k, d)`: `a.remove(i)`, `m.get(k) ?? d`.
+    pub(super) fn foreign_method_args(
+        &mut self,
+        whole: &ast::Expr,
+        base: &ast::Expr,
+        name: &ast::Name,
+        args: &[ast::Arg],
+        ty: &Ty,
+    ) -> Expr {
+        let span = whole.span;
+        if args.iter().any(|a| a.name.is_some()) {
+            return self.err_expr(span);
+        }
+        let b = self.source(base.span);
+        let a: Vec<String> = args.iter().map(|a| self.source(a.value.span)).collect();
+        let (new, help) = match (name.text.as_str(), a.as_slice()) {
+            ("pop", [i]) if matches!(ty, Ty::List(_)) => (
+                format!("{b}.remove({i})"),
+                "removing at an index is `remove`",
+            ),
+            ("get", [k, d]) => {
+                let text = &self.mods[self.cur_mod].text;
+                let abs = self.span(whole.span);
+                let before = text[..abs.start as usize].trim_end().chars().last();
+                let after = text[abs.end as usize..]
+                    .trim_start_matches(' ')
+                    .chars()
+                    .next();
+                let alone = matches!(before, Some('(' | ',' | '=' | '[' | ':'))
+                    && matches!(after, Some(')' | ',' | ']' | '\n') | None);
+                let new = format!("{b}.get({k}) ?? {d}");
+                let new = if alone { new } else { format!("({new})") };
+                (new, "a default for a missing key is given with `??`")
+            }
+            _ => return self.err_expr(span),
+        };
+        let at = self.span(whole.span);
+        if let Some(last) = self
+            .diags
+            .last_mut()
+            .filter(|d| d.code == codes::WRONG_ARG_COUNT)
+        {
+            last.help = Some(format!("{help}: `{new}`"));
+            last.fixes.clear();
+            last.fix(format!("write `{new}`"), at, new);
+        }
+        self.err_expr(span)
+    }
+
     /// `read<List<Int>>(n)`: the type says how many, `read<[n]Int>()`.
     pub(super) fn read_count_arg(&mut self, count: &ast::Expr, elem: &Ty, span: Span) {
         let new = format!("read<[{}]{}>()", self.source(count.span), self.show(elem));

@@ -282,7 +282,7 @@ impl<'a> Lowerer<'a> {
                         mutate(self, Mutation::Pop, Vec::new(), Ty::opt(elem))
                     }
                 }
-                None => self.err_expr(span),
+                None => self.foreign_method_args(whole, base, name, args, &ty),
             },
             (Ty::List(_) | Ty::MutView(..) | Ty::Array { .. } | Ty::Str, "swap") => {
                 match self.positional_any(method, args, 2, span) {
@@ -962,7 +962,7 @@ impl<'a> Lowerer<'a> {
                         Ty::Opt(val.clone()),
                         span,
                     ),
-                    None => self.err_expr(span),
+                    None => self.foreign_method_args(whole, base, name, args, &ty),
                 }
             }
             (Ty::Set(key) | Ty::Map(key, _), "first_ge" | "first_gt" | "last_le" | "last_lt") => {

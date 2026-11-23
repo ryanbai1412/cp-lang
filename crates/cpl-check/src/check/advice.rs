@@ -48,8 +48,7 @@ impl Checker<'_> {
                 return;
             }
         }
-        let after = self.src.get(expr.span.end as usize..).unwrap_or("");
-        if after.trim_start().starts_with('(') {
+        if called_next(self.src.get(expr.span.end as usize..).unwrap_or("")) {
             return;
         }
         let shown = format!("{}.{}", self.quote(base.span), name.text);
@@ -390,6 +389,19 @@ impl Checker<'_> {
             ("int" | "float", [_]) if input.is_some() => (
                 format!("read<{}>()", read.unwrap_or("Int")),
                 "a value is read from the input with `read`",
+            ),
+            ("int" | "float", [s]) if input.is_none() => (
+                format!("{}.parse<{}>()!", operand(self, s), read.unwrap_or("Int")),
+                "a number is read from a string with `parse`",
+            ),
+            ("range", [a, b, step]) => (
+                format!(
+                    "({}..{}).step({})",
+                    self.text(a.value.span),
+                    self.text(b.value.span),
+                    self.text(step.value.span)
+                ),
+                "a range with a step is written",
             ),
             ("enumerate", [xs]) => (
                 format!("{}.items", operand(self, xs)),
@@ -857,6 +869,23 @@ pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
         "math" | "Math" => Some("math functions are methods here: `x.sqrt`, `x.abs`, `x.isqrt`"),
         _ => None,
     }
+}
+
+/// Whether the text after a member is its call: `(..)`, or `<T>(..)`
+/// as in `s.parse<Int>()`.
+pub(super) fn called_next(after: &str) -> bool {
+    let mut rest = after;
+    if let Some(inner) = after.strip_prefix('<') {
+        let mut depth = 1;
+        let close = inner.find(|c| {
+            depth += i32::from(c == '<') - i32::from(c == '>');
+            depth == 0
+        });
+        if let Some(i) = close {
+            rest = &inner[i + 1..];
+        }
+    }
+    rest.trim_start().starts_with('(')
 }
 
 /// C++'s streams: `cin >> n` is `n = read()`, and `, endl` goes, since

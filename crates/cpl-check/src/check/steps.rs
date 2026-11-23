@@ -100,8 +100,7 @@ impl Checker<'_> {
         {
             return;
         }
-        let after = self.src.get(expr.span.end as usize..).unwrap_or("");
-        if after.trim_start().starts_with('(') {
+        if super::advice::called_next(self.src.get(expr.span.end as usize..).unwrap_or("")) {
             return;
         }
         let shown = format!("{}.{}", self.quote(base.span), name.text);
