@@ -1031,6 +1031,13 @@ impl<'a> Checker<'a> {
                         (ty, _) => ty,
                     };
                     self.block(otherwise);
+                    if !otherwise.leaves() {
+                        let message = "the `else` block of this `let` can reach its end, and then there is nothing to bind".to_string();
+                        if let Some(diag) = self.error(codes::ELSE_FALLS_THROUGH, pat.span, message)
+                        {
+                            diag.help = Some("end it with `return`, `break`, `continue` or a trap such as `todo`".to_string());
+                        }
+                    }
                 }
                 // `var seen: [V]Bool = false` fills the array with the value.
                 // A comprehension builds the array when one is declared.

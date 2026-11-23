@@ -30,6 +30,42 @@ pub struct Block {
     pub span: Span,
 }
 
+impl Block {
+    /// The block can't reach its end: its last statement is a `return`,
+    /// `break`, `continue` or trap (`todo`, `assert false`), or an `if` or
+    /// `match` each of whose branches can't.
+    pub fn leaves(&self) -> bool {
+        let Some(last) = self.stmts.last() else {
+            return false;
+        };
+        match &last.kind {
+            StmtKind::Return(_) | StmtKind::Break(_) | StmtKind::Continue(_) => true,
+            StmtKind::Assert { cond, .. } => matches!(cond.kind, ExprKind::Bool(false)),
+            StmtKind::Unchecked(block) => block.leaves(),
+            StmtKind::Expr(e) => e.leaves(),
+            _ => false,
+        }
+    }
+}
+
+impl Expr {
+    /// Running the expression never gives a value; see [`Block::leaves`].
+    pub fn leaves(&self) -> bool {
+        match &self.kind {
+            ExprKind::Name(name) => name == "todo",
+            ExprKind::Block(block) => block.leaves(),
+            ExprKind::If {
+                branches,
+                otherwise: Some(otherwise),
+            } => otherwise.leaves() && branches.iter().all(|(_, b)| b.leaves()),
+            ExprKind::Match { arms, .. } => {
+                !arms.is_empty() && arms.iter().all(|a| a.body.leaves())
+            }
+            _ => false,
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Debug)]
 pub struct Decorator {
     /// `@!name`: a file-level directive, in force from its line down. A

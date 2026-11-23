@@ -119,6 +119,8 @@ pub mod codes {
     pub const UNPARENTHESIZED_COALESCE: Code = Code("E0110");
     /// `a < b > c`, or a chain with `==`: split it with `and`.
     pub const MIXED_COMPARISON_CHAIN: Code = Code("E0111");
+    /// The `else` block of `let p = e else:` can reach its end. (R01.6.2)
+    pub const ELSE_FALLS_THROUGH: Code = Code("E0112");
 
     pub const UNRESOLVED_NAME: Code = Code("E0201");
     pub const DUPLICATE_DEFINITION: Code = Code("E0202");
