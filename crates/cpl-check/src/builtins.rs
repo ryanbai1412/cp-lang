@@ -400,6 +400,32 @@ pub(crate) const POS_MEMBERS: &[&str] = &[
     "ord", "idx", "label", "prev", "next", "offset", "ahead", "back",
 ];
 
+/// `i: Int, f: (Int, Int) -> Int` split at its top-level commas, trimmed.
+pub fn split_params(text: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let (mut depth, mut start) = (0i32, 0);
+    // `Map<K, V>` nests; `a < b` in a default does not.
+    let mut angles = 0i32;
+    for (i, c) in text.char_indices() {
+        match c {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth -= 1,
+            '<' if text[..i].ends_with(|p: char| p.is_alphanumeric()) => angles += 1,
+            '>' if angles > 0 && !text[..i].ends_with(['-', '=']) => angles -= 1,
+            ',' if depth == 0 && angles > 0 => {}
+            ',' if depth == 0 => {
+                out.push(text[start..i].trim());
+                start = i + 1;
+            }
+            _ => {}
+        }
+    }
+    if !text[start..].trim().is_empty() {
+        out.push(text[start..].trim());
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     fn check(src: &str) -> Vec<cpl_diag::Diagnostic> {
@@ -427,30 +453,4 @@ mod tests {
             }
         }
     }
-}
-
-/// `i: Int, f: (Int, Int) -> Int` split at its top-level commas, trimmed.
-pub fn split_params(text: &str) -> Vec<&str> {
-    let mut out = Vec::new();
-    let (mut depth, mut start) = (0i32, 0);
-    // `Map<K, V>` nests; `a < b` in a default does not.
-    let mut angles = 0i32;
-    for (i, c) in text.char_indices() {
-        match c {
-            '(' | '[' | '{' => depth += 1,
-            ')' | ']' | '}' => depth -= 1,
-            '<' if text[..i].ends_with(|p: char| p.is_alphanumeric()) => angles += 1,
-            '>' if angles > 0 && !text[..i].ends_with(['-', '=']) => angles -= 1,
-            ',' if depth == 0 && angles > 0 => {}
-            ',' if depth == 0 => {
-                out.push(text[start..i].trim());
-                start = i + 1;
-            }
-            _ => {}
-        }
-    }
-    if !text[start..].trim().is_empty() {
-        out.push(text[start..].trim());
-    }
-    out
 }
