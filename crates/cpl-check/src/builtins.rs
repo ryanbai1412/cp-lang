@@ -109,6 +109,16 @@ pub fn foreign_member(receiver: Receiver, name: &str) -> Option<&'static str> {
         .then_some(own)
 }
 
+/// Another language's name for a std `Str` function: Python's `upper`,
+/// Java's `toUpperCase`.
+pub fn foreign_str_fn(name: &str) -> Option<&'static str> {
+    match name {
+        "upper" | "toUpperCase" | "uppercase" => Some("to_upper"),
+        "lower" | "toLowerCase" | "lowercase" => Some("to_lower"),
+        _ => None,
+    }
+}
+
 /// The catalog row for `name` on the built-in type written `owner`
 /// (`List`, `Str`, `[D]T`).
 pub fn builtin_member(owner: &str, name: &str) -> Option<&'static BuiltinMember> {

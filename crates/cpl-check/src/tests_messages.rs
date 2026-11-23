@@ -193,3 +193,10 @@ fn max_of_one_sequence_becomes_the_member() {
     let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixes, ["xs.max()!", "xs.rev.min()!"], "{d:?}");
 }
+
+#[test]
+fn foreign_case_functions_become_to_upper_and_to_lower() {
+    let d = check("let s = \"ab\"\nprint(s.toUpperCase(), s.lowercase())\n");
+    let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixes, ["to_upper", "to_lower"], "{d:?}");
+}

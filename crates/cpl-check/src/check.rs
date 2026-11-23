@@ -1094,6 +1094,9 @@ pub(crate) fn spec_member_typo(base: &Ty, name: &str) -> Option<String> {
     if let Some(own) = receiver.and_then(|r| crate::builtins::foreign_member(r, name)) {
         return Some(own.into());
     }
+    if let (Some(Receiver::Str), Some(own)) = (receiver, crate::builtins::foreign_str_fn(name)) {
+        return Some(own.into());
+    }
     let own = receiver
         .into_iter()
         .flat_map(builtin_members)
