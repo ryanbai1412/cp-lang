@@ -25,7 +25,6 @@ seq.covering: with the pieces of `(0..10).pieces(cuts: [3, 7])`, `piece.covering
 seq.Filtered.src: `let a = [1, 2]; a.filter(x => x > 1).src == a`
 seq.Mapped.src: `let a = [1, 2]; a.map(x => x * 2).src == a`
 seq.Items.src: `let a = [1, 2]; a.items.src == a`
-seq.Slice.iter: `[5, 6, 7][1..].iter().collect() == [1, 2]`
 seq.keyed: `"ab".keyed().items.collect() == [(0, 'a'), (1, 'b')]`
 sparse.SparseTable2D.new: `SparseTable2D(max, [2, 2] (r, c) => r * 2 + c).fold(0..2, 0..2) == 3`
 sparse.SparseTable2D.fold: `SparseTable2D(min, [2, 2] (r, c) => r * 2 + c).fold(1..2, 0..2) == 2`

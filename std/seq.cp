@@ -1449,15 +1449,6 @@ pub struct Slice<S>():
     /// example: `[1, 2][2..].is_empty == true`
     @get pub fn is_empty(self) -> Bool = todo
 
-    /// The slice's keys, which are the source's positions: `a[1..]` walks keys from 1.
-    ///
-    /// cost: \(O(1)\) per step
-    /// empty: yields nothing
-    /// order: the slice's keys, increasing
-    /// traps: never
-    /// example: `[5, 6, 7][1..].iter().collect() == [1, 2]`
-    pub fn iter(self) -> yields Int = todo
-
 /// \(O(1)\). The view without its first `k` elements, clamped (traps if `k < 0`). Consuming a view
 /// from the front is `w = w.drop(1)`.
 ///
