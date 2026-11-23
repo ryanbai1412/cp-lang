@@ -124,7 +124,7 @@ impl<'a> Parser<'a> {
                     edits: vec![
                         (
                             Span::new(item.span.start, count.span.end),
-                            self.item_text(count.span).into(),
+                            self.item_text(count.span),
                         ),
                         (Span::point(close.end), format!(".filled({item_text})")),
                     ],
