@@ -272,9 +272,9 @@ Fields: `n: Int`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBuckets<
 - `fn borders<S: Indexed>(s: S) -> yields Int` — O(n); The length of every non-empty proper border of `s` (a prefix that is also a suffix, shorter than `s`).
 - `fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int` — O(|self| + |pat|); For each key `i` of `self`, the length of the longest prefix of `pat` that ends at `i` (the KMP matcher's state after reading `self[i]`).
 - `fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int` — O(|a| + |b|); The length of the longest suffix of `a` that is also a prefix of `b`, at most `min(\|a\|, \|b\|)`; how far `b` can slide onto the end of `a`.
-- `fn lyndon_factorization<S: Indexed, K>(s: S) -> List<K>` — O(n); The start key of each factor of the Lyndon factorization of `s` (Duval): the unique way to cut `s` into Lyndon words `w1 >= w2 >= ...` in lexicographic order.
-- `fn min_rotation<S: Indexed, K>(s: S) -> ?K` — O(n); The key at which the lexicographically smallest cyclic rotation of `s` starts (Booth).
-- `fn max_rotation<S: Indexed, K>(s: S) -> ?K` — O(n); The key at which the lexicographically greatest cyclic rotation of `s` starts.
+- `fn lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>` — O(n); The start key of each factor of the Lyndon factorization of `s` (Duval): the unique way to cut `s` into Lyndon words `w1 >= w2 >= ...` in lexicographic order.
+- `fn min_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K` — O(n); The key at which the lexicographically smallest cyclic rotation of `s` starts (Booth).
+- `fn max_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K` — O(n); The key at which the lexicographically greatest cyclic rotation of `s` starts.
 - `fn shift_and<S: Indexed, P: Indexed>(self: S, pat: P) -> yields Int` — O(|self| * ceil(|pat| / 64)); The start position of every occurrence of `pat` in `self`, overlapping ones included, by bit-parallel Shift-And.
 - `fn find_all_wildcard<S: Indexed, P: Indexed>(self: S, pat: P, wildcard: Char = '?') -> yields Int` — O(|self| * ceil(|pat| / 64)); The start position of every place where `pat` matches `self` when each `wildcard` in `pat` matches any one element.
 - `fn manacher<S: Indexed>(s: S) -> Palindromes` — O(n); The palindrome radii of `s` by Manacher's algorithm: `odd[i]` is the largest `k` with `s[i - k + 1..i + k]` a palindrome, and `even[i]` the largest `k` with `s[i - k..i + k]` one.

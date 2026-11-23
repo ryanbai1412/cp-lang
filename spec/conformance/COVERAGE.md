@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2420 (995 passing). Rules: 560.
+Cases: 2421 (995 passing). Rules: 560.
 
 ## Summary per chapter
 
@@ -16,7 +16,7 @@ Cases: 2420 (995 passing). Rules: 560.
 - R03 (03-numbers-layout.md): 24 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 66 rules, 110 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 27 rules, 63 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 89 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -343,8 +343,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.4.4 [1+ 0-]: | An owned list as a domain array | `let (domain I, b) = xs.with_domain()` | `[I]T` that o...
 - R04b.4.5 [1+ 0-]: | Results back in the caller's keys | `table.rekey(s.keys)` | O(1) re-key
 - R04b.5.1 [2+ 0-]: | `search`, `rsearch` | `-> ?Int` on `Str` | `-> ?K` on any `Indexed<K, Char>`
-- R04b.5.2 [2+ 0-]: | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`
-- R04b.5.3 [6+ 0-]: | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed ...
+- R04b.5.2 [3+ 0-]: | `find_all`, `shift_and`, `KmpAutomaton.find_all` | `yields Int` | `yields K`
+- R04b.5.3 [7+ 0-]: | `z_function`, `prefix_function`, `prefix_matches` | `-> List<Int>` | `-> [K]Int`, keyed ...
 - R04b.5.4 [1+ 0-]: | `min_rotation`, `max_rotation` | `-> Int` | `-> ?K`, the start, `None` when empty
 - R04b.5.5 [1+ 0-]: | `lyndon_factorization` | `-> List<Int>` | `-> List<K>`, the starts
 - R04b.5.6 [1+ 0-]: | `Palindromes.longest_at(i)` | `i: Int` | `i: K`
@@ -793,6 +793,12 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0544 manual_digit_loop: **no case**
 - L0545 hand_rolled_pow: **no case**
 - L0546 hand_rolled_gcd: **no case**
+- L0547 loop_argmax: **no case**
+- L0548 manual_mex: **no case**
+- L0549 copy_comprehension: **no case**
+- L0550 queue_head_index: **no case**
+- L0551 split_range_check: **no case**
+- L0552 contains_then_add: **no case**
 - L0601 Right side changes the place it assigns: 2 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
 - L0603 `.map` view read many times by index: 1 case(s)
@@ -817,7 +823,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 size_near_limit *(0.3)*: 1 case(s)
 
-8 of 108 testable codes have no negative case.
+14 of 114 testable codes have no negative case.
 
 ## Spec code blocks
 
