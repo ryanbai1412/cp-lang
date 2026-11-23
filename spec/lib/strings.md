@@ -453,7 +453,7 @@ multiple of `w`; its valid start range is determined by `lcs(q, q + w)` and
 // lcs and lcp give the exact interval of starts; difference arrays accumulate
 // squares starting and ending at each position.
 use std.strings.{RollingHash}
-use std.seq.{scan}
+use std.prefix.{scan}
 
 @!multitest
 let s: Str = read()
