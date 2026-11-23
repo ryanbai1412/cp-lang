@@ -19,13 +19,13 @@ for _ in 0..n:
 domain Size = 0..=n
 var choose: [Size, Size]Z = Z(0)  // Pascal's triangle
 for i in Size:
-    choose[i, Size.first] = Z(1)
+    choose[i, Size.first!] = Z(1)
     for j in ..=i:
         if let a = i - 1 and let b = j - 1: choose[i, j] = choose[a, b] + choose[a, j]
 
 // ways[p]: choices among the classes seen so far that make exactly p pairs
 var ways: [Pairs]Z = Z(0)
-ways[Pairs.first] = Z(1)
+ways[Pairs.first!] = Z(1)
 for (_, size) in class_size:
     var next: [Pairs]Z = Z(0)
     for p in Pairs:

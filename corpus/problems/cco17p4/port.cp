@@ -15,7 +15,7 @@ fn volumes(height: [Pillar]1..=50) -> List<Int>:
     let rising = height.sorted()
     let tall = [rising[n - 1 - i] for i in 0..n]
     var reach: [Volume]Bool = false
-    reach[Volume.first] = true
+    reach[Volume.first!] = true
     var most = 0  // largest reachable volume so far
     for i in 1..n:
         var next = reach  // level = own height: holds nothing

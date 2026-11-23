@@ -18,7 +18,7 @@ for _ in 0..(n - 1):
     tree_edges.push((u:, v:))
 
 let g = Graph<V, TE>.undirected([TE] e => tree_edges[e.idx])
-let tree = Rooted<V>(g, root: V.first)
+let tree = Rooted<V>(g, root: V.first!)
 
 var ans = 0
 for mask in Subset<V>:
@@ -30,7 +30,7 @@ for mask in Subset<V>:
             for c in tree.children(u):
                 ways *= sum(dp[c, v2] for v2 in mask if has_edge[v1, v2])
             dp[u, v1] = ways
-    let total = sum(dp[V.first, v] for v in mask)
+    let total = sum(dp[V.first!, v] for v in mask)
     if (n - popcount(mask.idx)) % 2 == 0: ans += total else: ans -= total
 
 print(ans)

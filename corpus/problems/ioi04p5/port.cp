@@ -24,7 +24,7 @@ fn most() -> Int:
     // Whole fields that add up to exactly q lose nothing; otherwise one cut loses one.
     domain Taken = 0..=q
     var reach = Bitset<Taken>.new()
-    reach.add(Taken.first)
+    reach.add(Taken.first!)
     for len in fields: reach.union(reach.shifted(len))
-    if reach.contains(Taken.last): q else: q - 1
+    if reach.contains(Taken.last!): q else: q - 1
 print(most())

@@ -23,7 +23,7 @@ for _ in 0..t:
     // heavy? Only where two ranges of a path meet are stamps compared.
     var stamp = AssignSum<tree.Pre>()
     var tied = AssignSum<tree.Pre>()
-    var who: [tree.Pre]V = V.first
+    var who: [tree.Pre]V = V.first!
     for v in V: who[tree.sub(v).l] = v
 
     for now in 1..=m:

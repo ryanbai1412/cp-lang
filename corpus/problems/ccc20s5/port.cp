@@ -6,7 +6,7 @@ let n: 1..=1000000 = read()
 domain Pos = 0..n
 let fav: [Pos]1..=500000 = read()
 
-let coach = fav[Pos.first]
+let coach = fav[Pos.first!]
 let josh = fav[Pos.last]
 if coach == josh:
     print(1.0, prec: 8)  // WISH P4

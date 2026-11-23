@@ -28,12 +28,12 @@ fn below(top: ?Op, x: Int) -> ?Op:
     for j in Lg.rev:
         if let v = up[j, u]:
             if level(v) >= x: u = v
-    up[Lg.first, u]
+    up[Lg.first!, u]
 
 for i in Op:
     if ops[i] < 0:
         let undone = below(i.prev, level(i))!
-        up[Lg.first, i] = below(undone.prev, level(i))
+        up[Lg.first!, i] = below(undone.prev, level(i))
         for j in Lg:
             let lower = j.prev else: continue
             let half = up[lower, i] else: break

@@ -36,7 +36,7 @@ for (_, ei) in sorted([(-edges[i].w, i) for i in 0..m]):
         root_of[dsu.find(edges[ei].u)] = k
 
 domain K = 0..kids.len
-let ktree = Rooted<K>(u => [K(c) for c in kids[u.idx]], root: K.last)
+let ktree = Rooted<K>(u => [K(c) for c in kids[u.idx]], root: K.last!)
 
 let (q, online, tmax): (Int, Int, Int) = read()
 var last_ans = 0

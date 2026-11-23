@@ -16,7 +16,7 @@ let whole = worth.sum()
 domain Open = 0..=n
 domain Lifted = 0..=2 * whole
 var reach = [Open] _ => Bitset<Lifted>.new()
-reach[Open.first].add(Lifted.first)
+reach[Open.first!].add(Lifted.first!)
 for w in worth.rev:
     var next = [Open] _ => Bitset<Lifted>.new()
     for open in Open:

@@ -49,7 +49,7 @@ fn crossings(blocks: List<(Int, Int)>) -> Int:
                 let here = run_of.get((x, y)) ?? 0
                 touch[Run(west)].push(Run(here))
                 touch[Run(here)].push(Run(west))
-    let tree = Rooted(touch, Run.first)
+    let tree = Rooted(touch, Run.first!)
     var under: [Run]Int = [Run] r => size[r.label]
     var total = 0
     for r in tree.at.rev:

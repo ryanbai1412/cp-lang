@@ -31,7 +31,7 @@ fn ways(total: [Window]0..=1e6) -> Z:
         if hi - lo > 1: return 0
         if hi == lo: free += 1
         elif lo == -1: forced_ones += 1
-    let need = total[Window.first] - forced_ones
+    let need = total[Window.first!] - forced_ones
     if need < 0 or need > free: return 0
     choose(free, need)
 

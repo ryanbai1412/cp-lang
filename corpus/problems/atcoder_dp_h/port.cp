@@ -7,9 +7,9 @@ domain Col = 1..=w
 let grid: [Row, Col]Char = read()
 
 var ways: [Row, Col]Z = 0
-ways[Row.first, Col.first] = 1
+ways[Row.first!, Col.first!] = 1
 for r in Row:
     for c in Col if grid[r, c] == '.':
         if let up = r - 1: ways[r, c] += ways[up, c]
         if let left = c - 1: ways[r, c] += ways[r, left]
-print(ways[Row.last, Col.last])
+print(ways[Row.last!, Col.last])

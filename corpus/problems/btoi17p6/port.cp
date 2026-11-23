@@ -24,4 +24,4 @@ var pick: [V]Pick = (1, 0)  // on its own, a node marks itself
 for k in Kid.rev:           // children are finished before parents
     let below = pick[V(k.label)]
     pick[parent[k]] = join(pick[parent[k]], (below.count, below.near + 1))
-print(pick[V.first].count)
+print(pick[V.first!].count)

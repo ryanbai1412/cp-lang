@@ -13,4 +13,4 @@ for i in I.rev:
         if j > i:
             need[j] = if s[i] == s[j]: inner[j.prev!] else: 1 + min(inner[j], need[j.prev!])
     inner = need
-print(inner[I.last])
+print(inner[I.last!])

@@ -16,4 +16,4 @@ for c in k:
     for x in 0..c - '0': next[own.cyc(x)] += 1
     below = next
     own = own.cyc(c - '0')
-print(below[Rem.first] - Int(own != Rem.first))  // K itself counts, zero does not
+print(below[Rem.first!] - Int(own != Rem.first))  // K itself counts, zero does not

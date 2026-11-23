@@ -52,7 +52,7 @@ let wolf = reach_tree(up, (a, v) => a < v)
 // both ends of every trip's human range
 domain Cut = 0..=n
 var asks: [Cut]List<(trip: Trip, sign: Int)> = [Cut] _ => []
-var wolf_range: [Trip]Range<wolf.Pre> = [Trip] _ => wolf.sub(V.first)
+var wolf_range: [Trip]Range<wolf.Pre> = [Trip] _ => wolf.sub(V.first!)
 for i in Trip:
     let trip = trips[i]
     let h = human.sub(human.lift_while(trip.s, c => c >= trip.l)!)

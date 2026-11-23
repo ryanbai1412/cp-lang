@@ -61,4 +61,4 @@ for u in tree.at.rev:
     let paid_from_parent = opt_add(cost[u], sum_any)
     need[u] = opt_min(done[u], opt_min(sum_done, paid_from_parent))
 
-print(opt_min(done[V.first], push[V.first])!)
+print(opt_min(done[V.first!], push[V.first])!)

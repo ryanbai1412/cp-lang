@@ -48,4 +48,4 @@ for l in Pos.rev:
         for i in l..r: total += wrap[l, i] * star_seq[i, r]
         seq[l, r] = total
 
-print(seq[Pos.first, Pos.last])
+print(seq[Pos.first!, Pos.last])

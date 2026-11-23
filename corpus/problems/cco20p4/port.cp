@@ -31,7 +31,7 @@ fn tour(colour: Bool) -> ?List<City>:
             if red[u, v] == colour and not seen[v]:
                 go(v)
                 walk.push(u)
-    go(City.first)
+    go(City.first!)
     // WISH C1: `if all(seen): walk else: none`; `all`, `any`, `count` are not in the prelude.
     if sum(1 for c in City if seen[c]) == n: walk else: None
 

@@ -10,10 +10,10 @@ fn near(x: X, y: Y) -> Int:
     let d: 0..=2e9 = ask("?", x, y)
     d
 
-let a = near(X.first, Y.first) + 2
-let b = near(X.last, Y.first) - n + 1
-let c = near(X.first, Y.last) - m + 1
-let d = n + m - near(X.last, Y.last)
+let a = near(X.first!, Y.first!) + 2
+let b = near(X.last!, Y.first!) - n + 1
+let c = near(X.first!, Y.last!) - m + 1
+let d = n + m - near(X.last!, Y.last!)
 
 var lower_pair = false
 let y = (a + b) / 2

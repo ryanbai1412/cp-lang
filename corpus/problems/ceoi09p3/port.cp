@@ -15,7 +15,7 @@ let (H, height) = compress(ys)  // H.first is height 0
 fn tallest(l: P, i: P) -> H:
     let w = pts[i].x - pts[l].x
     if w == 0:
-        return H.last
+        return H.last!
     height.last_le(area / w)!
 
 const INF = 1000000000
@@ -32,4 +32,4 @@ for l in P.rev:
                 dp[lo, hi, k] = dp[lo, r.l, k]
             else:
                 dp[lo, hi, k] = min(dp[lo, i.r, tallest(l, i)] + dp[i.r, hi, k] + 1 for i in l..=r)!
-print(dp[P.cuts.first, P.cuts.last, H.first])
+print(dp[P.cuts.first, P.cuts.last, H.first!])

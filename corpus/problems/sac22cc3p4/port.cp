@@ -10,7 +10,7 @@ fn random_tree() -> [E](u: V, v: V):
 
 let edges: [E](u: V, v: V) = read(gen: random_tree)
 let queries: [q](kind: 1..=2, u: V, v: V) = read()
-let tree = Rooted(Graph.undirected(edges), V.first)
+let tree = Rooted(Graph.undirected(edges), V.first!)
 
 // Backwards in time a cut is a join, so one Dsu answers "still connected?".
 var joined = Dsu<V>()

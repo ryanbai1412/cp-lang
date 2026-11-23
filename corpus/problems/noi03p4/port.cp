@@ -31,7 +31,7 @@ fn farthest(d: [Home]Int) -> Home:
 
 // a and b are the two ends of a diameter, and the third home is whoever is
 // farthest from the nearer of the two
-let a = farthest(dists(Home.first))
+let a = farthest(dists(Home.first!))
 let da = dists(a)
 let b = farthest(da)
 let db = dists(b)

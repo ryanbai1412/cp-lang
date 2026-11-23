@@ -5,7 +5,7 @@ let n: 1..=1e5 = read()
 domain V = 1..=n
 domain E = 1..n
 let edges: [E](u: V, v: V) = read()
-let tree = Rooted(Graph.undirected(edges), V.first)
+let tree = Rooted(Graph.undirected(edges), V.first!)
 
 // paintings of v's subtree with v white / black
 var white: [V]Z = 1
@@ -14,4 +14,4 @@ for v in tree.at.rev:
     if let p = tree.parent(v):
         white[p] *= white[v] + black[v]
         black[p] *= white[v]
-print(white[V.first] + black[V.first])
+print(white[V.first!] + black[V.first!])

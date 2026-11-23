@@ -7,7 +7,7 @@ domain V = 0..n
 let p: [V, V]0..=3 = read()
 
 // Towers with p == 1 form trees; hang each tree off its first tower as a star.
-var root: [V]V = V.first
+var root: [V]V = V.first!
 var roots: List<V> = []
 var placed: [V]Bool = false
 for i in V:
@@ -19,7 +19,7 @@ for i in V:
             root[j] = i
 
 // Trees whose roots have p == 2 sit on one cycle; ring[v] names that cycle.
-var ring: [V]V = V.first
+var ring: [V]V = V.first!
 var bridge: [V, V]Bool = false
 var ok = all(p[i, j] != 3 for i in V for j in V)
 var joined: [V]Bool = false

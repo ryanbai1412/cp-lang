@@ -45,7 +45,7 @@ fn drop(i: S):
     else:
         cover.apply(s.a..=s.b, -1)
 
-var first_fit: [S]S = S.first
+var first_fit: [S]S = S.first!
 var l = S.first
 for r in S:
     while not fits(r):

@@ -10,7 +10,7 @@ domain Small = 0..=base
 
 var v: List<Int> = [0]
 for i in 1..k:
-    v.push(a[K(i + 1)] + (i - 1) * a[K.first])
+    v.push(a[K(i + 1)] + (i - 1) * a[K.first!])
 
 var sm: [Small]?Int = [Small] _ => None
 sm[Small(0)] = 0
@@ -38,4 +38,4 @@ fn dp(x: Int) -> Int:
     cache[x] = best!
     best!
 
-print(dp(n - 2) + 2 * a[K.first])
+print(dp(n - 2) + 2 * a[K.first!])

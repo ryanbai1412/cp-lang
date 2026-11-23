@@ -27,7 +27,7 @@ for target in Node:
                 dist[target, v] = dist[target, u] + 1
                 q.push(v)
 
-var step: [Node, Node]Node = Node.first
+var step: [Node, Node]Node = Node.first!
 for cat in Node:
     for mouse in Node if cat != mouse:                                        // WISH P9
         step[cat, mouse] = min_by(g.out(cat), v => (dist[mouse, v], v)).item  // WISH P13

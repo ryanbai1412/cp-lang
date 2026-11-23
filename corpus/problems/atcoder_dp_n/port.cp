@@ -10,4 +10,4 @@ let pre = prefix(a)
 fn cost(l: I, r: I) -> Int:
     if l == r: return 0
     min(cost(l, m) + cost(m.next!, r) for m in l..r)! + pre.sum(l..=r)
-print(cost(I.first, I.last))
+print(cost(I.first!, I.last!))

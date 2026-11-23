@@ -27,9 +27,9 @@ fn flow(r: R, c: C):
             flow(r2, c2)
             lo[r, c] min= lo[r2, c2]
             hi[r, c] max= hi[r2, c2]
-for c in C: flow(R.first, c)
+for c in C: flow(R.first!, c)
 
-let dry = count(not seen[R.last, c] for c in C)
+let dry = count(not seen[R.last!, c] for c in C)
 if dry > 0:
     print(0)
     print(dry)
@@ -40,7 +40,7 @@ else:
     while covered < m:
         var far = covered
         for c in C:
-            if lo[R.first, c] <= covered: far max= hi[R.first, c] + 1
+            if lo[R.first!, c] <= covered: far max= hi[R.first!, c] + 1
         covered = far
         stations += 1
     print(1)

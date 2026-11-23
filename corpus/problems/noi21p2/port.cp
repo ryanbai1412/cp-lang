@@ -42,7 +42,7 @@ for _ in 0..t:
     domain Gap = 0..k - 1
     let size: [Layer]Int = read()  // 1..=200 vertices in each layer
     let edges: [Gap]Int = read()
-    var paths: Mat = [[Z(Int(i == j)) for j in 0..size[Layer.first]] for i in 0..size[Layer.first]]
+    var paths: Mat = [[Z(Int(i == j)) for j in 0..size[Layer.first!]] for i in 0..size[Layer.first!]]
     for g in Gap:
         var step = [
             [Z.zero for _ in 0..size[Layer(g.to_idx + 1)]] for _ in 0..size[Layer(g.to_idx)]

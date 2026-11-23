@@ -40,7 +40,7 @@ fn most(score: [Spot]1..=1e9) -> Int:
             tailed[Cut(j)] = run_tailed
             tail max= score[Spot(j)]
         lo = hi
-    best[Cut.last]
+    best[Cut.last!]
 
 // Direct DP on (days, total): fewest days first, then the largest total.
 @brute(most)
@@ -60,6 +60,6 @@ fn most_quadratic(score: [Spot]1..=1e9) -> Int:
                 t = cand_t
         days[Cut(i)] = d
         total[Cut(i)] = t
-    total[Cut.last]
+    total[Cut.last!]
 
 print(most(score))

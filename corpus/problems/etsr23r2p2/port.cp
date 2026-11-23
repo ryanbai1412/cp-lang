@@ -61,6 +61,6 @@ for _ in 0..tcs:
                         if cur == None or cand < cur!:
                             dp2[l][r][nv] = cand
 
-    let ans = dp2[Pos.first][Pos.last][Val(target)]
+    let ans = dp2[Pos.first!][Pos.last!][Val(target)]
     if ans == None: print(-1)
     else: print(ans!)

@@ -11,7 +11,7 @@ for _ in 0..m:
     let r: Route = read()
     routes.push(r)
     max_t max= r.e
-routes.push((u: Station.first, v: Station.first, s: 0, e: 0))
+routes.push((u: Station.first!, v: Station.first!, s: 0, e: 0))
 let total_m = m + 1
 
 var root: [Station]?Int = None

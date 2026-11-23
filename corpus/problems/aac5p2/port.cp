@@ -25,7 +25,7 @@ fn unfold(first: Int) -> ?[I]Int:
     a
 
 for first in 1..=n:
-    if product[Gap.first] % first == 0:
+    if product[Gap.first!] % first == 0:
         if let a = unfold(first):
             print("!", a)
             break

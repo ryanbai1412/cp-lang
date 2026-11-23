@@ -15,7 +15,7 @@ var adj: [Town]List<Town> = []
 for (u, v, w) in roads:
     adj[u].push(v)
     adj[v].push(u)
-let tree = Rooted(adj, Town.first)
+let tree = Rooted(adj, Town.first!)
 var up: [Town]Int = 0  // length of the road to the parent
 for (u, v, w) in roads:
     up[if tree.parent(u) == v: u else: v] = w

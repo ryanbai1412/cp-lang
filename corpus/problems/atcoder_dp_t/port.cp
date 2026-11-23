@@ -13,7 +13,7 @@ let signs: [Gap]Char = read(gen: random_signs)
 // r of the others below it. A new value with r below it must follow a value
 // that had fewer than r below it ('<'), or at least r ('>').
 var ways: [Rank]Z = 0
-ways[Rank.first] = 1
+ways[Rank.first!] = 1
 for g in Gap:
     let placed = Rank(g.label)  // how many values are placed already
     var next: [Rank]Z = 0

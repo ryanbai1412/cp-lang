@@ -34,4 +34,4 @@ for u in P.rev:
             max(with_[h] + without[u], without[h] + with_[u]),
             without[h] + without[u],
         )
-print(max(with_[P.first], without[P.first]))
+print(max(with_[P.first!], without[P.first!]))

@@ -21,8 +21,8 @@ for _ in 0..n - 1:
 var kids: [V]List<V> = []
 var seen: [V]Bool = false
 var order: List<V> = []
-order.push(V.first)
-seen[V.first] = true
+order.push(V.first!)
+seen[V.first!] = true
 var head = 0
 while head < order.len:
     let u = order[head]
@@ -64,4 +64,4 @@ for at in (0..n).rev:
             for v in kids[u]: below += need[v, k]
             best min= below
         need[u, d + k] = best
-print(need[V.first, k])
+print(need[V.first!, k])

@@ -21,7 +21,7 @@ for i in 0..=n:
         var v = 0
         for c in s:
             if c != '-': v = (v * 10 + (c - '0')) % primes[t]
-        a[t, i] = if s[S.first] == '-': -v % primes[t] else: v
+        a[t, i] = if s[S.first!] == '-': -v % primes[t] else: v
 
 fn is_root(x: Int, t: Int) -> Bool:
     var y = 0

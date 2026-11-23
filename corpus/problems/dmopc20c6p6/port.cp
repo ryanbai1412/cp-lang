@@ -35,7 +35,7 @@ fn record_cap(u: Jug, val: Int):
     else:
         best_jug = u
 
-empty_jug(Jug.first)
+empty_jug(Jug.first!)
 var full_known: ?Jug = None
 var scan = 1
 

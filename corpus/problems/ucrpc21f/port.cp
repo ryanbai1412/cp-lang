@@ -17,7 +17,7 @@ fn adj4(p: Cell) -> List<Cell>:  // v2: p.adj4
     if let c = p.1 + 1: out.push((p.0, c))
     out
 
-let src: Cell = (Row.first, Col.first)
+let src: Cell = (Row.first!, Col.first!)
 var dist: [Row, Col]?Int = None
 var pq = MinHeap<(Int, Cell)>()
 dist[src] = 0
@@ -29,4 +29,4 @@ while let (d, p) = pq.pop():
         if dist[q] == None or nd < dist[q]!:
             dist[q] = nd
             pq.push((nd, q))
-print(dist[(Row.last, Col.last)]!)
+print(dist[(Row.last!, Col.last)]!)

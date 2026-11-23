@@ -54,7 +54,7 @@ fn near_half(parts: List<Int>) -> Int:
 // branch or end at the hub, which is each person with everyone behind them.
 // Moving the hub from v to its child c changes only those two terms.
 var chain: [V]Int = 0
-chain[V.first] = sum(a[v] * (below[v] - a[v]) for v in V)
+chain[V.first!] = sum(a[v] * (below[v] - a[v]) for v in V)
 for v in order:
     for c in kids[v]: chain[c] = chain[v] + a[c] * (everyone - below[c]) - a[v] * below[c]
 

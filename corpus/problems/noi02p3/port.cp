@@ -18,7 +18,7 @@ var adj: [Fruit]List<Fruit> = []
 for (a, b, _) in branches:
     adj[a].push(b)
     adj[b].push(a)
-let tree = Rooted(adj, Fruit.first)
+let tree = Rooted(adj, Fruit.first!)
 var up: [Fruit]Int = 0  // cost of the branch to the parent
 for (a, b, cost) in branches:
     up[if tree.parent(a) == b: a else: b] = cost
@@ -50,4 +50,4 @@ for c in tree.at.rev:  // children are complete before parents
                             ] min= above + below + join
         for w in Who:
             for x in 0..=n: cost[p, w, x] = merged[w, x]
-print(if heads - 1 + k > n: -1 else: cost[Fruit.first, big, k]!)
+print(if heads - 1 + k > n: -1 else: cost[Fruit.first!, big, k]!)

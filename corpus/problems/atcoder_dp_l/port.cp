@@ -13,4 +13,4 @@ let a: [I]1..=1e9 = read()
 fn lead(l: I, r: I) -> Int:
     if l >= r: return a[l]
     max(a[l] - lead(l + 1, r), a[r] - lead(l, r - 1))
-print(lead(I.first, I.last))
+print(lead(I.first!, I.last!))

@@ -14,7 +14,7 @@ domain Region = 1..=r
 var home: [V]Region = [V] _ => Region.first
 var boss: [V]?V = None
 let head: Region = read()
-home[V.first] = head
+home[V.first!] = head
 for v in V:
     if v == V.first: continue
     let (b, h): (V, Region) = read()

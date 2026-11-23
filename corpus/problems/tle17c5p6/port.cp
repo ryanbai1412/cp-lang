@@ -24,7 +24,7 @@ fn light(ones: Int) -> Bool:
     for w in Wire:
         if w.label <= n: value[w] = w.label <= ones
         else: value[w] = None
-    out(Wire.last)
+    out(Wire.last!)
 
 // If all off and all on differ, some input flips the light when it is the
 // only one between a block of ones and a block of zeros.

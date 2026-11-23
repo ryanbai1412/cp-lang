@@ -12,7 +12,7 @@ for s in Spot: free.push(s)
 var spots = n
 var waiting: List<Car> = []
 var head = 0
-var parked: [Car]Spot = Spot.first
+var parked: [Car]Spot = Spot.first!
 var revenue = 0
 for _ in 0..2 * m:
     let event: -m..=m = read()

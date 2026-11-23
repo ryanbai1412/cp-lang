@@ -13,7 +13,7 @@ for e in E:
     adj[edges[e].v].push((edges[e].u, 1 << e.idx))
 
 var label: [V]?Int = None
-label[V.first] = 0
+label[V.first!] = 0
 var todo = [V.first]
 while let u = todo.pop():
     for (v, bit) in adj[u]:

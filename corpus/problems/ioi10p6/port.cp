@@ -21,7 +21,7 @@ for c in tree.at.rev:
 // With the arena at c, the roads into c carry each child's subtree, and
 // everyone outside c's subtree.
 fn busiest(c: City) -> Int:
-    var worst = below[City.first] - below[c]
+    var worst = below[City.first!] - below[c]
     for k in tree.children(c): worst max= below[k]
     worst
 

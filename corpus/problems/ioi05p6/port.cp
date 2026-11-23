@@ -57,4 +57,4 @@ fn cost(v: Village, mill: Site) -> Row:
     let milled = spread(kids[v], v)
     [Mills] j => if j == Mills.first: haul + open[j] else: min(haul + open[j], milled[j.prev!])
 
-print(spread(kids[Site.bottom], Site.bottom)[Mills.last])
+print(spread(kids[Site.bottom], Site.bottom)[Mills.last!])

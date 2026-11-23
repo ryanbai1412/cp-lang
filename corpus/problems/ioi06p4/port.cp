@@ -12,7 +12,7 @@ for (a, b) in deals:
     trade[a, b] = true
     trade[b, a] = true
 
-fn cw(c: City) -> City: (c + 1) ?? City.first
+fn cw(c: City) -> City: (c + 1) ?? City.first!
 fn ccw(c: City) -> City: (c - 1) ?? City.last
 
 // A route that never crosses itself always covers an arc of the circle, and

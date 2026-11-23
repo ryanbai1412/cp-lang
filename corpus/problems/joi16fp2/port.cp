@@ -18,8 +18,8 @@ fn random_stops() -> [E]1..=stations:
     var at: [E]1..=stations = 1
     for e in E: at[e] = rand(1, stations)
     at.sort()
-    at[E.first] = 1
-    at[E.last] = stations
+    at[E.first!] = 1
+    at[E.last!] = stations
     at
 let express: [E]1..=stations = read(gen: random_stops)  // Between two express stops, a stop serves the stations from itself up to
 assert all(express[e] < express[f] for e in E if let f = e + 1)

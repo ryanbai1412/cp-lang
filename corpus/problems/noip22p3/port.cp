@@ -24,7 +24,7 @@ let land = Graph.undirected(roads)
 // In a depth-first tree every other road joins a city to one of its
 // ancestors. low[v]: the earliest city such a road reaches from v's subtree.
 // The road above v is a bridge when nothing reaches past v.
-let tree = Rooted(land, City.first)
+let tree = Rooted(land, City.first!)
 var low: [City]Int = [City] v => tree.pos(v)
 for v in tree.at.rev:
     for w in land[v]:

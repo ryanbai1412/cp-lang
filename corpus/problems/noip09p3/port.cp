@@ -30,8 +30,8 @@ fn spread(adj: [City]List<City>, from: City, pick: (Int, Int) -> Int) -> [City]?
                 queue.push(v)
     best
 
-let cheapest = spread(fwd, City.first, min)
-let dearest = spread(back, City.last, max)
+let cheapest = spread(fwd, City.first!, min)
+let dearest = spread(back, City.last!, max)
 var profit = 0
 for c in City: profit max= dearest[c] - cheapest[c]
 print(profit)

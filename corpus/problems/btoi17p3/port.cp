@@ -4,7 +4,7 @@ let (n, m, k): (2..=1e5, 1..=5e4, 1..=5e4) = read()
 domain City = 1..=n
 domain Track = 1..n
 let tracks: [Track](u: City, v: City) = read()
-let tree = Rooted(Graph.undirected(tracks), City.first)
+let tree = Rooted(Graph.undirected(tracks), City.first!)
 
 // Walking a plan's cities in preorder and back to the start crosses every
 // wanted track exactly twice. Mark the start of each leg and cancel at its
