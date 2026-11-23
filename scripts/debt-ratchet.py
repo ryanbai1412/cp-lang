@@ -253,6 +253,14 @@ def lint_std_names(root: Path) -> list[str]:
             if name in public]
 
 
+def lint_type_syntax(root: Path) -> list[str]:
+    """Lint rules reading a written type (`TypeKind::`) to decide what a value is, where
+    the checker's facts know it (handbook/guidelines/lints-checklist.md, lints/R4)."""
+    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False)
+            if not p.name.endswith("_tests.rs")
+            for i, line in enumerate(_lines(p), 1) if "TypeKind::" in line]
+
+
 def backend_std_names(root: Path) -> list[str]:
     subdirs = [f"crates/{c}/src" for c in BACK_ENDS]
     return [f"{_rel(root, p)}:{i} {m.group(1)}" for p in _rs_files(root, *subdirs, tests=False)
@@ -827,6 +835,7 @@ COUNTERS = {
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
     "lint_std_names": ("std fn names string-matched in lint rules", lint_std_names, True),
+    "lint_type_syntax": ("lint rule lines reading a written type instead of checker facts", lint_type_syntax, True),
     "dup_fn_bodies": ("copied fn bodies across files", dup_fn_bodies, True),
     "near_dup_fns": ("near-identical fns across crates", near_dup_fns, True),
     "consumer_rederived": ("tool sites re-deriving checker facts", consumer_rederived, True),

@@ -50,7 +50,9 @@ a literal. A missing fact is asked of the compiler domain.
 Reason: a second type guesser drifts from the checker and the editor.
 Example: `float_equality` reads the checker's type of `d`, not the word
 `sqrt` in its initializer.
-Enforced by: the `consumer_rederived` ratchet in `scripts/debt-ratchet.py`.
+Enforced by: the `lint_type_syntax` and `consumer_rederived` ratchets in
+`scripts/debt-ratchet.py`; the first names each rule line that reads a
+written type.
 
 ### R5: Match what a name resolves to
 
