@@ -7,12 +7,18 @@ use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind
 impl Checker<'_> {
     /// `s.reverse()` on a `let`: the reversed view needs no `var`.
     pub(super) fn reverse_view_help(&mut self, name: &str, base: &Expr) {
-        let rev = format!("{}.rev", self.text(base.span));
+        let copy = match name {
+            "reverse" => format!("read it reversed with `{}.rev`", self.text(base.span)),
+            "sort" => format!(
+                "take a sorted copy with `{}.sorted()`",
+                self.text(base.span)
+            ),
+            _ => return,
+        };
         let codes = [codes::MUT_OF_IMMUTABLE, codes::ASSIGN_TO_LET];
-        let last = self.sink.last_mut();
-        if let Some(d) = last.filter(|d| name == "reverse" && codes.contains(&d.code)) {
+        if let Some(d) = self.sink.last_mut().filter(|d| codes.contains(&d.code)) {
             let help = d.help.take().unwrap_or_default();
-            d.help = Some(format!("{help}, or read it reversed with `{rev}`"));
+            d.help = Some(format!("{help}, or {copy}"));
         }
     }
 

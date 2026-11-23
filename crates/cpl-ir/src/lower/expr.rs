@@ -1857,7 +1857,7 @@ impl<'a> Lowerer<'a> {
     /// A value to print. Everything prints except nothing.
     pub(super) fn fmt_arg(&mut self, value: Expr, digits: u32, span: Span) -> Option<FmtArg> {
         if value.ty == Ty::Unit {
-            self.error(codes::TYPE_MISMATCH, span, "this has no value to print");
+            self.no_value_to_print(span);
             return None;
         }
         // `with io(base: 1)`: a counted domain's first position prints as `1`.

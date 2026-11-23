@@ -1,0 +1,10 @@
+error[E0403]: `xs` is a `let`, so it can't be changed in place (needs `mut`)
+  --> let_sort_in_place.cp:2:7
+  |
+1 | let xs = [2, 1]
+  |     -- declared here
+2 | print(xs.sort())
+  |       ^^
+  = help: declare it with `var xs` to change it, or take a sorted copy with `xs.sorted()`
+
+let_sort_in_place.cp: 1 error

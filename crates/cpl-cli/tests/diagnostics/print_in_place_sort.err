@@ -1,0 +1,8 @@
+error[E0302]: this has no value to print
+  --> print_in_place_sort.cp:2:7
+  |
+2 | print(xs.sort())
+  |       ^^^^^^^^^
+  = help: `xs.sort()` changes it in place and gives nothing back; `xs.sorted()` gives the result
+
+print_in_place_sort.cp: 1 error

@@ -306,6 +306,23 @@ impl<'a> Lowerer<'a> {
     }
 
     /// Python's `sorted(xs, reverse=True)`: CP Lang's sort says `desc: true`.
+    /// `print(xs.sort())`: an in-place change gives nothing to print; its
+    /// copying form does.
+    pub(super) fn no_value_to_print(&mut self, span: Span) {
+        self.error(codes::TYPE_MISMATCH, span, "this has no value to print");
+        let text = self.source(span);
+        let copy = [(".sort()", ".sorted()"), (".reverse()", ".rev")]
+            .into_iter()
+            .find_map(|(old, new)| Some(format!("{}{new}", text.strip_suffix(old)?)));
+        let edit = self.span(span);
+        if let (Some(last), Some(copy)) = (self.diags.last_mut(), copy) {
+            last.help = Some(format!(
+                "`{text}` changes it in place and gives nothing back; `{copy}` gives the result"
+            ));
+            last.fix(format!("write `{copy}`"), edit, copy);
+        }
+    }
+
     /// `xs.sort(x => -x)` or `reverse: true`: the key goes by name, and
     /// largest first is `desc: true`.
     pub(super) fn sort_reverse_arg(&mut self, args: &[ast::Arg]) -> bool {

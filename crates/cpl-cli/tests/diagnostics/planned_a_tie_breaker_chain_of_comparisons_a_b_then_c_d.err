@@ -5,7 +5,7 @@ error[E0403]: `a` is a `let`, so it can't be changed in place (needs `mut`)
   |     - declared here
 2 | print(a.sort(cmp: (u, v) => u <=> v then v <=> u))
   |       ^
-  = help: declare it with `var a` to change it
+  = help: declare it with `var a` to change it, or take a sorted copy with `a.sorted()`
 
 error[E0504]: not implemented yet: a tie-breaker chain of comparisons, `a <=> b then c <=> d` (not in the design)
   --> planned_a_tie_breaker_chain_of_comparisons_a_b_then_c_d.cp:2:37
