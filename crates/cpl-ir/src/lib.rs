@@ -1002,7 +1002,8 @@ pub enum Stmt {
     Assert {
         cond: Expr,
         message: Option<Expr>,
-        /// The condition as written, and its line, for the report.
+        /// The condition as written, and its line, for the report; empty
+        /// for a trap the language states (see [`assert_head`]).
         text: String,
         line: u32,
         /// Where in a library the assert is written, when the user's
@@ -1025,6 +1026,15 @@ pub enum Stmt {
     },
     /// Control can't get here in a correct program.
     Trap(String, Span),
+}
+
+/// What a [`Stmt::Assert`] report says before its message: nothing when
+/// `text` is empty, a trap the language states, reported as its message.
+pub fn assert_head(text: &str) -> String {
+    match text {
+        "" => String::new(),
+        _ => format!("assertion failed: {text}"),
+    }
 }
 
 impl Stmt {

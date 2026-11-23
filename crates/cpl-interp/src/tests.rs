@@ -117,6 +117,12 @@ fn unwrapping_none_stops_the_program() {
 }
 
 #[test]
+fn unwrapping_cells_names_the_first_gap() {
+    let src = "domain V = 1..=4\nvar depth: [V]?Int = None\nfor v in V: if v != V(3): depth[v] = 1\nlet depth = depth!\nprint(depth[V(1)])\n";
+    assert_eq!(failure(src, ""), "`!` on `None`: depth[3] is None @ depth!");
+}
+
+#[test]
 fn input_is_held_to_what_the_program_declares() {
     assert!(failure("let x: 1..=5 = read()\nprint(x)\n", "9")
         .starts_with("9 is outside `1..=5` (input line 1, column 1)"));

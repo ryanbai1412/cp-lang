@@ -26,6 +26,8 @@ impl<'a> Lowerer<'a> {
         };
         let inside = *inside;
         let at = self.span(span);
+        let source = self.source(span);
+        let name = source.trim_end().trim_end_matches('!').to_string();
         let mut stmts = Vec::new();
         let value = if list {
             let ty = Ty::Array {
@@ -75,8 +77,17 @@ impl<'a> Lowerer<'a> {
         let id = self.next_loop;
         self.next_loop += 1;
         let i = self.local(slot, span);
+        let key = match dim {
+            Dim::IntFrom(first) => self.int_add(i.clone(), first),
+            _ => i.clone(),
+        };
         let cell = self.mk(ExprKind::Index(Box::new(src), vec![i.clone()]), cell, span);
-        let got = self.mk(ExprKind::Unwrap(Box::new(cell), true), inside.clone(), span);
+        let gap = self.gap(cell.clone(), &name, key, span);
+        let got = self.mk(
+            ExprKind::Unwrap(Box::new(cell), false),
+            inside.clone(),
+            span,
+        );
         let place = Place {
             kind: PlaceKind::Index(
                 Box::new(Place {
@@ -105,7 +116,7 @@ impl<'a> Lowerer<'a> {
             slot,
             iter,
             Block {
-                stmts: vec![Stmt::Assign(place, AssignOp::Set, got)],
+                stmts: vec![gap, Stmt::Assign(place, AssignOp::Set, got)],
             },
         ));
         stmts.push(Stmt::Give(self.local(acc, span)));
@@ -119,5 +130,27 @@ impl<'a> Lowerer<'a> {
             ty,
             span,
         )
+    }
+
+    /// The trap at the first `None` cell, naming it: "`!` on `None`: at[2] is None".
+    fn gap(&mut self, cell: Expr, name: &str, key: Expr, span: Span) -> Stmt {
+        let some = self.mk(ExprKind::IsSome(Box::new(cell)), Ty::Bool, span);
+        let mut pieces = vec![FmtPiece::Text(
+            format!("`!` on `None`: {name}[").into_bytes(),
+        )];
+        pieces.extend(
+            self.fmt_arg(key, crate::FLOAT_DIGITS, span)
+                .map(FmtPiece::Value),
+        );
+        pieces.push(FmtPiece::Text(b"] is None".to_vec()));
+        Stmt::Assert {
+            cond: some,
+            message: Some(self.mk(ExprKind::Format(pieces), Ty::Str, span)),
+            text: String::new(),
+            line: self.line(span),
+            note: None,
+            span: self.span(span),
+            kept: true,
+        }
     }
 }

@@ -1597,15 +1597,21 @@ impl<'p> Emitter<'p> {
             } => {
                 self.need("fail");
                 let cond = self.expr(cond).text;
-                let report = format!("assertion failed: {text} (line {line})");
+                let report = match text.as_str() {
+                    "" => String::new(),
+                    _ => format!("{} (line {line}): ", cpl_ir::assert_head(text)),
+                };
                 let note = note
                     .as_ref()
                     .map_or(String::new(), |n| format!("\nnote: {n}"));
                 let why = match message {
-                    None => string_literal(format!("{report}{note}").as_bytes()),
+                    None => string_literal(
+                        format!("{}{note}", report.strip_suffix(": ").unwrap_or(&report))
+                            .as_bytes(),
+                    ),
                     Some(message) => {
                         let message = self.expr(message).text;
-                        let report = string_literal(format!("{report}: ").as_bytes());
+                        let report = string_literal(report.as_bytes());
                         let note = string_literal(note.as_bytes());
                         format!("(std::string({report}) + {message} + {note}).c_str()")
                     }

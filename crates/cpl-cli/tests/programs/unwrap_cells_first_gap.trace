@@ -1,0 +1,15 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"depth":{"name":"depth","type":"[V]?Int","kind":"array","labels":[1,2,3,4,5]}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"let n = read\u003c1..=5>()","stage":"main","values":{"stdout":[],"n":5},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":5,"label":"var depth: [V]?Int = None","stage":"main","values":{"stdout":[],"n":5,"depth":[null,null,null,null,null]},"locals":{},"frames":[{"fn":"main","line":5}]},
+{"id":2,"line":6,"label":"for v in V: if Int(v) != 3: depth[v] = Int(v) * 2","stage":"main","values":{"stdout":[],"n":5,"depth":[2,null,null,null,null]},"locals":{"v":1},"frames":[{"fn":"main","line":6}],"focus":{"variable":"depth","path":[0]}},
+{"id":3,"line":6,"label":"for v in V: if Int(v) != 3: depth[v] = Int(v) * 2","stage":"main","values":{"stdout":[],"n":5,"depth":[2,4,null,null,null]},"locals":{"v":2},"frames":[{"fn":"main","line":6}],"focus":{"variable":"depth","path":[1]}},
+{"id":4,"line":6,"label":"for v in V: if Int(v) != 3: depth[v] = Int(v) * 2","stage":"main","values":{"stdout":[],"n":5,"depth":[2,4,null,8,null]},"locals":{"v":4},"frames":[{"fn":"main","line":6}],"focus":{"variable":"depth","path":[3]}},
+{"id":5,"line":6,"label":"for v in V: if Int(v) != 3: depth[v] = Int(v) * 2","stage":"main","values":{"stdout":[],"n":5,"depth":[2,4,null,8,10]},"locals":{"v":5},"frames":[{"fn":"main","line":6}],"focus":{"variable":"depth","path":[4]}},
+{"id":6,"line":7,"label":"print → filled","stage":"main","values":{"stdout":["filled"],"n":5,"depth":[2,4,null,8,10]},"locals":{"v":5},"checkpoint":"print 1","frames":[{"fn":"main","line":7}]},
+{"id":7,"line":8,"label":"failed: `!` on `None`: depth[3] is None","stage":"main","values":{"stdout":["filled"],"n":5,"depth":[2,4,null,8,10]},"locals":{"v":5},"frames":[{"fn":"main","line":8}]}]}}}
+stderr:
+error[R0301]: `!` on `None`: depth[3] is None
+  --> unwrap_cells_first_gap.cp:8:13
+  |
+8 | let depth = depth!
+  |             ^^^^^^
+  = help: `x!` needs a value: to handle `None`, write `if let Some(v) = x:`, in a loop `while let Some(v) = x and v > k:`, or `x ?? fallback`

@@ -1000,10 +1000,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 ..
             } => {
                 if !self.eval(cond)?.bool() {
-                    let mut report = format!("assertion failed: {text}");
+                    let mut report = cpl_ir::assert_head(text);
                     if let Some(message) = message {
                         if let Value::Str(bytes) = self.eval(message)? {
-                            report.push_str(": ");
+                            report.push_str(if text.is_empty() { "" } else { ": " });
                             report.extend(bytes.iter().map(|b| *b as char));
                         }
                     }
