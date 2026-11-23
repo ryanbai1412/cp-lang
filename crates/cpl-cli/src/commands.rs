@@ -170,6 +170,13 @@ pub(crate) const COMMANDS: &[Command] = &[
         options: None,
     },
     Command {
+        name: "locate",
+        args: "<file> [input]",
+        summary: &["the first part whose `@alt` disagrees on an input"],
+        json: Json::Flag,
+        options: None,
+    },
+    Command {
         name: "bench",
         args: "<problem>",
         summary: &["run on maximum-size worst-case inputs against the limits"],
@@ -326,6 +333,7 @@ pub(crate) fn command_usage(command: &str) -> Option<&'static str> {
         "migrate" => crate::migrate::USAGE,
         "run" => RUN_USAGE,
         "build" => BUILD_USAGE,
+        "locate" => cpl_stress::locate::USAGE,
         "judge" => JUDGE_USAGE,
         "submit" => SUBMIT_USAGE,
         "judges" => JUDGES_USAGE,

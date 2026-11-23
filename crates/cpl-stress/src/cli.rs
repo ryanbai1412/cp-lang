@@ -210,6 +210,24 @@ pub fn solution(file: &Path, fast: Option<&Path>) -> Result<Program, String> {
 /// where they were, so `debug(...)` lines still pair up. `None` when the
 /// file pairs no fn with a brute.
 pub(crate) fn swap_in_part_brutes(src: &str) -> Option<String> {
+    swap_in_part_brutes_of(src, None)
+}
+
+/// Each `(part, alt)` the file pairs, `@alt(part) fn alt`, in file order.
+pub(crate) fn part_alts(src: &str) -> Vec<(String, String)> {
+    pairs(src)
+        .into_iter()
+        .map(|(_, alt, part)| {
+            (
+                part.to_string(),
+                src[alt.start as usize..alt.end as usize].to_string(),
+            )
+        })
+        .collect()
+}
+
+/// The spans of each part pair's decorator and alt fn name, and the part.
+fn pairs(src: &str) -> Vec<(Span, Span, &str)> {
     let parsed = cpl_syntax::parse_file(src);
     let mut fns: HashMap<&str, Span> = HashMap::new();
     let mut pairs = Vec::new();
@@ -227,10 +245,12 @@ pub(crate) fn swap_in_part_brutes(src: &str) -> Option<String> {
                 if let Some(arg) = decorator.args.first().filter(|a| a.name.is_none()) {
                     if let cpl_syntax::ast::ExprKind::Name(part) = &arg.value.kind {
                         if part != "main" && part != "program" {
+                            let part =
+                                &src[arg.value.span.shift(*base).start as usize..][..part.len()];
                             pairs.push((
                                 decorator.span.shift(*base),
                                 decl.name.span.shift(*base),
-                                part.as_str(),
+                                part,
                             ));
                         }
                     }
@@ -238,6 +258,26 @@ pub(crate) fn swap_in_part_brutes(src: &str) -> Option<String> {
             }
         }
     }
+    pairs.retain(|(_, _, part)| fns.contains_key(part));
+    pairs
+}
+
+/// [`swap_in_part_brutes`], swapping only `only`'s alt where it is given.
+pub(crate) fn swap_in_part_brutes_of(src: &str, only: Option<&str>) -> Option<String> {
+    let mut fns: HashMap<&str, Span> = HashMap::new();
+    for (base, item) in &cpl_syntax::parse_file(src).items {
+        for stmt in &item.stmts {
+            if let cpl_syntax::ast::StmtKind::Fn(decl) = &stmt.kind {
+                fns.insert(
+                    &src[decl.name.span.shift(*base).start as usize..][..decl.name.text.len()],
+                    decl.name.span.shift(*base),
+                );
+            }
+        }
+    }
+    let pairs = pairs(src)
+        .into_iter()
+        .filter(|(_, _, part)| only.is_none_or(|only| only == *part));
     let tokens = cpl_syntax::lex(src).tokens;
     let mut edits: Vec<(Span, String)> = Vec::new();
     for (decorator, brute, part) in pairs {

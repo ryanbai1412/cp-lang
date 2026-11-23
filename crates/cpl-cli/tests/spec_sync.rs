@@ -5,7 +5,7 @@
 use std::collections::BTreeSet;
 
 /// In the spec, not in the binary.
-const SPEC_ONLY: &[&str] = &["locate"];
+const SPEC_ONLY: &[&str] = &[];
 /// In the binary, not in the spec.
 const CLI_ONLY: &[&str] = &[];
 

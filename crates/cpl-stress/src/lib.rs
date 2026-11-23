@@ -8,6 +8,7 @@ pub mod engine;
 pub mod explain;
 pub mod gen;
 pub mod judge;
+pub mod locate;
 pub mod program;
 pub mod rng;
 pub mod run;
