@@ -1,0 +1,8 @@
+error[E0302]: expected `Int`, found `()`
+  --> statement_for_value.cp:2:5
+  |
+2 |     print(1)
+  |     ^^^^^^^^
+  = help: `print(1)` gives no value: a fn's result is its last line, or a `return` with a value
+
+statement_for_value.cp: 1 error

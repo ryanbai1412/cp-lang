@@ -233,10 +233,23 @@ impl<'a> Lowerer<'a> {
     }
 
     /// A one-character string where a `Char` or a `Char` test is wanted:
-    /// `'a'`, or `c => c == 'a'`.
+    /// `'a'`, or `c => c == 'a'`; a statement where a value is wanted.
     pub(super) fn type_mismatch(&mut self, span: Span, want: &Ty, found: &Ty, message: String) {
         self.error(codes::TYPE_MISMATCH, span, message);
-        let Some(c) = cpl_check::char_literal(&self.source(span)) else {
+        let text = self.source(span);
+        if matches!(found, Ty::Unit) && !text.contains('\n') {
+            if let Some(last) = self
+                .diags
+                .last_mut()
+                .filter(|d| d.code == codes::TYPE_MISMATCH)
+            {
+                last.help = Some(format!(
+                    "`{text}` gives no value: a fn's result is its last line, or a `return` with a value"
+                ));
+            }
+            return;
+        }
+        let Some(c) = cpl_check::char_literal(&text) else {
             return;
         };
         let (new, help) = match (found, want) {
