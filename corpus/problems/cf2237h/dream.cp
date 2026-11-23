@@ -16,8 +16,8 @@ domain V = 1..=n
 domain Slime = 0..m
 domain Time = 1..=q + 2
 let never = Time.first!
-let start = (Time.first + 1)!
-let tree = Rooted(Graph.undirected(read<[n - 1](u: V, v: V)>()), V.first)
+let start = Time.first!.next!
+let tree = Rooted(Graph.undirected(read<[n - 1](u: V, v: V)>()), V.first!)
 let init: [Slime]V = read()
 
 // Partition of preorder positions by last-painted timestamp.
@@ -42,8 +42,8 @@ var cur = init[Slime.last!]
 var missing = 0
 var ans: List<Int> = []
 
-for t_now in (Time.first + 2)!..=Time.last:
-    let c = read<V>().cyc(missing)
+for t_now in Time.first!.next!.next!..=Time.last!:
+    let c = V.wrap(Int(read<V>()) + missing)
     var pieces: List<(t: Time, need: Int)> = []
     fn record(r: Range<tree.Pre>, t: Time):
         pieces.push((t: t, need: r.len))
