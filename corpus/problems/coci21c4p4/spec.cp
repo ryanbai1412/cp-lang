@@ -14,7 +14,7 @@ fn centres(limit: Int) -> List<V>:
         var near: ?Int = None
         for c in t.children(v):
             let sub = visit(c)
-            let w = t.up_arc(c)!.w
+            let w = t.w(c)
             near min= sub.near.map(d => d + w)
             if let f = sub.far:
                 if f + w > limit:
