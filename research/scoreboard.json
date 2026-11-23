@@ -1294,7 +1294,10 @@
         "widths/sub-traps-4.cp": "pass",
         "widths/sub-traps-5.cp": "pass",
         "widths/sub-wraps-when-unchecked.cp": "pass",
-        "core-05/view-assigned-into-typed-var.cp": "pass"
+        "core-05/view-assigned-into-typed-var.cp": "pass",
+        "core-07/view-of-a-temporary-used-in-its-statement.cp": "pass",
+        "core-07/view-of-a-temporary-copied-is-owned.cp": "pass",
+        "core-07/view-of-a-temporary-in-a-var.cp": "pass"
       },
       "causes": [
         {
@@ -1914,11 +1917,11 @@
         }
       ],
       "counts": {
-        "fail": 232,
-        "pass": 1060
+        "fail": 231,
+        "pass": 1064
       },
-      "passed": 1060,
-      "total": 1292
+      "passed": 1064,
+      "total": 1295
     },
     "corpus": {
       "cases": {
