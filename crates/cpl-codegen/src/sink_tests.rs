@@ -73,3 +73,16 @@ fn a_build_without_traps_sinks_a_consumer_that_divides() {
     let cpp = crate::emit_for(&program, "t.cp", None, &target);
     assert!(cpp.contains("cpl_sink_"), "{cpp}");
 }
+
+#[test]
+fn explain_names_a_sunk_reduction() {
+    let source = concat!(
+        "let n: 1..=1000 = read()\n",
+        "print(sum(i * j for i in 0..n for j in i..n if (i + j) % 3 == 0))\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let report = crate::explain::report("t.cp", source, &program);
+    assert!(report.contains("[sunk] 2:7  sum(..)"), "{report}");
+}

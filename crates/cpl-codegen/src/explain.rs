@@ -5,6 +5,7 @@ use crate::{explain_closures, explain_dropped_fields, ClosureMode};
 use std::fmt::Write;
 
 const DROPPED: &str = "never read; it and its stores are left out";
+const SUNK: &str = "the list passed here is never built; its loop runs at each push";
 
 /// The report for `program`, lowered from `text`, naming the file `path`.
 pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
@@ -13,6 +14,13 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
     let entries = explain_closures(program);
     let dropped = explain_dropped_fields(program);
     let view_ops = explain_views(text, program);
+    let sunk = explain_sunk(text, program);
+    if !sunk.is_empty() {
+        let _ = writeln!(stdout, "Reductions sunk for {path} (judge build):");
+        for (line, col, call) in &sunk {
+            let _ = writeln!(stdout, "  [sunk] {line}:{col}  {call}(..) -> {SUNK}");
+        }
+    }
     if !dropped.is_empty() {
         let _ = writeln!(stdout, "Dropped fields for {path}:");
         for site in &dropped {
@@ -20,7 +28,7 @@ pub fn report(path: &str, text: &str, program: &cpl_ir::Program) -> String {
         }
     }
     if entries.is_empty() && view_ops.is_empty() {
-        if dropped.is_empty() {
+        if dropped.is_empty() && sunk.is_empty() {
             let _ = writeln!(stdout, "{path}: no closure or fn-typed sites");
         }
         not_shown_yet(stdout);
@@ -106,14 +114,33 @@ fn not_shown_yet(stdout: &mut String) {
     }
 }
 
+/// Each sunk call as its line, column and callee as the source writes it.
+fn explain_sunk(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, String)> {
+    let mut sunk: Vec<_> = crate::sink::explained(program)
+        .into_iter()
+        .filter_map(|span| {
+            let start = span.start as usize;
+            let call = text.get(start..span.end as usize)?;
+            let head = call.split('(').next()?.trim();
+            let (line, col) = line_col(text, span);
+            Some((line, col, head.to_string()))
+        })
+        .collect();
+    sunk.sort();
+    sunk.dedup();
+    sunk
+}
+
+fn line_col(text: &str, span: cpl_diag::Span) -> (usize, usize) {
+    let off = (span.start as usize).min(text.len());
+    let before = &text[..off];
+    let line = before.bytes().filter(|&b| b == b'\n').count() + 1;
+    let col = before.rfind('\n').map_or(off + 1, |i| off - i);
+    (line, col)
+}
+
 fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, String)> {
-    let line_col = |span: cpl_diag::Span| -> (usize, usize) {
-        let off = (span.start as usize).min(text.len());
-        let before = &text[..off];
-        let line = before.bytes().filter(|&b| b == b'\n').count() + 1;
-        let col = before.rfind('\n').map_or(off + 1, |i| off - i);
-        (line, col)
-    };
+    let line_col = |span| line_col(text, span);
     let mut ops: Vec<(usize, usize, String)> = Vec::new();
     let mut visit_expr = |e: &cpl_ir::Expr| {
         if let cpl_ir::ExprKind::MutSlice(..) = &e.kind {

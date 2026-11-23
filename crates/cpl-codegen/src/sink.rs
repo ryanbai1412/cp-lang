@@ -305,3 +305,33 @@ pub(crate) fn head(signature: &str, name: &str, param: &str) -> Option<String> {
         parts.join(", ")
     ))
 }
+
+/// For `cpl explain`: each call whose list built on the spot the judge
+/// build (`--checks none`) never builds.
+pub(crate) fn explained(program: &Program) -> Vec<cpl_diag::Span> {
+    let target = crate::Target {
+        checks: crate::Checks::None,
+        ..crate::Target::default()
+    };
+    let program = crate::prepared(program, &target);
+    let devirt = Devirt::collect(&program);
+    let found = sinks(&program, &devirt, false);
+    let mut spans = Vec::new();
+    let mut visit = |block| {
+        walk::deep_exprs(block, &mut |e: &Expr| {
+            if let ExprKind::Call(fid, args) = &e.kind {
+                if found
+                    .get(fid)
+                    .is_some_and(|&slot| sinkable_args(&program, &devirt, *fid, slot, args))
+                {
+                    spans.push(e.span);
+                }
+            }
+        });
+    };
+    program.fns.iter().for_each(|f| visit(&f.body));
+    program.closures.iter().for_each(|c| visit(&c.body));
+    visit(&program.setup);
+    visit(&program.main);
+    spans
+}
