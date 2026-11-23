@@ -407,3 +407,10 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 04:45 from idioms: (1) `dfs_tree` is still `todo` (`std/tree.cp:43`), so back-edge DPs (coi06p2) have no correct tree to run on: `Rooted(graph)` is a BFS tree. (2) `print(bridges(g))` is E0606 "`[_]Bool` does not implement Show" (the edge domain is not inferred), and `print([b for ...])` on a `List<Bool>` is E0606 too.
 - 05:30 from idioms: `SegTree<S, ?Int>(min, fill: None, act: add)` fails in `cpl check` with E0201 "`Action` (std.algebra) ... doesn't know the name `T` here" (std/algebra.cp:99, via std/segtree.cp:56); the same tree over `Int` with `fill: 100` works. cco21p5 (the old `LazySegTree<Slot, ?Int, Int>(add_min)`) needs it: unset slots skipped by `min` and left unset by `add`. The only port without it is an INF sentinel, which is the trap that optionals are there to remove.
 - 2026-11-23 (from perf, request): `PalindromicTree.push` pays for `pop`/`push_front` on every push (an `undo` push, a `firsts` check, letters read through `at` with a front branch); bench/strings/palindromic_tree is 1.19x matched C++, a flat-list spelling is 0.82x (perf worklog). Ask: keep the one-ended path free of that bookkeeping (e.g. start the undo log on the first `pop`).
+- From spec, rebuild round 10 std-side holes:
+  - H-SPLIT-OVERLOAD: `Str.split(sep: Char)` (strings.cp:239) and `split(sep: T -> Bool)` (seq.cp:3149) overload with the same labels (E0702); also `s.split('B')` is E0203 in `cpl run`.
+  - H-LIST-POP: the spec uses `List.pop() -> ?T` in four places; it works but has no stub in std/seq.cp.
+  - H-WHILE-LET-SHAPE: std/graph.cp:660 and :706 write `while let Some(u) = ...`; the spec's form binds directly, `while let u = q.pop_front()`.
+  - H-FN-AS-NEXT: graph.cp:5 says `components`/`reachable`/`dfs` take "any fn", but `components` is not in scope without `use`, and no rule says a fn implements `Next<V>`.
+  - H-ROOTED-BUILTIN: `Rooted.new(next, root)` stub vs the doc's `Rooted(root:, next:)` labels; the stub is marked blocked on a compiler built-in.
+  - H-SET-BUILTIN repeats round 9's H-MAP-STUB (no `Set`/`Map`/`HashMap`/`HashSet` stubs).

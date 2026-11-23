@@ -150,7 +150,7 @@ library or by this spec:
   (chapter 2).
 - `@droppable`: the result may be dropped without the unused-result
   lint. Dropping a non-unit result is that lint (a warning), and
-  `let _ = f()` drops it too; to drop one on purpose, write
+  `let _ = f()` is the same drop and gets the same lint; to drop one on purpose, write
   `with lint(discarded_result: allow)`. Dropping a `?T` is an error (see
   R02.4.7). (R06.4.8)
 

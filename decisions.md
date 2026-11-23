@@ -7547,7 +7547,7 @@ exhaustively, so a literal-union type would be a second spelling of the same
 idea and new core syntax for what an existing mechanism covers. R02.7.2 now
 says so; `core-02/token-set-is-an-enum.cp` pins it, and diagnostics should make
 E0309 on `"A" | "B"` suggest `enum D = A | B`. Reverse: add literal types to
-R02 and drop the sentence.
+R02 and drop the sentence. Reversed by 357.
 
 ## 356. A `range` view on a value with no home holds that value (stdlib, 2026-11-23)
 
@@ -7572,3 +7572,14 @@ parameter; user generic fns get it the same. Case
 `conformance/core-06/generic-fn-as-a-value.cp`. Reverse: drop the
 `Sym::GenFn` arm in `Lowerer::name_as_written`. `lower/mod.rs` +1 line
 (`--update rs_over_cap`).
+
+## 357. Reverse 356: literal unions stay; an enum is for tokens with a payload (2026-11-23)
+
+Rebuild round 10 (H-LITERAL-UNION) showed decision 356 contradicted decision
+135 and R02.2.2, which already make `'+' | '-'` and `"add" | "del"` scalar
+types that reads validate and `match` checks exhaustively. 356 was written
+from the compiler's E0309 without rereading R02.2. The rule now: tokens that
+carry nothing are a literal union; a token followed by a payload is an enum
+with `@tag`. The E0309 on `"DR" | "DL"` is a compiler gap
+(`core-02/literal-union-read.cp`), not a diagnostic to improve. Reverse:
+restore 356's sentence in R02.7.2.

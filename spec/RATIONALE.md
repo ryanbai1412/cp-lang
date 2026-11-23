@@ -20,14 +20,14 @@ Questions from site or any reader: add them to
 
 ## Values and types (`core/02-values-types.md`)
 
-- Decisions 1, 127, 128, 132, 134, 140, 157, 159, 356.
+- Decisions 1, 127, 128, 132, 134, 140, 157, 159, 357.
 - Lost: method overloading (127; a name has one meaning, so errors and
   completion stay exact). Custom destructuring (132; views are methods
   returning enums, so patterns stay core-only). Members that compute
   without `()` (140; parentheses mean work, so `g.transpose()` looks like
-  the \(O(n)\) it is). A union of string literals as a type (356; a
-  payload-free enum already reads each token by name, tables over it and
-  matches exhaustively).
+  the \(O(n)\) it is). An enum for every token set (357; tokens that
+  carry nothing read as a literal union, `"add" | "del"`; the enum is for a
+  token followed by its payload).
 
 ## Numbers, widths and layout (`core/03-numbers-layout.md`, "The model in one paragraph")
 
