@@ -81,6 +81,10 @@ test('ignores different implementation locals and honors explicit compare list',
 test('source names and path keys are not evaluated', () => {
   assert.equal(T.pathName('dp',[1,4]),'dp[1][4]');
   assert.equal(T.pathName('object',['a-b','x',0]),'object["a-b"].x[0]');
+  assert.equal(T.pathName('dist',[1],{labels:[1,2,3]}),'dist[2]');
+  assert.equal(T.pathName('g',[0,2],{rowLabels:[1,2],colLabels:[5,6,7]}),'g[1][7]');
+  assert.equal(T.pathName('best',[4],{labels:[1,2]}),'best[4]');
+  assert.equal(T.pathName('dp',[1,4],{rowLabels:['∅','w=2'],colLabels:[0,1,2,3,4]}),'dp[1][4]');
 });
 
 test('selecting a parent cell retains exact nested spec differences',()=>{

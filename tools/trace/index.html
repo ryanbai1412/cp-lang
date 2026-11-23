@@ -546,7 +546,14 @@ const TraceCore = (() => {
     const pairs = align(trace).map(pair => ({...pair, differences:compare(trace,pair)}));
     return {pairs, byFast:new Map(pairs.map(p => [p.fastIndex,p])), divergences:pairs.filter(p => p.differences.length)};
   }
-  function pathName(name, path) { return name + path.map(p => typeof p === "number" ? `[${p}]` : /^[a-zA-Z_]\w*$/.test(p) ? `.${p}` : `[${JSON.stringify(p)}]`).join(""); }
+  // A position is shown as the index the source wrote (`dist[2]` for a
+  // 1-based domain), from the variable's numeric labels when it has them.
+  function pathName(name, path, d) {
+    const axes = [d?.labels ?? d?.rowLabels, d?.colLabels];
+    let axis = 0;
+    const index = p => { const l = axes[axis++]?.[p]; return typeof l === "number" ? l : p; };
+    return name + path.map(p => typeof p === "number" ? `[${index(p)}]` : /^[a-zA-Z_]\w*$/.test(p) ? `.${p}` : `[${JSON.stringify(p)}]`).join("");
+  }
   const containsPath = (parent,child) => parent.length <= child.length && parent.every((p,i) => p === child[i]);
   function selectDifference(differences, variable, path) {
     const candidates = differences.filter(d => d.variable === variable);
@@ -608,7 +615,7 @@ const TraceCore = (() => {
     if (!first) return {state:"agree", title:"Fast and spec agree", detail:`All compared values match at ${analysis.pairs.length} shared checkpoints`};
     const d = first.differences[0];
     return {state:"diverge", title:`First divergence at step ${first.fastIndex + 1}`,
-      detail:`${pathName(trace.variables[d.variable].name, d.path)}: fast ${format(d.fast, d.fastPresent)} ≠ spec ${format(d.slow, d.slowPresent)} · checkpoint ${first.checkpoint}`,
+      detail:`${pathName(trace.variables[d.variable].name, d.path, trace.variables[d.variable])}: fast ${format(d.fast, d.fastPresent)} ≠ spec ${format(d.slow, d.slowPresent)} · checkpoint ${first.checkpoint}`,
       first, difference:d};
   }
   function keyAction(event) {
@@ -1058,7 +1065,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     if (selected !== null) {
       const a = T.valueAt(v.step.values, variable, selected), b = T.valueAt(v.slow?.values, variable, selected);
       const mismatch = v.ref.exact && v.differences.some(x => x.variable === variable && (T.containsPath(selected, x.path) || T.containsPath(x.path, selected)));
-      selection.replaceChildren(el("span", {class:"selection-path", text:T.pathName(d.name, selected)}),
+      selection.replaceChildren(el("span", {class:"selection-path", text:T.pathName(d.name, selected, d)}),
         el("span", {class:mismatch ? "bad" : null, text:`Fast ${T.format(a.value, a.present)}`}),
         comparing ? el("span", {class:"reference", text:v.slow ? `${v.ref.exact ? "Reference" : "Held reference (not compared)"} ${T.format(b.value, b.present)}` : "Reference not reached"}) : null);
     }
@@ -1101,7 +1108,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     return cls;
   }
   function tip(path, value, marks, cls) {
-    const name = T.pathName(nameOf(variable), path), lines = [`${name} = ${display(value)}`];
+    const name = T.pathName(nameOf(variable), path, trace.variables[variable]), lines = [`${name} = ${display(value)}`];
     if (cls.includes("mismatch") || cls.includes("expected")) {
       const other = T.valueAt(marks.other?.values, variable, path);
       lines.push(`${marks.isFast ? "spec" : "fast"} = ${T.format(other.value, other.present)}`);
@@ -1231,7 +1238,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     box.replaceChildren(el("ul", {class:"rows"}, el("li", {}, el("div", {class:"row head-row"}, el("span", {text:"Path"}), el("span", {text:"Fast"}), el("span", {text:"Spec"}))),
       list.slice(0, 200).map(d => el("li", {}, el("button", {class:"row", type:"button", "data-focus":`diff:${d.variable}:${key(d.path)}`, "aria-pressed":String(d.variable === variable && selected && key(selected) === key(d.path)),
         onclick:() => { variable = d.variable; selected = d.path; render(); }},
-        el("span", {text:T.pathName(nameOf(d.variable), d.path)}), el("span", {class:"bad", text:T.format(d.fast, d.fastPresent)}), el("span", {class:"exp", text:T.format(d.slow, d.slowPresent)}))))));
+        el("span", {text:T.pathName(nameOf(d.variable), d.path, trace.variables[d.variable])}), el("span", {class:"bad", text:T.format(d.fast, d.fastPresent)}), el("span", {class:"exp", text:T.format(d.slow, d.slowPresent)}))))));
     if (list.length > 200) box.append(el("p", {class:"lane-note", text:`Showing first 200 of ${list.length}; JSON contains full state`}));
   }
 
@@ -1242,7 +1249,7 @@ if (typeof module !== "undefined") module.exports = TraceCore;
     $("changes").replaceChildren(el("ul", {class:"rows"}, el("li", {}, el("div", {class:"row head-row"}, el("span", {text:"Path"}), el("span", {text:"Before"}), el("span", {text:"After"}))),
       list.slice(0, 200).map(c => el("li", {}, el("button", {class:"row", type:"button", "data-focus":`change:${c.variable}:${key(c.path)}`, "aria-pressed":String(c.variable === variable && selected && key(selected) === key(c.path)),
         onclick:() => { variable = c.variable; selected = c.path; render(); }},
-        el("span", {text:T.pathName(nameOf(c.variable), c.path)}), el("span", {class:"old", text:T.format(c.before, c.beforePresent)}), el("span", {text:T.format(c.after, c.afterPresent)}))))));
+        el("span", {text:T.pathName(nameOf(c.variable), c.path, trace.variables[c.variable])}), el("span", {class:"old", text:T.format(c.before, c.beforePresent)}), el("span", {text:T.format(c.after, c.afterPresent)}))))));
     if (list.length > 200) $("changes").append(el("p", {class:"lane-note", text:`Showing first 200 of ${list.length}; JSON contains full state`}));
   }
 
