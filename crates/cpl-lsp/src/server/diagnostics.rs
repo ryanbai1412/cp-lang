@@ -59,10 +59,14 @@ impl Server {
         let analysis = self.db.analyze(uri).expect("proven implies an analysis");
         // The same answer as `cpl check`: the checker's diagnostics, then
         // what lowering rejects; then, as `cpl lint` reports them, the lints.
+        let lints = lints(uri, &analysis);
+        // A lint on the same span (L0306) already says it, with a fix.
+        let mut notes = overflows(&facts);
+        notes.retain(|n| !lints.iter().any(|l| l.span == n.span));
         let items = cpl_ir::reported(&analysis)
             .iter()
-            .chain(&lints(uri, &analysis))
-            .chain(&overflows(&facts))
+            .chain(&lints)
+            .chain(&notes)
             .map(|d| diagnostic_json(d, uri, &analysis.text, &analysis.lines))
             .collect();
         publish(uri, items)
