@@ -13,7 +13,7 @@
 // fence prints something when run (with empty input if it has none), which is
 // what gives it a Run button.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -21,7 +21,20 @@ import { tmpdir } from 'node:os';
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
 const cpl = process.env.CPL ?? join(repo, 'target/release/cpl');
-if (!existsSync(cpl)) execFileSync('cargo', ['build', '--release', '-q', '-p', 'cpl-cli'], { cwd: repo, stdio: 'inherit' });
+// A cpl older than the compiler sources (or still being rebuilt) reports
+// false failures, so rebuild it first; cargo waits for a build in flight.
+function newest(dir) {
+  let t = 0;
+  for (const e of readdirSync(dir, { withFileTypes: true })) {
+    if (e.name === 'target' || e.name.startsWith('.')) continue;
+    const p = join(dir, e.name);
+    t = Math.max(t, e.isDirectory() ? newest(p) : /\.(rs|cp|toml)$/.test(e.name) ? statSync(p).mtimeMs : 0);
+  }
+  return t;
+}
+if (!process.env.CPL && (!existsSync(cpl) || newest(join(repo, 'crates')) > statSync(cpl).mtimeMs)) {
+  execFileSync('cargo', ['build', '--release', '-q', '-p', 'cpl-cli'], { cwd: repo, stdio: 'inherit' });
+}
 
 const rank = { fails: 0, spec: 1, checks: 2, runs: 3 };
 const snippets = [];
