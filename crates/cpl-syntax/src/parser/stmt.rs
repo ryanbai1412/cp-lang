@@ -1781,8 +1781,7 @@ impl<'a> Parser<'a> {
                 let span = Span::new(at.start - lead as u32, at.start);
                 diag = diag.with_fix("indent the next line", span, " ".repeat(indent + 4));
             }
-            let text = &self.src[abs(at.start)..abs(at.end)];
-            let simple = lead == indent && at.start != at.end && !text.ends_with(':');
+            let simple = lead == indent && at.start != at.end;
             if simple
                 && self.at(T::Newline)
                 && !matches!(self.peek_n(1), T::Indent | T::Dedent | T::Eof)

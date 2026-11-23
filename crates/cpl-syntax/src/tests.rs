@@ -791,6 +791,11 @@ fn a_header_without_a_body_is_one_error() {
     assert_eq!(codes("fn f(x: Int) -> Int:\n"), vec!["E0104"]);
     assert_eq!(codes("if a > b:"), vec!["E0104"]);
     assert_eq!(codes("while true:\n\nlet x = 1\n"), vec!["E0104"]);
+    // A nested header left unindented too stays inside the loop: one error,
+    // and its body still sees `x`.
+    let nested = "for x in a:\nif x > 10:\nprint(x)\n";
+    assert_eq!(codes(nested), vec!["E0104"]);
+    assert_eq!(parse_file(nested).items.len(), 1);
 }
 
 #[test]

@@ -105,5 +105,9 @@ fn body_left_unindented(tokens: &[Token], first: usize, newline: usize) -> bool 
             after.first().map(|t| t.kind),
             None | Some(T::Indent | T::Dedent | T::Eof | T::Newline)
         )
-        && line_end.is_some_and(|e| e > 0 && after[e - 1].kind != T::Colon)
+        && line_end.is_some_and(|e| {
+            e > 0
+                && (after[e - 1].kind != T::Colon
+                    || matches!(after[0].kind, T::For | T::While | T::If))
+        })
 }
