@@ -32,6 +32,10 @@ pub struct Divergence {
     pub blame: Vec<(u32, String)>,
     /// `name` is a call, `f(k: 1)`, and `nth` which call of `f` it is.
     pub call: bool,
+    /// The solution never finishes: `name` is the loop it goes round in,
+    /// `fast` that loop's line and the state it keeps coming back to, and
+    /// `nth` how many steps one time round takes.
+    pub stuck: bool,
 }
 
 /// The first value the solution gives one of the variables both runs
@@ -94,6 +98,7 @@ pub fn first_divergence(fast: &Recording, slow: &Recording) -> Option<Divergence
         inside: Vec::new(),
         blame: Vec::new(),
         call: false,
+        stuck: false,
     })
 }
 
@@ -263,6 +268,7 @@ pub fn printed_divergence(source: &str, fast: &Recording, slow: &Recording) -> O
         inside: Vec::new(),
         blame,
         call: false,
+        stuck: false,
     })
 }
 
@@ -299,4 +305,100 @@ pub fn mentions(text: &str, name: &str) -> bool {
     let word = |c: char| c.is_alphanumeric() || c == '_';
     text.match_indices(name)
         .any(|(at, _)| !text[..at].ends_with(word) && !text[at + name.len()..].starts_with(word))
+}
+
+/// Where a solution that never finishes goes round without getting
+/// anywhere: the first step whose line and every value repeat an earlier
+/// step's, the innermost loop around that cycle, and the assignments in it
+/// that leave their variable as they found it.
+pub fn stuck_divergence(source: &str, fast: &Recording) -> Option<Divergence> {
+    let lines: Vec<&str> = source.lines().collect();
+    let text_of = |line: u32| {
+        lines
+            .get((line as usize).wrapping_sub(1))
+            .copied()
+            .unwrap_or("")
+    };
+    let steps: Vec<_> = fast.steps(0..fast.len()).collect();
+    let mut states: Vec<HashMap<String, String>> = Vec::new();
+    let mut seen: HashMap<(u32, Vec<(String, String)>), usize> = HashMap::new();
+    let mut cycle = None;
+    for (at, step) in steps.iter().enumerate() {
+        let state = named_values(fast, step);
+        let mut key: Vec<_> = state.clone().into_iter().collect();
+        key.sort();
+        states.push(state);
+        if let Some(before) = seen.insert((step.line, key), at) {
+            cycle = Some((before, at));
+            break;
+        }
+    }
+    let (from, to) = cycle?;
+    let round: Vec<u32> = steps[from + 1..=to].iter().map(|step| step.line).collect();
+    let indent = |text: &str| text.len() - text.trim_start().len();
+    let is_loop = |line: u32| {
+        let text = text_of(line).trim_start();
+        text.starts_with("for ") || text.starts_with("while ")
+    };
+    let loops_around = |line: u32| -> Vec<u32> {
+        let mut out: Vec<u32> = Vec::new();
+        let mut own = indent(text_of(line));
+        if is_loop(line) {
+            out.push(line);
+        }
+        for l in (1..line).rev() {
+            let text = text_of(l);
+            if !text.trim().is_empty() && indent(text) < own {
+                own = indent(text);
+                if is_loop(l) {
+                    out.push(l);
+                }
+            }
+        }
+        out
+    };
+    let head = (loops_around(round[0]).into_iter())
+        .find(|head| round.iter().all(|&line| loops_around(line).contains(head)))?;
+    let state = &states[to];
+    let mut held: Vec<String> = (state.iter())
+        .filter(|(name, _)| *name != "stdout" && mentions(text_of(head), name))
+        .map(|(name, value)| format!("{name} = {value}"))
+        .collect();
+    held.sort();
+    let mut blame: Vec<(u32, String)> = Vec::new();
+    for at in from + 1..=to {
+        let line = steps[at].line;
+        let Some(name) = assigned_name(text_of(line)) else {
+            continue;
+        };
+        let (before, after) = (states[at - 1].get(name), states[at].get(name));
+        if let Some(value) = after.filter(|_| before == after) {
+            let why = format!("`{name}` is set to {value} here, the value it already had");
+            if !blame.iter().any(|(l, _)| *l == line) {
+                blame.push((line, why));
+            }
+        }
+    }
+    Some(Divergence {
+        name: text_of(head).trim().trim_end_matches(':').to_string(),
+        nth: to - from,
+        fast: Some((head, held.join(", "))),
+        brute: None,
+        inside: Vec::new(),
+        blame,
+        call: false,
+        stuck: true,
+    })
+}
+
+/// The variable a line of the form `name = ...` or `name += ...` sets.
+fn assigned_name(text: &str) -> Option<&str> {
+    let text = text.trim_start();
+    let end = text.find(|c: char| !(c.is_alphanumeric() || c == '_'))?;
+    let rest = text[end..].trim_start();
+    let op = rest.find('=')?;
+    let ops = &rest[..op];
+    let set = !rest[op + 1..].starts_with('=') && ops.chars().all(|c| "+-*/%&|^<>".contains(c));
+    (end > 0 && set && !matches!(&text[..end], "let" | "var" | "if" | "while" | "for"))
+        .then(|| &text[..end])
 }

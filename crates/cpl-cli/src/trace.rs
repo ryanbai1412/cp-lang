@@ -3,8 +3,8 @@
 
 use cpl_diag::Shown;
 use cpl_interp::trace::{
-    document, first_divergence, mentions, named_values, printed_divergence, stages, Divergence,
-    Recording, TraceConfig,
+    document, first_divergence, mentions, named_values, printed_divergence, stages,
+    stuck_divergence, Divergence, Recording, TraceConfig,
 };
 use std::path::Path;
 
@@ -128,10 +128,14 @@ pub fn versus(
 /// line up with, and its trace is the solution's own run. With `explain`,
 /// every value each run gives a variable is logged too, for the first one
 /// they give differently.
+/// How many steps of a solution that ran out of time to look for a cycle in.
+const STUCK_STEPS: usize = 100_000;
+
 pub fn against_brute(
     path: &Path,
     input: &str,
     explain: bool,
+    timed_out: bool,
 ) -> Result<cpl_stress::cli::Traced, String> {
     let name = path.shown();
     let source = std::fs::read_to_string(path).map_err(|e| format!("can't read {name}: {e}"))?;
@@ -178,6 +182,27 @@ pub fn against_brute(
     // An interactive solution has no one to talk to here.
     if fast.interactive {
         return Err("an interactive solution is traced with `cpl run --trace`".to_string());
+    }
+    if timed_out {
+        // Its first steps only: they are enough to see it go round.
+        let mut sink = Vec::new();
+        let io = cpl_interp::Io::fixed(input.as_bytes())
+            .until(cpl_interp::Stop::after(std::time::Duration::from_secs(10)));
+        let config = cpl_interp::trace::TraceConfig {
+            max_steps: Some(STUCK_STEPS),
+            stop_when_full: true,
+            ..config(&source, None)
+        };
+        let fast = (cpl_interp::run_observed(&fast, io, &mut sink, Some(config)).recording)
+            .unwrap_or_default();
+        let divergence = stuck_divergence(&source, &fast).ok_or(format!(
+            "the solution never finishes, and none of its first {STUCK_STEPS} steps repeats an earlier one"
+        ))?;
+        return Ok(cpl_stress::cli::Traced {
+            stages: Vec::new(),
+            html: html(&single(&name, &source, &fast)),
+            divergence: Some(divergence),
+        });
     }
     let fast = record(&fast);
     let (Some(brute_fn), Some(slow)) = (brute_fn, slow) else {
@@ -313,6 +338,7 @@ fn first_call_divergence(source: &str, fast: &Recording, slow: &Recording) -> Op
         inside,
         blame,
         call: true,
+        stuck: false,
         name: format!("{}({})", ours.name, shown_args(&ours.args)),
         nth: ours.ordinal,
         fast: Some((line_of(&ours.name), a.clone())),

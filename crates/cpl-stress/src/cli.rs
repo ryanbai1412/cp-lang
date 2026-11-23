@@ -68,7 +68,9 @@ pub struct Traced {
 /// Runs a `.cp` file and its `@alt(program)` fn on an input in the debug
 /// interpreter. `cpl` passes its own; this crate does not link one.
 /// The `bool` asks for [`Traced::divergence`].
-pub type Tracer<'a> = &'a dyn Fn(&Path, &str, bool) -> Result<Traced, String>;
+/// Traces the file on a failing input: the input, `--explain`, and whether
+/// the solution ran out of time on it.
+pub type Tracer<'a> = &'a dyn Fn(&Path, &str, bool, bool) -> Result<Traced, String>;
 
 struct Args {
     file: PathBuf,
@@ -353,10 +355,11 @@ pub fn divergence_json(d: &Divergence) -> String {
         format!(",\"blame\":[{}]", lines.join(","))
     };
     format!(
-        "{{\"name\":{},\"nth\":{},\"call\":{},\"fast\":{},\"brute\":{}{inside}{blame}}}",
+        "{{\"name\":{},\"nth\":{},\"call\":{},\"stuck\":{},\"fast\":{},\"brute\":{}{inside}{blame}}}",
         json_string(&d.name),
         d.nth,
         d.call,
+        d.stuck,
         side(&d.fast),
         side(&d.brute),
     )
@@ -415,6 +418,21 @@ pub fn report_json(
 /// `cpl locate` print it.
 pub fn print_divergence(stdout: &mut dyn Write, d: &cpl_interp::trace::Divergence) {
     let ordinal = ordinal(d.nth);
+    if let (true, Some((line, held))) = (d.stuck, &d.fast) {
+        let _ = writeln!(
+            stdout,
+            "  never finishes: `{}` at line {line} is back where it was every {}, at {held}",
+            d.name,
+            match d.nth {
+                1 => "step".to_string(),
+                n => format!("{n} steps"),
+            }
+        );
+        for (line, why) in &d.blame {
+            let _ = writeln!(stdout, "    look at line {line}: {why}");
+        }
+        return;
+    }
     let _ = match d.name.split_once('(').filter(|_| d.call) {
         Some((f, _)) => writeln!(
             stdout,
@@ -690,8 +708,15 @@ pub fn run_with(
     let finished =
         |failure: &crate::run::Failure| !matches!(failure.verdict, crate::Verdict::TimeLimit);
     let traced = match (&report.failure, tracer) {
-        (Some(failure), Some(tracer)) if args.fast.is_none() && in_file && finished(failure) => {
-            Some(tracer(&args.file, &failure.input, args.explain))
+        (Some(failure), Some(tracer))
+            if args.fast.is_none() && in_file && (args.explain || finished(failure)) =>
+        {
+            Some(tracer(
+                &args.file,
+                &failure.input,
+                args.explain,
+                !finished(failure),
+            ))
         }
         _ => None,
     };

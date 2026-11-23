@@ -27,7 +27,8 @@ pub(crate) use last::last_values_of;
 mod unseen;
 mod window;
 pub use compare::{
-    first_divergence, mentions, named_values, printed_divergence, stages, Divergence, Stage,
+    first_divergence, mentions, named_values, printed_divergence, stages, stuck_divergence,
+    Divergence, Stage,
 };
 use glob::glob_match;
 pub use log::Steps;
@@ -1964,6 +1965,7 @@ mod tests {
                 inside: Vec::new(),
                 blame: Vec::new(),
                 call: false,
+                stuck: false,
             })
         );
     }

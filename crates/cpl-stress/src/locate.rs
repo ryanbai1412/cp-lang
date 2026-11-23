@@ -91,7 +91,7 @@ pub fn run_with(
     };
     let shown = input.shown();
     let divergence = || {
-        let traced = tracer.and_then(|trace| trace(file, &text, false).ok());
+        let traced = tracer.and_then(|trace| trace(file, &text, false, false).ok());
         traced.and_then(|traced| traced.divergence)
     };
     if json {
