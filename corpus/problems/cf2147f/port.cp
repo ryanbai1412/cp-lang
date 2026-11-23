@@ -1,8 +1,13 @@
-// Sort items by value. Cut c (values <= c vs > c) is free when no item has one value
-// on each side; free cuts split the items into SCCs, each reaching all lower ones.
-// So the answer is n(n+1)/2 plus sum d(d-1)/2 over gaps d between consecutive free
-// cuts. Item i covers cuts min(p, s) ..< max(p, s): keep, under range add, the cuts
-// at the minimum cover (always 0, since cuts 0 and n are free) and their gap sum.
+// Source: Codeforces 2147F (Exchange Queries), https://codeforces.com/contest/2147/problem/F
+// Problem: two permutations p and s rank n <= 1e5 items; item i trades for item j when
+//   p[i] > p[j] or s[i] > s[j]. After each of q <= 1e5 swaps of two entries of p or of s,
+//   print how many pairs (i, j) have j reachable from i (i = j counts). Multitest.
+// Solution: sort by value. Cut c (values <= c vs > c) is free when no item has one value
+//   on each side; free cuts split the items into SCCs, each reaching all lower ones, so
+//   the answer is n(n+1)/2 plus sum d(d-1)/2 over gaps d between consecutive free cuts.
+//   Item i covers cuts min(p, s) ..< max(p, s): a SegTree with range add keeps the cuts at
+//   the minimum cover (always 0, since cuts 0 and n are free) and their gap sum; a swap
+//   re-adds the two changed items, O(log n) per query.
 use std.math.choose2
 
 @!multitest
