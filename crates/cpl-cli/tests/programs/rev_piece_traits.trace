@@ -1,0 +1,5 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"a":{"name":"a","type":"List\u003cInt>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"let a = [10, 20, 30, 40, 50]","stage":"main","values":{"stdout":[],"a":[10,20,30,40,50]},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":4,"label":"print → 120 90 90","stage":"main","values":{"stdout":["120 90 90"],"a":[10,20,30,40,50]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":4}]},
+{"id":2,"line":5,"label":"print → 30 40 30 20","stage":"main","values":{"stdout":["120 90 90","30 40 30 20"],"a":[10,20,30,40,50]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":5}]},
+{"id":3,"line":5,"label":"the program ended","stage":"main","values":{"stdout":["120 90 90","30 40 30 20"],"a":[10,20,30,40,50]},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":5}]}]}}}
+stderr:

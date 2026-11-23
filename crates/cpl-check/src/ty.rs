@@ -140,7 +140,16 @@ impl Ty {
             Ty::Named { name, args } if name == "Indexed" && args.len() == 2 => {
                 Some(args[1].clone())
             }
-            _ => self.rev_source()?.seq_elem(),
+            _ => self.view_source()?.seq_elem(),
+        }
+    }
+
+    /// The sequence a view walks: a `.rev`'s or a `Slice`'s source, whose
+    /// elements it has (R07.4.5).
+    pub fn view_source(&self) -> Option<&Ty> {
+        match self {
+            Ty::Named { name, args } if name == "Slice" && args.len() == 1 => args.first(),
+            _ => self.rev_source(),
         }
     }
 
