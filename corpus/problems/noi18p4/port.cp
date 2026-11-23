@@ -1,7 +1,12 @@
-// NOI 2018 P4, Dragon Slayer: dragon i has life a and regrows p per round;
-// the sword picked for it (the strongest one not above its life, else the
-// weakest) hits for atk. One number of hits x must kill every dragon:
-// atk * x >= a and atk * x = a (mod p). The smallest such x, or -1.
+// Source: NOI 2018 Day 2 P1 (Dragon Slayer), Luogu P4774 (not on DMOJ)
+// Problem: kill dragons 1..n in order (n, m <= 1e5, T <= 5). Dragon i (life a <= 1e12, regrows
+//   p) dies iff a - x atk is <= 0 and a multiple of p, where atk is the strongest held sword
+//   not above a (else the weakest), then swapped for the dragon's reward (atk <= 1e6). Print
+//   the least hit count x that kills every dragon, or -1. lcm(p) <= 1e12.
+// Solution: the sword per dragon is fixed: simulate with a SortedBag (predecessor, else
+//   minimum). Dragon i needs atk x = a (mod p), one linear congruence via ext_gcd, and
+//   x >= ceil(a / atk). Merge the congruences with general CRT (mul_mod against overflow),
+//   then lift the residue to the least value >= the largest bound. O((n + m) log).
 // original: corpus/submissions/6517796.cpp
 use std.math.{ext_gcd, crt, mul_mod}
 

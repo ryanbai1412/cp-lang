@@ -1,10 +1,11 @@
-// IOI 2019 Arranging Shoes: 2n shoes in a row, -s a left shoe of size s and
-// +s a right one. With adjacent swaps, make the row a sequence of pairs
-// (left, right) of equal size. Fewest swaps.
-// Fix the leftmost shoe: its partner should be the nearest unused shoe of the
-// same size and other foot. Pull the partner next to it (one swap per shoe
-// still standing between them), plus one swap if the pair is the wrong way
-// round, then forget both.
+// Source: IOI 2019 Day 1 P1 (Arranging Shoes), https://dmoj.ca/problem/ioi19p1
+// Problem: 2n shoes in a row (n <= 1e5), -s a left shoe of size s and +s a right one. With
+//   swaps of adjacent shoes, make every pair of positions 2i, 2i+1 a left then a right shoe of
+//   one size. Print the fewest swaps.
+// Solution: fix the leftmost shoe: its partner should be the nearest unused shoe of the same
+//   size and other foot (per size, a queue of shoes still waiting). Pull the partner next to
+//   it, one swap per shoe still standing between them, plus one swap if the pair is the wrong
+//   way round, then forget both. A SegTree of standing shoes counts them: O(n log n).
 // original: corpus/submissions/5661847.cpp
 let n: 1..=100000 = read()
 domain Pos = 0..2 * n

@@ -1,4 +1,13 @@
-// NOI 2004 P5, cut a 100-long rod into n main pieces and m parts in total (buildable today-form)
+// Source: NOI 2004 P5 (Little H's Little Hut), https://dmoj.ca/problem/noi04p5
+// Problem: a 100-wide hut whose north and south walls have slopes k1, k2 (one decimal, <= 50).
+//   Split [0, 100] at integer points into m north and n south patches (2 <= m <= n <= 100),
+//   every north split point also a south one; a patch of width w along a wall of slope k has
+//   area k w^2. Print the least total area (one decimal is exact).
+// Solution: each north patch of width w is cut into some j south patches, best as evenly as
+//   possible: k1 w^2 + k2 (sum of squares of the even split). DP over (north patches placed,
+//   width covered, south patches used), adding one north patch (width, j) per step, in tenths
+//   so it stays integer: O(m * 100^2 * n^2) in the worst case. In the port, a, b are k1, k2
+//   and n, m are the statement's m, n.
 // original: corpus/submissions/3744270.cpp
 // The two prices have one decimal, so everything is counted in tenths.
 // Each price is read as two Ints, `whole` then `digit`: the prototype has no

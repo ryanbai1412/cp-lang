@@ -1,4 +1,11 @@
-// NOIP 2002 P4, cover n points with at most k <= 3 disjoint axis-parallel rectangles (buildable today-form)
+// Source: NOIP 2002 Senior P4 (Rectangle Cover), Luogu P1034 (not on DMOJ)
+// Problem: n <= 50 integer points (coordinates 0..=500). Cover them with k axis-parallel
+//   rectangles that are pairwise fully disjoint (no shared edge or corner); a rectangle over
+//   one point or a line has area 0. Print the least total area. Statement: 1 <= k <= 4.
+// Solution: with k <= 3 disjoint rectangles a vertical or horizontal line always separates
+//   them, so cover(points, k) tries every cut between two distinct x (or y) coordinates and
+//   every split j + (k - j) of the rectangles, recursing on both sides; k = 1 is the bounding
+//   box. Brute force, fine for n <= 50. The port only takes k <= 3.
 // original: corpus/submissions/5096459.cpp
 // Points travel as List<(Int, Int)> and the two halves are copied out by a
 // loop: the prototype has no list slices as arguments.

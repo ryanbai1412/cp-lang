@@ -1,4 +1,13 @@
-// NOI 2014 Day 2 P2, Random Number Generator (buildable today-form)
+// Source: NOI 2014 Day 2 P2 (Random Number Generator), https://dmoj.ca/problem/noi14p5
+// Problem: x[i] = (a x[i-1]^2 + b x[i-1] + c) mod d drives NM swaps (the i-th exchanges T[i]
+//   and T[x[i] mod i + 1]) of 1..NM, then Q given swaps; T fills an N x M grid row by row.
+//   Print the lexicographically smallest sorted list of values on a right/down path from the
+//   top-left to the bottom-right. N, M <= 5000, Q <= 50000.
+// Solution: build the permutation (the i-th swap is an inside-out shuffle step) and each
+//   value's cell. Cells share a right/down path iff no two are anti-ordered, so take values
+//   in increasing order whenever their column lies in the row's still-allowed range
+//   lo[r]..=hi[r]; a taken cell caps hi of rows above and raises lo of rows below.
+//   O(NM + (N + M) N).
 // original: corpus/submissions/3601452.cpp
 let x0: 0..=100_000_000 = read()
 let a: 0..=300 = read()
