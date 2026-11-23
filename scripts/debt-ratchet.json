@@ -139,11 +139,11 @@
     "diagnostics": 6,
     "idioms": 2,
     "infra": 3,
-    "lint-fmt": 5,
+    "lint-fmt": 4,
     "perf": 4,
     "site": 10,
     "spec": 9,
-    "stdlib": 31,
+    "stdlib": 30,
     "tech-debt": 0,
     "tools": 22
   },

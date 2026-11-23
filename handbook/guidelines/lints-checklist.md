@@ -237,3 +237,15 @@ Example: the largest corpus port lints and formats in a few milliseconds each
 in an optimized build.
 Enforced by: `lint_and_fmt_of_the_largest_files_fit_a_tenth_of_the_front_end_budget`
 in `crates/cpl-lint/src/speed_tests.rs` (asserted under `cargo test --release`).
+
+### R25: A lint fires wherever its pattern is written
+
+A rule finds its pattern with any names and inside any program: renaming
+what the example binds, or planting it after other code, changes nothing.
+Reason: contestants pick their own names and write the pattern deep in a
+long file, never as the record's few lines alone.
+Example: `loop_invariant_mod_div` fires on `xs2[i] /= d2` after a whole
+corpus solution just as on `xs[i] /= d` alone.
+Enforced by: `a_record_fires_the_same_renamed_and_planted_in_a_clean_program`
+in `crates/cpl-lint/src/plant_tests.rs`.
+
