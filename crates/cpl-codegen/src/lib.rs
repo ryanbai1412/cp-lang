@@ -1,6 +1,7 @@
 //! Lowering of a checked program to a single C++17 file.
 
 mod bounds;
+mod checks;
 mod compact;
 mod devirt;
 mod divrem;
@@ -21,6 +22,7 @@ mod stmt;
 mod unordered;
 mod walk;
 
+pub use checks::Checks;
 pub use devirt::{explain_closures, explain_dropped_fields, ClosureLowering, ClosureMode};
 
 /// Name of this crate.
@@ -44,6 +46,8 @@ pub struct Target {
     pub thread_stack: Option<u64>,
     /// Whether the judge runs Windows, whose threads are not POSIX ones.
     pub windows: bool,
+    /// The runtime checks the build keeps.
+    pub checks: Checks,
 }
 
 impl Default for Target {
@@ -52,6 +56,7 @@ impl Default for Target {
             stamp: None,
             thread_stack: Some(1 << 30),
             windows: false,
+            checks: Checks::default(),
         }
     }
 }

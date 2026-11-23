@@ -305,7 +305,7 @@ impl<'p> Emitter<'p> {
                 } else {
                     "array"
                 };
-                if let Some(bad) = bad {
+                if let Some(bad) = bad.filter(|_| self.target.checks != crate::Checks::None) {
                     self.line(
                         out,
                         &format!("if ({run} && ({bad})) cpl::fail(\"index outside the {what}\");"),

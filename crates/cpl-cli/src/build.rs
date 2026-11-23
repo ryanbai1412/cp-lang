@@ -13,6 +13,7 @@ pub(crate) struct BuildOptions<'a> {
     pub out: Option<&'a str>,
     pub judge: Option<&'a str>,
     pub checked: bool,
+    pub checks: cpl_codegen::Checks,
     pub size: bool,
     pub copy: bool,
     pub json: bool,
@@ -29,6 +30,7 @@ pub(crate) fn build_file(
         out,
         judge,
         checked,
+        checks,
         size,
         copy,
         json,
@@ -66,6 +68,7 @@ pub(crate) fn build_file(
         stamp: Some(profile.stamp()),
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
+        checks,
     };
     let mut sizes = Vec::new();
     let aim = profile.aim();
@@ -153,6 +156,7 @@ pub(crate) fn build_file(
                 ("bytes", cpp.len().into()),
                 ("limit", limit.into()),
                 ("judge", profile.name.to_string().into()),
+                ("checks", checks.name().to_string().into()),
                 ("sizes", cpl_json::Value::Array(sizes.collect())),
             ]);
             let _ = writeln!(stdout, "{}", cpl_json::to_string(&report));
@@ -195,6 +199,26 @@ pub(crate) fn take_judge<'a>(
         )),
         None => Ok(None),
     }
+}
+
+/// `--checks <level>`, taken out of `rest`; the default where it is absent.
+pub(crate) fn take_checks(rest: &mut Vec<&str>) -> Result<cpl_codegen::Checks, String> {
+    let Some(at) = rest.iter().position(|arg| *arg == "--checks") else {
+        return Ok(cpl_codegen::Checks::default());
+    };
+    let level = rest
+        .get(at + 1)
+        .and_then(|name| cpl_codegen::Checks::parse(name));
+    let Some(level) = level else {
+        return Err(format!(
+            "`--checks` takes one of {}: `cpl build a.cp --checks none`",
+            cpl_codegen::Checks::NAMES
+                .map(|n| format!("`{n}`"))
+                .join(", ")
+        ));
+    };
+    rest.drain(at..at + 2);
+    Ok(level)
 }
 
 /// `cpl build --checked`: the C++ file built to run here, with the

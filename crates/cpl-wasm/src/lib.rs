@@ -345,6 +345,7 @@ impl Playground {
             stamp: Some(profile.stamp()),
             thread_stack: profile.thread_stack,
             windows: profile.os == cpl_judge::Os::Windows,
+            ..cpl_codegen::Target::default()
         };
         let aim = profile.aim();
         let cpp = match cpl_codegen::emit_aiming(

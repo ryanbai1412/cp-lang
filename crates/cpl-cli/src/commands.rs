@@ -83,7 +83,15 @@ pub(crate) const COMMANDS: &[Command] = &[
             "`--judge <name>` writes it for that judge",
         ],
         json: Json::Flag,
-        options: Some(&["-o", "--judge", "--checked", "--size", "--copy", "--json"]),
+        options: Some(&[
+            "-o",
+            "--judge",
+            "--checks",
+            "--checked",
+            "--size",
+            "--copy",
+            "--json",
+        ]),
     },
     Command {
         name: "judges",
@@ -365,6 +373,11 @@ options:
   --judge <name>    for that judge; else the file's `// judge:` line, else
                     `judge` under `[judge]` in the nearest cp.toml, else
                     `generic`. `cpl judges` lists them
+  --checks <level>  what the program still checks on the judge: `traps`
+                    (the default) stops it on a bad index, `/ 0` or a false
+                    `assert`; `none` checks what hand-written C++ checks,
+                    with `/ 0` giving 0; `all` adds range stores, overflow
+                    and the rest of the local build's checks
   --checked         also compile it with sanitizers into a program to run here
   --size            say where the bytes go: header, runtime, library fns,
                     your code, by part and by piece (said anyway when the

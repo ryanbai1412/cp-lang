@@ -855,6 +855,37 @@ fn a_judge_it_does_not_know_is_the_files_error_or_misuse_on_the_command_line() {
 }
 
 #[test]
+fn build_checks_names_what_the_judge_build_still_checks() {
+    let dir = scratch("build-checks");
+    std::fs::write(dir.join("a.cp"), "let n: Int = read()\nprint(10 / n)\n").unwrap();
+    for (level, trap, local) in [
+        ("none", false, false),
+        ("traps", true, false),
+        ("all", true, true),
+    ] {
+        let out = cpl(&dir, &["build", "a.cp", "--checks", level, "-o", "-"]);
+        assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
+        let cpp = text(&out.stdout);
+        assert_eq!(cpp.contains("division by zero"), trap, "{level}");
+        assert_eq!(cpp.contains("#define LOCAL"), local, "{level}");
+        let json = cpl(&dir, &["build", "a.cp", "--checks", level, "--json"]);
+        let json = cpl_json::parse(&text(&json.stdout)).expect("JSON");
+        assert_eq!(json.at(&["checks"]).as_str(), Some(level));
+    }
+    let default = cpl(&dir, &["build", "a.cp", "-o", "-"]);
+    assert!(text(&default.stdout).contains("division by zero"));
+    for args in [&["--checks", "some"][..], &["--checks"]] {
+        let out = cpl(&dir, &[&["build", "a.cp"][..], args].concat());
+        assert_eq!(out.status.code(), Some(EXIT_USAGE.into()), "{args:?}");
+        assert!(
+            text(&out.stderr).contains("`--checks` takes one of `none`, `traps`, `all`"),
+            "{}",
+            text(&out.stderr)
+        );
+    }
+}
+
+#[test]
 fn build_json_says_where_the_bytes_of_the_cpp_go() {
     let dir = scratch("build-json");
     std::fs::write(dir.join("a.cp"), "let n: 1..=10 = read()\nprint(n)\n").unwrap();

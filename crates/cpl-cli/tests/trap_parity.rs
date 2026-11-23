@@ -191,3 +191,47 @@ fn the_judge_build_asks_before_it_waits_for_the_answer() {
     assert_eq!((found, queries), (secret, 7));
     assert!(child.wait().unwrap().success());
 }
+
+/// `cpl build --checks none` keeps no trap: a zero divisor gives 0, and
+/// the program goes on as hand-written C++ would.
+#[test]
+fn a_judge_build_without_traps_divides_by_zero_into_zero() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("checks-none");
+    std::fs::create_dir_all(&dir).unwrap();
+    let source = dir.join("div.cp");
+    std::fs::write(&source, "let n: Int = read()\nprint(10 / n, 10 % n)\n").unwrap();
+    let cpp = dir.join("div.cpp");
+    let built = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("build")
+        .arg(&source)
+        .args(["--checks", "none", "-o"])
+        .arg(&cpp)
+        .output()
+        .unwrap();
+    assert!(
+        built.status.success(),
+        "{}",
+        String::from_utf8_lossy(&built.stderr)
+    );
+    let bin = dir.join("div");
+    let compiled = Command::new("g++")
+        .args(["-std=c++17", "-O2", "-w", "-o"])
+        .arg(&bin)
+        .arg(&cpp)
+        .output()
+        .unwrap();
+    assert!(
+        compiled.status.success(),
+        "{}",
+        String::from_utf8_lossy(&compiled.stderr)
+    );
+    let out = run(Command::new(&bin), "0\n");
+    assert_eq!(
+        out.status.code(),
+        Some(0),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert_eq!(String::from_utf8_lossy(&out.stdout), "0 0\n");
+    assert_eq!(run(Command::new(&bin), "3\n").stdout, b"3 1\n");
+}

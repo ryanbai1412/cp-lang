@@ -227,6 +227,10 @@ pub fn exec<S: AsRef<str>>(
                 Ok(judge) => judge,
                 Err(message) => return usage_error(message),
             };
+            let checks = match build::take_checks(&mut rest) {
+                Ok(checks) => checks,
+                Err(message) => return usage_error(message),
+            };
             let (file, out) =
                 match rest.as_slice() {
                     [file] => (*file, None),
@@ -241,6 +245,7 @@ pub fn exec<S: AsRef<str>>(
                 out,
                 judge,
                 checked,
+                checks,
                 size,
                 copy,
                 json,

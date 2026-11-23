@@ -1452,6 +1452,9 @@ impl<'p> Emitter<'p> {
 
         let mut out = String::new();
         out.push_str(&header(name, source, self.target.stamp.as_deref()));
+        if self.target.checks == crate::Checks::All {
+            out.push_str("#define LOCAL\n");
+        }
         let what = if source.is_some() {
             "the source"
         } else {
@@ -1555,7 +1558,10 @@ impl<'p> Emitter<'p> {
         }
         for piece in PIECES {
             if self.used.contains(piece.name) {
-                let code = self.piece_code(piece);
+                let mut code = self.piece_code(piece);
+                if self.target.checks == crate::Checks::None {
+                    code = crate::checks::untrapped(&code);
+                }
                 out.push_str(&code);
                 self.chunks
                     .push((crate::Part::Runtime, piece.name.into(), code));

@@ -304,6 +304,8 @@ fn emit_cpp(
         stamp: Some(profile.stamp()),
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
+        // A counterexample that crashes is one stress must see.
+        checks: cpl_codegen::Checks::Traps,
     };
     let mut cpp = cpl_codegen::emit_for(&program, &file, None, &target);
     if matches!(part, Part::Gen(_)) {

@@ -1682,6 +1682,7 @@ impl<'p> Emitter<'p> {
             Stmt::Break(Some(id)) => self.line(out, &format!("goto brk_{id};")),
             Stmt::Continue(None) => self.line(out, "continue;"),
             Stmt::Continue(Some(id)) => self.line(out, &format!("goto cont_{id};")),
+            Stmt::Assert { .. } if self.target.checks == crate::Checks::None => {}
             Stmt::Assert {
                 cond,
                 message,
