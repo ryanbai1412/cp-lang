@@ -285,7 +285,7 @@ since the second walk reruns against what the first wrote.
 | `s.fold(f, init: a)` | `Acc`: a left fold into any accumulator, `init` when empty | \(O(n)\) (R07.9.2) |
 | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\) (R07.9.3) |
 | `s.min_k(k, by: f)`, `s.max_k(k, by: f)` | `List<T>`, the `k` smallest or largest (every element when `k >= n`) in no set order; earlier wins ties | \(O(n)\) expected (R07.9.3) |
-| `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | \(O(n)\) (R07.9.4) |
+| `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Bool>` it is an error naming `count(x => x)` (the trues) and `len` (decision 378) | `Int`, `Bool` | \(O(n)\) (R07.9.4) |
 | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)\) (R07.9.5) |
 
 **A fold costs what the receiver's type says.** The costs above are the

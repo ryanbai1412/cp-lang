@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2671 (995 passing). Rules: 569.
+Cases: 2675 (995 passing). Rules: 569.
 
 ## Summary per chapter
 
@@ -17,9 +17,9 @@ Cases: 2671 (995 passing). Rules: 569.
 - R04 (04-indices.md): 70 rules, 144 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 43 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 43 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 97 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 145 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 147 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 90 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -53,7 +53,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
 | R06 | 24 | 24 (100%) | 15 | 15 (100%) | 24 (100%) |
-| R07 | 90 | 90 (100%) | 25 | 25 (100%) | 90 (100%) |
+| R07 | 90 | 90 (100%) | 26 | 26 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
 | R10 | 18 | 18 (100%) | 9 | 9 (100%) | 18 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 569 | 568 (99%) | 222 | 222 (100%) | 568 (99%) |
+| all | 569 | 568 (99%) | 223 | 223 (100%) | 568 (99%) |
 
 ## Rules
 
@@ -383,8 +383,8 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
 - R05.7.10 [3+ 3-]: stored in a top-level `var` by a fn. The file body is itself a fn (§11), so its own statem...
 - R05.8.1 [1+ 3-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
-- R05.8.2 [4+ 5-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
-- R05.8.3 [1+ 1-]: Different projections of one receiver always conflict (`g.row(r)` and `g.col(c)`).
+- R05.8.2 [5+ 6-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
+- R05.8.3 [1+ 2-]: Different projections of one receiver always conflict (`g.row(r)` and `g.col(c)`).
 - R05.8.4 [1+ 8-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
 - R05.9.1 [3+ 6-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
 - R05.9.2 [1+ 2-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
@@ -507,7 +507,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
 - R07.9.2 [3+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
 - R07.9.3 [3+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)` | `?T`, `None` when empty; first on ties | \(O(n)\)
-- R07.9.4 [1+ 0-]: | `s.count(p)`, `s.any(p)`, `s.all(p)` | `Int`, `Bool` | \(O(n)\)
+- R07.9.4 [2+ 1-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
 - R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
 - R07.9.6 [3+ 3-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
 - R07.11.1 [4+ 2-]: | `s.sort(by: k)`, `s.reverse()`, `s.dedup()`, `s.fill(x)` | in place: needs a `var` sourc...
@@ -744,7 +744,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0302 Type mismatch: 42 case(s)
 - E0303 Wrong number of arguments: 8 case(s)
 - E0304 Value is not callable: 1 case(s)
-- E0305 Value is not indexable: 4 case(s)
+- E0305 Value is not indexable: 5 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
 - E0307 Condition is not `Bool`: 1 case(s)
 - E0308 Ordering comparison on optional: 2 case(s)
@@ -769,7 +769,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 10 case(s)
 - E0504 Planned syntax, not implemented yet: 1 case(s)
-- E0601 Aliased mutable lend: 12 case(s)
+- E0601 Aliased mutable lend: 13 case(s)
 - E0602 Variable mutated while lent: 34 case(s)
 - E0603 Lent value escapes its scope: 18 case(s)
 - E0604 Invalid `lends` projection: 1 case(s)

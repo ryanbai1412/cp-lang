@@ -7901,3 +7901,15 @@ bare `+` (spec/lib/math.md), so `convolve` can recognize it as it does `^`, `|` 
 `poly`'s `times` is gone, and `Poly<T>`'s Newton methods are \(O(n \log n)\) over `Mod<P>`.
 Three-prime CRT for other moduli and FFT for `F64` are still owed. Reverse: drop the
 `if T: FastProduct` branch and give `poly` its `times` back.
+
+## 378. `count()` on bools is an error; a reversed view's hover says it keeps keys (2026-11-23)
+
+Acceptance P0 `count-of-bools-counts-all` (3 runs): `b.count()` on a
+`List<Bool>` is the length, while readers expect the trues. `count()` keeps
+its meaning (every element, as for any `Seq`), and on a `Seq<Bool>` it is a
+compile error naming `count(x => x)` and `len`: the one place where the
+no-predicate form reads as a different question. P0
+`rev-view-index-not-reversed` (4 runs) is decision 354, unimplemented: the
+compiler types `xs.rev` as `List<T>`, so `xs.rev[0]` checks. The hover for
+`rev` now says the view keeps keys and names `.nth(0)`. Reverse the `count`
+error by deleting the rule; the cases mark both.

@@ -214,7 +214,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/prefix-and-z-function-over-domain-array-and-range.cp: compiler
 - core-04/prod-at-neighbour.cp: compiler
 - core-04/prod-call-traps.cp: compiler
-- core-04/product-domain-array-is-the-parts-array.cp: compiler
 - core-04/product-domain-grid-reads-and-indexes.cp: compiler
 - core-04/range-key-is-element.cp: compiler
 - core-04/range-key-outside-traps.cp: compiler
@@ -242,6 +241,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/spec-block-segtree-of-ws.cp: compiler
 - core-05/file-body-var-holds-lent.cp: compiler
 - core-05/lent-var-reassigned-from-itself.cp: compiler
+- core-05/call-mut-element-and-read-maybe-same.cp: compiler
 - core-06/alt-main-is-removed.cp: compiler
 - core-06/brute-main-is-removed.cp: compiler
 - core-06/checker-is-removed.cp: compiler
@@ -267,6 +267,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/list-scan-indexed-by-count.cp: stdlib
 - core-07/tally-missing-key-is-zero.cp: stdlib
 - core-07/heap-by-desc-lambda.cp: compiler
+- core-07/count-of-bools-needs-a-predicate.cp: compiler
 - core-08/const-param-arithmetic.cp: compiler
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/static-fn-default-param-mismatch.cp: compiler
@@ -277,6 +278,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-09/stress-finds-broken-law.cp: compiler
 - core-09/user-context-lexical-without-uses.cp: compiler
 - core-09/uses-not-inferred-top-level.cp: compiler
+- core-09/deep-recursion-trap.cp: compiler
 - core-10/print-list-of-pairs-one-line.cp: compiler
 - core-10/show-impl-enum.cp: compiler
 - core-10/test-position-stored-above-multitest.cp: compiler
