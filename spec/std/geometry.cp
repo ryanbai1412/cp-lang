@@ -2635,7 +2635,7 @@ pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>>:
     [[keys[i] for i in f] for f in walk.faces]
 
 struct PlanarWalk:
-    faces: List<List<Int>>
+    var faces: List<List<Int>>
     off: List<Int>
     face_of: List<Int>
     half: List<(Int, Int, Int)>

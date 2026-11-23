@@ -10,7 +10,7 @@ In prelude (no `use` needed): `Marks`.
 
 A visited/mark set over a domain `D` with O(1) `add`, `remove`, `contains` (`v in m`), and O(1) `clear()`.
 
-Fields: `gen: Int`, `cnt: Int`.
+Fields: `cnt: Int`.
 
 - `fn new() -> Marks<D>` — O(|D|); An empty mark set over `D`, with its stamp array allocated once.
 - `fn add(mut self, v: D) -> Bool` — O(1); Mark `v`.; traps: when `v` is outside `D`

@@ -14,7 +14,7 @@ In prelude (no `use` needed): `Heap`, `MaxHeap`, `MinHeap`, `Settle`.
 
 A priority queue on `<`.
 
-Fields: `xs: List<T>`, `lt: ?((T, T) -> Bool)`.
+Fields: `lt: ?((T, T) -> Bool)`.
 
 - `fn new<K>(by: ?(T -> K) = None) -> Heap<T>` — O(1); Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7).
 - `fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>` — O(n); Build a `Heap<T>` from `xs` via Floyd heapify.

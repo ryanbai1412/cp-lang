@@ -7,12 +7,12 @@ pub struct BagCursor(id: Int)
 
 struct BagNode<K>:
     key: K
-    cnt: Int
-    sub: Int
+    var cnt: Int
+    var sub: Int
     pri: -2_147_483_648..=2_147_483_647
-    left: -2_147_483_648..=2_147_483_647
-    right: -2_147_483_648..=2_147_483_647
-    par: -2_147_483_648..=2_147_483_647
+    var left: -2_147_483_648..=2_147_483_647
+    var right: -2_147_483_648..=2_147_483_647
+    var par: -2_147_483_648..=2_147_483_647
 
 /// An ordered multiset (bag) of `K` backed by a randomized treap over a single flat node array
 /// with recycled node slots and parent pointers for O(1) amortized cursor stepping.
@@ -28,13 +28,13 @@ struct BagNode<K>:
 /// Elements are ordered by `K`'s `<`; copies of one key are equal and indistinguishable, so
 /// no method here has a tie to break between them. `n` in every cost is `len`.
 pub struct SortedBag<K>:
-    nodes: List<BagNode<K>>
-    free: List<-2_147_483_648..=2_147_483_647>
-    live: Int
-    root: Int
-    rng: U64
-    lo: ?K
-    hi: ?K
+    var nodes: List<BagNode<K>>
+    var free: List<-2_147_483_648..=2_147_483_647>
+    var live: Int
+    var root: Int
+    var rng: U64
+    var lo: ?K
+    var hi: ?K
 
     /// Create an empty `SortedBag<K>`.
     ///
@@ -1005,7 +1005,7 @@ pub struct SortedBag<K>:
 /// `range(r)` is O(1); range iteration is O(log n + k);
 /// `len`, `is_empty`, `clear`, `take` are O(1); `each`, `each_rev`, and `to_list` are O(n).
 pub struct SortedSet<K>:
-    bag: SortedBag<K>
+    var bag: SortedBag<K>
 
     /// Create an empty `SortedSet<K>`.
     ///

@@ -341,14 +341,13 @@ fn dual_segtree_non_commutative_tags_match_brute():
         assert st.get(q) == a[q]
     for v in V: assert st.get(v) == a[v]
 
-struct TreapNode<T, F>(
-    l: ?Int,
-    r: ?Int,
-    pri: 0..2_147_483_648,
-    sz: 0..2_147_483_648,
-    val: T,
-    tag: ?F,
-)
+struct TreapNode<T, F>:
+    var l: ?Int
+    var r: ?Int
+    pri: 0..2_147_483_648
+    var sz: 0..2_147_483_648
+    var val: T
+    var tag: ?F
 
 /// Arena-backed randomized treap with subtree-size-aware lazy tag propagation.
 /// Supports value-ordered insertion (`insert`, using `before`) for slope-trick / priority
@@ -366,8 +365,8 @@ pub struct LazyTreap<T, F>(
     compose_fn: (F, F) -> F,
     before_fn: (T, T) -> Bool,
 ):
-    nodes: List<TreapNode<T, F>>
-    root: ?Int
+    var nodes: List<TreapNode<T, F>>
+    var root: ?Int
     rng: Rng
 
     /// An empty treap. `apply(v, k, f)` is element `v` after tag `f`, where `k` is the number of
@@ -715,9 +714,9 @@ pub struct LazyTreap<T, F>(
 /// O(n) space. Implicit-key rope over a domain `D` supporting O(log n) expected cut, paste,
 /// reverse, range tag `apply`, path queries, and point `get`.
 pub struct Rope<D, T>:
-    n: Int
+    var n: Int
     mg: ?((T, T) -> T) = None
-    base: ?[D]T = None
+    var base: ?[D]T = None
     val: List<T> = []
     tg: List<T> = []
     has: List<Bool> = []
@@ -726,8 +725,8 @@ pub struct Rope<D, T>:
     ls: List<Int> = []
     rs: List<Int> = []
     sz: List<Int> = []
-    root: Int = -1
-    seed: Int = 1
+    var root: Int = -1
+    var seed: Int = 1
 
     fn size(self, t: Int) -> Int = if t < 0: 0 else: sz[t]
 

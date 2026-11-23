@@ -14,8 +14,6 @@ Read-only handle into a `SortedBag<K>` node, valid until the next mutation.
 
 An ordered multiset (bag) of `K` backed by a randomized treap over a single flat node array with recycled node slots and parent pointers for O(1) amortized cursor stepping.
 
-Fields: `nodes: List<BagNode<K>>`, `live: Int`, `root: Int`, `rng: U64`, `lo: ?K`, `hi: ?K`.
-
 - `fn new() -> SortedBag<K>` — O(1); Create an empty `SortedBag<K>`.
 - `fn of(xs: List<K>) -> SortedBag<K>` — O(n log n) expected; Build a `SortedBag` containing every element of `xs`.
 - `@get fn len(self) -> Int` — O(1); Total number of elements in the bag (counting duplicates).
@@ -64,8 +62,6 @@ Fields: `nodes: List<BagNode<K>>`, `live: Int`, `root: Int`, `rng: U64`, `lo: ?K
 ## `struct SortedSet<K>`
 
 An ordered set of unique keys `K` with order statistics (`rank`, `nth`), O(1) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`).
-
-Fields: `bag: SortedBag<K>`.
 
 - `fn new() -> SortedSet<K>` — O(1); Create an empty `SortedSet<K>`.
 - `fn of(xs: List<K>) -> SortedSet<K>` — O(n log n) expected; Build a `SortedSet` containing the distinct elements of `xs`.

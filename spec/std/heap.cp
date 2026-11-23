@@ -11,7 +11,7 @@ use std.algebra.{Desc, desc}
 /// For a mixed order put `desc(x)` in the entry: `Heap<(Int, Desc<V>)>()` pops the
 /// smallest distance first and, among equals, the largest vertex.
 pub struct Heap<T>:
-    xs: List<T>
+    var xs: List<T>
     lt: ?((T, T) -> Bool)
 
     /// Create an empty `Heap<T>`, optionally ordered by key extractor `by:` (W7).
@@ -690,8 +690,8 @@ pub struct MinMaxHeap<T>:
 /// Meldable min-heap (skew / leftist heap) with O(log n) `meld` and O(1) lazy offset `add_all`.
 /// `peek` / `top` is O(1); `push`, `pop`, and `meld` are O(log n).
 pub struct MeldHeap<T>:
-    _len: Int = 0
-    _root: Int = -1
+    var _len: Int = 0
+    var _root: Int = -1
     _keys: List<T> = []
     _add: List<?T> = []
     _kids: List<(Int, Int)> = []

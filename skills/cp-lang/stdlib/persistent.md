@@ -14,7 +14,7 @@ Opaque version handle for `PersistentSegTree`.
 
 Path-copying persistent segment tree over a domain `D` and monoid `Monoid<T>`.
 
-Fields: `val: List<T>`, `base_root: Int`.
+Fields: `val: List<T>`.
 
 - `fn new<M>(op: M, a: ?[D]T = None, fill: ?T = None) -> PersistentSegTree<D, T>` — O(n) time and memory with `a:` or `fill:`, O(1) otherwise, for n = `|D|`; Build version 0 over `D` from `a:`, a uniform `fill:`, or the monoid identity everywhere, and keep it as `base`.; traps: when both `a:` and `fill:` are given
 - `@get fn base(self) -> Version` — O(1); The version built by `new`.
@@ -44,7 +44,7 @@ Fields: `vals: List<T>`.
 
 O(q log \|D\|) space.
 
-Fields: `val: List<T>`, `tag: List<F>`, `base_root: Int`.
+Fields: `val: List<T>`, `tag: List<F>`.
 
 - `fn new(act: Action<T, F>, a: ?[D]T = None, fill: ?T = None) -> PersistentLazySegTree<D, T, F>` — O(n) time and memory with `a:` or `fill:`, O(1) otherwise, for n = `|D|`; Build version 0 over `D` from `a:`, a uniform `fill:`, or the identity of `act`'s monoid, and keep it as `base`.; traps: when both `a:` and `fill:` are given
 - `@get fn base(self) -> Version` — O(1); The version built by `new`.
@@ -58,7 +58,7 @@ Fields: `val: List<T>`, `tag: List<F>`, `base_root: Int`.
 
 O(q log \|D\|) space.
 
-Fields: `val: List<T>`, `base_root: Int`.
+Fields: `val: List<T>`.
 
 - `fn new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>` — O(n) time and memory for n = `|D|`; Build version 0 over `D` from `a:` or a uniform `fill:`, and keep it as `base`.; traps: when both or neither of `a:` and `fill:` are given
 - `@get fn base(self) -> Version` — O(1); The version built by `new`.

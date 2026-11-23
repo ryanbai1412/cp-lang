@@ -13,7 +13,7 @@ const MAX_GEN = 2_000_000_000
 /// and O(1) `clear()`. Memory is one `[D]0..=2_000_000_000` array (4 bytes per element).
 pub struct Marks<D>:
     stamp: [D]0..=2_000_000_000
-    gen: Int
+    var gen: Int
     cnt: Int
 
     /// An empty mark set over `D`, with its stamp array allocated once.

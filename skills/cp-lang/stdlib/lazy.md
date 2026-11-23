@@ -23,8 +23,6 @@ Fields: `apply_fn: (T, Int, F) -> T,`, `split_fn: (F, Int) -> (F, F),`, `compose
 
 O(n) space.
 
-Fields: `n: Int`.
-
 - `fn new(a: ?[D]T = None, fill: ?T = None, merge: ?((T, T) -> T) = None) -> Rope<D, T>` — O(|D|); A rope over `D` holding the values of `a`, or `fill` at every position.; traps: when neither or both of `a` and `fill` are given
 - `fn apply(mut self, r: Range<D>, tag: T)` — O(log n) expected; Apply `tag` to every value at positions `r`: each becomes `merge(tag, x)`, or `tag` when no `merge` was given.; traps: when a non-empty `r` reaches outside `D`
 - `fn reverse(mut self, r: Range<D>)` — O(log n) expected; Reverse the order of the values at positions `r`; pending tags stay with their values.; traps: when a non-empty `r` reaches outside `D`

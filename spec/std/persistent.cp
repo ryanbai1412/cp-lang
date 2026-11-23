@@ -14,7 +14,7 @@ pub struct PersistentSegTree<D, T>(m: Monoid<T>):
     left: List<0..=2_000_000_000>
     right: List<0..=2_000_000_000>
     val: List<T>
-    base_root: Int
+    var base_root: Int
 
     /// Build version 0 over `D` from `a:`, a uniform `fill:`, or the monoid identity everywhere, and
     /// keep it as `base`. Every later write returns a new `Version`; no version is ever changed.
@@ -384,7 +384,7 @@ pub struct PersistentLazySegTree<D, T, F>(act: Action<T, F>):
     right: List<0..=2_000_000_000>
     val: List<T>
     tag: List<F>
-    base_root: Int
+    var base_root: Int
 
     fn push_node(mut self, l: Int, r: Int, v: T, f: F) -> Int:
         let id = val.len
@@ -506,7 +506,7 @@ pub struct PersistentArray<D, T>:
     left: List<0..=2_000_000_000>
     right: List<0..=2_000_000_000>
     val: List<T>
-    base_root: Int
+    var base_root: Int
 
     fn push_node(mut self, l: Int, r: Int, v: T) -> Int:
         let id = val.len
