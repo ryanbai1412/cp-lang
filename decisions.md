@@ -8303,3 +8303,8 @@ tag move fatal again.
 
 - **Call.** Once `Rev` stopped being `Indexed` (R07.3.5), `zip(gaps, gaps.rev)` became an error, though zip pairs by walk order (R07.4.2) and a `.rev` gives its k-th element in O(1). Now each argument after the first may be the `.rev` of an `Indexed`. The first stays `Indexed` because it keys the result. R07.2.13 no longer lists `.rev` among indexed views, which had contradicted R07.3.5. This is the same Rev-overload pattern stdlib uses for other helpers, not a new capability.
 - **Reverse.** Make zip Indexed-only again and write `List(a.rev)`.
+
+## 416. Rebuild round 34 triage (spec, 2026-11-23)
+
+- **Call.** 29 holes, all inside M1: 16 silent (12 guesses held), 1 contradiction, 3 missing stdlib, 9 found-late (3 already known gaps). Spec changes: a `fn` parameter always has a type and only a lambda infers its own (R06.1.2, a case pins E0204), so a signature reads alone; and `zip` taking `.rev` (decision 415) answers S8. Routed: `.present()` on `?Range` pieces (compiler, case std-seq/present-unwraps-pieces); `x.f(args)` for a free `f` suggesting `f(x, args)` as one rule (diagnostics); `cpl test` using `checker.py` (tools); positional `maximal` state in std examples, Fenwick suffix search, and the cut-to-position step (stdlib). `cpl-conform corpus` now judges with `checker.py`.
+- **Reverse.** Allow unannotated `fn` parameters as generics inferred from the body.

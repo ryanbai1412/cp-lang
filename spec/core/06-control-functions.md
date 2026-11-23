@@ -28,7 +28,9 @@ fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
   `return` is for early exits. (R06.1.1)
 - Parameters are lent for the call; `mut` parameters may be mutated (or
   drained) and are marked `mut` at the call: `solve(n, mut seen)`. The
-  method receiver needs no marker at the call. (R06.1.2)
+  method receiver needs no marker at the call. A `fn` parameter always has
+  a type (E0204 otherwise); only a lambda's parameters take theirs from
+  where it is passed, so a signature reads alone. (R06.1.2)
 - A parameter of a `fn` or a lambda may be a pattern, as in `for`:
   `(mut d, (u, v)) => d.unite(u, v)`. `mut` marks the whole parameter. (R06.1.3)
 - A lambda with k parameters, passed where the callee expects a function

@@ -217,6 +217,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-05/file-body-var-holds-lent.cp: compiler
 - core-05/lent-var-reassigned-from-itself.cp: compiler
 - std-window/track-infers-element-from-sequence.cp: compiler
+- std-seq/present-unwraps-pieces.cp: compiler
 - core-07/zip-takes-a-rev.cp: stdlib
 - core-07/rev-pieces-cut-in-walk-order.cp: compiler
 - std-subset/items-walks-members.cp: compiler
