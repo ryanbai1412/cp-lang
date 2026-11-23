@@ -439,12 +439,16 @@ jobs:
 
   # Milestone 1 acceptance: rejudge every committed acceptance-run solution
   # (research/acceptance/solutions/) with the release cpl and the
-  # Codeforces profile; any non-AC blocks. Parallel on the runner's 4 cores
-  # (about 2 min), restoring the release target/ the site job saves.
+  # Codeforces profile; any non-AC blocks. Split over 3 runners, parallel on
+  # each one's 4 cores, restoring the release target/ the site job saves.
   acceptance:
-    name: acceptance solutions stay AC
+    name: acceptance solutions stay AC (${{ matrix.shard }}/3)
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
       - name: Install the pinned Rust toolchain
@@ -465,7 +469,7 @@ jobs:
       - name: Build cpl
         run: cargo build --profile ci --bin cpl
       - name: Rejudge the acceptance solutions
-        run: python3 research/acceptance/regress.py target/ci/cpl -j "$(nproc)"
+        run: python3 research/acceptance/regress.py target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/3
 
   site:
     name: site build

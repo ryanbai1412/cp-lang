@@ -3,6 +3,7 @@
 
     research/acceptance/regress.py [cpl] [-j N]       every run under solutions/
     research/acceptance/regress.py [cpl] --only cf2285d
+    research/acceptance/regress.py [cpl] --shard 2/3     every third, from the second (CI)
 
 `solutions/<run>/<os>/<id>.cp` are the files an agent submitted; `solutions/<run>/repro/
 <id>-<what>.cp` are drafts that exposed a blocker (each says which in its first line).
@@ -29,9 +30,11 @@ def opt(argv, name):
 
 def main(argv):
     only, jobs = opt(argv, "--only"), int(opt(argv, "-j") or os.cpu_count() or 1)
-    pos = [a for i, a in enumerate(argv) if not a.startswith("-") and (i == 0 or argv[i - 1] not in ("--only", "-j"))]
+    shard, shards = map(int, (opt(argv, "--shard") or "1/1").split("/"))
+    pos = [a for i, a in enumerate(argv) if not a.startswith("-") and (i == 0 or argv[i - 1] not in ("--only", "-j", "--shard"))]
     cpl = pos[0] if pos else shutil.which("cpl") or str(ROOT / "target" / "release" / "cpl")
     srcs = [s for s in sorted((HERE / "solutions").glob("*/*/*.cp")) if not only or s.stem.split("-")[0].lower() == only.lower()]
+    srcs = srcs[shard - 1::shards]
     with tempfile.TemporaryDirectory() as tmp:
         def judge(src):
             return verdict(cpl, src, src.stem.split("-")[0].lower(), tempfile.mkdtemp(dir=tmp), judge="codeforces")
