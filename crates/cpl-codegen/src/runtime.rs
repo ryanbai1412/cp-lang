@@ -304,10 +304,13 @@ inline u8 read_char() {
 // Fills `v` with the next `v.size()` chars that are not spaces, like that
 // many `read_char()`s in one pass.
 template <class V> void read_chars(V& v) {
-  for (size_t k = 0; k < v.size();) {
+  for (size_t k = 0, m = v.size(); k < m;) {
     if (in_at >= in.size()) { if (!more()) fail(\"the input ended where a value was expected\"); continue; }
-    char c = in[in_at++];
-    if (!is_space(c)) v[k++] = (typename V::value_type)(u8)c;
+    // Copies the run of chars before the next space with no refill test per char.
+    const char* p = in.data() + in_at;
+    size_t e = std::min(in.size() - in_at, m - k), j = 0;
+    for (; j < e && !is_space(p[j]); j++) v[k + j] = (typename V::value_type)(u8)p[j];
+    k += j, in_at += j + (j < e);
   }
 }
 ",
