@@ -2255,20 +2255,24 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
         self.splay(x)
         Some(x)
 
-/// `LinkCut` with updates along a path: `LazyLinkCut(act, a)` with an add `Action` adds to every value on
-/// a path and folds paths, under the same `Action` as `SegTree(op, a, act:)`. Reversing a path must not
-/// change how a tag acts, `apply(f, x.rev(), k) == apply(f, x, k).rev()`, which holds for every
-/// commutative `over`. Every operation is amortized O(log n). Memory is about twice `LinkCut`'s.
 /// The preferred-path half of a link-cut tree over a fixed rooted tree: every node starts as its
 /// own path. Counting "how many paths lie between v and the root" (colours painted along root
 /// paths, access counts) reads off the switches each `access` makes.
 pub struct PreferredPaths<V>:
+    lc: [V]?V
+    rc: [V]?V
+    pa: [V]?V
+    /// The top vertex of each splay subtree's path segment: its leftmost node.
+    hd: [V]V
+    stk: List<V>
+
     /// The preferred paths of `t` with every vertex its own path.
     ///
     /// cost: O(n)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var pp = PreferredPaths(t); pp.access(0).count() == 0`
-    pub fn new<P>(t: Rooted<V, P>) -> PreferredPaths<V> = todo
+    pub fn new<P>(t: Rooted<V, P>) -> PreferredPaths<V> =
+        PreferredPaths([V] _ => None, [V] _ => None, [V] v => t.parent(v), [V] v => v, [])
 
     /// Makes the path from the root to `v` one preferred path, yielding each switch bottom-up:
     /// `gained` is the top vertex of the path just joined to its parent, `lost` the top vertex of
@@ -2280,8 +2284,58 @@ pub struct PreferredPaths<V>:
     /// order: bottom-up
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); var pp = PreferredPaths(t); pp.access(3).collect() == [(lost: None, gained: 3), (lost: None, gained: 1)] and pp.access(4).collect() == [(lost: Some(3), gained: 4)]`
-    pub fn access(mut self, v: V) -> yields (lost: ?V, gained: V) = todo
+    pub fn access(mut self, v: V) -> yields (lost: ?V, gained: V):
+        var last: ?V = None
+        var y: ?V = Some(v)
+        while let u = y:
+            self.splay(u)
+            if let g = last:
+                var lost: ?V = None
+                if let c = rc[u]: lost = Some(hd[c])
+                yield (lost: lost, gained: hd[g])
+            rc[u] = last
+            self.pull(u)
+            last = Some(u)
+            y = pa[u]
+        self.splay(v)
 
+    fn top(self, x: V) -> Bool:
+        if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
+
+    fn pull(mut self, x: V):
+        hd[x] = if let c = lc[x]: hd[c] else: x
+
+    fn rotate(mut self, x: V):
+        let p = pa[x]!
+        let g = pa[p]
+        let p_top = self.top(p)
+        if lc[p] == Some(x):
+            lc[p] = rc[x]
+            if let c = rc[x]: pa[c] = Some(p)
+            rc[x] = Some(p)
+        else:
+            rc[p] = lc[x]
+            if let c = lc[x]: pa[c] = Some(p)
+            lc[x] = Some(p)
+        pa[p] = Some(x)
+        pa[x] = g
+        if not p_top, let q = g:
+            if lc[q] == Some(p): lc[q] = Some(x) else: rc[q] = Some(x)
+        self.pull(p)
+        self.pull(x)
+
+    fn splay(mut self, x: V):
+        while not self.top(x):
+            let p = pa[x]!
+            if not self.top(p):
+                let g = pa[p]!
+                if (lc[g] == Some(p)) == (lc[p] == Some(x)): self.rotate(p) else: self.rotate(x)
+            self.rotate(x)
+
+/// `LinkCut` with updates along a path: `LazyLinkCut(act, a)` with an add `Action` adds to every value on
+/// a path and folds paths, under the same `Action` as `SegTree(op, a, act:)`. Reversing a path must not
+/// change how a tag acts, `apply(f, x.rev(), k) == apply(f, x, k).rev()`, which holds for every
+/// commutative `over`. Every operation is amortized O(log n). Memory is about twice `LinkCut`'s.
 pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     lc: [V]?V
     rc: [V]?V
@@ -2984,6 +3038,26 @@ fn perm_tree_nodes_cover_intervals_of_values():
                     st.push(a)
                     st.push(b)
             assert seen == 2 * n - 1
+
+@test
+fn preferred_paths_switch_like_preferred_children():
+    for n in 1..=12:
+        domain V = 0..n
+        let adj = random_tree(V.first!)
+        let r = Rooted(adj, V.first!)
+        var pp = PreferredPaths(r)
+        var pref: [V]?V = [V] _ => None
+        for _ in 0..60:
+            let v = V.nth(rand(0, n - 1))
+            var want: List<(lost: ?V, gained: V)> = []
+            pref[v] = None
+            var c = v
+            while let p = r.parent(c):
+                if pref[p] != Some(c):
+                    want.push((lost: pref[p], gained: c))
+                    pref[p] = Some(c)
+                c = p
+            assert pp.access(v).collect() == want
 
 @test
 fn perm_tree_of_a_small_permutation():

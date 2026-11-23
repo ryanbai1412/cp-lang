@@ -139,12 +139,16 @@ Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `flip: [V]Bool`, `val: [V]T`, `ag
 
 ## `struct PreferredPaths<V>`
 
-`LinkCut` with updates along a path: `LazyLinkCut(act, a)` with an add `Action` adds to every value on a path and folds paths, under the same `Action` as `SegTree(op, a, act:)`.
+The preferred-path half of a link-cut tree over a fixed rooted tree: every node starts as its own path.
+
+Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `hd: [V]V`, `stk: List<V>`.
 
 - `fn new<P>(t: Rooted<V, P>) -> PreferredPaths<V>` — O(n); The preferred paths of `t` with every vertex its own path.
 - `fn access(mut self, v: V) -> yields (lost: ?V, gained: V)` — amortized O(log n) switches; Makes the path from the root to `v` one preferred path, yielding each switch bottom-up: `gained` is the top vertex of the path just joined to its parent, `lost` the top vertex of the path that parent stopped preferring, if any.
 
 ## `struct LazyLinkCut<V, T, F>(act: Action<T, F>)`
+
+`LinkCut` with updates along a path: `LazyLinkCut(act, a)` with an add `Action` adds to every value on a path and folds paths, under the same `Action` as `SegTree(op, a, act:)`.
 
 Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `flip: [V]Bool`, `val: [V]T`, `agg: [V]T`, `lz: [V]F`, `stk: List<V>`.
 
