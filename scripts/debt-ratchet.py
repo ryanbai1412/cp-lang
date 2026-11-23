@@ -532,17 +532,14 @@ def _array_items(text: str) -> int:
     return items + pending
 
 
-CORPUS_TEST_RE = re.compile(r"\.(?:in|ans|out)$")
-
-
 def corpus_test_files(root: Path) -> list[str]:
-    """Committed corpus test cases other than samples; tests come from each problem's gen.py.
+    """Literal test data committed under corpus/problems/*/tests/, samples included.
 
-    Rule: handbook/guidelines/problem-packages.md#by-example. `scripts/check.sh --commit`
-    refuses a newly added one.
+    Rule: problem-packages/R9 (handbook/guidelines/problem-packages-checklist.md#r9):
+    tests come from each problem's gen.py and tests.toml. `scripts/check.sh --commit`
+    refuses a newly added file there.
     """
-    return [f for f in _git(root, "ls-files", "corpus")
-            if CORPUS_TEST_RE.search(f) and not f.rsplit("/", 1)[-1].startswith("sample")]
+    return [f for f in _git(root, "ls-files", "corpus/problems") if "/tests/" in f]
 
 
 def skip_lists(root: Path) -> list[str]:
@@ -720,7 +717,7 @@ COUNTERS = {
     "dead_code_allows": ("allow(dead_code) attributes", dead_code_allows, True),
     "external_crates": ("third-party packages in Cargo.lock", external_crates, True),
     "skip_lists": ("entries in skip, xfail, known-failure and gap lists", skip_lists, True),
-    "corpus_test_files": ("committed corpus .in/.ans/.out files other than samples", corpus_test_files, True),
+    "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),

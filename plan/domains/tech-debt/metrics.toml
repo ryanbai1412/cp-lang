@@ -208,6 +208,6 @@ milestone = "M2"
 [[metric]]
 name = "corpus_test_files"
 command = "python3 scripts/debt-ratchet.py --show corpus_test_files"
-today = 2215
+today = 2763
 target = "0"
 milestone = "M2"
