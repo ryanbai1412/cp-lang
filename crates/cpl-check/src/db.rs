@@ -1219,7 +1219,6 @@ impl Database {
             .unwrap_or_default()
     }
 
-    /// The definition of a top-level name in an analyzed file.
     /// Loads what one `use` names into `scope`.
     #[allow(clippy::too_many_arguments)]
     fn import(
@@ -1240,7 +1239,7 @@ impl Database {
         let mut single = None;
         let mut found = self.load_module(from, &parts, whole, diags);
         // `use std.math.gcd`: the last name is a name in the module before it.
-        if found.is_none() && diags.is_empty() && names.is_empty() && !glob && parts.len() > 2 {
+        if found.is_none() && diags.is_empty() && names.is_empty() && !glob && parts.len() > 1 {
             found = self.load_module(from, &parts[..parts.len() - 1], whole, diags);
             single = found.as_ref().map(|_| last);
         }
@@ -1327,7 +1326,7 @@ impl Database {
         span: Span,
         diags: &mut Vec<Diagnostic>,
     ) -> Option<Module> {
-        let (path, text) = self.loader.load(from, parts)?;
+        let (path, text) = self.find_module(from, parts)?;
         let name = parts.join(".");
         if let Some(at) = self.analyzing.iter().position(|p| *p == path) {
             let message = self.meet_cycle(at, &name, &path);
@@ -2480,5 +2479,6 @@ fn wide_array(
 
 mod cycles;
 mod fields;
+mod siblings;
 #[cfg(test)]
 mod tests;

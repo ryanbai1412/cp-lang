@@ -389,8 +389,43 @@ impl<'a> Lowerer<'a> {
                     body,
                 });
             }
-            ast::StmtKind::Use { .. } => {}
+            ast::StmtKind::Use {
+                path, names, glob, ..
+            } => self.use_sibling(m, path, names, *glob),
             _ => {}
         }
+    }
+
+    /// `use a.f` inside `mod b:`, `a` an inline module beside `b`: `f` names
+    /// `a`'s item in `b` (R11.2.2).
+    fn use_sibling(&mut self, m: ModId, path: &[ast::Name], names: &[ast::Name], glob: bool) {
+        let Some(&(parent, _)) = self.inline_mods.get(&m) else {
+            return;
+        };
+        let (module, picked) = match (names.is_empty() && !glob, path) {
+            (true, [module @ .., last]) => (module, std::slice::from_ref(last)),
+            _ => (path, names),
+        };
+        let mut sib = parent;
+        for part in module {
+            match self.mod_syms[sib].get(&part.text) {
+                Some(&Sym::Mod(next)) if self.inline_mods.contains_key(&next) => sib = next,
+                _ => return,
+            }
+        }
+        if sib == parent {
+            return;
+        }
+        let found: Vec<(String, Sym)> = match glob {
+            true => self.mod_syms[sib]
+                .iter()
+                .map(|(n, s)| (n.clone(), *s))
+                .collect(),
+            false => picked
+                .iter()
+                .filter_map(|n| Some((n.text.clone(), *self.mod_syms[sib].get(&n.text)?)))
+                .collect(),
+        };
+        self.mod_syms[m].extend(found);
     }
 }
