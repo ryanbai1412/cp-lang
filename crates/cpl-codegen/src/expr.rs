@@ -1647,7 +1647,7 @@ impl<'p> Emitter<'p> {
     /// How far a shift goes, held to `0..width` in every build: outside
     /// it C++ gives garbage. A literal inside the range needs no test.
     fn shift_amount(&mut self, b: &Code, width: i64) -> Code {
-        if b.text.parse::<i64>().is_ok_and(|n| (0..width).contains(&n)) {
+        if self.shift_fits(&b.text, width) {
             return Code::new(b.text.clone(), b.prec);
         }
         self.need("shamt");

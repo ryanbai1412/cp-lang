@@ -13,8 +13,8 @@
 use crate::emit::{pad, Emitter};
 use crate::walk;
 use cpl_ir::{
-    Arg, BinOp, Block, Builtin, Cast, Expr, ExprKind, Iter, LoopId, Place, PlaceKind, Stmt, Ty,
-    UnOp,
+    Arg, BinOp, Block, Builtin, Cast, CmpOp, Expr, ExprKind, Iter, LoopId, Place, PlaceKind, Stmt,
+    Ty, UnOp,
 };
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -34,6 +34,8 @@ pub(crate) enum Inside {
     /// `(grid, index, dims)`: `grid[e0, e1, ..]` is inside the grid when
     /// each `e` fits its `Dim`.
     Grid(Var, usize, Vec<Dim>),
+    /// A shift by this C++ amount is inside `0..64`.
+    Shift(String),
 }
 
 /// One index of a grid cell the check covers.
@@ -137,7 +139,18 @@ impl<'p> Emitter<'p> {
                         && dims.len() == indices.len()
                         && dims.iter().zip(indices).all(|(d, e)| dim_fits(d, *i, e))
                 }
+                Inside::Shift(_) => false,
             })
+    }
+
+    /// True when a shift by `by` needs no test that it is inside `0..width`.
+    pub(crate) fn shift_fits(&self, by: &str, width: i64) -> bool {
+        by.parse::<i64>().is_ok_and(|n| (0..width).contains(&n))
+            || width == 64
+                && self
+                    .inside
+                    .iter()
+                    .any(|c| matches!(c, Inside::Shift(s) if s == by))
     }
 
     pub(crate) fn inside_place(&self, list: &PlaceKind, indices: &[Expr]) -> bool {
@@ -214,6 +227,9 @@ impl<'p> Emitter<'p> {
             lists: false,
             grids: false,
             sometimes: false,
+            shifts: Vec::new(),
+            floors: Vec::new(),
+            floored: Vec::new(),
         };
         if !scan.block(body, true) {
             return none;
@@ -227,11 +243,32 @@ impl<'p> Emitter<'p> {
             lists,
             grids,
             sometimes,
+            shifts,
+            floored,
             ..
         } = scan;
-        if stored.contains(&(false, slot, None)) || !end(lo, &stored) || !end(hi, &stored) {
+        let mut moving = stored.clone();
+        moving.insert((false, slot, None));
+        if stored.contains(&(false, slot, None))
+            || !end(lo, &stored)
+            || !end(hi, &stored)
+            || !shifts.iter().all(|e| bound(e, &moving))
+        {
             return none;
         }
+        // An index under `if i > e` is checked from `e + 1` when `e` stays put.
+        let mut any = any;
+        let floored: Vec<(Expr, BTreeMap<List, (i64, i64)>)> = floored
+            .into_iter()
+            .filter_map(|(floor, key, c)| {
+                if bound(&floor, &moving) {
+                    return Some((floor, BTreeMap::from([(key, (c, c))])));
+                }
+                let range = any.entry(key).or_insert((c, c));
+                *range = (range.0.min(c), range.1.max(c));
+                None
+            })
+            .collect();
         let (lo, hi) = (self.expr(lo).text, self.expr(hi).text);
         let (run, last) = if *closed {
             (format!("(ll)({lo}) <= (ll)({hi})"), format!("(ll)({hi})"))
@@ -249,8 +286,11 @@ impl<'p> Emitter<'p> {
         // A list and a grid stop with different messages, so a check moved
         // ahead could change which one a run prints.
         let mixed = lists && grids;
+        // A shift by too much stops with its own message, so with shifts
+        // every check goes into the test that picks the unchecked copy.
+        let shifty = !shifts.is_empty();
         let mut inside = Vec::new();
-        if !mixed {
+        if !mixed && !shifty {
             let lists = fixed_lists(every, &stored);
             let grids = merge(every_grid, &stored, slot);
             if !lists.is_empty() || !grids.is_empty() {
@@ -273,10 +313,24 @@ impl<'p> Emitter<'p> {
         }
         // Indexes only some rounds reach: one test before the loop picks a
         // copy of it that skips their checks, or the copy that keeps them.
-        let version = (sometimes || (mixed && !any_grid.is_empty())).then(|| {
+        let version = (sometimes || shifty || (mixed && !any_grid.is_empty())).then(|| {
             let lists = fixed_lists(any, &stored);
             let grids = merge(any_grid, &stored, slot);
             let covers = self.covers(&bounds, lists, grids);
+            let mut covers = covers;
+            for (floor, list) in floored {
+                let floor = self.expr(&floor).text;
+                let lo = format!("std::max((ll)({lo}), (ll)({floor}))");
+                let at = Bounds { lo: &lo, ..bounds };
+                covers.extend(self.covers(&at, fixed_lists(list, &stored), Vec::new()));
+            }
+            for by in &shifts {
+                let by = self.expr(by).text;
+                covers.push((
+                    Some(format!("(unsigned long long)({by}) >= 64")),
+                    Inside::Shift(by),
+                ));
+            }
             let bad: Vec<_> = covers.iter().filter_map(|(b, _)| b.clone()).collect();
             let guard = if bad.is_empty() {
                 "true".to_string()
@@ -425,6 +479,7 @@ pub(crate) struct Ahead {
     pub version: Option<(String, Vec<Inside>)>,
 }
 
+#[derive(Clone, Copy)]
 struct Bounds<'a> {
     slot: usize,
     lo: &'a str,
@@ -511,6 +566,38 @@ fn linear(e: &Expr, neg: bool, terms: &mut Vec<Term>) -> Option<i64> {
 
 /// A loop bound the body cannot change: literals, variables it does not
 /// store, list lengths and sums of them.
+/// The `e` of each `index >= e` the condition's `and` chain states.
+fn floors_of(cond: &Expr, slot: usize) -> Vec<Expr> {
+    let is_slot = |e: &Expr| matches!(e.kind, ExprKind::Local(s) if s == slot);
+    let plus_one = |e: &Expr| Expr {
+        kind: ExprKind::Binary(BinOp::Add, Box::new(e.clone()), Box::new(int(1))),
+        ty: Ty::Int,
+        span: e.span,
+    };
+    match &cond.kind {
+        ExprKind::Binary(BinOp::And, a, b) => {
+            let mut out = floors_of(a, slot);
+            out.extend(floors_of(b, slot));
+            out
+        }
+        ExprKind::Cmp(CmpOp::Ge, i, e) | ExprKind::Cmp(CmpOp::Le, e, i) if is_slot(i) => {
+            vec![(**e).clone()]
+        }
+        ExprKind::Cmp(CmpOp::Gt, i, e) | ExprKind::Cmp(CmpOp::Lt, e, i) if is_slot(i) => {
+            vec![plus_one(e)]
+        }
+        _ => Vec::new(),
+    }
+}
+
+fn int(n: i64) -> Expr {
+    Expr {
+        kind: ExprKind::Int(n),
+        ty: Ty::Int,
+        span: Default::default(),
+    }
+}
+
 fn bound(e: &Expr, stored: &BTreeSet<Var>) -> bool {
     match &e.kind {
         ExprKind::Int(_) => true,
@@ -565,6 +652,12 @@ struct Scan<'e, 'p> {
     /// Whether the body indexes a list, and a grid.
     lists: bool,
     grids: bool,
+    /// How far each shift of a 64-bit value goes.
+    shifts: Vec<Expr>,
+    /// The `e` of each enclosing `if index >= e`.
+    floors: Vec<Expr>,
+    /// Indexes reached under a floor: `(floor, list, c)`.
+    floored: Vec<(Expr, List, i64)>,
 }
 
 impl Scan<'_, '_> {
@@ -580,7 +673,11 @@ impl Scan<'_, '_> {
             Stmt::Assign(place, _, value) => self.place(place, every) && self.expr(value, every),
             Stmt::Expr(e) | Stmt::Give(e) => self.expr(e, every),
             Stmt::If(cond, then, otherwise) => {
-                self.expr(cond, every) && self.block(then, false) && self.block(otherwise, false)
+                let floors = self.floors.len();
+                self.floors.extend(floors_of(cond, self.slot));
+                let then = self.block(then, false);
+                self.floors.truncate(floors);
+                self.expr(cond, every) && then && self.block(otherwise, false)
             }
             Stmt::For(
                 _,
@@ -649,7 +746,12 @@ impl Scan<'_, '_> {
 
     fn index(&mut self, list: Var, index: &Expr, every: bool) -> bool {
         self.lists = true;
-        if let Some((term, c)) = offset(index, self.slot) {
+        if let (Some((term, c)), false, Some(floor)) =
+            (offset(index, self.slot), every, self.floors.last())
+        {
+            self.sometimes = true;
+            self.floored.push((floor.clone(), (list, term), c));
+        } else if let Some((term, c)) = offset(index, self.slot) {
             let mut maps = vec![&mut self.any];
             if every {
                 maps.push(&mut self.every);
@@ -684,6 +786,14 @@ impl Scan<'_, '_> {
                 x,
             ) => self.expr(x, every),
             ExprKind::Unary(op, x) => *op != UnOp::Neg && self.expr(x, every),
+            ExprKind::Binary(BinOp::Shl | BinOp::Shr, l, r)
+                if matches!(l.ty, Ty::Int | Ty::U64) =>
+            {
+                if !matches!(r.kind, ExprKind::Int(0..=63)) {
+                    self.shifts.push((**r).clone());
+                }
+                self.expr(l, every) && self.expr(r, every)
+            }
             ExprKind::Binary(op, l, r) => {
                 let short = matches!(op, BinOp::And | BinOp::Or | BinOp::Coalesce);
                 safe_op(*op, l, r) && self.expr(l, every) && self.expr(r, every && !short)
@@ -1028,5 +1138,48 @@ mod tests {
             ));
         let body = &code[code.find("for (ll i").unwrap()..];
         assert!(body.contains("cpl::at(self.w, i - words)"), "{code}");
+    }
+
+    #[test]
+    fn a_loop_that_shifts_by_a_variable_checks_in_a_copy() {
+        let code = cpp(concat!(
+            "struct Bits:\n",
+            "    w: List<U64>\n",
+            "    fn or_up(mut self, words: Int, bits: Int):\n",
+            "        for i in (words..w.len).rev:\n",
+            "            w[i] |= w[i - words] << bits\n",
+            "var b = Bits([U64(1), U64(2), U64(3)])\n",
+            "b.or_up(1, 3)\n",
+            "print(b.w[2])\n",
+        ));
+        let (fast, slow) = code.split_once("} else {").unwrap();
+        let fast = &fast[fast.find("for (ll i").unwrap()..];
+        assert!(
+            code.contains("(unsigned long long)(bits) >= 64")
+                && !fast[..fast.find('}').unwrap()].contains("cpl::at(")
+                && slow.contains("cpl::at(self.w, i - words)"),
+            "{code}"
+        );
+    }
+
+    #[test]
+    fn an_index_under_if_i_above_checks_from_there() {
+        let code = cpp(concat!(
+            "fn main():\n",
+            "    let n = 5\n",
+            "    var xs = [1, 2, 3, 4, 5]\n",
+            "    var s = 0\n",
+            "    for i in 0..n:\n",
+            "        if i > 0: s += xs[i - 1]\n",
+            "    print(s)\n",
+            "main()\n",
+        ));
+        let (fast, slow) = code.split_once("} else {").unwrap();
+        assert!(
+            fast.contains("std::max((ll)(0), (ll)(0LL + 1))")
+                && fast.contains("xs[i - 1]")
+                && slow.contains("cpl::at(xs, i - 1)"),
+            "{code}"
+        );
     }
 }
