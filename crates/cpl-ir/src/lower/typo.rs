@@ -203,7 +203,8 @@ impl<'a> Lowerer<'a> {
         let last = self.diags.last_mut().filter(|d| {
             d.code == codes::TYPE_MISMATCH
                 && d.span == at
-                && d.message.starts_with("expected `Str`")
+                && (d.message.starts_with("expected `Str`")
+                    || d.message.starts_with("this method is called on a `Str`"))
         });
         if let Some(d) = last {
             d.help = Some(format!("`join` is called on the separator: `{new}`"));
@@ -227,8 +228,8 @@ impl<'a> Lowerer<'a> {
             return false;
         }
         let (text, at) = (self.source(base.span).to_string(), self.span(base.span));
-        let message = "expected `Str`, found `List<Char>`: a `Str` method takes a list of characters as `Str(..)`";
-        let mut d = Diagnostic::error(codes::TYPE_MISMATCH, at, message.to_string());
+        let message = format!("this method is called on a `Str`, and `{text}` is a `List<Char>`");
+        let mut d = Diagnostic::error(codes::TYPE_MISMATCH, at, message);
         d.help = Some(format!("write `Str({text})`"));
         d.fix(format!("write `Str({text})`"), at, format!("Str({text})"));
         self.diags.push(d);
