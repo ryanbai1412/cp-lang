@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2388 (995 passing). Rules: 558.
+Cases: 2389 (995 passing). Rules: 558.
 
 ## Summary per chapter
 

@@ -8,8 +8,8 @@ In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Group`, `Idempot
 
 ## Types & Constants
 
-- `const add: AddAction = AddAction()` — Stock action: add a tag to every element.
-- `const assign: AssignAction = AssignAction()` — Stock action: assign a tag to every element (`?T` tags, `None` is no-op).
+- `const add: AddAction = AddAction()` — Stock action: add a tag to every element; the tag is a `T`.
+- `const assign: AssignAction = AssignAction()` — Stock action: assign a tag to every element; the tag is a `?T` (`None` is a no-op).
 - `const affine: AffineAction = AffineAction()` — Stock action: `x -> a * x + b` on `+` folds (span `n`: `a * s + b * n`).
 - `const flip: FlipAction = FlipAction()` — Stock action: swap the two halves of a `Flip<T>` value.
 
