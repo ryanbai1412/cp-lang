@@ -1680,6 +1680,7 @@ impl<'a> Lowerer<'a> {
                     } else {
                         self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty))
                     };
+                    let v = self.field_keys(id, &decl.fields[i].ty, v, &arg.value);
                     let v = match self
                         .struct_field_range(id, i)
                         .and_then(|r| r.scalar().cloned())

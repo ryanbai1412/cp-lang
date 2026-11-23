@@ -945,6 +945,7 @@ impl<'a> Lowerer<'a> {
         span: Span,
         out: &mut Vec<Stmt>,
     ) {
+        let value = self.keys_like_place(&place, op, value, span);
         if let (Ty::Opt(_), AssignOp::Set, ExprKind::Some(_)) = (&place.ty, op, &value.kind) {
             if let Some(RangeInfo::Opt(inner)) = self.place_range(&place) {
                 if let RangeInfo::Scalar(bounds) = *inner {

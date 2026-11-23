@@ -526,7 +526,7 @@ pub const REGISTRY: &[CodeInfo] = &[
         title: "Lent value escapes its scope",
         summary: "A lent slice view (`s[a..b]`, `xs[a..b]`), reverse view (`.rev`), or projection cannot be stored, assigned, or returned past its owner.",
         explanation: "Slices and `.rev` are O(1) read-only views that borrow their base (represented as `std::string_view` / `cpl::View<T>` in C++). Copy into an owned value explicitly with `.to_str()`, `.to_list()`, or `.clone()` when you need it to outlive the borrow.",
-        trigger: "fn bad(a: [0..3]Int) -> [0..2]Int:\n    return a[0..2]\n",
+        trigger: "fn bad(a: [0..3]Int) -> [0..3]Int:\n    return a[0..3]\n",
         fix: "fn ok(a: [0..3]Int) -> List<Int>:\n    return [x for x in a[0..2]]\nprint(ok([1, 2, 3]))\n",
         mode: "check",
         input: "",

@@ -301,26 +301,12 @@ impl Ty {
             (Ty::Optional(a), Ty::Optional(b)) => a.fits_in(b, number),
             (a, Ty::Optional(inner)) => a.fits_in(inner, number),
             (Ty::Named { name, args }, b) if name == "Slice" && args.len() == 1 => {
-                args[0].fits_in(b, number)
+                args[0].array_fits(b, number, false)
             }
             (a, Ty::Named { name, args }) if name == "Slice" && args.len() == 1 => {
-                a.fits_in(&args[0], number)
+                a.array_fits(&args[0], number, false)
             }
-            (
-                Ty::Array {
-                    index: ai,
-                    elem: ae,
-                },
-                Ty::Array {
-                    index: bi,
-                    elem: be,
-                },
-            ) => {
-                let (ai, bi) = (flat_positions(ai), flat_positions(bi));
-                ai.len() == bi.len()
-                    && ai.iter().zip(&bi).all(|(a, b)| a.fits_in(b, number))
-                    && ae.fits_in(be, number)
-            }
+            (Ty::Array { .. }, Ty::Array { .. }) => self.array_fits(want, number, true),
             (Ty::Tuple(a), Ty::Tuple(b)) => {
                 a.len() == b.len() && a.iter().zip(b).all(|(a, b)| a.fits_in(b, number))
             }
@@ -1041,6 +1027,55 @@ pub fn human_int(n: i128) -> String {
 
 /// An array's index with each product position `(A, B)` as its factors: `[P]T` and `[A, B]T`
 /// are one type (R04.2.11).
+impl Ty {
+    /// Whether an array keyed by `self` is one keyed by `want`: two ranges
+    /// with every bound known must be the same keys, as two domains must
+    /// be (`[0..=3]Int` is not a `[0..3]Int`). A bound known only at run
+    /// time is checked there.
+    /// `fits_in` for arrays; `exact` asks for the same keys, where a view's
+    /// index is its source's, so a view's keys are only some of them.
+    fn array_fits(&self, want: &Ty, number: &mut dyn FnMut(&str) -> bool, exact: bool) -> bool {
+        let (
+            Ty::Array {
+                index: ai,
+                elem: ae,
+            },
+            Ty::Array {
+                index: bi,
+                elem: be,
+            },
+        ) = (self, want)
+        else {
+            return self.fits_in(want, number);
+        };
+        let (ai, bi) = (flat_positions(ai), flat_positions(bi));
+        ai.len() == bi.len()
+            && ai.iter().zip(&bi).all(|(a, b)| match exact {
+                true => a.keys_fit(b, number),
+                false => a.fits_in(b, number),
+            })
+            && ae.fits_in(be, number)
+    }
+
+    fn keys_fit(&self, want: &Ty, number: &mut dyn FnMut(&str) -> bool) -> bool {
+        match (self, want) {
+            (
+                Ty::Range {
+                    lo: Some(a),
+                    hi: Some(b),
+                    ..
+                },
+                Ty::Range {
+                    lo: Some(c),
+                    hi: Some(d),
+                    ..
+                },
+            ) => (a, b) == (c, d),
+            _ => self.fits_in(want, number),
+        }
+    }
+}
+
 fn flat_positions(index: &[Ty]) -> Vec<Ty> {
     let mut flat = Vec::with_capacity(index.len());
     for ty in index {

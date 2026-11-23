@@ -13,6 +13,7 @@ mod call;
 mod collect;
 mod comprehension;
 mod declare;
+mod declared_keys;
 mod expr;
 mod float_fn;
 mod fn_value;
@@ -3697,7 +3698,6 @@ impl<'a> Lowerer<'a> {
         let saved_fn_overflow = std::mem::replace(&mut self.overflow_checks_off, 0);
         self.cx.uses_io = decl.uses.iter().any(|u| u.text == "io");
         self.cx.lexical_uses = Some(decl.uses.iter().map(|u| u.text.clone()).collect());
-
         match &decl.body {
             ast::FnBody::Block(block) => {
                 let tail = if is_gen { Tail::Discard } else { Tail::Return };
@@ -3722,7 +3722,7 @@ impl<'a> Lowerer<'a> {
             // there is.
             ast::FnBody::None => {}
         }
-
+        self.fn_keys(decl, &mut out);
         self.contexts.truncate(self.file_contexts_len);
         self.contexts.extend(saved_fn_contexts);
         self.io_sep = saved_fn_io_sep;
