@@ -119,6 +119,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         self.lent
             .last()
             .is_some_and(|&(held, ..)| held >= self.base)
+            && self.frameless_base != Some(self.base)
     }
 
     fn trace_point(&mut self, point: &TracePoint<'p>) {

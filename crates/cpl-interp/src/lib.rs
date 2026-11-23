@@ -407,6 +407,7 @@ fn run_from<O: Observer>(
         fed_bodies: 0,
         fed_hosts: Vec::new(),
         lent: Vec::new(),
+        frameless_base: None,
         vm_pool_v: Vec::new(),
         view_locals: Vec::new(),
         trace_shown: trace::ShowTexts::new(),
@@ -633,8 +634,7 @@ struct Interp<'p, 'o, O: Observer> {
     fed_loops: Vec<Fed<'p>>,
     /// True while the body of a closure runs.
     in_closure: bool,
-    /// How the body of the fed loop that just ended left it, when that
-    /// was not a plain `break`: a `return`, or a jump to an outer loop.
+    /// How the fed loop that just ended was left, if not by a plain `break`.
     fed_left: Option<Flow>,
     /// Compiled register bytecode program for plain (untraced, unprofiled) runs.
     vm: Option<Rc<vm::CompiledProgram<'p>>>,
@@ -642,12 +642,12 @@ struct Interp<'p, 'o, O: Observer> {
     vm_regs_i: Vec<i64>,
     /// Fed loop bodies running, which take no checkpoint.
     fed_bodies: u32,
-    /// Traced VM frames, by stack base, running a fallback that may feed
-    /// a loop whose body their chunk holds.
+    /// Traced VM frames, by base, running a fallback that may feed a loop their chunk holds.
     fed_hosts: Vec<(usize, *const vm::Chunk<'p>)>,
-    /// The `mut` params of running traced VM calls: the stack slot holding
-    /// each one's value, and the caller's place it was lent from.
+    /// Lent params of running VM calls: the stack slot holding each value, and its place.
     lent: Vec<(usize, Rc<Part>)>,
+    /// The base of the frame whose VM callee runs without a frame of its own.
+    frameless_base: Option<usize>,
     /// Reusable pool of `Value` register frames for VM calls.
     vm_pool_v: Vec<Vec<Value>>,
     /// The allocation [`Interp::view`] lists locals in, kept between steps.

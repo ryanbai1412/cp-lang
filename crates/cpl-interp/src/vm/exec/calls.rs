@@ -600,6 +600,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.stack.resize(self.base + f.locals.len(), Value::Unit);
                     self.frame_locals.push(&f.locals);
                 }
+                let frameless = self.frameless_base;
+                if !needs_stack {
+                    self.frameless_base = Some(saved_base);
+                }
                 self.call_frames.push((f.name.as_str(), spans[cur_pc]));
                 self.suspend(
                     chunk,
@@ -611,6 +615,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 );
                 let res = self.exec_chunk(compiled, callee, &arg_buf[..n], vm_regs_i);
                 self.unsuspend();
+                self.frameless_base = frameless;
                 if needs_stack {
                     self.frame_locals.pop();
                     self.stack.truncate(self.base);
@@ -747,6 +752,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     self.stack.resize(self.base + f.locals.len(), Value::Unit);
                     self.frame_locals.push(&f.locals);
                 }
+                let frameless = self.frameless_base;
+                if !needs_stack {
+                    self.frameless_base = Some(saved_base);
+                }
                 self.call_frames.push((f.name.as_str(), spans[cur_pc]));
                 self.suspend(
                     chunk,
@@ -765,6 +774,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     vm_regs_i,
                 );
                 self.unsuspend();
+                self.frameless_base = frameless;
                 if needs_stack {
                     self.frame_locals.pop();
                     self.stack.truncate(self.base);
@@ -960,6 +970,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         self.stack.resize(self.base + def.locals.len(), Value::Unit);
                         self.frame_locals.push(&def.locals);
                     }
+                    let frameless = self.frameless_base;
+                    if !needs_stack {
+                        self.frameless_base = Some(saved_base);
+                    }
                     self.call_frames.push(("<closure>", spans[cur_pc]));
                     self.suspend(
                         chunk,
@@ -1027,6 +1041,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let res =
                         self.exec_chunk_inner(compiled, callee, c_base_i, vm_regs_i, &mut c_regs_v);
                     self.unsuspend();
+                    self.frameless_base = frameless;
                     while self.saved_domains.len() > dom_mark {
                         let (id, prev) = self.saved_domains.pop().unwrap();
                         self.domains[id] = prev;
