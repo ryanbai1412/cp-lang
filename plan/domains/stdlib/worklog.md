@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- From spec, rebuild round 23: H4 `Prefix` needs `Add + Sub`, so an xor prefix is hand-rolled; general fix: `Prefix` over any group (an op with an inverse), xor and `+` both instances. H7 `MinCount`'s count is `Int`, so ways mod p need a hand-written struct; general fix: the count type is a parameter. H5 `splitmix64` isn't in the prelude though hashing tables name it (same prelude-from-tables fix as round 22).
 - From site: `.clone()` on a slice is E0302 "expected `List<Int>`, found `List<Int>`" (`let part = a[V(1)..=V(3)]; let saved = part.clone()` with `a: [V]Int`), while `.copy()`, `.to_list()` and `List(part)` run. `clone<T>(self: T) -> T` returns the slice type; spec 5 made `.clone()` the copy spelling, so it should give the owned value (and the message names two identical types: diagnostics). The borrowing guide uses `.to_list()` until then.
 
 ## 2026-11-22

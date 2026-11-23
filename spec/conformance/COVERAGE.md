@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2685 (995 passing). Rules: 570.
+Cases: 2687 (995 passing). Rules: 570.
 
 ## Summary per chapter
 
@@ -22,7 +22,7 @@ Cases: 2685 (995 passing). Rules: 570.
 - R07 (07-sequences.md): 90 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 90 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R10 (10-io.md): 19 rules, 105 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R10 (10-io.md): 19 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 46 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 27 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -604,7 +604,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R10.3.2 [4+ 0-]: , any other as `Int(v)` (`1..=n` prints 1..n); `"{x:.9}"` sets float precision, `"{x:6}"` ...
 - R10.3.3 [1+ 3-]: `Bool` is not `Show`: `print(b)` is an error naming `print(yes(b))`. `yes(b)` is the word ...
 - R10.3.4 [3+ 0-]: `F64` uses `io.precision` or `print(x, precision: k)`; with neither it prints 10 decimals,...
-- R10.3.5 [7+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
+- R10.3.5 [8+ 0-]: Derived structurally (see R08.1.6), with nothing to write: records, tuples and structs pri...
 - R10.3.6 [2+ 0-]: Output mirrors input, shape for shape, except that counts are never written for you. `[R, ...
 - R10.3.7 [1+ 1-]: `?T` is not `Show`, like `Bool`: `print(x)` on a `?Int` is a compile error (E0606); write ...
 
@@ -986,6 +986,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-02/generic-variant-compares-with-typed-side.cp
 - core-02/range-type-argument-is-anonymous-domain.cp
 - core-02/range-type-arguments-index-a-2d-segtree.cp
+- core-02/str-of-charset-escapes.cp
 - core-04/char-from-idx.cp
 - core-04/list-literal-sizes-a-generic-domain.cp
 - core-07/yielded-closure-writes-generator-local.cp

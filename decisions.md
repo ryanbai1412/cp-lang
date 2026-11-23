@@ -7954,3 +7954,10 @@ macOS and Windows do it only when `editors/jetbrains/`, the Gradle mirror
 script or ci.yml changed since main's last green CI run (or on a PR's diff, or
 always on a manual run), and always run the LSP handshake against their own
 `cpl`. Reverse: drop the `plugin` step's condition in ci.yml's jetbrains job.
+
+## 381. Rebuild round 23: `Str of` escapes; routes (spec, 2026-11-23)
+
+- **Decision.** The charset in `Str of "..."` is an ordinary string literal,
+  escapes included (round 23, H24, the one contradiction). Everything else
+  in the round's 30 holes was a correct guess or a route.
+- **Reverse.** Make the charset a raw literal.

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-23
+- From spec, rebuild round 23: F5 `print(xs.rev, sep: "\n")` ignores `sep:` in interp and C++ (a plain list honours it); general fix: print any `Seq` through one path (case core-10/print-view-honours-sep). F4 `p.scan(max)` over `[V]V` is E0501 'can't handle `.MIN` of a domain': a domain's min/max identity is its first/last position. F1 a later `none` after `let none = 5` resolves to `None` in some position (reader's 2016-? file in devin/rebuild-23). Repeats: `read<Str of "LR">()` E0107, `read_output<Int>()` E0501.
 - From site (acceptance run 5, row 13): a heap lend escapes into a `var`: `struct H: xs: List<Int>; fn get(self) -> lends List<Int>: self.xs`, then `var keep = H(xs: [1, 2]).get()` runs and prints `1 2`; the guide and R5 (C1, sharp edge 1) say only plain values copy out, heap lends need `.clone()` (E0603). Plain `var keep = owner.get()` on `lends Int` copying is right.
 
 ## 2026-11-22
