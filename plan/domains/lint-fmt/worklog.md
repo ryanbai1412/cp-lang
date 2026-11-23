@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Ratchet: the same bless took std L0520 6 -> 7. Not a lint change: `b10e3d444` (stdlib) added a hand-rolled `while lo < hi` search in `DynamicOrderTree.kth` (`segtree.cp:1075`); real finding, filed with stdlib.
 - lint: L0414 treats `for j in c..xs.len` with any literal `c` as proving `xs[j]` (it took only `0..`); a variable start still warns since it may be negative. Test in `rules/lists.rs`, near miss in the record. Ratchet: std L0414 103 -> 101 (`flow.cp:238-239`-style `k..path.len` loops keep warning: `k` is a variable).
 - Triage: the 2 new dream L0602 findings are real (idioms worklog); all 12 `spec/std` L0201 are real (locals only moved or read; full list in the stdlib worklog).
 - lint: `cpl lint` reports the checker's lints L0601-L0609, and `cp.toml [lints]`, `with lint(name: allow)` and `@allow(name)` accept their spec names (decisions.md 239). Before: `with lint(padding: allow)` gave `L0001 there is no lint called padding`, and `padding = "allow"` in `cp.toml` was rejected. Tests: `crates/cpl-lint/src/checker_tests.rs` (table matches `spec/diagnostics.md`, report, allow, deny, typo). Counts: `spec/std` 235 warnings (no change), corpus `spec.cp` 34 (no change), dream 99 -> 101 (2 L0602: cf2124d:26, cf2152h2:53; idioms worklog). `cpl lint spec/std/tree.cp` 0.02 -> 0.21 s; target now 0.5 s. Asked compiler for `cpl check` to honour the same levels.
