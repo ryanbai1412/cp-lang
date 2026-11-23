@@ -27,7 +27,7 @@ enum Flip:
     Odd
 
 @!multitest
-let n: 1..=500_000 = read()
+let n: 1..=1_000_000 = read()
 let vals: [0..n]1..=2 * n = read()
 var by_val: [0..=2 * n]List<Int> = []
 for (i, v) in vals.items: by_val[v].push(i)

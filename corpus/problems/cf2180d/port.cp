@@ -13,7 +13,7 @@
 // interval forward.
 
 @!multitest
-let n: 1..=200_000 = read()
+let n: 1..=2_000_000 = read()
 let x: [0..n]0..=10 ** 9 = read()
 if n == 1:
     print(0)
