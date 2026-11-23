@@ -17,6 +17,10 @@ fn chrome() -> Option<PathBuf> {
         .flat_map(|dir| names.iter().map(move |name| dir.join(name)))
         .find(|candidate| candidate.is_file());
     if found.is_none() {
+        assert!(
+            std::env::var_os("CI").is_none(),
+            "no Chrome on PATH in CI (set CPL_CHROME); the viewer would go untested"
+        );
         eprintln!("skipped: no Chrome on PATH (set CPL_CHROME)");
     }
     found
