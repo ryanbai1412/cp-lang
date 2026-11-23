@@ -1105,14 +1105,18 @@ fn a_problems_checker_py_judges_its_cases_unless_the_file_declares_one() {
     let (code, out, _) = cli(test::run, &[port]);
     assert_eq!(code, 0, "{out}");
     assert!(out.ends_with("  1/1 passed\n"), "{out}");
-    // `@check` in the file wins: this one wants the sample's exact answer.
-    std::fs::write(
-        port,
-        "let n: 2..=100 = read()\nprint(n - 2, 2)\n\n\
-         @check\nfn check():\n    let a: Int = read_output()\n    assert a == 1\n",
-    )
-    .unwrap();
-    let (code, out, _) = cli(test::run, &[port]);
-    assert_eq!(code, 1, "{out}");
+    // `@check` in the file wins. `cpl judge` runs it, which in a test would
+    // be this test binary, so check which judge is picked instead.
+    let declared = "let n: 2..=100 = read()\nprint(n - 2, 2)\n\n\
+         @check\nfn check():\n    let a: Int = read_output()\n    assert a == 1\n";
+    std::fs::write(port, declared).unwrap();
+    let args =
+        cpl_stress::args::Args::parse("test", &[port.to_string()], test::VALUED, &[]).unwrap();
+    match test::ready(Path::new(port), declared, &args).map(|ready| ready.judge) {
+        Ok(Judge::Checker(program)) => {
+            assert_eq!(program.argv[1..], ["judge".to_string(), port.to_string()])
+        }
+        other => panic!("the declared checker was not used: {other:?}"),
+    }
     std::fs::remove_dir_all(&dir).unwrap();
 }

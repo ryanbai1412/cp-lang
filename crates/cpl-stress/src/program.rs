@@ -757,7 +757,15 @@ pub(crate) fn kill_group(pid: u32) {
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status();
-    #[cfg(not(unix))]
+    // `py -3` runs the script in a child python.exe, which `Child::kill`
+    // leaves running with the pipes open.
+    #[cfg(windows)]
+    let _ = Command::new("taskkill")
+        .args(["/F", "/T", "/PID", &pid.to_string()])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status();
+    #[cfg(not(any(unix, windows)))]
     let _ = pid;
 }
 
