@@ -568,9 +568,9 @@ mod tests {
         let list =
             "let xs = [3, 1]\nlet ys: List<Int> = []\nprint(xs.first(), ys.last(), [1].first())\n";
         assert_eq!(codes(list), vec!["L0206", "L0206", "L0206"]);
-        let bits = "let b = Bitset<0..10>()\nprint(b.first(), b.last(), b.len())\n";
+        let bits = "domain D = 0..10\nlet b = Bitset<D>()\nprint(b.first(), b.last(), b.len())\n";
         assert_eq!(codes(bits), vec!["L0206"]);
-        let rebound = "var xs = [1]\nfn f(xs: Bitset<0..4>) = xs.first()\n";
+        let rebound = "domain E = 0..4\nvar xs = [1]\nfn f(xs: Bitset<E>) = xs.first()\n";
         assert!(!codes(rebound).contains(&"L0206"));
         let walk = "fn top(w: Int) -> ?Int = iterate(from: Some(w), step: v => None).last()\n";
         assert!(codes(walk).is_empty());
