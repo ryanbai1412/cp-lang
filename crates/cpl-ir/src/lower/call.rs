@@ -5949,6 +5949,21 @@ impl<'a> Lowerer<'a> {
                             stmts: vec![Stmt::Expr(push)],
                         },
                     ));
+                    // Submasks of the complement come largest first; supersets go `self` first.
+                    let rev = lw.mk(
+                        ExprKind::Mutate(
+                            Mutation::Reverse,
+                            Box::new(Place {
+                                kind: PlaceKind::Local(acc),
+                                ty: list_ty.clone(),
+                                span: lw.span(span),
+                            }),
+                            Vec::new(),
+                        ),
+                        Ty::Unit,
+                        span,
+                    );
+                    out.push(Stmt::Expr(rev));
                     out.push(Stmt::Give(lw.local(acc, span)));
                 })
             }
