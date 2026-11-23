@@ -1,5 +1,6 @@
-//! Choosing among an error's ranked fixes by re-checking, so `cpl fix`
-//! applies, and the editor prefers, the candidate the types agree with
+//! The one fix path: choosing among an error's ranked fixes by re-checking,
+//! and applying them in rounds, so `cpl fix`, the editor's quick fixes and
+//! fix-all, and the playground apply the same edits
 //! (`plan/domains/diagnostics/design/checked-fix-candidates.md`).
 
 use cpl_diag::{Diagnostic, Fix};
@@ -45,7 +46,7 @@ fn choose<'d>(
             fixes: vec![fix.clone()],
             ..diag.clone()
         };
-        let (fixed, _) = cpl_lint::apply_fixes(text, std::slice::from_ref(&alone));
+        let (fixed, _) = cpl_diag::apply_fixes(text, std::slice::from_ref(&alone));
         let errors = errors_in(db, path, &fixed);
         if errors.is_empty() {
             return Some(fix);
@@ -83,9 +84,40 @@ pub fn rank_checked(
 pub fn errors_in(db: &mut cpl_check::Database, path: &str, text: &str) -> Vec<Diagnostic> {
     db.set_file(path, text);
     let analysis = db.analyze(path).expect("the file was just set");
-    let mut out = cpl_ir::check(&analysis);
+    let mut out = crate::check(&analysis);
     out.retain(|d| d.severity == cpl_diag::Severity::Error);
     out
+}
+
+/// `text` with the first fix of each error applied, round after round
+/// until none applies, and how many were applied. A round can uncover
+/// another error, so the rounds are capped.
+pub fn apply_error_fixes(path: &str, text: &str) -> (String, usize) {
+    let (text, applied, _) = apply_error_fixes_in(&mut cpl_check::Database::new(), path, text);
+    (text, applied)
+}
+
+/// `apply_error_fixes` in `db`, with the errors left in the result.
+pub fn apply_error_fixes_in(
+    db: &mut cpl_check::Database,
+    path: &str,
+    text: &str,
+) -> (String, usize, Vec<cpl_diag::Diagnostic>) {
+    let mut text = text.to_string();
+    let mut applied = 0;
+    let mut budget = MAX_CHECKS;
+    for _ in 0..8 {
+        let mut errors = errors_in(db, path, &text);
+        rank_checked(db, path, &text, &mut errors, &mut budget);
+        let (next, n) = cpl_diag::apply_fixes(&text, &errors);
+        if n == 0 || next == text {
+            return (text, applied, errors);
+        }
+        applied += n;
+        text = next;
+    }
+    let left = errors_in(db, path, &text);
+    (text, applied, left)
 }
 
 #[cfg(test)]

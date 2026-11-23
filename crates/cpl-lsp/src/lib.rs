@@ -8,7 +8,6 @@
 //! help, inlay hints, find-references and rename. Semantic tokens come with a later phase
 //! (`plan/60-editor.md`).
 
-pub mod checked_fix;
 mod complete;
 pub mod explain;
 mod imports;

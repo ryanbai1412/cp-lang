@@ -512,3 +512,11 @@ Landed since 23:10: four type/flow lints from `spec/idioms/lints.md`, L0571 `neg
   checker doesn't cover. `run_ranges_by` stays without a fix: std has no
   `run_ranges`. Test: diagnostics/a_method_by_twin.cp, whose fixed form
   checks and runs.
+- B6 #2 step 4 (one fix path): the checked applier (`checked_fix`,
+  `rank_checked`, `errors_in`, `apply_error_fixes`) moved from cpl-lsp and
+  cpl-cli into `cpl_ir::fix`, and the text step `apply_fixes` from
+  cpl-lint into cpl-diag (cpl-lint re-exports it). `cpl fix` and the LSP's
+  quick fixes now call the same functions. Left: lint-fmt's
+  `fix_checked_removed_syntax`, and a playground fix-all entry.
+  Tests: cpl-ir fix tests (moved), cpl-lsp, cpl-cli diagnostics/newcomer/
+  catalogue.

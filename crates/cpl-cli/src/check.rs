@@ -4,8 +4,7 @@
 use std::io::Write;
 
 use crate::{json_out, EXIT_ERRORS, EXIT_USAGE};
-use cpl_lsp::checked_fix;
-pub(crate) use cpl_lsp::checked_fix::errors_in;
+pub(crate) use cpl_ir::fix::{apply_error_fixes_in, errors_in};
 
 /// Checks each file through the shared front end and renders what it
 /// finds.
@@ -73,37 +72,6 @@ pub(crate) fn reported_errors(path: &std::path::Path, text: &str) -> Vec<cpl_dia
     let mut out = cpl_ir::reported(&analysis);
     out.retain(|d| d.severity == cpl_diag::Severity::Error);
     out
-}
-
-/// `text` with the first fix of each error applied, round after round
-/// until none applies, and how many were applied. A round can uncover
-/// another error, so the rounds are capped.
-pub fn apply_error_fixes(path: &str, text: &str) -> (String, usize) {
-    let (text, applied, _) = apply_error_fixes_in(&mut cpl_check::Database::new(), path, text);
-    (text, applied)
-}
-
-/// `apply_error_fixes` in `db`, with the errors left in the result.
-fn apply_error_fixes_in(
-    db: &mut cpl_check::Database,
-    path: &str,
-    text: &str,
-) -> (String, usize, Vec<cpl_diag::Diagnostic>) {
-    let mut text = text.to_string();
-    let mut applied = 0;
-    let mut budget = checked_fix::MAX_CHECKS;
-    for _ in 0..8 {
-        let mut errors = errors_in(db, path, &text);
-        checked_fix::rank_checked(db, path, &text, &mut errors, &mut budget);
-        let (next, n) = cpl_lint::apply_fixes(&text, &errors);
-        if n == 0 || next == text {
-            return (text, applied, errors);
-        }
-        applied += n;
-        text = next;
-    }
-    let left = errors_in(db, path, &text);
-    (text, applied, left)
 }
 
 /// `text` with the lint fixes `cpl lint --fix` would make, and how many;

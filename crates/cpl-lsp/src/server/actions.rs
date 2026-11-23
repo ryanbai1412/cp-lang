@@ -121,11 +121,11 @@ impl Server {
     }
 }
 
-/// `crate::checked_fix` on a scratch database, so the open documents stay as they are.
+/// `cpl_ir::fix::checked_fix` on a scratch database, so the open documents stay as they are.
 fn cpl_check_fix<'d>(
     uri: &str,
     text: &str,
     diag: &'d cpl_diag::Diagnostic,
 ) -> Option<&'d cpl_diag::Fix> {
-    crate::checked_fix::checked_fix(&mut cpl_check::Database::new(), uri, text, diag)
+    cpl_ir::fix::checked_fix(&mut cpl_check::Database::new(), uri, text, diag)
 }

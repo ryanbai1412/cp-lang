@@ -42,7 +42,7 @@ Runtime traps (`R` codes) are built by `Trap::to_diagnostic` in
 | `REGISTRY`, `lookup` | `cpl explain` (`crates/cpl-cli/src/lib.rs`), `crates/cpl-cli/tests/catalogue.rs`, `scripts/conformance-coverage.py` (parses `registry.rs` as text; debt). Nothing under `web/` reads it | `catalogue.rs` (every trigger emits exactly its code, every fix runs clean) |
 | `render`, `render_all` | `cpl check/run/build`, goldens | `crates/cpl-cli/tests/diagnostics.rs` (53 `.err` goldens + 2 `cpl fix` goldens) |
 | `LineIndex::utf16` | cpl-lsp | cpl-lsp tests |
-| `Diagnostic.fixes` | `cpl fix` (`apply_error_fixes`, `crates/cpl-cli/src/lib.rs`), LSP quick fixes (`crates/cpl-lsp/src/server.rs`) | `tests/fixes/*.fixed`, recovery `fix_it_scoreboard` |
+| `Diagnostic.fixes` | the one `fix` entry, `cpl_ir::fix` (`crates/cpl-ir/src/fix.rs`): `checked_fix` picks among an error's candidates by re-checking, `apply_error_fixes` applies them in rounds; `cpl fix`, LSP quick fixes and fix-all take it, and `cpl_diag::apply_fixes` is the text step every path shares. It lives in cpl-ir because the errors it re-checks include lowering's (`cpl_ir::check`); it takes compiler's `Session` once that lands (plan/ARCHITECTURE.md B6 #2). `cpl_lint::fix_checked_removed_syntax` (lint-fmt, step 3) is the last own path | `crates/cpl-ir/src/fix.rs` tests, `tests/fixes/*.fixed`, recovery `fix_it_scoreboard`, cpl-lsp parity |
 
 The feedback loop: `crates/cpl-cli/tests/recovery.rs` breaks every clean
 `corpus/problems/*/spec.cp` in the `SPEC_PORTS` list (37) with six accidental

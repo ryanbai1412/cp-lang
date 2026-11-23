@@ -22,12 +22,11 @@ mod sha256;
 mod submit;
 use submit::{list_judges, submit};
 pub mod toolchain;
-pub use cpl_lsp::checked_fix::checked_fix;
+pub use cpl_ir::fix::{apply_error_fixes, checked_fix};
 mod trace;
 mod unit_tests;
 
 use build::{build_file, take_judge, BuildOptions};
-pub use check::apply_error_fixes;
 use check::{check, fix};
 use unit_tests::{run_unit_tests, should_run_unit_tests};
 
