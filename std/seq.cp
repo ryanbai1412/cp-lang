@@ -1528,7 +1528,7 @@ pub struct Rebased<S>(pub src: S)
 /// order: source order, every `k`-th; source keys
 /// traps: when `k < 1`
 /// example: `[3, 1, 2, 4, 5].step(2).nth(2) == 5`
-pub fn step<S: Indexed>(self: S, k: Int) -> Stepped<S>:
+pub fn step<S: Indexed<K, T>, K, T>(self: S, k: Int) -> Stepped<S, T>:
     assert k >= 1, "step(k) requires k >= 1"
     Stepped(self, k)
 
@@ -1539,23 +1539,33 @@ pub fn step<S: Indexed>(self: S, k: Int) -> Stepped<S>:
 /// order: source order, every other element; source keys
 /// traps: never
 /// example: `[3, 1, 2, 4, 5].even.len == 3 and [3, 1, 2, 4, 5].even.nth(1) == 2`
-@get pub fn even<S: Indexed>(self: S) -> Stepped<S> = Stepped(self, 2)
+@get pub fn even<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T> = Stepped(self, 2)
 
-/// \(O(1)\) to make. The view `s.step(k)`: `s` walked `k` elements at a time, keys unchanged.
-pub struct Stepped<S>(pub src: S, pub k: Int):
-    /// \(O(1)\). How many elements the walk visits: `ceil(src.len / k)`.
+/// \(O(1)\). Every other element, starting with the second: `s.even`'s complement, with source keys.
+///
+/// cost: \(O(1)\) to make, \(O(1)\) per step
+/// empty: an empty view when `s` has fewer than two elements
+/// order: source order, every other element; source keys
+/// traps: never
+/// example: `[3, 1, 2, 4, 5].odd.len == 2 and [3, 1, 2, 4, 5].odd.nth(1) == 4`
+@get pub fn odd<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T> = Stepped(self, 2, from: 1)
+
+/// \(O(1)\) to make. The view `s.step(k)`: `s` walked `k` elements at a time from position
+/// `from`, keys unchanged.
+pub struct Stepped<S, T>(pub src: S, pub k: Int, pub from: Int = 0):
+    /// \(O(1)\). How many elements the walk visits: `ceil((src.len - from) / k)`, or 0.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[3, 1, 2, 4, 5].step(2).len == 3`
-    @get pub fn len(self) -> Int = (src.len + k - 1) / k
+    @get pub fn len(self) -> Int = if from >= src.len: 0 else: (src.len - from + k - 1) / k
 
-    /// \(O(1)\). The element `j` steps into the walk: `src`'s element `j * k`.
+    /// \(O(1)\). The element `j` steps into the walk: `src`'s element `from + j * k`.
     ///
     /// cost: \(O(1)\)
     /// traps: unless `0 <= j < self.len`
     /// example: `[3, 1, 2, 4].step(2).nth(1) == 2`
-    pub fn nth<T>(self, j: Int) -> T = src.nth(j * k)
+    pub fn nth(self, j: Int) -> T = src.nth(from + j * k)
 
     /// \(O(1)\). The element at source key `i` (R04a.9.3): `a.step(2).at(i)` is `a[i]`, and
     /// `a.step(2)[i]` reads it.
@@ -1563,9 +1573,9 @@ pub struct Stepped<S>(pub src: S, pub k: Int):
     /// cost: \(O(1)\)
     /// traps: unless `i` is a key the stride visits (`first`, `first + k`, ...), naming them
     /// example: `[10, 20, 30, 40, 50].step(2).at(4) == 50`
-    pub fn at<K, T>(self, i: K) -> T:
-        let o = i.ord - src.keys.first!.ord
-        assert 0 <= o < src.len and o % k == 0, "this step({k}) view keeps every {k}-th key of its source from {src.keys.first!}; {i} is not one of them; use .nth(j) for its j-th element"
+    pub fn at<K>(self, i: K) -> T:
+        let o = i.ord - src.keys.first!.ord - from
+        assert 0 <= o < src.len - from and o % k == 0, "this step({k}) view keeps every {k}-th key of its source from position {from}; {i} is not one of them; use .nth(j) for its j-th element"
         src.at(i)
 
 /// \(O(1)\). The same cells keyed by `keys`, which must have the same length (traps otherwise):
