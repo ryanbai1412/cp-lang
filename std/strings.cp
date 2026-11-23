@@ -1,6 +1,7 @@
 //! String algorithms. They only compare elements, so they work on a `Str`
 //! (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
 
+use std.math.{pow_mod}
 use std.seq.{collect, nth, last_true}
 
 /// `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.
@@ -1452,14 +1453,6 @@ pub trait Hashable:
 /// explicitly, so 2D row and column hashes never collide on transposes.
 ///
 /// not a container: `len` is the hashed string's length; it holds hashes, not elements.
-fn rh_pow(b: Int, e: Int, m: Int) -> Int:
-    var (acc, x, k) = (1, b % m, e)
-    while k > 0:
-        if k % 2 == 1: acc = acc * x % m
-        x = x * x % m
-        k /= 2
-    acc
-
 pub struct RollingHash:
     pub bases: (Int, Int)
     p1: List<Int>
@@ -1631,8 +1624,8 @@ pub struct RollingHash:
         with lint(unproven_list_index: allow)
         assert b_len >= 0, "RollingHash.combine: negative length"
         let fits = b_len < pow1.len
-        let q1 = if fits: pow1[b_len] else: rh_pow(bases.0, b_len, 1_000_000_007)
-        let q2 = if fits: pow2[b_len] else: rh_pow(bases.1, b_len, 1_000_000_009)
+        let q1 = if fits: pow1[b_len] else: pow_mod(bases.0, b_len, 1_000_000_007)
+        let q2 = if fits: pow2[b_len] else: pow_mod(bases.1, b_len, 1_000_000_009)
         HashVal((a.h1 * q1 + b.h1) % 1_000_000_007, (a.h2 * q2 + b.h2) % 1_000_000_009)
 
     /// The length of the longest common prefix of the suffixes starting at `a` and `b`, by
