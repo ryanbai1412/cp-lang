@@ -1467,3 +1467,30 @@ fn vm_runs_unit_builtin_statements_itself() {
         include_str!("../../cpl-cli/tests/programs/vm_unit_builtins.out")
     );
 }
+
+#[test]
+fn vm_index_of_a_computed_value_reads_and_traps() {
+    let src = "\
+fn sq(n: Int) -> List<Int> = [i * i for i in 0..n]
+
+struct Rows:
+    m: Map<Int, List<Int>>
+
+let r = Rows(m: Map())
+var t = 0
+for i in 0..5:
+    t += sq(5)[i]
+print(t, r.m.len)
+var u = 0
+for i in 0..4:
+    u += sq(3)[i]
+print(u)
+";
+    let (out, trap) = outcome(src, "");
+    assert_eq!(out, "30 0\n");
+    let msg = format!("{trap:?}");
+    assert!(
+        msg.contains("out of range") || msg.contains("outside"),
+        "{msg}"
+    );
+}

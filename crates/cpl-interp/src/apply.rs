@@ -20,6 +20,7 @@ pub(crate) fn operands(e: &Expr) -> Vec<&Expr> {
         }
         ExprKind::Binary(op, lhs, rhs) if !lazy(*op) => vec![lhs, rhs],
         ExprKind::Read(spec) => spec_exprs(spec).unwrap_or_default(),
+        ExprKind::Index(base, indices) => std::iter::once(&**base).chain(indices).collect(),
         _ => Vec::new(),
     }
 }
@@ -64,6 +65,7 @@ pub(crate) fn applies(e: &Expr) -> bool {
     matches!(
         e.kind,
         ExprKind::Builtin(..)
+            | ExprKind::Index(..)
             | ExprKind::Unary(..)
             | ExprKind::Cmp(..)
             | ExprKind::Cast(..)
@@ -236,6 +238,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 self.read(spec, span, &given)?
             }
             ExprKind::Builtin(op, args) => self.builtin_values(*op, args, e, vals)?,
+            ExprKind::Index(base, _) => self.index_value(&vals[0], &vals[1..], &base.ty, span)?,
             ExprKind::Binary(op, ..) => {
                 let mut vals = vals.into_iter();
                 let (l, r) = (vals.next().unwrap(), vals.next().unwrap());

@@ -2406,6 +2406,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             &held
         };
         let values: &[Value] = if n <= 2 { &stack_vals[..n] } else { &heap_vals };
+        self.index_value(holder, values, &base.ty, span)
+    }
+
+    /// The element of `holder`, a value of `base_ty`, at `values`.
+    pub(crate) fn index_value(
+        &self,
+        holder: &Value,
+        values: &[Value],
+        base_ty: &Ty,
+        span: Span,
+    ) -> Res<Value> {
         match holder {
             Value::Array(array) => {
                 let at = if array.dims.len() == 1 && values.len() == 1 {
@@ -2507,7 +2518,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
             Value::Map(entries) => {
-                let lookup_key = match &base.ty {
+                let lookup_key = match base_ty {
                     Ty::Map(kt, _) | Ty::HashMap(kt, _) => {
                         value::strip_cached(&values[0], kt, self.program)
                     }
@@ -2517,7 +2528,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Some(value) => Ok(value.clone()),
                     None => {
                         let mut key = Vec::new();
-                        if let Ty::Map(key_ty, _) | Ty::HashMap(key_ty, _) = &base.ty {
+                        if let Ty::Map(key_ty, _) | Ty::HashMap(key_ty, _) = base_ty {
                             show(&mut key, &values[0], key_ty, 6, self.program, &self.domains);
                         }
                         let key: String = key.iter().map(|b| *b as char).collect();

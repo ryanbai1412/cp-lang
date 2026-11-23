@@ -7,7 +7,6 @@ expr:Call(m1_get_or_insert_with_Str_D1_P)
 expr:CallExpr
 expr:Closure
 expr:DomainVal
-expr:Index
 expr:Read
 traced fn:SortedBag_Int.drain(part)
 traced fn:SortedSet_Int.drain(part)
