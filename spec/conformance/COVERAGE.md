@@ -808,6 +808,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0305 unwrap_on_possibly_empty: **no case**
 - L0306 int_overflow_at_bounds: **no case**
 - L0307 always_true_bounds_check: **no case**
+- L0308 noop_mod_reduce: **no case**
 - L0540 manual_bit_test: **no case**
 - L0541 sort_desc_by_negation: **no case**
 - L0542 last_via_len: **no case**
@@ -884,7 +885,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-59 of 159 testable codes have no negative case.
+60 of 160 testable codes have no negative case.
 
 ## Spec code blocks
 
