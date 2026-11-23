@@ -22,6 +22,25 @@ class SkillGenTests(unittest.TestCase):
         expected.add(skill_gen.STDLIB_OUT / "README.md")
         self.assertEqual(set(files.keys()), expected)
 
+    def test_drift_names_a_stale_page(self) -> None:
+        import tempfile
+        saved = skill_gen.STDLIB_OUT
+        with tempfile.TemporaryDirectory() as d:
+            files = skill_gen.generate_all()
+            out = Path(d)
+            for path, content in files.items():
+                (out / path.name).write_text(content)
+            skill_gen.STDLIB_OUT = out
+            try:
+                orig = skill_gen.generate_all
+                skill_gen.generate_all = lambda: {out / p.name: c for p, c in files.items()}
+                self.assertEqual(skill_gen.drift_errors(), [])
+                (out / "seq.md").write_text("old")
+                self.assertTrue(any("seq.md" in e and "stale" in e for e in skill_gen.drift_errors()))
+            finally:
+                skill_gen.generate_all = orig
+                skill_gen.STDLIB_OUT = saved
+
     def test_read_header_preserves_default_args(self) -> None:
         lines = [
             "    pub fn new(a: ?[D]T = None, fill: ?T = None) -> Foo<D, T> = todo",

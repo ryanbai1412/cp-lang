@@ -626,18 +626,27 @@ def parse_io_annotations(code: str) -> tuple[str | None, list[str] | None]:
     return inp, out
 
 
-def check_skill(cpl: Path) -> list[str]:
-    errors: list[str] = []
+def _rel(path: Path) -> Path:
+    return path.relative_to(ROOT) if path.is_relative_to(ROOT) else path
 
+
+def drift_errors() -> list[str]:
+    """Generated pages that differ from what spec/std gives today; no cpl needed."""
+    errors: list[str] = []
     expected = generate_all()
     actual_paths = set(STDLIB_OUT.glob("*.md")) if STDLIB_OUT.is_dir() else set()
     for path, content in sorted(expected.items()):
         if not path.is_file():
-            errors.append(f"missing generated file: {path.relative_to(ROOT)} (run scripts/skill-gen.py)")
+            errors.append(f"missing generated file: {_rel(path)} (run scripts/skill-gen.py)")
         elif path.read_text() != content:
-            errors.append(f"stale generated file: {path.relative_to(ROOT)} (run scripts/skill-gen.py)")
+            errors.append(f"stale generated file: {_rel(path)} (run scripts/skill-gen.py)")
     for extra in sorted(actual_paths - set(expected.keys())):
-        errors.append(f"extra file in skills/cp-lang/stdlib/: {extra.relative_to(ROOT)}")
+        errors.append(f"extra file in skills/cp-lang/stdlib/: {_rel(extra)}")
+    return errors
+
+
+def check_skill(cpl: Path) -> list[str]:
+    errors = drift_errors()
 
     skill_md = SKILL_DIR / "SKILL.md"
     if not skill_md.is_file():
@@ -746,7 +755,14 @@ def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--check", action="store_true", help="verify generated files and all cp code blocks")
     ap.add_argument("--cpl", type=Path, default=None, help="path to cpl binary for --check")
+    ap.add_argument("--drift", action="store_true", help="only verify the generated pages match spec/std")
     args = ap.parse_args(argv)
+
+    if args.drift:
+        errs = drift_errors()
+        for e in errs:
+            print(f"skill-check: {e}", file=sys.stderr)
+        return 1 if errs else 0
 
     if args.check:
         cpl = args.cpl if args.cpl is not None else find_cpl()
