@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2948 (1059 passing). Rules: 582.
+Cases: 2949 (1060 passing). Rules: 582.
 
 ## Summary per chapter
 
@@ -17,7 +17,7 @@ Cases: 2948 (1059 passing). Rules: 582.
 - R04 (04-indices.md): 73 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R05 (05-ownership.md): 49 rules, 196 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R05 (05-ownership.md): 49 rules, 197 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 107 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 191 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -391,7 +391,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.5 [2+ 5-]: a closure or nested fn that captures a local `var`, a local heap value or a parameter (§10...
 - R05.7.6 [8+ 11-]: **Read lend:** the sources can be read, but not written, resized or moved.
 - R05.7.7 [1+ 3-]: **`mut` lend:** the sources can't be touched at all except through it.
-- R05.7.8 [3+ 4-]: returned, except from a fn declared `lends` (§6);
+- R05.7.8 [4+ 4-]: returned, except from a fn declared `lends` (§6);
 - R05.7.9 [1+ 1-]: stored into anything reached through a parameter (a `mut` parameter's storage belongs to t...
 - R05.7.10 [3+ 3-]: stored in a top-level `var` by a fn. The file body is itself a fn (§11), so its own statem...
 - R05.8.1 [1+ 3-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
@@ -980,11 +980,11 @@ prepends it.
 - 05-ownership.md: 56 blocks, 47 with a case, 2 spec-only, 7 neither
   - line 105: `var xs = [1, 2]`
   - line 173: `struct Holder: xs: List<Int>`
-  - line 523: `let d = build_dsu(edges)`
-  - line 645: `var xs = [1, 2]`
-  - line 654: `var xs = [1, 2]`
-  - line 860: `var xs = [3, 1, 2]`
-  - line 966: `var xs = [1, 2]`
+  - line 525: `let d = build_dsu(edges)`
+  - line 647: `var xs = [1, 2]`
+  - line 656: `var xs = [1, 2]`
+  - line 862: `var xs = [3, 1, 2]`
+  - line 968: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
   - line 219: `fn divisors(n: Int) -> yields Int:`
