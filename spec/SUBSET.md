@@ -188,6 +188,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-02/str-len-runtime-bound.cp: compiler
 - core-02/char-of-non-ascii-traps.cp: compiler
 - core-02/unwrap-shadow-below-multitest.cp: compiler
+- core-02/bare-variant-needs-expected-enum.cp: compiler
 - core-03/annotation-widens-fresh-read.cp: compiler
 - core-03/field-bound-from-input.cp: compiler
 - core-03/memory-over-profile.cp: compiler
