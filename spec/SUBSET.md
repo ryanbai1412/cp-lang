@@ -191,7 +191,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/pair-index-arity-mismatch.cp: compiler
 - core-04/pair-symmetric.cp: compiler
 - core-04/palindromes-longest-at-key.cp: stdlib
-- core-04/piece-into-fold.cp: compiler
 - core-04/prefix-and-z-function-over-domain-array-and-range.cp: compiler
 - core-04/range-key-is-element.cp: compiler
 - core-04/range-len-walk-ends.cp: compiler
