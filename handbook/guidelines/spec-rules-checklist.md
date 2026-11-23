@@ -54,6 +54,15 @@ prelude (R11.3.2). Enforced by `scripts/conformance-sigs.py --check` and
 A rule change that alters an area's model or a key decision updates that
 area's `handbook/language/` doc in the same commit.
 
+### spec-rules/R7. A removed spelling is in the changelog
+
+Every spelling the spec makes E0503 (removed syntax) is named, with its
+replacement, under the current version's breaking changes in
+`CHANGELOG.md`, because an old solution meets it first as an error. The
+release notes are generated from that file. Example: `D.bounds` is
+`D.cuts` appears as a breaking-changes line. Enforced by
+`scripts/spec-changelog.py`.
+
 ## Checklist
 
 - [ ] The most general rule, with the special cases it replaces removed (spec-rules/R1)
@@ -64,6 +73,7 @@ area's `handbook/language/` doc in the same commit.
 - [ ] Matching `std` signature and prelude export (spec-rules/R5)
 - [ ] `handbook/language/` updated if the model changed (spec-rules/R6)
 - [ ] A case for the rule (`guidelines/conformance.md`)
+- [ ] Every removed spelling has a changelog line (spec-rules/R7)
 
 ## Changes
 
