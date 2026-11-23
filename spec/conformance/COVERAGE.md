@@ -7,13 +7,13 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2212 (995 passing). Rules: 531.
+Cases: 2214 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 99 cases; 0 uncovered, 4 happy-path only, 1 negative only
 - R02 (02-values-types.md): 51 rules, 94 cases; 1 uncovered, 7 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 24 rules, 56 cases; 0 uncovered, 6 happy-path only, 1 negative only
+- R03 (03-numbers-layout.md): 24 rules, 58 cases; 0 uncovered, 6 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 88 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -188,7 +188,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.3.4 [1+ 1-]: **Reading input** rejects a value equal to a spare (`read<Int>` of `-9223372036854775808` ...
 - R03.4.1 [1+ 6-]: **The rule for every check.** On the judge only valid programs matter, so release optimize...
 - R03.4.2 [0+ 1-] *negative only*: Proofs are intraprocedural interval arithmetic on `let`s and declared ranges (already deci...
-- R03.5.1 [3+ 1-]: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
+- R03.5.1 [3+ 3-]: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
 
 ### R04: 04-indices.md
 
@@ -665,7 +665,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 15 case(s)
-- E0302 Type mismatch: 31 case(s)
+- E0302 Type mismatch: 33 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
