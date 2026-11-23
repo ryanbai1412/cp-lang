@@ -1,1 +1,1 @@
-Parentheses mark work in CP Lang (decision 140): `xs.sum()`, `xs.sorted()` and `g.transpose()` walk or allocate, so they take `()`, and anything read without `()` is O(1). Writing `xs.sum` hides a loop behind field syntax; `xs.sum()` shows the cost where it is paid.
+Parentheses mark work in CP Lang (decision 140): `xs.sum()`, `xs.sorted()` and `g.transpose()` walk or allocate, so they take `()`, and anything read without `()` is \(O(1)\). Writing `xs.sum` hides a loop behind field syntax; `xs.sum()` shows the cost where it is paid.

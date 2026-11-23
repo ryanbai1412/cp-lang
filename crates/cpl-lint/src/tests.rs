@@ -1831,3 +1831,17 @@ fn a_table_above_multitest_counted_into_leaks() {
     let counter = "var t = 0\n@!multitest\nt += 1\nprint(t)\n";
     assert!(codes(counter).iter().all(|c| *c != "L0211"));
 }
+
+#[test]
+fn plain_math_reads_latex_as_unicode() {
+    let plain = crate::plain_math;
+    assert_eq!(
+        plain("costs \\(O(n \\log n)\\) here"),
+        "costs O(n log n) here"
+    );
+    assert_eq!(
+        plain("\\(O(n \\cdot \\alpha(n))\\), \\(O(\\sqrt{n})\\)"),
+        "O(n · α(n)), O(√n)"
+    );
+    assert_eq!(plain("no math, `xs[0]`"), "no math, `xs[0]`");
+}

@@ -71,8 +71,10 @@ pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut S
                 .iter()
                 .find(|l| l.code.0.eq_ignore_ascii_case(code) || l.name == *code)
             {
-                let _ = writeln!(stdout, "{} ({}): {}", lint.code.0, lint.name, lint.title);
-                let _ = writeln!(stdout, "\n{}", lint.explanation);
+                let plain = cpl_lint::plain_math;
+                let (title, text) = (plain(lint.title), plain(lint.explanation));
+                let _ = writeln!(stdout, "{} ({}): {title}", lint.code.0, lint.name);
+                let _ = writeln!(stdout, "\n{text}");
                 let _ = writeln!(stdout, "\nTrigger:\n{}", lint.trigger.trim_end());
                 let _ = writeln!(stdout, "\nFix:\n{}", lint.fix.trim_end());
                 return 0;

@@ -72,6 +72,7 @@ architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
 | Lint codes collided twice (L0530-L0532) when two lanes added records at once | `record_codes_are_unique` fails a duplicate; lanes take code blocks (lint-fmt L054x, diagnostics L053x). Next: `cpl lint --new <name>` picks the lane's next free code | lint-fmt |
 | L0521's running total, L0542 and L0504's `x = f(x, e)` match `push`, `last`, `len` and a parameter name as text | rules match resolved symbols from the fact table (callee is a fn, a parameter or a std method), so no rule reads a name | lint-fmt, with compiler for the fact table |
 | L0522 knows three copy spellings (`to_list`, comprehension, push loop), each matched separately | one "value is a copy of `xs[l..r]`" recognizer shared by every rule that reads a copy | lint-fmt |
+| `cpl explain` and `cpl lint --list` needed record math (`\(O(\log P)\)`) in plain text, so `cpl_lint::plain_math` handles a few macros | one LaTeX-to-Unicode fallback shared by LSP hover, CLI and the playground for std docs, spec and records; `plain_math` then calls it | site |
 | L0518 took only `false`/`0` as a sieve mark, missing `comp[j] = true` | marks are any constant written at a stepped multiple | lint-fmt (done in a5317254) |
 
 ## Why each milestone

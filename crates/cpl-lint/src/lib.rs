@@ -142,6 +142,38 @@ pub struct Lint {
 // the rest.
 include!(concat!(env!("OUT_DIR"), "/lints.rs"));
 
+/// `text` with its `\\( ... \\)` math in plain Unicode for the terminal and the editor:
+/// `\\(O(n \\log n)\\)` reads `O(n log n)`. Records keep the LaTeX for the site.
+pub fn plain_math(text: &str) -> String {
+    const MACROS: [(&str, &str); 11] = [
+        ("\\cdot", "·"),
+        ("\\times", "×"),
+        ("\\alpha", "α"),
+        ("\\log", "log"),
+        ("\\leq", "≤"),
+        ("\\geq", "≥"),
+        ("\\le", "≤"),
+        ("\\ge", "≥"),
+        ("\\sqrt", "√"),
+        ("\\infty", "∞"),
+        ("\\,", " "),
+    ];
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(at) = rest.find("\\(") {
+        out.push_str(&rest[..at]);
+        let body = &rest[at + 2..];
+        let end = body.find("\\)").unwrap_or(body.len());
+        let mut math = body[..end].to_string();
+        for (tex, plain) in MACROS {
+            math = math.replace(tex, plain);
+        }
+        out.extend(math.chars().filter(|c| !matches!(c, '{' | '}')));
+        rest = body.get(end + 2..).unwrap_or("");
+    }
+    out + rest
+}
+
 /// The taste lints (`plan/PORTING.md`): code that works but reads like
 /// translated C++. `cpl lint --taste` counts them per file.
 pub fn is_taste(lint: &Lint) -> bool {

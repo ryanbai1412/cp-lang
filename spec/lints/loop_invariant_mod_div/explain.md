@@ -1,1 +1,1 @@
-Dividing a `Mod<P>` value computes an O(log P) modular inverse on every iteration. When the divisor does not change inside the loop, hoist `let inv_d = d.inv` before the loop and multiply by `inv_d` instead.
+Dividing a `Mod<P>` value computes an \(O(\log P)\) modular inverse on every iteration. When the divisor does not change inside the loop, hoist `let inv_d = d.inv` before the loop and multiply by `inv_d` instead.

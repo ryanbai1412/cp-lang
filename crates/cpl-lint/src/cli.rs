@@ -85,7 +85,7 @@ pub fn run_with(
                         lint.name,
                         lint.group.as_str(),
                         lint.default.as_str(),
-                        lint.summary
+                        crate::plain_math(lint.summary)
                     );
                 }
                 return 0;

@@ -304,3 +304,41 @@ fn record_codes_are_unique() {
         }
     }
 }
+
+/// Math in a record is LaTeX in `\\( ... \\)` so the site can typeset it and the terminal
+/// can read it plain: a bare `O(n)` outside code or math fails.
+#[test]
+fn record_math_is_latex() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../spec");
+    for dir in ["lints", "checker-lints"] {
+        for record in std::fs::read_dir(root.join(dir)).expect("records") {
+            let record = record.expect("record").path();
+            for file in ["explain.md", "lint.toml"] {
+                let Ok(text) = std::fs::read_to_string(record.join(file)) else {
+                    continue;
+                };
+                let mut prose = String::new();
+                for (i, part) in text.split('`').enumerate() {
+                    if i % 2 == 0 {
+                        prose += &part.replace("\\\\", "\\");
+                    }
+                }
+                let mut rest = prose.as_str();
+                while let Some(at) = rest.find("\\(") {
+                    let end = rest[at..].find("\\)").map_or(rest.len(), |e| at + e + 2);
+                    assert!(
+                        !rest[..at].contains("O("),
+                        "{}/{file}: bare O(...)",
+                        record.display()
+                    );
+                    rest = &rest[end..];
+                }
+                assert!(
+                    !rest.contains("O("),
+                    "{}/{file}: bare O(...)",
+                    record.display()
+                );
+            }
+        }
+    }
+}
