@@ -206,7 +206,22 @@ impl<'a> Lexer<'a> {
         );
         let operand_after =
             rest.starts_with(|c: char| c.is_ascii_alphanumeric() || c == '_' || c == '(');
-        let hides_closer = !self.openers.is_empty() && rest.contains([')', ']']);
+        // Only a closer the rest of the line leaves unmatched: a trailing
+        // comment like `// rows[v - 1] lists ..` balances its own brackets.
+        let mut depth = 0u32;
+        let closes_open = rest.chars().any(|c| match c {
+            '(' | '[' => {
+                depth += 1;
+                false
+            }
+            ')' | ']' if depth == 0 => true,
+            ')' | ']' => {
+                depth -= 1;
+                false
+            }
+            _ => false,
+        });
+        let hides_closer = !self.openers.is_empty() && closes_open;
         let line = &self.src[self.src[..start].rfind('\n').map_or(0, |i| i + 1)..start];
         let words = |s: &'a str| s.split(|c: char| !c.is_alphanumeric() && c != '_');
         let open_if = words(line).any(|w| w == "if") && !words(line).any(|w| w == "else");

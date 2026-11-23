@@ -1,0 +1,10 @@
+error[E0101]: this `(` is never closed
+  --> comment_after_an_unclosed_opener.cp:2:12
+  |
+2 | let r = max(n - 1, 2  // r[v - 1] lists `the` roads
+  |            ^
+3 | print(r)
+  | - a new statement starts here
+  = help: add `)` at the end of the expression
+
+comment_after_an_unclosed_opener.cp: 1 error
