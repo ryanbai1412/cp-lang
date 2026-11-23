@@ -231,8 +231,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/fold-without-parens-warns.cp: compiler
 - core-07/prefix-scan-cuts.cp: compiler
 - core-07/slice-past-source-traps.cp: compiler
-- core-07/tally-is-counter.cp: stdlib
-- core-07/tally-missing-key-is-zero.cp: stdlib
 - core-08/const-param-arithmetic.cp: compiler
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/static-fn-default-param-mismatch.cp: compiler

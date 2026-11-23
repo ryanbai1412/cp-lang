@@ -10,6 +10,8 @@
 //! - Monotone stack & sliding extrema: `prev_less`, `next_less`, `prev_greater`, `next_greater`, `sliding_min`, `sliding_max`.
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`at`, `try_at`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
+use std.hashmap.{Counter}
+
 /// Every value of `V` once, in some order. `cpl stress` makes and shrinks it as a permutation.
 pub type Perm<V> = [V]V
 
@@ -1780,18 +1782,17 @@ pub fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(
         if eq(c, x): count += 1
     if 2 * count > n: Some((val: c, count:)) else: None
 
-/// \(O(n)\) expected, \(O(\mathit{distinct})\) memory. Frequency map of keys `by(x)` across `self`.
+/// \(O(n)\) expected, \(O(\mathit{distinct})\) memory. How many times each key `by(x)` occurs across `self`, as a `Counter`, so a key that never occurs reads 0.
 ///
 /// cost: \(O(n)\) expected, \(O(\mathit{distinct})\) memory
-/// empty: an empty map
+/// empty: an empty counter
 /// traps: never
 /// example: `"abca".tally()['a'] == 2`
-pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> HashMap<K, Int>:
-    var out = HashMap<K, Int>()
+/// example: `[1, 1, 2].tally()[7] == 0`
+pub fn tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
+    var out = Counter<K, Int>(0)
     for x in self:
-        let k = by(x)
-        let c = out.get(k)
-        out[k] = if c == None: 1 else: c! + 1
+        out.add(by(x), 1)
     out
 
 /// \(O(n)\) expected, \(O(n)\) memory. Group elements by an arbitrary hashable key; `of:` keeps a projection of each element (`pairs.group(by: .0, of: .1)`). When the key is a domain, `a.map(key).buckets()` keys the result by that domain instead.
@@ -3589,7 +3590,7 @@ fn dedup_first_some_tally_and_group():
     assert [1, 4, 9].first_some(x => if x > 3: Some(x * 10) else: None) == Some(40)
     assert [1, 2].first_some(x => if x > 3: Some(x) else: None) == None
     let t = [3, 1, 3, 3].tally()
-    assert t[3] == 3 and t[1] == 1 and t.get(2) == None
+    assert t[3] == 3 and t[1] == 1 and t[2] == 0
     let g = [(1, 'a'), (2, 'b'), (1, 'c')].group(by: p => p.0, of: p => p.1)
     assert g[1] == ['a', 'c'] and g[2] == ['b']
 
