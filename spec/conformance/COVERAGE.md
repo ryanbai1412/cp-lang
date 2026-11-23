@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3064 (1092 passing). Rules: 583.
+Cases: 3066 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 174 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 152 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 183 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 49 rules, 227 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -230,7 +230,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.7 [1+ 1-]: | `V(x)` | integer to position, trapping outside `V` | \(O(1)\)
 - R04.2.8 [1+ 0-]: | `V.at(x)` | integer to position, `?V`: `None` outside `V` | \(O(1)\)
 - R04.2.9 [3+ 0-]: | `P.nth(k)` | a product domain walks row-major (the last factor fastest), so `P.nth(k)` d...
-- R04.2.10 [7+ 2-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
+- R04.2.10 [8+ 3-]: | `P.at((x, y))`, `P((x, y))` | for a product domain `P = (A, B)`, a tuple of integers to ...
 - R04.2.19 [3+ 0-]: | `v.after`, `v.before` | the pieces `v.r..` and `..v.l` of `v`'s domain, so `for j in v.a...
 - R04.2.11 [8+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [2+ 1-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
@@ -756,7 +756,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 17 case(s)
-- E0302 Type mismatch: 45 case(s)
+- E0302 Type mismatch: 46 case(s)
 - E0303 Wrong number of arguments: 11 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
