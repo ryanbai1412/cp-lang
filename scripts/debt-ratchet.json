@@ -19,7 +19,7 @@
   "ir_builtin_names": 163,
   "prelude_privilege": 24,
   "backend_std_names": 18,
-  "lint_std_names": 180,
+  "lint_std_names": 146,
   "dup_fn_bodies": 3,
   "layer_violations": 1,
   "tree_walker": 1,
