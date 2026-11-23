@@ -12,11 +12,11 @@
 // status. Fragments without input only need to build; `ran` says whether a
 // fence prints something when run (with empty input if it has none), which is
 // what gives it a Run button.
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tmpdir } from 'node:os';
+import { availableParallelism, tmpdir } from 'node:os';
 
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
@@ -88,9 +88,27 @@ walk(join(web, 'content'), (p) => {
 });
 
 const tmp = join(tmpdir(), 'cp-gate');
-mkdirSync(tmp, { recursive: true });
-writeFileSync(join(tmp, 'cp.toml'), `[libs]\nlib = "${join(repo, 'examples/local-lib')}"\n`);
 const sh = (args, input = '') => spawnSync(cpl, args, { input, encoding: 'utf8', timeout: 20000 });
+// `sh` without blocking, so snippets run on every core.
+const shAsync = (args, input = '') =>
+  new Promise((resolve) => {
+    const p = spawn(cpl, args);
+    let stdout = '';
+    let stderr = '';
+    p.stdout.setEncoding('utf8').on('data', (d) => (stdout += d));
+    p.stderr.setEncoding('utf8').on('data', (d) => (stderr += d));
+    const timer = setTimeout(() => p.kill(), 20000);
+    p.on('error', (e) => {
+      clearTimeout(timer);
+      resolve({ status: null, stdout, stderr: stderr + String(e) });
+    });
+    p.on('close', (status) => {
+      clearTimeout(timer);
+      resolve({ status, stdout, stderr });
+    });
+    p.stdin.on('error', () => {});
+    p.stdin.end(input);
+  });
 
 const results = {};
 let failed = 0;
@@ -117,27 +135,31 @@ for (const id of readdirSync(join(web, 'content/practice'))) {
     console.error(`gate: practice problem ${id} lacks ${lacks.join(', ')}`);
   }
 }
-for (const s of snippets) {
-  const file = join(tmp, 'main.cp');
+// Each worker gets its own folder, so parallel runs never share a main.cp.
+const slots = snippets.map(() => null);
+const errorsOf = snippets.map(() => []);
+async function gate(k, dir) {
+  const s = snippets[k];
+  const errors = errorsOf[k];
+  const file = join(dir, 'main.cp');
   writeFileSync(file, s.source);
   const first = (r) => (r.stderr || r.stdout).split('\n').find((l) => l.startsWith('error')) ?? '';
-  const check = sh(['check', file]);
+  const check = await shAsync(['check', file]);
   // A fence written ```cp rejects=E0602 shows a mistake: it must fail `cpl check` with that code.
   // rejects=R0202 shows a trap: it checks, and `cpl run` on its input stops with that code.
   if (s.rejects) {
     const trap = s.rejects.startsWith('R');
-    const out = trap && check.status === 0 ? sh(['run', file], s.stdin) : check;
+    const out = trap && check.status === 0 ? await shAsync(['run', file], s.stdin) : check;
     const got = /^error\[([ER]\d{4})\]/m.exec(out.stderr || out.stdout)?.[1];
     const ok = out.status !== 0 && got === s.rejects;
-    results[s.id] = { status: ok ? 'rejects' : 'fails', declared: 'rejects', ...(ok ? {} : { note: `wanted ${s.rejects}, got ${got ?? 'no error'}` }) };
+    slots[k] = { status: ok ? 'rejects' : 'fails', declared: 'rejects', ...(ok ? {} : { note: `wanted ${s.rejects}, got ${got ?? 'no error'}` }) };
     if (!ok) {
-      failed++;
-      console.error(`gate: ${s.id} should be rejected with ${s.rejects}: ${results[s.id].note}`);
+      errors.push(`gate: ${s.id} should be rejected with ${s.rejects}: ${slots[k].note}`);
     }
-    continue;
+    return;
   }
-  const build = sh(['build', file, '-o', join(tmp, 'main.cpp')]);
-  const run = build.status === 0 && (s.stdin || s.expected != null) ? sh(['run', file], s.stdin) : build;
+  const build = await shAsync(['build', file, '-o', join(dir, 'main.cpp')]);
+  const run = build.status === 0 && (s.stdin || s.expected != null) ? await shAsync(['run', file], s.stdin) : build;
   const matches = s.expected == null || run.stdout.trimEnd() === s.expected.trimEnd();
   let status = 'fails';
   let note = '';
@@ -151,14 +173,29 @@ for (const s of snippets) {
     note = run.status === 0 && build.status === 0 ? `output ${JSON.stringify(run.stdout)} != expected` : first(build.status === 0 ? run : build);
   }
   // A fence the gate only built runs live on the page only if it also runs with no input.
-  const live = status === 'runs' && (run !== build ? run : sh(['run', file], ''));
+  const live = status === 'runs' && (run !== build ? run : await shAsync(['run', file], ''));
   const ran = Boolean(live && live.status === 0 && live.stdout.trim());
-  results[s.id] = { status, declared: s.declared, ...(status === 'runs' ? { ran } : { note }) };
+  slots[k] = { status, declared: s.declared, ...(status === 'runs' ? { ran } : { note }) };
   if (rank[status] < rank[s.declared]) {
-    failed++;
-    console.error(`gate: ${s.id} is ${status}, declared ${s.declared}: ${note}`);
+    errors.push(`gate: ${s.id} is ${status}, declared ${s.declared}: ${note}`);
   }
 }
+let next = 0;
+await Promise.all(
+  Array.from({ length: Math.min(availableParallelism(), snippets.length) }, async (_, w) => {
+    const dir = join(tmp, `w${w}`);
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, 'cp.toml'), `[libs]\nlib = "${join(repo, 'examples/local-lib')}"\n`);
+    while (next < snippets.length) await gate(next++, dir);
+  }),
+);
+snippets.forEach((s, k) => {
+  results[s.id] = slots[k];
+  for (const e of errorsOf[k]) {
+    failed++;
+    console.error(e);
+  }
+});
 
 mkdirSync(join(web, '.gate'), { recursive: true });
 writeFileSync(join(web, '.gate/status.json'), JSON.stringify(results, null, 2) + '\n');
