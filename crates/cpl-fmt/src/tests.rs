@@ -697,3 +697,15 @@ fn a_style_changes_only_the_widths() {
     assert_eq!(format(&out).unwrap(), fmt(src));
     assert!(cpl_syntax::parse_file(&out).diagnostics.is_empty());
 }
+
+#[test]
+fn keeps_crlf_line_endings_of_a_windows_checkout() {
+    let out = fmt("let  x=1\r\nfn f():\r\n    return  x\r\nprint( f() )\r\n");
+    assert_eq!(
+        out,
+        "let x = 1\r\nfn f():\r\n    return x\r\nprint(f())\r\n"
+    );
+    assert!(crate::is_formatted(&out));
+    // Mixed endings are not a Windows checkout: they become LF.
+    assert_eq!(fmt("let  x=1\r\nprint( x )\n"), "let x = 1\nprint(x)\n");
+}

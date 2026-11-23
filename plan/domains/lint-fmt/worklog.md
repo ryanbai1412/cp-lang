@@ -165,3 +165,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-22: new lint L0528 `reverse_index`: `[xs[xs.len - 1 - i] for i in 0..xs.len]` → `xs.reversed()` on a `List` (decision 312). 3 `std` findings (request to stdlib), 0 corpus `spec.cp`.
 - 2026-11-22: lints reach the playground's wasm: `Playground::lint` / `cpl_lint()` over the new `cpl_lint::lint_analysis` (also the LSP's entry now); parity test `the_playground_lints_like_cpl_lint` covers every record. Decision 313. Site wiring requested.
 - 2026-11-22: format on save just works: LSP formatting honours `cp.toml [fmt]`; VS Code defaults `editor.formatOnSave` for `cp`.
+- 2026-11-22: `cpl fmt` keeps a CRLF file CRLF (Windows checkouts); mixed endings become LF.

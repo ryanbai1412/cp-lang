@@ -90,8 +90,18 @@ pub fn format(src: &str) -> Result<String, FormatError> {
     format_with(src, &Style::default())
 }
 
-/// Formats a file in `style`.
+/// Formats a file in `style`. A file whose every line ends in CRLF, as on a
+/// Windows checkout, stays CRLF.
 pub fn format_with(src: &str, style: &Style) -> Result<String, FormatError> {
+    let lines = src.matches('\n').count();
+    if lines > 0 && src.matches("\r\n").count() == lines {
+        let out = format_lf(&src.replace("\r\n", "\n"), style)?;
+        return Ok(out.replace('\n', "\r\n"));
+    }
+    format_lf(src, style)
+}
+
+fn format_lf(src: &str, style: &Style) -> Result<String, FormatError> {
     let lexed = cpl_syntax::lex(src);
     if !lexed.diagnostics.is_empty() {
         return Err(FormatError::Lex(lexed.diagnostics));
