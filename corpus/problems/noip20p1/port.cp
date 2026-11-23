@@ -51,7 +51,7 @@ var holds: [Junction]Amount = [Junction] u => (
 )
 var ready = [u for u in Junction if waiting[u] == 0]
 while ready.len > 0:
-    let u = ready.pop()
+    let u = ready.pop()!
     if pipes[u].len == 0: continue
     let part = shared(holds[u], pipes[u].len)
     for v in pipes[u]:
