@@ -7180,3 +7180,14 @@ shape readers moved to `rules/shapes.rs`. Reverse: delete the eight records,
 
 - **326.5 The search index cap goes from 500,000 to 600,000 bytes gzipped.** Fixing `cpl doc`'s dropped `pub` put 517 more std items in the reference, and Milestone 1 needs search to find every std item by name; indexing only the last part of a dotted name, not the owner again, saved 10 KB, leaving 538,189 bytes. The index loads when search opens, not with the page, so page weight is unchanged. Reverse: index std member headings by member name only, or drop the core table rows.
 - **326.6 `cpl-lsp` depends on `cpl-doc`** for `cpl_doc::plain::text`, so hover and `cpl doc` share one reading of doc math and intra-doc links instead of two. `cpl-doc` needs only `cpl-syntax`, `cpl-diag` and `cpl-json`, which `cpl-lsp` already pulls in. Reverse: move `plain` into `cpl-diag` and drop the edge.
+## 329. `count_until` (L0562): a value stepped while a counter counts is a `find` (2026-11-22)
+
+`while p < n: p *= 3; k += 1`, with `var p = <int>` and `var k = 0` before
+it, is the smallest `k` where the condition fails. The help writes
+`(0..).find(k => 3 ** k >= n)!`, substituting the closed form of `p`
+(\(p_0 \cdot c^k\) for `*=`, \(p_0 + c k\) for `+=`) into the negated condition.
+Other steps (`x = (x + 1) / 2`, `/=`) have no closed form and are skipped.
+`idiom`, `warn`, help only, since `p` may be read after the loop. Raised by
+Ryan on `corpus/problems/cf2096g/port.cp`, its one corpus finding. Reverse:
+delete `spec/lints/count_until/` and `rules/count_until.rs`.
+
