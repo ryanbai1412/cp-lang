@@ -171,13 +171,10 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 
 - core-01/compound-assign-key-evaluated-once.cp: compiler
 - core-01/bool-caret-names-ne.cp: diagnostics
-- core-01/continuation-leading-or.cp: compiler
 - core-01/list-repeat-times-n.cp: compiler
-- core-01/lone-cr-in-string-is-error.cp: compiler
 - core-01/scientific-fraction-is-int.cp: compiler
 - core-01/stepped-range-is-a-value.cp: compiler
 - core-02/enum-method-is-variant.cp: compiler
-- core-02/getter-needs-defaults.cp: compiler
 - core-02/question-extent-let-stays-optional.cp: compiler
 - core-02/question-not-early-return.cp: compiler
 - core-02/spec-block-enums.cp: compiler
@@ -190,7 +187,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-02/counted-array-never-grows.cp: compiler
 - core-02/read-str-of-alphabet-type-arg.cp: compiler
 - core-03/annotation-widens-fresh-read.cp: compiler
-- core-03/field-bound-from-input.cp: compiler
 - core-03/memory-over-profile.cp: compiler
 - core-04/a11-rebase-reads-from-zero.cp: compiler
 - core-04/a7-consume-front.cp: compiler
@@ -251,7 +247,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/grid-row-index-and-block-order.cp: compiler
 - core-07/prefix-scan-cuts.cp: compiler
 - core-07/rev-keeps-keys.cp: stdlib
-- core-07/range-folds-are-ranges-own.cp: stdlib
 - core-07/slice-past-source-traps.cp: compiler
 - core-07/tally-is-counter.cp: stdlib
 - core-07/tally-missing-key-is-zero.cp: stdlib
@@ -267,7 +262,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-09/user-context-lexical-without-uses.cp: compiler
 - core-09/uses-not-inferred-top-level.cp: compiler
 - core-10/print-list-of-pairs-one-line.cp: compiler
-- core-09/deep-recursion-trap.cp: compiler
 - core-10/show-impl-enum.cp: compiler
 - core-10/test-position-stored-above-multitest.cp: compiler
 - core-10/read-range-arithmetic-lower-bound.cp: compiler
@@ -303,6 +297,5 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/step-on-list.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler
 - core-07/rev-does-not-satisfy-indexed.cp: compiler
-- core-07/range-min-max-compile-without-walk.cp: compiler
 - core-05/map-entry-index-key-lends.cp: compiler
 - std-tree/up-lift-changes-type.cp: stdlib

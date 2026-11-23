@@ -1243,6 +1243,57 @@ impl<'a> Lowerer<'a> {
         None
     }
 
+    /// An Int range's own `min()`/`max()`: its ends, O(1) (R07.9.6).
+    pub(in crate::lower) fn range_min_max(
+        &mut self,
+        max: bool,
+        seq: &ast::Expr,
+        optional: bool,
+        span: Span,
+    ) -> Option<Expr> {
+        if !matches!(self.probe_ty_silent(seq), Some(Ty::Range(inner)) if *inner == Ty::Int) {
+            return None;
+        }
+        let range = self.expr(seq, None);
+        let ty = if optional { Ty::opt(Ty::Int) } else { Ty::Int };
+        Some(self.do_expr(Some(&ty.clone()), span, |lw, out| {
+            let r = lw.new_slot("r", range.ty.clone());
+            out.push(Stmt::Let(r, Some(range)));
+            let (lo, hi) = (lw.new_slot("lo", Ty::Int), lw.new_slot("hi", Ty::Int));
+            for (slot, end) in [(lo, Builtin::RangeLo), (hi, Builtin::RangeHi)] {
+                let value = lw.local(r, span);
+                let value = lw.mk(ExprKind::Builtin(end, vec![value]), Ty::Int, span);
+                out.push(Stmt::Let(slot, Some(value)));
+            }
+            let (l, h) = (lw.local(lo, span), lw.local(hi, span));
+            let empty = lw.mk(
+                ExprKind::Cmp(CmpOp::Le, Box::new(h.clone()), Box::new(l.clone())),
+                Ty::Bool,
+                span,
+            );
+            let end = if max { lw.int_add(h, -1) } else { l };
+            let result = if optional {
+                let some = lw.mk(ExprKind::Some(Box::new(end)), ty.clone(), span);
+                let none = lw.mk(ExprKind::None, ty.clone(), span);
+                lw.mk(
+                    ExprKind::If(Box::new(empty), Box::new(none), Box::new(some)),
+                    ty,
+                    span,
+                )
+            } else {
+                let word = if max { "max" } else { "min" };
+                let trap = Stmt::Trap(format!("`{word}` of an empty sequence"), lw.span(span));
+                out.push(Stmt::If(
+                    empty,
+                    Block { stmts: vec![trap] },
+                    Block::default(),
+                ));
+                end
+            };
+            out.push(Stmt::Give(result));
+        }))
+    }
+
     pub(in crate::lower) fn range_int_sum_closed(
         &mut self,
         range_val: Expr,

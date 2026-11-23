@@ -29,6 +29,9 @@ impl Lowerer<'_> {
         optional: bool,
         span: Span,
     ) -> Expr {
+        if let Some(ends) = self.range_min_max(max, seq, optional, span) {
+            return ends;
+        }
         let kind = if max { Reduce::Max } else { Reduce::Min };
         self.reduce_opt(kind, seq, optional, span)
     }

@@ -1680,6 +1680,8 @@ impl<'a> Lowerer<'a> {
                     span,
                 )
             }
+            // A range answers its own `count()` from its ends, O(1) (R07.9.6).
+            (Ty::Range(_), "count") if args.is_empty() => self.len_of(value, span),
             (Ty::Range(_), "rev") if args.is_empty() => self.reversed_range(value, span),
             // `r.halves()`: split `r` into `(left, right)` with `left.len == (r.len + 1) / 2`
             // and `right.len == r.len / 2` (both non-empty whenever `r.len >= 2`).
