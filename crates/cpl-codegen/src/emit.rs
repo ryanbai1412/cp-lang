@@ -929,6 +929,7 @@ impl<'p> Emitter<'p> {
             }
         }
 
+        let same = crate::devirt::same_closures(program);
         let mut scan_block = |b: &Block,
                               reachable: &mut BTreeSet<usize>,
                               fn_work: &mut Vec<usize>,
@@ -955,8 +956,12 @@ impl<'p> Emitter<'p> {
                 }
                 match &e.kind {
                     ExprKind::Call(fid, _) if reachable.insert(*fid) => fn_work.push(*fid),
-                    ExprKind::Closure(cid) if reachable_closures.insert(*cid) => {
-                        closure_work.push(*cid);
+                    ExprKind::Closure(cid) => {
+                        for c in [*cid, same[*cid]] {
+                            if reachable_closures.insert(c) {
+                                closure_work.push(c);
+                            }
+                        }
                     }
                     ExprKind::Cmp(_, left, _) if has_adt(&left.ty) => {
                         needs_tie = true;

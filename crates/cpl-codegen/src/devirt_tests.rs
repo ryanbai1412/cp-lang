@@ -45,3 +45,14 @@ fn reassigned_struct_local_keeps_its_fn_value_call() {
     ));
     assert!(out.contains("m.op(a, x)"), "{out}");
 }
+
+#[test]
+fn a_fn_named_twice_as_one_field_value_is_still_one_fn() {
+    let out = code(concat!(
+        "fn low(a: Int, b: Int) -> Int = min(a, b)\n",
+        "let m = Monoid<Int>(id: 9, op: low)\n",
+        "let k = Monoid<Int>(id: 8, op: low)\n",
+        "print(m.op(3, m.id) + k.op(1, k.id))\n",
+    ));
+    assert!(!out.contains("std::function"), "{out}");
+}

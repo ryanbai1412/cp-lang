@@ -71,6 +71,8 @@ pub(crate) struct Devirt<'p> {
     /// Locals `let x = f(...)` of a struct, never written again: `x` is
     /// what `f` returned.
     made_by: BTreeMap<(FnId, usize), FnId>,
+    /// Each closure's stand-in: the first closure that only calls the same fn.
+    same: Vec<ClosureId>,
     changed: bool,
 }
 
@@ -87,6 +89,7 @@ impl<'p> Devirt<'p> {
             dead_locals: BTreeSet::new(),
             returned: BTreeMap::new(),
             made_by: made_by(program),
+            same: same_closures(program),
             changed: true,
         };
         // The judge's grader calls these with values of its own.
@@ -764,7 +767,7 @@ impl<'p> Devirt<'p> {
     fn value(&self, home: Option<FnId>, e: &Expr) -> Option<Held> {
         match &e.kind {
             ExprKind::Closure(cid) if self.closure_effectively_captureless(*cid) => {
-                Some(Held::One(*cid))
+                Some(Held::One(self.same[*cid]))
             }
             ExprKind::Local(slot) => match home {
                 Some(id) if *slot < self.program.fns[id].params.len() => {
@@ -1323,6 +1326,42 @@ pub(crate) fn skippable(callee: &Expr) -> bool {
 }
 
 /// The name of closure `cid` as a fn of the emitted program.
+/// For each closure, the first one that does the same: a fn named as a value,
+/// `op: merge`, becomes a closure calling `merge` at each place it is named,
+/// and one field given `merge` twice still holds one fn. Any other closure
+/// stands for itself.
+pub(crate) fn same_closures(program: &Program) -> Vec<ClosureId> {
+    let mut first: BTreeMap<(FnId, usize), ClosureId> = BTreeMap::new();
+    (0..program.closures.len())
+        .map(|cid| match forwards_to(program, cid) {
+            Some(fid) => *first
+                .entry((fid, program.closures[cid].params.len()))
+                .or_insert(cid),
+            None => cid,
+        })
+        .collect()
+}
+
+/// The fn closure `cid` only calls, with its own parameters in order.
+fn forwards_to(program: &Program, cid: ClosureId) -> Option<FnId> {
+    let c = &program.closures[cid];
+    if !c.captures.is_empty() || !c.muts.is_empty() {
+        return None;
+    }
+    let call = match c.body.stmts.as_slice() {
+        [Stmt::Return(Some(e))] | [Stmt::Expr(e)] => e,
+        _ => return None,
+    };
+    let ExprKind::Call(fid, args) = &call.kind else {
+        return None;
+    };
+    let own = args.len() == c.params.len()
+        && args.iter().zip(&c.params).all(
+            |(a, &p)| matches!(a, Arg::Value(Expr { kind: ExprKind::Local(s), .. }) if *s == p),
+        );
+    own.then_some(*fid)
+}
+
 pub(crate) fn name(cid: ClosureId) -> String {
     format!("cpl_fn{cid}")
 }
