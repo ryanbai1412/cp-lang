@@ -1730,3 +1730,16 @@ fn another_languages_def_is_one_error_read_as_fn() {
         .collect();
     assert_eq!(found, [("E0503", "fn"), ("E0503", "fn")], "{d:?}");
 }
+
+#[test]
+fn a_c_ternary_is_one_error_naming_the_inline_if() {
+    let d = parse_file("let b = a == 1 ? 3 : 4\nprint(c ? x : y, b)\n").diagnostics;
+    let found: Vec<_> = d
+        .iter()
+        .map(|d| (d.code.0, d.help.as_deref().unwrap_or("")))
+        .collect();
+    let want = ("E0503", "write `if c: a else: b`");
+    assert_eq!(found, [want, want], "{d:?}");
+    let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixed, ["if a == 1: 3 else: 4", "if c: x else: y"]);
+}

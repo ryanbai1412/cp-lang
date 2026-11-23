@@ -97,7 +97,11 @@ impl<'a> Parser<'a> {
                 span: self.span_from(start),
             };
         }
+        let first = self.pos;
         let base = self.coalesce();
+        if self.c_ternary_ahead(&base) {
+            return self.c_ternary(start, first, base);
+        }
         for (word, planned) in [
             ("default", &crate::planned::MAP_DEFAULT),
             ("then", &crate::planned::THEN_CHAIN),
@@ -163,7 +167,7 @@ impl<'a> Parser<'a> {
     }
 
     /// `a ?? b`, right-associative, binds loosest.
-    fn coalesce(&mut self) -> Expr {
+    pub(super) fn coalesce(&mut self) -> Expr {
         let start = self.start();
         let lhs = self.or();
         if !self.at(T::QuestionQuestion) {
@@ -817,6 +821,9 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.bump();
                 indented_chain = true;
+            }
+            if self.c_ternary_ahead(&expr) {
+                break;
             }
             let kind = match self.peek() {
                 T::LParen => {
