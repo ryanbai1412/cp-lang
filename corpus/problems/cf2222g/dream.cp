@@ -34,7 +34,7 @@ if n > 1:
     let excl = t.children(rt).max(by: c => sz[c])!
 
     for v in V:
-        let freqs = [sz[c] for c in t.children(v) if not (v == rt and c == excl)].counts()
+        let freqs = [e for e in [sz[c] for c in t.children(v) if not (v == rt and c == excl)].tally().items]
         for (i, (s1, c1)) in freqs.items:
             ans[Size(n - s1)] += s1 * c1
             if c1 >= 2: ans[Size(n - 2 * s1)] += (c1 * (c1 - 1) / 2) * s1 * s1
