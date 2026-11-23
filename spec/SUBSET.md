@@ -301,4 +301,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-07/range-in-brackets-help-names-list.cp: diagnostics
 - std-rand/shuffled-help-names-rng-shuffle.cp: diagnostics
 - core-06/check-multitest-reads-own-shape.cp: tools
+- core-05/chunks-walk-lends-parent.cp: compiler
+- core-05/windows-walk-lends-parent.cp: compiler
+- core-05/runs-walk-lends-parent.cp: compiler
 - std-heap/drain-break-keeps-the-rest.cp: compiler
