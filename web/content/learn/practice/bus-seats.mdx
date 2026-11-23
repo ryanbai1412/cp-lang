@@ -1,0 +1,20 @@
+---
+title: Bus seats
+description: "Level A. Teaches var state across a loop, reading a pair per line, and if/else."
+---
+
+A bus with c seats (1 ≤ c ≤ 10⁹) starts empty and makes n stops (1 ≤ n ≤ 2·10⁵). At each stop, `off` people want to get off and then `on` people want to get on (0 ≤ off, on ≤ 10⁹). If fewer than `off` people are on board, everyone gets off. People who don't fit are refused. Print how many people are on board after the last stop and how many were refused in total.
+
+**Input:** n and c, then n lines of `off on`. **Output:** two integers.
+
+| Input | Output |
+|---|---|
+| `3 5`<br/>`0 3`<br/>`1 4`<br/>`2 2` | `5 1` |
+
+<Judge id="bus-seats">
+
+- Two `var`s carry the state from stop to stop; everything read inside the loop is a `let`.
+- `let (off, on): (0..=1e9, 0..=1e9) = read()` reads one line as a pair, with the limits from the statement as its types; [Input, loops and traps](/learn/read/first-program) covers typed input.
+- `min(off, inside)` keeps the count from going below zero. `refused` can reach about 2·10¹⁴, which still fits in an `Int`.
+
+</Judge>
