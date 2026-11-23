@@ -144,9 +144,11 @@ function linked(text, links) {
 
 function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared = []) {
   const name = prefix ? `${prefix}.${item.name}` : item.name;
-  ctx.anchors.push([module, item.line, slug(name)]);
   const own = item.doc && item.doc !== parentDoc ? item.doc : '';
   const { facts, examples, prose } = splitDoc(own);
+  const plain = (text, cost = false) => linked(plainSpans(texSpans(text, { legacyCost: cost })), item.links ?? []);
+  const hover = [prose && plain(prose), ...facts.map(([k, v]) => `${k}: ${plain(v, k === 'cost')}`)].filter(Boolean).join('\n\n');
+  ctx.anchors.push([module, item.line, slug(name), hover]);
   const lines = [`${'#'.repeat(level)} \`${name}\``, '', '```cp', layoutSignature(item.signature), '```', ''];
   if (prose) lines.push(linked(ctx.math(prose, name), item.links ?? []), '');
   if (facts.length) {
@@ -263,12 +265,17 @@ write(
   'meta.json',
   JSON.stringify({ title: 'Reference', pages: ['core', 'std', ...specDirs.slice(1).map(([d]) => d).filter((d) => existsSync(join(out, d)))] }, null, 2),
 );
-// Where each std item's page anchor starts, by module and source line, so
-// go to definition in a site editor can open the item's docs.
-const anchors = {};
-for (const [module, line, anchor] of ctx.anchors) (anchors[module] ??= []).push([line, anchor]);
-for (const list of Object.values(anchors)) list.sort((a, b) => a[0] - b[0]);
-writeFileSync(join(web, 'public/std-anchors.json'), JSON.stringify(anchors));
+// Each std item's source line, page anchor and doc text, one file per module,
+// for a site editor's hover and go to definition (the wasm build carries no
+// std doc comments).
+const items = {};
+for (const [module, line, anchor, doc] of ctx.anchors) (items[module] ??= []).push([line, anchor, doc]);
+rmSync(join(web, 'public/std-docs'), { recursive: true, force: true });
+mkdirSync(join(web, 'public/std-docs'), { recursive: true });
+for (const [module, list] of Object.entries(items)) {
+  list.sort((a, b) => a[0] - b[0]);
+  writeFileSync(join(web, `public/std-docs/${module}.json`), JSON.stringify(list));
+}
 const failingFile = join(web, 'node_modules/.cache/doc-examples-failing.txt');
 writeFileSync(failingFile, ctx.failing.join('\n') + '\n');
 console.log(`ref: ${specPages} spec pages, ${modules.length} library modules, ${index.length} items; examples: ${sources.size} programs, ${ctx.failing.length} shown static (listed in ${failingFile.slice(repo.length + 1)})`);
