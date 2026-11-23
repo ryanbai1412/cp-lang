@@ -984,7 +984,8 @@ impl<'a> Checker<'a> {
                     return Some(Ty::Error);
                 }
                 "sort" | "reverse" | "shuffle" if !matches!(base_ty, Ty::Domain(_)) => {
-                    if !base_ty.is_indexed_mut() {
+                    // A read-only view (`xs.rev`) is reported once, as not writable.
+                    if !base_ty.is_indexed_mut() && !self.is_readonly_view(base) {
                         let message = format!(
                             "`{}` requires `IndexedMut`, but `{}` has type `{base_ty}`",
                             name.text,

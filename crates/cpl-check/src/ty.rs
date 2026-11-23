@@ -131,6 +131,23 @@ impl Ty {
             Ty::Named { name, args } if name == "Indexed" && args.len() == 2 => {
                 Some(args[1].clone())
             }
+            _ => self.rev_source()?.seq_elem(),
+        }
+    }
+
+    /// A `.rev` view of `source`.
+    pub fn rev_of(source: Ty) -> Ty {
+        Ty::Named {
+            name: "Rev".into(),
+            args: vec![source],
+        }
+    }
+
+    /// The sequence a `.rev` view reverses: it walks and keys like that
+    /// sequence, but is not `Indexed` (R07.3.5).
+    pub fn rev_source(&self) -> Option<&Ty> {
+        match self {
+            Ty::Named { name, args } if name == "Rev" && args.len() == 1 => args.first(),
             _ => None,
         }
     }
@@ -154,7 +171,7 @@ impl Ty {
 
     /// True when this type implements the built-in `Indexed` trait (O(1) random read).
     pub fn is_indexed(&self) -> bool {
-        self.is_sized()
+        self.rev_source().is_none() && self.is_sized()
     }
 
     /// True when this type implements the built-in `Bidir` trait (`.last`, `.rev`).
@@ -325,6 +342,14 @@ impl Ty {
             }
             (a, Ty::Named { name, args }) if name == "Indexed" && args.len() == 2 => {
                 a.is_indexed() && a.seq_elem().is_some_and(|e| e.fits_in(&args[1], number))
+            }
+            // A `.rev` view passes where its source's type is written; only
+            // a bound sees that it is not `Indexed`.
+            (a, b)
+                if !matches!(b, Ty::Named { name, .. } if name == "Indexed")
+                    && a.rev_source().is_some_and(|s| s.fits_in(b, number)) =>
+            {
+                true
             }
             // A domain is the range, list or bitset of its positions:
             // `tally(Pos, Pos, 1)` or `zip(I, I.rev)`.

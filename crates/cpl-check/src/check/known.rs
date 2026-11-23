@@ -67,7 +67,6 @@ impl<'a> Checker<'a> {
                                 | "Zip"
                                 | "Range"
                                 | "Slice"
-                                | "Rev"
                                 | "Map"
                                 | "Rebased"
                         ) && args.len() == 1 =>

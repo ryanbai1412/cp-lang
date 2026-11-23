@@ -1947,6 +1947,9 @@ impl<'a> Checker<'a> {
         if name.text.is_empty() {
             return Ty::Error;
         }
+        if let Some(source) = base_ty.rev_source().filter(|_| name.text != "rev") {
+            return self.member_ty(expr, name, source.clone());
+        }
         if let Ty::Param(p) = &base_ty {
             if let Some(req) = self.row_bounds.get(p).cloned() {
                 if let Some((_, fty)) = req.iter().find(|(fnm, _)| fnm == &name.text) {
@@ -2264,15 +2267,11 @@ impl<'a> Checker<'a> {
             }
             if base_ty == Ty::Str
                 || matches!(&base_ty, Ty::Named { name: list, args } if list == "List" && args.len() == 1)
+                || matches!(&base_ty, Ty::Array { index, .. } if index.len() == 1)
             {
                 self.note_readonly_view(expr, "reverse view");
-                return base_ty;
-            }
-            if let Ty::Array { index, .. } = &base_ty {
-                if index.len() == 1 {
-                    self.note_readonly_view(expr, "reverse view");
-                    return base_ty;
-                }
+                // A reverse view is not `Indexed`: it keeps its source's keys (R07.3.5).
+                return Ty::rev_of(base_ty);
             }
         }
         // `xs.items`: each element with its index (an `I` for `[I]T`, else `Int`).
@@ -3284,7 +3283,7 @@ impl<'a> Checker<'a> {
                 self.element_ty(&args[0])
             }
             Ty::Named { name, args } if name == "List" && args.len() == 1 => args[0].clone(),
-            Ty::Named { name, .. } if name == "Filter" => {
+            Ty::Named { name, .. } if matches!(name.as_str(), "Filter" | "Rev") => {
                 let message = format!(
                     "`{}` has type `{base_ty}`, which is not indexed",
                     self.quote(base.span)
