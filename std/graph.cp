@@ -47,6 +47,16 @@ pub trait Target<V>:
     /// example: `domain V = 0..3; let a: (to: V, w: Int) = (to: 1, w: 7); a.to == 1`
     @get fn to(self) -> V = self
 
+// A record arc with a `to` field; a plain vertex arc is not one.
+trait ToField<V>:
+    @get fn to(self) -> V
+
+// Arc `a` out of `u`, turned around: a record keeps its other fields, a plain vertex is `u`.
+fn reversed_arc<A, V>(a: A, u: V) -> A:
+    if A: ToField:
+        return (..a, to: u)
+    u
+
 /// \(O(1)\). The weight of an arc: a record with a `w` field, or `.weighted(f)`.
 pub trait Weighted<W>:
     /// The weight of an arc: its `w` field, or `f(a)` through `g.weighted(f)`.
@@ -458,7 +468,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// order: each vertex's new arcs by original source in vertex order, then input order
     /// traps: never
     /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).transpose().out(3).collect() == [(to: 1, e: 2), (to: 2, e: 3)]`
-    pub fn transpose(self) -> Graph<V, A> where A: (to: V, ..):
+    pub fn transpose(self) -> Graph<V, A>:
         var indeg: [V]Int = 0
         for u in V:
             for i in start[u.to_idx]..start[u.to_idx + 1]:
@@ -477,7 +487,7 @@ pub struct Graph<V: Domain, A: Target<V>>:
                 let v = a.to
                 let pos = cur[v]
                 cur[v] = pos + 1
-                tarcs[pos] = (..a, to: u)
+                tarcs[pos] = reversed_arc(a, u)
         Graph<V, A>(start: tstart, arcs: tarcs)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
@@ -3697,5 +3707,5 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
                     let v = a.to
                     let pos = cur[v]
                     cur[v] = pos + 1
-                    tarcs[pos] = (..a, to: u)
+                    tarcs[pos] = reversed_arc(a, u)
         Graph<V, G.Arc>(start: tstart, arcs: tarcs)

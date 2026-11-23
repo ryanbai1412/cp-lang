@@ -74,6 +74,7 @@ Each: the instance, the general fix, the owner when it is not stdlib.
 - The views `Mapped`, `Rev`, `Items`, `Slice` declare `@get src` with a `todo` body, and `cpl run` lowers `a.map(f)` etc. to its own iterator with no `src`, so their 5 doc examples fail. General fix: lower the views to the std structs (or give the builtin views every member the std struct declares), so std's declaration is the one truth. Owner compiler (Q3 builtin migration).
 - `SegTree<0..3, Int>.of(+, i => w[i])` with `w: List<Int>` gives "expected `Int`, found `Range0`": the anonymous domain from `anon_range_domain` is nominal, but R04.4.30 says its positions are the `Int`s in the range. The docs now declare `domain D`. General fix: a position of an anonymous range domain is an `Int` (or converts to one implicitly, as the spec says). Owner compiler.
 - `SegTree(act: assign, [1, 2, 3])` put the list into the first positional parameter `op`, and the error was "`cpl run` doesn't know the name `D`" deep inside std. General fix: when a positional argument lands on a parameter its type can't fill, say so at the call ("`[1, 2, 3]` went to `op:`; did you mean `a:`?"). Owner diagnostics.
+- Spec disagrees on `filter` keys: R07.3.2 says keys of a `Keyed` survive `filter` (std's `[5, 6, 7].filter(x => x > 5).items` example expects `(1, 6), (2, 7)`), R04a.9.5 says `.filter(p)` has no keys; `cpl run` gives `(0, 6), (1, 7)`. General fix: spec picks one rule, then the builtin view and the doc follow it. Owner spec, then compiler.
 
 ## Why each milestone
 
