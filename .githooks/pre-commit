@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
 # Runs the commit tier of the gate (the checks the staged paths can reach)
-# before every commit; scripts/land.sh runs the full fast gate on the tip.
-# Turn it on once per clone with scripts/install-hooks.sh; skip it for one commit with `git commit --no-verify`.
-exec "$(git rev-parse --show-toplevel)/scripts/check.sh" --commit
+# before every commit; CI runs the full fast gate on every main tip.
+# A commit never waits more than 25 s on it: past that the hook warns, names
+# the step it was in, logs it to .git/cpl-commit-slow.log and allows the
+# commit. Turn it on once per clone with scripts/install-hooks.sh; skip it
+# for one commit with `git commit --no-verify`.
+set -uo pipefail
+root="$(git rev-parse --show-toplevel)"
+limit="${CPL_COMMIT_TIMEOUT:-25}"
+out="$(mktemp)"
+trap 'rm -f "$out"' EXIT
+timeout "$limit" "$root/scripts/check.sh" --commit 2>&1 | tee "$out"
+status=${PIPESTATUS[0]}
+[ "$status" -eq 124 ] || exit "$status"
+slow=$(grep '^==> ' "$out" | tail -1 | cut -c5-)
+echo "pre-commit: WARNING: the commit tier passed ${limit}s in \`${slow:-setup}\`; allowing the commit, CI runs the rest" >&2
+printf '%s\t%ss\t%s\n' "$(date -u +%FT%TZ)" "$limit" "${slow:-setup}" >>"$(git rev-parse --git-common-dir)/cpl-commit-slow.log"
+exit 0

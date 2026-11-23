@@ -283,11 +283,15 @@ if [ "$mode" = commit ]; then
     fi
 fi
 if [ "$mode" = commit ]; then
-    step "cargo fmt --all --check"
-    cargo fmt --all --check || fail "Rust files are not formatted; run: cargo fmt --all"
+    step "tech-debt ratchet (scripts/debt-ratchet.py --check)"
+    uv run --quiet python scripts/debt-ratchet.py --check \
+        || fail "tech-debt ratchet failed; see scripts/debt-ratchet.json"
     if [ -n "$sel_packages" ]; then
-        step "cargo clippy of the touched crates and nextest of the crates they reach"
         read -ra pkgs <<<"$sel_packages"
+        step "cargo fmt --check of the touched crates"
+        cargo fmt --check $(printf -- '-p %s ' "${pkgs[@]}") \
+            || fail "Rust files are not formatted; run: cargo fmt $(printf -- '-p %s ' "${pkgs[@]}")"
+        step "cargo clippy of the touched crates and nextest of the crates they reach"
         cargo clippy -q $(printf -- '-p %s ' "${pkgs[@]}") --all-targets -- -D warnings
         cargo nextest run --workspace --profile commit --no-fail-fast \
             -E "($sel_filter) & not ($slow_filter)"

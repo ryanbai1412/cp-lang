@@ -45,7 +45,9 @@ class CheckCacheTest(unittest.TestCase):
                 "target/out": "build output\n",
             })
             pats = ["research/*", "plan/*", "!plan/STDLIB.md"]
-            key = lambda: cc.stage_key(cc.manifest(tmp), "clippy", pats)
+            key = lambda: cc.stage_key(manifest(), "clippy", pats)
+            # Pin the toolchain digest so a tool shim's output can't move the key.
+            manifest = lambda: "env\n" + cc.manifest(tmp).split("\n", 1)[1]
             before = key()
             for rel in ["research/notes.md", "plan/DOMAINS.md", "target/out"]:
                 with open(os.path.join(tmp, rel), "a", encoding="utf-8") as f:
@@ -131,6 +133,26 @@ class CheckCacheTest(unittest.TestCase):
             r = subprocess.run([hook], cwd=tmp, capture_output=True, text=True, env=env)
             self.assertNotEqual(r.returncode, 0)
             self.assertIn("merge conflict markers", r.stderr)
+
+    def test_pre_commit_hook_allows_the_commit_when_the_tier_runs_past_its_limit(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        env = hermetic_env()
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run(["git", "init", "-q"], cwd=tmp, check=True, env=env)
+            os.makedirs(os.path.join(tmp, "scripts"))
+            check = os.path.join(tmp, "scripts", "check.sh")
+            hook = os.path.join(root, ".githooks", "pre-commit")
+            for body, code in (("echo '==> slow step'; sleep 30 | cat; true", 0), ("echo '==> lint'; exit 3", 3)):
+                with open(check, "w", encoding="utf-8") as f:
+                    f.write("#!/usr/bin/env bash\n" + body + "\n")
+                os.chmod(check, 0o755)
+                t0 = time.monotonic()
+                r = subprocess.run([hook], cwd=tmp, capture_output=True, text=True,
+                                   env={**env, "CPL_COMMIT_TIMEOUT": "1"})
+                self.assertEqual(r.returncode, code, r.stderr)
+                self.assertLess(time.monotonic() - t0, 10)
+            with open(os.path.join(tmp, ".git", "cpl-commit-slow.log"), encoding="utf-8") as f:
+                self.assertIn("slow step", f.read())
 
     def test_pre_push_hook_rejects_a_main_tip_that_never_passed_the_gate(self):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
