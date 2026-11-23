@@ -26,6 +26,19 @@ const yaml = (s) => JSON.stringify(s.replace(/`/g, ''));
 const page = (title, description, body) =>
   `---\ntitle: ${yaml(title)}\ndescription: ${yaml(description)}\n---\n\n${body.trim()}\n`;
 
+// Every math span must be LaTeX KaTeX can render; the build fails otherwise.
+const mathErrors = [];
+function checkMath(where, text) {
+  for (const tex of mathSpans(text)) {
+    try {
+      katex.renderToString(tex, { throwOnError: true });
+    } catch (e) {
+      mathErrors.push(`${where}: \\(${tex}\\): ${e.message.split('\n')[0]}`);
+    }
+  }
+  return text;
+}
+
 const specDirs = [
   ['core', 'Language', 'The normative CP Lang 0.3 specification.'],
   ['lib', 'Library families', 'How the library is organised, family by family.'],
@@ -59,7 +72,7 @@ for (const [dir, title, description] of specDirs) {
   for (const f of files) {
     const src = readFileSync(join(path, f), 'utf8');
     const heading = /^# (.+)$/m.exec(src)?.[1] ?? slugOf(f);
-    const body = texSpans(rewriteLinks(src.replace(/^# .+\n/m, ''), dir)).replace(/^```(\w+)/gm, (_, lang) => '```' + (lang === 'python' ? 'cp' : fenceLangs.has(lang) ? lang : 'text'));
+    const body = checkMath(`spec/${dir}/${f}`, texSpans(rewriteLinks(src.replace(/^# .+\n/m, ''), dir))).replace(/^```(\w+)/gm, (_, lang) => '```' + (lang === 'python' ? 'cp' : fenceLangs.has(lang) ? lang : 'text'));
     const note =
       dir === 'core'
         ? `This is the normative specification ([source](${blob}/spec/${dir}/${f})). For a gentler introduction, start with the [tour](/docs/guides/tour).\n\n`
@@ -202,20 +215,11 @@ const collect = (item, module, parentDoc, shared) => {
   for (const m of item.members ?? []) collect(m, module, item.doc, memberShared);
 };
 for (const m of modules) for (const i of m.items) collect(i, m.name, '', []);
-const mathErrors = [];
 const ctx = {
   ran: await runAll(sources),
   failing: [],
   math(text, where, cost = false) {
-    const out = texSpans(text, { legacyCost: cost });
-    for (const tex of mathSpans(out)) {
-      try {
-        katex.renderToString(tex, { throwOnError: true });
-      } catch (e) {
-        mathErrors.push(`${where}: \\(${tex}\\): ${e.message.split('\n')[0]}`);
-      }
-    }
-    return out;
+    return checkMath(where, texSpans(text, { legacyCost: cost }));
   },
 };
 for (const m of modules) {

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed `site: KaTeX math on lint pages; spec math checked`: `/lints` text renders `\( ... \)` math with KaTeX at build time, and the build fails on math KaTeX can't render, on spec pages as on std pages. Records still need converting to `\( \)` (lint-fmt, spec).
 - Landed `lsp: hover shows doc math in Unicode and links as code`: `cpl_doc::plain::text` turns `\( O(n \log n) \)` into `O(n log n)` and [`up`] / [`text`](Rooted.up) into the code `up`; LSP hover uses it, so editors without KaTeX read the same docs.
 - Landed `site(search): index dotted names by last part; cap 600 KB`: with 517 more std items the index was 548,047 bytes gzipped; it is 538,189 now, under the new 600,000 cap (decision 326.5). The search smoke still finds a reference item, a guide heading and a core table row.
 - Landed `tools(doc): keep pub on fn signatures; site: check link anchors`: `cpl doc` dropped `pub` from 488 of 730 public top-level fn signatures (`sig_span` starts at `fn`), so the site's reference treated them as private and left them out. The reference now has 41 modules and 2,625 items, up from 37 and 2,108. `web/scripts/links.mjs` now also fails on a `#fragment` with no matching id on its page; one was broken (`flow#min_vertex_cover`, a victim of the same bug).
