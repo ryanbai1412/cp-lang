@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2863 (995 passing). Rules: 576.
+Cases: 2867 (995 passing). Rules: 576.
 
 ## Summary per chapter
 
@@ -19,11 +19,11 @@ Cases: 2863 (995 passing). Rules: 576.
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 180 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 106 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 90 rules, 186 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 90 rules, 187 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 92 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 27 rules, 61 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 19 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 16 rules, 50 cases; 0 uncovered, 0 happy-path only, 1 negative only
+- R11 (11-modules-prelude.md): 16 rules, 51 cases; 0 uncovered, 0 happy-path only, 1 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rbundle (bundle.md): 3 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -452,7 +452,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.2.2 [3+ 0-]: | **indexed sequence** (`Indexed<K, T>`) | a sequence that also has \(O(1)\) `s[k]`, `.key...
 - R07.2.3 [2+ 0-]: | **key** | what an indexed sequence is indexed by: a domain position (`V`) or an `Int` of...
 - R07.2.4 [1+ 0-]: | **collection** | a sequence that owns its elements; making one allocates | yes | `[V]T` ...
-- R07.2.5 [2+ 1-]: | **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behi...
+- R07.2.5 [2+ 2-]: | **range** | a run of a domain, `l..r`; a sequence of positions or cuts with no data behi...
 - R07.2.6 [1+ 1-]: | **view** | a sequence made from a source without copying it: \(O(1)\) to make, borrows t...
 - R07.2.7 [1+ 1-]: | **slice** | the view `a[r]`: one contiguous range `r` of an indexed source | no | `a[l.....
 - R07.2.8 [1+ 0-]: | **adapter** | a method that turns a sequence into a view | | `.map`, `.filter`, `.rev`, ...
@@ -622,7 +622,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R11.1.4 [3+ 2-]: A struct's or enum's fields and methods are private to the module that declares them unles...
 - R11.2.1 [1+ 1-]: Paths are module names, not files on a search path: `std` is the pinned stdlib, `lib` is t...
 - R11.2.2 [1+ 1-]: Modules form an acyclic graph; two modules that need each other are one module.
-- R11.2.3 [6+ 1-]: A local name shadows a prelude name; a `use` that collides with a local name is an error n...
+- R11.2.3 [7+ 1-]: A local name shadows a prelude name; a `use` that collides with a local name is an error n...
 - R11.2.4 [1+ 1-]: Everything is inlined into the one output file and tree-shaken: only called functions and ...
 - R11.3.1 [5+ 1-]: Only programs get the prelude; library modules `use` what they need, so a library never de...
 - R11.3.2 [4+ 1-]: The prelude is the vocabulary of the `lib/` chapters, by rule rather than by request (deci...
@@ -772,7 +772,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0405 Assigning a fixed field: 1 case(s)
 - E0406 Recursive `var` lambda: 1 case(s)
 - E0407 Duplicate enum variant tag: 1 case(s)
-- E0408 Assign into a range: 1 case(s)
+- E0408 Assign into a range: 2 case(s)
 - E0501 Unsupported construct in backend: 9 case(s)
 - E0502 Non-ASCII character in source or string: 1 case(s)
 - E0503 Removed syntax from an older version: 11 case(s)
