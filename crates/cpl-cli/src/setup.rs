@@ -620,7 +620,9 @@ mod tests {
         let settings = std::fs::read_to_string(root.join("settings.gradle.kts")).unwrap();
         assert!(settings.contains(&format!("rootProject.name = \"{JETBRAINS_PLUGIN}\"")));
         let properties = std::fs::read_to_string(root.join("gradle.properties")).unwrap();
-        assert!(properties.contains(&format!("lsp4ijVersion = {LSP4IJ}\n")));
+        // `lines()`, not `\n`: a Windows checkout has CRLF.
+        let want = format!("lsp4ijVersion = {LSP4IJ}");
+        assert!(properties.lines().any(|line| line.trim_end() == want), "{properties}");
     }
 
     #[test]
