@@ -5,6 +5,7 @@ mod complete;
 mod fixes;
 mod format;
 mod nav;
+mod parity;
 mod rename;
 
 const URI: &str = "file:///work/roads.cp";
