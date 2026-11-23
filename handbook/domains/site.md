@@ -167,9 +167,9 @@ Each row is a quality a user can feel on the site, the metric, and the strongest
 |---|---|---|---|
 | The first screen explains CP Lang | a cold reader names what it is, who it is for, and 3 advantages over C++ after 3 minutes on `/` | Process: cold-reader probe | **missing**: not scheduled |
 | The first program runs in place | landing programs without a working Run | Gate status drives Run buttons; smoke clicks Run on `/` | `web/lib/landing.ts`, `web/tests/smoke.mjs` |
-| Fast first load | `/` bytes gzipped, its wasm bytes, LCP | [site/R7](../guidelines/site-checklist.md); Browser measurement; wasm loads only on first use | `web/tests/page-weight.mjs`, CI `site build` step Browser tests |
-| Every route works on a phone | routes wider than 390 px | [site/R7](../guidelines/site-checklist.md); Browser measurement over every route | `web/tests/phone.mjs`, CI `site build` step Browser tests |
-| Pages run without errors | console errors and failed requests per route | Browser smoke | `web/tests/smoke.mjs`, `learn-smoke.mjs`, CI `site build` step Browser tests; **missing** over every route |
+| Fast first load | `/` bytes gzipped, its wasm bytes, LCP | [site/R7](../guidelines/site-checklist.md); Browser measurement; wasm loads only on first use | `web/tests/page-weight.mjs`, CI job `site browser tests` |
+| Every route works on a phone | routes wider than 390 px | [site/R7](../guidelines/site-checklist.md); Browser measurement over every route | `web/tests/phone.mjs`, CI job `site browser tests` |
+| Pages run without errors | console errors and failed requests per route | Browser smoke | `web/tests/smoke.mjs`, `learn-smoke.mjs`, CI job `site browser tests`; **missing** over every route |
 | Links shared on social sites preview well | pages without title, description and preview image | **missing** | none |
 | One product | layout and theme bugs at 390, 768 and 1440 px, light and dark | Process: UI pass with screenshots | **missing**: no recurring pass or screenshot diff |
 | Accessible | axe-core violations per route; keyboard reach of Run, tabs and search | **missing** | none |

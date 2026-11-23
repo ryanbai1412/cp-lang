@@ -150,6 +150,9 @@ function renderExample(text, module, shared, ran, failing, at) {
   return ['```cp', ...own, e.expr, '```', ...result, ''];
 }
 
+// The first sentence of a module's `//!` comment.
+const moduleSummary = (m) => (m.doc ?? '').split(/\n\s*\n/)[0].replace(/\s+/g, ' ').trim();
+
 // The heading id fumadocs gives `### \`Rooted.up\``.
 const slug = (anchor) => anchor.toLowerCase().replace(/[^\p{L}\p{N}_\- ]/gu, '').replace(/ /g, '-');
 
@@ -304,8 +307,7 @@ for (const m of modules) {
     '',
     ...m.items.filter((i) => !fields.includes(i)).map((i) => renderItem(i, 2, '', '', index, m.name, ctx)),
   ].join('\n');
-  const summary = m.items.find((i) => i.kind !== 'field')?.summary ?? '';
-  write(`std/${m.name}.md`, page(m.name, summary || `The ${m.name} module.`, body));
+  write(`std/${m.name}.md`, page(m.name, moduleSummary(m) || `The ${m.name} module.`, body));
 }
 index.sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()));
 const esc = (s) => s.replace(/\|/g, '\\|');
@@ -319,7 +321,7 @@ write(
       '',
       '## Modules',
       '',
-      ...modules.map((m) => `- [${m.name}](/docs/ref/std/${m.name}) (${m.items.length} items)`),
+      ...modules.map((m) => `- [${m.name}](/docs/ref/std/${m.name}) (${m.items.length} items)${moduleSummary(m) ? `: ${linked(plainSpans(texSpans(moduleSummary(m))), m.links ?? [])}` : ''}`),
       '',
       '## A to Z',
       '',

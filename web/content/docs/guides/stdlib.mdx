@@ -9,47 +9,7 @@ The prelude auto-imports common types and helpers (capped at 80 names), includin
 
 ## Standard library modules
 
-Every module under `std/` is plain CP Lang. Import individual names with `use std.<module>.{Name}`:
-
-| Module | Key exports | Purpose |
-| --- | --- | --- |
-| `std.algebra` | `Monoid`, `Action`, `Desc`, `desc`, `Reversible`, `MaxSub`, `fold` | Algebraic traits, Kadane monoid, descending key wrapper |
-| `std.bag` | `SortedBag`, `SortedSet`, `BagCursor` | Ordered multiset & unique-key set with `.range(r)` views, rank, nth, cursors, and node recycling |
-| `std.beats` | `BeatsSegTree` | Ji Driver Segment Tree Beats (`chmin`, `chmax`, `add`, `sum`, `min_val`, `max_val`) |
-| `std.bitset` | `Bitset` | Fixed-domain bitset with bitwise ops and `.first_set` |
-| `std.derive` | `eq_fields`, `lt_fields`, `show_fields`, `read_fields`, `Hash`, `hash_fields` | The field-by-field `Eq`, `Ord`, `Show`, `Read` and `Hash`, written on `fields`; call one from an `impl` (`fn lt(a, b) = lt_fields(b, a)` orders the other way, `fn hash(self) = hash_fields(self)` hashes a struct) |
-| `std.deque` | `Deque` | Double-ended queue (`.push_front`, `.pop_front`, `Deque.of`) |
-| `std.dp` | `LiChao`, `Line`, `dnc_layer`, `knuth`, `aliens`, `monotone_minima` | DP optimizations (Li Chao tree, D&C DP, Knuth DP, Aliens/WQS, SMAWK) |
-| `std.slope` | `Concave`, `Convex` | Slope trick: integer concave/convex functions as sorted slopes |
-| `std.dsu` | `Dsu`, `DsuOf`, `ParityDsu`, `PotentialDsu`, `RollbackArray` | Disjoint set union (payload, parity, potential) and rollback array sharing `Mark` |
-| `std.fenwick` | `Fenwick`, `XorFenwick`, `Fenwick2D`, `DualFenwick`, `RangeFenwick` | 1D/2D Fenwick, XOR, range-add/point-get, and range-add/range-sum |
-| `std.flow` | `Arc`, `FlowGraph`, `CostFlow`, `max_matching`, `max_weight_matching`, `max_closure`, `gomory_hu`, `global_min_cut` | Dinic, min-cost flow, matchings, closure, bounded flows, cut trees |
-| `std.geometry` | `Pt`, `Vec`, `turn`, `ByAngle`, `convex_hull`, `minkowski_sum`, `closest_pair`, `hull_tangents`, `half_plane_intersect`, `min_enclosing_circle`, `circle_polygon_area` | Exact 2D integer geometry (`I128` predicates, hulls, calipers, closest pair) and careful floating-point geometry |
-| `std.graph` | `Graph`, `Tree<V>`, `bfs`, `dijkstra`, `peel`, `topo`, `scc`, `two_color` | CSR graphs, implicit-neighbor algorithms, `Tree<V>` alias |
-| `std.grid` | `adj4`, `adj8`, `step`, `ray`, `Dir4`, `Dir8`, `transposed` | No grid type: a cell is a `(Row, Col)` pair over two domains, so `p.adj4` and `p.adj8` are its in-bounds neighbours, `p.step(d)` and `p.ray(d)` walk a `Dir4`/`Dir8`, and `bfs(p => [q for q in p.adj4 if open[q]], [start])` searches the grid |
-| `std.hashmap` | `FlatMap` | Open-addressing splitmix64-salted flat hash map for `Int` keys |
-| `std.heap` | `MinHeap`, `MaxHeap`, `ErasableHeap`, `IndexedHeap`, `MinMaxHeap` | Binary, lazy-delete, and domain-keyed priority queues |
-| `std.interval` | `IntervalMap` | Maximal-run interval partition over a domain with O(log n) amortized range assign |
-| `std.lazy` | `LazyTreap`, `Rope`, `Flip`, `flip_action` | Lazy treap, rope, and the flip action. Lazy range updates on a segment tree are `SegTree(..., act:)` in `std.segtree` |
-| `std.marks` | `Marks`, `MarkMap`, `Interner` | Generation-stamped O(1)-reset visited set/map and online key interner |
-| `std.math` | `gcd`, `lcm`, `ext_gcd`, `ceil_div`, `choose2`, `Sieve`, `sieve_multiplicative`, `factor`, `divisors`, `inv_mod`, `crt`, `crt_all`, `mod_log`, `mod_sqrt`, `floor_sum`, `bit_len` | Number theory, primes, CRT, discrete log/sqrt, bit helpers |
-| `std.matrix` | `Mat<T>`, `det_real`, `rank_real`, `solve_real`, `inverse_real`, `XorBasis` | Dense matrices, exact and floating-point Gaussian elimination, GF(2) XOR bases |
-| `std.mo` | `mo`, `mo_order`, `mo_steps` | Mo's offline range-query driver, ordering, and window transitions |
-| `std.mod` | `Mod<P>`, `Comb<M>` | Compile-time and runtime modular arithmetic and combinatorics |
-| `std.ntt` | `ntt`, `convolve`, `convolve_all`, `SosOver`, `sos`, `fwht`, `subset_exp`, `subset_log` | NTT, linear/cyclic/3-prime/exact convolution, SOS, FWHT, bitwise/subset convolutions |
-| `std.poly` | `deriv`, `integral`, `inv`, `log`, `exp`, `pow`, `sqrt`, `eval`, `div_mod`, `prod_linear`, `taylor_shift`, `eval_all`, `compose`, `lagrange_at`, `interpolate` | Formal power series, multipoint ops & interpolation over NTT (`List<Mod<P>>`) |
-| `std.persistent` | `PersistentSegTree`, `Version`, `RangeKth` | Path-copying persistent segment tree and O(log n) range k-th smallest |
-| `std.prefix` | `Prefix`, `FillOrder`, `prefix_fold`, `suffix_fold`, `Diff`, `SweepAdd` | 1D/2D/list static (`prefix(a)`) and append-only (`Prefix<...>.filling(order:)`, `.set(...)`) prefix/suffix sums, monoid folds, 1D/2D difference arrays |
-| `std.rand` | `Rng` | Seeded deterministic RNG (`.int(lo, hi)`, `.next()`) |
-| `std.segtree` | `SegTree`, `SegTree2D`, `MergeSortTree`, `WaveletMatrix` | Segment tree, orthogonal 2D merge-sort tree, and coordinate-sparse segment tree |
-| `std.seq` | `Perm<V>`, `pairs`, `with_prev`, `cyclic_pairs`, `windows`, `scan`, `argmax`, `inversions`, `prev_smaller`, `next_smaller`, `MonoStack`, `inverse`, `perm_cycles`, `first_true`, `last_true` | Sequence views, searches, monotone stacks, permutations, folds, `Perm<V>` alias |
-| `std.sparse` | `SparseTable`, `DisjointSparseTable`, `idempotent` | O(1) idempotent and non-idempotent associative range folds |
-| `std.spec` | `convexity_break`, `monge_break`, `dnc_break`, `knuth_break`, `berlekamp_massey`, `differences`, `newton` | Conjecture checking and sequence/recurrence discovery |
-| `std.strings` | `z_function`, `prefix_function`, `manacher`, `SuffixArray`, `SuffixAutomaton`, `PalindromicTree`, `Trie`, `AhoCorasick`, `RollingHash`, `Hash2D` | Pattern matching, palindromes, suffix structures, tries, and rolling hashes |
-| `std.timetree` | `TimeTree`, `TimeStep` | Offline segment tree over time for rollback-based dynamic structures |
-| `std.tour` | Tour re-exports | Euler tour utilities |
-| `std.tree` | `Rooted<V>`, `Centroids<V>`, `LinkCut<V, T>`, `LazyLinkCut<V, T, F>`, `JumpTree<V>`, `PermTree<I, V, Node>` | Rooted tree, Euler tour, LCA, HLD path queries, rerooting DP, virtual trees, centroid decomposition, link-cut trees, trees grown leaf by leaf, permutation trees |
-| `std.window` | `Window`, `Sweep`, `Track`, `Undoing` | Sliding-window extrema and inverse-free monoid window folds |
+Every module under `std/` is plain CP Lang. Import individual names with `use std.<module>.{Name}`. The [library reference](/docs/ref/std) lists every module with its job and its items, generated from `std/` on each build.
 
 ## Prelude collections
 
