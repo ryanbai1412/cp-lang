@@ -230,7 +230,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | lazy_delete_heap | heap plus "deleted" counter map | `ErasableHeap` | fix? | #1 | loop | |
 | stale_entry_skip | `if d > dist[v]: continue` after pop | `IndexedHeap.decrease` (or `dijkstra`) | warn | #1 | loop | ✓stale_entry_skip |
 | two_heap_median | max-heap + min-heap balancing | `SortedBag` / `MinMaxHeap` | doc | #1 | | |
-| push_pop_pair | `push(x)` then `pop()` | `push_pop(x)` | fix | #10 | ty | |
+| push_pop_pair | `push(x)` then `pop()` | `push_pop(x)` | fix | #10 | ty | ✓push_pop_pair |
 
 ### S.dsu
 

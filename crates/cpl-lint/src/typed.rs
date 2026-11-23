@@ -8,13 +8,13 @@
 use crate::facts::Facts;
 use crate::{
     CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN,
-    MANUAL_BIT_TEST, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP, REVERSE_INDEX,
-    SORT_FOR_EXTREME, STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
+    MANUAL_BIT_TEST, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP, PUSH_POP_PAIR,
+    REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 14] = [
+const TYPED: [cpl_diag::Code; 15] = [
     MANUAL_BIT_TEST.code,
     LAST_VIA_LEN.code,
     FLOAT_SQRT_FOR_INT.code,
@@ -29,6 +29,7 @@ const TYPED: [cpl_diag::Code; 14] = [
     MAP_AS_MULTISET.code,
     NEGATED_HEAP.code,
     SORT_FOR_EXTREME.code,
+    PUSH_POP_PAIR.code,
 ];
 
 /// `diags` less the findings `analysis`'s facts rule out.
@@ -105,6 +106,9 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
         c if c == SORT_FOR_EXTREME.code => {
             matches!(label(), Some(Some(Ty::Array { .. })))
                 || matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
+        }
+        c if c == PUSH_POP_PAIR.code => {
+            matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "Heap" || name == "MaxHeap")
         }
         c if c == NEGATED_HEAP.code => {
             matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "Heap")

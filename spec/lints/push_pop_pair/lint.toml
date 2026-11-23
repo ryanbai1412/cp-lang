@@ -1,0 +1,5 @@
+code = "L0575"
+level = "warn"
+group = "idiom"
+title = "Push then pop on a heap"
+summary = "`h.push(x)` then `h.pop()!`: `h.push_pop(x)` (`std.heap`)"

@@ -31,6 +31,7 @@ mod mod_reduce;
 mod neg_heap;
 mod pops;
 mod proven;
+mod push_pop;
 mod read_loop;
 mod reverse;
 mod scopes;
@@ -54,6 +55,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(extreme::check(file));
     findings.extend(fermat::check(file));
     findings.extend(letters::check(file));
+    findings.extend(push_pop::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

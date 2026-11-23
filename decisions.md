@@ -7369,3 +7369,12 @@ runtime `p` stays quiet. No fix, because the type declaration and every
 use change. Matching `pow_mod` by name moves `--update lint_std_names`
 171 -> 172. Reverse: delete `spec/lints/fermat_inverse/` and
 `rules/fermat.rs`.
+
+## 342. `h.push(x)` then `let y = h.pop()!` teaches `h.push_pop(x)`: L0575 `push_pop_pair`; `lint_std_names` 172 -> 174 (2026-11-23)
+
+The pair sifts twice and unwraps a pop that can't be empty; `push_pop`
+(`std.heap`) is one sift and returns the same element, so the lint
+carries a machine fix. The fact table keeps it only on a `Heap` or a
+`MaxHeap`, the two heaps that declare `push_pop`. Matching `push` and
+`pop` by name moves `--update lint_std_names` 172 -> 174. Reverse:
+delete `spec/lints/push_pop_pair/` and `rules/push_pop.rs`.
