@@ -99,8 +99,23 @@ pub fn parse(judge: Judge, url: &str, html: &str) -> Result<Scaffold, String> {
         url: Some(url.to_string()),
         limits,
         samples,
+        multitest: judge == Judge::Codeforces && counts_test_cases(html),
         ..Scaffold::default()
     })
+}
+
+/// A Codeforces input section that opens with the number of test cases:
+/// "The first line contains a single integer t ... the number of test
+/// cases". Only the first sentence or so is read.
+fn counts_test_cases(html: &str) -> bool {
+    let Some(rest) = after(html, "class=\"input-specification\"") else {
+        return false;
+    };
+    let first = text(prefix(rest, 800)).to_ascii_lowercase();
+    let first = &first[..first.find(". ").map_or(first.len(), |end| end + 1)];
+    ["number of test cases", "number of testcases"]
+        .iter()
+        .any(|phrase| first.contains(phrase))
 }
 
 type Page = (Option<String>, Option<Limits>, Vec<(String, String)>);
@@ -124,7 +139,7 @@ fn codeforces(html: &str) -> Page {
         })
         .filter(|title| !title.is_empty());
     let header = after(statement, "class=\"time-limit\"")
-        .map(|rest| text(&rest[..rest.len().min(600)]))
+        .map(|rest| text(prefix(rest, 600)))
         .unwrap_or_default();
     let limits = limits(
         number_before(&header, "second"),
@@ -172,6 +187,15 @@ fn limits(seconds: Option<f64>, memory_kb: Option<f64>) -> Option<Limits> {
         time: seconds.map_or(defaults.time, Duration::from_secs_f64),
         memory_kb: memory_kb.map_or(defaults.memory_kb, |kb| kb as u64),
     })
+}
+
+/// At most the first `bytes` of `html`, cut on a character boundary.
+fn prefix(html: &str, bytes: usize) -> &str {
+    let mut end = bytes.min(html.len());
+    while !html.is_char_boundary(end) {
+        end -= 1;
+    }
+    &html[..end]
 }
 
 fn after<'a>(html: &'a str, marker: &str) -> Option<&'a str> {
@@ -444,6 +468,18 @@ mod tests {
 YES
 </pre></div><div class="input"><div class="title">Input</div><pre>8<br />1 2<br /></pre></div><div class="output"><div class="title">Output</div><pre>NO<br /></pre></div></div></div></div>"#;
         let page = parse(Judge::Codeforces, "u", html).unwrap();
+        assert!(!page.multitest);
+        let multi = html.replace(
+            "<p>w</p>",
+            "<p>The first line contains one integer <span>t</span> (1 &le; t &le; 10<sup>4</sup>) &mdash; the number of test cases. Each test case is one line.</p>",
+        );
+        assert!(parse(Judge::Codeforces, "u", &multi).unwrap().multitest);
+        let later = html.replace(
+            "<p>w</p>",
+            "<p>The first line contains n. The answer is the number of test cases you pass.</p>",
+        );
+        assert!(!parse(Judge::Codeforces, "u", &later).unwrap().multitest);
+        assert_eq!(prefix("a\u{e9}b", 2), "a");
         assert_eq!(page.title.as_deref(), Some("A. Watermelon"));
         assert_eq!(page.short_name().as_deref(), Some("a"));
         let limits = page.limits.unwrap();
