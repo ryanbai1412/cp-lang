@@ -13,6 +13,14 @@ vim_bin="${VIM_BIN:-vim}"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
+# Windows' Vim reads C:/... paths, not Git Bash's /tmp/...; its Vim folder is vimfiles.
+vimdir=.vim
+if command -v cygpath >/dev/null; then
+    tmp="$(cygpath -m "$tmp")" here="$(cygpath -m "$here")" nvim_dir="$(cygpath -m "$nvim_dir")"
+    root="$(cygpath -m "$root")" cpl="$(cygpath -m "$cpl")"
+    [ -f "$cpl.exe" ] && cpl="$cpl.exe"
+    vimdir=vimfiles
+fi
 cat >"$tmp/a.cp" <<'CP'
 fn main():
     let n: Int = read()
@@ -67,11 +75,11 @@ printf 'let x: Int = "a"\nprint(y)\nvar s = 0\nprint(s)\n' >"$tmp/c.cp"
 # A clean Vim: a home with an empty .vimrc (so no defaults.vim either) and
 # only what `cpl setup vim` wrote under ~/.vim.
 home="$tmp/home"
-mkdir -p "$home/.vim"
-cp -R "$tmp/pack" "$home/.vim/pack"
+mkdir -p "$home/$vimdir"
+cp -R "$tmp/pack" "$home/$vimdir/pack"
 : >"$home/.vimrc"
 printf 'fn main():\n    let total = 3\n    let y: Int = "text"\n    print(tot)\n' >"$tmp/bad.cp"
-(cd "$tmp" && HOME="$home" "$vim_bin" -i NONE --not-a-term \
+(cd "$tmp" && HOME="$home" USERPROFILE="$home" "$vim_bin" -i NONE --not-a-term \
     --cmd "let g:cpl_path = '$cpl' | let g:cpl_result = '$tmp/lsp'" \
     bad.cp -S "$here/lsp_vim.vim" < <(exec sleep 90 2>/dev/null) >/dev/null 2>&1) || true
 [ "$(cat "$tmp/lsp" 2>/dev/null)" = ok ] || { echo "vim smoke: cpl lsp in vim-lsp: $(cat "$tmp/lsp" 2>/dev/null || echo 'no result')" >&2; exit 10; }

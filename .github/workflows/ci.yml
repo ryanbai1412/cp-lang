@@ -135,9 +135,14 @@ jobs:
       - if: matrix.os == 'ubuntu-latest'
         shell: bash
         run: nvim --version | head -1 && nvim --headless --clean -l editors/neovim/test/smoke.lua "$PWD/target/debug/cpl" "$PWD"
+      # Vim from a clean home (an empty vimrc): `cpl setup vim`, then ^X^O completes.
+      - uses: rhysd/action-setup-vim@v1
+        id: vim
+        with:
+          version: stable
       - name: Vim smoke
-        if: matrix.os == 'ubuntu-latest'
-        run: bash editors/neovim/test/smoke_vim.sh "$PWD/target/debug/cpl"
+        shell: bash
+        run: VIM_BIN="${{ steps.vim.outputs.executable }}" bash editors/neovim/test/smoke_vim.sh "$PWD/target/debug/cpl"
 
   # VS Code: the unit tests, then the extension host against the real `cpl lsp`
   # (diagnostics, definition, completion, formatting); editors/vscode/test/integration.
