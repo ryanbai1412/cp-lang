@@ -101,8 +101,9 @@ variants recur:
   (`(_, b) => b` in `cf2237h`), with full rollback of merges and `set`s.
 - **Bipartite / parity DSU (`ParityDsu<V>`).** Tracks `x[a] xor x[b] == d`,
   contradiction count (`consistent`), and rollback (`mark`/`undo_to`).
-- **Weighted / potential DSU (`PotentialDsu<V>`).** Tracks additive difference
-  constraints `pot(b) - pot(a) == d` (`diff(a, b) -> ?Int`, contradiction
+- **Weighted / potential DSU (`PotentialDsu<V, W>`).** Tracks difference
+  constraints `pot(b) - pot(a) == d` in a commutative group (`+` by default, `^`
+  for xor) (`diff(a, b) -> ?W`, contradiction
   detection, plus optional rollback via `Mark`). Promoted from
   `examples/local-lib/ds/potential_dsu.cp`.
 - **Companion rollback array (`RollbackArray<D, T>`).** Fixed-domain `[D]T`
@@ -408,10 +409,10 @@ Already ships `Mark`, `Dsu<V>`, `DsuOf<V, T>`, and `ParityDsu<V>`. Additions:
 ```cp
 // Existing: Mark, Dsu<V>, DsuOf<V, T>, ParityDsu<V>
 // New in std.dsu:
-struct PotentialDsu<V>                              // O(alpha(n)), O(log n) after mark
-    fn new() -> PotentialDsu<V>                     // O(n)
-    fn find(mut self, v: V) -> (root: V, pot: Int)  // pot(v) - pot(root)
-    fn unite(mut self, a: V, b: V, diff: Int) -> Bool
+struct PotentialDsu<V, W = Int>                     // O(alpha(n)), O(log n) after mark
+    fn new<G>(op: G = (+)) -> PotentialDsu<V, W>    // O(n); op: +, ^, or a commutative Group<W>
+    fn find(mut self, v: V) -> (root: V, pot: W)    // pot(v) - pot(root)
+    fn unite(mut self, a: V, b: V, diff: W) -> Bool
     // Records pot(b) - pot(a) == diff; false on contradiction
     fn diff(mut self, a: V, b: V) -> ?Int  // pot(b) - pot(a), or None
     fn same(mut self, a: V, b: V) -> Bool
@@ -821,8 +822,8 @@ After landing the v1 surface above and rewriting the affected ports (`cf2066e`,
   computed inside a loop without a domain in scope.
 - **Persistent `Arena<T>` + `PMultiset<K>`:** typed 4-byte arena handles so
   persistent segment trees, tries, and `cf2135f` need zero raw-int pools.
-- **Group-valued `PotentialDsu<V, G>`:** unify `ParityDsu` (Z/2Z) and
-  `PotentialDsu` (Z) over any `Group` once `std.algebra` adds `Group`.
+- **Group-valued `PotentialDsu<V, W>`:** shipped (`op:` takes `+`, `^` or a
+  commutative `Group<W>`); `ParityDsu` stays the Z/2Z special case.
 
 ---
 

@@ -1,4 +1,5 @@
 //! Disjoint sets over a domain, with optional values per set, parities, and rollback.
+use std.algebra.{Group}
 
 /// A point in the history of a structure that can step back in time, returned by `mark()`
 /// and taken by `undo_to`. Its own type, so it can't be mixed up with a count or an index.
@@ -482,25 +483,30 @@ pub struct ParityDsu<V>:
                 flip[y] = false
 
 /// Weighted (potential / difference-constraint) union-find over domain `V` with `Mark` rollback.
-/// Maintains constraints of the form `val[b] - val[a] == w`. All operations are \(O(\log n)\);
-/// `mark` and `consistent` are \(O(1)\); `undo_to` is \(O(1)\) per undone step.
-pub struct PotentialDsu<V>:
+/// Maintains constraints of the form `val[b] - val[a] == diff`, where `-` is the inverse of a
+/// commutative group on `W`: `+` on `Int` by default, `^` for xor potentials, or any `Group`.
+/// All operations are \(O(\log n)\); `mark` and `consistent` are \(O(1)\); `undo_to` is \(O(1)\) per
+/// undone step.
+pub struct PotentialDsu<V, W = Int>:
+    g: Group<W>
     up: [V]V
     sz: [V]1..=V.count
-    pot: [V]Int
+    pot: [V]W
     parts: 0..=2_000_000_000
     conflicts: 0..=2_000_000_000
     log: List<(V, Bool)>
 
     /// A potential union-find over `V` with every position alone at the identity potential.
-    /// Constraints combine with the group operation `op`, `+` on `Int` when it is `None`.
+    /// Constraints combine with the group `op` (`+`, `^`, or a `Group(id, op, inv)`), which
+    /// must commute.
     ///
     /// cost: \(O(n)\); three `[V]` arrays
     /// traps: never
     /// example: `let d = PotentialDsu<0..3>(); d.components == 3 and d.consistent`
-    pub fn new<G>(op: ?G = None) -> PotentialDsu<V>:
-        if let Some(_) = op: todo
-        PotentialDsu([V] v => v, [V] _ => 1, [V] _ => 0, V.count, 0, [])
+    /// example: `var d = PotentialDsu<0..3, Int>(op: ^); d.unite(0, 1, 6); d.unite(1, 2, 3); d.diff(0, 2) == Some(5)`
+    pub fn new<G>(op: G = (+)) -> PotentialDsu<V, W>:
+        let g = Group<W>.of(op)
+        PotentialDsu(g, [V] v => v, [V] _ => 1, [V] _ => g.id, V.count, 0, [])
 
     /// The representative of `v`'s set and `val[v] - val[root]`.
     ///
@@ -509,15 +515,15 @@ pub struct PotentialDsu<V>:
     /// traps: never
     /// example: `var d = PotentialDsu<0..3>(); d.unite(0, 1, 5); d.find(1) == (root: 0, offset: 5)`
     /// example: `let d = PotentialDsu<0..3>(); d.find(2) == (root: 2, offset: 0)`
-    pub fn find(self, v: V) -> (root: V, offset: Int):
+    pub fn find(self, v: V) -> (root: V, offset: W):
         var x = v
-        var d = 0
+        var d = g.id
         while up[x] != x:
-            d += pot[x]
+            d = g.op(d, pot[x])
             x = up[x]
         (root: x, offset: d)
 
-    /// Records `val[b] - val[a] == w`.
+    /// Records `val[b] - val[a] == diff`.
     ///
     /// Returns `false` when that contradicts what is already known: nothing is merged, the
     /// contradiction is counted, and [`consistent`](PotentialDsu.consistent) stays false until it is
@@ -527,23 +533,23 @@ pub struct PotentialDsu<V>:
     /// cost: \(O(\log n)\), plus one log entry when it merges or contradicts
     /// traps: never
     /// example: `var d = PotentialDsu<0..3>(); d.unite(0, 1, 5); d.unite(1, 2, 3); not d.unite(0, 2, 7) and d.unite(0, 2, 8)`
-    pub fn unite(mut self, a: V, b: V, w: Int) -> Bool:
+    pub fn unite(mut self, a: V, b: V, diff: W) -> Bool:
         let (ra, da) = self.find(a)
         let (rb, db) = self.find(b)
         if ra == rb:
-            if db - da == w: return true
+            if g.op(db, g.inv(da)) == diff: return true
             conflicts += 1
             log.push((ra, false))
             return false
         if sz[ra] >= sz[rb]:
             up[rb] = ra
-            pot[rb] = da + w - db
+            pot[rb] = g.op(g.op(da, diff), g.inv(db))
             sz[ra] += sz[rb]
             parts -= 1
             log.push((rb, true))
         else:
             up[ra] = rb
-            pot[ra] = db - w - da
+            pot[ra] = g.op(db, g.inv(g.op(diff, da)))
             sz[rb] += sz[ra]
             parts -= 1
             log.push((ra, true))
@@ -555,10 +561,10 @@ pub struct PotentialDsu<V>:
     /// traps: never
     /// example: `var d = PotentialDsu<0..3>(); d.unite(0, 1, 5); d.unite(1, 2, 3); d.diff(0, 2) == Some(8) and d.diff(2, 0) == Some(-8)`
     /// example: `PotentialDsu<0..3>().diff(0, 1) == None`
-    pub fn diff(self, a: V, b: V) -> ?Int:
+    pub fn diff(self, a: V, b: V) -> ?W:
         let (ra, da) = self.find(a)
         let (rb, db) = self.find(b)
-        if ra != rb: None else: db - da
+        if ra != rb: None else: g.op(db, g.inv(da))
 
     /// Whether `a` and `b` are in the same set, so that their difference is known.
     ///
@@ -609,7 +615,7 @@ pub struct PotentialDsu<V>:
             else:
                 sz[up[y]] -= sz[y]
                 up[y] = y
-                pot[y] = 0
+                pot[y] = g.id
                 parts += 1
 
 /// Domain-indexed array `[D]T` with `Mark` rollback.
@@ -822,6 +828,23 @@ fn potential_dsu_and_rollback_array():
     assert ra.get(V(1)) == 42 and ra.get(V(2)) == 2
     ra.undo_to(m0)
     assert ra.get(V(1)) == 1
+
+@test
+fn potential_dsu_over_a_group_matches_hidden_values():
+    domain V = 0..8
+    let hidden = [V] v => (v.ord * 37 + 11) % 16
+    var x = PotentialDsu<V, Int>(op: ^)
+    var g = PotentialDsu<V, Int>(op: Group<Int>(0, (a, b) => (a + b) % 7, a => (7 - a) % 7))
+    for k in 0..20:
+        let a = V.nth(k * 5 % 8)
+        let b = V.nth(k * 3 % 8)
+        assert x.unite(a, b, hidden[b] ^ hidden[a])
+        assert g.unite(a, b, (hidden[b] - hidden[a] + 70) % 7)
+    for a in V:
+        for b in V:
+            if let w = x.diff(a, b): assert w == hidden[b] ^ hidden[a]
+            if let w = g.diff(a, b): assert w == (hidden[b] - hidden[a] + 70) % 7
+    assert x.components == g.components
 
 @test
 fn unite_and_find():
