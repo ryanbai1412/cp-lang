@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Reject probe for happy-path-only R03.5.1 found a P0: `Mod<7> + Mod<11>` runs and prints 0. Case `core-03/mod-two-moduli-dont-mix.cp` (fails); compiler request. R03.1.3 (runtime-bounded struct field accepted) waits on a diagnostic code; asked in diagnostics/worklog.md.
 - `core-08/trait-assoc-type-bound.cp` (R08.1.1; fails, E0103 on `type K: Ord`) and two more search-dp fragments marked; requests in compiler/worklog.md, with the `windows(k).fold(+)` same-type E0302.
 - Spec blocks 67/185 (41 error, 77 skip), from 65/185 (56 error): core/05's two `seen`-lent-to-`dfs` examples run with setup and E0602; call-form catalogs and fragments over unnamed inputs in lib/ (ops-ranges, graphs-trees, search-dp, sequence-patterns, containers) and core/05 are `spec-only` with what they leave unnamed. `cpl-conform spec-blocks`.
 - Rebuild-3 silent holes, checked against `cpl run`: H-HOIST-RUNTIME-DOMAIN and H-RANGE-ELEMENT-ACCUMULATOR are already answered by R11.1.1 and R03.1.7 and run that way; H-METHOD-NEEDS-IMPORT and H-PATHS-INDEX run as the reader chose (new `std-graph/paths-index.cp` passes); H-COMPONENTS-NOT-IN-PRELUDE gets `core-11/prelude-has-components.cp` (fails, E0201); the three missing-stdlib holes and the dangling prelude `find` are requests in stdlib/worklog.md.

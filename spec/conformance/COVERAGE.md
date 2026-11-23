@@ -7,13 +7,13 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2209 (995 passing). Rules: 531.
+Cases: 2212 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 99 cases; 0 uncovered, 4 happy-path only, 1 negative only
 - R02 (02-values-types.md): 51 rules, 94 cases; 1 uncovered, 7 happy-path only, 0 negative only
-- R03 (03-numbers-layout.md): 24 rules, 55 cases; 0 uncovered, 7 happy-path only, 1 negative only
+- R03 (03-numbers-layout.md): 24 rules, 56 cases; 0 uncovered, 6 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 88 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -37,7 +37,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 |---|---|---|---|---|---|
 | R01 | 50 | 49 (98%) | 28 | 24 (85%) | 45 (90%) |
 | R02 | 51 | 50 (98%) | 29 | 22 (75%) | 43 (84%) |
-| R03 | 24 | 23 (95%) | 17 | 10 (58%) | 16 (66%) |
+| R03 | 24 | 23 (95%) | 17 | 11 (64%) | 17 (70%) |
 | R04 | 61 | 61 (100%) | 14 | 12 (85%) | 59 (96%) |
 | R04a | 39 | 36 (92%) | 4 | 3 (75%) | 35 (89%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 13 (86%) | 9 | 8 (88%) | 12 (80%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 531 | 512 (96%) | 225 | 185 (82%) | 472 (88%) |
+| all | 531 | 512 (96%) | 225 | 186 (82%) | 473 (89%) |
 
 ## Rules
 
@@ -188,7 +188,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R03.3.4 [1+ 1-]: **Reading input** rejects a value equal to a spare (`read<Int>` of `-9223372036854775808` ...
 - R03.4.1 [1+ 6-]: **The rule for every check.** On the judge only valid programs matter, so release optimize...
 - R03.4.2 [0+ 1-] *negative only*: Proofs are intraprocedural interval arithmetic on `let`s and declared ranges (already deci...
-- R03.5.1 [3+ 0-] *happy-path only*: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
+- R03.5.1 [3+ 1-]: `Mod<P>` is stored in `0..P`, so it is 4 bytes for every common prime, `?Mod<P>` is free (...
 
 ### R04: 04-indices.md
 
@@ -665,7 +665,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 15 case(s)
-- E0302 Type mismatch: 30 case(s)
+- E0302 Type mismatch: 31 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -770,7 +770,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - R0202 Integer overflow: 8 case(s)
 - R0203 Division by zero: 3 case(s)
 - R0301 Unwrap of None: 7 case(s)
-- R0401 Assertion failed: 71 case(s)
+- R0401 Assertion failed: 72 case(s)
 - R0402 todo reached: 2 case(s)
 - R0501 Bad input token: 9 case(s)
 - R0502 Input outside its read contract: 2 case(s)
@@ -855,8 +855,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **rand** (10/10 named by a case)
 - **search** (9/9 named by a case)
 - **segtree** (54/54 named by a case)
-- **seq** (203/216 named by a case)
-  - uncovered: `Compressed`, `covering`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
+- **seq** (204/216 named by a case)
+  - uncovered: `Compressed`, `Filtered`, `Mapped`, `Rev`, `Items`, `Slice`, `Rebased`, `Keys`, `SubseqStep`, `Ring`, `RingRange`, `RingSlice`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
 - **strings** (182/195 named by a case)
@@ -868,7 +868,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2112 of 2245 std items are named by a case.
+2113 of 2245 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

@@ -21,7 +21,6 @@ R03.2.6 no reject case
 R03.2.7 no reject case
 R03.2.8 no reject case
 R03.4.2 no accept case
-R03.5.1 no reject case
 R04.2.14 no reject case
 R04.2.20 no reject case
 R04a.2.9 no reject case
