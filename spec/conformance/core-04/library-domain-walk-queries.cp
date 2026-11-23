@@ -16,4 +16,4 @@ print([s.bits for s in Sub<V>.rev if s.bits > 3])
 var t = 0
 for s in Sub<V>: t += s.bits
 print(t)
-print(Sub<V>.any(s => s.bits == 6), Sub<V>.all(s => s.bits < 8))
+print(yes(Sub<V>.any(s => s.bits == 6)), yes(Sub<V>.all(s => s.bits < 8)))

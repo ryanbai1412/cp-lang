@@ -20,7 +20,7 @@ print(yes(e == [4, 3, 2, 1]))
 reverse(mut e, range: 1..3)
 print(yes(e == [4, 2, 3, 1]))
 print(yes([3, 9, 2, 9].argmax() == Some(1)), yes([3, 1, 1].argmin() == Some(1)), yes([3, 9, 2, 9].argmax(by: x => -x) == Some(2)))
-print("ace".is_subsequence("abcde"), "aec".is_subsequence("abcde"), [1, 3].is_subsequence([1, 2, 3]))
+print(yes("ace".is_subsequence("abcde")), yes("aec".is_subsequence("abcde")), yes([1, 3].is_subsequence([1, 2, 3])))
 let f = [1]
 var g = f.clone()
 g.push(2)
