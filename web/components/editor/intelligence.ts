@@ -5,13 +5,21 @@ import {
   type CompletionResult,
   snippet,
 } from "@codemirror/autocomplete";
-import type { Extension } from "@codemirror/state";
 import {
+  type Extension,
+  StateEffect,
+  StateField,
+} from "@codemirror/state";
+import {
+  Decoration,
+  type DecorationSet,
   EditorView,
   hoverTooltip,
   keymap,
   tooltips,
+  type ViewUpdate,
   ViewPlugin,
+  WidgetType,
 } from "@codemirror/view";
 import { started } from "@/lib/cpl";
 import { LspDoc } from "@/lib/lsp";
@@ -111,6 +119,55 @@ const stdTarget = (loc: Location | null) => {
     : null;
 };
 
+type InlayHint = {
+  position: Position;
+  label: string | { value: string }[];
+  paddingLeft?: boolean;
+  paddingRight?: boolean;
+};
+
+const hintsKey = "cpl.inlayHints";
+const hintsEvent = "cpl-inlay-hints";
+
+/** Whether editors show inlay type hints; on unless the reader turned them off. */
+export const inlayHintsOn = () =>
+  typeof localStorage === "undefined" || localStorage.getItem(hintsKey) !== "off";
+
+/** Turns inlay hints on or off in every editor on the page, and remembers it. */
+export function setInlayHints(on: boolean) {
+  localStorage.setItem(hintsKey, on ? "on" : "off");
+  window.dispatchEvent(new Event(hintsEvent));
+}
+
+class HintWidget extends WidgetType {
+  constructor(readonly label: string) {
+    super();
+  }
+  eq(other: HintWidget) {
+    return other.label === this.label;
+  }
+  toDOM() {
+    const span = document.createElement("span");
+    span.className = "cm-inlay-hint";
+    span.textContent = this.label;
+    return span;
+  }
+  ignoreEvent() {
+    return true;
+  }
+}
+
+const setHints = StateEffect.define<DecorationSet>();
+const hintField = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(hints, tr) {
+    hints = hints.map(tr.changes);
+    for (const e of tr.effects) if (e.is(setHints)) hints = e.value;
+    return hints;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
 /**
  * Hover, completion and go to definition (Ctrl/Cmd-click or F12) from the
  * language server, the same answers Neovim, VS Code and JetBrains get.
@@ -178,6 +235,60 @@ export function intelligence(prefix: string, editable: boolean): Extension {
       return { pos: from, end: to, create: () => ({ dom: markdown(body) }) };
     },
     { hideOnChange: true },
+  );
+
+  // Inlay hints: the type of each binding written without one, and the
+  // parameter a literal argument fills, from `textDocument/inlayHint`.
+  const hints = ViewPlugin.fromClass(
+    class {
+      timer = 0;
+      asked = 0;
+      toggle = () => this.schedule(0);
+      constructor(readonly view: EditorView) {
+        window.addEventListener(hintsEvent, this.toggle);
+        this.schedule(0);
+      }
+      update(u: ViewUpdate) {
+        if (u.docChanged || u.focusChanged) this.schedule(300);
+      }
+      schedule(ms: number) {
+        clearTimeout(this.timer);
+        this.timer = window.setTimeout(() => void this.refresh(), ms);
+      }
+      async refresh() {
+        const view = this.view;
+        const ask = ++this.asked;
+        const show = (set: DecorationSet) =>
+          ask === this.asked && view.dispatch({ effects: setHints.of(set) });
+        if (!inlayHintsOn()) return show(Decoration.none);
+        if (!wanted(view)) return;
+        const end = view.state.doc.length;
+        const res = await view
+          .plugin(server)!
+          .doc.request<InlayHint[]>("textDocument/inlayHint", {
+            range: { start: toLsp(view, 0), end: toLsp(view, end) },
+          })
+          .catch(() => null);
+        if (!res || !inlayHintsOn()) return;
+        const marks = res.flatMap((h) => {
+          const at = fromLsp(view, h.position);
+          if (at === null) return [];
+          const label =
+            typeof h.label === "string"
+              ? h.label
+              : h.label.map((p) => p.value).join("");
+          const text = `${h.paddingLeft ? " " : ""}${label}${h.paddingRight ? " " : ""}`;
+          return [
+            Decoration.widget({ widget: new HintWidget(text), side: 1 }).range(at),
+          ];
+        });
+        show(Decoration.set(marks, true));
+      }
+      destroy() {
+        clearTimeout(this.timer);
+        window.removeEventListener(hintsEvent, this.toggle);
+      }
+    },
   );
 
   async function complete(
@@ -253,6 +364,8 @@ export function intelligence(prefix: string, editable: boolean): Extension {
     tooltips({ parent: document.body }),
     server,
     hover,
+    hintField,
+    hints,
     editable ? autocompletion({ override: [complete] }) : [],
     keymap.of([
       {
@@ -294,6 +407,11 @@ export function intelligence(prefix: string, editable: boolean): Extension {
         margin: "2px 0",
       },
       ".cm-lsp-doc p": { margin: "6px 0" },
+      ".cm-inlay-hint": {
+        color: "var(--muted-foreground)",
+        fontSize: "0.85em",
+        opacity: "0.8",
+      },
       ".cm-lsp-doc code": { fontFamily: "var(--font-mono)" },
       ".cm-lsp-doc a": { textDecoration: "underline" },
       ".cm-tooltip-autocomplete > ul": {

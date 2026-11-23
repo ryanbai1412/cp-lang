@@ -1,9 +1,10 @@
+// Enforces site/R1, site/R3, site/R4 (handbook/guidelines/site-checklist.md).
 // Renders the reference under content/docs/ref/ (gitignored): spec/core,
 // spec/lib and spec/tools as-is, and the library from `cpl doc --format json`.
 import { execFileSync, spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import katex from 'katex';
-import { commonSetup, layoutSignature, mathSpans, parseExample, plainSpans, texSpans } from './doc-examples.mjs';
+import { commonSetup, layoutSignature, mathSpans, parseExample, plainSpans, splitTop, texSpans } from './doc-examples.mjs';
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -162,6 +163,32 @@ function linked(text, links) {
   });
 }
 
+// The parameters after `self` of a `fn` signature, as `[name, type, default]`.
+function sigParams(sig) {
+  if (!/^(pub )?fn\b/.test(sig)) return [];
+  const open = sig.indexOf('(');
+  let depth = 0;
+  let close = -1;
+  for (let i = open; open >= 0 && i < sig.length; i++) {
+    if ('([{'.includes(sig[i])) depth++;
+    else if (')]}'.includes(sig[i]) && --depth === 0) {
+      close = i;
+      break;
+    }
+  }
+  if (close < 0) return [];
+  return splitTop(sig.slice(open + 1, close), ',')
+    .map((p) => p.trim())
+    .filter((p) => p && !/^(mut )?self\b/.test(p))
+    .map((p) => {
+      const [head, ...dflt] = splitTop(p, ' = ');
+      const colon = head.indexOf(':');
+      return colon < 0 ? [head, '', dflt.join(' = ')] : [head.slice(0, colon).trim(), head.slice(colon + 1).trim(), dflt.join(' = ')];
+    });
+}
+
+const cell = (code) => (code ? `\`${code.replace(/\|/g, '\\|')}\`` : '');
+
 function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared = []) {
   const name = prefix ? `${prefix}.${item.name}` : item.name;
   const own = item.doc && item.doc !== parentDoc ? item.doc : '';
@@ -171,8 +198,16 @@ function renderItem(item, level, prefix, parentDoc, index, module, ctx, shared =
   ctx.anchors.push([module, item.line, slug(name), hover]);
   const lines = [`${'#'.repeat(level)} \`${name}\``, '', '```cp', layoutSignature(item.signature), '```', ''];
   if (prose) lines.push(linked(ctx.math(prose, name), item.links ?? []), '');
+  const params = item.kind === 'fn' ? sigParams(item.signature) : [];
+  if (params.length) {
+    lines.push('| Parameter | Type | Default |', '|---|---|---|');
+    for (const [n, t, d] of params) lines.push(`| ${cell(n)} | ${cell(t)} | ${d ? cell(d) : 'required'} |`);
+    lines.push('');
+  }
   if (facts.length) {
-    for (const [k, v] of facts) lines.push(`- **${k}**: ${linked(ctx.math(v, name, k === 'cost'), item.links ?? [])}`);
+    lines.push('| | |', '|---|---|');
+    for (const [k, v] of facts)
+      lines.push(`| **${k[0].toUpperCase()}${k.slice(1)}** | ${linked(ctx.math(v, name, k === 'cost'), item.links ?? []).replace(/\|/g, '\\|')} |`);
     lines.push('');
   }
   if (examples.length) {

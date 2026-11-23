@@ -1,8 +1,9 @@
 'use client';
 
-import { Bug, History, ListChecks, Loader2, Play, RotateCcw, Share2, Square } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { Bug, History, ListChecks, Loader2, Play, RotateCcw, Share2, Square, Type } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import { CodeEditor } from '@/components/editor/code-editor';
+import { inlayHintsOn, setInlayHints } from '@/components/editor/intelligence';
 import { type Status, StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -141,6 +142,8 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
   }, [program]);
 
   const share = typeof window === 'undefined' ? '' : encodeShare(program, stdin);
+  const [hints, setHints] = useState(true);
+  useEffect(() => setHints(inlayHintsOn()), []);
 
   return (
     <div className={cn('not-prose overflow-hidden rounded-xl border bg-card text-card-foreground shadow-sm', className)}>
@@ -176,6 +179,15 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
           <RotateCcw />
         </Button>
         <div className="ml-auto flex items-center gap-2">
+          <Button
+            size="sm"
+            variant={hints ? 'secondary' : 'ghost'}
+            aria-pressed={hints}
+            onClick={() => { setInlayHints(!hints); setHints(!hints); }}
+            title={hints ? 'Hide inlay type hints' : 'Show inlay type hints'}
+          >
+            <Type />
+          </Button>
           {status && <StatusBadge status={status} />}
           {shareMenu && <ShareMenu source={program} stdin={stdin} />}
           {playgroundLink && (

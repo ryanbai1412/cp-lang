@@ -2,6 +2,7 @@ import './global.css';
 import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import { RootProvider } from 'fumadocs-ui/provider/next';
+import Search from '@/components/search-dialog';
 import type { Metadata } from 'next';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import type { ReactNode } from 'react';
@@ -16,7 +17,7 @@ export default function Layout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`} suppressHydrationWarning>
       <body className="flex min-h-screen flex-col font-sans antialiased">
-        <RootProvider search={{ options: { type: 'static' } }}>
+        <RootProvider search={{ SearchDialog: Search }}>
           <TooltipProvider>{children}</TooltipProvider>
         </RootProvider>
       </body>

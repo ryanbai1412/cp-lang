@@ -1,3 +1,4 @@
+// Enforces site/R5, site/R6 (handbook/guidelines/site-checklist.md).
 // Hover, completion and go to definition in a site editor come from the
 // language server in the wasm build.
 import { base, open } from "./browser.mjs";
@@ -115,6 +116,47 @@ console.log(
   new URL(docs.url()).pathname + new URL(docs.url()).hash,
 );
 await docs.close();
+
+// Inlay hints: the type of an untyped `let`, and a toolbar switch to hide them.
+const hints = page.locator(".cm-inlay-hint");
+await page
+  .waitForFunction(
+    () => [...document.querySelectorAll(".cm-inlay-hint")].some((h) => /SegTree/.test(h.textContent)),
+    null,
+    { timeout: 30000 },
+  )
+  .catch(async () => fail(`no SegTree inlay hint on \`let t\`: ${JSON.stringify(await hints.allInnerTexts())}`));
+console.log("inlay hints:", JSON.stringify(await hints.allInnerTexts()));
+await page.getByTitle("Hide inlay type hints").click();
+await page
+  .waitForFunction(() => !document.querySelector(".cm-inlay-hint"), null, { timeout: 10000 })
+  .catch(() => fail("inlay hints stay after switching them off"));
+await page.reload({ waitUntil: "networkidle" });
+await page.locator(".cm-content").first().click();
+await page.keyboard.press("ControlOrMeta+A");
+await page.keyboard.insertText(source);
+await page.waitForTimeout(1500);
+if (await hints.count()) fail("inlay hints came back after a reload with them off");
+await page.getByTitle("Show inlay type hints").click();
+await hints.first().waitFor({ timeout: 30000 }).catch(() => fail("inlay hints don't come back on"));
+console.log("inlay hints switch off, stay off across a reload, and back on");
+
+// Ctrl/Cmd-click on a search result opens it in a new tab.
+await page.keyboard.press("ControlOrMeta+k");
+await page.keyboard.insertText("SegTree");
+const result = page.locator("#fd-search-list [role=option]").first();
+await result.waitFor({ timeout: 30000 }).catch(() => fail("search for SegTree shows no result"));
+const here = page.url();
+const [tab] = await Promise.all([
+  page.context().waitForEvent("page", { timeout: 15000 }),
+  result.click({ modifiers: ["ControlOrMeta"] }),
+]).catch(() => fail("ctrl-click on a search result opened no tab"));
+await tab.waitForLoadState("domcontentloaded");
+if (!new URL(tab.url()).pathname.startsWith("/docs/")) fail(`search result tab opened ${tab.url()}`);
+if (page.url() !== here) fail(`ctrl-click on a search result also navigated this tab to ${page.url()}`);
+console.log("ctrl-click on a search result opens", new URL(tab.url()).pathname);
+await tab.close();
+await page.keyboard.press("Escape");
 
 // A guide's block becomes an editor on Edit, with the same intelligence.
 await page.goto(base + "/docs/guides/tour", { waitUntil: "networkidle" });
