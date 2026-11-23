@@ -913,14 +913,13 @@ prepends it.
   - line 100: `let z = z_function(s[l..])`
   - line 114: `for (i, x) in a[l..=r].items:`
   - line 171: `let t = s[l..r].rebase`
-- 05-ownership.md: 56 blocks, 46 with a case, 2 spec-only, 8 neither
+- 05-ownership.md: 56 blocks, 47 with a case, 2 spec-only, 7 neither
   - line 105: `var xs = [1, 2]`
   - line 170: `struct Holder: xs: List<Int>`
   - line 520: `let d = build_dsu(edges)`
   - line 642: `var xs = [1, 2]`
   - line 651: `var xs = [1, 2]`
   - line 857: `var xs = [3, 1, 2]`
-  - line 948: `var depth: [V]Int = 0`
   - line 963: `var xs = [1, 2]`
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
@@ -930,7 +929,7 @@ prepends it.
 - 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
 - 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
 
-18 of 109 blocks have neither a case nor a spec-only reason.
+17 of 109 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 
