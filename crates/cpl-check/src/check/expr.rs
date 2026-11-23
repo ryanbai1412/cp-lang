@@ -1906,6 +1906,7 @@ impl<'a> Checker<'a> {
             );
             let suggestion = super::spec_member_typo(&base_ty, &name.text);
             let twin = super::advice::by_twin(self.src, &name.text, name.span);
+            let in_place = super::advice::in_place_twin(&name.text, &self.quote(base.span));
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
                 if let Some((help, fix)) = twin {
                     diag.help = Some(help);
@@ -1914,6 +1915,8 @@ impl<'a> Checker<'a> {
                     diag.suggest(name.span, s);
                 } else if let Some(help) = super::advice::foreign_call(&name.text) {
                     diag.help = Some(help.to_string());
+                } else if let Some(help) = in_place.clone() {
+                    diag.help = Some(help);
                 } else if generator {
                     diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
                 }

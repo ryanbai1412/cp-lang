@@ -259,6 +259,17 @@ fn int_of_input_is_one_error_with_the_read_fix() {
 }
 
 #[test]
+fn a_copying_twin_of_an_in_place_method_names_the_in_place_one() {
+    let d = check("let xs = [1, 2]\nprint(xs.shuffled())\n");
+    assert_eq!(d.len(), 1, "{d:?}");
+    let help = d[0].help.as_deref().unwrap_or_default();
+    assert!(
+        help.contains("`var ys = xs.clone()`, then `ys.shuffle()`"),
+        "{d:?}"
+    );
+}
+
+#[test]
 fn foreign_strip_names_become_trim() {
     let d = check("let s = \" a \"\nprint(s.strip(), s.lstrip(), s.trimEnd())\n");
     let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();

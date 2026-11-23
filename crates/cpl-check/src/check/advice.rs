@@ -611,6 +611,21 @@ pub(super) fn foreign_value(name: &str) -> Option<&'static str> {
 }
 
 /// Python's conversion builtins and `math.`, as CP Lang writes them.
+/// `xs.shuffled()` where std has the in-place `shuffle`: name the copy-then-change form.
+pub(super) fn in_place_twin(name: &str, recv: &str) -> Option<String> {
+    let known = |s: &str| {
+        crate::prelude::spec_member_names().contains(s)
+            || crate::builtins::BUILTIN_MEMBERS.iter().any(|m| m.name == s)
+    };
+    let stem = [name.strip_suffix('d'), name.strip_suffix("ed")]
+        .into_iter()
+        .flatten()
+        .find(|s| !s.is_empty() && known(s))?;
+    Some(format!(
+        "`{stem}` changes the list in place and returns nothing; for a changed copy, write `var ys = {recv}.clone()`, then `ys.{stem}()`"
+    ))
+}
+
 pub(super) fn foreign_call(name: &str) -> Option<&'static str> {
     match name {
         "str" | "to_string" | "toString" => Some("make a string by interpolation: `\"{x}\"`"),
