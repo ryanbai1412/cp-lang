@@ -1,54 +1,27 @@
-// Codeforces 2207 C — Max-Cartesian Tree Water Drainage
-//
-// Build a max-Cartesian tree over columns `C = 0..n` with heights `a[C]`,
-// tracking each node's optional left/right children and covered column span
-// `[span_l[u]..=span_r[u]]`.
-//
-// For a subtree rooted at `u` beneath ceiling height `cur_h`, draining `u`
-// (the tallest column in its span, height `nh = a[u]`) drains the shared water
-// layer `w = (cur_h - nh) * (span_r[u] - span_l[u] + 1)` above `nh`, after
-// which the left and right subtrees below `nh` are independent. Letting
-// `(a0, a1)` and `(b0, b1)` be `(best with 1 drain, best with up to 2 drains)`
-// in the left and right subtrees:
-// - `best1 = max(a0, b0) + w` (1 drain in this subtree)
-// - `best2 = max(a0 + b0, a1, b1) + w` (up to 2 drains in this subtree)
+// Source: Codeforces 2207C (Where's My Water?), https://codeforces.com/contest/2207/problem/C
+// Problem: n columns (n <= 2000, sum n <= 2000, multitest) under height h <= 1e9; column i has
+//   1 <= a_i <= h dirt tiles at the bottom and water above. A drain takes all water that reaches
+//   it moving down, left or right without crossing dirt. Print the most water taken by at most 2.
+// Solution: the max-Cartesian tree of the heights. The subtree of u is the run of columns where
+//   a[u] is the tallest; under its parent's height (h at the root) that run holds a layer
+//   w = (top - a[u]) * size(u) that any drain in the subtree takes, and below a[u] the child
+//   subtrees are independent. So one drain gets the best child's one-drain total plus w, and two
+//   drains get w plus one drain in each of two children or both in one child. O(n).
 
 @!multitest
-let (n, h): (1..=200_000, 1..=10 ** 9) = read()
+let (n, h): (1..=2000, 1..=10 ** 9) = read()
 domain C = 0..n
-let a: [C]0..=h = read()
+let a: [C]1..=h = read()
+let t = a.cartesian_tree(by: desc)      // a Rooted over C, the tallest column at the root
 
-var left: [C]?C = None
-var right: [C]?C = None
-var span_l = [C] i => i.ord
-var span_r = [C] i => i.ord
+fn drain(u: C, top: Int) -> (one: Int, two: Int):
+    var (one, both, two) = (0, 0, 0)
+    for c in t.children(u):
+        let d = drain(c, a[u])
+        one max= d.one
+        both += d.one
+        two max= d.two
+    let w = (top - a[u]) * t.size(u)
+    (one: one + w, two: max(both, two) + w)
 
-var stk: List<C> = []
-for i in C:
-    var last_popped: ?C = None
-    while let top = stk.last and a[i] > a[top]:
-        stk.pop()
-        right[top] = last_popped
-        if let r = last_popped: span_r[top] = span_r[r]
-        last_popped = top
-    left[i] = last_popped
-    if let l = last_popped: span_l[i] = span_l[l]
-    stk.push(i)
-
-var root: ?C = None
-while let top = stk.pop():
-    right[top] = root
-    if let r = root: span_r[top] = span_r[r]
-    root = top
-
-fn dfs(u_opt: ?C, cur_h: Int) -> (Int, Int):
-    if let u = u_opt:
-        let nh = a[u]
-        let w = (cur_h - nh) * (span_r[u] - span_l[u] + 1)
-        let (a0, a1) = dfs(left[u], nh)
-        let (b0, b1) = dfs(right[u], nh)
-        (max(a0, b0) + w, max(a0 + b0, a1, b1) + w)
-    else:
-        (0, 0)
-
-print(dfs(root, h).1)
+print(drain(t.root, h).two)

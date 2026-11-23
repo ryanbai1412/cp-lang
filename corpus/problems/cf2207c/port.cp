@@ -1,49 +1,28 @@
 // Source: Codeforces 2207C (Where's My Water?), https://codeforces.com/contest/2207/problem/C
-// Problem: n columns (sum n <= 2000, multitest) under height h <= 1e9; column i has a_i >= 1
-//   dirt tiles at the bottom and water above. A drain takes all water that reaches it moving
-//   down, left or right without crossing dirt. Print the most water taken by at most 2 drains.
-// Solution: the max-Cartesian tree of the heights. Under a ceiling cur_h, the subtree of the
-//   tallest column u spans span_l..=span_r; any drain in it takes the layer of (cur_h - a[u])
-//   times the span above u, and below a[u] its two child subtrees are independent. So
-//   dfs(u) = (best with 1 drain, best with 2) = (max(a0, b0) + w, max(a0 + b0, a1, b1) + w)
-//   from the children's pairs. Monotonic stack build and DFS, O(n).
+// Problem: n columns (n <= 2000, sum n <= 2000, multitest) under height h <= 1e9; column i has
+//   1 <= a_i <= h dirt tiles at the bottom and water above. A drain takes all water that reaches
+//   it moving down, left or right without crossing dirt. Print the most water taken by at most 2.
+// Solution: the max-Cartesian tree of the heights. The subtree of u is the run of columns where
+//   a[u] is the tallest; under its parent's height (h at the root) that run holds a layer
+//   w = (top - a[u]) * size(u) that any drain in the subtree takes, and below a[u] the child
+//   subtrees are independent. So one drain gets the best child's one-drain total plus w, and two
+//   drains get w plus one drain in each of two children or both in one child. O(n).
 
 @!multitest
-let (n, h): (1..=200_000, 1..=10 ** 9) = read()
+use std.tree.{cartesian_tree}
+let (n, h): (1..=2000, 1..=10 ** 9) = read()
 domain C = 0..n
-let a: [C]0..=h = read()
+let a: [C]1..=h = read()
+let t = Rooted.from_parents(cartesian_tree(a, by: (x, y) => x > y))
 
-var left: [C]?C = None
-var right: [C]?C = None
-var span_l = [C] i => i.ord
-var span_r = [C] i => i.ord
+fn drain(u: C, top: Int) -> (one: Int, two: Int):
+    var (one, both, two) = (0, 0, 0)
+    for c in t.children(u):
+        let d = drain(c, a[u])
+        one max= d.one
+        both += d.one
+        two max= d.two
+    let w = (top - a[u]) * t.size(u)
+    (one: one + w, two: max(both, two) + w)
 
-var stk: List<C> = []
-for i in C:
-    var last_popped: ?C = None
-    while let top = stk.last and a[i] > a[top]:
-        stk.pop()
-        right[top] = last_popped
-        if let r = last_popped: span_r[top] = span_r[r]
-        last_popped = top
-    left[i] = last_popped
-    if let l = last_popped: span_l[i] = span_l[l]
-    stk.push(i)
-
-var root: ?C = None
-while let top = stk.pop():
-    right[top] = root
-    if let r = root: span_r[top] = span_r[r]
-    root = top
-
-fn dfs(u_opt: ?C, cur_h: Int) -> (Int, Int):
-    if let u = u_opt:
-        let nh = a[u]
-        let w = (cur_h - nh) * (span_r[u] - span_l[u] + 1)
-        let (a0, a1) = dfs(left[u], nh)
-        let (b0, b1) = dfs(right[u], nh)
-        (max(a0, b0) + w, max(a0 + b0, a1, b1) + w)
-    else:
-        (0, 0)
-
-print(dfs(root, h).1)
+print(drain(t.root, h).two)
