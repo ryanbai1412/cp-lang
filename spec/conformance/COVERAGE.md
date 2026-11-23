@@ -7,18 +7,18 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2706 (995 passing). Rules: 570.
+Cases: 2713 (995 passing). Rules: 570.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 56 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 148 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 67 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 70 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 70 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 161 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 24 rules, 97 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 24 rules, 99 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 150 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -52,7 +52,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
 | R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
 | R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
-| R06 | 24 | 24 (100%) | 15 | 15 (100%) | 24 (100%) |
+| R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
 | R07 | 90 | 90 (100%) | 26 | 26 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
 | R09 | 26 | 26 (100%) | 14 | 14 (100%) | 26 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 570 | 569 (99%) | 223 | 223 (100%) | 569 (99%) |
+| all | 570 | 569 (99%) | 224 | 224 (100%) | 569 (99%) |
 
 ## Rules
 
@@ -285,7 +285,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.8.7 [2+ 0-]: `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `No...
 - R04.8.8 [2+ 1-]: Integer literals convert to positions and cuts of integer domains.
 - R04.8.9 [2+ 1-]: `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes.
-- R04.8.10 [1+ 1-]: A list literal for `[D]T` gives one value per cell, so `[]` fills an empty `D`; a list who...
+- R04.8.10 [2+ 1-]: A list literal for `[D]T` gives one value per cell, so `[]` fills an empty `D`; a list who...
 
 ### R04a: 04a-identity-vs-offset.md
 
@@ -430,7 +430,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.4.3 [14+ 5-]: `@test`, `@alt(f, caps)`, `@gen`, `@check`, `@interactor`: tool roles (`tools/stress.md`);...
 - R06.4.4 [1+ 0-]: `@cache` on a struct field: compiler-safe interior mutability with an author promise of lo...
 - R06.4.8 [1+ 1-]: `@droppable`: the result may be dropped without the unused-result lint. Dropping a non-uni...
-- R06.5.1 [1+ 0-]: Top-level bindings above `@!multitest` are shared by every test case; everything below is ...
+- R06.5.1 [2+ 1-]: Top-level bindings above `@!multitest` are shared by every test case; everything below is ...
 
 ### R07: 07-sequences.md
 
@@ -758,7 +758,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0315 Not a token type: 1 case(s)
 - E0316 field_bound_from_input *(0.3)*: 1 case(s)
 - E0317 getter_needs_defaults *(0.3)*: 1 case(s)
-- E0401 Assignment to immutable `let` binding: 3 case(s)
+- E0401 Assignment to immutable `let` binding: 4 case(s)
 - E0402 Missing `mut` at call site: 2 case(s)
 - E0403 `mut` of an immutable binding: 4 case(s)
 - E0404 top_level_var_in_fn *(retired)*: exempt (retired)
@@ -986,9 +986,11 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - core-01/while-let-tuple-pattern.cp
 - core-02/alias-walks-as-aliased-type.cp
 - core-02/generic-variant-compares-with-typed-side.cp
+- core-02/list-of-str-is-chars.cp
 - core-02/range-type-argument-is-anonymous-domain.cp
 - core-02/range-type-arguments-index-a-2d-segtree.cp
 - core-02/str-from-slice-copies.cp
+- core-02/str-len-and-charset-compose.cp
 - core-02/str-of-charset-escapes.cp
 - core-02/struct-literal-named-fields-any-order.cp
 - core-03/mod-array-fills-from-int-literal.cp
