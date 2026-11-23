@@ -15,18 +15,22 @@ var rope = Rope<Pos, MergeSeg<Query>>(
     merge: (a, b) => a.merge(b),
 )
 
+enum Op:
+    @tag(1) Insert(r: Pos)
+    @tag(2) Reverse(r: Pos)
+    @tag(3) Delete(id: Query)
+
 var last = 0
-fn decode_pos(x: Int) -> Pos = Pos((x + last - 1) % n + 1)
-fn decode_query(x: Int) -> Query = Query((x + last - 1) % q_cnt + 1)
+fn decode<D>(x: D) -> D = D.nth((x.ord + last) % D.count)
 
 for q in Query:
-    let (kind, b, c): (1..=3, Int, Int) = read()
-    match kind:
-        1 =>
+    let (op, p): (Op, Pos) = read()
+    match op:
+        Insert(r) =>
             alive[q] = true
-            rope.apply(..=decode_pos(b), MergeSeg.singleton(q))
-        2 => rope.reverse(..=decode_pos(b))
-        3 => alive[decode_query(b)] = false
-    let ans = rope.query_path(decode_pos(c), seg => seg.first_alive(id => alive[id]))
-    last = if let v = ans: v.ord + 1 else: 0
+            rope.apply(..=decode(r), MergeSeg.singleton(q))
+        Reverse(r) => rope.reverse(..=decode(r))
+        Delete(id) => alive[decode(id)] = false
+    let ans = rope.query_path(decode(p), seg => seg.first_alive(id => alive[id]))
+    last = if let v = ans: Int(v) else: 0
     print(last)

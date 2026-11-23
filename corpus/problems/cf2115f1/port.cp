@@ -15,18 +15,18 @@ use std.rand.Rng
 
 struct SegNode(l: Id<SegNode>, r: Id<SegNode>)
 
+let (n, q_cnt): (1..=300_000, 1..=300_000) = read()
+domain Pos = 1..=n
+domain Query = 1..=q_cnt
+
 struct TreapNode:
-    var l: ?Int
-    var r: ?Int
+    var l: ?Pos
+    var r: ?Pos
     var pri: U64
     var own: Id<SegNode>
     var lazy: Id<SegNode>
     var sz: Int
     var flip: Bool
-
-let (n, q_cnt): (1..=300_000, 1..=300_000) = read()
-domain Pos = 1..=n
-domain Query = 1..=q_cnt
 
 enum Op:
     @tag(1) Insert(r: Pos)
@@ -39,7 +39,7 @@ fn new_seg(l: Id<SegNode>, r: Id<SegNode>) -> Id<SegNode> = seg.alloc(SegNode(l,
 let empty = new_seg(Id(0), Id(0))
 
 fn build_seg(q: Int, lo: Int, hi: Int) -> Id<SegNode>:
-    if lo + 1 >= hi: return new_seg(empty, empty)
+    if lo + 1 == hi: return new_seg(empty, empty)
     let mid = (lo + hi) / 2
     if q < mid: new_seg(build_seg(q, lo, mid), empty)
     else: new_seg(empty, build_seg(q, mid, hi))
@@ -63,35 +63,39 @@ fn query_seg(u: Id<SegNode>, lo: Int, hi: Int) -> (Id<SegNode>, ?Query):
     seg[u] = SegNode(l, r)
     if let q = in_r: (u, q) else: (empty, None)
 
+fn singleton(q: Query) -> Id<SegNode> = build_seg(q.ord, 0, q_cnt)
+fn cat(a: Id<SegNode>, b: Id<SegNode>) -> Id<SegNode> = concat_seg(a, b, 0, q_cnt)
+fn first_alive(u: Id<SegNode>) -> (Id<SegNode>, ?Query) = query_seg(u, 0, q_cnt)
+
 var rng = Rng.new(48)
-var tr: List<TreapNode> = []
+var tr: [Pos]TreapNode = [Pos] _ => TreapNode(None, None, rng.next(), empty, empty, 1, false)
 
-fn sz_of(u: ?Int) -> Int = if let t = u: tr[t].sz else: 0
+fn sz_of(u: ?Pos) -> Int = if let t = u: tr[t].sz else: 0
 
-fn flip_treap(u: ?Int):
+fn flip_treap(u: ?Pos):
     let t = u ?? return
     tr[t].flip = not tr[t].flip
     (tr[t].l, tr[t].r) = (tr[t].r, tr[t].l)
 
-fn update_treap(t: Int):
+fn update_treap(t: Pos):
     tr[t].sz = sz_of(tr[t].l) + 1 + sz_of(tr[t].r)
 
-fn push_flip(t: Int):
+fn push_flip(t: Pos):
     if not tr[t].flip: return
     flip_treap(tr[t].l)
     flip_treap(tr[t].r)
     tr[t].flip = false
 
-fn push_down(t: Int):
+fn push_down(t: Pos):
     push_flip(t)
     let lz = tr[t].lazy
     if lz == empty: return
-    if let lc = tr[t].l: tr[lc].lazy = concat_seg(tr[lc].lazy, lz, 0, q_cnt)
-    if let rc = tr[t].r: tr[rc].lazy = concat_seg(tr[rc].lazy, lz, 0, q_cnt)
-    tr[t].own = concat_seg(tr[t].own, lz, 0, q_cnt)
+    if let lc = tr[t].l: tr[lc].lazy = cat(tr[lc].lazy, lz)
+    if let rc = tr[t].r: tr[rc].lazy = cat(tr[rc].lazy, lz)
+    tr[t].own = cat(tr[t].own, lz)
     tr[t].lazy = empty
 
-fn split_treap(u: ?Int, l: Int) -> (?Int, ?Int):
+fn split_treap(u: ?Pos, l: Int) -> (?Pos, ?Pos):
     let r = u ?? return (None, None)
     if l == 0: return (None, r)
     if l == tr[r].sz: return (r, None)
@@ -108,7 +112,7 @@ fn split_treap(u: ?Int, l: Int) -> (?Int, ?Int):
         update_treap(r)
         (r, b)
 
-fn merge_treap(a: ?Int, b: ?Int) -> ?Int:
+fn merge_treap(a: ?Pos, b: ?Pos) -> ?Pos:
     let x = a ?? return b
     let y = b ?? return a
     if tr[x].pri < tr[y].pri:
@@ -122,7 +126,7 @@ fn merge_treap(a: ?Int, b: ?Int) -> ?Int:
         update_treap(y)
         y
 
-fn query_treap(u: ?Int, l: Int) -> ?Query:
+fn query_treap(u: ?Pos, l: Int) -> ?Query:
     let cur = u ?? return None
     let l_sz = sz_of(tr[cur].l)
     if l != l_sz:
@@ -130,17 +134,15 @@ fn query_treap(u: ?Int, l: Int) -> ?Query:
         let res = if l > l_sz: query_treap(tr[cur].r, l - l_sz - 1) else: query_treap(tr[cur].l, l)
         if let v = res: return v
     else:
-        let (no, ro) = query_seg(tr[cur].own, 0, q_cnt)
+        let (no, ro) = first_alive(tr[cur].own)
         tr[cur].own = no
         if let v = ro: return v
-    let (nl, rl) = query_seg(tr[cur].lazy, 0, q_cnt)
+    let (nl, rl) = first_alive(tr[cur].lazy)
     tr[cur].lazy = nl
     rl
 
-var root: ?Int = None
-for _ in Pos:
-    tr.push(TreapNode(None, None, rng.next(), empty, empty, 1, false))
-    root = merge_treap(root, tr.len - 1)
+var root: ?Pos = None
+for p in Pos: root = merge_treap(root, p)
 
 var last = 0
 fn decode<D>(x: D) -> D = D.nth((x.ord + last) % D.count)
@@ -151,13 +153,12 @@ for q in Query:
         Insert(r) =>
             alive[q] = true
             let (ta, tb) = split_treap(root, decode(r).ord + 1)
-            if let a = ta:
-                tr[a].lazy = concat_seg(tr[a].lazy, build_seg(q.ord, 0, q_cnt), 0, q_cnt)
+            if let a = ta: tr[a].lazy = cat(tr[a].lazy, singleton(q))
             root = merge_treap(ta, tb)
         Reverse(r) =>
             let (ta, tb) = split_treap(root, decode(r).ord + 1)
             flip_treap(ta)
             root = merge_treap(ta, tb)
         Delete(id) => alive[decode(Query(id))] = false
-    last = if let v = query_treap(root, decode(p).ord): v.ord + 1 else: 0
+    last = if let v = query_treap(root, decode(p).ord): Int(v) else: 0
     print(last)
