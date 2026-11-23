@@ -7,16 +7,16 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2804 (995 passing). Rules: 573.
+Cases: 2807 (995 passing). Rules: 574.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 56 rules, 166 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 56 rules, 167 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 69 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 173 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04b (04b-keys.md): 28 rules, 68 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 176 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 104 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 173 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -50,8 +50,8 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R03 | 24 | 24 (100%) | 13 | 13 (100%) | 24 (100%) |
 | R04 | 73 | 73 (100%) | 17 | 17 (100%) | 73 (100%) |
 | R04a | 39 | 39 (100%) | 3 | 3 (100%) | 39 (100%) |
-| R04b | 27 | 27 (100%) | 7 | 7 (100%) | 27 (100%) |
-| R05 | 43 | 43 (100%) | 21 | 21 (100%) | 43 (100%) |
+| R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
+| R05 | 43 | 43 (100%) | 22 | 22 (100%) | 43 (100%) |
 | R06 | 24 | 24 (100%) | 16 | 16 (100%) | 24 (100%) |
 | R07 | 90 | 90 (100%) | 27 | 27 (100%) | 90 (100%) |
 | R08 | 29 | 29 (100%) | 12 | 12 (100%) | 29 (100%) |
@@ -67,7 +67,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 5 | 5 (100%) | 1 | 1 (100%) | 5 (100%) |
 | Rstress | 1 | 1 (100%) | 0 | 0 (0%) | 1 (100%) |
-| all | 573 | 572 (99%) | 228 | 228 (100%) | 572 (99%) |
+| all | 574 | 573 (99%) | 229 | 229 (100%) | 573 (99%) |
 
 ## Rules
 
@@ -93,7 +93,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.3.6 [2+ 0-]: `Some` and `None` are not reserved: they are the variants of `?T`, in the prelude like any...
 - R01.3.7 [1+ 1-]: `unchecked:` opens a block whose arithmetic and indexing checks are off in every build (ch...
 - R01.4.1 [2+ 0-]: **Integers**: decimal with `_` separators, `0x...`, `0b...`. Scientific literals that deno...
-- R01.4.2 [2+ 1-]: **Floats** are the other literals with a `.` or an exponent: `0.5`, `2.0`, `1.5e-9`. A lit...
+- R01.4.2 [3+ 1-]: . A literal F64 can't hold exactly, such as `9007199254740993`, is E0302 naming `F64(...)`...
 - R01.4.3 [1+ 1-]: **Chars**: `'c'`, exactly one ASCII character or one escape (`\n \t \r \0 \\ \' \xHH`, `HH...
 - R01.4.4 [1+ 1-]: **Strings**: `"..."` with the same escapes plus `\"`. Every string literal interpolates: `...
 - R01.4.5 [1+ 0-]: **Lists** `[a, b, c]`, **maps** `[k: v, k2: v2]` (`[:]` is empty), **tuples** `(a, b)`, **...
@@ -345,6 +345,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.9 [2+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [1+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
 - R04b.1.11 [4+ 1-]: **Compile error: a raw `Int` used to index a domain slice**, as before.
+- R04b.1.12 [1+ 1-]: .
 - R04b.3.1 [1+ 1-]: make `f` generic as above, using `first`, `nth` and `items`;
 - R04b.3.2 [1+ 0-]: call `f(List(w))`, an \(O(\mathit{len})\) copy keyed from 0.
 - R04b.4.1 [1+ 0-]: | Work in the caller's keys | take `[K]T` | `K` itself; nothing to build
@@ -365,6 +366,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R05: 05-ownership.md
 
 - R05.2.2 [3+ 4-]: **A range type to a wider one** (`1..=5` to `Int`, `0..=9` to `-5..=100`). Free. Arithmeti...
+- R05.8.3 [1+ 2-]: **Grids (F1).** A row keeps the column domain and a column keeps the row domain. On every ...
 - R05.2.1 [2+ 0-]: **R1. Plain values copy.** A value is plain when no part of it lives on the heap: `Int`, `...
 - R05.3.1 [2+ 2-]: `let x = e` binds `x` to `e`; `x` can't be reassigned or mutated.
 - R05.3.2 [2+ 0-]: `var x = e` binds a mutable variable: `x = e2`, `x.push(..)`, `x[i] = ..`.
@@ -387,7 +389,6 @@ Each rule: positive / negative case counts, then the gap if any.
 - R05.7.10 [3+ 3-]: stored in a top-level `var` by a fn. The file body is itself a fn (§11), so its own statem...
 - R05.8.1 [1+ 3-]: Different fields never overlap: `f(mut s.left, mut s.right)` is fine.
 - R05.8.2 [6+ 7-]: Two elements need the projection's `disjoint` law proven from facts at that point (`if i !...
-- R05.8.3 [1+ 2-]: Different projections of one receiver always conflict (`g[r]` and `g[.., c]` of one grid).
 - R05.8.4 [1+ 9-]: A container's length can't change while any place in it is lent: `let x = mut xs[i]` then ...
 - R05.9.1 [4+ 10-]: The generator's lends are live for the walk, so `B` may read a read-lent source but not wr...
 - R05.9.2 [1+ 2-]: The item `x` is the body's parameter: plain items copy, heap items are lent for one iterat...
@@ -530,6 +531,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 ### R08: 08-traits-generics.md
 
+- R08.5.2 [1+ 4-]: **Floats** are the other literals with a `.` or an exponent: `0.5`, `2.0`, `1.5e-9`. A lit...
 - R08.1.4 [3+ 2-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
 - R08.1.1 [14+ 1-]: A trait declares methods (with optional default bodies), associated types, field requireme...
 - R08.1.2 [4+ 1-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
@@ -556,7 +558,6 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.4.3 [1+ 0-]: Row-polymorphic functions are monomorphized per record type.
 - R08.4.4 [1+ 4-]: Nine safety rules (decision 146): no hidden heap copies, no field reordering visible to th...
 - R08.5.1 [1+ 1-]: No inheritance, subclassing or default-method overriding chains.
-- R08.5.2 [1+ 4-]: No overloading by type, no implicit conversions, no orphan impls.
 - R08.5.3 [1+ 1-]: No higher-kinded types; capability traits on sequences (`07-sequences.md`) and associated ...
 - R08.5.4 [1+ 1-]: No user-defined patterns (decision 132) and no macros.
 
@@ -747,7 +748,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0301 Wrong index domain: 16 case(s)
 - E0302 Type mismatch: 45 case(s)
 - E0303 Wrong number of arguments: 10 case(s)
-- E0304 Value is not callable: 1 case(s)
+- E0304 Value is not callable: 2 case(s)
 - E0305 Value is not indexable: 10 case(s)
 - E0306 Invalid arithmetic on domain position (reserved): exempt (reserved in the registry)
 - E0307 Condition is not `Bool`: 1 case(s)
@@ -898,7 +899,7 @@ prepends it.
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`
   - line 114: `for (i, x) in a[l..=r].items:`
-  - line 167: `let t = s[l..r].rebase`
+  - line 171: `let t = s[l..r].rebase`
 - 05-ownership.md: 56 blocks, 47 with a case, 2 spec-only, 7 neither
   - line 105: `var xs = [1, 2]`
   - line 170: `struct Holder: xs: List<Int>`

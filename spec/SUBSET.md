@@ -257,6 +257,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-08/trait-message-bound-holds.cp: compiler
 - core-01/comprehension-filter-if-let.cp: compiler
 - core-09/deep-recursion-trap.cp: compiler
+- core-01/int-literal-takes-f64-where-expected.cp: compiler
+- core-04/grid-rows-cols-views.cp: stdlib
+- core-04/grid-rows-is-a-getter.cp: stdlib
 - core-01/generator-arg-free-fold.cp: compiler
 - core-11/constant-domain-hoists-counted.cp: compiler
 - core-07/map-view-lazy-index-and-len.cp: compiler
@@ -277,7 +280,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/product-result-indexed-by-parts.cp: compiler
 - core-06/lambda-unpacks-tuple-vertex.cp: compiler
 - core-10/print-range-prints-items.cp: compiler
-- core-02/str-len-and-charset-compose.cp: compiler
 - core-02/list-of-str-is-chars.cp: compiler
 - std-graph/undirected-unweighted-has-deg.cp: stdlib
 - core-10/tuple-dependent-bound-in-block.cp: compiler
@@ -295,8 +297,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-seq/split-on-separator-predicate.cp: stdlib
 - core-05/chunks-walk-lends-parent.cp: compiler
 - core-05/windows-walk-lends-parent.cp: compiler
-- core-05/runs-walk-lends-parent.cp: compiler
-- core-05/filter-map-walk-lends-parent.cp: compiler
 - core-07/step-on-list.cp: stdlib
 - std-heap/drain-break-keeps-the-rest.cp: compiler
 - core-07/rev-does-not-satisfy-indexed.cp: compiler

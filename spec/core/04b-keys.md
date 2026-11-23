@@ -148,7 +148,11 @@ w.first!, w.last!    // the ends of a non-empty piece
 ```
 
 **Grids (F1).** A row keeps the column domain and a column keeps the row
-domain.
+domain. On every `[R, C]T`, `g.rows` and `g.cols` are the views of all of
+them: `g.rows` is keyed by `R` and `g.rows[r]` is `g[r]`; `g.cols` is keyed
+by `C` and `g.cols[c]` is `g[.., c]`. Both are \(O(1)\) getters with no `()`
+(`g.rows()` is E0304), are `Indexed`, `Sized` and `Bidir`, and lend `g` like
+any view (R05.8.3). (R04b.1.12)
 
 <!-- spec-only: fragment with a `...` body -->
 ```python

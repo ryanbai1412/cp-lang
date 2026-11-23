@@ -147,7 +147,13 @@ in every build (chapter 9); it is a statement, never an expression. (R01.3.7)
   `2.0`, `1.5e-9`. A literal with an exponent is an `Int` whenever its
   value is an exact integer, whatever its mantissa: `1.5e5` is `150000`,
   `2.5e-1` is a float. Without an exponent, a `.` makes a float.
-  `.5` and `5.` are errors. (R01.4.2)
+  `.5` and `5.` are errors. Where an `F64` is expected (an annotation,
+  argument, return, `min=`, or the other operand of an `F64` operator), an
+  integer literal in any spelling is that `F64`: `var r: F64 = 1e18`,
+  `r min= 0`, `x * 2`. This is the literal's type, as with a domain or range
+  type, not a conversion, so a non-literal `Int` still needs `F64(n)`
+  (R08.5.2). A literal F64 can't hold exactly, such as `9007199254740993`,
+  is E0302 naming `F64(...)`. (R01.4.2)
 - **Chars**: `'c'`, exactly one ASCII character or one escape
   (`\n \t \r \0 \\ \' \xHH`, `HH <= 7F`). `'ab'` is an error that
   suggests `"ab"`. (R01.4.3)
