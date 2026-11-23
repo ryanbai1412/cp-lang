@@ -198,6 +198,35 @@ const tests: [string, () => Promise<void>][] = [
         },
     ],
     [
+        'the testing panel lists each case and diffs a wrong answer',
+        async () => {
+            const dir = file('panel.tests').fsPath;
+            fs.mkdirSync(dir, { recursive: true });
+            fs.writeFileSync(file('panel.cp').fsPath, 'let n: Int = read()\nprint(n * 2)\n');
+            for (const [name, input, output] of [['1', '2', '4'], ['2', '3', '7'], ['10', '5', '10']]) {
+                fs.writeFileSync(path.join(dir, `${name}.in`), `${input}\n`);
+                fs.writeFileSync(path.join(dir, `${name}.out`), `${output}\n`);
+            }
+            const api = await vscode.extensions.getExtension<{ tests: import('../../src/testPanel').TestPanel }>('cp-lang.cp-lang')!.activate();
+            await api.tests.discover();
+            const problem = api.tests.controller.items.get(file('panel.cp').toString());
+            assert.ok(problem, 'panel.cp is listed');
+            const cases: string[] = [];
+            problem.children.forEach(child => cases.push(child.label));
+            assert.deepEqual(cases.sort((a, b) => Number(a) - Number(b)), ['1', '2', '10']);
+            const outcomes = await api.tests.run(new vscode.TestRunRequest([problem]));
+            assert.deepEqual(Object.fromEntries([...outcomes].map(([id, outcome]) => [id.split('#')[1], outcome])), {
+                '1': 'passed',
+                '2': 'failed',
+                '10': 'passed',
+            });
+            const one = await api.tests.run(new vscode.TestRunRequest([problem.children.get(`${problem.id}#2`)!]));
+            assert.deepEqual([...one.values()], ['failed']);
+            fs.rmSync(dir, { recursive: true });
+            fs.rmSync(file('panel.cp').fsPath);
+        },
+    ],
+    [
         'import a problem takes what Competitive Companion sends',
         async () => {
             await vscode.workspace.getConfiguration('cp').update('companion.port', 10071, vscode.ConfigurationTarget.Global);

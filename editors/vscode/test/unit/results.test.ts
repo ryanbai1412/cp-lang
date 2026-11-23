@@ -14,6 +14,7 @@ import {
     parseRunReport,
     parseStressReport,
     parseSubmitReport,
+    parseTestReport,
     submitSummary,
     parseTraceMessage,
     renderCounterexample,
@@ -262,4 +263,26 @@ test('parseSubmitReport reads `cpl submit --json` and submitSummary says if it i
     assert.equal(submitSummary(failed!), 'not ready to send: a.cpp (0.0 KB), 0/1 samples');
     assert.equal(parseSubmitReport('wrote a.cpp'), undefined);
     assert.equal(parseSubmitReport('{"cases":[]}'), undefined);
+});
+
+test('parseTestReport reads each case, with null fields left out', () => {
+    const cases = parseTestReport(
+        JSON.stringify({
+            cases: [
+                { name: '1', verdict: 'ok', ms: 25, expected: '4\n', output: '4\n', why: null, explained: null },
+                { name: '2', verdict: 'WA', ms: 19, expected: '7\n', output: '6\n', why: 'expected `7`, got `6`', explained: null },
+                { name: '3', verdict: null, ms: 3, expected: null, output: '9\n', why: null, explained: null },
+                { verdict: 'ok' },
+            ],
+            passed: 1,
+            total: 3,
+        }),
+    );
+    assert.deepEqual(cases, [
+        { name: '1', verdict: 'ok', ms: 25, expected: '4\n', output: '4\n', why: undefined, explained: undefined },
+        { name: '2', verdict: 'WA', ms: 19, expected: '7\n', output: '6\n', why: 'expected `7`, got `6`', explained: undefined },
+        { name: '3', verdict: undefined, ms: 3, expected: undefined, output: '9\n', why: undefined, explained: undefined },
+    ]);
+    assert.equal(parseTestReport('{"values": []}'), undefined);
+    assert.equal(parseTestReport('error[E0201]'), undefined);
 });

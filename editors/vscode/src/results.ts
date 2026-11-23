@@ -496,3 +496,40 @@ export function submitSummary(report: SubmitReport): string {
     const samples = report.total !== undefined ? `, ${report.passed ?? 0}/${report.total} samples` : ', no samples';
     return `${report.ready ? 'ready to send' : 'not ready to send'}: ${report.path ?? 'the file'}${size}${samples}`;
 }
+
+/** One case of `cpl test --format json`. */
+export interface TestCase {
+    name: string;
+    /** `ok`, `WA`, `RE`, `TLE`, `MLE`, ...; undefined when the case had no answer to judge by. */
+    verdict?: string;
+    ms: number;
+    expected?: string;
+    output: string;
+    why?: string;
+    explained?: string;
+}
+
+/** Parses the output of `cpl test <problem> --format json`. Undefined when it is not that. */
+export function parseTestReport(json: string): TestCase[] | undefined {
+    const root = parseObject(json);
+    if (!root || !Array.isArray(root.cases)) {
+        return undefined;
+    }
+    const cases: TestCase[] = [];
+    for (const item of root.cases) {
+        const name = isObject(item) ? str(item.name) : undefined;
+        if (!isObject(item) || name === undefined) {
+            continue;
+        }
+        cases.push({
+            name,
+            verdict: str(item.verdict),
+            ms: typeof item.ms === 'number' ? item.ms : 0,
+            expected: str(item.expected),
+            output: str(item.output) ?? '',
+            why: str(item.why),
+            explained: str(item.explained),
+        });
+    }
+    return cases;
+}
