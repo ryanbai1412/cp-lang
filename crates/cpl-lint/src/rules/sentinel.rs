@@ -8,7 +8,7 @@ use crate::{File, Finding, SENTINEL_TABLE};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::{BinOp, CmpOp, Expr, ExprKind, PatternKind, Stmt, StmtKind, TypeKind, UnOp};
 
-const LARGE: i128 = 1_000_000_000;
+pub(crate) const LARGE: i128 = 1_000_000_000;
 
 struct Table {
     name: String,

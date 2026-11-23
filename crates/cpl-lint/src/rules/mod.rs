@@ -22,6 +22,7 @@ mod proven;
 mod reverse;
 mod scopes;
 mod sentinel;
+mod sentinel_scalar;
 mod spelled;
 mod taste;
 mod types;
@@ -42,6 +43,7 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(reverse::check(file));
     findings.extend(isqrt::check(file));
     findings.extend(sentinel::check(file));
+    findings.extend(sentinel_scalar::check(file));
     findings.extend(mod_reduce::check(file));
     findings.extend(grid::check(file));
     findings.extend(grid_step::check(file));

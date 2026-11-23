@@ -772,6 +772,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 |---|---|---|---|---|---|---|
 | none_check_unwrap | `x != None and ... x!` | `if x is Some(v):` | fix | #5 | flow | ✓none_check_unwrap |
 | sentinel_table | `[D]Int` filled with `-1` meaning absent | `[D]?Int` | fix? | #5 | flow | ✓sentinel_table |
+| sentinel_scalar | scalar `var found = -1` / `var best = -10**18` set in a `for` loop | `var found: ?Int = none`, or `.max()` | warn | #5 | flow | ✓sentinel_scalar |
 | sentinel_compare | `== -1` / `!= INF` tests | `is None` / `is Some` | fix? | #5 | flow | |
 | found_flag_pair | `var found = false; var val = 0` | `?T` | fix | #5 | flow | |
 | match_to_map | `match o: Some(v) => Some(f(v)); None => None` | `o.map(f)` | fix | #13 | syn | |

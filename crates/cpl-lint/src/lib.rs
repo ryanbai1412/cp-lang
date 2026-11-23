@@ -482,19 +482,23 @@ fn lint_file(file: &File, config: &Config) -> Vec<Diagnostic> {
     out.retain(|d| {
         !SUPERSEDED_BY.iter().any(|(inner, outer)| {
             inner.code == d.code
-                && wide
-                    .iter()
-                    .any(|(code, span)| *code == outer.code && span.contains(d.span))
+                && wide.iter().any(|(code, span)| {
+                    *code == outer.code
+                        && (span.contains(d.span) || d.labels.iter().any(|l| span.contains(l.span)))
+                })
         })
     });
     out
 }
 
-/// A finding inside a wider one that rewrites the same code better: the wider
-/// one is shown alone (`s = s + x` in a loop that is one `sum`).
+/// A finding inside a wider one that rewrites the same code better, or whose
+/// labelled evidence is inside it: the wider one is shown alone (`s = s + x`
+/// in a loop that is one `sum`; `var found = -1` set by a search loop).
 const SUPERSEDED_BY: &[(&Lint, &Lint)] = &[
     (&COMPOUND_SELF_REF, &LOOP_REDUCTION),
     (&CHMIN_CHMAX_IF, &LOOP_REDUCTION),
+    (&SENTINEL_SCALAR, &LOOP_REDUCTION),
+    (&SENTINEL_SCALAR, &SEARCH_LOOP),
 ];
 
 /// Lints that point to a std structure: a library module is where the
