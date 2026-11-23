@@ -977,8 +977,13 @@ a[l] = 0
 <details><summary>Answer</summary>Yes. Two walks of a read-lent view are fine; <code>evens</code> is dead before the write (R7).</details>
 
 **33.**
+<!-- given:
+  domain V = 0..8
+  var a: [V]Int = 0
+  let l = V(2) -->
+<!-- rejects: E0608 -->
 ```python
-fn evens(xs: [V]Int) -> lends Filtered<[V]Int> = xs.filter(x => x % 2 == 0)
+fn evens(xs: [V]Int) -> lends Seq<Int> = xs.filter(x => x % 2 == 0)
 for x in evens(a): a[l] += x
 ```
 <details><summary>Answer</summary>No. The result borrows <code>a</code> for the loop, and the body writes <code>a</code> (R12).</details>

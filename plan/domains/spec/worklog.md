@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Spec-block triage of the core errors: `core/05-ownership.md` exercise 33 used a made-up `Filtered` type and had no marker though its answer is "No"; it is now `given:` + `rejects: E0608` over `lends Seq<Int>`, and fails because the compiler accepts the overlapping write (P0, routed to compiler with four other E0603/E0402/E0305/E0203 blocks). SegTree lambda-op blocks routed to stdlib.
 - Overviews ("The model in one paragraph") for lib/containers, math, strings, flows and geometry, so every core and lib chapter now opens with one; names checked against `std/`, `ps.sort(by: ByAngle)` run.
 - R07.8.1 (a `Seq<Char>` becomes a word as `Str(cs)` or `.collect()`; `join` is for `Str` parts) from round 6 H-STR-FROM-CHARS, with a passing case and a SUBSET row; H-DIR-FROM-STEP routed to stdlib (`Dir4.between`, `.letter`).
 - Round 6 H-KEEP-RECORD and H-BFS-LAMBDA-VERTEX pinned with passing std-graph cases. Of 26 round 6 holes, 20 now have a rule, a case or a routed request; open: H-STR-FROM-CHARS, H-DIR-FROM-STEP (stdlib naming), H-SEGTREE-NO-OP, H-RANGEFENWICK-GONE, H-STD-K-COUNT (stdlib, routed), H-GRID-FIND (compiler, routed).
