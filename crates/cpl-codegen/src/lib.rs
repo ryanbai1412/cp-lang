@@ -26,6 +26,7 @@ mod unordered;
 mod walk;
 
 pub use checks::Checks;
+pub mod explain;
 pub use devirt::{explain_closures, explain_dropped_fields, ClosureLowering, ClosureMode};
 
 /// Name of this crate.

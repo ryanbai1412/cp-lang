@@ -1,6 +1,6 @@
 'use client';
 
-import type { BuildOutcome, Outcome, RunOutcome, StressOptions, StressOutcome, TraceOutcome } from './cpl-types';
+import type { BuildOutcome, ExplainOutcome, Outcome, RunOutcome, StressOptions, StressOutcome, TraceOutcome } from './cpl-types';
 
 export type * from './cpl-types';
 
@@ -11,6 +11,7 @@ type Worker = {
   trace(source: string, stdin?: string): Promise<TraceOutcome>;
   stress(source: string, options?: StressOptions): Promise<StressOutcome>;
   build(source: string): Promise<BuildOutcome>;
+  explain(source: string): Promise<ExplainOutcome>;
   terminate(): void;
 };
 
@@ -52,4 +53,5 @@ export const cpl = {
   trace: (src: string, stdin = '') => call((w) => w.trace(src, stdin)),
   stress: (src: string, options?: StressOptions) => call((w) => w.stress(src, options)),
   build: (src: string) => call((w) => w.build(src)),
+  explain: (src: string) => call((w) => w.explain(src)),
 };

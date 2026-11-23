@@ -58,6 +58,7 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
   const program = setup ? `${setup}\n${source}` : source;
   const [result, setResult] = useState<Result>({ kind: 'idle' });
   const [cpp, setCpp] = useState<string | null>(null);
+  const [explained, setExplained] = useState<string | null>(null);
   const [tab, setTab] = useState('output');
 
   const run = useCallback(async () => {
@@ -100,6 +101,17 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
     }
   }, [program]);
   const stressable = /^@(brute|alt|check|checker)\b/m.test(source);
+
+  const showExplain = useCallback(async () => {
+    setTab('explain');
+    setExplained('Explaining…');
+    try {
+      const e = await cpl.explain(program);
+      setExplained(e.text ?? formatDiagnostics(e.diagnostics, program));
+    } catch (e) {
+      setExplained((e as Error).message);
+    }
+  }, [program]);
 
   const showCpp = useCallback(async () => {
     setTab('cpp');
@@ -163,10 +175,11 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
           </div>
         )
       ) : (
-      <Tabs value={tab} onValueChange={(v) => (v === 'cpp' ? showCpp() : setTab(v))} className="gap-0">
+      <Tabs value={tab} onValueChange={(v) => (v === 'cpp' ? showCpp() : v === 'explain' ? showExplain() : setTab(v))} className="gap-0">
         <TabsList className="m-2">
           <TabsTrigger value="output">Run</TabsTrigger>
           <TabsTrigger value="cpp">C++17</TabsTrigger>
+          <TabsTrigger value="explain" title="cpl explain: how closures, views and copies lower to C++">Explain</TabsTrigger>
         </TabsList>
         <TabsContent value="output" className="grid gap-3 px-3 pb-3 sm:grid-cols-2">
           <label className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground">
@@ -180,6 +193,9 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
         </TabsContent>
         <TabsContent value="cpp" className="px-3 pb-3">
           <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 font-mono text-xs">{cpp}</pre>
+        </TabsContent>
+        <TabsContent value="explain" className="px-3 pb-3">
+          <pre className="max-h-80 overflow-auto rounded-md bg-muted p-3 font-mono text-xs whitespace-pre-wrap">{explained}</pre>
         </TabsContent>
       </Tabs>
       )}

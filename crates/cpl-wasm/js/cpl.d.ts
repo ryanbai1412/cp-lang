@@ -49,6 +49,11 @@ export interface TraceOutcome extends RunOutcome {
   debug: string;
 }
 
+export interface ExplainOutcome extends Outcome {
+  /** What `cpl explain <file>` prints, or null when the source doesn't compile. */
+  text: string | null;
+}
+
 export interface BuildOutcome extends Outcome {
   /** The C++17 file, or null when there is none. */
   cpp: string | null;
@@ -175,6 +180,7 @@ export class Cpl {
    */
   stress(source: string, options?: StressOptions): StressOutcome;
   build(source: string, options?: Options): BuildOutcome;
+  explain(source: string, options?: Options): ExplainOutcome;
   hover(source: string, offset: number, options?: Options): Hover | null;
   definition(source: string, offset: number, options?: Options): Located | null;
   symbols(source: string, options?: Options): Symbol[];
@@ -182,7 +188,7 @@ export class Cpl {
 }
 
 export type Worker = {
-  [Method in "check" | "lint" | "run" | "trace" | "replay" | "stress" | "build" | "hover" | "definition" | "symbols" | "lsp"]: (
+  [Method in "check" | "lint" | "run" | "trace" | "replay" | "stress" | "build" | "explain" | "hover" | "definition" | "symbols" | "lsp"]: (
     ...args: Parameters<Cpl[Method]>
   ) => Promise<ReturnType<Cpl[Method]>>;
 } & { terminate(): void };

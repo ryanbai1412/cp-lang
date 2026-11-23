@@ -187,6 +187,12 @@ pub extern "C" fn cpl_build() {
     command(|playground, name, text, _, _| playground.build(name, text).to_string());
 }
 
+/// Runs `cpl explain` on `TEXT`.
+#[no_mangle]
+pub extern "C" fn cpl_explain() {
+    command(|playground, name, text, _, _| playground.explain(name, text).to_string());
+}
+
 /// The hover at UTF-16 offset `offset` of `TEXT`.
 #[no_mangle]
 pub extern "C" fn cpl_hover(offset: u32) {

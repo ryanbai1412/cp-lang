@@ -161,6 +161,11 @@ export class Cpl {
     return result;
   }
 
+  /** `cpl explain`: how `source`'s closures, views and copies lower to C++. */
+  explain(source, options = {}) {
+    return this.#call("cpl_explain", { ...options, source });
+  }
+
   /** The type and cost of the name at `offset` in `source`, or null. */
   hover(source, offset, options = {}) {
     return this.#call("cpl_hover", { ...options, source }, offset);
@@ -241,7 +246,7 @@ export class Cpl {
   }
 }
 
-const METHODS = ["check", "lint", "run", "trace", "replay", "stress", "build", "hover", "definition", "symbols", "lsp"];
+const METHODS = ["check", "lint", "run", "trace", "replay", "stress", "build", "explain", "hover", "definition", "symbols", "lsp"];
 
 /**
  * The compiler in a Web Worker: the same methods as `Cpl`, each returning a

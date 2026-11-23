@@ -391,6 +391,29 @@ impl Playground {
         outcome(code, &compiled.diagnostics, source, stderr, [("cpp", cpp)])
     }
 
+    /// `cpl explain` on `source`: how its closures, views and copies lower
+    /// to C++, as the CLI prints it. `text` is null when it doesn't compile.
+    pub fn explain(&mut self, name: &str, source: &str) -> Value {
+        match self.compile(name, source) {
+            Ok(compiled) => {
+                let text = cpl_codegen::explain::report(name, source, &compiled.program);
+                outcome(
+                    0,
+                    &compiled.diagnostics,
+                    source,
+                    compiled.stderr,
+                    [("text", text.into())],
+                )
+            }
+            Err(mut errors) => {
+                if let Value::Object(members) = &mut errors {
+                    members.insert("text".into(), Value::Null);
+                }
+                errors
+            }
+        }
+    }
+
     /// What the editor shows when the cursor is at `offset`: the type of
     /// the name there and what it costs. `null` where there is nothing to
     /// say.
