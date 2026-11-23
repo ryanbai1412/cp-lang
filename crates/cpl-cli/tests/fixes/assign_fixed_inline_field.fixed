@@ -1,0 +1,4 @@
+struct Edge: u: Int, var w: Int
+var e = Edge(1, 2)
+e.w = 3
+print(e.w)

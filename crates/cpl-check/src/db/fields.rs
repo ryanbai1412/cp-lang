@@ -28,11 +28,14 @@ impl FileCtx<'_> {
         let StmtKind::Struct(s) = &item.parsed.stmts.first()?.kind else {
             return None;
         };
-        let name = s.fields.iter().find(|f| f.name.text == field)?.name.span;
+        let i = s.fields.iter().position(|f| f.name.text == field)?;
+        let name = s.fields[i].name.span;
         let head = item.text.get(..name.start as usize)?;
-        let alone = head[head.rfind('\n').map_or(0, |i| i + 1)..]
-            .trim()
-            .is_empty();
+        let line = head[head.rfind('\n').map_or(0, |i| i + 1)..].trim();
+        // After a comma only when the field before has its own type (not `u, w: Int`).
+        let after_typed =
+            line.ends_with(',') && i > 0 && s.fields[i - 1].ty.span != s.fields[i].ty.span;
+        let alone = line.is_empty() || line.ends_with(':') || after_typed;
         let rest = item.text.get(name.end as usize..)?.trim_start();
         (alone && rest.starts_with(':')).then_some((k, Span::point(name.start)))
     }
