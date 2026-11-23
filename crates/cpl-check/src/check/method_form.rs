@@ -324,7 +324,15 @@ impl<'a> Checker<'a> {
         }
         // A receiver no candidate takes calls none of them: an own member
         // such as `?T.map`, or a fn lowering finds by other means.
-        if matches!(pick, Pick::NoFit) {
+        if matches!(pick, Pick::NoFit) && free_failed {
+            // Lowering may still find the fn, `(V, V).all(..)` over a
+            // product: the name keeps the hover of the fn it would call.
+            if let Some(mut hover) =
+                hover.filter(|_| !own_member && !self.hovers.iter().any(|h| h.span == name.span))
+            {
+                hover.name = name.text.clone();
+                self.hovers.push(hover);
+            }
             return None;
         }
         // Arguments the fn doesn't take are the receiver's own member's,
@@ -347,6 +355,21 @@ impl<'a> Checker<'a> {
             self.chosen_methods.push((span, resolved));
         }
         if plain_value(&ty) {
+            // The probe's facts went with it, and the caller checks nothing
+            // more: check the call for real so its arguments keep their
+            // hovers, refs and warnings (a lambda's body).
+            let (hovers, refs) = (self.hovers.len(), self.resolved.len());
+            self.infer(&free);
+            let mut at = 0;
+            self.hovers.retain(|h| {
+                at += 1;
+                at <= hovers || h.span != name.span
+            });
+            let mut at = 0;
+            self.resolved.retain(|r| {
+                at += 1;
+                at <= refs || r.0 != name.span
+            });
             return Some(ty);
         }
         self.shapes.push((call.span, ty));

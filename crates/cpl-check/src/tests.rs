@@ -1863,3 +1863,20 @@ fn inside_if_t_bound_every_t_has_the_bound() {
     let outside = "fn g<T>(a: T, b: T) -> T:\n    if T: Add:\n        return a + b\n    a + b\n";
     assert_eq!(codes(outside), ["E0606"]);
 }
+
+#[test]
+fn a_method_form_lambda_body_and_tuple_receiver_method_hover() {
+    let src = "domain W = 0..3\nfn covers(xs: List<W>, k: Int) -> Bool = xs.len >= k\nlet both = [false, true].all(d => covers(W.filter(w => (Int(w) == 1) == d).collect(), 1))\nprint(yes(both))\nprint(yes((W, W).all((u, v) => u != v or u == v)))\n";
+    assert_eq!(codes(src), Vec::<&str>::new());
+    assert!(
+        hover(src, "covers(W").starts_with("fn covers"),
+        "{}",
+        hover(src, "covers(W")
+    );
+    assert_eq!(hover(src, "d)"), "d: Bool");
+    assert!(
+        hover(src, "all((u").contains("all"),
+        "{}",
+        hover(src, "all((u")
+    );
+}
