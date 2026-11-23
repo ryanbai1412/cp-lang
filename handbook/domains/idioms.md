@@ -200,7 +200,7 @@ GCC and LLVM's differential testing against a reference.
 | Every port has the standard header (Source, Problem, Solution) | ports with all three | `handbook/process/porting.md#the-header`; generated count | `corpus/header.py` |
 | Every port has a dream and a review | ports newer than the baseline without either | gate | `scripts/review-check.py --check` |
 | Every gap between a port and its dream is reported with a repro and an owner | frictions with severity, goal and a run showing the failure | `handbook/guidelines/idiomatic-code-checklist.md#r11`; gate on format; process on content | `research/frictions/` (parsed in the gate) |
-| Dream and spec differences are logged | `dream.cp` and `spec.cp` diffs without a log entry | `missing` (a generated diff against `plan/domains/spec/delta/hillclimb.md`) | `missing` |
+| Dream and spec differences are logged | `dream.cp` and `spec.cp` diffs without a log entry | generated check (`dream-unlogged`: a code difference with no `plan/domains/spec/delta/hillclimb.md` line or `meta.json` note) | `corpus/audit.py` |
 
 ### Correctness of the corpus (J6, J7)
 
@@ -313,3 +313,4 @@ the chunks touched (4); find a planted off-by-one with stress and trace
 - 2026-11-23: the spelling and 32 KB rows name `corpus/differential.py`.
 - 2026-11-23: the accepted-C++ agreement row names `corpus/generators.py`.
 - 2026-11-23: the verdict and privacy rows name their checks.
+- 2026-11-23: the dream-and-spec row names `corpus/audit.py`.

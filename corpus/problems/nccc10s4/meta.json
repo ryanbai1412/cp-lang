@@ -26,5 +26,5 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": ""
+ "notes": "The blind dream misread n as 3..=4 and guessed a closed form by counting parallel sides; spec.cp solves the stated n <= 12 by backtracking over exact line crossings."
 }

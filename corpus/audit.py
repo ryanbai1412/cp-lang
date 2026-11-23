@@ -11,6 +11,9 @@ Each finding is `<rule> <problem> <detail>`:
                     (problem-packages/R3)
   interactor-no-gen an interactive problem with no gen.py for its hidden
                     inputs (problem-packages/R4)
+  dream-unlogged    dream.cp and spec.cp differ in more than comments, and
+                    neither a mention in plan/domains/spec/delta/hillclimb.md nor the
+                    record's meta.json notes say why (handbook/domains/idioms.md#invariants)
   no-reference      a problem with tests and no accepted C++ with a `main`
                     (a grader-style submission), so its answers can't be
                     recomputed (problem-packages/R1)
@@ -38,6 +41,7 @@ TIMEOUT = 20
 STANDARDS = ("-std=c++17", "-std=gnu++2b")
 MAIN = re.compile(r"\bmain\s*\(")
 UNBUILT = []
+HILLCLIMB = open(os.path.join(ROOT, "plan", "domains", "spec", "delta", "hillclimb.md")).read()
 
 
 def rel(p):
@@ -132,13 +136,26 @@ def references(pid, pdir, meta):
     return []
 
 
+def code(path):
+    return [l.split("//")[0].rstrip() for l in open(path, errors="replace") if l.split("//")[0].strip()]
+
+
+def dream_unlogged(pid, pdir, meta):
+    dream, spec = (os.path.join(pdir, n) for n in ("dream.cp", "spec.cp"))
+    if not (os.path.exists(dream) and os.path.exists(spec)) or code(dream) == code(spec):
+        return
+    if (meta.get("notes") or "").strip() or re.search(rf"\b{re.escape(pid)}\b", HILLCLIMB):
+        return
+    yield f"dream-unlogged {pid} -"
+
+
 def audit(pid, do_run):
     pdir = os.path.join(PROBLEMS, pid)
     try:
         meta = json.load(open(os.path.join(pdir, "meta.json")))
     except (OSError, ValueError):
         meta = {}
-    found = list(answer_is_input(pid, pdir)) + list(interactor_no_gen(pid, pdir, meta))
+    found = list(answer_is_input(pid, pdir)) + list(interactor_no_gen(pid, pdir, meta)) + list(dream_unlogged(pid, pdir, meta))
     if do_run:
         found += references(pid, pdir, meta)
     return found
