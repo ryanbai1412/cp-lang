@@ -3,7 +3,9 @@
 use crate::emit::{
     pad, Code, Emitter, Touch, ADD, AND, BIT, COND, EQ, MUL, OR, PRIMARY, REL, SHIFT, UNARY,
 };
-use crate::names::{cast, dom_ident, elem_ty, fn_name, ident, is_bitset_ty, is_plain_enum};
+use crate::names::{
+    cast, dom_ident, elem_ty, fn_name, global_ident, ident, is_bitset_ty, is_plain_enum,
+};
 use crate::walk;
 const FLOAT_DIGITS: &str = "10";
 
@@ -291,7 +293,7 @@ impl<'p> Emitter<'p> {
         }
         match &place.kind {
             PlaceKind::Local(slot) => self.names[*slot].clone(),
-            PlaceKind::Global(id) => ident(&self.program.globals[*id].name),
+            PlaceKind::Global(id) => global_ident(self.program, *id),
             PlaceKind::Field(base, index) => {
                 let b = self.place_at(base, false);
                 match &base.ty {
@@ -658,7 +660,7 @@ impl<'p> Emitter<'p> {
                     self.direct.insert(cid);
                     Code::primary(crate::devirt::name(cid))
                 }
-                None => Code::primary(ident(&program.globals[*id].name)),
+                None => Code::primary(global_ident(program, *id)),
             },
             ExprKind::Unary(op, inner) => {
                 let code = self.expr(inner);

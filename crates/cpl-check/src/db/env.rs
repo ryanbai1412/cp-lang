@@ -16,6 +16,7 @@ impl Env for FileCtx<'_> {
     }
 
     fn global(&mut self, name: &str) -> Option<Arc<Def>> {
+        let name = &self.rebound(name);
         let (def, fingerprint) = self.def(name);
         self.record(name, fingerprint);
         def
@@ -129,7 +130,7 @@ impl Env for FileCtx<'_> {
             .keys()
             .chain(self.scope.imports.keys())
             .chain(self.scope.aliases.keys())
-            .filter(|name| impl_parts(name).is_none())
+            .filter(|name| impl_parts(name).is_none() && !super::rebind::is_version(name))
             .cloned()
             .collect();
         names.sort();
@@ -140,7 +141,7 @@ impl Env for FileCtx<'_> {
         self.record(DEP_NAMES, self.scope.names_fp);
         let names = self.scope.names.keys();
         names
-            .filter(|name| impl_parts(name).is_none())
+            .filter(|name| impl_parts(name).is_none() && !super::rebind::is_version(name))
             .cloned()
             .collect()
     }

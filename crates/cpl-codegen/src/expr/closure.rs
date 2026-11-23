@@ -47,7 +47,7 @@ impl<'p> Emitter<'p> {
                     continue;
                 }
                 if cap.is_global {
-                    let gname = ident(&self.program.globals[cap.outer].name);
+                    let gname = crate::names::global_ident(self.program, cap.outer);
                     if cap.by_ref
                         || (borrow_immutable
                             && non_scalar

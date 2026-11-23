@@ -767,23 +767,7 @@ impl Database {
         self.analyzing.pop();
         // Loading the modules analyzed them, which moved the revision on.
         scope.imports_fp = scope.fingerprint_imports();
-        let mut duplicates: Vec<(usize, Decl)> = Vec::new();
-        for (index, item) in items.iter().enumerate() {
-            for decl in &item.decls {
-                match scope.names.get(&decl.name) {
-                    None => {
-                        scope.names.insert(decl.name.clone(), index);
-                    }
-                    Some(&first_idx)
-                        if decl.kind == DeclKind::Variant
-                            && items[first_idx]
-                                .decls
-                                .iter()
-                                .any(|d| d.name == decl.name && d.kind == DeclKind::Variant) => {}
-                    Some(_) => duplicates.push((index, decl.clone())),
-                }
-            }
-        }
+        let duplicates = rebind::top_level_names(&items, &mut scope.names);
         let mut sorted: Vec<&String> = scope.names.keys().collect();
         sorted.sort();
         scope.names_fp = hash_str(
@@ -1707,7 +1691,7 @@ impl FileCtx<'_> {
         }
         let item = self.items[index].clone();
         let revision = self.db.revision;
-        let key = (self.file, item.hash, name.to_string());
+        let key = (self.file, item.hash, rebind::base(name).to_string());
         if let Some(memo) = self.db.defs.get_mut(&key) {
             memo.last_used = revision;
             if memo.verified_at == revision {
@@ -1764,7 +1748,7 @@ impl FileCtx<'_> {
             }
             let fingerprint = def.fingerprint();
             let def = Arc::new(def);
-            if def_name == name {
+            if def_name == rebind::base(name) {
                 found = (Some(def.clone()), fingerprint);
             }
             stored.push(def_name.clone());
@@ -2154,6 +2138,7 @@ mod top_level;
 use top_level::{map_recomputed, padded_array, rewalk_kind, wide_array};
 mod env;
 mod fields;
+mod rebind;
 mod scoping;
 #[cfg(test)]
 mod tests;

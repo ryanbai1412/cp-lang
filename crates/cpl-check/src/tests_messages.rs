@@ -640,3 +640,12 @@ fn a_param_the_body_changes_gets_one_error_not_one_more_at_the_call() {
     assert_eq!(d.code.0, "E0403");
     assert!(d.help.unwrap_or_default().contains("write `mut a`"));
 }
+
+#[test]
+fn a_top_level_unwrap_rebinds_its_name_and_other_redefinitions_stay_e0202() {
+    let src =
+        "var at: [0..3]?Int = None\nfor i in 0..3: at[i] = i\nlet at = at!\nprint(at[2] + 1)\n";
+    assert!(check(src).is_empty(), "{:?}", check(src));
+    let d = one("let a = 1\nlet a = 2\nprint(a)\n");
+    assert_eq!(d.code.0, "E0202");
+}

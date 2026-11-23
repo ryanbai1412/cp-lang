@@ -159,6 +159,20 @@ pub(crate) fn ident(name: &str) -> String {
 /// domain shares its struct's name, and the struct's `len` method is
 /// already `S_len`, so it takes `_dom` suffixes until no struct or fn has
 /// the name or a static's.
+/// A top-level name rebound by `let x = x!` (R02.4.8) is a global of its
+/// own: each one after the first gets a suffix, so one scope holds them all.
+pub(crate) fn global_ident(program: &Program, id: usize) -> String {
+    let name = &program.globals[id].name;
+    let earlier = program.globals[..id]
+        .iter()
+        .filter(|g| &g.name == name)
+        .count();
+    match earlier {
+        0 => ident(name),
+        n => format!("{}__{n}", ident(name)),
+    }
+}
+
 pub(crate) fn dom_ident(program: &Program, id: usize) -> String {
     let mut d = ident(&program.domains[id]);
     let taken = |d: &str| {

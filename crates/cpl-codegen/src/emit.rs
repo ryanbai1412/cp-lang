@@ -1,6 +1,6 @@
 //! Printing a lowered program as one C++17 file.
 
-use crate::names::{cty, dom_ident, fn_name, ident, is_plain_enum, judge_ty, Niches};
+use crate::names::{cty, dom_ident, fn_name, global_ident, ident, is_plain_enum, judge_ty, Niches};
 use crate::ranges::Facts;
 use crate::runtime::PIECES;
 use crate::walk;
@@ -243,7 +243,7 @@ impl<'p> Emitter<'p> {
         let mut top_names = BTreeSet::new();
         top_names.extend(program.structs.iter().map(|s| ident(&s.name)));
         top_names.extend(program.enums.iter().map(|e| ident(&e.name)));
-        top_names.extend(program.globals.iter().map(|g| ident(&g.name)));
+        top_names.extend((0..program.globals.len()).map(|id| global_ident(program, id)));
         top_names.extend(program.fns.iter().map(|f| fn_name(&f.name)));
         for id in 0..program.domains.len() {
             let d = dom_ident(program, id);
@@ -1255,7 +1255,7 @@ impl<'p> Emitter<'p> {
             if let Some(value) = self.const_global(id) {
                 vars.push_str(&format!(
                     "static constexpr {cpp} {} = {value};\n",
-                    ident(&global.name)
+                    global_ident(program, id)
                 ));
                 self.const_globals.insert(id);
                 continue;
@@ -1267,9 +1267,14 @@ impl<'p> Emitter<'p> {
                 self.zero_init(&global.ty)
             };
             if !is_fixed && !shared_globals.contains(&id) && read_in_main.contains(&id) {
-                solve_locals.push_str(&format!("  {} {}{};\n", cpp, ident(&global.name), init));
+                solve_locals.push_str(&format!(
+                    "  {} {}{};\n",
+                    cpp,
+                    global_ident(program, id),
+                    init
+                ));
             } else {
-                vars.push_str(&format!("{} {}{};\n", cpp, ident(&global.name), init));
+                vars.push_str(&format!("{} {}{};\n", cpp, global_ident(program, id), init));
             }
         }
 
