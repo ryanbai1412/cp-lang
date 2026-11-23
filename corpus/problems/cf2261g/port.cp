@@ -17,48 +17,56 @@ const FULL = (1 << L) - 1
 
 struct Node:
     var cnt: Int
-    kid: [Bool]?Int
+    kid: [0..2]?Int
 struct Group(mask: Int, root: Int)
 
 @!multitest
 let n: 1..=4e5 = read()
 let a: [0..n]0..=FULL = read()
 var nodes = List<Node>()
+nodes.reserve((L + 1) * (n + 1))  // each left end adds one path of L + 1 nodes
 
 fn merge(x: Int, y: Int) -> Int:
     nodes[x].cnt += nodes[y].cnt
-    for b in [false, true] if let c = nodes[y].kid[b]:
+    for b in 0..2 if let c = nodes[y].kid[b]:
         nodes[x].kid[b] = if let k = nodes[x].kid[b]: merge(k, c) else: c
     x
 
 // A path of L + 1 nodes spelling `x` from the top bit down; returns its root.
 fn chain(x: Int) -> Int:
-    nodes.push(Node(1, [Bool] _ => None))
+    nodes.push(Node(1, [0..2] _ => None))
     for z in 0..L:
         let below = nodes.len - 1
-        var node = Node(1, [Bool] _ => None)
-        node.kid[x.bit(z)] = below
+        var node = Node(1, [0..2] _ => None)
+        node.kid[(x >> z) & 1] = below
         nodes.push(node)
     nodes.len - 1
 
 fn count_along(root: Int, mask: Int, want: Int) -> Int:
     var (t, total) = (root, 0)
     for b in (0..L).rev:
-        guard let next = nodes[t].kid[want.bit(b)] else: break
+        guard let next = nodes[t].kid[(want >> b) & 1] else: break
         t = next
         if mask.bit(b): total += nodes[t].cnt << b
     total
+
+// Two neighbouring groups with equal ANDs: one group, `q`'s trie merged into `p`'s.
+fn absorb(p: Group, q: Group) -> Group = Group(p.mask, merge(p.root, q.root))
+
+// Narrow each suffix AND by `x`; neighbours whose ANDs become equal merge into one group.
+fn shrink(groups: List<Group>, x: Int) -> List<Group>:
+    var kept = List<Group>()
+    for g in groups:
+        let h = Group(g.mask & x, g.root)
+        if let k = kept.last and k.mask == h.mask: kept[kept.len - 1] = absorb(k, h)
+        else: kept.push(h)
+    kept
 
 var groups = List<Group>()
 var (pref, ans) = (0, 0)
 for x in a:
     groups.push(Group(FULL, chain(pref)))
-    var kept = List<Group>()
-    for g in groups:
-        let v = g.mask & x
-        if let k = kept.last and k.mask == v: kept[kept.len - 1] = Group(v, merge(k.root, g.root))
-        else: kept.push(Group(v, g.root))
-    groups = kept
+    groups = shrink(groups, x)
     pref ^= x
     ans += sum(count_along(g.root, g.mask, pref ^ g.mask) for g in groups)
 print(ans)
