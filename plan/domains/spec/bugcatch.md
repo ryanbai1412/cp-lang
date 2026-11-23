@@ -5,7 +5,7 @@ reverse-applied alone, then the conformance suite rerun. Caught = a case that pa
 A fix that no longer reverse-applies on HEAD is measured at the fix commit with HEAD's cases
 ("at fix"): its `src/` files are put back to the parent and the cases that passed are rerun.
 
-**8 of 10 revertible fixes caught (80%)**; 15 of 25 no longer revert or build on HEAD.
+**9 of 10 revertible fixes caught (90%)**; 15 of 25 no longer revert or build on HEAD. `152ffd38` was rerun at f91554867 with the suite timeout: its revert hangs `std-math/isqrt-prelude-at-int-max.cp`, which counts as caught (`uv run scripts/conformance-bugcatch.py --commits 152ffd38 701193ef` -> `1/2 caught`).
 
 | commit | subject | result | cases that fail |
 |---|---|---|---|
@@ -20,7 +20,7 @@ A fix that no longer reverse-applies on HEAD is measured at the fix commit with 
 | `fab14a7a` | syntax: move leading-dot float check to parser and fix Cast::Raw U64 | fix commit does not build |  |
 | `e6bd2e78` | interp: stop a `?` at the left side of `??` | caught at fix | `core-01/optional-chaining.cp`, `core-02/question-extent.cp`, `std-strings/search-empty-pattern.cp` |
 | `f8d4ba45` | check: gate v0.3 rules on CPL_SPEC and fix builtin trait impls | fix commit does not build |  |
-| `152ffd38` | interp: fix isqrt infinite loop on i64::MAX | missed |  |
+| `152ffd38` | interp: fix isqrt infinite loop on i64::MAX | caught | (suite timed out: the revert hangs a case) |
 | `d48a6fe1` | syntax: reject mixed/eq comparison chains (§130) and use-after-move (§128) | fix commit does not build |  |
 | `1ce775cd` | syntax: accept D.bounds int values and j..i cut-range conversion | fix commit does not build |  |
 | `efaf9b86` | syntax: read `let mut` as `var`, with the fix | fix commit does not build |  |

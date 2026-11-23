@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Bugcatch 8/10 -> 9/10 (90%): with the suite timeout, reverting `152ffd38` hangs `std-math/isqrt-prelude-at-int-max.cp` (caught). `701193ef` (2-arg min/max shadowing, expr-bodied yields fns) is still missed; next: a case for it.
 - Added `core-04/if-let-at-other-domain.cp` (passes): `if let V(j) = w` with `w: W` is E0302; R04.2.14 gets its first reject case (56 rule gaps).
 - Added `core-11/inline-mod-use-std.cp` (fails: std names unresolved inside inline `mod`; compiler request). Silent hole for rebuild notes: R11.3.1 says only programs get the prelude but doesn't say whether an inline `mod` inside a program does.
 - `conformance-bugcatch.py`: a suite run now times out (`--timeout`, default 900 s) and a revert that hangs the suite counts as caught; the focused rerun of 152ffd38 and 701193ef sat over 17 min in one suite run with no timeout.

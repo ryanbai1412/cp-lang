@@ -91,7 +91,7 @@ target = "< 5 (round 4)"
 [[metric]]
 name = "reverted compiler fixes caught (probe P2)"
 command = "uv run scripts/conformance-bugcatch.py  # writes the table in plan/domains/spec/bugcatch.md"
-today = "8/10 revertible fixes (80%), at 6c5451460; 15 of 25 candidates no longer revert or build"
+today = "9/10 revertible fixes (90%), at 6c5451460 plus a rerun of 152ffd38 at f91554867 with the suite timeout; 15 of 25 candidates no longer revert or build"
 target = ">= 90%"
 
 [[metric]]
