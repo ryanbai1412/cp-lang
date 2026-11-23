@@ -39,6 +39,11 @@ class AffectedTest(unittest.TestCase):
         s = self.sel("scripts/land.sh", "scripts/affected.py", ".githooks/pre-commit")
         self.assertEqual(s["script_tests"], ["scripts/test_affected.py", "scripts/test_check_cache.py"])
 
+    def test_editor_files_select_the_crate_that_reads_them(self):
+        s = self.sel("editors/neovim/autoload/cplang.vim", "editors/lsp-matrix.json")
+        self.assertEqual((s["all"], s["packages"]), (False, ["cpl-cli", "cpl-lsp"]))
+        self.assertTrue(self.sel("editors/emacs/cp-mode.el")["all"])
+
     def test_site_paths_select_the_snippet_gate(self):
         self.assertTrue(self.sel("web/src/pages/index.astro")["site"])
 

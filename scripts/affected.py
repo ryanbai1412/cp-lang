@@ -28,6 +28,10 @@ PROSE = ["AGENTS.md", "REPO.md", "decisions.md", "worklog.md", "research/*",
 EVERY_CRATE = ["Cargo.toml", "Cargo.lock", "rust-toolchain*", ".cargo/*",
                ".config/nextest.toml", "std/*", "clippy.toml", "rustfmt.toml"]
 SITE = ["web/*", "docs/*"]
+# Editor files a crate embeds or its tests read; the rest are CI's editor jobs'.
+EDITOR_CRATES = {"editors/neovim/": "cpl-cli", "editors/vscode/": "cpl-cli",
+                 "editors/jetbrains/": "cpl-cli", "editors/tree-sitter-cp/": "cpl-cli",
+                 "editors/lsp-matrix.json": "cpl-lsp"}
 
 
 def matches(path, patterns):
@@ -67,8 +71,11 @@ def select(paths, dirs):
         crate = next((n for d, n in dirs.items() if path.startswith(d)), None)
         if path.endswith(".rs"):
             sel["rust_files"].append(path)
+        editor = next((n for d, n in EDITOR_CRATES.items() if path.startswith(d)), None)
         if crate:
             packages.add(crate)
+        elif editor:
+            packages.add(editor)
         elif matches(path, PROSE):
             continue
         elif matches(path, EVERY_CRATE):
