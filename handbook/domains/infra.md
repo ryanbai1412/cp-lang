@@ -114,15 +114,15 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Landing is fast | `land.sh` p50, p95, max seconds | Re-architecture: `land.sh` only rebases and pushes; gates run in CI | `scripts/land_stats.py` over `.git/cpl-land.log`; `scripts/test_check_cache.py` `test_land_*` |
+| Landing is fast | `land.sh` p50, p95, max seconds | Re-architecture: `land.sh` only rebases and pushes; gates run in CI | `scripts/land_stats.py` over the local landing log; `scripts/test_check_cache.py` `test_land_*` |
 | Landing never waits on a person | landings needing a human step | Re-architecture: no review gate, retry on a rejected push | `land.sh` itself |
 | Every commit names its domain | commits on main without `Domain:` | Gate: `land.sh` refuses | `scripts/test_check_cache.py` |
 | Commit subjects follow the format | subjects outside `area: summary` | Gate: `commit-msg` hook | `.githooks/commit-msg`; **missing**: CI check for hook-skipped commits |
 | The commit tier catches what the change can break | main reds in a test the commit tier would have selected | Generated selection from the cargo graph and data deps (`affected.py`) | `scripts/test_affected.py`; **missing**: every red traced to "selected or not" |
-| The commit tier is cheap | pre-commit seconds p95 | Budget: 25 s, then warn and allow | `.git/cpl-commit-slow.log`; **missing**: aggregated per lane |
+| The commit tier is cheap | pre-commit seconds p95 | Budget: 25 s, then warn and allow | `scripts/check.sh` logs slow commits locally; **missing**: aggregated per lane |
 | Lanes spend little time on devex | devex commits per lane | Process: `devex_stats.py` proxy, check-in after each rollout | `scripts/devex_stats.py`, `scripts/test_devex_stats.py`; the proxy is a subject regex and over-counts |
 | Commit velocity doesn't fall after an infra change | commits per 15 min before and after a rollout | Process: compare and revert on a drop | `scripts/devex_stats.py`; **missing**: an automatic alert |
-| Nothing sensitive reaches public history | added lines with unlisted hosts, home paths, secrets | Gate: staged scan plus `origin/main...HEAD` scan | `check.sh` staged scan; **missing**: CI scan of commits that skipped the hook |
+| Nothing sensitive reaches public history | added lines with unlisted hosts, home paths, secrets | Gate: staged scan plus a scan of the commits since origin/main | `scripts/check.sh` staged scan; **missing**: CI scan of commits that skipped the hook |
 
 ### CI
 
