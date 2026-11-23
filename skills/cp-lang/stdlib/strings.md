@@ -64,8 +64,6 @@ Fields: `rank: List<Int>`, `rmq: List<Int>`, `bits: Int`, `dcum: List<Int>`, `to
 
 ## `struct RollingHash`
 
-\(O(n)\) build, \(O(1)\) slice hash.
-
 Fields: `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
 
 - `fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash` — \(O(n)\); A double-modulus polynomial rolling hash of `seq`; call it as `RollingHash(seq)`.; traps: when a given base is outside `2..M`
@@ -78,7 +76,7 @@ Fields: `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
 - `@get fn all(self) -> HashVal` — \(O(1)\); The hash of the whole sequence, `self.get(0..self.len)`.
 - `fn slice(self, l: Int, r: Int) -> HashVal` — \(O(1)\); The hash of the half-open slice `l..r` (0-based); `HashVal(0, 0)` when `l == r`.; traps: when `l > r`, `l < 0` or `r > self.len`
 - `fn get<R>(self, r: R) -> HashVal` — \(O(1)\); The hash of a range of positions: `l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when the hash was built over a `[D]T`.; traps: when the range reaches outside the hashed sequence
-- `fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal` — \(O(1)\) amortized (the power table grows past `len` on demand); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` per modulus.; traps: when `b_len < 0`
+- `fn combine(self, a: HashVal, b: HashVal, b_len: Int) -> HashVal` — \(O(1)\) when `b_len <= len`, else \(O(\log b_len)\); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` per modulus.; traps: when `b_len < 0`
 - `fn lcp(self, a: Int, b: Int) -> Int` — \(O(\log n)\); The length of the longest common prefix of the suffixes starting at `a` and `b`, by binary search on hashes (so it can be wrong on a collision).; traps: when `a` or `b` is outside `0..=self.len`
 - `fn lcs(self, a: Int, b: Int) -> Int` — \(O(\log n)\); The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary search on hashes.; traps: when `a` or `b` is outside `0..=self.len`
 - `fn lcp_with(self, a: Int, other: RollingHash, b: Int) -> Int` — \(O(\log \min(\lvert \mathit{self} \rvert - a, \lvert \mathit{other} \rvert - b))\); The length of the longest common prefix of `self[a..]` and `other[b..]`, by binary search on hashes.; traps: when the bases differ, `a` is outside `0..=self.len` or `b` outside `0..=other.len`
