@@ -9,7 +9,7 @@ let fav: [Pos]1..=500000 = read()
 let coach = fav[Pos.first!]
 let josh = fav[Pos.last!]
 if coach == josh:
-    print(1.0, prec: 8)  // WISH P4
+    print(1.0, precision: 8)  // WISH P4
 else:
     var last_of: [1..=500000]?Pos = None
     for i in Pos: last_of[fav[i]] = i
@@ -30,4 +30,4 @@ else:
             dp[i] = dp[last_of[fav[i]]!]
         suffix_sum += dp[i]
 
-    print(suffix_sum / F64(n), prec: 8)  // WISH P4
+    print(suffix_sum / F64(n), precision: 8)  // WISH P4

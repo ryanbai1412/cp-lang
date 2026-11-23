@@ -35,6 +35,6 @@ fn relate(x: Animal, y: Animal, d: Int) -> Bool:
 var lies = 0
 for _ in 0..k:
     let (kind, x, y): (Int, Int, Int) = read()
-    let (a, b) = (Animal.from_idx(x), Animal.from_idx(y))
+    let (a, b) = (Animal.at(x), Animal.at(y))
     if a == None or b == None or not relate(a!, b!, kind - 1): lies += 1
 print(lies)

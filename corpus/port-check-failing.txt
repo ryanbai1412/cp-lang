@@ -29,7 +29,6 @@ ccc10s4
 ccc14s4
 ccc14s4hard
 ccc20s1
-ccc20s5
 ccc21s4
 ccc22s4
 ccc22s5
@@ -121,14 +120,11 @@ mmcc14p3
 nccc10s2
 nccc10s3
 nccc8s1
-nccc8s4
 nccc9s4
 neerc10k
-noi01p1
 noi01p5
 noi03p2
 noi03p4
-noi05p4
 noi07p1
 noi07p2
 noi07p4

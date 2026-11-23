@@ -33,7 +33,7 @@ fn power(x: Mat, e: Int) -> Mat:
 var step: Mat = [Off, Off] (i, j) => Z.zero
 for i in Off:
     for c in 0..=min(i.to_idx, m):
-        if let j = Off.from_idx(i.to_idx - c + (m - c)):
+        if let j = Off.at(i.to_idx - c + (m - c)):
             step[i, j] += comb.choose(i.to_idx, c) * comb.choose(
                 n - i.to_idx,
                 m - c,
