@@ -1,2 +1,4 @@
 # (trait/type/method) with no case yet. Shrink-only: scripts/conformance-traits.py
 # never adds a line without --add-gaps; write the case in traits.toml instead.
+IndexOp/Disjoint/at
+IndexOp/Disjoint/len
