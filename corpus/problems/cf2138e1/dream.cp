@@ -20,12 +20,12 @@ let phi = (1.0 + sqrt(5.0)) / 2.0
 @!multitest
 let x: 0..=1e7 = read()
 let diag = if x <= 1: [x] else:
-    (1..x).nearest_first(to: x / phi).first_some(z => walk(z, x - z, room: MAX_N - 1).map(w => [1] + w))!
+    (1..x).sorted(by: z => abs(z - x / phi)).first_some(z => walk(z, x - z, room: MAX_N - 1).map(w => [1] + w))!
 domain N = 0..diag.len
 print(N.count)
 print([N, N] (i, j) =>
     match j - i:
-        0 => diag[i]
+        0 => diag[i.ord]
         1 => 1
         -1 => -1
         _ => 0
