@@ -1124,9 +1124,9 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                if let (true, Some(init)) = (*mutable, init) {
-                    let what = format!("`var {}`", self.quote(pat.span));
-                    self.escape_unless_kept(init, &what, Keep::New(pat.span));
+                if let Some(init) = init {
+                    let what = format!("`{} {}`", binding_kw(*mutable), self.quote(pat.span));
+                    self.escape_unless_kept(init, &what, Keep::binding(*mutable, pat.span));
                 }
                 // A new binding of a name: what was known about the old
                 // one no longer applies.

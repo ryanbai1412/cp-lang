@@ -527,7 +527,7 @@
         "core-07/tally.cp": "pass",
         "core-07/view-blocks-a-write-to-its-source.cp": "pass",
         "core-07/view-not-in-var.cp": "pass",
-        "core-07/view-of-a-temporary-outlives-it.cp": "fail",
+        "core-07/view-of-a-temporary-outlives-it.cp": "pass",
         "core-07/view-walks.cp": "fail",
         "core-07/while-adapters.cp": "fail",
         "core-07/windows-chunks-keep-keys.cp": "fail",

@@ -384,7 +384,7 @@ pub(crate) struct Lends {
     /// Expressions whose lent view is strictly read-only (`Str`/`List` slices and `.rev`).
     pub(super) view_readonly: HashSet<Span>,
     /// Calls to projections, by the call's span.
-    proj_calls: HashMap<Span, ProjCall>,
+    pub(super) proj_calls: HashMap<Span, ProjCall>,
     /// `let`-bound views, by where the name is declared.
     pub(super) views: HashMap<Span, Lent>,
     /// Locals holding a slice or a run/window/chunk, by where the name is

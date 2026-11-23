@@ -338,6 +338,19 @@ impl Checker<'_> {
 pub(crate) enum Keep<'e> {
     New(Span),
     In(&'e Expr),
+    /// A `let`: it lives no longer than any named source in its block, so
+    /// only a temporary source can die before it.
+    Let,
+}
+
+impl Keep<'_> {
+    pub(crate) fn binding(mutable: bool, at: Span) -> Self {
+        if mutable {
+            Keep::New(at)
+        } else {
+            Keep::Let
+        }
+    }
 }
 
 impl Checker<'_> {
@@ -346,11 +359,28 @@ impl Checker<'_> {
     /// in it, after the source (R05.7.8). A global source outlives all
     /// storage; a global storage outlives every local source.
     pub(crate) fn escape_unless_kept(&mut self, e: &Expr, what: &str, keep: Keep<'_>) {
+        let is_let = matches!(keep, Keep::Let);
         let storage = match keep {
+            Keep::Let => None,
             Keep::New(at) => Some((self.scopes.len() - 1, at)),
             Keep::In(place) => super::lends::root_name(unparen(place))
                 .and_then(|r| self.local(r).map(|l| (self.var_depth(r), l.span))),
         };
+        if let Some(temp) = self.temp_source(e) {
+            let (src, temp) = (self.quote(e.span), self.quote(temp.span));
+            let message = format!(
+                "{what} would keep `{src}`, a view of the temporary `{temp}`, which lives only to the end of this statement"
+            );
+            if let Some(diag) = self.error(codes::LENT_ESCAPES, e.span, message) {
+                diag.help = Some(format!(
+                    "name the source first (`let s = {temp}`), or keep a copy: `List({src})`"
+                ));
+            }
+            return;
+        }
+        if is_let {
+            return;
+        }
         let kept = super::lends::root_name(unparen(e)).is_some_and(|root| match self.local(root) {
             None => true,
             Some(source) => storage.is_some_and(|(depth, at)| {
@@ -429,4 +459,52 @@ fn read_by_walk(body: &ast::FnBody, param: &str) -> bool {
         ast::FnBody::None => return false,
     }
     uses.all > 0 && uses.all == uses.by_walk
+}
+
+pub(crate) fn binding_kw(mutable: bool) -> &'static str {
+    if mutable {
+        "var"
+    } else {
+        "let"
+    }
+}
+
+impl Checker<'_> {
+    /// The unnamed temporary a view is cut from, if any (`[3, 1, 2].sorted()`
+    /// in `[3, 1, 2].sorted()[0..1]`). It dies at the end of its statement,
+    /// so nothing may keep the view (R07.5.10, R05.7.8).
+    fn temp_source<'e>(&mut self, e: &'e Expr) -> Option<&'e Expr> {
+        let mut e = unparen(e);
+        self.view_kind(e)?;
+        loop {
+            e = match &e.kind {
+                ExprKind::Paren(inner) | ExprKind::Unwrap(inner) => inner,
+                ExprKind::Index { base, .. } | ExprKind::Field { base, .. } => base,
+                ExprKind::Call { callee, .. }
+                    if self.view_kind(e).is_some()
+                        || self.lends.proj_calls.contains_key(&e.span) =>
+                {
+                    match &unparen(callee).kind {
+                        ExprKind::Field { base, .. } => base,
+                        _ => return None,
+                    }
+                }
+                ExprKind::Call { callee, .. } => return self.owned_call(e, callee).then_some(e),
+                _ => return None,
+            };
+        }
+    }
+
+    /// Whether a call builds an owned sequence: its result is a `List`,
+    /// `Str` or array, and the fn it calls isn't declared `lends`.
+    fn owned_call(&mut self, call: &Expr, callee: &Expr) -> bool {
+        if let ExprKind::Name(n) = &unparen(callee).kind {
+            if matches!(self.global(n).as_deref(), Some(Def::Fn { lends: true, .. })) {
+                return false;
+            }
+        }
+        let ty = self.quietly(|c| c.infer(call));
+        matches!(&ty, Ty::Str | Ty::Array { .. })
+            || matches!(&ty, Ty::Named { name, .. } if name == "List")
+    }
 }
