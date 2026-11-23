@@ -42,3 +42,15 @@ come from re-running from the snapshot before n with tracing on for at most K st
 
 Budget test green on the absolute bar in plan/QUESTIONS.md; `trace_log`, `debugger`, `replay`,
 `trace_live`, `trace_filters`, `trace_browser` and `cpl-wasm --test parity` unchanged.
+
+## Measured (2026-11-22)
+
+An `Observer` that records only each step's span and call depth, the log
+replay needs, over the 10^7-step budget loops (best of 3, through
+`run_as` in `crates/cpl-interp/src/observe.rs`): scalar 303.2 ms against
+118.3 ms untraced (2.56x), array 447.2 ms against 177.1 ms (2.53x). That
+matches the hooks-on floor (2.47x / 2.53x), under the 3x bar; the full
+recorder is 5.6-5.9x. With every hook body skipped, trace ops still cost
+1.30x / 1.49x, so the rest of the floor is building each hook's `View`,
+which a line log does not need: the next cut after replay.
+
