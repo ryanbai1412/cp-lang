@@ -444,3 +444,19 @@ fn a_local_read_for_the_last_time_moves() {
         "lo is read after: {copied}"
     );
 }
+
+#[test]
+fn a_let_in_a_value_block_lends_when_the_value_does_not_read_it() {
+    let out = cpp(concat!(
+        "domain C = 0..3\n",
+        "var b: [C]C = [C] p => p\n",
+        "b.swap(C(0), C(2))\n",
+        "let at = b.inverse()\n",
+        "print(at[C(0)])\n",
+    ));
+    assert!(
+        out.lines()
+            .any(|l| l.contains("& t") && l.trim_end().ends_with("= b;")),
+        "inverse reads b in place: {out}"
+    );
+}

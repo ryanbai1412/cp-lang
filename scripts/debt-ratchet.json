@@ -111,7 +111,7 @@
   "plan_delta_lines": 1627,
   "vm_fallbacks": 141,
   "own_databases": 35,
-  "cpp_deep_copies": 68,
+  "cpp_deep_copies": 51,
   "cpp_std_functions": 777,
   "near_dup_fns": 10,
   "consumer_rederived": 61,

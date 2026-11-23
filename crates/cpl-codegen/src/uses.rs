@@ -7,6 +7,7 @@
 //! past that statement (a `let` built from it, a closure capturing it, a
 //! block's value) keeps it live to the end of the block.
 
+use crate::lend::{copied_at_test, Tail};
 use crate::walk::{self, Effects};
 use cpl_ir::{Block, Builtin, Expr, ExprKind, Program, Stmt};
 
@@ -65,6 +66,11 @@ fn mentions(program: &Program, stmts: &[Stmt], slot: usize) -> Mentions {
     m
 }
 
+/// Whether `e` mentions the local `slot`, directly or through a closure.
+pub(crate) fn mentions_any(program: &Program, e: &Expr, slot: usize) -> bool {
+    mentions(program, &[Stmt::Give(e.clone())], slot).any
+}
+
 /// The statements of `rest` (those after a `let` of `slot`) while `slot`
 /// lives: up to the last one that mentions it.
 pub(crate) fn live<'s>(program: &Program, rest: &'s [Stmt], slot: usize) -> &'s [Stmt] {
@@ -91,4 +97,24 @@ pub(crate) fn dead_after(program: &Program, block: &Block, k: usize, slot: usize
         closure |= matches!(e.kind, ExprKind::Closure(_))
     });
     declared && !closure && !mentions(program, &block.stmts[k + 1..], slot).any
+}
+
+impl crate::emit::Emitter<'_> {
+    /// What the statements after `stmts[k]` do while the `let` there lives,
+    /// when that `let` might lend.
+    pub(crate) fn tail_at(&self, stmts: &[Stmt], k: usize) -> Option<Tail> {
+        let Stmt::Let(slot, Some(init)) = &stmts[k] else {
+            return None;
+        };
+        if !crate::lend::may_lend(init) {
+            return None;
+        }
+        let rest = &stmts[k + 1..];
+        let live = live(self.program, rest, *slot);
+        Some(Tail {
+            tested: copied_at_test(*slot, rest),
+            lendable: self.lendable_reads(*slot, rest),
+            ..Tail::of(self.program, live)
+        })
+    }
 }

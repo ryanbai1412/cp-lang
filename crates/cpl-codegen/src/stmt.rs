@@ -2,7 +2,7 @@
 
 use crate::emit::{pad, Emitter, Pushed, ADD, PRIMARY, REL, UNARY};
 use crate::expr::string_literal;
-use crate::lend::{copied_at_test, Hold, Tail};
+use crate::lend::{Hold, Tail};
 use crate::names::{fn_name, ident};
 use crate::walk::{self, Effects};
 use cpl_ir::{
@@ -30,25 +30,8 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn block(&mut self, block: &Block, out: &mut String) {
-        for (k, stmt) in block.stmts.iter().enumerate() {
-            self.tail = match stmt {
-                Stmt::Let(_, Some(init)) if crate::lend::may_lend(init) => {
-                    let rest = &block.stmts[k + 1..];
-                    let tested = matches!(stmt, Stmt::Let(slot, _) if copied_at_test(*slot, rest));
-                    let lendable =
-                        matches!(stmt, Stmt::Let(slot, _) if self.lendable_reads(*slot, rest));
-                    let Stmt::Let(slot, _) = stmt else {
-                        unreachable!()
-                    };
-                    let live = crate::uses::live(self.program, rest, *slot);
-                    Some(Tail {
-                        tested,
-                        lendable,
-                        ..Tail::of(self.program, live)
-                    })
-                }
-                _ => None,
-            };
+        for k in 0..block.stmts.len() {
+            self.tail = self.tail_at(&block.stmts, k);
             self.moves_last = last_read(self.program, block, k);
             self.stmt_presized(&block.stmts, k, out);
             self.moves_last = false;
@@ -62,8 +45,17 @@ impl<'p> Emitter<'p> {
         while crate::expr::map_remove_do(e).is_none() {
             let Some((stmts, value)) = flat(e) else { break };
             for k in 0..stmts.len() {
+                // The value is read inside the statement the block is in,
+                // whose other parts this cannot see: a `let` it reads owns.
+                self.tail = match &stmts[k] {
+                    Stmt::Let(slot, _) if crate::uses::mentions_any(self.program, value, *slot) => {
+                        None
+                    }
+                    _ => self.tail_at(stmts, k),
+                };
                 self.stmt_presized(stmts, k, out);
             }
+            self.tail = None;
             e = value;
         }
         e
