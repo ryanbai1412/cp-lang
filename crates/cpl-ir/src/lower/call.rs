@@ -7651,6 +7651,14 @@ impl<'a> Lowerer<'a> {
                         for (p, arg) in mdecl.params.iter().zip(args) {
                             if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
                                 if let Some(pty) = &p.ty {
+                                    self.bind_range_domain(
+                                        pty,
+                                        &arg.value,
+                                        &all_gen_names,
+                                        &mut inferred,
+                                        span,
+                                        None,
+                                    );
                                     let dlen = self.diags.len();
                                     let probed = self.expr(&arg.value, None);
                                     self.diags.truncate(dlen);

@@ -88,6 +88,8 @@ pub(super) fn struct_uses_param_as_domain(decl: &ast::StructDecl, name: &str) ->
                             | "mask"
                             | "size"
                             | "K"
+                            | "nth"
+                            | "at"
                     ) =>
             {
                 true
