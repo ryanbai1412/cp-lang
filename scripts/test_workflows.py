@@ -1,6 +1,6 @@
 """Workflow invariants: every job has a time cap (ci/R28), and blocking jobs
 run on Linux, macOS and Windows (ci/R29), and only a green job marks a cached
-target/ as built at HEAD (ci/R32); handbook/guidelines/ci-checklist.md."""
+target/ as built at HEAD (ci/R32), and releases are signed (ci/R33); handbook/guidelines/ci-checklist.md."""
 import glob
 import os
 import re
@@ -39,6 +39,15 @@ class WorkflowTest(unittest.TestCase):
         for line in stamps:
             self.assertIn('"${{ job.status }}" != success ] ||', line,
                           "a red job's target/ may miss rebuilt crates; keep the restored .ci-sha")
+
+    def test_every_release_is_signed(self):
+        with open(os.path.join(ROOT, ".github", "workflows", "release.yml"), encoding="utf-8") as f:
+            release = f.read()
+        sign = job_block(release, "sign")
+        self.assertIn("needs: [plan, publish]", sign)
+        self.assertIn("uses: actions/attest-build-provenance@", sign)
+        self.assertIn("subject-path: dist/*", sign)
+        self.assertIn("id-token: write", sign)
 
     def test_blocking_jobs_cover_every_os(self):
         with open(os.path.join(ROOT, ".github", "workflows", "ci.yml"), encoding="utf-8") as f:

@@ -149,7 +149,7 @@ Targets and today's numbers live in `plan/domains/infra/metrics.toml`.
 | One line installs on every OS | install failures per OS | Install smoke on Ubuntu, macOS, Windows after each publish | `.github/workflows/release.yml` `install-smoke` |
 | Downloads are verified | archives installed without a matching sha256 | Installers check `SHA256SUMS` | `crates/cpl-cli/tests/toolchain.rs` |
 | Releases are reproducible | archives that differ when rebuilt from the same commit | `SOURCE_DATE_EPOCH`, fixed archive order | `scripts/test_release.py`; **missing**: a rebuild-and-compare job |
-| Releases are signed | archives without a signature | **missing** | none |
+| Releases are signed | archives without a signature | Sigstore build-provenance attestation per archive (`gh attestation verify`) | ci/R33, `scripts/test_workflows.py` |
 | `cpl self update` moves to the newest release | update failures | Tested against local release fixtures | `crates/cpl-cli/tests/toolchain.rs`; **missing** against the live release |
 | Editor assets ship and install | releases missing the `.vsix`, JetBrains zip, Neovim/Vim setup | `.github/workflows/release.yml` `editors` job | **missing**: install smoke for each editor asset |
 | The binary says what it is | `cpl --version` without channel and commit | Stamped at build (`CPL_CHANNEL`, `CPL_COMMIT`) | `.github/workflows/release.yml` build smoke |

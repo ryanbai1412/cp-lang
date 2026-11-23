@@ -309,6 +309,27 @@ jobs:
             fi
           fi
 
+  # Every published archive gets a Sigstore build-provenance attestation, so
+  # `gh attestation verify <archive> -R ryanbai1412/cp-lang` proves it came
+  # from this workflow at that commit (ci/R33). Its own job: a signing outage
+  # never holds back a release or its install smoke.
+  sign:
+    needs: [plan, publish]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: dist/*
+
   # The one-line installers on clean runners of all three OSes, against what
   # publish just released: `cpl` installs, runs a program (CRLF too) and builds C++.
   install-smoke:

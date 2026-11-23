@@ -274,3 +274,15 @@ changed crate, saved as built at HEAD, made every later run reuse a stale
 *Example:* the clippy gate fails at check; its cache is saved with the old
 `.ci-sha`, and the next run rebuilds what changed since then.
 *Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.
+
+### ci/R33
+
+Every archive a release publishes carries a Sigstore build-provenance
+attestation from the `sign` job in `.github/workflows/release.yml`.
+*Why:* `SHA256SUMS` proves a download matches the release, not that the
+release came from this repository's workflow; an attestation ties each
+archive to the commit and workflow that built it, with no key to leak.
+*Example:* `gh attestation verify cpl-aarch64-apple-darwin.tar.gz -R
+ryanbai1412/cp-lang` passes for an edge archive; a rebuilt or swapped one
+fails.
+*Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.
