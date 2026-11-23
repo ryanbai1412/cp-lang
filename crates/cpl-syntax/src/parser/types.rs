@@ -310,7 +310,8 @@ impl<'a> Parser<'a> {
             }
             T::Ident
                 if self.text().starts_with(|c: char| c.is_ascii_uppercase())
-                    && !self.range_follows() =>
+                    && !self.range_follows()
+                    && self.foreign_type_here().is_none() =>
             {
                 let mut name = self.name();
                 // `V.cuts`: a domain derived from another.
@@ -437,18 +438,23 @@ impl<'a> Parser<'a> {
             // `int`, `string`, `vector<Int>`: another language's type name,
             // read as ours so the declaration and its uses check.
             T::Ident
-                if foreign_type(self.text()).is_some()
+                if self.foreign_type_here().is_some()
                     && !matches!(self.peek_n(1), T::DotDot | T::DotDotEq | T::Dot) =>
             {
-                let ours = foreign_type(self.text()).unwrap_or_default();
+                let ours = self.foreign_type_here().unwrap_or_default();
                 let mut name = self.name();
+                let help = if name.text.starts_with(|c: char| c.is_ascii_uppercase()) {
+                    "CP Lang's growable list is `List<T>`"
+                } else {
+                    "built-in types are capitalized: `Int`, `Str`, `List<T>`"
+                };
                 self.error(
                     Diagnostic::error(
                         codes::EXPECTED_TYPE,
                         name.span,
                         format!("CP Lang spells the type `{ours}`, not `{}`", name.text),
                     )
-                    .with_help("built-in types are capitalized: `Int`, `Str`, `List<T>`")
+                    .with_help(help)
                     .with_fix(format!("change to `{ours}`"), name.span, ours),
                 );
                 name.text = ours.to_string();
@@ -713,6 +719,15 @@ impl<'a> Parser<'a> {
             traits.push(self.ty_atom());
         }
         traits
+    }
+
+    /// The built-in type a foreign type name here stands for. Rust's
+    /// `Vec<T>` counts only with `<`: `std.geometry`'s `Vec` is a point.
+    fn foreign_type_here(&self) -> Option<&'static str> {
+        match self.text() {
+            "Vec" | "ArrayList" | "Vector" if self.peek_n(1) == T::Lt => Some("List"),
+            name => foreign_type(name),
+        }
     }
 
     /// Parses `where T: Ord, U: Add + Mul` if it is here.

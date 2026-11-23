@@ -74,3 +74,15 @@ fn a_rust_repeat_is_fixed_to_a_fill() {
     let edits: Vec<_> = d[0].fixes[0].edits.iter().map(|e| e.1.as_str()).collect();
     assert_eq!(edits, ["n + 1", ".filled(0)"]);
 }
+
+#[test]
+fn a_rust_vec_type_is_one_error_with_list() {
+    let d = parse_file("let xs: Vec<i64> = [1]\nprint(xs)\n").diagnostics;
+    let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(fixes, ["List"], "{d:?}");
+    assert!(
+        parse_file("use std.geometry.{Vec}\nlet v: Vec = Vec(1.0, 2.0)\nprint(v.x)\n")
+            .diagnostics
+            .is_empty()
+    );
+}
