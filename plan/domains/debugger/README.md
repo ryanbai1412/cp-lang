@@ -13,9 +13,10 @@ The loop Ryan reviews: **WA -> `cpl stress` -> minimal input -> trap or first di
 
 Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](worklog.md). What [MILESTONE-1](../../product/MILESTONE-1.md) needs from this domain: the loop **WA → `cpl stress` with a brute in the same file → minimized counterexample in seconds → fix → rerun**, smooth from the CLI, Neovim/Vim, VS Code and JetBrains, on Linux, macOS and Windows. Exit criteria:
 - [x] The loop passes end to end on the CLI for `@alt(program)`, `@check` and `@interactor` multitests (`cargo nextest run -p cpl-cli --test debugger`: `stress_loop` tests).
-- [x] Every seeded bug (`bench/stress/`, 24) found and shrunk; median < 1 s, max < 5 s (`cargo test --release -p cpl-cli --test seeded_bugs -- --nocapture`: median 0.30 s, 9 of 11 P0 classes).
+- [x] Every seeded bug (`bench/stress/`, 27) found and shrunk; median < 1 s, max < 5 s (`cargo nextest run -p cpl-cli --test seeded_bugs --no-capture`: median 0.39 s, 9 of 11 P0 classes).
+- [x] A cold run on 3 problems written fresh for it (`bench/stress/cold-*.cp`: max subarray, pair sums, increasing runs): each WA found and shrunk to a minimal case in 0.54-0.70 s, `cpl test` fails on it, and after the one-line fix `cpl test` and `cpl stress` pass (about 1 s). Run by debugger, not a stranger; the stranger run is Milestone 2.
 - [x] The loop tests pass on Linux, macOS and Windows CI: paths, CRLF in saved cases, no `g++` or `sh` needed for a same-file brute (`.github/workflows/debugger-loop.yml`: 41 of 41 on each OS).
-- [ ] Neovim (headless loop `editors/neovim/test/stress_loop.lua` green on Linux and macOS CI, Windows pending): `:Cpl stress` (or the LSP Stress lens) then `:Cpl test` runs the loop from the documented one-step setup (`editors/neovim/plugin/cplang.lua`); Vim: `:!cpl stress %` then `:!cpl test %`, documented. Tools owns `editors/` and the LSP; debugger writes the scenario.
+- [x] Neovim (headless loop `editors/neovim/test/stress_loop.lua` green on ubuntu, macOS and Windows in `debugger-loop.yml`; Vim's `stress_loop_vim.sh` green on ubuntu and macOS): `:Cpl stress` (or the LSP Stress lens) then `:Cpl test` runs the loop from the documented one-step setup (`editors/neovim/plugin/cplang.lua`); Vim: `:!cpl stress %` then `:!cpl test %`, documented. Tools owns `editors/` and the LSP; debugger writes the scenario.
 - [x] JetBrains (`CpPluginSmokeTest`, headless IDE, Linux): a `cpl` run configuration with command `stress`, then `test` (`editors/jetbrains/src/main/kotlin/dev/cplang/ide/CplRun.kt`), runs the loop; its output names the saved case.
 - [x] VS Code (loop test in `editors/vscode/test/integration/suite.ts` passes on ubuntu, macOS and Windows in `debugger-loop.yml`): Stress lens shows the failing case, Run All Samples reruns `<file>.tests/`; wording is v0.3's (`@alt(program)`, `@check`).
 - [x] Traps name the rule, the place and the locals (all 12 R-codes in `runtime_errors.rs`).
@@ -24,9 +25,8 @@ Due about 09:30 PST 11/23, on edge; checkpoints every 2 h in the [worklog](workl
 Milestone 1.5, started the moment the loop above works on all 3 OSes and in all 3 editors: replay (time travel, the +20% trace target) per [design/trace-replay.md](design/trace-replay.md), needing compiler's Interp snapshot/restore. Deferred past both: the `crates/cpl-trace` split, the VM in the browser, `gen<T>` generators beyond a row, DAP and viewer polish. What works stays working.
 
 Next:
-1. Neovim loop green on Windows CI; Vim's `:!cpl stress %` / `:!cpl test %` documented (tools).
-2. VS Code loop test green on the 3-OS editor job.
-3. The guide's loop section (site), then Milestone 1.5.
+1. JetBrains loop green on macOS and Windows (`jetbrains` job in `debugger-loop.yml`).
+2. Milestone 1.5: time travel in every editor (nvim-dap done, `editors/neovim/test/dap_loop.lua`), then replay.
 
 ## Milestone 2
 
