@@ -191,6 +191,7 @@ impl File<'_> {
     pub(crate) fn walk<V: Visitor>(&self, visitor: &mut V, mut set_base: impl FnMut(&mut V, u32)) {
         for (base, item) in self.items {
             set_base(visitor, *base);
+            visitor.stmts(&item.stmts);
             for stmt in &item.stmts {
                 walk::walk_stmt(visitor, stmt);
             }

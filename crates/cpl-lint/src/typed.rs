@@ -5,11 +5,12 @@
 //! (L0414) is dropped where the checker proves the index by its type.
 
 use crate::facts::Facts;
-use crate::{CHMIN_CHMAX_IF, COMPOUND_SELF_REF, UNPROVEN_LIST_INDEX};
+use crate::{CHMIN_CHMAX_IF, COMPOUND_SELF_REF, PEEK_THEN_POP, UNPROVEN_LIST_INDEX};
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 3] = [
+const TYPED: [cpl_diag::Code; 4] = [
+    PEEK_THEN_POP.code,
     COMPOUND_SELF_REF.code,
     CHMIN_CHMAX_IF.code,
     UNPROVEN_LIST_INDEX.code,
@@ -30,13 +31,16 @@ pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {
     }
     match Facts::check("<lint>.cp", src) {
         Some(facts) => refine_with_facts(diags, &facts),
-        None => diags.retain(|d| d.code != COMPOUND_SELF_REF.code && d.code != CHMIN_CHMAX_IF.code),
+        None => diags.retain(|d| d.code == UNPROVEN_LIST_INDEX.code || !TYPED.contains(&d.code)),
     }
 }
 
 pub(crate) fn refine_with_facts(diags: &mut Vec<Diagnostic>, facts: &Facts) {
     diags.retain(|d| match d.code {
         c if c == COMPOUND_SELF_REF.code || c == CHMIN_CHMAX_IF.code => plain_place(d, facts),
+        c if c == PEEK_THEN_POP.code => d.labels.first().is_some_and(
+            |l| matches!(facts.place_type(l.span), Some(Ty::Named { name, .. }) if name == "List"),
+        ),
         c if c == UNPROVEN_LIST_INDEX.code => facts.typed_index(d.span).is_none(),
         _ => true,
     });

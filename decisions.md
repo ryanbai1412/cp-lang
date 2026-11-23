@@ -6807,3 +6807,17 @@ Reason: Ryan asked whether the layout doc was ever adopted; a doc without a
 gate drifts, and the hand-kept REPO.md already had.
 Reverse: delete `plan/LAYOUT.md`, `gen.toml` and `scripts/repo-layout.py`,
 restore the hand-written REPO.md, and give `gen.py` back its list.
+
+## 304. L0525 `peek_then_pop` matches `List.last` and `List.pop` by name (2026-11-22)
+
+- **Decision.** `let x = s.last!` followed by `s.pop()` warns, with a fix to
+  `let x = s.pop()!`, only when the checker types `s` as `List` (fact
+  table) and `s` is a plain name or field path. `lint_std_names` goes from
+  133 to 135 for the literals `last` and `pop`.
+- **Why.** Both are core `List` builtins (`crates/cpl-check/src/builtins.rs`),
+  not std API, and the type gate keeps a user type with its own `last`/`pop`
+  out. Six corpus ports have the C++ `.back(); .pop_back()` shape. `Deque`
+  and `Heap` (std types) are left out until the linter reads their methods
+  from the checker rather than by name.
+- **Reverse.** Delete `crates/cpl-lint/src/rules/pops.rs` and
+  `spec/lints/peek_then_pop/`, and lower the ratchet.

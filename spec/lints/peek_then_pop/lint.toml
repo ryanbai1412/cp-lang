@@ -1,0 +1,5 @@
+code = "L0525"
+level = "warn"
+group = "idiom"
+title = "Peek then pop"
+summary = "`let x = s.last!` then `s.pop()`: `let x = s.pop()!` takes it"
