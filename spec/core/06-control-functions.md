@@ -163,7 +163,9 @@ functions over function types, and their own tool roles with `marker`
 
 - Top-level bindings above `@!multitest` are shared by every test case;
   everything below is per case, including `@memo` caches and fresh
-  types. (R06.5.1)
+  types. A case may change a shared `var`, and the change carries to
+  the next case: a stamp array reset only where a case touched it avoids
+  an \(O(\text{size})\) reset per case (decision 385). (R06.5.1)
 - A nested function is the way to split a long solution: each chunk is a
   nested fn over the test's state. Any function is a *part* that stress
   and `cpl locate` can test alone (`tools/stress.md`).

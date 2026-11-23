@@ -367,7 +367,7 @@ but the cut is what both shapes share, and `halve` reads as its definition).
 - `r.mid` is the middle cut, always present; `r.halve()` is `?(r.l..r.mid, r.mid..r.r)`, `None` at length <= 1. (R04.8.7)
 - Integer literals convert to positions and cuts of integer domains. (R04.8.8)
 - `V(x)` traps outside `V`; `V.at(x)` is `?V`; the pattern `V(j)` refutes. (R04.8.9)
-- A list literal for `[D]T` gives one value per cell, so `[]` fills an empty `D`; a list whose length differs from a written count is a compile error, and from a run-time count a trap. (R04.8.10)
+- A list literal for `[D]T` gives one value per cell, so `[]` fills an empty `D`; a list whose length differs from a written count is a compile error, and from a run-time count a trap. A value of the element type is a fill instead: `var out: [D]List<Int> = []` gives every cell an empty list, because `[]` is a `List<Int>` (decision 385). (R04.8.10)
 
 Rejected: `.start`/`.end`/`.before`/`.after` (four words for one idea);
 `.n`/`.p` (`n` reads as a count, `p` as parent); `V.first` always trapping

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- 2026-11-23 (from spec, rebuild round 25, F4): after the E0107 parse error on `read<Str of "01">()`, every later use of `s` gets an E0305/E0302 naming an invented `Bool`. General fix owed: a binding whose type failed to parse becomes an error type that suppresses follow-on errors (one error per root cause).
 - From spec, rebuild round 23: `Int.max` gives E0201 "doesn't know the name `Int` here"; it should say the constant is `Int.MAX`. `ws.join("")` gives E0302 expected `Str`, found `List<Str>`; it should say `join` is called on the separator: `"".join(ws)` (R07 'sep.join(parts)').
 - From spec (rebuild 17): `bsearch_first(...)` gives E0201 with help `let bsearch_first = ...`. A removed std name should get help naming its replacement (`r.first_true(ok)`). General fix: a renamed/removed-names table in std that E0201 consults.
 - From spec (rebuild 15): `cpl explain E0501` shows an unrelated `yield` example when E0501 fired for a stepped range kept as a value; the explanation should match the construct the message names.

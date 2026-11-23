@@ -213,8 +213,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-04/piece-into-fold.cp: compiler
 - core-04/prefix-and-z-function-over-domain-array-and-range.cp: compiler
 - core-04/prod-at-neighbour.cp: compiler
-- core-04/prod-call-traps.cp: compiler
-- core-04/product-domain-grid-reads-and-indexes.cp: compiler
 - core-04/range-key-is-element.cp: compiler
 - core-04/range-key-outside-traps.cp: compiler
 - core-04/range-len-walk-ends.cp: compiler
@@ -280,6 +278,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-10/test-position-stored-above-multitest.cp: compiler
 - core-10/read-range-arithmetic-lower-bound.cp: compiler
 - core-10/print-view-honours-sep.cp: compiler
+- core-02/str-len-and-charset-compose.cp: compiler
+- core-02/list-of-str-is-chars.cp: compiler
+- std-graph/undirected-unweighted-has-deg.cp: stdlib
 - core-01/for-filter-on-inner-clause.cp: compiler
 - core-10/tuple-dependent-bound-in-block.cp: compiler
 - std-seq/min-of-empty-list-is-none.cp: compiler
@@ -293,7 +294,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-graph/dfs-shares-seen.cp: stdlib
 - std-graph/user-impl-next-weighted-arc-runs-dijkstra.cp: stdlib
 - std-dp/interval-ranges-deque-game.cp: stdlib
-- std-grid/step-on-product-domain-position.cp: stdlib
 - std-prefix/first-ge-negative-element-traps.cp: stdlib
 - std-segtree/closure-op-picks-index.cp: compiler
 - std-strings/split-trailing-and-leading.cp: stdlib

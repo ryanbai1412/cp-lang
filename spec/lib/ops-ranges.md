@@ -79,6 +79,8 @@ affine composition) just works.
 | `gcd` | `Monoid`, `Commutative`, `Idempotent` | `0` |
 | `and`, `or` | `Monoid`, `Commutative`, `Selective` | `true`, `false` |
 
+Free `min` and `max` take any number of arguments: `max(a, b, c)`.
+
 A bounded `Int` (`0..=1e9`) has a far end, so `min` and `max` are monoids
 on it with no sentinel. An unbounded `Int` has no far end, so `min` on it is
 only an `Op`: structures over it still build, and their folds return

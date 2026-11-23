@@ -7992,3 +7992,14 @@ the Milestone 1 evidence; edge ae6edeb2 turned two of them TLE unnoticed.
 Rule: a blocking `acceptance` job in ci.yml builds the release cpl and runs
 `regress.py -j $(nproc)`; it runs beside the gate, about 2 min on 4 cores,
 so it guards main without setting CI's wall time. Reverse: delete the job.
+
+## 385. Rebuild round 25: fills, shared state, `Str` bounds; routes (spec, 2026-11-23)
+
+- **Decision.** A value of an array's element type fills it, so
+  `var out: [D]List<Int> = []` is a fill, not a per-cell literal (H10).
+  A case may change a shared `var` above `@!multitest` (H09). `Str(len:)`
+  and `of` compose (H01). Free `min`/`max` are variadic (H08). `cpl test`
+  has no inline `@sample`; cases are `d.tests/N.in` with an optional
+  `N.out` (H04, H05).
+- **Reverse.** Make `[]` always per-cell and require `List<Int>()` for the
+  fill; add an `@sample` attribute.
