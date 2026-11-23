@@ -14,6 +14,7 @@
     "input-and-output",
     "multitest-state",
     "checked-operations",
+    "modules-and-prelude",
     "standard-library",
     "cpp-and-the-judge"
   ]

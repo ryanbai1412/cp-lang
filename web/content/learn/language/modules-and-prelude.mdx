@@ -1,0 +1,90 @@
+---
+title: "Modules and the prelude"
+description: "Program files are statements, library files are items, the prelude is the lib chapters' vocabulary by rule, and the submission is one tree-shaken C++ file."
+---
+
+A program file is statements; a library file is items and `use` lines, with `pub` marking exports.
+The prelude is exactly the vocabulary of the library chapters' main tables, so an ordinary contest
+name never needs a `use`. Everything is inlined into one C++ file and tree-shaken. The normative
+rules are <Spec file="core/11-modules-prelude">chapter 11 of the spec</Spec>.
+
+## Items hoist; runtime declarations don't
+
+Functions, structs and other items hoist within their block, so a solution can put `main`-level code
+first and helpers below it:
+
+```cp run
+print(twice(21))
+fn twice(x: Int) -> Int = 2 * x
+```
+
+A `domain`, `type` or `const` whose value is read at runtime (`domain V = 1..=read<1..=2e5>()`)
+runs where it is written, so input is read in source order, and a use above it is a use before
+definition (<Spec file="core/11-modules-prelude" section="11.1 Program files and library files">§11.1</Spec>).
+
+An inline `mod name:` groups items inside any file, for a part you want to stress alone:
+
+```cp run
+mod geo:
+    pub fn dist2(x: Int, y: Int) -> Int = x * x + y * y
+print(geo.dist2(3, 4))
+```
+
+## `use` names modules
+
+Paths are module names, not files on a search path: `std` is the pinned standard library, and `lib`
+is your own library root, named in `cp.toml`. A plain `use std.segtree` brings in the module,
+`use std.graph.{dijkstra, Paths}` brings in names:
+
+```cp run
+use std.segtree
+let t = segtree.SegTree(max, [3, 9, 4])
+print(t.fold(0..2))
+```
+
+Modules form an acyclic graph. Library code is specialized where it is used, so it is as fast as
+code written in the file, and only what a program calls costs bytes in the submission
+(<Spec file="core/11-modules-prelude" section="11.2 `use`">§11.2</Spec>).
+
+## The prelude is a rule, not a list
+
+The prelude is one ordinary file, `std/prelude.cp`, made of `use` lines. Its contents follow a rule:
+every public type and free function in a library chapter's main tables is in it, and nothing else.
+Two exclusions keep that safe. Names contestants give locals (`n`, `a`, `g`, `dp`, `ans`, `cnt`)
+are never prelude names, and a local name shadows a prelude name:
+
+```cp run
+fn gcd(a: Int, b: Int) -> Int = if b == 0: a else: gcd(b, a % b)
+print(gcd(12, 18), lcm(4, 6))
+```
+
+Methods need no import at all: `xs.sorted()` finds the method on the receiver's type wherever the
+type came from. For a std name outside the prelude, the LSP offers the `use` as a quick fix
+(<Spec file="core/11-modules-prelude" section="11.3 The prelude">§11.3</Spec>).
+
+## Versions and the submission
+
+The formatter stamps a solution's first line with the compiler version (`// cpl 0.3.0`), and
+`cp.toml` pins the standard library and each library root by content hash, so an old solution
+rebuilds byte for byte. A breaking std change ships a codemod, `cpl migrate`, and a renamed API
+keeps a deprecated alias for one minor version. `cpl submit` writes one C++17 file with the program,
+the library code it reaches and the stamp, and drops tests, brutes, generators, checkers and
+`debug(...)` calls (<Spec file="core/11-modules-prelude" section="11.5 What the submission contains">§11.5</Spec>).
+
+## Why it's designed this way
+
+**The prelude by rule.** A hand-picked prelude grows by request and nobody can say why a name is in
+it. <Decision n={150} /> made it the library chapters' vocabulary, checked by a script, so "is this
+in scope?" has one answer: is it in a chapter's main table. The cost of a prelude name is a
+collision, not a count, which is why common local names are excluded and locals win.
+
+**Programs get the prelude, libraries don't.** A library that relied on the prelude would break
+when the prelude changed. <Decision n={241} /> gives inline modules in a program the program's
+prelude, since they are part of it.
+
+**Modules, not files.** One output file is what every judge accepts, so the bundler inlines and
+tree-shakes instead of linking; personal libraries get the standard library's speed because they
+are specialized at the use site the same way.
+
+**Pins and codemods.** Old code should keep paying off. A content-hash pin makes rebuilds exact,
+and a codemod turns a breaking change into a reviewed diff instead of a broken archive.

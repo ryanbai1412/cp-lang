@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed `site: language chapter on modules and the prelude` (spec ch 11): 4 runnable examples (hoisting, inline `mod`, `use std.segtree`, a local shadowing a prelude name), with a 'Why' citing decisions 150 and 241. Filed with compiler: a runtime domain used above its declaration reads as empty.
 - Landed `site: language chapter on input and output` (spec ch 10): 4 runnable examples (multitest, enum command stream, printing with `yes`/`none:`/padding, `io(base: 1)`), with a 'Why' citing decisions 136 and 161. Filed with compiler: `{s:6}` on a `Str` is E0302.
 - Landed `site: language chapter on functions and closures` (spec ch 6): 6 runnable examples (mut at both ends, named-only defaults, recursive lambda, tuple unpacking, per-call captures, `@memo(array)`), with a 'Why' citing decisions 60, 127, 144, 159 and 324.
 - Landed `site: language chapter on sequences and views` (spec ch 7): 4 runnable examples covering generators, slices that keep keys, lazy views and named allocation, and scans, with a 'Why' citing decisions 126, 128, 140, 143 and 326. Filed with compiler: cut-indexed `pre[c]` is E0302.
