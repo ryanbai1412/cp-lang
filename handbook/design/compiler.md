@@ -165,6 +165,17 @@ must never do.
 The full list, with what is still missing, is the quality register in
 `handbook/domains/compiler.md`.
 
+The layers only look one way: `cpl-syntax` knows no types, `cpl-check`
+knows no IR, and `cpl-ir` knows no C++ and no VM. Lowering runs only on a
+program with no errors, and the front end never panics on any input.
+Other lanes build on these crates through the interfaces listed in the
+charter. A lane that needs a guarantee adds a contract test for it next to
+the core, so a core change can't land that breaks it; a lane that needs a
+new interface asks in the compiler worklog instead of working around the
+gap.
+
 ## Changes
 
 - 2026-11-23: overview first; part contracts under Reference.
+- 2026-11-23: layer boundaries and the contract-test rule, folded in from
+  `plan/domains/compiler/ARCHITECTURE.md`, which is deleted.
