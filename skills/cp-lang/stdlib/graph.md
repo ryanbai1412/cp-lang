@@ -85,7 +85,7 @@ O(m) memory.
 
 - `@get fn vertices(self) -> yields V` — O(1) to make, O(1) per vertex; The vertices visited, `start` first, then each arc's `to`: `arcs.len + 1` of them.
 
-## `struct Lit<X>(x: X, value: Bool)`
+## `struct Lit<X>(pub x: X, pub value: Bool)`
 
 O(1).
 
@@ -132,14 +132,12 @@ O(n) build: the functional graph `v -> next[v]` (every vertex one out-arc).
 
 O(log n) amortized per edge: 2-edge-connectivity under edge insertions.
 
-Fields: `bridges: Int`.
-
 - `fn new() -> IncrementalBridges<V>` — O(n); No edges yet: every vertex alone.
 - `fn add(mut self, u: V, v: V)` — O(log n) amortized; Adds the undirected edge `u - v`.
 - `fn two_edge_same(mut self, u: V, v: V) -> Bool` — O(alpha); Are `u` and `v` joined by two edge-disjoint paths?
 - `fn same(mut self, u: V, v: V) -> Bool` — O(alpha); Are `u` and `v` connected?
 
-## `struct Edge<V, E>(pub e: E, u: V, v: V)`
+## `struct Edge<V, E>(pub e: E, pub u: V, pub v: V)`
 
 O(1): one edge of a `Graph`: its id and its ends (as built for a directed graph, first in `V` order for an undirected one).
 

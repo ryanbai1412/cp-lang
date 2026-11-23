@@ -48,13 +48,11 @@ Fields: `rank: List<Int>`, `rmq: List<Int>`, `log: List<Int>`, `dcum: List<Int>`
 - `fn split(self, r: Range<Int>) -> Int` — O(1); Where the rank range `r` splits in the suffix tree: the `k` in `r.start + 1..r.end` whose adjacent LCP `lcp[k - 1]` equals `lcp_of_ranks(r)`, so `r.start..k` and `k..r.end` are the first child and the rest.; traps: when `r.len < 2` or `r` reaches outside `0..n`
 - `fn kth_distinct(self, k: Int) -> ?Range<Int>` — O(log n); The `k`-th (0-based) lexicographically smallest distinct non-empty substring, as the positions `l..r` of one occurrence, or `None` when `k >= distinct()`.; traps: when `k < 0`
 
-## `struct SuffixTreeEdge(top_size: Int, bottom_size: Int, parent_len: Int, edge_len: Int, pub rank_range: Range<Int>)`
+## `struct SuffixTreeEdge(pub top_size: Int, pub bottom_size: Int, pub parent_len: Int, pub edge_len: Int, pub rank_range: Range<Int>)`
 
 O(1) value.
 
-Fields: `top_size: Int,`, `bottom_size: Int,`, `parent_len: Int,`, `edge_len: Int,`.
-
-## `struct HashVal(h1: Int, h2: Int)`
+## `struct HashVal(pub h1: Int, pub h2: Int)`
 
 O(1) space and comparison.
 

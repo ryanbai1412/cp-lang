@@ -6,7 +6,7 @@ The DP toolkit: the structures and optimizations a DP calls by name.  A minimum 
 
 In prelude (no `use` needed): `LiChao`, `Line`, `LineContainer`, `MonotoneHull`, `aliens`.
 
-## `struct Line(k: Int, m: Int)`
+## `struct Line(pub k: Int, pub m: Int)`
 
 O(1) per evaluation.
 
