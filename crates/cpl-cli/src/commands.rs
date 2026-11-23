@@ -248,11 +248,16 @@ pub(crate) fn command_usage(command: &str) -> Option<&'static str> {
 }
 
 const CHECK_USAGE: &str = "\
-usage: cpl check <file.cp>...
+usage: cpl check <file.cp>... [--json]
 
 Reports every error in the files: names, types, borrows, input ranges.
 Nothing is run and nothing is written. The exit status is 1 when a file
 has an error.
+
+  --json    print one JSON object instead: `files`, each with its `path`,
+            `ok`, and `diagnostics` (code, severity, message, start, end,
+            labels, notes, help, fixes; positions are 1-based line and byte
+            column, with the byte offset)
 ";
 
 const FIX_USAGE: &str = "\
@@ -383,7 +388,8 @@ options:
 /// a path) but is none of the command's, for the commands parsed here.
 pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a str> {
     let options: &[&str] = match command {
-        "check" | "fix" | "judge" | "judges" => &[],
+        "check" => &["--json"],
+        "fix" | "judge" | "judges" => &[],
         "build" => &["-o", "--judge", "--checked", "--size", "--copy"],
         "submit" => &["--copy"],
         "explain" => &["--json"],

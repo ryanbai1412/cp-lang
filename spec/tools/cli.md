@@ -33,3 +33,8 @@ most recently edited `.cp` file in the folder.
 Output is plain text for people and `--json` for tools; exit codes are
 0 success, 1 failure of the program or a test, 2 compile error, 3 usage
 error. Everything is deterministic given the seed.
+
+`cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}]}`; each
+diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,
+`notes`, `help` and `fixes`, positions as 1-based `line` and byte `col` plus
+the byte `offset`.

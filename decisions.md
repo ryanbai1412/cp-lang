@@ -5861,3 +5861,13 @@ nextest on a 4-core runner. `CPL_GATE_PART` in `scripts/check.sh` splits
 hash partitions, and ci.yml runs them as a matrix, toward the 3-minute CI
 target. Local --fast is unchanged, and a partial run never records a gate
 stamp. Reverse: drop the matrix in ci.yml; check.sh then runs everything.
+
+## 229. `cpl check --json` prints one object of files and diagnostics (2026-11-22)
+
+`spec/tools/cli.md` promises `--json` for tools, and only `explain` had it.
+`cpl check --json` prints `{"files": [{"path", "ok", "diagnostics"}]}`; a
+diagnostic has `code`, `severity`, `message`, `start`, `end`, `labels`,
+`notes`, `help` and `fixes`, and a position is a 1-based line and byte column
+with the byte offset, so a tool can use either. Exit codes stay those of the
+text output. `crates/cpl-cli/src/json_out.rs` is the one serializer the next
+`--json` commands reuse. Reverse: drop the flag; nothing else reads it yet.

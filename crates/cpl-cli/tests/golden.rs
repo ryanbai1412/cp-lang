@@ -219,3 +219,47 @@ fn help_json_lists_every_command_with_its_usage_summary_and_help() {
         );
     }
 }
+
+#[test]
+fn check_json_reports_each_file_and_its_diagnostics() {
+    let dir = scratch("check-json");
+    std::fs::write(
+        dir.join("ok.cp"),
+        "fn inc(x: Int) -> Int:\n    return x + 1\n",
+    )
+    .unwrap();
+    std::fs::write(
+        dir.join("bad.cp"),
+        "fn inc(x: Int) -> Int:\n    return y + 1\n",
+    )
+    .unwrap();
+    let out = cpl(&dir, &["check", "ok.cp", "bad.cp", "--json"]);
+    assert_eq!(
+        out.status.code(),
+        Some(EXIT_ERRORS.into()),
+        "{}",
+        text(&out.stderr)
+    );
+    assert!(out.stderr.is_empty(), "{}", text(&out.stderr));
+    let json = cpl_json::parse(&text(&out.stdout)).expect("cpl check --json is JSON");
+    let files = json.at(&["files"]).as_array().unwrap();
+    assert_eq!(files[0].at(&["ok"]).as_bool(), Some(true));
+    assert_eq!(
+        files[0].at(&["diagnostics"]).as_array().map(<[_]>::len),
+        Some(0)
+    );
+    assert_eq!(files[1].at(&["path"]).as_str(), Some("bad.cp"));
+    assert_eq!(files[1].at(&["ok"]).as_bool(), Some(false));
+    let first = &files[1].at(&["diagnostics"]).as_array().unwrap()[0];
+    assert!(
+        cpl_diag::lookup(first.at(&["code"]).as_str().unwrap()).is_some(),
+        "{first:?}"
+    );
+    assert_eq!(first.at(&["severity"]).as_str(), Some("error"));
+    assert_eq!(first.at(&["start", "line"]).as_i64(), Some(2));
+    assert_eq!(first.at(&["start", "col"]).as_i64(), Some(12));
+    assert_eq!(
+        cpl(&dir, &["check", "--json"]).status.code(),
+        Some(EXIT_USAGE.into())
+    );
+}

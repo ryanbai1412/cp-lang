@@ -8,6 +8,7 @@ mod dap;
 mod explain;
 use explain::explain_code;
 mod interact;
+mod json_out;
 mod laws;
 mod live;
 mod profile;
@@ -140,7 +141,7 @@ pub fn exec<S: AsRef<str>>(
         Some("report") => report::report(&rest, stdin, stdout, stderr),
         Some("self") => toolchain::self_command(&rest, stdout, stderr),
         Some("explain") => explain_code(&rest, stdout, stderr),
-        Some("check") if rest.is_empty() => {
+        Some("check") if rest.iter().all(|arg| *arg == "--json") => {
             usage_error("`check` needs a file: `cpl check a.cp`".into())
         }
         Some("check") => check(&rest, stdout, stderr),
@@ -1480,7 +1481,10 @@ fn run_unit_tests(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut S
 
 /// Checks each file through the shared front end and renders what it
 /// finds.
-fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+fn check(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -> u8 {
+    let json = args.contains(&"--json");
+    let files = args.iter().filter(|arg| **arg != "--json");
+    let mut reports = Vec::new();
     let mut db = cpl_check::Database::new();
     let mut code = 0;
     for path in files {
@@ -1499,14 +1503,34 @@ fn check(files: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut String) -
         let failed = diagnostics
             .iter()
             .any(|d| d.severity == cpl_diag::Severity::Error);
-        if !diagnostics.is_empty() {
+        if json {
+            let lines = cpl_diag::LineIndex::new(&text);
+            let diagnostics = diagnostics.iter().map(|d| json_out::diagnostic(d, &lines));
+            reports.push(cpl_json::obj([
+                ("path", cpl_json::Value::String(path.to_string())),
+                ("ok", cpl_json::Value::Bool(!failed)),
+                ("diagnostics", cpl_json::Value::Array(diagnostics.collect())),
+            ]));
+        } else if !diagnostics.is_empty() {
             *stderr += &cpl_diag::render_all(&diagnostics, path, &text);
         }
-        if !failed {
+        if json {
+            if failed && code == 0 {
+                code = EXIT_ERRORS;
+            }
+        } else if !failed {
             let _ = writeln!(stdout, "{path}: no errors");
         } else if code == 0 {
             code = EXIT_ERRORS;
         }
+    }
+    if json {
+        let files = cpl_json::Value::Array(reports);
+        let _ = writeln!(
+            stdout,
+            "{}",
+            cpl_json::to_string(&cpl_json::obj([("files", files)]))
+        );
     }
     code
 }
