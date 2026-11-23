@@ -302,6 +302,10 @@ impl<'a> Parser<'a> {
     /// that drops the `*`; the value after it is read as written.
     pub(super) fn c_deref(&mut self) {
         let star = self.span();
+        let prev = self.pos.checked_sub(1).map(|i| self.tokens[i].kind);
+        if matches!(prev, Some(T::LParen | T::Comma)) {
+            return self.python_splat(star);
+        }
         self.bump();
         self.recovered(
             Diagnostic::error(
@@ -312,6 +316,38 @@ impl<'a> Parser<'a> {
             .with_help("drop the `*`")
             .with_fix("drop the `*`", star, ""),
         );
+    }
+
+    /// `print(*a)`: Python's unpacking. `print` already prints a list's
+    /// items, so there the `*` just goes.
+    fn python_splat(&mut self, star: Span) {
+        let mut depth = 0;
+        let mut open = None;
+        for i in (0..self.pos).rev() {
+            match self.tokens[i].kind {
+                T::RParen => depth += 1,
+                T::LParen if depth == 0 => {
+                    open = Some(i);
+                    break;
+                }
+                T::LParen => depth -= 1,
+                _ => {}
+            }
+        }
+        let callee = open.and_then(|i| i.checked_sub(1)).map(|i| &self.tokens[i]);
+        let print = callee.is_some_and(|t| t.kind == T::Ident && t.span.text(self.src) == "print");
+        self.bump();
+        let diag = Diagnostic::error(
+            codes::REMOVED_SYNTAX,
+            star,
+            "CP Lang has no `*` unpacking: a list is passed as it is",
+        );
+        self.recovered(if print {
+            diag.with_help("`print(a)` prints a list's items separated by spaces")
+                .with_fix("drop the `*`", star, "")
+        } else {
+            diag.with_help("pass the list itself, or its items one by one")
+        });
     }
 
     /// `(long long)n`, `(double)x`: a C cast. One error, with the

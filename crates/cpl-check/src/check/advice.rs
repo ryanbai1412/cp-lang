@@ -474,6 +474,12 @@ impl Checker<'_> {
                 format!("{}.digit", operand(self, c)),
                 "a digit's value is its `digit`",
             ),
+            ("float", [s]) if infinity(self.text(s.value.span)).is_some() => (
+                infinity(self.text(s.value.span))
+                    .unwrap_or("inf")
+                    .to_string(),
+                "an infinity is the largest `Int`",
+            ),
             ("int" | "float", [_]) if input.is_some() => (
                 format!("read<{}>()", read.unwrap_or("Int")),
                 "a value is read from the input with `read`",
@@ -482,15 +488,32 @@ impl Checker<'_> {
                 format!("{}.parse<{}>()!", operand(self, s), read.unwrap_or("Int")),
                 "a number is read from a string with `parse`",
             ),
-            ("range", [a, b, step]) => (
-                format!(
-                    "({}..{}).step({})",
-                    self.text(a.value.span),
-                    self.text(b.value.span),
-                    self.text(step.value.span)
-                ),
-                "a range with a step is written",
-            ),
+            ("range", [a, b, step]) => {
+                let (a, b) = (self.text(a.value.span), self.text(b.value.span));
+                let k = self.text(step.value.span);
+                match k.strip_prefix('-').map(str::trim) {
+                    // `range(a, b, -k)` walks down from `a` while above `b`.
+                    Some(k) => {
+                        let lo = match b.parse::<i64>() {
+                            Ok(b) => (b + 1).to_string(),
+                            Err(_) => format!("{b} + 1"),
+                        };
+                        let walk = match a.strip_suffix(" - 1") {
+                            Some(hi) => format!("({lo}..{hi}).rev"),
+                            None => format!("({lo}..={a}).rev"),
+                        };
+                        let walk = match k {
+                            "1" => walk,
+                            k => format!("{walk}.step({k})"),
+                        };
+                        (walk, "a range walked down is its `rev`")
+                    }
+                    None => (
+                        format!("({a}..{b}).step({k})"),
+                        "a range with a step is written",
+                    ),
+                }
+            }
             ("input", []) => (
                 "read_line()".to_string(),
                 "a line is read with `read_line` (a value with `read()`)",
@@ -1281,5 +1304,16 @@ impl<'a> Checker<'a> {
                 _ => return None,
             }
         }
+    }
+}
+
+/// `"inf"`, `'-inf'`, `"Infinity"`: Python's spellings of an infinity, as
+/// CP Lang's `inf` or `-inf`.
+fn infinity(text: &str) -> Option<&'static str> {
+    let word = text.trim_matches(['"', '\'']).to_ascii_lowercase();
+    match word.trim_start_matches('+') {
+        "inf" | "infinity" => Some("inf"),
+        "-inf" | "-infinity" => Some("-inf"),
+        _ => None,
     }
 }
