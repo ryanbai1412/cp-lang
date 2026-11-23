@@ -38,15 +38,15 @@ milestone = "M2"
 
 [[metric]]
 name = "ci_green_last_10_main"
-command = "gh run list -R ryanbai1412/cp-lang -w ci -b main -s completed -L 10 --json conclusion -q '[.[]|select(.conclusion==\"success\")]|length'"
-today = "0 (of 6 completed: 5 cancelled by newer pushes, 1 failure)"
+command = "gh run list -R ryanbai1412/cp-lang -w ci -b main -s completed -L 200 --json conclusion -q '[.[]|select(.conclusion!=\"cancelled\")][:10]|map(select(.conclusion==\"success\"))|length'"
+today = "1 (2026-11-23 05:10Z; cancelled runs, coalesced by newer pushes, don't count)"
 target = "10"
 milestone = "M1"
 
 [[metric]]
 name = "site_deploy_green_last_10"
-command = "gh run list -R ryanbai1412/cp-lang -w site -b main -s completed -L 10 --json conclusion -q '[.[]|select(.conclusion==\"success\")]|length'"
-today = "0 (of 6 completed: 5 failure, 1 cancelled)"
+command = "gh run list -R ryanbai1412/cp-lang -w site -s completed -L 200 --json conclusion -q '[.[]|select(.conclusion!=\"cancelled\" and .conclusion!=\"skipped\")][:10]|map(select(.conclusion==\"success\"))|length'"
+today = "2 of 2 deploys (2026-11-23 05:10Z; site runs skip when their CI run isn't green)"
 target = "10"
 milestone = "M3"
 
