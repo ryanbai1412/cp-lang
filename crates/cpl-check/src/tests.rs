@@ -43,7 +43,7 @@ fn codes(src: &str) -> Vec<&'static str> {
     check(src).iter().map(|d| d.code.0).collect()
 }
 
-fn one(src: &str) -> Diagnostic {
+pub(crate) fn one(src: &str) -> Diagnostic {
     let diags = check(src);
     assert_eq!(
         diags.len(),
@@ -265,20 +265,6 @@ fn immutable_bindings_cannot_be_assigned() {
     assert_eq!(
         codes("fn f(mut x: Int) -> Int:\n    x += 1\n    x\n"),
         Vec::<&str>::new()
-    );
-}
-
-#[test]
-fn a_modulus_is_part_of_the_mod_type() {
-    let d = one("let a: Mod<7> = 3\nlet b: Mod<11> = a\n");
-    assert_eq!(
-        (d.code.0, d.message.as_str()),
-        ("E0302", "`b` is declared a Mod<11>, but `a` is a Mod<7>")
-    );
-    let d = one("let a: Mod<7> = 3\nlet b: Mod<11> = 4\nprint(a + b)\n");
-    assert_eq!(
-        (d.code.0, d.message.as_str()),
-        ("E0302", "`+` mixes a Mod<7> and a Mod<11>")
     );
 }
 

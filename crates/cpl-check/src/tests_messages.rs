@@ -1,6 +1,6 @@
 //! What an error says and offers, read at 3am.
 
-use crate::tests::{check, messages};
+use crate::tests::{check, messages, one};
 
 fn fixed(src: &str) -> String {
     let diags = check(src);
@@ -167,4 +167,18 @@ fn enumerate_and_reversed_become_members() {
     let d = check(src);
     let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixes, ["xs.items", "xs.rev"], "{d:?}");
+}
+
+#[test]
+fn a_modulus_is_part_of_the_mod_type() {
+    let d = one("let a: Mod<7> = 3\nlet b: Mod<11> = a\n");
+    assert_eq!(
+        (d.code.0, d.message.as_str()),
+        ("E0302", "`b` is declared a Mod<11>, but `a` is a Mod<7>")
+    );
+    let d = one("let a: Mod<7> = 3\nlet b: Mod<11> = 4\nprint(a + b)\n");
+    assert_eq!(
+        (d.code.0, d.message.as_str()),
+        ("E0302", "`+` mixes a Mod<7> and a Mod<11>")
+    );
 }
