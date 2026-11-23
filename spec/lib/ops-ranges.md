@@ -86,6 +86,7 @@ only an `Op`: structures over it still build, and their folds return
 
 Inline, for the common case with no extra laws:
 
+<!-- spec-only: fragment: `Low` is the reader's own struct (fields, `empty`, `join`) -->
 ```python
 let lo = Monoid(id: Low.empty, op: (a, b) => a.join(b))
 let cat = Op((a: Str, b: Str) => a + b)     // no identity: a semigroup
@@ -107,6 +108,7 @@ impl Idempotent<Int> for Lcm
 Or adding a law to an inline value with a wrapper. These are plain library
 fns returning wrapper types, so user libraries can write more of them:
 
+<!-- spec-only: fragment: `Low` is the reader's own struct (fields, `empty`, `join`) -->
 ```python
 let lo = Monoid(id: Low.empty, op: join).commutative()
 ```
@@ -278,6 +280,7 @@ not a wrong answer. Today's combined names (`AddMax`, `AddSum`,
 
 A custom action, written inline:
 
+<!-- spec-only: fragment: `Low` is the reader's own struct (fields, `empty`, `join`) -->
 ```python
 let shift = Action(compose: +, apply: (d, l: Low, n) => (..l, cover: l.cover + d))
 var low = SegTree(Low.join, [Cut] c => Low(0, c, c, 0), act: shift)

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- lib/ops-ranges.md: three blocks built on the reader's own `Low` struct (defined nowhere) are `spec-only` fragments.
 - Routed to stdlib: `Monoid` is a trait in chapters 8 and ops-ranges but a struct in `spec/std/algebra.cp`; `SegTree(act: assign, a)` leaks a type parameter `D`.
 - Spec-block triage: the `dijkstra` signature excerpt in lib/ops-ranges.md is `spec-only`; 3 E0603 blocks the spec calls valid went to compiler, 9 missing std items to stdlib (by block id).
 - Build-output cases `core-13/runtime-array-not-on-stack.cp` (R13.2.9, R02.8.5) and `core-03/optional-array-no-side-bitset.cp` (R03.2.7), both pass (the second first matched its own file name in the echoed source; now it looks for `std::bitset`).
