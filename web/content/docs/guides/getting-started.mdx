@@ -7,14 +7,17 @@ You can try CP Lang immediately with zero setup in the [browser playground](/pla
 
 ## Install
 
-From the first release, one line installs a prebuilt binary. That release is not out yet, so this command does not work today:
+One line installs a prebuilt `cpl` for Linux, macOS or Windows. Until the first stable release, both channels install edge, the newest build of main that passed every check.
 
 ```sh
-curl -fsSL https://cp-lang.org/install.sh | sh                         # stable (beta while 0.x)
-curl -fsSL https://cp-lang.org/install.sh | sh -s -- --channel edge  # newest build of main that passed every check
+curl -fsSL https://cp-lang.org/install.sh | sh -s -- --edge   # Linux and macOS
 ```
 
-Until then, build `cpl` with Rust. It compiles CP Lang programs to standard C++17 (any `g++` or `clang++` that supports `-std=c++17`).
+```powershell
+& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Channel edge   # Windows PowerShell
+```
+
+`cpl self update` updates it later. To build from source instead (any Rust toolchain):
 
 ```sh
 cargo install --locked --git https://github.com/ryanbai1412/cp-lang cpl-cli
@@ -52,12 +55,40 @@ The output is `14`.
 
 `cpl build` writes a single self-contained `.cpp` file with your original `.cp` source preserved as a comment header at the top, unused library code tree-shaken away, and `@alt` / `@check` / `@interactor` blocks stripped so the file is clean and ready to upload to any judge.
 
-## Editor support (`cpl lsp`)
+## A contest, start to finish
 
-The `cpl` CLI ships with a built-in Language Server Protocol server (`cpl lsp`) powered by the same incremental frontend as `cpl check`. Point your editor's LSP client at `cpl lsp` for real-time diagnostics, hover types, and completion while writing `.cp` files.
+1. **Import the problem.** Install the [Competitive Companion](https://github.com/jmerle/competitive-companion) browser extension, run `cpl new --listen` in your contest folder, and click the extension's green plus on the problem page. You get `a.cp` (title, URL, limits and the input skeleton) and `a.tests/` with every sample. Clicked on a contest page, it creates every problem in a folder named after the contest.
+2. **Write it**, then `cpl run a` runs every sample and judges each one. `cpl run a 2` runs only sample 2; `cpl run a < in.txt` runs once on your own input.
+3. **Add a case** you worry about: `cpl test a --add mine.in --expect mine.out` saves it as the next numbered case and runs it. `cpl t a` reruns them all.
+4. **Stress it** against a brute force kept in the same file:
+
+   ```cp
+   let (a, b): (1..=9, 1..=9) = read()
+   print(a + b)
+
+   @alt(program)
+   fn brute():
+       let (a, b): (1..=9, 1..=9) = read()
+       var s = a
+       for _ in 0..b: s += 1
+       print(s)
+   ```
+
+   `cpl stress a` generates inputs from the declared types and stops at the smallest one where the two disagree. When any valid answer is accepted, a `@check fn` judges the output instead (see [Testing](/docs/guides/testing)).
+5. **Submit.** `cpl b a -c` writes `a.cpp`, one C++17 file without the `@alt`, `@check` and `@interactor` blocks, and copies it to the clipboard. Paste it into the judge.
+
+## Editor support
+
+One command sets up your editor: diagnostics, completion, hover, formatting, go to definition and run lenses, all from `cpl lsp`.
+
+```sh
+cpl setup neovim      # or vim, vscode, jetbrains
+```
+
+Neovim needs 0.10 or later. JetBrains needs a commercial IDE (IDEA Ultimate, CLion, PyCharm Professional, ...); restart it after setup. Any other editor with an LSP client can run `cpl lsp` on `.cp` files.
 
 ## What works today
 
-CP Lang is in beta. `cpl check`, `cpl run`, `cpl build`, `cpl stress`, `cpl lsp` and the trace viewer all work, in the CLI and in the browser. Parts of the standard library are still being implemented: an example on this site marked **check-only** passes the type checker but does not run yet.
+CP Lang is in beta. `cpl new`, `cpl check`, `cpl run`, `cpl test`, `cpl build`, `cpl stress`, `cpl lsp` and the trace viewer all work, in the CLI and in the browser. Parts of the standard library are still being implemented: an example on this site marked **check-only** passes the type checker but does not run yet.
 
 Next: the [course for your language](/learn), the [cheat sheet](/docs/guides/cheatsheet), the [language tour](/docs/guides/tour), or the [C++17 migration guide](/docs/guides/cpp-guide).
