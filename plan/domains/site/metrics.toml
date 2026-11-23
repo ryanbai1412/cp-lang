@@ -1,11 +1,12 @@
-# site metrics. Every command was run on 2026-11-22 against main 4b8f504f.
+# site metrics: targets and today's numbers for the register in handbook/domains/site.md.
+# Numbers updated 2026-11-23 unless a row says otherwise.
 # browser_smoke needs a built web/out and a Playwright Chromium (or CDP=<url>);
 # docs_only_eval_pass needs corpus/statements/ and a model key.
 
 [[metric]]
 name = "snippets_spec"
 command = "node web/scripts/gate.mjs"
-today = "197 snippets: runs 190, spec 7"
+today = "890 snippets: runs 865, spec 4, checks 2, rejects 19"
 target = "spec 0, checks 0"
 
 [[metric]]
@@ -35,13 +36,13 @@ target = 0
 [[metric]]
 name = "wasm_gzip_bytes"
 command = "node web/scripts/wasm-size.mjs"
-today = 1913207
-target = "<= 2000000 (enforced in prebuild; shrink-only, lowered to size + ~5% after each cut)"
+today = 1667499
+target = "<= 1720000 (enforced in prebuild; shrink-only)"
 
 [[metric]]
 name = "search_index_gzip_bytes"
 command = "gzip -9c web/out/api/search | wc -c"
-today = 538189
+today = 546241
 target = "<= 600000"
 
 [[metric]]
@@ -59,8 +60,8 @@ target = "8/8 200"
 [[metric]]
 name = "learn_content"
 command = "ls web/content/learn/read/*.mdx | wc -l; ls web/content/practice | wc -l"
-today = "11 chapters, 21 problems"
-target = "11 chapters, 21 problems"
+today = "15 chapters, 60 problems"
+target = ">= 60 judged problems, Div 2 A to Div 1 C"
 
 [[metric]]
 name = "page_weight_gzip_bytes"
@@ -73,3 +74,27 @@ name = "phone_routes_fit"
 command = "pnpm --dir web phone  # set CDP=<devtools url> to drive a running Chrome"
 today = "18/18 routes fit 390 px, nothing past the right edge"
 target = "every route in web/tests/phone.mjs"
+
+[[metric]]
+name = "std_examples_static"
+command = "node web/scripts/gen-ref.mjs  # prints the static count"
+today = 41
+target = "0; shrink-only"
+
+[[metric]]
+name = "lint_fixes_not_runnable"
+command = "node web/scripts/lint-inputs.mjs"
+today = 2
+target = 0
+
+[[metric]]
+name = "site_job_seconds"
+command = "CI site build job time; per-stage seconds are printed by web/scripts/prebuild.mjs"
+today = "about 255 s; gen-ref 46 s and gate 45 s are the slowest stages"
+target = "<= 180"
+
+[[metric]]
+name = "deploy_lag_minutes"
+command = "curl -s https://cp-lang.org/version.json  # compare with the newest green main"
+today = "not measured"
+target = "<= 30"

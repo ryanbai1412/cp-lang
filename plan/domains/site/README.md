@@ -1,5 +1,7 @@
 # site
 
+The charter (mission, scope, interfaces, quality register, suites) is [handbook/domains/site.md](../../../handbook/domains/site.md); this file keeps the time-bound plan.
+
 Segment: E. Experience. Owns: `web/` (content, Learn, playground, share links, UI) and the snippet gate (`web/scripts/gate.mjs`). Status (2026-11-22): cp-lang.org is live and green: build, gate, typecheck, unit and browser smoke all pass. The docs-only eval (cannot run) and CI for `scripts/site-check.sh` are the gaps.
 
 Detail: [PLAN.md](PLAN.md) · code: [ARCHITECTURE.md](ARCHITECTURE.md) · numbers: [metrics.toml](metrics.toml) · log: [worklog.md](worklog.md)
