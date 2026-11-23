@@ -564,7 +564,8 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U) = [(a.nth(i), b.nth(i)) for i in 0..min(a.len, b.len)]
+pub fn zip<A: Indexed, B: Indexed, T, U>(a: A, b: B) -> yields (T, U):
+    for i in 0..min(a.len, b.len): yield (a.nth(i), b.nth(i))
 
 /// The value `m` holds for `k`, after storing `v` there if it held none: `ids.get_or_insert(name, ids.len)`
 /// gives each new name the next id. O(log n).
