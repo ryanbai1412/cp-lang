@@ -4,7 +4,8 @@
     <vendor>CP Lang</vendor>
     <description><![CDATA[
     CP Lang, a language for competitive programming. Highlighting, run configurations for
-    <code>cpl run</code>, <code>cpl test</code> and <code>cpl stress</code>, and the trace viewer;
+    <code>cpl run</code>, <code>cpl test</code> and <code>cpl stress</code>, the trace viewer, and importing a problem
+    from Competitive Companion;
     diagnostics, hover, completion, signature help, go to definition, rename, quick fixes and
     inlay hints come from the compiler's own language server, <code>cpl lsp</code>.
     ]]></description>
@@ -39,6 +40,12 @@
             <add-to-group group-id="EditorPopupMenu" anchor="last"/>
             <add-to-group group-id="ToolsMenu" anchor="last"/>
             <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt T"/>
+        </action>
+        <action id="CpLang.ImportProblem" class="dev.cplang.ide.CplImportProblemAction" text="CP Lang: Import a Problem"
+                description="Wait for Competitive Companion, then create the problem and its samples with cpl new --listen"
+                icon="AllIcons.Actions.Download">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
         </action>
     </actions>
 </idea-plugin>
