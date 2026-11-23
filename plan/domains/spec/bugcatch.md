@@ -42,3 +42,18 @@ guard it: `core-04/cut-range-table.cp`, `core-04/domain-is-its-range.cp`).
 | `eaf31457` | syntax: reject ++, add indented lambda blocks, close top dream gaps | caught at fix | `core-01/bracket-layout.cp`, `core-01/plusplus.cp` |
 | `eb511535` | syntax: built-in getters without parentheses + L0206 cpl fix | caught at fix | `core-01/getter-parens.cp` |
 | `2f718567` | interp: trap on negative sqrt in interp and checked C++ | caught at fix | `core-09/sqrt-negative-trap.cp` |
+
+## Round 9 (`17285a58b`, `--commits`)
+
+The three compiler fixes since round 8. `f7cefb2a` is caught. `718cce42` and
+`d80f7a08` change only the C++ backend (a sinking pass, and the trap left at
+`--checks none`), and the suite runs every case in the interpreter, so it
+cannot see them. That's a blind spot of the harness, not a missing case; the
+general fix (run cases through `cpl build` too) is under General fixes owed.
+
+| commit | subject | result | cases that fail |
+|---|---|---|---|
+| `f7cefb2a` | syntax: reject a typed binding with no value | caught | `core-01/var-needs-initializer.cp`, `core-02/array-needs-initializer.cp` |
+| `718cce42` | codegen: sink a reduction through calls to trap-free fns | out of reach (backend only) | |
+| `d80f7a08` | codegen: drop the domain-position trap at --checks none too | out of reach (backend only) | |
+
