@@ -1908,15 +1908,8 @@ impl<'a> Checker<'a> {
                 name.text
             );
             let suggestion = super::spec_member_typo(&base_ty, &name.text);
-            let call = Span::new(base.span.end, name.span.end + 2);
-            let iter_call = crate::builtins::foreign_iter_call(&name.text)
-                && matches!(&base_ty, Ty::Str | Ty::Named { .. })
-                && self.text(Span::new(name.span.end, call.end)) == "()";
             if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
-                if iter_call {
-                    diag.help = Some("a list or string is iterated as it is: `for x in xs`".into());
-                    diag.fix(format!("remove `.{}()`", name.text), call, "");
-                } else if let Some(s) = suggestion {
+                if let Some(s) = suggestion {
                     diag.suggest(name.span, s);
                 } else if let Some(help) = super::advice::foreign_call(&name.text) {
                     diag.help = Some(help.to_string());
@@ -1924,6 +1917,7 @@ impl<'a> Checker<'a> {
                     diag.help = Some("a generator pushes its values into a loop: `for x in g:`, or `List(g)` to keep them (R07.1.1)".to_string());
                 }
             }
+            self.iter_call_help(base, &base_ty, name);
         }
         // A built-in member (`xs.len`, `v.next`) gets its hover here.
         let hovered = self.hovers.last().is_some_and(|h| h.span == name.span);
@@ -2002,16 +1996,7 @@ impl<'a> Checker<'a> {
             match name.text.as_str() {
                 "len" => {
                     if !base_ty.is_sized() {
-                        let message = format!(
-                            "`.len` requires `Sized`, which `{base_ty}` does not implement"
-                        );
-                        if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
-                            diag.help = Some(
-                                "a lazy sequence has no stored length: `.count()` walks it once"
-                                    .into(),
-                            );
-                            diag.fix("write `.count()`", name.span, "count()");
-                        }
+                        self.lazy_len(&base_ty, name);
                         return Ty::Error;
                     }
                     return Ty::Int;

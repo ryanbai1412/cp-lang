@@ -2,7 +2,7 @@
 
 use super::*;
 use cpl_diag::Fix;
-use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind};
+use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind, Name};
 
 impl Checker<'_> {
     /// `s.reverse()` on a `let`: the reversed view needs no `var`.
@@ -178,6 +178,33 @@ impl Checker<'_> {
             diag.fix(format!("change to `.{i}`"), name.span, i.to_string());
         }
         true
+    }
+
+    /// `s.chars()`, `xs.iter()`: a call CP Lang leaves out, so its fix drops it.
+    pub(super) fn iter_call_help(&mut self, base: &Expr, base_ty: &Ty, name: &Name) {
+        let call = Span::new(base.span.end, name.span.end + 2);
+        let iter_call = crate::builtins::foreign_iter_call(&name.text)
+            && matches!(base_ty, Ty::Str | Ty::Named { .. })
+            && self.text(Span::new(name.span.end, call.end)) == "()";
+        let last = self
+            .sink
+            .last_mut()
+            .filter(|d| iter_call && d.code == codes::UNKNOWN_FIELD && d.span == name.span);
+        if let Some(diag) = last {
+            diag.help = Some("a list or string is iterated as it is: `for x in xs`".into());
+            diag.fixes.clear();
+            diag.fix(format!("remove `.{}()`", name.text), call, "");
+        }
+    }
+
+    /// `.len` on a lazy sequence, which has no stored length.
+    pub(super) fn lazy_len(&mut self, base_ty: &Ty, name: &Name) {
+        let message = format!("`.len` requires `Sized`, which `{base_ty}` does not implement");
+        if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
+            diag.help =
+                Some("a lazy sequence has no stored length: `.count()` walks it once".into());
+            diag.fix("write `.count()`", name.span, "count()");
+        }
     }
 
     /// `let N = 5` as `const N = 5`: only a literal can be a constant as is.
