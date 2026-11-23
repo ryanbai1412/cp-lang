@@ -198,9 +198,17 @@ pub struct Comb<M: Add + Sub + Mul>:
         if n <= have: return
         f.reserve(n)
         g.resize(n, M(1))
-        for i in have..n: f.push(f[i - 1] * M(i))
-        g[n - 1] = f[n - 1].inv
-        for i in (have..n - 1).rev: g[i] = g[i + 1] * M(i + 1)
+        // Each step carries the running product in a local, so the serial chain of
+        // multiplies never waits on a store of the element just written.
+        var acc = f[have - 1]
+        for i in have..n:
+            acc *= M(i)
+            f.push(acc)
+        var inv = acc.inv
+        g[n - 1] = inv
+        for i in (have..n - 1).rev:
+            inv *= M(i + 1)
+            g[i] = inv
 
     fn ensure(self, n: Int):
         if n >= f.len: self.grow(n)
