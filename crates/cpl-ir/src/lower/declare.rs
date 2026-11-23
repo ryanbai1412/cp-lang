@@ -16,7 +16,7 @@ impl<'a> Lowerer<'a> {
             }
             _ => None,
         };
-        let reversed = !mutable && Self::reversed_list(&init);
+        let reversed = !mutable && self.is_reversed(&init);
         if self.cx.is_main && self.cx.scopes.len() == 1 {
             self.cx.recipes.remove(name);
             let id = self.globals.len();
@@ -111,7 +111,7 @@ impl<'a> Lowerer<'a> {
         };
         let mut out = Vec::new();
         if let (Some(Arg::Value(e)), Some(p)) = (receiver, decl.params.first()) {
-            if generic(p) && (Self::reversed_list(e) || self.named_reversed(e)) {
+            if generic(p) && self.is_reversed(e) {
                 out.push(p.name.text.clone());
             }
         }

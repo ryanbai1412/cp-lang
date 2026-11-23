@@ -248,4 +248,87 @@ impl Checker<'_> {
             );
         }
     }
+
+    /// `.rev` itself, or a member `Rev` declares (`a.rev.take(k)`): not
+    /// passed on to the source the view reverses.
+    pub(super) fn rev_owns(&mut self, name: &str) -> bool {
+        name == "rev"
+            || self
+                .members_of("Rev")
+                .is_some_and(|m| m.members.iter().any(|(n, _)| n == name))
+    }
+
+    /// A method whose `self` must be `Indexed`, called on a `.rev`: a
+    /// reversed view keeps its source's keys, so it isn't (R07.3.5).
+    pub(super) fn rev_not_indexed(&mut self, base_ty: &Ty, name: &ast::Name) -> bool {
+        let def = self
+            .global(&name.text)
+            .filter(|d| matches!(&**d, Def::Fn { .. }))
+            .or_else(|| self.global(&crate::prelude::std_method(&name.text)));
+        let Some(Def::Fn {
+            ty: Ty::Fn { params, .. },
+            bounds,
+            ..
+        }) = def.as_deref()
+        else {
+            return false;
+        };
+        let indexed = match params.first() {
+            Some(crate::Param {
+                name: this,
+                ty: Ty::Param(p),
+                ..
+            }) if this == "self" => bounds
+                .iter()
+                .any(|(b, traits)| b == p && traits.iter().any(|t| t == "Indexed")),
+            _ => false,
+        };
+        if indexed {
+            let message = format!(
+                "`{base_ty}` does not implement `Indexed` required by `{}`",
+                name.text
+            );
+            if let Some(diag) = self.error(codes::MISSING_IMPL, name.span, message) {
+                diag.help =
+                    Some("a reversed view isn't Indexed; copy it with `List(a.rev)`".into());
+            }
+        }
+        indexed
+    }
+
+    /// A member of a `Slice<S>` or a `.rev` the view doesn't declare: the
+    /// source's, unless the `.rev` would need to be `Indexed` for it.
+    pub(super) fn member_through_view(
+        &mut self,
+        expr: &Expr,
+        name: &ast::Name,
+        base_ty: &Ty,
+    ) -> Option<Ty> {
+        if let Some(source) = self.slice_source(base_ty, &name.text) {
+            return Some(self.member_ty(expr, name, source));
+        }
+        let source = base_ty.rev_source()?.clone();
+        if self.rev_owns(&name.text) {
+            return None;
+        }
+        if self.rev_not_indexed(base_ty, name) {
+            return Some(Ty::Error);
+        }
+        Some(self.member_ty(expr, name, source))
+    }
+
+    /// The sequence a `Slice<S>` cuts, for a member `Slice` doesn't declare:
+    /// a slice has its source's members (R07.4.5).
+    pub(super) fn slice_source(&mut self, ty: &Ty, name: &str) -> Option<Ty> {
+        let Ty::Named { name: slice, args } = ty else {
+            return None;
+        };
+        if slice != "Slice" || args.len() != 1 {
+            return None;
+        }
+        let own = self
+            .members_of("Slice")
+            .is_some_and(|m| m.members.iter().any(|(n, _)| n == name));
+        (!own).then(|| args[0].clone())
+    }
 }

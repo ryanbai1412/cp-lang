@@ -1937,8 +1937,8 @@ impl<'a> Checker<'a> {
         if name.text.is_empty() {
             return Ty::Error;
         }
-        if let Some(source) = base_ty.rev_source().filter(|_| name.text != "rev") {
-            return self.member_ty(expr, name, source.clone());
+        if let Some(ty) = self.member_through_view(expr, name, &base_ty) {
+            return ty;
         }
         if let Ty::Param(p) = &base_ty {
             if let Some(req) = self.row_bounds.get(p).cloned() {

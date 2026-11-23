@@ -13,6 +13,7 @@ pub use laws::lower_sampling_laws;
 pub(in crate::lower) use laws::Stress;
 mod items;
 mod prelude;
+mod rev;
 mod seq;
 mod user;
 mod value_method;
@@ -720,6 +721,10 @@ impl<'a> Lowerer<'a> {
         }
         let recv_mark = self.cx.pending.len();
         let value = self.expr(base, None);
+        let value = match self.rev_method(value, name, args, span) {
+            Ok(call) => return call,
+            Err(value) => value,
+        };
         let ty = value.ty.clone();
         let method = name.text.as_str();
         let value = match self.call_field(value, name, args, span, hint) {

@@ -634,10 +634,11 @@ impl<'a> Lowerer<'a> {
             (Ty::Map(..) | Ty::HashMap(..), "keys") => self.proj_of_map(value, 0, span),
             // A range's keys are its own elements (R04.4.31): `r.keys` is `r`.
             (Ty::Range(_), "keys") => value,
-            (Ty::ListView(..), "keys")
-                if Self::reversed_list(&value) || self.named_reversed(&value) =>
-            {
+            (Ty::ListView(..), "keys") if self.is_reversed(&value) => {
                 self.reversed_keys(value, span)
+            }
+            (Ty::ListView(..), "src") if self.is_reversed(&value) => {
+                self.reversed_source(value, span)
             }
             (Ty::List(_) | Ty::ListView(..) | Ty::MutView(_) | Ty::Str | Ty::StrView, "keys") => {
                 self.seq_keys(value, span)

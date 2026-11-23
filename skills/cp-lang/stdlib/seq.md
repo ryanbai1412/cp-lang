@@ -42,6 +42,11 @@ The distinct values of a coordinate compression, in increasing order, indexed by
 \(O(1)\) to make.
 
 - `@get fn src(self) -> S` — \(O(1)\)
+- `fn nth<T>(self, k: Int) -> T` — \(O(1)\); traps: unless `0 <= k < self.len`
+- `fn take(self, k: Int) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
+- `fn drop(self, k: Int = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
+- `fn take_last(self, k: Int) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
+- `fn drop_last(self, k: Int = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
 
 ## `struct Items<S>()`
 

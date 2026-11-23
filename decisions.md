@@ -8341,3 +8341,9 @@ tag move fatal again.
 - **Why.** The test is worth landing now: it guards about 590 row and value pairs that agree today. Holding it until the six bugs are fixed would leave those unguarded.
 - **Reverse.** Delete the test and lower `skip_lists` by six.
 
+
+## 422. `Rev<S>` declares its own pieces; lowering reads `src` of a reversed view (compiler, 2026-11-23)
+
+- **Call.** `struct Rev<S>` gets `nth`/`take`/`drop`/`take_last`/`drop_last` in std/seq.cp, each the mirrored op on `self.src`. The checker resolves a member `Rev` declares on `Rev` and no longer passes it on to the source, and a member that needs `self: S` with `S: Indexed` called on a `.rev` is E0606. Lowering runs `Rev`'s own methods inline on a list view known to walk backwards. That needs one more name read in lowering: `src` of a reversed view is the view flipped back (`ir_builtin_names` 159 -> 160).
+- **Why.** Every piece of a `.rev` came out mirrored, because `List.drop` ran on a view that walks backwards (a silent wrong answer). Declaring the pieces on `Rev` puts them in the library, where a user's own view type could do the same.
+- **Reverse.** Drop the `Rev` methods and the `src` arm. A piece of a `.rev` is then E0606, with `List(a.rev)` as the fix.

@@ -1356,6 +1356,53 @@ pub struct Rev<S>():
     /// example: `let a = [1, 2]; a.rev.src == a`
     @get pub fn src(self) -> S = todo
 
+    /// \(O(1)\). The element `k` steps into the walk: `a.rev.nth(0)` is `a`'s last.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: unless `0 <= k < self.len`
+    /// example: `[1, 2, 3].rev.nth(0) == 3`
+    pub fn nth<T>(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
+
+    /// \(O(1)\). The first `min(k, len)` elements in walk order, as a reversed view:
+    /// the source's last `k`, walked backwards.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: an empty view
+    /// order: walk order of `self`; keeps the source's keys
+    /// traps: when `k < 0`
+    /// example: `List([1, 2, 3].rev.take(2)) == [3, 2]`
+    pub fn take(self, k: Int) -> Rev<Slice<S>> = self.src.take_last(k).rev
+
+    /// \(O(1)\). All but the first `min(k, len)` elements in walk order, as a reversed view:
+    /// the source without its last `k`, walked backwards.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: an empty view
+    /// order: walk order of `self`; keeps the source's keys
+    /// traps: when `k < 0`
+    /// example: `List([1, 2, 3].rev.drop(1)) == [2, 1]`
+    pub fn drop(self, k: Int = 1) -> Rev<Slice<S>> = self.src.drop_last(k).rev
+
+    /// \(O(1)\). The last `min(k, len)` elements in walk order, as a reversed view:
+    /// the source's first `k`, walked backwards.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: an empty view
+    /// order: walk order of `self`; keeps the source's keys
+    /// traps: when `k < 0`
+    /// example: `List([1, 2, 3].rev.take_last(2)) == [2, 1]`
+    pub fn take_last(self, k: Int) -> Rev<Slice<S>> = self.src.take(k).rev
+
+    /// \(O(1)\). All but the last `min(k, len)` elements in walk order, as a reversed view:
+    /// the source without its first `k`, walked backwards.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: an empty view
+    /// order: walk order of `self`; keeps the source's keys
+    /// traps: when `k < 0`
+    /// example: `List([1, 2, 3].rev.drop_last(1)) == [3, 2]`
+    pub fn drop_last(self, k: Int = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
+
 /// \(O(1)\) to make. The view `s.items`: `(key, element)` pairs in `s`'s order.
 pub struct Items<S>():
     /// \(O(1)\). The source sequence whose items this view walks.

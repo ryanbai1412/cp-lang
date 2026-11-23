@@ -271,6 +271,30 @@ impl<'a> Lowerer<'a> {
             if matches!(args[0].ty, Ty::List(_) | Ty::ListView(..) | Ty::MutView(_)))
     }
 
+    /// `value` walks backwards: `a.rev` over a list or view that walks
+    /// forwards, or a name bound to one.
+    pub(super) fn is_reversed(&self, value: &Expr) -> bool {
+        match &value.kind {
+            ExprKind::Builtin(Builtin::Reversed, args) if Self::reversed_list(value) => {
+                !self.is_reversed(&args[0])
+            }
+            _ => self.named_reversed(value),
+        }
+    }
+
+    /// The sequence the reversed `value` walks backwards.
+    pub(super) fn reversed_source(&mut self, value: Expr, span: Span) -> Expr {
+        match value.kind {
+            ExprKind::Builtin(Builtin::Reversed, mut args) if !self.is_reversed(&args[0]) => {
+                args.remove(0)
+            }
+            _ => {
+                let ty = value.ty.clone();
+                self.mk(ExprKind::Builtin(Builtin::Reversed, vec![value]), ty, span)
+            }
+        }
+    }
+
     pub(super) fn reversed_keys(&mut self, value: Expr, span: Span) -> Expr {
         let keys = match value.kind {
             ExprKind::Builtin(Builtin::Reversed, mut args) => self.seq_keys(args.remove(0), span),
