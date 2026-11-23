@@ -261,6 +261,19 @@ fn hover_shows_type_and_cost_with_its_range() {
 }
 
 #[test]
+fn representation_query_gives_inlay_hints_the_hover_storage_data() {
+    let (mut server, _) = open(SOURCE);
+    let offset = SOURCE.find("dist[v]").unwrap() as u32;
+    let rep = server.db.representation(URI, offset).unwrap();
+    assert_eq!(rep.ty, "[V]?Int");
+    assert_eq!(
+        (rep.bytes, rep.max_cells, rep.max_bytes),
+        (Some(8), Some(200_000), Some(1_600_000))
+    );
+    assert_eq!(rep.none_is_spare, Some(true));
+}
+
+#[test]
 fn hover_keeps_working_while_the_buffer_is_broken() {
     let (mut server, _) = open(SOURCE);
     // Leave a call open on the last line and a statement half-typed above it.
