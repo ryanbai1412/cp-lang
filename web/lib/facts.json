@@ -1,8 +1,14 @@
 {
   "//": "One source for facts several pages state. scripts/facts.mjs fails the build when a page spells one differently.",
   "install": {
-    "sh": "curl -fsSL https://cp-lang.org/install.sh | sh -s -- --channel edge",
-    "ps1": "& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Channel edge",
+    "edge": {
+      "sh": "curl -fsSL https://cp-lang.org/install.sh | sh -s -- --channel edge",
+      "ps1": "& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Channel edge"
+    },
+    "stable": {
+      "sh": "curl -fsSL https://cp-lang.org/install.sh | sh",
+      "ps1": "& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1)))"
+    },
     "cargo": "cargo install --locked --git https://github.com/ryanbai1412/cp-lang cpl-cli"
   },
   "version": "0.3.0",

@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import published from "@/generated/downloads.json";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { channelNotes } from "@/components/install";
 import facts from "@/lib/facts.json";
 import { cn } from "@/lib/utils";
 
@@ -257,17 +258,29 @@ const steps: { id: string; title: string; body: ReactNode }[] = [
     body: (
       <>
         <p>
-          One line installs a prebuilt binary of the edge build, the newest
-          commit of <code>main</code> that passed every check.
+          One line installs a prebuilt binary. Pick a channel:
         </p>
-        <p className="mt-3">Linux and macOS:</p>
-        <Code>
-          {facts.install.sh}
-        </Code>
-        <p className="mt-3">Windows (PowerShell):</p>
-        <Code>
-          {facts.install.ps1}
-        </Code>
+        <Tabs defaultValue="edge" className="mt-3">
+          <TabsList>
+            <TabsTrigger value="edge">Edge</TabsTrigger>
+            <TabsTrigger value="stable">
+              Stable
+              <Badge variant="outline" className="ml-2 text-[10px]">beta</Badge>
+            </TabsTrigger>
+          </TabsList>
+          {(["edge", "stable"] as const).map((ch) => (
+            <TabsContent key={ch} value={ch}>
+              <p className="mt-2">
+                {ch === "edge" ? "Edge is " : "Stable is "}
+                {channelNotes[ch]}.
+              </p>
+              <p className="mt-3">Linux and macOS:</p>
+              <Code>{facts.install[ch].sh}</Code>
+              <p className="mt-3">Windows (PowerShell):</p>
+              <Code>{facts.install[ch].ps1}</Code>
+            </TabsContent>
+          ))}
+        </Tabs>
         <p className="mt-3">
           Then open a new terminal and run <code>cpl --version</code>: edge
           builds print <code>{facts.edgeVersion}</code>, the version
