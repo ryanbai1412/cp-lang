@@ -238,18 +238,24 @@ impl Server {
                         ),
                     ])));
                 }
-                let hover = match self.db.hover(&uri, offset) {
-                    Some(hover) => Some(hover),
-                    None => {
-                        let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
-                        let cursor = Cursor {
-                            uri: &uri,
-                            analysis: &analysis,
-                            offset,
-                        };
-                        crate::syntax_hover::hover(&analysis, offset)
-                            .or_else(|| complete::member_hover(&cursor, &mut self.std))
+                let checked = self.db.hover(&uri, offset);
+                // `s.runs` names a library `fn runs(self: S, ..)`: the checker's
+                // fact is the free form, so show the declaration as written,
+                // as completion and signature help do.
+                let hover = if checked.as_ref().is_none_or(|h| h.text.starts_with("fn ")) {
+                    let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
+                    let cursor = Cursor {
+                        uri: &uri,
+                        analysis: &analysis,
+                        offset,
+                    };
+                    let member = complete::member_hover(&cursor, &mut self.std);
+                    match checked {
+                        Some(checked) => Some(member.unwrap_or(checked)),
+                        None => crate::syntax_hover::hover(&analysis, offset).or(member),
                     }
+                } else {
+                    checked
                 };
                 let Some(mut hover) = hover else {
                     return Ok(Reply::default());

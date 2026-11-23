@@ -1290,32 +1290,36 @@ fn signature_of(
         .map(|e| e.ty.clone());
     let doc = declared.as_ref().map_or(String::new(), |e| e.doc.clone());
     match checked {
-        Some(Ty::Fn { params, ret }) => Some(Signature {
-            name: name.to_string(),
-            params: params
-                .iter()
-                .filter(|p| p.name != "self")
-                .map(|p| {
-                    let written = declared
-                        .as_ref()
-                        .and_then(|e| e.params.iter().find(|w| w.name == p.name));
-                    let default = match written {
-                        Some(w) if !w.default.is_empty() => w.default.clone(),
-                        _ if p.has_default => "...".to_string(),
-                        _ => String::new(),
-                    };
-                    SigParam {
-                        name: p.name.clone(),
-                        ty: p.ty.to_string(),
-                        variadic: p.variadic,
-                        default,
-                        named_only: p.named_only,
-                    }
-                })
-                .collect(),
-            ret: ret.to_string(),
-            doc,
-        }),
+        // A library fn called as a method is checked as its free form, whose
+        // instantiated types lose the bounds and `yields`: the declaration wins.
+        Some(Ty::Fn { params, ret }) if !(method && params.iter().any(|p| p.name == "self")) => {
+            Some(Signature {
+                name: name.to_string(),
+                params: params
+                    .iter()
+                    .filter(|p| p.name != "self")
+                    .map(|p| {
+                        let written = declared
+                            .as_ref()
+                            .and_then(|e| e.params.iter().find(|w| w.name == p.name));
+                        let default = match written {
+                            Some(w) if !w.default.is_empty() => w.default.clone(),
+                            _ if p.has_default => "...".to_string(),
+                            _ => String::new(),
+                        };
+                        SigParam {
+                            name: p.name.clone(),
+                            ty: p.ty.to_string(),
+                            variadic: p.variadic,
+                            default,
+                            named_only: p.named_only,
+                        }
+                    })
+                    .collect(),
+                ret: ret.to_string(),
+                doc,
+            })
+        }
         _ => {
             let entry = declared?;
             let (params, ret) = match entry.kind {

@@ -516,3 +516,44 @@ fn inlay_hints_show_a_sum_of_ranged_cells_as_int() {
         .collect();
     assert_eq!(labels, [": Int"]);
 }
+
+/// `fn runs<S: Indexed, T, K>(self: S, by: ..)` called as `s.runs(..)`:
+/// signature help's label, without the receiver and the type parameters.
+fn as_called(detail: &str) -> String {
+    let rest = detail.strip_prefix("fn ").unwrap_or(detail);
+    let open = rest.find('(').unwrap();
+    let name = rest[..open].split('<').next().unwrap();
+    let args = &rest[open + 1..];
+    let args = args
+        .split_once(", ")
+        .filter(|(first, _)| first.starts_with("self"));
+    let args = args.map_or(&rest[open + 1..], |(_, rest)| rest);
+    let args = args
+        .strip_prefix("self: S)")
+        .map_or(args.to_string(), |r| format!("){r}"));
+    format!("{name}({args}")
+}
+
+// Hover, signature help and completion render one signature: the
+// declaration as written, also for a library fn called as a method, whose
+// checker fact is its free form (rule commands/R11).
+#[test]
+fn hover_signature_help_and_completion_agree_on_library_methods() {
+    let calls = [
+        ("let s = \"aab\"\nprint(s.", "runs", "().len())"),
+        ("let xs = [3, 1, 2]\nprint(xs.", "distinct", "())"),
+        ("let xs = [3, 1, 2]\nprint(xs.", "is_sorted", "())"),
+        ("let xs = [3, 1, 2]\nprint(xs.", "deduped", "())"),
+    ];
+    for (before, name, after) in calls {
+        let items = completions(&format!("{before}|{after}"));
+        let detail = detail_of(&items, name).to_string();
+        let hover = ask_at("textDocument/hover", &format!("{before}{name}|{after}"));
+        let shown = hover.at(&["contents", "value"]).as_str().unwrap_or("");
+        let line = shown.lines().nth(1).unwrap_or("");
+        assert_eq!(line, detail, "hover on {name} disagrees with completion");
+        let open = &after[..after.find('(').unwrap() + 1];
+        let (label, ..) = signature(&format!("{before}{name}{open}|{}", &after[open.len()..]));
+        assert_eq!(label, as_called(&detail), "signature help on {name}");
+    }
+}

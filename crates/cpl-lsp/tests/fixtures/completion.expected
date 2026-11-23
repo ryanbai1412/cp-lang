@@ -31,10 +31,10 @@ e [6] let e = Edge(to: 1, w: 2)
 a [6] let a = e.
 b [6] let b = es.
 runs [3] fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
+Each [22] pub struct Each<Ms>(ms: Ms)
 Action [22] pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>)
 Commutative [8] pub trait Commutative<T>: Op<T>
 Desc [22] pub struct Desc<T>(pub x: T)
-Group [22] pub struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T)
 
 == completion @ 11:8
 Edge [22] struct Edge
@@ -45,10 +45,10 @@ a [6] let a = e.
 b [6] let b = es.
 c [6] let c: Int =
 runs [3] fn runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
+Each [22] pub struct Each<Ms>(ms: Ms)
 Action [22] pub struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>)
 Commutative [8] pub trait Commutative<T>: Op<T>
 Desc [22] pub struct Desc<T>(pub x: T)
-Group [22] pub struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T)
 
 == completion @ 12:19
 cyclic_pairs [2] fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T)
