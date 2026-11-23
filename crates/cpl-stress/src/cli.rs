@@ -344,8 +344,16 @@ pub fn divergence_json(d: &Divergence) -> String {
             .collect();
         format!(",\"inside\":[{}]", steps.join(","))
     };
+    let blame = if d.blame.is_empty() {
+        String::new()
+    } else {
+        let lines: Vec<_> = (d.blame.iter())
+            .map(|(line, why)| format!("{{\"line\":{line},\"why\":{}}}", json_string(why)))
+            .collect();
+        format!(",\"blame\":[{}]", lines.join(","))
+    };
     format!(
-        "{{\"name\":{},\"nth\":{},\"call\":{},\"fast\":{},\"brute\":{}{inside}}}",
+        "{{\"name\":{},\"nth\":{},\"call\":{},\"fast\":{},\"brute\":{}{inside}{blame}}}",
         json_string(&d.name),
         d.nth,
         d.call,
@@ -430,6 +438,9 @@ pub fn print_divergence(stdout: &mut dyn Write, d: &cpl_interp::trace::Divergenc
                 d.name
             ),
         };
+    }
+    for (line, why) in &d.blame {
+        let _ = writeln!(stdout, "    look at line {line}: {why}");
     }
     if !d.inside.is_empty() {
         let _ = writeln!(stdout, "    the solution's last steps in it:");

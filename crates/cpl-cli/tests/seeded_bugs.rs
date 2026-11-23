@@ -203,7 +203,7 @@ fn stress_finds_every_seeded_bug_and_shrinks_it_to_the_minimal_input() {
 /// How many seeded bugs `cpl stress --explain` points at the very line
 /// the bug was planted on, the line ending in `// planted`. Raise it when
 /// the explanation gets better; it may never drop.
-const NAMED: usize = 5;
+const NAMED: usize = 17;
 
 /// The lines a `cpl stress --explain` report blames: where the debug run
 /// stopped, and where the solution first gave a value the brute did not.
@@ -217,6 +217,8 @@ fn blamed(report: &str) -> Vec<u32> {
             let line = line.trim_start();
             if line.starts_with("--> ") {
                 number(line.rsplit_once(".cp:")?.1)
+            } else if let Some(rest) = line.strip_prefix("look at line ") {
+                number(rest)
             } else if line.starts_with("solution ") {
                 number(line.rsplit_once(" at line ")?.1)
             } else {

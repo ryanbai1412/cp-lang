@@ -302,8 +302,7 @@ impl Recording {
         last.unwrap_or_else(|| fallback.min(self.len().saturating_sub(1)))
     }
 
-    /// The innermost call running at `step`, or the call `frame` levels out
-    /// from it.
+    /// The innermost call running at `step`, or the call `frame` levels out from it.
     pub fn call_at(&self, step: usize, frame: usize) -> Option<&Call> {
         let open: Vec<&Call> = self
             .calls
@@ -2200,6 +2199,7 @@ mod tests {
                 fast: Some((3, "5".to_string())),
                 brute: Some((9, "6".to_string())),
                 inside: Vec::new(),
+                blame: Vec::new(),
                 call: false,
             })
         );

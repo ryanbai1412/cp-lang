@@ -39,7 +39,7 @@ The most ambitious complete version ([MILESTONE-2](../../product/MILESTONE-2.md)
 - [x] Seeded bugs cover all 11 P0 classes, every one found and shrunk, median < 1 s (29 bugs, median 0.24 s; `io-flush` is `guess-unread-verdict`, a judge verdict left unread).
 - [ ] Traces stream in `crates/cpl-trace`; the viewer runs in the browser playground on the same VM; one vocabulary across trace, errors and spec.
 - [ ] A cold stranger debugs 3 planted bugs from the docs alone, in every editor.
-Next steps: the divergence report. `--explain` blames the planted line of 5 of the 29 seeded bugs (`explain_names_the_line_each_bug_was_planted_on`; each bug's planted line ends in `// planted`); next, blame the line that made a wrong call's value and the global a multitest leak carries, then the output-making line of an `@alt(program)` divergence.
+Next steps: the divergence report. `--explain` blames the planted line of 17 of the 29 seeded bugs (`explain_names_the_line_each_bug_was_planted_on`; each bug's planted line ends in `// planted`); a wrong call now names where it made its value, the lines that last changed what that line reads, and a global a multitest leak carries. Open: `@alt(program)` divergences (blame the line that made the first wrong output), calls with no own steps (`noip01p2`, `noip18p2`), and bugs upstream of the value (`dpk`, `noip04p2`, `noip10p1`, `noip14p2`, `nccc10s2`).
 
 ## Covers / not covered
 

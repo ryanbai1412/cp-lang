@@ -3,6 +3,7 @@
 
 use cpl_diag::Shown;
 use cpl_interp::trace::{document, first_divergence, stages, Divergence, Recording, TraceConfig};
+use std::collections::HashMap;
 use std::path::Path;
 
 /// The trace viewer: one page with nothing to fetch. A trace is put in
@@ -301,14 +302,151 @@ fn first_call_divergence(source: &str, fast: &Recording, slow: &Recording) -> Op
         }
     }
     inside.reverse();
+    let own: Vec<_> = (ours.entry..ours.exit)
+        .filter(|step| !nested.iter().any(|range| range.contains(step)))
+        .filter_map(|step| fast.step(step))
+        .collect();
+    let mut blame = leaked(source, fast, ours);
+    blame.extend(made(source, fast, ours, &own));
     Some(Divergence {
         inside,
+        blame,
         call: true,
         name: format!("{}({})", ours.name, shown_args(&ours.args)),
         nth: ours.ordinal,
         fast: Some((line_of(&ours.name), a.clone())),
         brute: Some((line_of(alt), b.clone())),
     })
+}
+
+/// Whether `name` is a word of `text`.
+fn mentions(text: &str, name: &str) -> bool {
+    let word = |c: char| c.is_alphanumeric() || c == '_';
+    text.match_indices(name)
+        .any(|(at, _)| !text[..at].ends_with(word) && !text[at + name.len()..].starts_with(word))
+}
+
+/// A top-level `var` declared outside every fn that a later call of a fn
+/// starts with another value than its 1st call did: one test left it for
+/// the next. Each such variable's declaration, with both values.
+fn leaked(source: &str, rec: &Recording, call: &cpl_interp::trace::Call) -> Vec<(u32, String)> {
+    let Some(first) = (rec.calls.iter()).find(|c| c.name == call.name && c.ordinal == 1) else {
+        return Vec::new();
+    };
+    if call.ordinal == 1 {
+        return Vec::new();
+    }
+    let (Some(then), Some(now)) = (rec.step(first.entry), rec.step(call.entry)) else {
+        return Vec::new();
+    };
+    let lines: Vec<&str> = source.lines().collect();
+    let Some(body) = body_of(&lines, &call.name) else {
+        return Vec::new();
+    };
+    let body = lines[body].join("\n");
+    let mut out = Vec::new();
+    for (var, value) in &now.values {
+        let name = &rec.vars[*var].name;
+        let before = then.values.iter().find(|(v, _)| v == var).map(|(_, v)| v);
+        let declared = (lines.iter()).position(|line| {
+            line.strip_prefix("var ")
+                .is_some_and(|rest| rest.starts_with(name.as_str()) && mentions(rest, name))
+        });
+        if let (Some(before), Some(at)) = (before, declared) {
+            if before != value && mentions(&body, name) {
+                out.push((
+                    at as u32 + 1,
+                    format!(
+                        "`{name}` is declared once for the whole run: this call of `{}` starts with `{name}` = {value}, its 1st call with {before}",
+                        call.name
+                    ),
+                ));
+            }
+        }
+    }
+    out
+}
+
+/// The lines of the body of `fn name`, 0-based, after its head.
+fn body_of(lines: &[&str], name: &str) -> Option<std::ops::Range<usize>> {
+    let head = format!("fn {name}(");
+    let at = lines.iter().position(|line| line.starts_with(&head))?;
+    let end = (at + 1..lines.len())
+        .find(|&k| !lines[k].is_empty() && !lines[k].starts_with(' '))
+        .unwrap_or(lines.len());
+    let end = (at + 1..end)
+        .rev()
+        .find(|&k| !lines[k].trim().is_empty())
+        .map_or(at + 1, |k| k + 1);
+    Some(at..end)
+}
+
+/// Every variable a step shows, top-level and local, by name, as JSON.
+fn named_values(rec: &Recording, step: &cpl_interp::trace::Step) -> HashMap<String, String> {
+    let mut out: HashMap<String, String> = (step.values.iter())
+        .map(|(var, value)| (rec.vars[*var].name.clone(), value.to_string()))
+        .collect();
+    if let Ok(cpl_json::Value::Object(locals)) = cpl_json::parse(&step.locals) {
+        for (name, value) in locals.iter() {
+            out.insert(name.to_string(), cpl_json::to_string(value));
+        }
+    }
+    out
+}
+
+/// Where a wrong call made its value: the `return` it ran, else the last
+/// line of its body, and the lines that last changed each variable that
+/// line reads.
+fn made(
+    source: &str,
+    rec: &Recording,
+    call: &cpl_interp::trace::Call,
+    own: &[cpl_interp::trace::Step],
+) -> Vec<(u32, String)> {
+    let Some(last) = own.last() else {
+        return Vec::new();
+    };
+    let lines: Vec<&str> = source.lines().collect();
+    let text_of = |line: u32| lines.get(line as usize - 1).copied().unwrap_or("");
+    let returned = mentions(text_of(last.line), "return");
+    let line = match body_of(&lines, &call.name) {
+        Some(body) if !returned && body.len() > 1 => body.end as u32,
+        _ => last.line,
+    };
+    let text = text_of(line);
+    let mut out = vec![(line, format!("`{}` makes its value here", call.name))];
+    let before = (call.entry.checked_sub(1))
+        .and_then(|step| rec.step(step))
+        .map(|step| named_values(rec, &step))
+        .unwrap_or_default();
+    let steps: Vec<_> = own
+        .iter()
+        .map(|step| (step.line, named_values(rec, step)))
+        .collect();
+    let mut names: Vec<&String> = (steps.last().map(|(_, values)| values.keys()))
+        .into_iter()
+        .flatten()
+        .filter(|name| mentions(text, name))
+        .collect();
+    names.sort();
+    let mut changed = Vec::new();
+    for name in names {
+        let mut prev = before.get(name);
+        let mut at = None;
+        for (line, values) in &steps {
+            let now = values.get(name);
+            if let Some(value) = now.filter(|_| now != prev) {
+                at = Some((*line, value.clone()));
+            }
+            prev = now;
+        }
+        if let Some((at, value)) = at.filter(|(at, _)| *at != line) {
+            changed.push((at, format!("`{name}` last changed here, to {value}")));
+        }
+    }
+    changed.sort();
+    out.extend(changed.into_iter().take(3));
+    out
 }
 
 /// A call's arguments, JSON by name, as `k: 1, a: [2, 1]`.
