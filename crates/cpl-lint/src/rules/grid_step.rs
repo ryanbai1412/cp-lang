@@ -164,7 +164,7 @@ fn bounds_check(expr: &Expr) -> Option<(String, String)> {
         let mut prev = &**first;
         for (op, next) in rest {
             let (name, other, op) = match (name_of(prev), name_of(next)) {
-                (Some(n), _) if int_of(next) == Some(0) || !matches!(int_of(next), Some(_)) => {
+                (Some(n), _) if int_of(next) == Some(0) || int_of(next).is_none() => {
                     (n, next, *op)
                 }
                 (_, Some(n)) => (n, prev, flip(*op)),
