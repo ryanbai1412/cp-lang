@@ -10,7 +10,7 @@ Detail behind [README.md](README.md). Numbers are from [metrics.toml](metrics.to
 - The token-ratio script broke when `scripts/scoreboard.py` was deleted (`ea2b88ff`), so goal 1's token test has no measurement today.
 
 ## Workstreams, in order (Milestone 1 first)
-0. **Milestone 1 acceptance run** (first, from 2026-11-22). Protocol, run schema and BLOCKERS.md generator (`research/acceptance/`, `gen.toml`); a held-out unseen Div2 set and a 5-problem virtual contest with references, gens, tests and checkers; a cold agent playing the friend on a fresh machine with only the website and docs; blockers ranked and sent to each lane's worklog daily. Real Codeforces/AtCoder submissions only after the coordinator confirms the accounts Ryan picks. This replaces workstream 3's unseen-20 gate for now.
+0. **Milestone 1 acceptance run** (first; due about 09:30 PST 2026-11-23). Done: the protocol, the run schema, the `BLOCKERS.md` generator and its `gen.toml` entry, and the held-out problems. Still to do: local judges (reference, gen, checker) for the 15 problems; a cold agent on Linux playing the friend with only the site, Neovim and Codeforces statements; CI runners for install and CLI on macOS and Windows; Codeforces-profile builds checked at 64 KB. A run every 2 hours, then BLOCKERS.md regenerated, each lane sent its rows, and a worklog checkpoint. No real judge submissions. This replaces workstream 3's unseen-20 gate for now.
 1. **Land in-flight work** (done 2026-11-22: skill, eval, principles and catalog on main).
 2. **Measurement repair** (done: token ratio, judge coverage of `corpus/sets/v03.txt`). Kept only as the Submit-step evidence.
 3. **Blind eval loop.** Rerun the known-20 cold eval when the skill changes, as a regression check. It feeds the acceptance run's agent setup, which uses the docs, not the skill.
@@ -36,6 +36,6 @@ Detail behind [README.md](README.md). Numbers are from [metrics.toml](metrics.to
 - **Gate cost.** Adding 305 ports to `judges.rs` slows the fast gate; keep the full sweep in `--full` and a sampled set in `--fast`.
 
 ## Next moves (Milestone 1)
-1. `research/acceptance/PROTOCOL.md`, the run schema, and the BLOCKERS.md generator with its `gen.toml` entry.
-2. The held-out unseen set: 10 Div2 A-E plus a 5-problem virtual contest, with references, gens, tests and checkers.
-3. First acceptance run with a cold agent; publish BLOCKERS.md; send each lane its rows.
+1. Local judges for the 15 held-out problems (`research/acceptance/problems/<id>/`).
+2. Score run 1, publish BLOCKERS.md, send each lane its rows; a run and a worklog checkpoint every 2 hours.
+3. A Linux, macOS and Windows CI job for the install and CLI steps, feeding each run.

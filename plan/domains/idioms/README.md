@@ -3,22 +3,23 @@
 Segment: D. Taste and co-design. Owns: bundled skill, principles, idiom catalog, `research/dryrun`, `corpus/` (ports + new problems), `crates/cpl-judge`, scoreboard (corpus suite), `plan/domains/spec/delta/`. Status (2026-11-22, late): skill on main (`skill-gen.py --check`: 50 files, 76 blocks); 289/305 tracked ports check on v0.3; `corpus/sets/v03.txt` has 309 judge-proven entries, all 8 profiles.
 Packet: [PLAN.md](PLAN.md) (detail), [metrics.toml](metrics.toml) (commands + today's values), [ARCHITECTURE.md](ARCHITECTURE.md) (code as it is), [worklog.md](worklog.md).
 
-## Milestone 1 (priority over everything below)
-[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md): a Codeforces 1500+ friend who has never used CPL understands it, tries it in the browser, installs it, solves unfamiliar problems, tests them, submits for AC on Codeforces/AtCoder, and competes, all without help. Idioms owns the **acceptance run** that says whether this works, grown out of the blind skill evals.
+## Milestone 1 (priority over everything below; due about 09:30 PST 2026-11-23)
+[plan/product/MILESTONE-1.md](../../product/MILESTONE-1.md): a Codeforces 1500+ friend who has never used CPL understands it, tries it in the browser, installs it, solves unfamiliar problems, tests them, builds them for Codeforces, and competes, all without help. Idioms owns the **acceptance run** that says whether this works, grown out of the blind skill evals. The run ships on edge, needs no stable v0.3.0, and makes no real judge submissions.
 
 **What the milestone needs from idioms (exit criteria)**
-- **Protocol and harness.** `research/acceptance/PROTOCOL.md` defines the run: a cold agent on a fresh machine plays the friend using only https://cp-lang.org and the docs it links (no repo, no skill), steps 1-7 of the scenario (J1-J7 in EXPERIENCE.md terms). Each run writes `research/acceptance/runs/<date>.json`: pass or fail per step, minutes per step, and every hesitation and workaround, each tagged with the owning lane.
-- **Unseen problems.** A held-out set of Div2 A-E problems plus one timed virtual contest (5 problems, 2 h), each with an accepted C++ reference, gen.py, tests and a checker where needed. They are kept out of `corpus/`, the skill and the docs.
-- **Blocker list.** `plan/product/BLOCKERS.md` is generated from the runs (ranked by scenario step blocked, then frequency, then minutes lost), registered in `gen.toml`, and refreshed daily. Each lane gets its rows in its worklog.
-- **Done when:** the latest run passes 7/7 steps; Solve gets accepted verdicts against the references on at least 8 of 10 unseen problems; Compete solves at least 4 of 5 in 2 h with 0 blocks from missing ordinary functionality or tool failures; BLOCKERS.md has no open row that blocks a step.
-- **Submit evidence.** Every v03 entry builds under the `codeforces` and `atcoder` profiles (`every_v03_port_checks`, true today). Real-judge AC on a sample waits on the coordinator; Ryan decides the accounts.
+- **Protocol and harness** (done, `c325c1b05`). [research/acceptance/PROTOCOL.md](../../../research/acceptance/PROTOCOL.md) defines the run: a cold agent plays the friend using only https://cp-lang.org, the pages it links and Codeforces statements, with Neovim as the editor. Each run writes `research/acceptance/runs/<date>-<n>.json` with pass or fail per step, minutes per step, the OS, and every blocker, workaround and hesitation, each tagged with its lane.
+- **Three OSes.** Every run covers Linux, macOS and Windows. The agent drives Linux; CI runners on each OS do the `install` step and the CLI half of `test` and `submit`, following the site's instructions word for word.
+- **Unseen problems** (picked, `6165c9599`). Ten Div2 problems (Codeforces 2285A-E and 2289A-E) plus a timed virtual round (2272A-E, 2 h), all newer than the corpus. Each needs a local judge: reference C++, `gen.py` and a checker where answers aren't unique.
+- **Codeforces profile.** Every solution is built with `--judge codeforces`, compiled with Codeforces' g++ flags, and kept under 64 KB. Every v03 entry already builds under that profile (`every_v03_port_checks`).
+- **Blocker list** (generator done). [plan/product/BLOCKERS.md](../../product/BLOCKERS.md) is generated from the runs by `research/acceptance/blockers.py` (registered in `gen.toml`), ranked by kind, then step blocked, then frequency, then minutes lost. It is refreshed every 2 hours, and each lane gets its rows in its worklog.
+- **Done when:** the latest run passes 7/7 steps on all three OSes; Solve gets local-judge accepts on at least 8 of 10; Compete solves at least 4 of 5 in 2 h with nothing lost to missing ordinary functionality or a tool failure; BLOCKERS.md has no open blocker row.
 
-**Deferred** (cheap or gate-only until the milestone passes): idiomatic re-ports from `dream.cp` and the token and taste targets (M3); corpus growth past 100 and `cpl-conform corpus` 100/100; port lint-warning triage, except where the friend meets the lint; the unseen-20 skill gate, which the acceptance run's unseen set replaces for now. Mechanical port migration continues only when a stdlib or compiler fix unblocks a port.
+**Deferred** (cheap or gate-only until the milestone passes; continues in parallel): idiomatic re-ports from `dream.cp` and the token and taste targets (M3); corpus growth past 100 and `cpl-conform corpus` 100/100; port lint-warning triage, except lints the friend meets; the unseen-20 skill gate, which the acceptance set replaces for now. Mechanical port migration continues only when a stdlib or compiler fix unblocks a port.
 
 **Top 3 next steps**
-1. Write `research/acceptance/PROTOCOL.md`, the run JSON schema, and the BLOCKERS.md generator, with its `gen.toml` entry.
-2. Build the held-out unseen set (10 Div2 A-E plus a 5-problem virtual contest) with references, generators, tests and checkers.
-3. Run the first acceptance run with a cold agent, publish BLOCKERS.md, and send each lane its rows.
+1. Local judges for the 15 held-out problems, so run 1 (started 21:29, Linux) can be scored.
+2. Score run 1, publish BLOCKERS.md, send each lane its rows, then rerun every 2 hours, with a worklog checkpoint each time.
+3. A CI job on Linux, macOS and Windows that follows the site's install and CLI steps and writes its results into the run.
 
 ## Mission
 What idiomatic v0.3 looks like, written down (skill, principles, idiom catalog) and proven (re-ports on every judge, dry runs, blind evals, new problems). A cold model given the skill writes code that says the editorial's idea, and the corpus proves it is accepted on every judge.
