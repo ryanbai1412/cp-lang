@@ -1026,7 +1026,7 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ExprKind::Float(text)
             }
-            T::Str => self.string(),
+            T::Str => self.python_format().unwrap_or_else(|| self.string()),
             T::RawStr => {
                 let text = self.text();
                 let inner = text[2..].strip_suffix('"').unwrap_or(&text[2..]);

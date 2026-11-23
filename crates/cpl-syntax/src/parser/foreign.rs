@@ -1,6 +1,8 @@
 //! Headers written as another language writes them, read as ours.
 
+use super::expr::unescape;
 use super::*;
+use crate::literal::{self, StrPart};
 
 impl<'a> Parser<'a> {
     /// The help for a token where a statement should have ended: `;`
@@ -728,6 +730,101 @@ impl<'a> Parser<'a> {
         );
         self.bump();
         true
+    }
+
+    /// `"{} {:.2f}".format(a, x)`: Python's format. A CP Lang string names
+    /// its values in its holes, so one error with the fix `"{a} {x:.2f}"`,
+    /// read as that string.
+    pub(super) fn python_format(&mut self) -> Option<ExprKind> {
+        let format = self.tokens.get(self.pos + 2).is_some_and(|t| {
+            t.kind == T::Ident
+                && self.src.get(t.span.start as usize..t.span.end as usize) == Some("format")
+        });
+        if self.peek_n(1) != T::Dot || !format || self.peek_n(3) != T::LParen {
+            return None;
+        }
+        let text = self.text();
+        let parts = literal::string_parts(text);
+        let holes: Vec<Span> = parts
+            .iter()
+            .filter_map(|p| match p {
+                StrPart::Expr(span) => Some(*span),
+                StrPart::Text(_) => None,
+            })
+            .collect();
+        let unnamed = |h: &Span| {
+            let inner = h.text(text);
+            inner.is_empty() || inner.starts_with(':')
+        };
+        if holes.is_empty() || !holes.iter().all(unnamed) {
+            return None;
+        }
+        let start = self.start();
+        for _ in 0..4 {
+            self.bump();
+        }
+        let mut args = Vec::new();
+        while !matches!(self.peek(), T::RParen | T::Newline | T::Eof) {
+            args.push(self.expr());
+            if !self.eat(T::Comma) {
+                break;
+            }
+        }
+        self.eat(T::RParen);
+        let span = self.span_from(start);
+        let mut diag = Diagnostic::error(
+            codes::EXPECTED_TOKEN,
+            span,
+            "a CP Lang string names its values in its braces, not in `.format(...)`",
+        );
+        if args.len() != holes.len() {
+            let help = "write each value in its hole: `\"{x} {y:.2}\"`";
+            self.recovered(diag.with_help(help));
+            let text_only = parts.iter().filter_map(|p| match p {
+                StrPart::Text(t) => Some(StrPiece::Text(unescape(t.text(text)))),
+                StrPart::Expr(_) => None,
+            });
+            return Some(ExprKind::Str(text_only.collect()));
+        }
+        let (mut fixed, mut prev, mut pieces) = (String::new(), 0, Vec::new());
+        let mut args = args.into_iter();
+        for part in &parts {
+            match part {
+                StrPart::Text(t) => pieces.push(StrPiece::Text(unescape(t.text(text)))),
+                StrPart::Expr(h) => {
+                    let arg = args.next().unwrap();
+                    let inner = h.text(text);
+                    let arg_text = self.item_text(arg.span);
+                    let plain = arg_text
+                        .strip_prefix('"')
+                        .and_then(|t| t.strip_suffix('"'))
+                        .filter(|t| inner.is_empty() && !t.contains(['{', '}', '"', '\\']));
+                    if let Some(plain) = plain {
+                        fixed.push_str(&text[prev..h.start as usize - 1]);
+                        fixed.push_str(plain);
+                        prev = h.start as usize + 1;
+                        pieces.push(StrPiece::Text(plain.to_string()));
+                        continue;
+                    }
+                    fixed.push_str(&text[prev..h.start as usize]);
+                    fixed.push_str(&arg_text);
+                    fixed.push_str(inner);
+                    prev = h.start as usize + inner.len();
+                    pieces.push(match inner.strip_prefix(':').and_then(FmtSpec::parse) {
+                        Some(spec) => StrPiece::Spec(arg, spec),
+                        None => StrPiece::Expr(arg),
+                    });
+                }
+            }
+        }
+        fixed.push_str(&text[prev..]);
+        diag = diag.with_help(format!("write `{fixed}`")).with_fix(
+            format!("write `{fixed}`"),
+            span,
+            fixed,
+        );
+        self.recovered(diag);
+        Some(ExprKind::Str(pieces))
     }
 
     /// `let a, b = t`, `for i, x in ...`: Python's unpacking without parentheses. One error
