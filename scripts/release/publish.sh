@@ -37,7 +37,12 @@ for tag in $tags; do
             # Never delete edge first: installs keep working if any step fails.
             # Move the tag, upload the archives, then the SHA256SUMS and
             # latest.json naming them, and only then drop assets this build lacks.
-            gh api -X PATCH "repos/{owner}/{repo}/git/refs/tags/edge" -f sha="$commit" -F force=true >/dev/null
+            # GITHUB_TOKEN gets a 403 moving a tag past a commit that changes
+            # .github/workflows; the assets still publish, and latest.json
+            # names the commit.
+            moved=true
+            gh api -X PATCH "repos/{owner}/{repo}/git/refs/tags/edge" -f sha="$commit" -F force=true >/dev/null \
+                || { moved=false; echo "publish: WARNING: could not move tag edge to $commit; publishing assets anyway" >&2; }
             archives=() index=() names=" "
             for f in "${files[@]}"; do
                 names+="${f##*/} "
@@ -48,7 +53,9 @@ for tag in $tags; do
             for asset in $(gh release view edge --json assets --jq '.assets[].name'); do
                 case "$names" in *" $asset "*) ;; *) gh release delete-asset edge "$asset" --yes ;; esac
             done
-            gh release edit edge --target "$commit" --title "CP Lang edge" --notes "$edge_notes" --prerelease --latest=false
+            target=()
+            ! $moved || target=(--target "$commit")
+            gh release edit edge "${target[@]}" --title "CP Lang edge" --notes "$edge_notes" --prerelease --latest=false
             ;;
         edge-*)
             gh release create "$tag" "${files[@]}" --target "$commit" --prerelease --latest=false \

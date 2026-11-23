@@ -24,7 +24,7 @@ case "$1 $2" in
     [ -z "$FAKE_GH_FAIL_UPLOAD" ] || exit 1
     tag="$3"; shift 3
     for a in "$@"; do case "$a" in -*) ;; *) cp "$a" "$FAKE_GH/releases/$tag/" ;; esac; done ;;
-  "api -X") ;;
+  "api -X") [ -z "$FAKE_GH_FAIL_TAG" ] || { echo "HTTP 403" >&2; exit 1; } ;;
   "release create")
     tag="$3"; shift 3; mkdir -p "$FAKE_GH/releases/$tag"
     for a in "$@"; do case "$a" in -*) break ;; *) cp "$a" "$FAKE_GH/releases/$tag/" ;; esac; done ;;
@@ -120,6 +120,20 @@ class ReleaseScriptsTest(unittest.TestCase):
         edge = self.gh / "releases" / "edge"
         self.assertEqual(json.loads((edge / "latest.json").read_text())["toolchain"], "edge-2026-11-22-aaaaaaaa")
         self.assertEqual((edge / "cpl-x86_64-unknown-linux-musl.tar.gz").read_bytes(), b"one")
+
+    def test_edge_publishes_its_assets_when_the_tag_cannot_move(self):
+        dist = Path(self.tmp.name) / "dist"
+        dist.mkdir()
+        (dist / "cpl-x86_64-unknown-linux-musl.tar.gz").write_bytes(b"one")
+        self.publish(dist, "edge-2026-11-22-aaaaaaaa", "edge")
+        (dist / "cpl-x86_64-unknown-linux-musl.tar.gz").write_bytes(b"two")
+        self.env["FAKE_GH_FAIL_TAG"] = "1"
+        self.publish(dist, "edge-2026-11-22-bbbbbbbb", "edge")
+        edge = self.gh / "releases" / "edge"
+        self.assertEqual(json.loads((edge / "latest.json").read_text())["toolchain"], "edge-2026-11-22-bbbbbbbb")
+        self.assertEqual((edge / "cpl-x86_64-unknown-linux-musl.tar.gz").read_bytes(), b"two")
+        edits = [l for l in (self.gh / "calls.log").read_text().splitlines() if l.startswith("release edit edge")]
+        self.assertNotIn("--target", edits[-1])
 
     def test_the_jetbrains_repo_points_each_channel_at_its_plugin(self):
         out = Path(self.tmp.name)
