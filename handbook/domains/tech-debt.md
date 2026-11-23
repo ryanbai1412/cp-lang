@@ -1,0 +1,121 @@
+# Tech-debt
+
+| | |
+|---|---|
+| Kind | Domain charter |
+| Owner | tech-debt |
+| Status | Active |
+| Describes | `scripts/debt-ratchet.py`, `scripts/test_debt_ratchet.py`, `scripts/check-handbook.py`, `plan/domains/tech-debt/` |
+
+## Mission
+
+The codebase gets simpler every week. Each concept lives in one place, the
+stdlib gets no power the compiler grants it by name, each job (check, lint,
+fix, run, trace) has one entry point that the CLI, the editor and the
+playground all call, and an everyday change (a std method, a diagnostic, a
+lint, an editor feature) touches one obvious place. This domain measures the
+shape of the code, keeps every measure shrink-only, reviews what other
+domains land, and builds the checks that hold every domain's quality
+register to account.
+
+For example: two crates each compare real-number output tokens with their
+own tolerance. The near-duplicate detector counts both. This domain routes
+the merge to the owner, and once one comparison remains, the count drops and
+can't rise again.
+
+## Scope
+
+Owns:
+
+- `scripts/debt-ratchet.py` and its baselines: every shrink-only count of
+  structural debt, and the detectors that run inside it.
+- `scripts/test_debt_ratchet.py`: the ratchet's own tests.
+- `scripts/check-handbook.py`: the outsider-writing check for the handbook.
+- `handbook/process/quality.md`, `handbook/design/overview.md`,
+  `handbook/design/sources-of-truth.md`.
+- The accountability checks: register rows name real checks, skip and
+  allowlist sizes only shrink, commits that change expected output together
+  with code are flagged, mutation scores, and the escape log.
+- Cross-domain moves that no single owner can make, such as splitting a
+  file over the size cap or deleting a duplicate mechanism, landed as one
+  announced commit.
+
+Does not own:
+
+- Any crate's behavior. A structural fix inside a crate is agreed with that
+  crate's owner, who keeps it.
+- Language semantics (`spec/`), the stdlib's API, or performance budgets.
+- The gate's tiers and time budgets (infra). This domain adds no new gate:
+  every detector runs inside the existing ratchet.
+
+## Interfaces
+
+Provides:
+
+- `python3 scripts/debt-ratchet.py`: fails when any count rises above its
+  baseline. `--show` prints every count, `--list NAME` lists the offenders
+  of one count. It runs in the fast gate in under a second.
+- A burn-down of every count, published to `plan/domains/tech-debt/`.
+- A cold review of landed diffs: duplicated mechanisms, one-off special
+  cases, single-use helpers and layering breaks, each fixed or sent to its
+  owner.
+
+Needs:
+
+- Each domain: a quality register in its charter whose rows name real
+  checks, and a fix to its suite, not only to the bug, when a bug escapes.
+- Compiler: the shared check session, the intrinsics table and the VM work
+  that the ratchets measure progress against.
+- Infra: the ratchet stays in the fast gate.
+
+## Quality register
+
+Each row is one attribute this domain must be high on, the metric, the
+strongest mechanism that enforces it, and the check that runs it. `missing`
+means no real check exists yet. Targets and current numbers are in
+`plan/domains/tech-debt/metrics.toml`.
+
+| Attribute | Metric | Mechanism | Check |
+|---|---|---|---|
+| One engine runs programs | Statements the tree-walker runs, kinds of VM fallback | Re-architecture: delete the tree-walker; meanwhile a shrink-only fallback list | `crates/cpl-cli/tests/vm_fallbacks.rs`, `scripts/debt-ratchet.py` (`vm_fallbacks`, `tree_walker`) |
+| No stdlib privilege by name | Std names matched in the checker, IR, lints and backend | Re-architecture: an intrinsics table; meanwhile ratchets | `scripts/debt-ratchet.py` (`ir_builtin_names`, `backend_std_names`, `lint_std_names`, `prelude_privilege`) |
+| One home per mechanism | Near-duplicate and duplicate fn bodies across crates | Ratchet with a detector | `scripts/debt-ratchet.py` (`near_dup_fns`, `dup_fn_bodies`, `lint_dup_helpers`) |
+| Consumers use checker facts, not their own | Re-derivations of types or facts outside the checker | Ratchet with a detector | `scripts/debt-ratchet.py` (`consumer_rederived`) |
+| One analysis per process | Query databases built outside the shared session | Re-architecture: one check session; meanwhile a ratchet | `scripts/debt-ratchet.py` (`own_databases`) |
+| Layering holds | Crate edges not in the allowed list, layer violations | Gate on new edges | `scripts/debt-ratchet.py` (`crate_edges`, `dev_crate_edges`, `layer_violations`) |
+| Files stay readable | Rust files over the size cap or within 5% of it | Ratchet | `scripts/debt-ratchet.py` (`rs_near_cap`) |
+| One entry point per job, same result everywhere | CLI, editor and playground disagreeing on check, fix, run or trace | Differential tests | `crates/cpl-wasm/tests/parity.rs`, `crates/cpl-cli/tests/lsp_parity.rs` |
+| Generated C++ copies only when a reason requires it | Deep copies and `std::function` in emitted C++ | Ratchet | `scripts/debt-ratchet.py` (`cpp_deep_copies`, `cpp_std_functions`), `crates/cpl-cli/tests/read_only_copies.rs` |
+| Side effects behave the same in both engines | Corpus variants whose interpreter and C++ output differ | Generated differential variants | `scripts/debt-ratchet.py` (`diff variant/*` run) |
+| The ratchet measures what it claims | Ratchet unit tests | Hand-written suite | `scripts/test_debt_ratchet.py` |
+| Script tests run somewhere | Python test files no gate runs | Ratchet | `scripts/debt-ratchet.py` (`unrun_script_tests`, `direct_python`) |
+| Docs point at code that exists | Paths named in architecture docs that are gone | Ratchet | `scripts/debt-ratchet.py` (`stale_arch_paths`) |
+| Handbook reads for an outsider | Shared-history phrases, commit hashes | Lint | `scripts/check-handbook.py` |
+| Skipped tests don't grow | Ignored Rust tests, pending tests | Ratchet | `scripts/debt-ratchet.py` (`rust_ignore`, `pending_tests`) |
+| Allowlists, xfails and known-difference lists don't grow | Entries across every such list | Ratchet | `missing` |
+| Every register row names a real check | Rows naming no existing test or job, per domain | Lint plus ratchet | `missing` |
+| Expected output changes for a reason | Commits that edit expectations and code together | Post-land detector | `missing` |
+| Suites catch the bugs they claim to | Mutation score of `cpl-check` and `cpl-lint` suites | Mutation testing | `missing` |
+| Escaped bugs fix the suite | Escapes traced to the register row that should have caught them | Escape log | `missing` |
+| An everyday change touches one obvious place | Files, crates and minutes for a cold agent on a fixed change | Process: cold change-cost probes | process |
+| Landed diffs add no new debt | Duplicates, special cases, single-use helpers per review | Process: hourly review of landed diffs | process |
+
+## Suites and tools
+
+| Tool | Catches | Run |
+|---|---|---|
+| Debt ratchet | Any structural count rising above its baseline | `python3 scripts/debt-ratchet.py` (`--show`, `--list NAME`) |
+| Ratchet tests | A detector miscounting | `python3 -m unittest scripts/test_debt_ratchet.py` |
+| VM fallback list | A program part newly running on the tree-walker | `cargo nextest run -p cpl-cli --test vm_fallbacks` |
+| Walked-statement counts | Tree-walker statements, including inside fallbacks | `CPL_VM_STATS=1 cpl run ...` |
+| Entry-point parity | CLI and playground disagreeing | `cargo nextest run -p cpl-wasm --test parity` |
+| Handbook check | Text only its writer can follow | `python3 scripts/check-handbook.py` |
+
+A count goes down by fixing the cause and re-recording the baseline in the
+same commit. A count never goes up: a change that needs more first removes
+the same amount elsewhere, or records why in `decisions.md`.
+
+## Changes
+
+- 2026-11-23: first draft, folding in the stable parts of
+  `plan/domains/tech-debt/README.md` and `ARCHITECTURE.md`.

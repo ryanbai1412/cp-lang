@@ -176,3 +176,10 @@ command = "probes P1-P4 logged in plan/domains/tech-debt/worklog.md"
 today = "cold run 2026-11-22: P1 8, P2 7, P3 11, P4 5"
 target = "<= 3 files each"
 milestone = "M2, M3"
+
+[[metric]]
+name = "register_missing"
+command = "rows marked `missing` in the Quality register of handbook/domains/tech-debt.md"
+today = 5
+target = "0"
+milestone = "M2"
