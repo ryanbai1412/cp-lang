@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2597 (995 passing). Rules: 568.
+Cases: 2599 (995 passing). Rules: 568.
 
 ## Summary per chapter
 
-- R01 (01-lexical-grammar.md): 56 rules, 154 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R01 (01-lexical-grammar.md): 56 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 137 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 69 rules, 130 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 69 rules, 131 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 53 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 27 rules, 66 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 155 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -88,7 +88,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R01.3.1 [2+ 3-]: Types, domains, traits, type parameters and enum variants are `PascalCase`: `Some(x)`, `No...
 - R01.3.2 [4+ 1-]: , so compare a lowercase `const` with a guard (decision 369).
 - R01.3.3 [2+ 1-]: So a pattern needs no lookup to read: a capitalized name is a variant or constant, a lower...
-- R01.3.4 [3+ 1-]: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
+- R01.3.4 [4+ 1-]: In an expression, `Name<` opens type arguments when `Name` is capitalized and what follows...
 - R01.3.5 [1+ 0-]: `_` is the discard name in patterns and parameters.
 - R01.3.6 [2+ 0-]: `Some` and `None` are not reserved: they are the variants of `?T`, in the prelude like any...
 - R01.3.7 [1+ 1-]: `unchecked:` opens a block whose arithmetic and indexing checks are off in every build (ch...
@@ -276,7 +276,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.7.2 [1+ 0-]: | 1 | `None` | `r.l` | the element
 - R04.7.3 [1+ 0-]: | ≥ 2 | ⌊n/2⌋ and ⌈n/2⌉ elements | `left.r` | `right.first`
 - R04.8.1 [2+ 1-]: `.l`/`.r` switch kind, `.prev`/`.next` keep it; `.next(k)`/`.prev(k)` step k.
-- R04.8.2 [3+ 3-]: Position arithmetic gives an `Int`; back into the domain is explicit.
+- R04.8.2 [4+ 3-]: Position arithmetic gives an `Int`; back into the domain is explicit.
 - R04.8.3 [2+ 1-]: `r.first_true(ok)`/`r.last_true(ok)` return `?` the element; `r.bsearch(ok)` returns the f...
 - R04.8.4 [3+ 2-]: Empty domains are valid; `V.first`/`V.last` are `?V` (no `NonEmpty` bound).
 - R04.8.5 [2+ 1-]: One generic `Range<D>`; elements are the kind of the ends, so `a..=b` on cuts is cuts. The...
