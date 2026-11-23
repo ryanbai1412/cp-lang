@@ -89,7 +89,7 @@ export const PRELUDE_VALUES: readonly string[] = [
     'rotated_left', 'rotated_right', 'round', 'runs', 'scan', 'scc', 'select', 'shuffle', 'sign', 'some',
     'sort', 'sorted', 'span', 'split_best', 'sqrt', 'starts_with', 'step', 'sum', 'swap', 'take_while',
     'tally', 'ternary_max', 'ternary_max_real', 'ternary_min', 'ternary_min_real', 'to_str', 'topo',
-    'track', 'trunc', 'undoing', 'upper', 'windows', 'yes', 'z_function', 'zip',
+    'track', 'trunc', 'turn', 'undoing', 'upper', 'windows', 'yes', 'z_function', 'zip',
 ];
 
 /** Public `spec/std/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */
@@ -145,7 +145,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'subset_log', 'subset_sums', 'suffix_array', 'suffix_fold', 'suffix_tree_edges', 'sum_mobius',
     'sum_multiplicative', 'sum_phi', 'supermasks', 'swap_at', 'symmetric', 'take', 'take_all', 'take_last',
     'taylor_shift', 'to_lower', 'to_upper', 'transposed', 'transposed_mul', 'triangles', 'trim', 'trim_end',
-    'trim_start', 'turn', 'turn_eps', 'two_color', 'two_edge_components', 'update', 'upper_hull',
+    'trim_start', 'turn_eps', 'two_color', 'two_edge_components', 'update', 'upper_hull',
     'upper_hull_idx', 'valleys', 'voronoi_cells', 'with_domain', 'with_next', 'zip_exact',
 ];
 

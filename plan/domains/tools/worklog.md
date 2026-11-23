@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Landed (this): VS Code tables list `turn` as a prelude value (spec/std/prelude.cp now imports it), which turned the no-phantom-symbols unit test red; the LSP wire test accepts every `insert )` alternative E0101 now offers, preferred first. VS Code unit tests 37/37 (`npm test`).
 - From infra (sheriff): added `spanning_tree` (stdlib f35ea9799) to `editors/vscode/src/languageData.ts` STDLIB_VALUES and the grammar's stdlib-function rule to make `vscode_sync` green again.
 - Landed (this): one prefix, `cpl:`, for every command's own errors (decision 237): `new`, `test`, `bench`, `watch` and `doc` said `error:`. Asked debugger for `stress`. Re-measured golden counts (`measure.py golden`): fmt, lint, explain, watch and replay at 2.
 - Landed (this): golden tests for `watch` (help, usage error, `--once` pass exit 0 and WA exit 1) and `replay` (help, usage error), `crates/cpl-cli/tests/golden.rs`.

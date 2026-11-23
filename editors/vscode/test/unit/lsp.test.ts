@@ -35,11 +35,17 @@ test('cpl lsp serves diagnostics, hover, quick fixes, completion, references, re
         published.push(params);
         wake?.();
     });
-    const nextDiagnostics = async (): Promise<Diagnostic[]> => {
+    const nextPublish = async (): Promise<Diagnostic[]> => {
         if (published.length === 0) {
             await new Promise<void>(resolve => (wake = resolve));
         }
         return published.shift()!.diagnostics;
+    };
+    // Each change publishes twice: the checker's diagnostics, then the full
+    // set with the lints; the second is what the change settles on.
+    const nextDiagnostics = async (): Promise<Diagnostic[]> => {
+        await nextPublish();
+        return nextPublish();
     };
     connection.listen();
     try {
@@ -93,8 +99,9 @@ test('cpl lsp serves diagnostics, hover, quick fixes, completion, references, re
             range: unclosed.range,
             context: { diagnostics },
         });
-        assert.equal(actions.length, 1);
-        assert.equal(actions[0].kind, 'quickfix');
+        // The likeliest place for the `)` comes first; the others are alternatives.
+        assert.ok(actions.length >= 1);
+        assert.ok(actions.every(action => action.kind === 'quickfix' && action.title.startsWith('insert `)`')));
         assert.equal(actions[0].title, 'insert `)`');
         assert.deepEqual(actions[0].edit.changes[URI].map(edit => edit.newText), [')']);
 
