@@ -9,7 +9,7 @@ domain Pen = 0..=pens  // pen 0 is the outside
 // a fence is one side of two pens, or of one pen and the outside
 var fences: List<(cost: Int, u: Pen, v: Pen)> = []
 var open = Map<(Int, Int), (cost: Int, pen: Pen)>()  // sides seen once so far
-for pen in Pen.first!.r..:
+for pen in Pen.at(1)!..=Pen.last!:
     let m: 3..=8 = read()
     let posts: [0..m]1..=1000 = read()
     let costs: [0..m]1..=5000 = read()
@@ -17,8 +17,8 @@ for pen in Pen.first!.r..:
         let (a, b) = (posts[j], posts[(j + 1) % m])
         let side = (min(a, b), max(a, b))
         if let other = open.remove(side): fences.push((costs[j], pen, other.pen))
-        else: open[side] = (costs[j], pen)
-for (_, (cost, pen)) in open: fences.push((cost, pen, Pen.first))
+        else: open[side] = (cost: costs[j], pen:)
+for (_, (cost, pen)) in open: fences.push((cost, pen, Pen.first!))
 fences.sort()
 
 fn spanning(outside: Bool) -> ?Int:

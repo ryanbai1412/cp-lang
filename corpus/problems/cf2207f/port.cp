@@ -38,7 +38,8 @@ fn close_run(lo: Rank, hi: Rank, before: ?Rank):
     by_right[hi].push(lo)
     total_intervals += 1
 
-for (r, c) in zip(ranks, colors):
+for i in 0..len:  // `zip(ranks, colors)` loses the Color type (compiler bug filed)
+    let (r, c) = (ranks[i], colors[i])
     if let (lo, hi) = run[c]:
         if r <= hi: continue
         if r - hi == 1:

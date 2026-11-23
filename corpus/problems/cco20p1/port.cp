@@ -3,6 +3,8 @@
 // |x - x_i| * v_i < h_i * y. For every k from 0 to n, print how many
 // positions are seen by at most k friends.
 
+use std.prefix.{prefix_fold}
+
 let n: 1..=1e5 = read()
 let l: -1e9..=1e9 = read()
 let r: l..=1e9 = read()
@@ -27,4 +29,4 @@ for (pos, delta) in events:
         seen_by[cur] += pos - prev
         prev = pos
     cur += delta
-for total in scan(seen_by, +): print(total)
+for total in prefix_fold(+, seen_by)[1..]: print(total)
