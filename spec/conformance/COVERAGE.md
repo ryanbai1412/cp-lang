@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2186 (995 passing). Rules: 530.
+Cases: 2188 (995 passing). Rules: 530.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 99 cases; 0 uncovered, 4 happy-path only, 1 negative only
-- R02 (02-values-types.md): 50 rules, 92 cases; 0 uncovered, 7 happy-path only, 0 negative only
+- R02 (02-values-types.md): 50 rules, 94 cases; 0 uncovered, 7 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 54 cases; 0 uncovered, 7 happy-path only, 1 negative only
 - R04 (04-indices.md): 61 rules, 88 cases; 0 uncovered, 2 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
@@ -158,7 +158,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.10.1 [1+ 2-]: Inference is local. Siblings in one expression (list elements, `if`/`else` branches, `matc...
 - R02.10.2 [1+ 1-]: `let` keeps the computed range of its initializer; an unannotated `var` widens to `Int`; `...
 - R02.10.3 [1+ 0-]: Function signatures are written in full except that a single-capital type parameter used i...
-- R02.11.1 [1+ 3-]: No implicit numeric conversions except into a wider range of the same type and `T` into `?...
+- R02.11.1 [2+ 4-]: No implicit numeric conversions except into a wider range of the same type, `T` into `?T` ...
 - R02.11.2 [1+ 1-]: No implicit copies of heap values (`.clone()`), no implicit allocation behind an O(1)-look...
 - R02.11.3 [1+ 1-]: No inheritance, no subtyping, no overloading by argument type (decision 127), no user-defi...
 
@@ -664,7 +664,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 15 case(s)
-- E0302 Type mismatch: 29 case(s)
+- E0302 Type mismatch: 30 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -677,7 +677,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0312 Mutating expression inside `debug(...)`: 1 case(s)
 - E0313 Fresh domain escapes its declaring block: 1 case(s)
 - E0314 Match is not exhaustive: 4 case(s)
-- E0315 not_a_token_type *(0.3)*: 1 case(s)
+- E0315 Not a token type: 1 case(s)
 - E0401 Assignment to immutable `let` binding: 3 case(s)
 - E0402 Missing `mut` at call site: 2 case(s)
 - E0403 `mut` of an immutable binding: 4 case(s)

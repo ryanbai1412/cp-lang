@@ -249,8 +249,10 @@ type Z = Mod(read<Prime>())         // runtime modulus
 ## 2.11 Never implicit
 
 - No implicit numeric conversions except into a wider range of the same
-  type and `T` into `?T`. `Int` to `F64` is `F64(x)`; `F64` to `Int` is
-  `x.floor()`, `x.round()` or `Int(x)` (truncating, documented). (R02.11.1)
+  type, `T` into `?T` and `Int` into `Mod<P>` (R04.4.22-28). `Int` to `F64`
+  is `F64(x)`; `F64` to `Int` names its rounding: `floor(x)`, `ceil(x)`,
+  `round(x)` or `trunc(x)`. `Int(x)` of an `F64` is an error (E0302)
+  whose fix offers `floor(x)`. (R02.11.1)
 - No implicit copies of heap values (`.clone()`), no implicit
   allocation behind an O(1)-looking member, no implicit `Int` to
   position (`V(x)` traps out of range; `V.at(x)` is `?V`). (R02.11.2)
