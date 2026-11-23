@@ -260,6 +260,11 @@ pub struct RangeKth<D, T>:
         if m == 0:
             for _ in 0..D.K: rk.roots.push(0)
             return rk
+        let nodes = 1 + D.K * (bit_width(m - 1) + 1)
+        rk.left.reserve(nodes)
+        rk.right.reserve(nodes)
+        rk.cnt.reserve(nodes)
+        rk.roots.reserve(D.K + 1)
         for i in D:
             let prev = rk.roots.last!
             let pos = rk.lower_val(a[i])
