@@ -260,7 +260,7 @@ fi
 # script tests with the conformance suite), and CPL_GATE_PART=tests:<nextest partition> (e.g. tests:hash:1/6)
 # runs only that share of the tests, plus the doctests in share 1. Unset runs
 # all of --fast.
-script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py scripts/test_devex_stats.py scripts/test_new_lint.py)
+script_tests=(scripts/test_dream_gaps.py scripts/test_review_check.py scripts/test_check_cache.py scripts/test_cxx_cache.py scripts/test_release.py scripts/test_debt_ratchet.py scripts/test_fmt_check.py scripts/test_skill_gen.py scripts/test_affected.py scripts/test_land_stats.py scripts/test_devex_stats.py scripts/test_new_lint.py scripts/test_conform_staged.py)
 gate_part="${CPL_GATE_PART:-}"
 case "$gate_part" in
     "" | checks) ;;
@@ -355,6 +355,13 @@ if [ "$mode" = commit ]; then
         step "script unit tests: $sel_script_tests"
         read -ra tests <<<"$sel_script_tests"
         bare_home uv run --quiet python -m unittest "${tests[@]}"
+    fi
+    if [ -n "${sel_conform_cases:-}" ]; then
+        step "staged conformance cases (scripts/conform_staged.py)"
+        cargo build -q -p cpl-cli -p cpl-conform
+        read -ra cases <<<"$sel_conform_cases"
+        uv run --quiet python scripts/conform_staged.py "$target/debug/cpl-conform" "${cases[@]}" \
+            || fail "a staged conformance case fails; cpl-conform's message above says how to fix it"
     fi
     if [ "$sel_site" = 1 ]; then
         step "site snippet gate (node web/scripts/gate.mjs)"

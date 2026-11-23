@@ -44,6 +44,11 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual((s["all"], s["packages"]), (False, ["cpl-cli", "cpl-lsp"]))
         self.assertTrue(self.sel("editors/emacs/cp-mode.el")["all"])
 
+    def test_a_conformance_case_selects_itself_not_the_whole_gate(self):
+        s = self.sel("spec/conformance/lints/tree-order.cp")
+        self.assertEqual((s["all"], s["conform_cases"]), (False, ["spec/conformance/lints/tree-order.cp"]))
+        self.assertTrue(self.sel("spec/conformance/COVERAGE.md")["all"])
+
     def test_site_paths_select_the_snippet_gate(self):
         self.assertTrue(self.sel("web/src/pages/index.astro")["site"])
 

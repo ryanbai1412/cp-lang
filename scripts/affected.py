@@ -65,14 +65,16 @@ def script_test(path):
 
 def select(paths, dirs):
     sel = {"all": False, "reason": "", "packages": [], "rust_files": [],
-           "script_tests": [], "site": False}
+           "script_tests": [], "site": False, "conform_cases": []}
     packages, tests = set(), set()
     for path in paths:
         crate = next((n for d, n in dirs.items() if path.startswith(d)), None)
         if path.endswith(".rs"):
             sel["rust_files"].append(path)
         editor = next((n for d, n in EDITOR_CRATES.items() if path.startswith(d)), None)
-        if crate:
+        if path.startswith("spec/conformance/") and path.endswith(".cp"):
+            sel["conform_cases"].append(path)
+        elif crate:
             packages.add(crate)
         elif editor:
             packages.add(editor)
@@ -125,6 +127,7 @@ def main(argv):
     print("rust_files=" + " ".join(sel["rust_files"]))
     print("script_tests=" + " ".join(sel["script_tests"]))
     print(f"site={int(sel['site'])}")
+    print("conform_cases=" + " ".join(sel["conform_cases"]))
     return 0
 
 
