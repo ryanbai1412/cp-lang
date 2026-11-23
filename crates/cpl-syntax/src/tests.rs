@@ -1294,6 +1294,10 @@ fn a_default_can_be_a_way_out() {
     }
     assert_eq!(codes("print(a + b ?? 0)\n"), Vec::<&str>::new());
     assert_eq!(codes("print(a ?? 0 + b)\n"), ["E0110"]);
+    let help = parse_file("print(a ?? 0 + b)\n").diagnostics[0]
+        .help
+        .clone();
+    assert_eq!(help.as_deref(), Some("write `(a ?? 0) + b` to use whichever is taken, or `a ?? (0 + b)` for a default that is worked out"));
     stmts("print((a ?? 0) + b, (a + b) ?? 0)\nx ??= 3\n");
 }
 

@@ -176,7 +176,6 @@ impl<'a> Parser<'a> {
             let diverges = matches!(rhs.kind, ExprKind::Block(_));
             // The left side is judged by the checker, which knows a step
             // along a domain (`i + 1 ?? I.last`) from a sum.
-            let _ = lhs;
             let mixed = [rhs].into_iter().find(|side| {
                 matches!(
                     side.kind,
@@ -188,15 +187,24 @@ impl<'a> Parser<'a> {
             });
             if let (Some(side), false) = (mixed, diverges) {
                 let span = side.span;
+                let text = |e: &Expr| {
+                    let abs = |p: u32| (p as i64 - self.delta) as usize;
+                    self.src[abs(e.span.start)..abs(e.span.end)].to_string()
+                };
+                let help = match &side.kind {
+                    ExprKind::Binary { op, lhs: l, rhs: r, .. } => format!(
+                        "write `({} ?? {}) {} {}` to use whichever is taken, or `{} ?? ({})` for a default that is worked out",
+                        text(lhs), text(l), op.text(), text(r), text(lhs), text(side)
+                    ),
+                    _ => unreachable!("`mixed` is a binary expression"),
+                };
                 self.error(
                     Diagnostic::error(
                         codes::UNPARENTHESIZED_COALESCE,
                         span,
                         "`??` mixed with `+ - * / %` needs parentheses",
                     )
-                    .with_help(
-                        "write `(a ?? 0) + b` to add to whichever is taken, or `a ?? (b - 1)` for a default that is worked out",
-                    ),
+                    .with_help(help),
                 );
             }
         }
