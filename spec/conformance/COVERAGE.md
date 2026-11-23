@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2216 (995 passing). Rules: 531.
+Cases: 2218 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
@@ -23,7 +23,7 @@ Cases: 2216 (995 passing). Rules: 531.
 - R08 (08-traits-generics.md): 29 rules, 72 cases; 0 uncovered, 2 happy-path only, 5 negative only
 - R09 (09-contexts-checks.md): 25 rules, 48 cases; 0 uncovered, 6 happy-path only, 0 negative only
 - R10 (10-io.md): 16 rules, 66 cases; 0 uncovered, 1 happy-path only, 0 negative only
-- R11 (11-modules-prelude.md): 15 rules, 27 cases; 0 uncovered, 1 happy-path only, 2 negative only
+- R11 (11-modules-prelude.md): 15 rules, 28 cases; 0 uncovered, 1 happy-path only, 2 negative only
 - R12 (12-powers.md): 17 rules, 36 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 25 cases; 0 uncovered, 3 happy-path only, 0 negative only
 
@@ -573,7 +573,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - R11.1.1 [3+ 1-]: A **program** file is a sequence of statements (chapter 10). It may declare items anywhere...
 - R11.1.2 [1+ 1-]: A **library** file contains only items (`fn`, `struct`, `enum`, `trait`, `impl`, `type`, `...
-- R11.1.3 [1+ 1-]: An inline module `mod name:` groups items inside any file, for parts a contestant wants to...
+- R11.1.3 [2+ 1-]: An inline module `mod name:` groups items inside any file, for parts a contestant wants to...
 - R11.2.1 [1+ 1-]: Paths are module names, not files on a search path: `std` is the pinned stdlib, `lib` is t...
 - R11.2.2 [0+ 1-] *negative only*: Modules form an acyclic graph; two modules that need each other are one module.
 - R11.2.3 [1+ 1-]: A local name shadows a prelude name; a `use` that collides with a local name is an error n...
