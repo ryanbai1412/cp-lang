@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- `Potentials<V>(op)` (lib/ops-ranges) vs `PotentialDsu<V>` (lib/containers, spec/std): asked stdlib which API stays before aligning the chapters.
 - `lib/strings.md` squares excerpt imported `scan` from `std.seq`; it lives in `std.prefix`. spec-blocks 70/185 (31 error, 84 skip).
 - Routed to stdlib: `step.prune()`, `p.order`, `Rooted.order`, `Mat.of` are in chapter tables but not in `spec/std` (spec-block errors). Associated-type bounds (`type Tags: Monoid<F>`) were already a compiler request.
 - New gate `scripts/conformance-prelude.py` (in `scripts/check.sh`): every pub fn in a `spec/lib` chapter's tables must be a prelude name (R11.3.2). 86 gaps today in `prelude-gaps.txt` (flows 11, geometry 36, math 31, strings 8), shrink-only; stdlib request.
