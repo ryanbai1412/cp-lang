@@ -1,0 +1,97 @@
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { InlineMd } from '@/components/inline-md';
+import { Badge } from '@/components/ui/badge';
+import { highlight } from '@/lib/highlight';
+import { groups, lints } from '@/lib/lints';
+
+type Props = { params: Promise<{ name: string }> };
+
+const repo = 'https://github.com/ryanbai1412/cp-lang/tree/main/spec/lints';
+const levels = { deny: 'deny: `cpl lint` exits 1', warn: 'warn', allow: 'off by default' };
+
+export function generateStaticParams() {
+  return lints().map((l) => ({ name: l.name }));
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { name } = await params;
+  const l = lints().find((x) => x.name === name);
+  return { title: l ? `${l.name} (${l.code}) · Lints` : 'Lints', description: l?.summary.replace(/`/g, '') };
+}
+
+export default async function Page({ params }: Props) {
+  const { name } = await params;
+  const l = lints().find((x) => x.name === name);
+  if (!l) notFound();
+  const [before, after, near] = await Promise.all([
+    highlight(l.before, 'cp'),
+    highlight(l.after, 'cp'),
+    highlight(l.nearMiss, 'cp'),
+  ]);
+  return (
+    <main className="container mx-auto max-w-5xl px-4 py-10 [&_p_code]:rounded [&_p_code]:bg-muted [&_p_code]:px-1 [&_p_code]:text-[0.9em]">
+      <Link href="/lints" className="text-sm text-muted-foreground hover:text-foreground">
+        ← All lints
+      </Link>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <h1 className="font-mono text-3xl font-semibold tracking-tight break-all">{l.name}</h1>
+        <Badge variant="secondary">{l.code}</Badge>
+        <Badge variant="outline">
+          <Link href={`/lints#${l.group}`}>{groups[l.group].title}</Link>
+        </Badge>
+        <Badge variant="outline">
+          <InlineMd text={levels[l.level]} />
+        </Badge>
+      </div>
+      <p className="mt-2 text-lg font-medium">
+        <InlineMd text={l.title} />
+      </p>
+      <p className="mt-1 text-muted-foreground">
+        <InlineMd text={l.summary} />
+      </p>
+      <div className="mt-6 grid gap-4 lg:grid-cols-2">
+        <Pane title="Flagged" html={before} />
+        <Pane title="Write instead" html={after} />
+      </div>
+      <h2 className="mt-8 text-xl font-semibold">Why</h2>
+      <p className="mt-2 max-w-3xl leading-7">
+        <InlineMd text={l.explain} />
+      </p>
+      <h2 className="mt-8 text-xl font-semibold">The practice it serves</h2>
+      <p className="mt-2 max-w-3xl leading-7">
+        <InlineMd text={l.practice ?? groups[l.group].practice} />
+      </p>
+      <h2 className="mt-8 text-xl font-semibold">Not flagged</h2>
+      <p className="mt-2 text-sm text-muted-foreground">A near miss: close to the pattern, but not it.</p>
+      <div className="mt-3">
+        <Pane title="Near miss" html={near} />
+      </div>
+      <h2 className="mt-8 text-xl font-semibold">Turn it off</h2>
+      <p className="mt-2 max-w-3xl leading-7">
+        For one block, wrap it in <code>{`with lint(${l.name}: allow):`}</code>. For a project, add{' '}
+        <code>{`${l.name} = "allow"`}</code> under <code>[lints]</code> in <code>cp.toml</code>.
+      </p>
+      <p className="mt-8 text-sm text-muted-foreground">
+        Generated from{' '}
+        <a className="underline" href={`${repo}/${l.name}`}>
+          spec/lints/{l.name}
+        </a>
+        , the same record the linter is built from.
+      </p>
+    </main>
+  );
+}
+
+function Pane({ title, html }: { title: string; html: string }) {
+  return (
+    <section className="min-w-0 overflow-hidden rounded-xl border bg-card shadow-sm">
+      <header className="border-b px-4 py-2 text-sm font-medium">{title}</header>
+      <div
+        className="overflow-auto text-sm [&_pre]:!bg-transparent [&_pre]:p-4 dark:[&_.shiki]:!text-[var(--shiki-dark)] dark:[&_.shiki_span]:!text-[var(--shiki-dark)]"
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+    </section>
+  );
+}
