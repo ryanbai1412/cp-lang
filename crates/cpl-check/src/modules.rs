@@ -69,6 +69,16 @@ pub fn std_modules() -> &'static [(&'static str, &'static str)] {
     BUNDLED
 }
 
+/// `std.segtre` as `std.segtree`: the closest stdlib module to a missing one.
+pub(crate) fn nearest_std(module: &[String]) -> Option<String> {
+    let [std, name] = module else { return None };
+    let names = BUNDLED.iter().map(|(known, _)| *known);
+    (std == "std")
+        .then(|| crate::check::closest(name, names))
+        .flatten()
+        .map(|m| format!("std.{m}"))
+}
+
 /// The folder of the library `name`: the one a `cp.toml` above `start`
 /// gives it under `[libs]`, or else the nearest folder above `start`
 /// whose `lib.toml` names the library.

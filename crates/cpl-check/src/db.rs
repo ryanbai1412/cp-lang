@@ -1247,11 +1247,13 @@ impl Database {
         let Some(loaded) = found else {
             if diags.is_empty() {
                 let dotted = parts.join(".");
-                let help = match first.text.as_str() {
-                    "std" => {
+                let near = crate::modules::nearest_std(&parts);
+                let help = match (first.text.as_str(), &near) {
+                    (_, Some(m)) => format!("did you mean `{m}`?"),
+                    ("std", None) => {
                         "the standard library's modules are the files of `spec/std/`".to_string()
                     }
-                    lib => format!(
+                    (lib, None) => format!(
                         "`{lib}` is a library: name its folder under `[libs]` in a `cp.toml` at or above this file (`{lib} = \"path\"`), or put this file below a folder whose `lib.toml` says `name = \"{lib}\"`"
                     ),
                 };
@@ -1267,6 +1269,9 @@ impl Database {
                     )
                     .with_help(help),
                 );
+                if let (Some(m), Some(diag)) = (near, diags.last_mut()) {
+                    diag.fix(format!("use `{m}`"), whole, m);
+                }
             }
             scope.has_imports = true;
             return;

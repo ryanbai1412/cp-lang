@@ -64,3 +64,18 @@ fn an_uppercase_literal_let_becomes_a_const() {
     let diags = check("var N = 5\nN += 1\n");
     assert!(diags.iter().all(|d| d.fixes.is_empty()), "{diags:?}");
 }
+
+#[test]
+fn a_misspelled_stdlib_module_names_the_closest() {
+    let diags = check("use std.segtre\nprint(1)\n");
+    assert_eq!(
+        diags[0].help.as_deref(),
+        Some("did you mean `std.segtree`?")
+    );
+    assert_eq!(
+        fixed("use std.segtre\nprint(1)\n"),
+        "use std.segtree\nprint(1)\n"
+    );
+    let diags = check("use std.no_such_module\nprint(1)\n");
+    assert!(diags[0].fixes.is_empty(), "{diags:?}");
+}
