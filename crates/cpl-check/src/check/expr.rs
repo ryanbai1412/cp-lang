@@ -559,9 +559,9 @@ impl<'a> Checker<'a> {
                         )
                     );
                     if !branch_leaves {
-                        for (k, v) in &self.moved {
-                            if self.local(k).is_some() {
-                                post_moved.entry(k.clone()).or_insert(*v);
+                        for (k, v) in self.moved.clone() {
+                            if self.local(&k).is_some() || self.global(&k).is_some() {
+                                post_moved.entry(k).or_insert(v);
                             }
                         }
                     }
@@ -601,9 +601,9 @@ impl<'a> Checker<'a> {
                         let ty = self.block(body);
                         self.branch -= value;
                         if !leaves(body) {
-                            for (k, v) in &self.moved {
-                                if self.local(k).is_some() {
-                                    post_moved.entry(k.clone()).or_insert(*v);
+                            for (k, v) in self.moved.clone() {
+                                if self.local(&k).is_some() || self.global(&k).is_some() {
+                                    post_moved.entry(k).or_insert(v);
                                 }
                             }
                         }
@@ -650,9 +650,9 @@ impl<'a> Checker<'a> {
                         )
                     );
                     if !arm_leaves {
-                        for (k, v) in &self.moved {
-                            if self.local(k).is_some() {
-                                post_moved.entry(k.clone()).or_insert(*v);
+                        for (k, v) in self.moved.clone() {
+                            if self.local(&k).is_some() || self.global(&k).is_some() {
+                                post_moved.entry(k).or_insert(v);
                             }
                         }
                     }

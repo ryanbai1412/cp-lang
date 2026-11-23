@@ -17,6 +17,7 @@
 //! facts*): never by a guess. When it can't be decided, the error says
 //! which condition to state.
 
+use super::moves::{is_compound, nested_moves};
 use super::*;
 use crate::fx::HashSet;
 use cpl_syntax::ast::{self, Arg, BinOp, Block, CmpOp, Cond, Expr, ExprKind, Stmt, StmtKind};
@@ -310,6 +311,21 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                 } else {
                     Flow::None
                 }
+            }
+        }
+        _ if is_compound(stmt) => {
+            let mut srcs: Vec<String> = Vec::new();
+            for (_, moved) in nested_moves(stmt) {
+                for m in moved {
+                    if !srcs.contains(&m) {
+                        srcs.push(m);
+                    }
+                }
+            }
+            if srcs.is_empty() {
+                Flow::None
+            } else {
+                Flow::Move(srcs)
             }
         }
         _ => Flow::None,
@@ -1396,45 +1412,9 @@ impl<'a> Checker<'a> {
                 }
             }
             (Flow::Move(srcs), _) => {
-                // If the statement is a call (`Bag(a)`), only treat it as a move when
-                // the callee is a generated struct constructor (no custom `new`).
-                let init_expr = match &stmt.kind {
-                    StmtKind::Let { init: Some(e), .. } => Some(unparen(e)),
-                    StmtKind::Assign { value, .. } => Some(unparen(value)),
-                    _ => None,
-                };
-                let is_generated_ctor = match init_expr.map(|e| &e.kind) {
-                    Some(ExprKind::Call { callee, .. }) => {
-                        let type_name = match &unparen(callee).kind {
-                            ExprKind::Name(n) => Some(n.as_str()),
-                            ExprKind::Generic { base, .. } => match &unparen(base).kind {
-                                ExprKind::Name(n) => Some(n.as_str()),
-                                _ => None,
-                            },
-                            _ => None,
-                        };
-                        type_name.is_some_and(|n| {
-                            matches!(
-                                self.type_def(n).as_deref(),
-                                Some(Def::Struct { ctor: None, .. })
-                            )
-                        })
-                    }
-                    _ => true,
-                };
-                if is_generated_ctor {
-                    for src in srcs {
-                        let ty = match self.env.global(src).as_deref() {
-                            Some(Def::Value { ty, .. }) => Some(ty.clone()),
-                            _ => None,
-                        };
-                        if let Some(ty) = ty {
-                            if self.is_heap_type(&ty) {
-                                let at = super::move_site(init_expr, src, replay.back);
-                                self.moved.insert(src.clone(), at);
-                            }
-                        }
-                    }
+                for (mover, moved) in nested_moves(stmt) {
+                    let moved: Vec<&String> = moved.iter().filter(|m| srcs.contains(m)).collect();
+                    self.replay_move(&mover, &moved, replay.back);
                 }
             }
             (

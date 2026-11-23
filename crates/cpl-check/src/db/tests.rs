@@ -75,6 +75,32 @@ fn a_top_level_move_points_at_the_move_after_an_edit_above_it() {
 }
 
 #[test]
+fn a_move_inside_a_top_level_if_or_loop_reaches_the_items_after_it() {
+    let mut db = Database::new();
+    for body in [
+        "if xs.len > 1:\n    let ys = xs\n",
+        "while false:\n    var ys = xs\n",
+    ] {
+        let src = format!("var xs = List(1, 2)\n{body}print(xs.len)\n");
+        db.set_file("a.cp", src.as_str());
+        let diags = db.diagnostics("a.cp");
+        assert_eq!(diags.len(), 1, "{diags:?}");
+        assert_eq!(diags[0].code.0, "E0608");
+        let moved = src.find("= xs").unwrap() as u32 + 2;
+        assert_eq!(diags[0].labels[0].span, Span::new(moved, moved + 2));
+    }
+    db.set_file(
+        "a.cp",
+        "var xs = List(1, 2)\nif xs.len > 1:\n    let ys = xs\n    xs = ys\nprint(xs.len)\n",
+    );
+    assert!(db.diagnostics("a.cp").is_empty());
+    let nested = "var xs = List(1, 2)\nfor i in 0..2:\n    if i > 0:\n        let ys = xs\n    print(xs.len)\n";
+    db.set_file("a.cp", nested);
+    let codes: Vec<_> = db.diagnostics("a.cp").iter().map(|d| d.code.0).collect();
+    assert_eq!(codes, ["E0608"]);
+}
+
+#[test]
 fn assigning_a_fixed_field_offers_var_where_it_is_declared_after_an_edit() {
     let mut db = Database::new();
     for gap in ["", "let pad = 1\nprint(pad)\n"] {

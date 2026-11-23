@@ -10,6 +10,7 @@ mod call;
 mod expr;
 mod known;
 pub(crate) mod lends;
+mod moves;
 mod mut_args;
 mod pattern;
 mod spelling;
