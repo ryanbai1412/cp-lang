@@ -53,10 +53,21 @@ table, requested in the compiler worklog. `cpl-lsp` never reads forms from
    identical findings, compared by code, file and span, on corpus `spec.cp`,
    `port.cp`, `dream.cp` and `spec/std` before and after. The record tests
    and `corpus_warnings_only_go_down` must also pass.
-2. Scan and Bisect (`prefix_sum`, `answer_search`, `halving_loop`).
-3. IndexSpace and CopyWriteback.
+2. Scan and Bisect. Already one recognizer each, returning a structured
+   match: `stdlib_algo::prefix_sum_loop` (`PrefixLoop`) and
+   `search::halving_loop` (`Halving`), each read by one lint. Moving them
+   into `forms.rs` would only move files, so it waits until a second lint
+   needs either one.
+3. IndexSpace and CopyWriteback: the same holds.
 4. `while` normalization. This is the first step that adds findings: each
    new one needs a near-miss case or a corpus run with 0 false positives.
+   Deferred because there is little evidence for it: a scan finds 35 counted
+   `while v < ..: ..; v += 1` loops (31 corpus `port.cp`, 2 `spec.cp`, 2
+   `dream.cp`), and many of them are searches with a compound condition
+   (`while idx < n and a[idx] == v`), not folds.
+
+Status: step 1 landed with findings unchanged (worklog). Steps 2-4 are
+deferred for the reasons above.
 
 ## Risks
 - A refactor that silently drops findings. Steps 1-3 compare findings
