@@ -58,7 +58,7 @@ impl Checker<'_> {
 
     /// R07.4.5: `w[x]` on a view takes a key of its source. `rev` has no
     /// `[]`; a literal not proven one of `w.keys` is meant as a position.
-    pub(super) fn keyed_view_index(&mut self, base: &Expr, indices: &[Expr]) {
+    pub(super) fn keyed_view_index(&mut self, whole: Span, base: &Expr, indices: &[Expr]) {
         let [index] = indices else {
             return;
         };
@@ -111,10 +111,12 @@ impl Checker<'_> {
             keyed.source
         );
         if let Some(diag) = self.error(codes::NOT_INDEXABLE, index.span, message) {
+            let (by_position, by_key) = (format!("{w}.nth({v})"), format!("{}[{v}]", keyed.source));
             diag.help = Some(format!(
-                "write `{w}.nth({v})` for its element {v}, or `{}[{v}]` for the source's key {v}",
-                keyed.source
+                "write `{by_position}` for its element {v}, or `{by_key}` for the source's key {v}"
             ));
+            diag.fix(format!("write `{by_position}`"), whole, by_position);
+            diag.fix(format!("write `{by_key}`"), whole, by_key);
         }
     }
 

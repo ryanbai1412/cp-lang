@@ -2893,7 +2893,7 @@ impl<'a> Checker<'a> {
         if self.double_index(base, indices) {
             return Ty::Error;
         }
-        self.keyed_view_index(base, indices);
+        self.keyed_view_index(expr.span, base, indices);
         if self.walked_not_indexed(base) {
             for index in indices {
                 self.infer(index);

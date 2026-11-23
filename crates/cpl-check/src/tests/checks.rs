@@ -876,3 +876,24 @@ fn a_field_named_without_self_says_where_it_is() {
         Some("`lnds` is a field of `P`, and this method takes no `self`: add `self` as its first parameter")
     );
 }
+
+#[test]
+fn an_unproven_literal_view_key_offers_the_position_and_the_source_key() {
+    let src = "let a = [1, 1, 2, 3]\nfor r in a.runs(by: x => x):\n    print(r[0])\n";
+    let diag = one(src);
+    assert_eq!(diag.code.0, "E0305");
+    let fixed: Vec<String> = diag
+        .fixes
+        .iter()
+        .map(|fix| {
+            let mut out = src.to_string();
+            for (span, edit) in fix.edits.iter().rev() {
+                out.replace_range(span.start as usize..span.end as usize, edit);
+            }
+            out
+        })
+        .collect();
+    let line =
+        |e: &str| format!("let a = [1, 1, 2, 3]\nfor r in a.runs(by: x => x):\n    print({e})\n");
+    assert_eq!(fixed, [line("r.nth(0)"), line("a[0]")]);
+}
