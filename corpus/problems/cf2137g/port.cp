@@ -39,14 +39,14 @@ fn eval(v: V) -> Outcome:
 
 for v in peel(rev):
     state[v] = eval(v)
-    for (u, _) in rev[v]: freq[u, state[v]] += 1
+    for (u, _) in rev.out(v): freq[u, state[v]] += 1
 
 fn propagate(v: V):
     let old_s = state[v]
     let new_s = eval(v)
     if new_s == old_s: return
     state[v] = new_s
-    for (u, _) in rev[v]:
+    for (u, _) in rev.out(v):
         freq[u, old_s] -= 1
         freq[u, new_s] += 1
         propagate(u)

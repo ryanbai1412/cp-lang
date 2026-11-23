@@ -20,7 +20,7 @@ let (n, k): (2..=4000, Int) = read()
 domain V = 1..=n
 let w: [V]1..=1_000_000_000 = read()
 let edges: [0..n - 1](u: V, v: V) = read()
-let t = Rooted(Graph.undirected(edges), root: V.first)
+let t = Rooted(Graph.undirected(edges), root: V.first!)
 let kids: [V]List<V> = [V] u => t.children(u).sorted(by: c => t.size(c))
 
 // Every total is nonnegative, so 0 is below each max-plus entry.

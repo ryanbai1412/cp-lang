@@ -93,4 +93,4 @@ for p in t.Pre.rev:
         cur = next
     dp[u] = cur
 
-print([w for (_, w) in dp[V.first].items].sum())
+print([w for (_, w) in dp[V.first!].items].sum())

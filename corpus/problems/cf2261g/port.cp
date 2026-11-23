@@ -8,7 +8,9 @@
 const L = 25
 const FULL = (1 << L) - 1
 
-struct Node(cnt: Int, kid: [Bool]?Int)
+struct Node:
+    var cnt: Int
+    kid: [Bool]?Int
 struct Group(mask: Int, root: Int)
 
 @!multitest

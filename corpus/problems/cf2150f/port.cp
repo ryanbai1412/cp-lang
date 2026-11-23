@@ -24,9 +24,9 @@ for (u, v) in edges:
     if dsu.unite(u, v):
         tree_edges.push((u, v))
 let tree = Graph.undirected(tree_edges)
-let t = Rooted(tree, V.first)
+let t = Rooted(tree, V.first!)
 let d = t.diameter()
-let L = ceil_div(d.len, 2)
+let half = ceil_div(d.len, 2)
 
 // All unordered neighbor pairs (`List.pairs` yields adjacent windows only; see friction #7).
 fn neighbour_pairs(i: V) -> List<(V, V)> =
@@ -37,13 +37,13 @@ fn joined(i: V, j: V) -> Bool = joined_by_edge[i, j] or t.dist(i, j) == 2
 fn route(i: V, j: V) -> List<V>:
     let p = t.path(i, j)
     let dist = p.len - 1
-    if dist >= L:
-        let skip = dist - L
+    if dist >= half:
+        let skip = dist - half
         return [x for (z, x) in p[..2 * skip].items if z % 2 == 0] + p[2 * skip..]
     let far = [d.u, d.v].max(by: f => t.dist(i, f))!
     let meets = [t.lca(i, j), t.lca(i, far), t.lca(j, far)]
     let mid = meets[meets.argmax(by: x => t.depth(x))!]
-    let stem_len = L - dist + 1
+    let stem_len = half - dist + 1
     let stem = t.path(mid, far)[..stem_len]
     let out = if mid == j: 1 else: 0
     let there = [x for (z, x) in stem.items if z % 2 == out]
@@ -53,7 +53,7 @@ fn route(i: V, j: V) -> List<V>:
     to_mid[..to_mid.len - 1] + detour + t.path(mid, j)[1..]
 
 let rest = [route(i, j) for (i, j) in V.pairs if not joined(i, j)]
-let ops = [(3, skips), (L + 1, rest)]
+let ops = [(3, skips), (half + 1, rest)]
 print(ops.len)
 for (k, paths) in ops:
     print(k)

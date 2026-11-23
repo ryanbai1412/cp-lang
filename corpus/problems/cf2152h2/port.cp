@@ -66,7 +66,7 @@ for (u, v, w) in edges.sorted(by: e => -e.w):
     if bound[kept] < br.at[set[kept]!]: set[kept] = raise(set[kept], bound[kept])
 
 var breaks: List<Int> = []
-var h = set[dsu.find(V.first)]
+var h = set[dsu.find(V.first!)]
 while let b = h:
     for _ in 0..br.cnt[b]: breaks.push(br.at[b])
     h = br.rest(b)
