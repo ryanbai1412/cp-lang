@@ -8,15 +8,15 @@
 // Taking suffix minima of `bad[l]` over `I` gives `min_bad[l]`, the earliest
 // forbidden right endpoint for any subarray starting at `l`.
 
-use std.seq.{next_less, prev_greater}
+use std.algebra.{desc}
 
 @!multitest
 let (n, q): (1..=500_000, 1..=500_000) = read()
 domain I = 1..=n
 let a: [I]1..=500_000 = read()
 
-let prev_gt = a.prev_greater(strict: false)
-let next_lt = a.next_less(strict: false)
+let prev_gt = a.prev_smaller(by: desc, strict: false)
+let next_lt = a.next_smaller(strict: false)
 var min_bad: [I]?I = None
 for i in I:
     if let l = prev_gt[i] and let r = next_lt[i]:

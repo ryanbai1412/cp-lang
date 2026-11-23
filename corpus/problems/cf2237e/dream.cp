@@ -6,6 +6,7 @@
 // has a fixed entry, and propagating b[a[i]] = a[b[i]] either closes consistently
 // (by total-size balance, no cycle can wrap onto a shorter one without another
 // failing to close on a longer one) or detects a conflict.
+use std.seq.{perm_cycles}
 @!multitest
 let n: 1..=500_000 = read()
 domain I = 1..=n
@@ -20,7 +21,7 @@ fn solve() -> ?[I]I:
 
     var unused_ind: [Len]List<I> = []
     var unused_val: [Len]List<I> = []
-    for cyc in a.cycles():
+    for cyc in perm_cycles(a):
         let len = Len(cyc.len)
         if not cyc.any(i => b[i] != None): unused_ind[len].push(cyc[0])
         if not cyc.any(i => used_val[i]): unused_val[len].push(cyc[0])
