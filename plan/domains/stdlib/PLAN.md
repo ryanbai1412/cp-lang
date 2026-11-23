@@ -15,7 +15,7 @@ The detail behind [README.md](README.md). Numbers are from the runs in [metrics.
 
 Milestone 1 (`plan/product/MILESTONE-1.md`) sets the order; the workstreams below serve it. Work that unblocks a step of the acceptance scenario comes first:
 
-1. **Core-set examples** (README "Milestone 1"): `io` first, then `seq`, `graph`, `bag`, `fenwick`, `strings`, the rest of the core set. Each failure is a std bug fixed here or a compiler gap filed with a contract test (W2 + W3, restricted to the core set).
+1. **Core-set examples** (README "Milestone 1"): `seq` and `graph` first, then `bag`, `fenwick`, `strings`, the rest of the core set. Each failure is a std bug fixed here or a compiler gap filed with a contract test (W2 + W3, restricted to the core set).
 2. **Acceptance-run misses**: every std call an idioms acceptance run or writable-from-docs run reached for and didn't find, or found wrong. Fix, or GAPS.md + compiler request.
 3. **Core perf floor**: core containers within 1.5x of builtin/hand C++ (the `sort` body, generator streaming for `sum`/`count`/`all`/`any`), only where a builtin isn't already serving the call.
 4. Then the rest, unchanged: W3 bodies outside the core set, W4 labels, W5 prelude, W6 privilege moves, breadth modules. These are "what can wait" unless cheap or a hard gate.

@@ -41,10 +41,10 @@ Not covered (owner instead):
 
 What it needs from stdlib: the foundational containers, algorithms and math for representative contests (steps 4 Solve and 7 Compete), and documentation examples that work (step 1 and "Documentation examples must actually work").
 
-The **core set** is 20 modules: `seq io math mod heap deque hashmap bag dsu fenwick segtree lazy graph strings prefix search bitset grid ntt sparse`. Today 1761/1883 of their doc examples pass (`cpl-conform docs <m>`, 2026-11-22); all 40 modules 2533/2765; std conformance 909/918.
+The **core set** is 20 modules: `seq io math mod heap deque hashmap bag dsu fenwick segtree lazy graph strings prefix search bitset grid ntt sparse`. Today 1618/1700 of their doc examples pass (`cpl-conform docs <m>.cp`, 2026-11-22; the filter is a substring, so the `.cp` matters); all 40 modules 2533/2765; std conformance 909/918.
 
 Exit criteria:
-1. Every doc example in the core set passes `cpl-conform docs` (1883/1883), in the interpreter and in C++.
+1. Every doc example in the core set passes `cpl-conform docs` (1700/1700), in the interpreter and in C++.
 2. No `todo` body is reachable from a core-set public fn (`cpl-conform docs` R0402 count 0 for the core set).
 3. Every std gap the idioms acceptance runs and writable-from-docs runs hit (a missing or wrong std call) is fixed or has a GAPS.md line with an open compiler request; none left untriaged.
 4. Matched C++ time for core containers is not a contest disadvantage: no core std fn above 1.5x its builtin or hand-written C++ on the perf gate.
@@ -52,9 +52,9 @@ Exit criteria:
 Deferred (milestone "what can wait"): breadth beyond the core set (`geometry`, `flow`, `tree`, `persistent`, `poly`, `subset`, `mo`, `slope`, ...) unless an acceptance run needs it; the 1.2x Library Checker target; builtin-to-body moves that don't fix a user-visible bug (Q3 ratchet work continues only when cheap); prelude trimming; the 12/40 standalone `cpl check` metric.
 
 Top 3 next steps:
-1. `io`: 38 of 127 examples fail, and input/output is on every problem's path.
+1. `seq` (19 failing) and `graph` (17): the most-used modules with the most failures.
 2. Triage the std misses in the idioms acceptance runs and `research/writable-from-docs.md` (49/55 full pass) into fixes or compiler requests.
-3. Clear the rest of the core set: `seq` (19 failing), `graph` (17), `bag` (12), `fenwick` (7), `strings` (7).
+3. Clear the rest of the core set: `bag` (12), `fenwick` (7), `strings` (7), `segtree`, `ntt`, `sparse` (4-5 each).
 
 ## Milestones
 
