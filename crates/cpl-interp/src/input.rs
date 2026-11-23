@@ -124,6 +124,11 @@ impl<'a> Input<'a> {
     }
 
     /// Goes back to `start`, to read what is there another way.
+    /// How far the program has read.
+    pub fn cursor(&self) -> usize {
+        self.pos
+    }
+
     pub fn rewind(&mut self, start: usize) {
         self.pos = start;
     }

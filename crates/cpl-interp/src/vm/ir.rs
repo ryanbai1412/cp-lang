@@ -1512,6 +1512,26 @@ pub(crate) struct FormatSpec<'p> {
     pub regs: Vec<u16>,
 }
 
+/// One of main's loops, as a checkpoint finds it in the registers.
+#[derive(Clone, Copy, Debug)]
+pub(crate) enum LoopReg {
+    While(cpl_ir::LoopId),
+    /// `for v in lo..hi` (or `..=`): the variable and the end.
+    Range {
+        id: cpl_ir::LoopId,
+        r_var: u16,
+        r_hi: u16,
+    },
+}
+
+/// A jump back to the top of one of main's loops, where a checkpoint can
+/// be taken: the loops around it, outermost first, ending with its own.
+#[derive(Clone, Debug)]
+pub(crate) struct BackEdge {
+    pub pc: u32,
+    pub loops: Vec<LoopReg>,
+}
+
 pub(crate) struct Chunk<'p> {
     pub ops: Vec<Op>,
     pub spans: Vec<Span>,
@@ -1537,6 +1557,7 @@ pub(crate) struct Chunk<'p> {
     pub guarded_domains: Vec<cpl_ir::DomainId>,
     pub needs_stack: bool,
     pub has_by_ref_closure: bool,
+    pub back_edges: Vec<BackEdge>,
 }
 
 #[derive(Clone, Copy)]

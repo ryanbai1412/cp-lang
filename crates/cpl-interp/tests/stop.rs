@@ -1,19 +1,9 @@
 //! A run ends when its `Stop` goes off, on every path the interpreter takes.
 
+mod common;
+use common::program;
 use cpl_interp::{Io, Stop, CANCELLED, OUT_OF_TIME};
 use std::time::{Duration, Instant};
-
-fn program(source: &str) -> cpl_ir::Program {
-    let mut db = cpl_check::Database::new();
-    db.set_file("t.cp", source);
-    let analysis = db.analyze("t.cp").expect("the file was just set");
-    assert!(
-        analysis.diagnostics.is_empty(),
-        "{:?}",
-        analysis.diagnostics
-    );
-    cpl_ir::lower(&analysis).expect("lowers")
-}
 
 fn ends_at(source: &str, stop: Stop, traced: bool) -> Option<String> {
     let started = Instant::now();

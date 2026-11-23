@@ -8,8 +8,12 @@
 //!
 //! Strings are byte vectors. Nothing here decodes or validates text.
 
+pub mod checkpoint;
 mod closed_form;
 mod input;
+mod io;
+use io::Feed;
+pub use io::Io;
 mod observe;
 pub mod profile;
 pub mod replay;
@@ -202,66 +206,6 @@ pub struct Observed {
     pub profile: Option<profile::Profile>,
 }
 
-/// What a program reads.
-pub struct Io<'a> {
-    /// What `read()` reads.
-    input: Feed<'a>,
-    /// What an `@interactor` hears from the solution: `sol.recv()`.
-    peer: Option<More<'a>>,
-    /// Where `rand` starts, when not the default.
-    seed: Option<u64>,
-    /// What ends the run early, if anything.
-    stop: Option<Stop>,
-}
-
-enum Feed<'a> {
-    Fixed(&'a [u8]),
-    Live(More<'a>),
-}
-
-impl<'a> Io<'a> {
-    /// The whole input, known before the program starts.
-    pub fn fixed(input: &'a [u8]) -> Io<'a> {
-        Io {
-            input: Feed::Fixed(input),
-            peer: None,
-            seed: None,
-            stop: None,
-        }
-    }
-
-    /// An input that arrives while the program runs: the solution's side
-    /// of an interactive problem.
-    pub fn live(more: More<'a>) -> Io<'a> {
-        Io {
-            input: Feed::Live(more),
-            peer: None,
-            seed: None,
-            stop: None,
-        }
-    }
-
-    /// The judge's side: `input` is the hidden test, and `solution` is
-    /// what the solution prints.
-    pub fn judge(input: &'a [u8], solution: More<'a>) -> Io<'a> {
-        Io {
-            input: Feed::Fixed(input),
-            peer: Some(solution),
-            seed: None,
-            stop: None,
-        }
-    }
-
-    /// The same, with `rand` and `shuffle` drawing from `seed`: one
-    /// seed, one run.
-    pub fn seeded(self, seed: u64) -> Io<'a> {
-        Io {
-            seed: Some(seed),
-            ..self
-        }
-    }
-}
-
 /// [`run`] with an input that can arrive while the program runs.
 pub fn run_with(program: &Program, io: Io, output: &mut (dyn Write + Send)) -> Result<(), Trap> {
     match run_observed(program, io, output, None).trap {
@@ -382,6 +326,20 @@ fn run_as<O: Observer>(
     tracer: Option<Box<O>>,
     profile: bool,
 ) -> Observed {
+    let off = checkpoint::Clock::default();
+    run_from(program, io, output, limits, tracer, profile, off).0
+}
+
+/// [`run_as`], taking checkpoints or starting from one as `ckpt` says.
+fn run_from<O: Observer>(
+    program: &Program,
+    io: Io,
+    output: &mut (dyn Write + Send),
+    limits: Limits,
+    tracer: Option<Box<O>>,
+    profile: bool,
+    ckpt: checkpoint::Clock,
+) -> (Observed, checkpoint::Clock) {
     let top = 0u8;
     let seed = io.seed;
     let mut interp = Interp {
@@ -421,6 +379,7 @@ fn run_as<O: Observer>(
         tracer,
         stop: io.stop,
         countdown: stop::EVERY,
+        ckpt,
         profiler: profile.then(|| Box::new(profile::Profiler::new(program))),
         debug_out: Vec::new(),
         feeds: cpl_ir::pushed::Feeds::of(program),
@@ -474,12 +433,13 @@ fn run_as<O: Observer>(
         }
         tracer.finish(&view, failed)
     });
-    Observed {
+    let observed = Observed {
         trap,
         debug: std::mem::take(&mut interp.debug_out),
         recording,
         profile: interp.profiler.take().map(|profiler| profiler.finish()),
-    }
+    };
+    (observed, interp.ckpt)
 }
 
 type Res<T> = Result<T, Box<Trap>>;
@@ -638,6 +598,7 @@ struct Interp<'p, 'o, O: Observer> {
     /// What ends the run early, looked at when `countdown` reaches 0.
     stop: Option<Stop>,
     countdown: u32,
+    ckpt: checkpoint::Clock,
     profiler: Option<Box<profile::Profiler>>,
     /// What `debug(...)` showed.
     debug_out: Vec<u8>,
@@ -758,6 +719,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         self.stack.clear();
         self.stack.resize(program.main_locals.len(), Value::Unit);
         self.base = 0;
+        if let Some(from) = self.ckpt.resume.take() {
+            return self.resume(from);
+        }
         #[cfg(not(target_arch = "wasm32"))]
         {
             let mut has_mut_view = program
@@ -911,6 +875,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     fn flush_if_large(&mut self) {
         if self.out.len() >= 1 << 16 {
+            self.ckpt.printed += self.out.len() as u64;
             let _ = self.sink.write_all(&self.out);
             self.out.clear();
         }
@@ -1072,8 +1037,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 rev,
                 closed,
             } => {
-                let lo_i64 = self.eval(lo)?.int();
-                let hi_i64 = self.eval(hi)?.int();
+                let (lo_i64, hi_i64) = match self.ckpt.range_from.take() {
+                    Some(from) => from,
+                    None => (self.eval(lo)?.int(), self.eval(hi)?.int()),
+                };
                 if step.is_none() {
                     if *closed {
                         if lo_i64 <= hi_i64 {

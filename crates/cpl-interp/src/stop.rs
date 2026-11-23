@@ -112,27 +112,25 @@ impl<'a> Io<'a> {
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     /// Counts a loop round or a call; every [`EVERY`] of them, a trap
-    /// when the run's [`Stop`] has gone off.
+    /// when the run's [`Stop`] has gone off. True when a checkpoint is due,
+    /// which only the slow path says, so the hot path stays a decrement.
     #[inline(always)]
-    pub(crate) fn tick(&mut self, span: Span) -> Res<()> {
+    pub(crate) fn tick(&mut self, span: Span) -> Res<bool> {
         self.countdown -= 1;
         if self.countdown == 0 {
             return self.look_at_stop(span);
         }
-        Ok(())
+        Ok(false)
     }
 
     #[cold]
-    fn look_at_stop(&mut self, span: Span) -> Res<()> {
-        let Some(stop) = &mut self.stop else {
-            self.countdown = u32::MAX;
-            return Ok(());
-        };
-        self.countdown = EVERY;
-        match stop.reason() {
-            Some(reason) => trap(span, reason),
-            None => Ok(()),
+    fn look_at_stop(&mut self, span: Span) -> Res<bool> {
+        let watched = self.stop.is_some() || self.ckpt.on();
+        self.countdown = self.ckpt.reload(if watched { EVERY } else { u32::MAX });
+        if let Some(reason) = self.stop.as_mut().and_then(Stop::reason) {
+            return trap(span, reason);
         }
+        Ok(self.ckpt.due())
     }
 
     pub(crate) fn stack_left(&self, span: Span, callee: Option<&str>) -> Res<()> {

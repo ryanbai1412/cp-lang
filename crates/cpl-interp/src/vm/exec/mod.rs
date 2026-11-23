@@ -872,8 +872,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_i[dst as usize] = i64::from(res);
                 }
                 Op::Jmp { target } => {
-                    if target as usize <= cur_pc {
-                        self.tick(spans[cur_pc])?;
+                    if target as usize <= cur_pc
+                        && self.tick(spans[cur_pc])?
+                        && fed.is_none()
+                        && std::ptr::eq(chunk, &compiled.main)
+                    {
+                        self.take_checkpoint(chunk, cur_pc, regs_i, regs_v);
                     }
                     pc = target as usize
                 }
@@ -958,8 +962,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let next = regs_i[r_i as usize] + 1;
                     regs_i[r_i as usize] = next;
                     if next < regs_i[r_hi as usize] {
-                        if target as usize <= cur_pc {
-                            self.tick(spans[cur_pc])?;
+                        if target as usize <= cur_pc
+                            && self.tick(spans[cur_pc])?
+                            && fed.is_none()
+                            && std::ptr::eq(chunk, &compiled.main)
+                        {
+                            self.take_checkpoint(chunk, cur_pc, regs_i, regs_v);
                         }
                         pc = target as usize;
                     }
@@ -968,8 +976,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let cur = regs_i[r_i as usize];
                     if cur < regs_i[r_hi as usize] {
                         regs_i[r_i as usize] = cur + 1;
-                        if target as usize <= cur_pc {
-                            self.tick(spans[cur_pc])?;
+                        if target as usize <= cur_pc
+                            && self.tick(spans[cur_pc])?
+                            && fed.is_none()
+                            && std::ptr::eq(chunk, &compiled.main)
+                        {
+                            self.take_checkpoint(chunk, cur_pc, regs_i, regs_v);
                         }
                         pc = target as usize;
                     }

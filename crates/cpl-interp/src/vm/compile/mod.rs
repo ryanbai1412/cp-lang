@@ -16,6 +16,8 @@ struct LoopTargets {
     id: LoopId,
     breaks: Vec<usize>,
     continues: Vec<usize>,
+    /// How a checkpoint reads this loop, when it can.
+    resumable: Option<LoopReg>,
 }
 
 enum GiveTarget {
@@ -90,6 +92,7 @@ pub(super) struct Compiler<'p, 'f> {
     trace_points: Vec<TracePoint<'p>>,
     /// The `for` whose body is compiled next, whose variable each round reports.
     traced_loop_var: Option<(Slot, Span)>,
+    back_edges: Vec<BackEdge>,
 }
 
 impl<'p, 'f> Compiler<'p, 'f> {
@@ -159,6 +162,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             traced: false,
             trace_points: Vec::new(),
             traced_loop_var: None,
+            back_edges: Vec::new(),
         }
     }
 
@@ -191,6 +195,31 @@ impl<'p, 'f> Compiler<'p, 'f> {
             guarded_domains: Vec::new(),
             needs_stack,
             has_by_ref_closure: false,
+            back_edges: self.back_edges,
+        }
+    }
+
+    /// Notes the jump back at `pc` of a loop that `own` reads, when it and
+    /// every loop around it are main's and a checkpoint can read them.
+    pub(super) fn note_back_edge(&mut self, pc: usize, own: Option<LoopReg>) {
+        if self.traced
+            || self.cur_fn.is_some()
+            || self.inline_slots.is_some()
+            || self.feed_acc.is_some()
+        {
+            return;
+        }
+        let loops: Option<Vec<LoopReg>> = self
+            .loops
+            .iter()
+            .map(|l| l.resumable)
+            .chain(std::iter::once(own))
+            .collect();
+        if let Some(loops) = loops {
+            self.back_edges.push(BackEdge {
+                pc: pc as u32,
+                loops,
+            });
         }
     }
 

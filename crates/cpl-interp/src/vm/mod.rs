@@ -25,7 +25,9 @@ mod exec;
 mod helpers;
 mod ir;
 
+pub(crate) use helpers::read_slot;
 pub(crate) use helpers::VmStats;
 pub(crate) use ir::CompiledProgram;
 #[cfg(test)]
-pub(crate) use ir::{Chunk, Op};
+pub(crate) use ir::Op;
+pub(crate) use ir::{Chunk, LoopReg};

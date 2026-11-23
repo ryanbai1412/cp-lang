@@ -44,6 +44,27 @@ pub(super) fn undeclared(traced: bool, loc: &SlotLoc, held: &Value) -> bool {
     traced && !matches!(loc, SlotLoc::V(_)) && matches!(held, Value::Unit)
 }
 
+/// The value of the local at `loc`, read without taking it from its register.
+pub(crate) fn read_slot(loc: &SlotLoc, regs_i: &[i64], regs_v: &[Value]) -> Value {
+    match *loc {
+        SlotLoc::V(r) => regs_v[r as usize].clone(),
+        SlotLoc::I(r, kind) => kind.box_val(regs_i[r as usize]),
+        SlotLoc::OptI { val, some, kind } => {
+            kind.box_opt(regs_i[val as usize], regs_i[some as usize])
+        }
+        SlotLoc::SmallTuple {
+            base: b,
+            len,
+            kinds,
+        } => {
+            let fs = (0..len as usize)
+                .map(|k| kinds[k].box_val(regs_i[b as usize + k]))
+                .collect();
+            Value::Tuple(TupleVal::Boxed(Rc::new(fs)))
+        }
+    }
+}
+
 pub(super) fn sync_to_stack(
     slot_map: &[SlotLoc],
     regs_i: &[i64],
@@ -62,23 +83,8 @@ pub(super) fn sync_to_stack(
             continue;
         }
         stack[base + slot] = match *loc {
-            SlotLoc::I(r, kind) => kind.box_val(regs_i[r as usize]),
-            SlotLoc::OptI { val, some, kind } => {
-                kind.box_opt(regs_i[val as usize], regs_i[some as usize])
-            }
-            SlotLoc::SmallTuple {
-                base: b,
-                len,
-                kinds,
-            } => {
-                let n = len as usize;
-                let mut fs = Vec::with_capacity(n);
-                for k in 0..n {
-                    fs.push(kinds[k].box_val(regs_i[b as usize + k]));
-                }
-                Value::Tuple(TupleVal::Boxed(Rc::new(fs)))
-            }
             SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
+            _ => read_slot(loc, regs_i, regs_v),
         };
     }
 }

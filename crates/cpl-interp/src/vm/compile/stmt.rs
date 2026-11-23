@@ -395,6 +395,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     id: *id,
                     breaks: Vec::new(),
                     continues: Vec::new(),
+                    resumable: Some(LoopReg::While(*id)),
                 });
                 self.compile_stmts(&body.stmts);
                 let lt = self.loops.pop().unwrap();
@@ -404,6 +405,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 if self.traced {
                     self.emit_trace(TracePoint::Tick, cond.span);
                 }
+                let back = self.ops.len();
+                self.note_back_edge(back, Some(LoopReg::While(*id)));
                 self.emit(Op::Jmp { target: head }, cond.span);
                 let end = self.ops.len() as u32;
                 self.patch(j_exit, end);
@@ -659,6 +662,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             id,
             breaks: Vec::new(),
             continues: Vec::new(),
+            resumable: None,
         });
         self.compile_stmts(&body.stmts);
         let lt = self.loops.pop().unwrap();
@@ -741,6 +745,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     id,
                     breaks: Vec::new(),
                     continues: Vec::new(),
+                    resumable: Some(LoopReg::Range { id, r_var, r_hi }),
                 });
                 self.compile_stmts(&body.stmts);
                 let lt = self.loops.pop().unwrap();
@@ -748,6 +753,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 for c in lt.continues {
                     self.patch(c, step_pc);
                 }
+                let back = self.ops.len();
+                self.note_back_edge(back, Some(LoopReg::Range { id, r_var, r_hi }));
                 if *closed {
                     self.emit(
                         Op::ForIncClosed {
@@ -827,6 +834,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     id,
                     breaks: Vec::new(),
                     continues: Vec::new(),
+                    resumable: None,
                 });
                 self.compile_stmts(&body.stmts);
                 let lt = self.loops.pop().unwrap();
@@ -1122,6 +1130,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             id,
             breaks: Vec::new(),
             continues: Vec::new(),
+            resumable: None,
         });
         let saved_pinned = self.pinned_v;
         if let Some(lv) = local_v {

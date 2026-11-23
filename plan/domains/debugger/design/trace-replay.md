@@ -72,3 +72,37 @@ compiler's Interp snapshot/restore and nothing else from the core.
 `TraceConfig::from_step` skips the first N steps and keeps the rest; `trace::tail` counts a run's steps in one run and keeps the last K in a second. The window holds exactly the steps the whole recording holds there (`a_window_of_a_run_holds_the_steps_the_whole_recording_holds_there`), and memory follows the window. Time does not improve: the last 20,000 of 10^7 steps cost 5.96x (scalar) and 4.42x (array) the untraced run, against 5.09x and 4.98x for recording everything, because a skipped step still pays for its `View` and hooks (the 2.5x observed floor). Next: skip before the `View` is built, counting trace points instead of steps in `vm/exec/trace.rs`, so a skipped step costs the 1.30x dispatch floor; then checkpoints remove the replayed prefix.
 
 Skipping before the locals (a skipped step's `View` built without them, `Observer::skipping`) did not move the tail: 1.05-1.42 s against 1.12-1.39 s over four runs, inside the shared VM's noise. A window by running again costs two observed runs, and the observed run's floor is the hooks themselves. Exactly how much of that floor is the `View` was not measured. Closing the gap needs compiler's option (b), checkpoints on an explicit VM frame stack, so the prototype was not landed.
+
+## Checkpoints, first step (2026-11-23, tech-debt for compiler)
+
+Landed in `cpl-interp/src/checkpoint.rs`. Every value is `Rc`-shared and copied
+on write, so a checkpoint copies main's locals and the globals, not the heap.
+
+- **Clock:** `Checkpoint::ticks`, the number of `Stop` ticks so far (one per VM
+  backward jump and call). It runs on the untraced VM and costs nothing extra
+  until a checkpoint is due: `Stop`'s countdown already takes the cold path.
+- **Checkpoint:** taken on the untraced VM at a jump back to the top of a
+  `while` or `for v in lo..hi` of main's, once `every` ticks have passed. It
+  holds where each enclosing loop is (loop id, and `v`/`hi` for a range),
+  main's locals, globals, domains, input cursor, rng state, `queries`, and
+  `printed` (bytes printed so far).
+- **Restore:** `resume_on_this_thread(program, input, &checkpoint, out, limits,
+  trace)` rebuilds that state and runs main on the tree-walker from that loop
+  round, traced or not. It prints exactly `whole_output[printed..]`, and a
+  traced resume records exactly the last steps of the whole run's trace
+  (`tests/checkpoint.rs`, step by step, nested loops, calls, input and `rand`).
+  The tree-walker resumes so that the traced build never needs the untraced
+  VM's register layout.
+- **Overhead (10^7-round loop, release, best of 5, two runs,
+  `cargo run --release -p cpl-interp --example checkpoint_overhead`):** a
+  checkpoint every 4096 ticks (2441 checkpoints) costs 1.007x-1.075x the
+  untraced run; every 65536 ticks (152), 0.999x-1.004x; every 2^20 (9),
+  1.001x-1.014x. The untraced run without checkpoints is unchanged (`cpl run`
+  on a 3*10^7-round loop and a 10^7-call loop, within noise of main).
+- **Step N anywhere:** resume from the last checkpoint before N and keep the
+  window with `from_step`/`tail`. A resumed trace numbers its steps from the
+  checkpoint, so debugger maps step numbers to ticks (one recorded run that
+  counts both is enough); that map is not in this step.
+- **Owed (the maximal version):** an explicit VM frame stack, so a checkpoint
+  can be taken inside calls (a run spent in one deep call takes none until it
+  returns), plus multitest cases and loops over sequences.

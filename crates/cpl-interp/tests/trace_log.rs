@@ -1,6 +1,8 @@
 //! The recording is a log of changes with a snapshot now and then: any
 //! step rebuilt from it is the step the run took.
 
+mod common;
+use common::program;
 use cpl_interp::trace::{Recording, TraceConfig};
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -32,18 +34,6 @@ unsafe impl GlobalAlloc for Counting {
 
 #[global_allocator]
 static COUNTING: Counting = Counting;
-
-fn program(source: &str) -> cpl_ir::Program {
-    let mut db = cpl_check::Database::new();
-    db.set_file("t.cp", source);
-    let analysis = db.analyze("t.cp").expect("the file was just set");
-    assert!(
-        analysis.diagnostics.is_empty(),
-        "{:?}",
-        analysis.diagnostics
-    );
-    cpl_ir::lower(&analysis).expect("lowers")
-}
 
 fn record(source: &str, input: &str, config: TraceConfig) -> Recording {
     let config = TraceConfig {
