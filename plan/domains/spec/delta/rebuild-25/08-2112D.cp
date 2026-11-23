@@ -6,7 +6,7 @@
 let n: 2..=2e5 = read()
 domain V = 1..=n
 let g = Graph.undirected(read<[n - 1](u: V, v: V)>())
-let mid = V.find(v => g.deg(v) == 2) else:
+let mid = V.find(v => g[v].len == 2) else:
     print("NO")
     return
 let t = Rooted(g, root: mid)

@@ -12,9 +12,9 @@ let n: 2..=2e5 = read()
 domain V = 1..=n
 let g = Graph.undirected(read<[n - 1](u: V, v: V)>())
 let t = Rooted(g, root: 1)
-let ends = [v for v in V if g.deg(v) == 1]
+let ends = [v for v in V if g[v].len == 1]
 fn count(r: V) -> Z:
-    if ends.len - (if g.deg(r) == 1: 1 else: 0) >= 3: return 0
+    if ends.len - (if g[r].len == 1: 1 else: 0) >= 3: return 0
     let leaves = [v for v in ends if v != r]
     if leaves.len == 1: return Z(2) ** n
     let (a, b) = (leaves[0], leaves[1])

@@ -4,11 +4,11 @@
 // letter into such a pair, which creates a pair without x.
 @!multitest
 let n: 1..=100 = read()
-let s = read<Str(len: n..=n) of "LIT">()
+let s: Str of "LIT" = read()
 if s.all(c => c == s[0]):
     print(-1)
     return
-var t = List(s)
+var t = [c for c in s]
 var ops = List<Int>()
 fn third(a: Char, b: Char) -> Char = "LIT".find(c => c != a and c != b)!
 fn insert_at(i: Int):
@@ -33,7 +33,7 @@ fn ok():
         assert s.all(c => c == s[0]), "said impossible, but {s} has two letters"
         return
     assert 0 <= m <= 2 * n, "{m} operations"
-    var t = List(s)
+    var t = [c for c in s]
     repeat m:
         let i: Int = read_output()
         assert 1 <= i < t.len, "gap {i} outside 1..{t.len - 1}"

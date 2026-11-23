@@ -9,7 +9,7 @@ domain I = 1..=n
 let a = read<[I]1..=1e9>()
 let pre = a.map(x => if x <= k: 1 else: -1).scan(+)
 let total = pre[I.cuts.last!]
-let inner = I.cuts.filter(c => 1 <= Int(c) <= n - 1)
+let inner = List(I.cuts.filter(c => 1 <= Int(c) <= n - 1))
 var ok = false
 if let l = inner.find(c => pre[c] >= 0), let r = inner.rfind(c => total - pre[c] >= 0):
     ok = Int(l) < Int(r)

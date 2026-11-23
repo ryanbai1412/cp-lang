@@ -80,3 +80,52 @@ Everything in the 2117F revision except the two branch formulas was rewritten: t
 change touched the leaf set, the branch vertex and the lengths, three facts the original tied to
 the fixed root. `t.meet(a, b, r)` (std only, not in the spec chapter's table) made the per-root
 form O(log n).
+
+## After running
+
+Base `afb412bfc` (descends from `30b6fa8a8`), `cargo build -p cpl-cli` (debug `cpl`), g++ 17 `-O2`.
+Samples went into `NN-<cfid>.tests/` through `cpl test --add`. Fuzz: Python generators and brutes
+(exhaustive enumeration or direct simulation of the statement), 200 random small inputs per
+problem, each run through `cpl run`, the C++ build and the brute (05 and 08 through an
+independent Python checker that also brute-forces feasibility). No crash or mismatch, so no
+sanitizer rerun was needed. Max-size timings are single runs on a 2-core VM.
+
+| File | check | run samples | test | build + g++ samples | fuzz (200) | max input, C++ |
+|---|---|---|---|---|---|---|
+| 01-2081A | ok after 2 fixes | pass | 1/1 | pass | 0 fails | 0.004 s |
+| 02-2085D | ok | pass | 1/1 | pass | 0 fails | 0.080 s |
+| 02-2085D-rev | ok | as intended (prints the minutes too) | - | same as `cpl run` | - | 0.088 s |
+| 03-2086D | ok | pass | 1/1 | pass | 0 fails | 0.012 s |
+| 04-2090C | ok | pass | 1/1 | pass | not fuzzed | 0.038 s (one test, n = 5e4), 0.039 s (5000 tests) |
+| 05-2092D | ok after 2 fixes | pass, `cpl judge` accepts ours and the sample answer, rejects 2 bad outputs | 1/1 | pass | 0 fails (checker) | 0.015 s; 197 ops on `L...LI`, judge accepts |
+| 06-2103C | ok after 1 lint fix | pass | 1/1 | pass | 0 fails | 0.011 s |
+| 07-2104E | ok | pass (2 samples) | 2/2 | pass | 0 fails | 0.124 s (n = 1e6, q = 2e5) |
+| 08-2112D | ok after 1 workaround | `cpl judge` accepts; rejects 2 bad outputs | 1/1 | judge accepts | 0 fails (checker) | 0.056 s; judge accepts the max output |
+| 09-2117F | ok | pass | 1/1 | pass | 0 fails | 0.059 s path, 0.036 s two long branches |
+| 09-2117F-rev | ok after 1 workaround | as intended (n answers per test) | - | same as `cpl run` | 0 fails vs a per-root brute | 0.081 s, 0.057 s |
+| 10-2117G | ok | pass | 1/1 | pass | 0 fails | 0.079 s (n = m = 2e5) |
+
+Nothing is over 1 s; the largest C++ file is 21.6 KB.
+
+### Failures
+
+| # | Where | Class | Smallest reproduction | What I did |
+|---|---|---|---|---|
+| F1 | 08, 09-rev | implementation bug | `domain V = 1..=3` / `let g = Graph.undirected(read<[2](u: V, v: V)>())` / `print(g.deg(2))`: E0203 "a `[V]List<V>` has no method `deg`" (`g.next(2)` too). The spec (lib/graphs-trees.md, Graphs table) and std (`Graph.deg`, `Graph.next`) both have them; with a `w` field (10-2117G) `g.out` works | `g[v].len` |
+| F2 | 05 | implementation bug | `let s = "LIT"` / `let t = List(s)` / `let c: Char = t[0]`: `cpl check` says `t[0]` is a `Str`, while `cpl run` of `print(List(s).len)` prints 3 (chars). Checker and interpreter disagree on `List(Str)` | `[c for c in s]` |
+| F3 | 01, 05 | spec hole H01, plus a known gap | `read<Str of "01">()` is E0107 (known gap `core-02/read-str-of-alphabet-type-arg.cp`); `Str(len: n..=n)` is E0504 not implemented (known gap `core-02/str-len-runtime-bound.cp`); a combined `Str(len: ...) of "01"` has no spelling in the spec | `let s: Str of "01" = read()`, no length check |
+| F4 | 01, 05 | implementation bug (diagnostics) | the E0107 parse error above is followed by E0305 "`s` is a Bool and can't be indexed" on every later use of `s`, and in 05 by two E0302 "`t[i]` is a Bool": one root cause, several errors naming an invented type (goal 4: one error per root cause) | - |
+| F5 | 01 | reader error | `Z(2).inv` without `()`: `inv` is a method (std/mod.cp), L0608 says so and E0302 follows | `Z(2).inv()` |
+| F6 | 06 | reader error (lint) | L0602: a `filter` view walked three times | `List(...)` once |
+| F7 | harness | reader error | first fuzz run of 07 wrapped a single-test input in a test count; all 200 rejected at the first token, correctly | fixed the generator |
+
+No wrong answer came from any solution. H02 (widest-path `dijkstra`) was not exercised: the file
+follows std's signature.
+
+### Counts after running
+
+- Holes: 17 before running (9 silent, 3 contradiction, 3 missing-stdlib, 2 found-late); running
+  confirmed H01 (no combined spelling, both halves unimplemented or known gaps).
+- Implementation bugs: 3 new (F1 unweighted `Graph.undirected` lacks `deg`/`next`, F2 `List(Str)`
+  element type, F4 cascading errors after a parse error), 2 known gaps hit (F3).
+- Reader errors: 2 in solutions (F5, F6), 1 in the harness (F7).
