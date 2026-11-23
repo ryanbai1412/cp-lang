@@ -28,7 +28,7 @@ Fields: `lt: ?((T, T) -> Bool)`.
 - `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise; Reserve backing storage for at least `cap` elements.
 - `fn push_pop(mut self, x: T) -> T` — \(O(\log n)\); \(O(1)\) when `x` is returned; Push `x` and pop the minimum in one sift.
 - `fn replace_top(mut self, x: T) -> ?T` — \(O(\log n)\); Replace the minimum with `x` and return the old minimum (or `None` if empty).
-- `fn push_all(mut self, items: List<T>)` — \(O(k \log n)\) for `k` items; Push all elements of `items`.
+- `fn push_all(mut self, items: Seq<T>)` — \(O(k \log n)\) for `k` items; Push all elements of `items`.
 - `fn drain(mut self) -> yields T` — \(O(\log n)\) per step; Pop and yield all elements in ascending order, leaving the heap empty.
 
 ## `struct ErasableHeap<T>`
@@ -94,7 +94,7 @@ Meldable min-heap (skew / leftist heap) with \(O(\log n)\) `meld` and, when `T: 
 - `@get fn peek(self) -> ?T` — \(O(1)\); The smallest element, or `None` if empty.
 - `@get fn top(self) -> ?T` — \(O(1)\); The smallest element, or `None` if empty (alias for `peek`).
 - `fn push(mut self, x: T)` — \(O(\log n)\); Push `x` into the heap.
-- `fn push_all(mut self, items: List<T>)` — \(O(k \log n)\) for `k` items; Push all elements of `items`.
+- `fn push_all(mut self, items: Seq<T>)` — \(O(k \log n)\) for `k` items; Push all elements of `items`.
 - `fn pop(mut self) -> ?T` — \(O(\log n)\); Remove and return the smallest element, or `None` if empty.
 - `fn meld(mut self, other: MeldHeap<T>)` — \(O(k + \log n)\) for the smaller heap's `k` nodes; melding `n` one-element heaps; Meld `other` into `self` (consuming `other`).
 - `fn absorb(mut self, mut other: MeldHeap<T>)` — \(O(\log n)\); Meld `other` into `self`, leaving `other` empty.
@@ -121,7 +121,7 @@ Fields: `h: Heap<Desc<T>>`.
 - `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise; Make room for `cap` elements in total.
 - `fn push_pop(mut self, x: T) -> T` — \(O(\log n)\); \(O(1)\) when `x` is returned; Push `x`, then pop and return the largest element.
 - `fn replace_top(mut self, x: T) -> ?T` — \(O(\log n)\); Pop the largest element, then push `x`; returns the popped one, or `None` (and only pushes) when empty.
-- `fn push_all(mut self, items: List<T>)` — \(O(n + k \log(n + k))\); Push every element of `items`.
+- `fn push_all(mut self, items: Seq<T>)` — \(O(n + k \log(n + k))\); Push every element of `items`.
 - `fn drain(mut self) -> yields T` — \(O(n \log n)\); Pop every element, largest first.
 
 ## `struct Settle<K, P>(best: (P, P) -> P = min)`
