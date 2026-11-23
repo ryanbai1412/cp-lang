@@ -34,3 +34,41 @@ fn the_start_of_a_range_from_a_literal_is_the_literal() {
     assert!(solve.contains("put_int(0)"), "{cpp}");
     assert_eq!(solve.matches("::make(").count(), 1, "{cpp}");
 }
+
+#[test]
+fn a_fn_only_an_assert_calls_is_left_out_of_a_build_without_checks() {
+    let source = concat!(
+        "fn is_even(x: Int) -> Bool = x % 2 == 0\n",
+        "let n: 1..=10 = read()\n",
+        "assert is_even(n)\n",
+        "print(n)\n",
+    );
+    let mut db = cpl_check::Database::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let build = |checks| {
+        let target = crate::Target {
+            checks,
+            ..crate::Target::default()
+        };
+        crate::emit_for(&program, "t.cp", None, &target)
+    };
+    assert!(build(crate::Checks::Traps).contains("is_even("));
+    let none = build(crate::Checks::None);
+    assert!(!none.contains("is_even("), "{none}");
+}
+
+#[test]
+fn a_runtime_fn_named_only_by_a_comment_or_a_member_is_unused() {
+    let file = concat!(
+        "namespace cpl {\n",
+        "// `first` of a view: its first element\n",
+        "template <class T> T first(T v) { return v; }\n",
+        "}  // namespace cpl\n",
+        "int main() { auto p = std::pair<int, int>(); return p.first; }\n",
+    );
+    assert_eq!(
+        crate::runtime::unused_lines(file),
+        ["template <class T> T first(T v) { return v; }"]
+    );
+}

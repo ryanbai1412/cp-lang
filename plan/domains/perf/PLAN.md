@@ -37,6 +37,18 @@ Milestone 1 steps 6 and 7 (Submit, Compete) set the order; see the README's Mile
 - Readability loss from minifying and fusion (Q3).
 - Overlap with compiler on facts (`ranges.rs` vs `prover`): agree the move in `plan/domains/compiler/worklog.md` before building more on `ranges.rs`.
 
+## General fixes owed
+
+Local fixes that landed, and the mechanism that would remove the whole class.
+
+| Instance | General fix | Owner |
+|---|---|---|
+| `(0..b).start` emits `0`, not `Range::make(0, b).lo` (`expr/builtin.rs`; noi17p2 34530 -> 32521 B) | lowering stops building `Range::make(0, 0 + len).lo + i + 0` around view indexes; failing that, one IR simplifier pass (pure projections of literals, `x + 0`) in `lib.rs::prepared` beside `prune` | compiler (lowering), perf (pass) |
+| `if` on a known `same(op, op)` pruned in `prune.rs`, but only when `on:` is passed | `same` folds for a default-valued op parameter too (request in compiler's worklog) | compiler |
+| Bitset fusion keyed on the field list (`is_bitset_ty`, `scope::rows`), stale twice | recognise std types by declaration, one predicate shared by codegen | perf |
+| unused runtime fns found by name in the text (`runtime::unused_lines`), now skipping comments and members | runtime pieces declare the fns they define, and reachability follows the emitted calls, as it does for program fns | perf |
+| tuned variants found under three names (`perf.cp`, `<stem>.perf.cp`, dry-run `<stem>_w.cp`) | one name, `perf.cp` / `<stem>.perf.cp`; rename the dry-run files | perf |
+
 ## Next
 
 Deadline about 09:30 PST 2026-11-23; worklog checkpoint every 2 hours.

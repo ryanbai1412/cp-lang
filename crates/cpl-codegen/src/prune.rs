@@ -1,19 +1,21 @@
 //! Branches decided at compile time: an `if` whose condition folds to a
 //! constant (an `O: Trait` test, `same(op, +)`) keeps only the branch it
 //! takes, so the C++ carries neither the other branch nor the fns only it
-//! calls.
+//! calls. A build without checks drops `assert`s here for the same reason.
 
 use cpl_ir::{BinOp, Block, Expr, ExprKind, Program, Stmt, UnOp};
 
-pub(crate) fn prune(program: &mut Program) {
+/// `asserts` is whether the build checks them; when it does not, they go
+/// too, so a fn only an `assert` calls is not emitted.
+pub(crate) fn prune(program: &mut Program, asserts: bool) {
     for f in &mut program.fns {
-        block(&mut f.body);
+        block(&mut f.body, asserts);
     }
     for c in &mut program.closures {
-        block(&mut c.body);
+        block(&mut c.body, asserts);
     }
-    block(&mut program.main);
-    block(&mut program.setup);
+    block(&mut program.main, asserts);
+    block(&mut program.setup, asserts);
 }
 
 /// The value of a condition made only of `true`, `false`, `not`, `and` and
@@ -35,7 +37,10 @@ pub(crate) fn known(e: &Expr) -> Option<bool> {
     }
 }
 
-fn block(b: &mut Block) {
+fn block(b: &mut Block, asserts: bool) {
+    if !asserts {
+        b.stmts.retain(|s| !matches!(s, Stmt::Assert { .. }));
+    }
     for stmt in &mut b.stmts {
         match stmt {
             Stmt::If(cond, then, otherwise) => {
@@ -44,10 +49,10 @@ fn block(b: &mut Block) {
                     let dead = if taken { &mut *otherwise } else { &mut *then };
                     dead.stmts.clear();
                 }
-                block(then);
-                block(otherwise);
+                block(then, asserts);
+                block(otherwise, asserts);
             }
-            Stmt::While(_, _, body) | Stmt::For(_, _, _, body) => block(body),
+            Stmt::While(_, _, body) | Stmt::For(_, _, _, body) => block(body, asserts),
             _ => {}
         }
     }

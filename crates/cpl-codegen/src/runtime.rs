@@ -1790,11 +1790,18 @@ fn one_line_fn(line: &str) -> Option<&str> {
     (!kind && !name.is_empty() && !before.windows(8).any(|w| w == b"operator")).then_some(name)
 }
 
+/// Whether `line` names the free fn `name`: a comment line does not call
+/// it, and `x.first` and `p->first` are members, which it never is.
 fn mentions(line: &str, name: &str) -> bool {
+    if line.trim_start().starts_with("//") {
+        return false;
+    }
     let (l, n) = (line.as_bytes(), name.as_bytes());
     (0..=l.len().saturating_sub(n.len())).any(|at| {
+        let member = l[..at].ends_with(b".") || l[..at].ends_with(b"->");
         l[at..].starts_with(n)
             && (at == 0 || !word(l[at - 1]))
+            && !member
             && l.get(at + n.len()).is_none_or(|&c| !word(c))
     })
 }

@@ -115,7 +115,7 @@ pub fn sizes(
     fitted: &Fitted,
 ) -> Vec<Size> {
     let total = fitted.cpp.len();
-    let program = prepared(program);
+    let program = prepared(program, target);
     let mut emitter = emit::Emitter::new(&program);
     emitter.target = target.clone();
     let (_, chunks) = emitter.file_with_chunks(name, source);
@@ -166,10 +166,10 @@ fn unmangled(name: &str) -> String {
 }
 
 /// `program` with what the emitter decides once for the whole file.
-fn prepared(program: &cpl_ir::Program) -> cpl_ir::Program {
+fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
-    prune::prune(&mut program);
+    prune::prune(&mut program, target.checks != Checks::None);
     program
 }
 
@@ -180,7 +180,7 @@ pub fn emit_for(
     source: Option<&str>,
     target: &Target,
 ) -> String {
-    let program = prepared(program);
+    let program = prepared(program, target);
     let mut emitter = emit::Emitter::new(&program);
     emitter.target = target.clone();
     narrow(&emitter.file(name, source))
@@ -196,7 +196,7 @@ pub fn emit_profiled(
     name: &str,
     target: &Target,
 ) -> (String, Vec<cpl_diag::Span>) {
-    let program = prepared(program);
+    let program = prepared(program, target);
     let mut emitter = emit::Emitter::new(&program);
     emitter.target = target.clone();
     emitter.sites = Some(Vec::new());
