@@ -3,6 +3,8 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Bug-catch round 9 in release mode: 0 of 2 caught; both fixes are out of reach by design (an optimisation, and a trap at `--checks none`). Written up in bugcatch.md; rate stays 23 of 25 behavioural fixes.
+- Rebuild round 8 (`e254eb449`): 23 holes, down from round 7's 33; all inside the subset. Files in delta/rebuild-8. First triage: `1.5e5` is `Int` (decision 346, R01.4.2 reworded); `or`/`and` continuation lines are E0504 in the compiler. Two failing cases, routed to compiler, listed as known gaps. Scuza and 1703F fail on `pre[c]`, the known gap core-07/prefix-scan-cuts.cp.
 - Rebuild round 8 started at `e254eb449`: ten new Codeforces problems, same brief as round 7. The target is fewer holes than round 7's 33.
 - Release baseline at `808b184eb` (`CPL_CONFORM_RELEASE=1`): 2148 of 2444 cases pass, against 2283 in the interpreter. All 135 that pass only in the interpreter are trap cases. Release runs no checks (R09.2.2), so traps there are out of scope, not disagreements. 0 `ok` or diagnostic cases differ between the interpreter and the C++, and none pass only in release.
 - cpl-conform `CPL_CONFORM_RELEASE=1` runs each case as `cpl run --release` (the judge's C++), and `conformance-bugcatch.py --release` measures backend fixes with it. Closes round 9's blind spot for the two codegen fixes; a full release baseline is running.

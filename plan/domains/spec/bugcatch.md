@@ -57,3 +57,13 @@ general fix (run cases through `cpl build` too) is under General fixes owed.
 | `718cce42` | codegen: sink a reduction through calls to trap-free fns | out of reach (backend only) | |
 | `d80f7a08` | codegen: drop the domain-position trap at --checks none too | out of reach (backend only) | |
 
+## Round 9, release mode (`808b184eb`, `--release --commits 718cce42 d80f7a08`)
+
+Rerun of round 9's two backend-only fixes with cases run as `cpl run --release`. Both are still missed, and both are out of reach of an output suite by design, not for want of a case:
+
+| commit | change | why no case can catch it |
+|---|---|---|
+| `718cce42` | sink a reduction through trap-free calls | an optimisation: same output, less work. Catching it needs a cost check (op count or time) on a case, which is perf's bench, not conformance. |
+| `d80f7a08` | drop the `D(x)` position trap at `--checks none` | only changes a program whose index is out of range at `--checks none`, where R09.3.2 makes it unchecked; a valid program prints the same either way. |
+
+So the release runner closed the harness blind spot but found no missed backend bug. The combined rate stays 23 of 25 behavioural fixes (92%); fixes that only change cost are counted separately from now on.

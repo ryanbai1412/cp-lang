@@ -7439,3 +7439,7 @@ L0557 flagged only `fact[a] * inv(fact[b]) * inv(fact[a - b])`, one table. Ports
 ## 346. The newcomer score credits a `missing <pattern>` mark only once a lint names it (2026-11-23)
 
 `corpus/newcomer/score.py` counted a `// expect: missing <pattern>` mark as flagged when any diagnostic was within three lines, so an unrelated lint (`peek_then_pop` beside `big_inf_literal`, `repeated_literal` beside a ternary search) earned credit and the score read 100% with 18 patterns untaught. Now a `missing` mark is never a hit, and a mark that an existing lint does teach names that lint (8 marks relabelled: e.g. n19's multitest reset is `state_above_multitest`). The honest score fell from 151/151 to 132/150 (88%) and is climbing back by new lints. Reverse: restore the `near` test for `missing` marks in `score.py`.
+
+## 346. A scientific literal with an exact integer value is an `Int`, whatever its mantissa (2026-11-23)
+
+R01.4.1 said an exponent literal denoting an exact integer is `Int`; R01.4.2 said floats "need a fraction", so `1.5e5` read both ways (rebuild 8, H-SCI-LITERAL), and Codeforces writes bounds as `1.5e5` and `2.5e5`. Rule: with an exponent, the value decides (`1.5e5` is `Int`, `2.5e-1` is a float); without one, a `.` makes a float (`2.0`). Reason: the statement's bound is copied as written, and no float literal changes meaning. Reverse: R01.4.2 back to "a fraction makes a float" and drop core-01/scientific-fraction-is-int.cp.
