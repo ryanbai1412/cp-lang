@@ -25,7 +25,7 @@ most recently edited `.cp` file in the folder.
 | `cpl lint [files]` | lints with autofixes |
 | `cpl build d` | the C++ for the file's judge; `--checked`, `--size`, `--judge`, `--copy` |
 | `cpl submit d` | `build`, then the cases on that build with the judge's flags; `--copy` puts the file on the clipboard |
-| `cpl migrate` | runs codemods to a new stdlib version and updates pins |
+| `cpl migrate [path]...` | rewrites spellings newer versions removed (each `E0503` with a fix) in every `.cp` file under the paths, shows the diff, and lists what needs a hand edit; `--check` changes nothing. Stdlib codemods join as their diagnostics land; recording pins waits on `cp.toml` pins |
 | `cpl judges` | lists judge profiles |
 | `cpl doc` | renders library docs from doc comments |
 | `cpl lsp` | the language server |

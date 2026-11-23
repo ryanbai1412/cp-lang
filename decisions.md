@@ -6141,3 +6141,19 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   needs.
 - **Reverse.** Delete `fetch.rs`, its entries in `crates/cpl-cli`, and add
   `fetch` back to `SPEC_ONLY` in `crates/cpl-cli/tests/spec_sync.rs`.
+
+## 251. `cpl migrate` applies the fixes of migration diagnostics (2026-11-22)
+
+- **Decision.** `cpl migrate [path]...` (`crates/cpl-cli/src/migrate.rs`)
+  applies only the fixes of diagnostics listed in `MIGRATIONS`, today
+  `E0503` (removed syntax), to every `.cp` file under the paths, including
+  brutes and generators in `d.tests/`. It prints the diff, reports the
+  removed forms that have no mechanical rewrite with their help, and exits
+  1 while any remain; `--check` writes nothing.
+- **Why.** R11.4.3 asks for codemods. A codemod is a diagnostic with a fix,
+  the same mechanism `cpl fix` and the LSP already use, so a stdlib rename
+  ships its deprecated-alias diagnostic with a fix and joins `MIGRATIONS`
+  instead of `migrate` growing its own rewriting. Pins are not recorded yet:
+  no command writes `cp.toml` pins today (R11.4.2).
+- **Reverse.** Delete `migrate.rs` and its entries in `crates/cpl-cli`, and
+  add `migrate` back to `SPEC_ONLY` in `crates/cpl-cli/tests/spec_sync.rs`.

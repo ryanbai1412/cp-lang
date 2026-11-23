@@ -25,6 +25,11 @@ pub(crate) const COMMANDS: &[Command] = &[
         summary: &["apply each error's suggested fix, report what is left"],
     },
     Command {
+        name: "migrate",
+        args: "[path]...",
+        summary: &["rewrite removed spellings to the current ones"],
+    },
+    Command {
         name: "run",
         args: "<file> [input]",
         summary: &[
@@ -238,6 +243,7 @@ pub(crate) fn command_usage(command: &str) -> Option<&'static str> {
     Some(match command {
         "check" => CHECK_USAGE,
         "fix" => FIX_USAGE,
+        "migrate" => crate::migrate::USAGE,
         "run" => RUN_USAGE,
         "build" => BUILD_USAGE,
         "judge" => JUDGE_USAGE,
@@ -411,6 +417,7 @@ options:
 const JSON_FORMAT: &[&str] = &["run", "doc", "test", "stress", "bench", "profile", "cover"];
 const JSON_FLAG: &[&str] = &[
     "check", "fix", "build", "submit", "judge", "judges", "explain", "report", "fmt", "fetch",
+    "migrate",
 ];
 
 /// Both spellings of JSON output, `--json` and `--format json`, work on every
@@ -445,6 +452,7 @@ pub(crate) fn unknown_option<'a>(command: &str, args: &[&'a str]) -> Option<&'a 
     let options: &[&str] = match command {
         "check" | "fix" | "judge" => &["--json"],
         "judges" => &["--json"],
+        "migrate" => &["--check", "--json"],
         "build" => &["-o", "--judge", "--checked", "--size", "--copy", "--json"],
         "submit" => &["--copy", "--json"],
         "explain" => &["--json"],

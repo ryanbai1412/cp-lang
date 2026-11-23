@@ -60,6 +60,58 @@ fn misused(command: &str, args: &[&str], message: &str) {
     assert!(!stderr.contains("commands:"), "{stderr}");
 }
 
+/// `cpl migrate` over a folder: rewrites removed spellings with a diff,
+/// leaves those without a rewrite to a hand edit, and reaches the brutes
+/// and generators in `a.tests/`.
+#[test]
+fn migrate_rewrites_removed_spellings_under_a_folder() {
+    helps("migrate");
+    let dir = scratch("migrate");
+    let old = "if true:\n    print(1)\nelse if false:\n    print(2)\n";
+    let stuck = "for mut i in 0..3:\n    print(i)\n";
+    std::fs::create_dir_all(dir.join("lib")).unwrap();
+    std::fs::create_dir_all(dir.join("a.tests")).unwrap();
+    std::fs::write(dir.join("a.cp"), old).unwrap();
+    std::fs::write(dir.join("lib/b.cp"), stuck).unwrap();
+    std::fs::write(dir.join("a.tests/c.cp"), old).unwrap();
+    std::fs::write(dir.join("ok.cp"), "print(1)\n").unwrap();
+
+    let checked = cpl(&dir, &["migrate", "--check"]);
+    assert_eq!(checked.status.code(), Some(EXIT_ERRORS.into()));
+    assert_eq!(std::fs::read_to_string(dir.join("a.cp")).unwrap(), old);
+
+    let out = cpl(&dir, &["migrate"]);
+    assert_eq!(out.status.code(), Some(EXIT_ERRORS.into()));
+    assert_eq!(
+        text(&out.stdout),
+        "--- ./a.cp\n+++ ./a.cp\n@@ line 3 @@\n-else if false:\n+elif false:\n\
+         --- ./a.tests/c.cp\n+++ ./a.tests/c.cp\n@@ line 3 @@\n-else if false:\n+elif false:\n"
+    );
+    assert!(
+        text(&out.stderr).contains("`for mut` was removed"),
+        "{}",
+        text(&out.stderr)
+    );
+    let a = std::fs::read_to_string(dir.join("a.cp")).unwrap();
+    assert_eq!(a, old.replace("else if", "elif"));
+    assert_eq!(
+        std::fs::read_to_string(dir.join("a.tests/c.cp")).unwrap(),
+        a
+    );
+
+    std::fs::write(dir.join("lib/b.cp"), "for i in 0..3:\n    print(i)\n").unwrap();
+    let done = cpl(&dir, &["migrate", "--format", "json"]);
+    assert_eq!(done.status.code(), Some(0), "{}", text(&done.stderr));
+    let json = cpl_json::parse(&text(&done.stdout)).expect("migrate --json is JSON");
+    let files = json.at(&["files"]).as_array().unwrap();
+    assert_eq!(files.len(), 4);
+    assert!(files
+        .iter()
+        .all(|f| f.at(&["changed"]).as_bool() == Some(false)));
+    let plain = cpl(&dir, &["migrate", "lib"]);
+    assert_eq!(text(&plain.stdout), "1 files use the current spellings\n");
+}
+
 /// `cpl fetch` on a saved AtCoder page: creates the problem, then refreshes
 /// its samples, and won't overwrite a test that says something else.
 #[test]
@@ -304,7 +356,7 @@ fn every_command_has_help_and_rejects_an_unknown_option() {
         .filter(|line| !line.starts_with("   "))
         .filter_map(|line| line.split_whitespace().next())
         .collect();
-    assert_eq!(commands.len(), 24, "{help}");
+    assert_eq!(commands.len(), 25, "{help}");
     for command in commands {
         helps(command);
         let out = cpl(Path::new("."), &[command, "--no-such-option"]);
@@ -326,7 +378,7 @@ fn help_json_lists_every_command_with_its_usage_summary_and_help() {
     assert_eq!(out.status.code(), Some(0));
     let json = cpl_json::parse(&text(&out.stdout)).expect("cpl --help --json is JSON");
     let commands = json.at(&["commands"]).as_array().unwrap();
-    assert_eq!(commands.len(), 24);
+    assert_eq!(commands.len(), 25);
     let listed = text(&cpl(Path::new("."), &["--help"]).stdout);
     for command in commands {
         let name = command.at(&["name"]).as_str().unwrap();

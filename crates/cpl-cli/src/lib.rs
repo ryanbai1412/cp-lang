@@ -14,6 +14,7 @@ mod interact;
 mod json_out;
 mod laws;
 mod live;
+mod migrate;
 mod profile;
 mod replay;
 mod report;
@@ -152,6 +153,7 @@ pub fn exec<S: AsRef<str>>(
         Some("report") => report::report(&rest, stdin, stdout, stderr),
         Some("self") => toolchain::self_command(&rest, stdout, stderr),
         Some("explain") => explain_code(&rest, stdout, stderr),
+        Some("migrate") => migrate::migrate(&rest, stdout, stderr),
         Some("check") if rest.iter().all(|arg| *arg == "--json") => {
             usage_error("`check` needs a file: `cpl check a.cp`".into())
         }
@@ -1168,7 +1170,7 @@ mod tests {
     fn tooling_commands_reach_their_crates() {
         for command in [
             "check", "fix", "run", "build", "judge", "submit", "judges", "explain", "lsp", "fmt",
-            "lint", "doc", "stress", "new", "fetch", "test", "bench", "watch",
+            "lint", "doc", "stress", "new", "fetch", "test", "bench", "watch", "migrate",
         ] {
             let out = run(&[command, "--help"]);
             assert_eq!(out.code, 0, "{command}");
