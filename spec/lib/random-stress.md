@@ -58,20 +58,29 @@ fn brute(): ...
 
 - A relation `check: (input, ours, theirs) => Bool` on an `@alt`;
   equality is the default.
-- A unary `@check fn ok(input: In, out: Reader) -> Bool` runs on every
-  implementation's output, for problems with many valid answers. Pair it
+- A unary `@check fn ok() -> Bool` runs on every implementation's
+  output, for problems with many valid answers. Inside it `read()` reads
+  the test's input and `read_output()` reads the output being checked,
+  token by token like `read`; it rejects by returning `false` or by a
+  failing `assert`. `cpl test` and `cpl judge d input output` use it in
+  place of an exact compare (decision 375). Pair it
   with a brute that compares feasibility, since a unary checker cannot
   catch a wrong "impossible".
-- A checker sees `input` and `out`, never the solution's bindings: a fact
+- A checker sees only the input and the output, never the solution's bindings: a fact
   it trusts (`let m = n - k + 1`) is restated from `input`, so a wrong
   derivation in the solution cannot pass its own check (decision 374).
 - Floats compare with `close(a, b, abs:, rel:)`.
 
 ## Interactors
 
-`@interactor fn judge(w: Wire)` is the other end of the pipes for an
-interactive problem; `cpl stress` and `cpl run` run the program
-against it with generated hidden data.
+`@interactor fn judge(mut sol: Interactor)` is the other end of the pipes
+for an interactive problem. Its `read()` reads the hidden test,
+`sol.send(x)` prints to the program and `sol.recv()` reads the program's
+next token at the expected type; a failing `assert` rejects the run.
+Under `@!multitest` it runs once per test. `cpl run` runs both sides with
+its input as the hidden test, and `cpl stress` generates the hidden test
+from the interactor's reads. The program side is ordinary I/O with
+`Wire()` (R10.4) (decision 375).
 
 ## Laws
 

@@ -191,6 +191,7 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-02/bare-variant-needs-expected-enum.cp: compiler
 - core-02/counted-array-never-grows.cp: compiler
 - core-02/move-into-ctor-receiver-then-use.cp: compiler
+- core-02/read-str-of-alphabet-type-arg.cp: compiler
 - core-03/annotation-widens-fresh-read.cp: compiler
 - core-03/field-bound-from-input.cp: compiler
 - core-03/memory-over-profile.cp: compiler

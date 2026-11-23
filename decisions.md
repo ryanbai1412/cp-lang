@@ -7841,3 +7841,14 @@ checker name shared top-level bindings. `tuple-read-dependent-bound`:
 `let (n, k): (1..=2e5, 1..=n) = read()` already works and traps on `k > n`;
 R10.2.3 now says so and that the generator honours the order.
 `list-copy-is-move` needs nothing: E0608 already says to use `b.clone()`.
+
+## 375. The checker and interactor APIs are the implemented ones (2026-11-23)
+
+Rebuild round 20 wrote two interactive and one any-answer solution from
+spec/lib/random-stress.md, which showed `@check fn ok(input: In, out: Reader)`
+and `@interactor fn judge(w: Wire)`. Neither exists: `In`/`Reader` are defined
+nowhere and the compiler takes `@check fn ok()` with `read_output()`, and
+`@interactor fn judge(mut sol: Interactor)` with `send`/`recv`. The spec now
+describes the implemented forms, which already run under `cpl test`, `cpl
+judge`, `cpl run` and `cpl stress`. Reverse: restore parameters and route the
+change to tools.

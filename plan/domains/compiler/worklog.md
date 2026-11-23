@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- From spec (rebuild 20): `read<Str of "UDLR">()` is E0107 and `read<[n](Str of "ab")>()` is E0103, while `let s: Str of "UDLR" = read()` works: `Str of` isn't parsed in type-argument position. Case core-02/read-str-of-alphabet-type-arg.
 - From spec (rebuild 18): `Heap(by: x => desc(x))` is E0302 `expected Int, found Desc<Int>` while `Heap(by: desc)` checks: the key lambda's return type is forced to the element type. Case core-07/heap-by-desc-lambda. General fix: a `by:` key's result type is its own type variable bounded by `Ord`, in every std signature that takes `by:`.
 - From spec (decision 370, R02.8.2): `a.push(4)` on a counted array `[3]Int` reports E0302 `expected Counter<Int, Int>, found [Int]Int`: method lookup fell into an unrelated `push`. Case core-02/counted-array-never-grows wants E0203 (no method `push` on an array). General fix: when no candidate's receiver fits, report E0203 on the receiver type instead of the first candidate's mismatch.
 - From spec (R02.7.1): `let s = Left` with no expected type is accepted, even when two enums declare `Left` (silent pick). Case core-02/bare-variant-needs-expected-enum expects an error (E0201 assumed; adjust the code if another fits).

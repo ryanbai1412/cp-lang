@@ -15,7 +15,7 @@ platform and `\` on Windows too; `d.tests/` sits beside `d.cp`.
 | `cpl test d` | every case in `d.tests/`, inline `@sample`s and `@test` fns; `--case 2` runs one; `--add FILE [--expect OUT]` adds the next numbered case and runs it |
 | `cpl stress d` | alternatives, generators, checkers, law sampling; shrinks and saves failures (`tools/stress.md`) |
 | `cpl locate d` | the smallest failing input and the first part whose alt disagrees |
-| `cpl judge d input [output answer]` | runs the file's `@interactor` as a judge program, or its `@checker` on an output; exit 0 accepts |
+| `cpl judge d input [output answer]` | runs the file's `@interactor` as a judge program, or its `@check` on an output; exit 0 accepts |
 | `cpl explain d [name]` | layouts, widths, niches, peak memory, specializations, checks, copies (`tools/explain.md`) |
 | `cpl replay d --trace t.json --step n` | runs one recorded call again with the file's edited fn |
 | `cpl dap` | the time-travel debug adapter (DAP) on stdio, the editors' debugger over the interpreter |
