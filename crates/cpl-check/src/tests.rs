@@ -1702,3 +1702,20 @@ let b = buckets(w)
 ";
     assert_eq!(check(src), vec![]);
 }
+
+#[test]
+fn a_name_resolves_to_the_file_or_module_that_declares_it() {
+    let sums = |src: &str| -> Vec<String> {
+        let mut db = Database::new();
+        db.set_file("a.cp", src);
+        let analysis = db.analyze("a.cp").unwrap();
+        (analysis.items.iter())
+            .flat_map(|item| item.check.resolved.iter())
+            .filter(|(_, r)| r.name == "sum")
+            .map(|(_, r)| r.module.clone())
+            .collect()
+    };
+    // A user's own `fn sum` is this file's, not the library's.
+    assert_eq!(sums("fn sum(a: Int) -> Int = a\nprint(sum(2))\n"), [""]);
+    assert_eq!(sums("let xs = [1, 2]\nprint(sum(xs))\n"), ["std.seq"]);
+}

@@ -42,6 +42,11 @@ use std::sync::Arc;
 pub(crate) trait Env {
     /// The definition of a top-level name.
     fn global(&mut self, name: &str) -> Option<Arc<Def>>;
+    /// The module a top-level `name` comes from (`std.seq`), or `None` when
+    /// this file declares it.
+    fn origin(&mut self, _name: &str) -> Option<String> {
+        None
+    }
     /// The struct or enum behind the type of a value, which may come from
     /// a module this file reaches without importing the type by name.
     fn type_def(&mut self, name: &str) -> Option<Arc<Def>>;
@@ -115,7 +120,17 @@ pub struct TypedIndex {
     pub proof: String,
 }
 
-/// A use of a top-level name.
+/// What a name resolves to, where the checker resolved it.
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct Resolved {
+    /// `std.seq` for an imported name, empty for this file's own.
+    pub module: String,
+    pub name: String,
+    /// For a member, the type it belongs to.
+    pub owner: Option<String>,
+}
+
+/// A use of a top-level name. Spans are relative to the item.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct GlobalRef {
     pub span: Span,
@@ -147,6 +162,7 @@ pub(crate) struct Checker<'a> {
     /// checked.
     steps: cpl_syntax::order::Steps,
     refs: Vec<GlobalRef>,
+    resolved: Vec<(Span, Resolved)>,
     pub(crate) typed_indexes: Vec<TypedIndex>,
     pub(crate) fixed_io: Vec<Span>,
     pub(crate) io_costs: Vec<(Span, String, String)>,
@@ -216,6 +232,7 @@ pub(crate) struct Checked {
     pub diagnostics: Vec<Diagnostic>,
     pub hovers: Vec<HoverEntry>,
     pub refs: Vec<GlobalRef>,
+    pub resolved: Vec<(Span, Resolved)>,
     pub typed_indexes: Vec<TypedIndex>,
     pub fixed_io: Vec<Span>,
     pub io_costs: Vec<(Span, String, String)>,
@@ -237,6 +254,7 @@ impl<'a> Checker<'a> {
             mutators: narrow::Mutators::default(),
             steps: Default::default(),
             refs: Vec::new(),
+            resolved: Vec::new(),
             typed_indexes: Vec::new(),
             fixed_io: Vec::new(),
             io_costs: Vec::new(),
@@ -376,6 +394,7 @@ impl<'a> Checker<'a> {
             diagnostics: self.sink.finish(),
             hovers: self.hovers,
             refs: self.refs,
+            resolved: self.resolved,
             typed_indexes: self.typed_indexes,
             fixed_io: self.fixed_io,
             io_costs: self.io_costs,
@@ -424,6 +443,7 @@ impl<'a> Checker<'a> {
     /// type out of code that is checked, and reported, somewhere else.
     fn quietly<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let (hovers, refs, typed) = (self.hovers.len(), self.refs.len(), self.typed_indexes.len());
+        let resolved = self.resolved.len();
         let (fixed, io, shapes) = (self.fixed_io.len(), self.io_costs.len(), self.shapes.len());
         let conflicts = self.lends.conflicts.len();
         let sink = std::mem::replace(&mut self.sink, Sink::new());
@@ -431,6 +451,7 @@ impl<'a> Checker<'a> {
         self.sink = sink;
         self.hovers.truncate(hovers);
         self.refs.truncate(refs);
+        self.resolved.truncate(resolved);
         self.typed_indexes.truncate(typed);
         self.fixed_io.truncate(fixed);
         self.io_costs.truncate(io);
@@ -764,6 +785,13 @@ impl<'a> Checker<'a> {
                 top_level: self.in_fn == 0,
                 in_lambda: self.in_fn == 0 && !self.fns.is_empty(),
             });
+            let module = self.env.origin(name).unwrap_or_default();
+            let resolved = Resolved {
+                module,
+                name: name.into(),
+                owner: None,
+            };
+            self.resolved.push((span, resolved));
             self.hovers.push(HoverEntry {
                 span,
                 name: name.to_string(),

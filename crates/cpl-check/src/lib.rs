@@ -31,7 +31,7 @@ pub use builtins::{
     foreign_str_fn, prelude_names, BuiltinMember, MemberKind, PreludeKind, Receiver,
     BUILTIN_MEMBERS,
 };
-pub use check::{closest, GlobalRef, HoverEntry, TypedIndex};
+pub use check::{closest, GlobalRef, HoverEntry, Resolved, TypedIndex};
 pub use db::{
     Analysis, AnalyzedItem, Database, Decl, Import, ItemCheck, ItemSyntax, Module, Stats,
 };
