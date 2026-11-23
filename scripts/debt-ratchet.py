@@ -426,6 +426,10 @@ def inherited_baseline(baseline: dict, upstream: dict) -> dict:
     return eff
 
 
+class UpstreamUnknown(Exception):
+    """`ref` exists but could not be checked out to measure."""
+
+
 def measure_upstream(root: Path, max_rs_lines: int, ref: str = "origin/main") -> dict | None:
     """Measures `ref` in a scratch worktree; None when HEAD is `ref` (CI on main)
     or `ref` is missing, so main's own debt still fails there."""
@@ -434,13 +438,15 @@ def measure_upstream(root: Path, max_rs_lines: int, ref: str = "origin/main") ->
         return None
     with tempfile.TemporaryDirectory() as tmp:
         wt = Path(tmp) / "main"
-        subprocess.run(["git", "-C", str(root), "worktree", "add", "-q", "--detach", str(wt), up[0]],
-                       check=True, capture_output=True)
+        add = subprocess.run(["git", "-C", str(root), "worktree", "add", "-q", "--detach", str(wt), up[0]],
+                             capture_output=True, text=True, env=_git_env())
+        if add.returncode != 0:
+            raise UpstreamUnknown(add.stderr.strip() or f"git worktree add exited {add.returncode}")
         try:
             return measure(wt, max_rs_lines)
         finally:
             subprocess.run(["git", "-C", str(root), "worktree", "remove", "--force", str(wt)],
-                           capture_output=True)
+                           capture_output=True, env=_git_env())
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -500,7 +506,13 @@ def main(argv: list[str] | None = None) -> int:
     actual = measure(args.root, max_lines)
     errors, warnings, notes = evaluate(actual, baseline)
     if errors:
-        upstream = measure_upstream(args.root, max_lines)
+        try:
+            upstream = measure_upstream(args.root, max_lines)
+        except UpstreamUnknown as e:
+            # Unable to tell main's debt from this change's: warn, and leave
+            # the verdict to CI on main rather than block a commit.
+            warnings += [f"could not measure origin/main ({e}); not blocking: {e2}" for e2 in errors]
+            upstream, errors = None, []
         if upstream is not None:
             mine = evaluate(actual, inherited_baseline(baseline, upstream))[0]
             warnings += [f"already on main, not from this change (infra fixes it): {e}"
