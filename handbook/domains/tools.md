@@ -152,7 +152,7 @@ their front ends.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| The playground means what `cpl` means | entry points with a parity test (check, lint, fix, run, build, trace, explain, stress) | differential on every conformance case, `spec.cp` port and example; rule `handbook/guidelines/commands-checklist.md#r9-commands-are-functions` | `crates/cpl-wasm/tests/parity.rs` |
+| The playground means what `cpl` means | entry points with a parity test (check, lint, fix, run, build, trace, explain, stress) | differential on every conformance case, `spec.cp` port and example; rule `commands/R9` | `crates/cpl-wasm/tests/parity.rs` |
 | One step installs the editor support | editors whose `cpl setup <editor>` is tested | hand-written suite | `crates/cpl-cli/tests/golden.rs` (setup); a fresh-machine run per OS: `missing` |
 | Each editor works from that step | editors passing the shared smoke (highlighting, diagnostics, completion, formatting, definition) | the same smoke on each editor | CI `neovim`, `vscode`, `jetbrains` and `editors` jobs; Vim in `editors/smoke.sh` |
 | A failed install or setup says why and what to do | failure modes with a tested message (no network, no compiler, unwritable folder, unknown editor) | hand-written suite | `missing` |
@@ -167,39 +167,39 @@ their front ends.
 | Companion import lands title, URL, limits, judge and samples | fields kept from a Companion problem | hand-written suite | `crates/cpl-contest/src/tests.rs`, `crates/cpl-cli/tests/golden.rs` (`new_creates_the_solution_and_its_tests_folder`) |
 | A whole contest imports as one folder | problems and samples kept from a contest page | hand-written suite | `crates/cpl-cli/tests/golden.rs` (`fetch_writes_a_pages_samples_and_keeps_other_tests`) |
 | Editors import like the CLI | editors with an import action calling `cpl new --listen` | hand-written suite | `editors/vscode/test/unit/`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
-| The user's own layout and template work | layouts `cpl test`, `run` and the editors find the cases in (`a.tests/`, sibling `tests/`) | differential against `crates/cpl-contest` (`find_tests_dir`); rule `handbook/guidelines/commands-checklist.md#r15-same-cases-same-order` | `crates/cpl-contest/src/tests.rs`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt`; VS Code test panel and lenses: `missing` |
+| The user's own layout and template work | layouts `cpl test`, `run` and the editors find the cases in (`a.tests/`, sibling `tests/`) | differential against `crates/cpl-contest` (`find_tests_dir`); rule `commands/R15` | `crates/cpl-contest/src/tests.rs`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt`; VS Code test panel and lenses: `missing` |
 
 ### Writing and revising in the editor (J2, J5)
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| The editor reports what `cpl check` and `cpl lint` report | files where they differ | differential over every conformance case, `spec.cp` port and example; rule `handbook/guidelines/commands-checklist.md#r10-one-entry-point-per-job` | `crates/cpl-cli/tests/lsp_parity.rs` |
+| The editor reports what `cpl check` and `cpl lint` report | files where they differ | differential over every conformance case, `spec.cp` port and example; rule `commands/R10` | `crates/cpl-cli/tests/lsp_parity.rs` |
 | Diagnostics after a sequence of edits equal a fresh open | edit sequences where they differ | metamorphic: replay real edits, compare with opening the final text | `missing` |
-| The server never fails internally on half-typed code | internal errors | fuzz: real ports cut, spliced and garbled, then every request; rule `handbook/guidelines/commands-checklist.md#r12-halftyped-code` | `crates/cpl-lsp/tests/fuzz.rs` |
-| Answers arrive within the latency budget | p95 per request at 500 and 5,000 lines, per OS | generated large files, release build; rule `handbook/guidelines/commands-checklist.md#r13-latency` | `crates/cpl-lsp/tests/latency.rs`; CI `lsp latency` job |
-| Completion offers what the contestant types next | recall: share of identifiers, replayed token by token over the corpus, offered after `.`, after `(` and in scope, including after a call such as `runs(xs).` | generated replay; rule `handbook/guidelines/commands-checklist.md#r14-measured-over-the-corpus` | `crates/cpl-lsp/tests/completion_replay.rs` |
-| Completion ranks the right item first | mean rank of the identifier actually typed | generated replay; rule `handbook/guidelines/commands-checklist.md#r14-measured-over-the-corpus` | `missing` |
-| Hover explains every token | std items and syntax forms whose hover shows the signature with named options (`by:`), the cost, and what syntax like `[0..n]Int` means | generated snapshots of every `pub` std item and syntax form; rule `handbook/guidelines/commands-checklist.md#r14-measured-over-the-corpus` | `missing` (`crates/cpl-lsp/tests/fixtures/hover.cp` covers a handful) |
+| The server never fails internally on half-typed code | internal errors | fuzz: real ports cut, spliced and garbled, then every request; rule `commands/R12` | `crates/cpl-lsp/tests/fuzz.rs` |
+| Answers arrive within the latency budget | p95 per request at 500 and 5,000 lines, per OS | generated large files, release build; rule `commands/R13` | `crates/cpl-lsp/tests/latency.rs`; CI `lsp latency` job |
+| Completion offers what the contestant types next | recall: share of identifiers, replayed token by token over the corpus, offered after `.`, after `(` and in scope, including after a call such as `runs(xs).` | generated replay; rule `commands/R14` | `crates/cpl-lsp/tests/completion_replay.rs` |
+| Completion ranks the right item first | mean rank of the identifier actually typed | generated replay; rule `commands/R14` | `missing` |
+| Hover explains every token | std items and syntax forms whose hover shows the signature with named options (`by:`), the cost, and what syntax like `[0..n]Int` means | generated snapshots of every `pub` std item and syntax form; rule `commands/R14` | `missing` (`crates/cpl-lsp/tests/fixtures/hover.cp` covers a handful) |
 | Hover, signature help, completion and docs agree | surfaces rendering a signature from one model | architecture: one signature model | `missing` |
 | Signature help shows the active named option | calls with named options where the right one is highlighted | generated over std signatures | `missing` (`crates/cpl-lsp/tests/fixtures/signature.cp` is hand-written) |
-| Go to definition reaches every name, in the browser too | std and user names resolving to a definition and a docs page | generated over the corpus, desktop and playground; rule `handbook/guidelines/commands-checklist.md#r14-measured-over-the-corpus` | `missing` (`crates/cpl-lsp/tests/ports.rs` checks it answers; `crates/cpl-wasm/tests/parity.rs` has one case) |
+| Go to definition reaches every name, in the browser too | std and user names resolving to a definition and a docs page | generated over the corpus, desktop and playground; rule `commands/R14` | `missing` (`crates/cpl-lsp/tests/ports.rs` checks it answers; `crates/cpl-wasm/tests/parity.rs` has one case) |
 | References and rename keep the program's meaning | renames after which the file checks clean and runs the same | metamorphic over the corpus | `crates/cpl-lsp/src/tests.rs` (hand-written); corpus replay: `missing` |
-| Every lint and error fix is a code action, and fix-all equals `cpl fix` | fixes offered as code actions; fix cases matching `cpl fix` | differential plus fuzz; rule `handbook/guidelines/commands-checklist.md#r10-one-entry-point-per-job` | `crates/cpl-wasm/tests/parity.rs` (`fix_all_matches_cpl_fix`), `crates/cpl-lsp/tests/fuzz.rs`; one action per fix, generated: `missing` |
-| Formatting in the editor equals `cpl fmt` | files where they differ | differential; rule `handbook/guidelines/commands-checklist.md#r10-one-entry-point-per-job` | `missing` |
+| Every lint and error fix is a code action, and fix-all equals `cpl fix` | fixes offered as code actions; fix cases matching `cpl fix` | differential plus fuzz; rule `commands/R10` | `crates/cpl-wasm/tests/parity.rs` (`fix_all_matches_cpl_fix`), `crates/cpl-lsp/tests/fuzz.rs`; one action per fix, generated: `missing` |
+| Formatting in the editor equals `cpl fmt` | files where they differ | differential; rule `commands/R10` | `missing` |
 | Highlighting agrees with the parser | tokens the grammars classify differently from `cpl-syntax` | generated diff | `crates/cpl-cli/tests/vscode_sync.rs`, `editors/smoke.sh` (keywords), `editors/vscode/test/grammar/`; tree-sitter and TextMate against the parser on the corpus: `missing` |
 | Inlay hints are right and can be turned off | hints matching the checker's types and ranges | hand-written suite | `editors/vscode/test/unit/inlayHints.test.ts` |
-| `cpl explain` and hover agree on storage | ports where they state the same bytes | differential; rule `handbook/guidelines/commands-checklist.md#r10-one-entry-point-per-job` | `crates/cpl-lsp/tests/explain_hover.rs` |
+| `cpl explain` and hover agree on storage | ports where they state the same bytes | differential; rule `commands/R10` | `crates/cpl-lsp/tests/explain_hover.rs` |
 
 ### Running and testing (J6)
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
 | `cpl run` with no input runs every sample and shows the diff | sample layouts covered | hand-written suite | `crates/cpl-cli/tests/cli.rs` |
-| Local verdicts match the judge's | token pairs every caller accepts and rejects alike | one comparator (`cpl_stress::judge`) for `cpl test`, `stress`, `submit` and `watch`; rule `handbook/guidelines/commands-checklist.md#r10-one-entry-point-per-job` | an agreement test across `cpl test`, stress, the corpus bench and `cpl judge`: `missing` (the corpus bench still has its own tolerance formula) |
+| Local verdicts match the judge's | token pairs every caller accepts and rejects alike | one comparator (`cpl_stress::judge`) for `cpl test`, `stress`, `submit` and `watch`; rule `commands/R10` | an agreement test across `cpl test`, stress, the corpus bench and `cpl judge`: `missing` (the corpus bench still has its own tolerance formula) |
 | Multi-answer problems are judged by their checker | problems with `@check` or `checker.py` judged by it | hand-written suite | `crates/cpl-contest/src/tests.rs` |
 | Interactive problems run with correct flushing | interactive problems run end to end | hand-written suite | `crates/cpl-cli/tests/cli.rs`, `crates/cpl-contest/src/tests.rs`; every interactive corpus problem: `missing` |
 | Adding a custom test is one step | `cpl test --add` paths and editor Add Test | hand-written suite | `crates/cpl-contest/src/tests.rs`, `editors/vscode/test/unit/` |
-| Editor test panels show what `cpl test` shows | panels whose cases, order and verdicts match | differential; rule `handbook/guidelines/commands-checklist.md#r15-same-cases-same-order` | `editors/vscode/test/unit/results.test.ts`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
+| Editor test panels show what `cpl test` shows | panels whose cases, order and verdicts match | differential; rule `commands/R15` | `editors/vscode/test/unit/results.test.ts`, `editors/jetbrains/src/test/kotlin/dev/cplang/ide/CplTest.kt` |
 | `cpl watch` reruns on save and never shows stale results | saves after which the shown result is current | hand-written suite | `crates/cpl-cli/tests/golden.rs` (watch) |
 
 ### Submitting (J9)
@@ -213,15 +213,15 @@ their front ends.
 
 | Quality | Metric | Mechanism | Check |
 |---|---|---|---|
-| Every command is discoverable from `cpl --help` | commands with `--help`, help lines within 80 columns | generated: one case per command listed by `cpl --help`; rule `handbook/guidelines/commands-checklist.md#r1-help` | `crates/cpl-cli/tests/golden.rs` (`every_command_has_help_and_rejects_an_unknown_option`, `every_help_fits_80_columns`) |
-| The spec and the binary name the same commands | mismatches | differential, with a shrink-only allowlist; rule `handbook/guidelines/commands-checklist.md#r4-the-spec-names-the-commands` | `crates/cpl-cli/tests/spec_sync.rs` |
-| A usage error names the right invocation | commands with a usage-error test | generated over the command list; rule `handbook/guidelines/commands-checklist.md#r1-help` | `crates/cpl-cli/tests/golden.rs` |
+| Every command is discoverable from `cpl --help` | commands with `--help`, help lines within 80 columns | generated: one case per command listed by `cpl --help`; rule `commands/R1` | `crates/cpl-cli/tests/golden.rs` (`every_command_has_help_and_rejects_an_unknown_option`, `every_help_fits_80_columns`) |
+| The spec and the binary name the same commands | mismatches | differential, with a shrink-only allowlist; rule `commands/R4` | `crates/cpl-cli/tests/spec_sync.rs` |
+| A usage error names the right invocation | commands with a usage-error test | generated over the command list; rule `commands/R1` | `crates/cpl-cli/tests/golden.rs` |
 | Every command's output is pinned | commands with a snapshot of text and `--json` output | hand-written snapshots | `crates/cpl-cli/tests/golden.rs`; snapshots for every command and outcome: `missing` |
-| One `--json` contract | commands with `--json`; one flag spelling; outputs valid against a published schema | hand-written suite; rule `handbook/guidelines/commands-checklist.md#r3-one-spelling` | `crates/cpl-cli/tests/golden.rs` (`json_and_format_json_are_one_flag_on_every_command_with_json`); schema validation: `missing` |
-| Exit codes mean the same on every command | commands asserting success and failure codes | hand-written suite; rule `handbook/guidelines/commands-checklist.md#r5-exit-codes` | `crates/cpl-cli/tests/golden.rs` |
-| Every command starts in under 100 ms | median and p90 per command, release build | generated over the command list and the largest corpus ports; rule `handbook/guidelines/commands-checklist.md#r7-cold-start` | `crates/cpl-cli/tests/cold_start.rs`; CI `lsp latency` job on macOS and Windows |
-| The same input prints the same bytes | `cpl-json` output order | architecture: objects are a `BTreeMap`; rule `handbook/guidelines/commands-checklist.md#r6-machine-output` | `crates/cpl-json` unit tests |
-| Paths shown are ones the user can open | printed paths going through one helper | architecture: `cpl_diag::Shown`; rule `handbook/guidelines/commands-checklist.md#r8-paths` | `crates/cpl-cli/tests/golden.rs` |
+| One `--json` contract | commands with `--json`; one flag spelling; outputs valid against a published schema | hand-written suite; rule `commands/R3` | `crates/cpl-cli/tests/golden.rs` (`json_and_format_json_are_one_flag_on_every_command_with_json`); schema validation: `missing` |
+| Exit codes mean the same on every command | commands asserting success and failure codes | hand-written suite; rule `commands/R5` | `crates/cpl-cli/tests/golden.rs` |
+| Every command starts in under 100 ms | median and p90 per command, release build | generated over the command list and the largest corpus ports; rule `commands/R7` | `crates/cpl-cli/tests/cold_start.rs`; CI `lsp latency` job on macOS and Windows |
+| The same input prints the same bytes | `cpl-json` output order | architecture: objects are a `BTreeMap`; rule `commands/R6` | `crates/cpl-json` unit tests |
+| Paths shown are ones the user can open | printed paths going through one helper | architecture: `cpl_diag::Shown`; rule `commands/R8` | `crates/cpl-cli/tests/golden.rs` |
 | Help, errors, hover and explain use the spec's words | terms not in `spec/GLOSSARY.md` | `missing` (a generated scan of help and hover text) | `missing` |
 | Names are guessable | wrong guesses on fixed tasks given only `cpl --help` | process: a cold run on fixed tasks | `missing` as a suite |
 
@@ -232,7 +232,7 @@ their front ends.
 | Old solutions keep building, and `cpl migrate` moves them | removed spellings rewritten under a folder | hand-written suite | `crates/cpl-cli/tests/golden.rs` (`migrate_rewrites_removed_spellings_under_a_folder`) |
 | Personal libraries get completion, hover and definition like std | user-library names covered by the completion, hover and definition metrics | generated, as for std | `missing` |
 | Editor settings are few and documented | settings each editor exposes that are documented and tested | hand-written suite | `missing` |
-| One analysis per command | databases each command opens (`own_databases`) | ratchet now; architecture once every tool takes one `cpl_check::Session`; rule `handbook/guidelines/commands-checklist.md#r11-ask-the-analysis` | `scripts/debt-ratchet.py` |
+| One analysis per command | databases each command opens (`own_databases`) | ratchet now; architecture once every tool takes one `cpl_check::Session`; rule `commands/R11` | `scripts/debt-ratchet.py` |
 | No tools file is too large to change safely | files over the 2,000-line cap | ratchet | `scripts/debt-ratchet.py` |
 
 ## Suites and tools
