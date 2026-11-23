@@ -8328,3 +8328,9 @@ tag move fatal again.
 - **Decision.** `(lo..hi).bsearch(ok, steps:)`, `.peak(by: f, steps:)` and `.valley(by: f, steps:)` on a `Range<F64>` are the real-valued searches. `bsearch_real`, `ternary_min_real` and `ternary_max_real` go. `spec/lib/search-dp.md` had both spellings, its table one way and its prose the other.
 - **Why.** These are the same three searches the integer ranges already have, and the range's element type picks the search, as for every other range method. A `_real` suffix is a type-named variant, which the stdlib rule forbids, and it adds three names to remember.
 - **Reverse.** Restore the three free fns and make the table use them.
+
+## 420. Corpus tests are a generator and a seed list, never committed data (idioms, 2026-11-23)
+
+- **Decision.** Supersedes 293. A problem's tests are its `gen.py` plus `tests.toml`: a seed and size per case, with tiny hand-picked inputs inline. `scripts/corpus-tests.py make` writes inputs and answers to `target/corpus-tests/<id>/` and never into `corpus/`. Answers come from the accepted C++ into that one cache, which `cpl test`, `cpl-conform corpus`, the perf corpus bench and `stress_corpus.rs` read. Existing `tests/` folders migrate problem by problem: seeds that cover what the old files covered (max sizes, edge shapes), the accepted C++ and the port pass them, then the files go. The 64 problems whose answers `verify` fully reproduces go first. History is not rewritten. The rule is `problem-packages/R9`.
+- **Why.** Ryan: "why are we including actual tests inside our corpus? kinda feels like we should just have generators and just seed them and that would be enough". Committed files had reached 2,886 and 40 MB, including one 70,000-line input, because `make` wrote into the tree. A seed list is reviewable, and resizing a case is a one-line edit.
+- **Reverse.** Point `make` back at `corpus/problems/<id>/tests/` and commit its output.
