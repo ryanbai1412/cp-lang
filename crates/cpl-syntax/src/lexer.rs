@@ -780,6 +780,31 @@ impl<'a> Lexer<'a> {
             (b'?', _, _) => (Question, 1),
             (b'-', b'>', _) => (Arrow, 2),
             (b'=', b'>', _) => (FatArrow, 2),
+            (b'=', b'=', b'=') | (b'!', b'=', b'=') => {
+                let (kind, ours) = if b == b'=' {
+                    (EqEq, "==")
+                } else {
+                    (NotEq, "!=")
+                };
+                self.pos += 3;
+                let span = Span::new(start as u32, self.pos as u32);
+                let theirs = &self.src[start..self.pos];
+                self.out.diagnostics.push(
+                    Diagnostic::error(
+                        codes::UNKNOWN_CHAR,
+                        span,
+                        format!("CP Lang compares with `{ours}`, not `{theirs}`"),
+                    )
+                    .with_help(format!("`{ours}` already compares type and value"))
+                    .with_fix(
+                        format!("replace `{theirs}` with `{ours}`"),
+                        span,
+                        ours,
+                    ),
+                );
+                self.push(kind, start);
+                return;
+            }
             (b'=', b'=', _) => (EqEq, 2),
             (b'=', _, _) => (Eq, 1),
             (b'!', b'=', _) => (NotEq, 2),
@@ -1016,13 +1041,17 @@ impl<'a> Lexer<'a> {
         true
     }
 
-    /// `def f(` or `func f(` starting a line: another language's `fn`, read
-    /// as `fn` so the declaration and its uses parse with no cascade.
+    /// `def f(` or `import std.x` starting a line: another language's
+    /// keyword, read as ours (`fn`, `use`) so the uses parse with no cascade.
     fn foreign_fn(&mut self, start: usize) -> Option<TokenKind> {
         let word = &self.src[start..self.pos];
+        let (ours, kind) = match word {
+            "def" | "func" | "function" => ("fn", TokenKind::Fn),
+            "import" => ("use", TokenKind::Use),
+            _ => return None,
+        };
         let line = self.src[..start].rfind('\n').map_or(0, |i| i + 1);
-        if !matches!(word, "def" | "func" | "function") || !self.src[line..start].trim().is_empty()
-        {
+        if !self.src[line..start].trim().is_empty() {
             return None;
         }
         let after = self.src[self.pos..]
@@ -1031,20 +1060,35 @@ impl<'a> Lexer<'a> {
         let name = after
             .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
             .next()?;
-        if name.is_empty() || !after[name.len()..].starts_with('(') {
+        let shaped = match kind {
+            TokenKind::Fn => after[name.len()..].starts_with('('),
+            _ => after[name.len()..].starts_with('.'),
+        };
+        if name.is_empty() || !shaped {
             return None;
         }
         let span = Span::new(start as u32, self.pos as u32);
+        let what = if ours == "fn" {
+            "declares a function"
+        } else {
+            "imports a module"
+        };
         self.out.diagnostics.push(
             Diagnostic::error(
                 codes::REMOVED_SYNTAX,
                 span,
-                format!("CP Lang declares a function with `fn`, not `{word}`"),
+                format!("CP Lang {what} with `{ours}`, not `{word}`"),
             )
-            .with_help(format!("write `fn {name}(...)`"))
-            .with_fix(format!("replace `{word}` with `fn`"), span, "fn"),
+            .with_help(match kind {
+                TokenKind::Fn => format!("write `fn {name}(...)`"),
+                _ => format!(
+                    "write `use {}`",
+                    after.split_whitespace().next().unwrap_or(name)
+                ),
+            })
+            .with_fix(format!("replace `{word}` with `{ours}`"), span, ours),
         );
-        Some(TokenKind::Fn)
+        Some(kind)
     }
 
     fn digits(&mut self) {

@@ -1729,6 +1729,16 @@ fn another_languages_def_is_one_error_read_as_fn() {
         .map(|d| (d.code.0, d.fixes[0].edits[0].1.as_str()))
         .collect();
     assert_eq!(found, [("E0503", "fn"), ("E0503", "fn")], "{d:?}");
+    let d = parse_file("import std.segtree\nlet import = 1\n").diagnostics;
+    assert_eq!(d.len(), 1, "{d:?}");
+    assert_eq!(d[0].fixes[0].edits[0].1, "use");
+}
+
+#[test]
+fn a_js_strict_equality_is_one_error_with_its_fix() {
+    let d = parse_file("let a = 1\nprint(a === 1, a !== 2)\n").diagnostics;
+    let found: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
+    assert_eq!(found, ["==", "!="], "{d:?}");
 }
 
 #[test]
