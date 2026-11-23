@@ -46,6 +46,7 @@ Contract tests run alongside all of it: each interface change adds or updates th
 | Two-core VM makes the full gate slow | `--fast` per commit; trains via `scripts/land.sh` |
 
 ## General fixes owed
+- `List.filled(n, x)` / `[D].filled(x)` took `x`'s exact range (`let inf = 1e9` filled a `List<1e9..=1e9>`); fixed locally by widening like a list literal (case `core-03/filled-from-constant-widens`). General fix: `filled` is a checker special case in `check/call.rs`; make it an ordinary std `fn filled<T>(n, x: T)` so generic binding (which already widens) types it, then delete the special case.
 - A method call infers a constructor-call receiver twice (`B(n, xs).m()`), so state kept during inference (moves, hovers, diagnostics) sees one expression twice; the move check now skips a re-read at the move's own span. General fix: infer each expression once and reuse its type.
 - Range ends have two accepted spellings: `r.l`/`r.r` (spec R04.4.15, decision 137) and `r.start`/`r.end` (decision 101, used ~90 times in std). The checker now types both on a generic `Range<D>` too. General fix: spec picks one; the other goes in the retired-names table with a `cpl fix` codemod over std and the corpus (owner: spec decides, compiler retires, stdlib migrates).
 - std is checked only for signatures when imported, so `cpl check std/<file>.cp` found 280 errors main never saw. Instance: `crates/cpl-cli/tests/std_checks.rs` ratchets the per-file count (19 today) toward 0. General fix: import checks a std module's bodies like any user module, and the ratchet file goes away at 0.

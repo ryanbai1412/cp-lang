@@ -285,7 +285,8 @@ impl<'a> Checker<'a> {
         (!matches!(ty, Ty::Unknown | Ty::Error)).then_some(ty)
     }
 
-    /// `List.filled(n, x)` is a list of what `x` is. A whole number
+    /// `List.filled(n, x)` is a list of what `x` is, widened as a list literal's
+    /// element is (`let inf = 1e9` fills a `List<Int>`). A whole number
     /// stands for any number type, so it also fills a `List<Z>`.
     fn filled(&mut self, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
@@ -299,7 +300,7 @@ impl<'a> Checker<'a> {
                 .iter()
                 .map(|e| self.resolve_type(&Type::of_index(e)))
                 .collect();
-            let elem = self.infer(&value.value);
+            let elem = self.infer(&value.value).widen();
             return Some(Ty::Array {
                 index,
                 elem: Box::new(elem),
@@ -314,7 +315,7 @@ impl<'a> Checker<'a> {
             return None;
         }
         self.infer(&count.value);
-        let elem = self.infer(&value.value);
+        let elem = self.infer(&value.value).widen();
         Some(Ty::Named {
             name: "List".into(),
             args: vec![elem],
