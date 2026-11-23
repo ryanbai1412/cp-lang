@@ -35,21 +35,21 @@ milestone = "M2"
 [[metric]]
 name = "common mistakes: errors carrying a fix-it"
 command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "100.0% (106/106) (80a47142)"
+today = "100.0% (105 errors over 104 files) (73ceeff41)"
 target = ">= 95%"
 milestone = "M1 (>= 88%), M2 (>= 95%)"
 
 [[metric]]
 name = "common mistakes: fixes restore the program"
 command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "97.2% (80a47142)"
+today = "100.0%, 0 silent (73ceeff41)"
 target = ">= 95%"
 milestone = "M1"
 
 [[metric]]
 name = "common mistakes: cascaded errors"
 command = "cargo test -p cpl-cli --test recovery fix_it_scoreboard -- --ignored --nocapture | grep '^  all'"
-today = "1 per 107 files (80a47142)"
+today = "1 per 104 files (73ceeff41)"
 target = "<= 3"
 milestone = "M2"
 

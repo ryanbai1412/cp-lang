@@ -56,9 +56,9 @@ common-mistake cascades <= 3; benchmark base = every clean `spec.cp`
 | Broken ports: cascaded | 0.2% (1/414) | <= 2% | M1/M3 |
 | Broken ports: silent | 0 | 0 | M1 |
 | Broken ports: fix-it | 79.3% | >= 80% | M2 |
-| Common mistakes: fix-it | 100.0% (106/106) | >= 95% | M1/M2 |
-| Common mistakes: fix restores | 97.2% | >= 95% | M1/M2 |
-| Common mistakes: cascaded | 1/107 | <= 3 | M3 |
+| Common mistakes: fix-it | 100.0% (105 errors) | >= 95% | M1/M2 |
+| Common mistakes: fix restores | 100.0% | >= 95% | M1/M2 |
+| Common mistakes: cascaded | 1/104 | <= 3 | M3 |
 | Spec blocks: first error generic `expected` | 11/68 (API synopses skipped) | <= 20 | M2 |
 | Scoreboards gated | 2 of 2 | 2 of 2 | M1 |
 | Benchmark base (clean `spec.cp`) | 37 of 100 | all clean, auto | M3 |
