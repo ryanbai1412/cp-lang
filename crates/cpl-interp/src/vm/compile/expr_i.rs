@@ -1127,8 +1127,17 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         }
                     })
                     };
-                if can_inline_pure_leaf {
+                let inlined = if can_inline_pure_leaf {
                     let f = &self.program.fns[*fn_id];
+                    // A fallback reads its locals from the tree-walker's frame,
+                    // which an inlined body does not have: if the body needs
+                    // one, undo the inlining and call the function instead.
+                    let mark = (
+                        self.ops.len(),
+                        self.fallback_stmts.len(),
+                        self.fallback_exprs.len(),
+                        self.trace_points.len(),
+                    );
                     let mut map = Vec::with_capacity(f.locals.len());
                     for (i, a) in args.iter().enumerate() {
                         let Arg::Value(ae) = a else { unreachable!() };
@@ -1165,6 +1174,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     for j in jumps {
                         self.patch(j, end_pc);
                     }
+                    if (self.fallback_stmts.len(), self.fallback_exprs.len()) == (mark.1, mark.2) {
+                        Some(dst)
+                    } else {
+                        self.ops.truncate(mark.0);
+                        self.spans.truncate(mark.0);
+                        self.fallback_stmts.truncate(mark.1);
+                        self.fallback_exprs.truncate(mark.2);
+                        self.trace_points.truncate(mark.3);
+                        None
+                    }
+                } else {
+                    None
+                };
+                if let Some(dst) = inlined {
                     dst
                 } else {
                     let f = &self.program.fns[*fn_id];
