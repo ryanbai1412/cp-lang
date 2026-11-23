@@ -1,6 +1,6 @@
 # Debugging demos: from a failing case to the first wrong state
 
-Three small programs, each with one planted bug and an `@brute(main)`
+Three small programs, each with one planted bug and an `@alt(program)`
 reference in the same file:
 
 | File | Kind | Planted bug |

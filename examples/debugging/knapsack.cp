@@ -11,7 +11,7 @@ for i in Item:
         if c >= w: best[c] max= best[c - w] + v
 print(best[cap])
 
-@brute(main)
+@alt(program)
 fn every_subset():
     var answer = 0
     for mask in 0..(1 << n):

@@ -23,7 +23,7 @@ while let (d, u) = heap.pop():
             heap.push((d + road.w, road.to))
 print(dist[V.last!] ?? -1)
 
-@brute(main)
+@alt(program)
 fn bellman_ford():
     var far: [V]?Int = none
     far[V.first!] = 0

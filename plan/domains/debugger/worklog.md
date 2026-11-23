@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Demos: the 3 `examples/debugging` programs spell `@alt(program)`, not the legacy `@brute(main)` (E0503 in spec/core/06 R06.4.3). Each still checks clean, and `cpl stress` still finds its planted bug (knapsack and shortest_path: expected `1`, got `2`; shows: expected `2`, got `1`). dap, replay, trace_browser and trace_log pass. Screenshots that show the old spelling are not recaptured yet.
 - VM in the browser (PLAN workstream 4): measured, then asked site, since the bundle cap is theirs. Enabling `mod vm` on wasm32 adds 572,473 bytes raw and 154,859 gzipped to `cpl_wasm.wasm`. Held until site answers.
 - Trap evidence: `every_runtime_code_traps_with_the_message_the_spec_shows` in `crates/cpl-cli/tests/runtime_errors.rs` traps once with each of the 12 runtime codes in spec/diagnostics.md (R0001-R0601), checking the code, the table's message and exit status 3. All 12 already matched; before this the suite checked only R0203 by code.
 - CI: `trace_browser` runs on CI, not skipped: run 45092808001 (c4f5436f8) passed all 3 browser tests. That run's `gate (checks)` failed on two clippy errors in `cpl-interp` from my trap-frame commit 582b653c8 (a complex type, an identity map); fixed in 7fa67de25 (`unwind::TrapFrame`, and an allow with its reason, since the map shortens `'p`). Its `cpl-lsp` fixture failure is not mine.
