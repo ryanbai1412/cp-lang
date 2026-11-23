@@ -21,26 +21,28 @@ domain V = 1..=n
 let g = Graph<V>.undirected(edges: read<[m](V, V)>())
 let t = g.spanning_tree()
 let d = t.diameter()
-let L = ceil_div(d.len, 2)
+let half = ceil_div(d.len, 2)
 
-let skips = [[j, i, k] for i in V for (j, k) in t.adj[i].pairs if not g.has(j, k)]
-fn joined(i: V, j: V) -> Bool = g.has(i, j) or t.dist(i, j) == 2
+let skips = [[j, i, k] for i in V for (j, k) in List(chain([t.parent(i)].present(), t.children(i))).pairs() if not g[j].contains(k)]
+fn joined(i: V, j: V) -> Bool = g[i].contains(j) or t.dist(i, j) == 2
 
 fn route(i: V, j: V) -> List<V>:
     let p = t.path(i, j)
     let dist = p.len - 1
-    if dist >= L:
-        let skip = dist - L
-        return p[..2 * skip].even + p[2 * skip..]
-    let far = max(d.u, d.v, by: f => t.dist(i, f))
-    let mid = t.median(i, j, far)
-    let stem_len = L - dist + 1
+    if dist >= half:
+        let skip = dist - half
+        return [x for x in p[..2 * skip].even] + p[2 * skip..]
+    let far = [d.u, d.v].max(by: f => t.dist(i, f))!
+    let meets = [t.lca(i, j), t.lca(i, far), t.lca(j, far)]
+    let mid = meets.max(by: x => t.depth(x))!
+    let stem_len = half - dist + 1
     let stem = t.path(mid, far)[..stem_len]
-    let detour = if mid == j: stem.odd + stem.even.rev else: stem.even + stem.odd.rev
+    let out = if mid == j: 1 else: 0
+    let detour = [x for (z, x) in stem.items if z % 2 == out] + [x for (z, x) in stem.items.rev if z % 2 != out]
     t.path(i, mid).drop_last() + detour + t.path(mid, j).drop()
 
 let rest = [route(i, j) for (i, j) in V.pairs if not joined(i, j)]
-let ops = [(3, skips), (L + 1, rest)]
+let ops = [(3, skips), (half + 1, rest)]
 print(ops.len)
 for (k, paths) in ops:
     print(k)
