@@ -6,3 +6,5 @@ rule = "idiomatic-code/R13"
 summary = "`for i in n..0` where the declared start is always above the end: the loop never runs; reverse the range with `.rev`"
 no_fix = "whether the loop means `n - 1` or `n` down to the end is the contestant's call; the help shows both"
 # Rule: errors/R16 (handbook/guidelines/errors-checklist.md#r16-a-warning-about-declared-ranges-shows-its-witness), errors/R10.
+family = "D. Domains, positions and cuts"
+practice = "#4"

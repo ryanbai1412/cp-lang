@@ -6,3 +6,5 @@ rule = "idiomatic-code/R12"
 summary = "`a * b`, `a + b` or `a ** k` whose operands' declared ranges let it leave `Int`, shown by an input that does: widen an operand to `I128`, use `Mod<P>`, or tighten the bounds"
 no_fix = "whether the answer needs a wider type, a modulus, or tighter bounds is the contestant's call; the help shows each"
 # Rule: errors/R16 (handbook/guidelines/errors-checklist.md#r16-a-warning-about-declared-ranges-shows-its-witness), errors/R10.
+family = "K. Arithmetic, overflow, modulus and floats"
+practice = "#6"
