@@ -195,6 +195,24 @@ await page
   .waitFor({ timeout: 30000 })
   .catch(() => fail("no completion in an edited guide block"));
 console.log("a guide block edits in place, with completion");
+
+// A std reference example is an editor where it stands, with the language server's hover (site/R21).
+await page.goto(base + "/docs/ref/std/sparse", { waitUntil: "networkidle" });
+const example = page.locator(".cm-editor", { hasText: "SparseTable(min" }).first();
+await example
+  .scrollIntoViewIfNeeded({ timeout: 10000 })
+  .catch(() => fail("the std reference example is not an editor"));
+// Hover loads the compiler only once the reader works in the editor.
+await example.locator(".cm-content").click();
+const sparse = await coords("SparseTable(min", 0, 2);
+const typed = page.locator(".cm-tooltip-hover .cm-lsp-doc", { hasText: "SparseTable" }).first();
+for (let i = 0; i < 30 && !(await typed.isVisible()); i++) {
+  await page.mouse.move(0, 0);
+  await page.mouse.move(sparse.x, sparse.y);
+  await typed.waitFor({ timeout: 1000 }).catch(() => {});
+}
+if (!(await typed.isVisible())) fail("hover in a std reference example shows no type");
+console.log("std reference example hovers:", JSON.stringify((await typed.innerText()).split("\n")[0]));
 if (errors.length) fail(`page errors: ${errors.join("; ")}`);
 await page.close();
 process.exit(0);

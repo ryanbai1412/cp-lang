@@ -172,3 +172,11 @@ Each practice problem's page holds hints inside its `<Judge>`, shown under **Hin
 - **Why:** most site code is checked only through browser tests and the build; without a floor, new logic lands with no unit test and the share that has one shrinks unseen.
 - **Example:** a new parser in `web/scripts/` with no `*.test.mjs` lowers line coverage and fails the unit tests until it has one or the floor is lowered in review.
 - **Enforced by:** `web/vitest.config.mts` coverage thresholds (site build's unit tests).
+
+## site/R21: A std example is checked where it stands
+
+Every `example:` on a std reference page type-checks and runs as shown (site/R1), and it is an editor whose hover gives each name the type the language server gives it, so the page and the editor can't disagree on a type.
+
+- **Why:** a learner copies an example and asks what each name is; a type stated in prose, or shown by a hover the docs compute separately, can drift from what the compiler says.
+- **Example:** on `std/sparse`, hovering in `SparseTable(min, [3, 1, 4]).fold(0..3)` on `SparseTable` shows its type from the language server.
+- **Enforced by:** `web/scripts/gen-ref.mjs` (every example type-checks and runs) and `web/tests/intelligence.mjs` (hover in a reference example).
