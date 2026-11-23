@@ -4,7 +4,7 @@
 
 Number theory on plain `Int`s.
 
-In prelude (no `use` needed): `Ratio`, `Sieve`, `bit`, `bit_len`, `ceil_div`, `choose2`, `digits`, `divisors`, `divmod`, `fixed`, `floor_quotients`, `gcd`, `inf`, `isqrt`, `lcm`, `phi`, `pow_mod`, `sign`, `to_str`.
+In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `bit`, `bit_len`, `ceil_div`, `choose2`, `digits`, `divisors`, `divmod`, `fixed`, `floor_quotients`, `gcd`, `inf`, `isqrt`, `lcm`, `phi`, `pow_mod`, `sign`, `to_str`.
 
 ## Types & Constants
 

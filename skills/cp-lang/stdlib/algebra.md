@@ -4,7 +4,7 @@
 
 Operations as values: what a range structure folds with.  A structure never asks "what is the sum of two `T`s"; it is handed the operation. Most of the time that is a bare operator: `SegTree<V, Int>(max, a)` and `SegTree<V, Int>(+, a)` are the same tree with two operations. An operation of your own is the pair `Monoid(id, op)`; a lazy update is an `Action`. `desc(x)` reverses an order inside a sort key or a heap entry, and a non-commutative value says how it reads backwards with `Reversible`.
 
-In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Group`, `Idempotent`, `Monoid`, `Op`, `Ordering`, `Selective`, `Semiring`, `add`, `affine`, `assign`, `cmp`, `desc`, `each`, `flip`, `fold`, `minmax`.
+In prelude (no `use` needed): `Action`, `Commutative`, `Desc`, `Each`, `Group`, `Idempotent`, `Monoid`, `Op`, `Ordering`, `Selective`, `Semiring`, `add`, `affine`, `assign`, `cmp`, `desc`, `each`, `flip`, `fold`, `minmax`.
 
 ## Types & Constants
 
