@@ -1062,11 +1062,11 @@ pub fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>:
     if hi < lo: lo..lo else: lo..=hi
 
 /// \(O(\log n)\) calls to `ok`. The first element where `ok`, false then true along `r`, holds;
-/// `None` when it never does. Checked builds check the probes agree (R09.2.3).
+/// `None` when it never does.
 ///
 /// cost: \(O(\log n)\) calls of `ok`
 /// empty: `None`
-/// traps: never in release; debug traps when `ok` is not false-then-true at the answer
+/// traps: never; an `ok` that is not false-then-true gives an unspecified answer
 /// example: `(0..100).first_true(x => x * x >= 50) == Some(8)`
 /// ties: none: a monotone `ok` has one first true position
 pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
@@ -1079,11 +1079,11 @@ pub fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
     if lo < self.len: Some(self.nth(lo)) else: None
 
 /// \(O(\log n)\) calls to `ok`. The last element where `ok`, true then false along `r`, holds;
-/// `None` when it never does. Checked builds check the probes agree (R09.2.3).
+/// `None` when it never does.
 ///
 /// cost: \(O(\log n)\) calls of `ok`
 /// empty: `None`
-/// traps: never in release; debug traps when `ok` is not true-then-false at the answer
+/// traps: never; an `ok` that is not true-then-false gives an unspecified answer
 /// example: `(0..100).last_true(x => x * x <= 50) == Some(7)`
 /// ties: none: a monotone `ok` has one last true position
 pub fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D:
@@ -1173,8 +1173,9 @@ pub fn compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C = [A] a => g[f[a]]
 /// cost: \(O(\lvert V \rvert)\)
 /// empty: `[]`
 /// order: cycles by smallest element; each starts there and follows `p`
-/// traps: never in release; debug traps when `p` is not a permutation
+/// traps: when `p` is not a permutation
 /// example: `perm_cycles([1, 0, 2]) == [[0, 1], [2]]`
+/// trap: `perm_cycles([0, 0, 1])`
 pub fn perm_cycles<V>(p: [V]V) -> List<List<V>>:
     var vis: [V]Bool = false
     var out: List<List<V>> = []
@@ -1186,6 +1187,7 @@ pub fn perm_cycles<V>(p: [V]V) -> List<List<V>>:
             vis[u] = true
             cyc.push(u)
             u = p[u]
+        assert u == start, "`p` is not a permutation: {u} is reached twice"
         out.push(cyc)
     out
 
@@ -1194,7 +1196,7 @@ pub fn perm_cycles<V>(p: [V]V) -> List<List<V>>:
 /// cost: \(O(\lvert V \rvert)\)
 /// empty: an empty array
 /// order: keyed by `V`
-/// traps: when `k < 0`
+/// traps: when `k < 0` or `p` is not a permutation
 /// example: `perm_pow([1, 2, 0], 2) == [2, 0, 1]`
 pub fn perm_pow<V>(p: [V]V, k: Int) -> [V]V:
     assert k >= 0, "perm_pow requires k >= 0"
@@ -1968,7 +1970,7 @@ pub fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>:
 ///
 /// cost: \(O(\log n)\) calls of `ok`
 /// empty: the only cut
-/// traps: never in release; debug traps when `ok` is not false-then-true at the answer
+/// traps: never; an `ok` that is not false-then-true gives an unspecified answer
 /// example: `[1, 3, 5].partition_point(x => x > 2).r == 1`
 /// ties: none: a monotone `ok` has one flip
 pub fn partition_point<D, T>(self: [D]T, ok: T -> Bool) -> Cut<D>:
@@ -2170,10 +2172,15 @@ pub fn is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool:
 ///
 /// cost: \(O(n \log n)\), \(O(n)\) memory
 /// empty: `0`
-/// traps: when `|V| > 20`; debug traps when `p` is not a permutation
+/// traps: when `|V| > 20` or `p` is not a permutation
 /// example: `perm_rank([1, 0, 2]) == 2`
+/// trap: `perm_rank([0, 0, 1])`
 pub fn perm_rank<V>(p: [V]V) -> Int:
     let n = V.count
+    var seen: [V]Bool = false
+    for v in V:
+        assert not seen[p[v]], "`p` is not a permutation: {p[v]} appears twice"
+        seen[p[v]] = true
     var bit: List<Int> = List.filled(n + 1, 0)
     var rank = 0
     var fact = 1
@@ -2231,8 +2238,9 @@ pub fn perm_unrank<V>(rank: Int) -> [V]V:
 ///
 /// cost: \(O(n)\), \(O(n)\) memory
 /// empty: `1`
-/// traps: never in release; debug traps when `p` is not a permutation
+/// traps: when `p` is not a permutation
 /// example: `perm_sign([1, 0, 2]) == -1`
+/// trap: `perm_sign([0, 0, 1])`
 pub fn perm_sign<V>(p: [V]V) -> Int:
     var seen: [V]Bool = false
     var sign = 1
@@ -2243,6 +2251,7 @@ pub fn perm_sign<V>(p: [V]V) -> Int:
             seen[u] = true
             u = p[u]
             len += 1
+        assert u == v, "`p` is not a permutation: {u} is reached twice"
         if len % 2 == 0: sign = -sign
     sign
 

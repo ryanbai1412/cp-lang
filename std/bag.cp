@@ -241,7 +241,7 @@ pub struct SortedBag<K>:
     /// cost: \(O(\log n)\) expected
     /// empty: `None`
     /// ties: none: copies of the answer are equal; one is removed
-    /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
+    /// traps: never; an `ok` that is not false-then-true gives an unspecified answer
     /// example: `var b = SortedBag.of([1, 4, 4, 6]); b.take_first(x => x >= 3) == Some(4) and b.to_list() == [1, 4, 6]`
     /// example: `var b = SortedBag.of([1]); b.take_first(x => x >= 3) == None and b.len == 1`
     pub fn take_first(mut self, ok: K -> Bool) -> ?K:
@@ -462,7 +462,7 @@ pub struct SortedBag<K>:
     /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: copies of a key are one candidate; the least key wins
-    /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
+    /// traps: never; an `ok` that is not false-then-true gives an unspecified answer
     /// example: `SortedBag.of([1, 4, 6]).first_true(x => x >= 3) == Some(4)`
     /// example: `SortedBag.of([1, 4, 6]).first_true(x => x > 9) == None`
     pub fn first_true(self, ok: K -> Bool) -> ?K:
@@ -483,7 +483,7 @@ pub struct SortedBag<K>:
     /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: copies of a key are one candidate; the greatest key wins
-    /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
+    /// traps: never; an `ok` that is not true-then-false gives an unspecified answer
     /// example: `SortedBag.of([1, 4, 6]).last_true(x => x <= 5) == Some(4)`
     /// example: `SortedBag.of([1, 4, 6]).last_true(x => x < 1) == None`
     pub fn last_true(self, ok: K -> Bool) -> ?K:
@@ -1187,7 +1187,7 @@ pub struct SortedSet<K>:
     /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: keys are distinct; the least key wins
-    /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
+    /// traps: never; an `ok` that is not false-then-true gives an unspecified answer
     /// example: `SortedSet.of([1, 4, 6]).first_true(x => x >= 3) == Some(4)`
     pub fn first_true(self, ok: K -> Bool) -> ?K:
         bag.first_true(ok)
@@ -1197,7 +1197,7 @@ pub struct SortedSet<K>:
     /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: keys are distinct; the greatest key wins
-    /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
+    /// traps: never; an `ok` that is not true-then-false gives an unspecified answer
     /// example: `SortedSet.of([1, 4, 6]).last_true(x => x <= 5) == Some(4)`
     pub fn last_true(self, ok: K -> Bool) -> ?K:
         bag.last_true(ok)
@@ -1545,7 +1545,7 @@ pub struct SortedMap<K, V>:
     /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: keys are distinct; the least key wins
-    /// traps: never in release; debug traps when `ok` is not false-then-true at the answer
+    /// traps: never; an `ok` that is not false-then-true gives an unspecified answer
     /// example: `var m: SortedMap<Int, Int> = SortedMap(); m.set(1, 10); m.set(4, 40); m.set(6, 60); m.first_true((k, v) => v >= 30) == Some((4, 40))`
     pub fn first_true(self, ok: (K, V) -> Bool) -> ?(K, V):
         self.entry(ks.first_true(k => ok(k, vals.get(k)!)))
@@ -1557,7 +1557,7 @@ pub struct SortedMap<K, V>:
     /// cost: \(O(\log n)\) expected calls of `ok`
     /// empty: `None`
     /// ties: none: keys are distinct; the greatest key wins
-    /// traps: never in release; debug traps when `ok` is not true-then-false at the answer
+    /// traps: never; an `ok` that is not true-then-false gives an unspecified answer
     /// example: `var m: SortedMap<Int, Int> = SortedMap(); m.set(1, 10); m.set(4, 40); m.set(6, 60); m.last_true((k, v) => k <= 5) == Some((4, 40))`
     pub fn last_true(self, ok: (K, V) -> Bool) -> ?(K, V):
         self.entry(ks.last_true(k => ok(k, vals.get(k)!)))
