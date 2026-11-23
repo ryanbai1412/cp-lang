@@ -6083,3 +6083,16 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
   Rebuild round 5 (H-ARRAY-WIDEN) asked; `cpl run` accepts it today.
 - **Reverse.** List "an array of a range type to an array of a wider one,
   by a copy" in R04.4.22's closed list and make the case `ok`.
+
+## 247. Rule coverage reads a list of permissive rules (2026-11-22)
+
+- **Decision.** `scripts/conformance-coverage.py` decides that a rule "forbids"
+  by matching words like *not*, *never*, *only*. 24 rules match but only
+  permit, define or promise something (`?T` layout, "an inverted range is
+  never a trap", "a false law gives wrong answers"), so no program can be
+  rejected by them. `spec/conformance/permits.txt` lists each with its
+  reason; those rules need an accept case but no reject case. The gate fails
+  if a listed rule gains a reject case, stops matching, or no longer exists.
+- **Why.** M1's exit ("0 happy-path-only rules") counted rules nobody can
+  write a reject case for, which hid the ones that need one.
+- **Reverse.** Delete `permits.txt`; the rules return to `rule-gaps.txt`.

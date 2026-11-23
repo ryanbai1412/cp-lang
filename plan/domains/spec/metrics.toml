@@ -23,9 +23,9 @@ today = "528 of 528 covered"
 target = "100%"
 
 [[metric]]
-name = "forbidding rules with no reject case (happy-path only)"
+name = "forbidding rules with no reject case (happy-path only; permits.txt rules excluded)"
 command = "python3 -c 'import pathlib,runpy,sys; pathlib.Path.write_text=lambda p,t: sys.stdout.write(t); sys.argv=[sys.argv[0]]; runpy.run_path(\"scripts/conformance-coverage.py\", run_name=\"__main__\")' 2>/dev/null | grep -c '\\] \\*happy-path only\\*'"
-today = "31"
+today = "4"
 target = "0"
 
 [[metric]]

@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- Rule coverage: 24 of the 29 "no reject case" gaps were rules that only permit or define (layout, "never a trap", false laws); they are now listed with a reason in `spec/conformance/permits.txt` (decision 247), and the gate fails if one goes stale. `uv run scripts/conformance-coverage.py --check`: 5 rule gaps, 4 happy-path only. Left: R01.1.3, R04.2.20 (held on the `V.count` question), R09.1.3, R11.3.1 (reject), R11.4.3 (accept).
 - `lib/geometry.md` divide-and-conquer hull example assigned `best[i].y`, but `Pt`'s fields are fixed (R02 fields rule, `spec/std/geometry.cp`); it now rebuilds the `Pt`. spec-blocks geometry 5/19 pass, 0 error (was 1).
 - Measured: spec-blocks 71/185 (30 error, 84 skip), up from 70 after the rebuild-5 fixes.
 - H-ARRAY-WIDEN decided (decision 246): implicit widening is for scalars only; an array is spelled `xs.map(x => Int(x))`, since a hidden O(n) rewrite breaks R05.2.2's O(1) move. Case `core-04/array-elements-do-not-widen.cp` fails until the compiler emits E0302 (compiler worklog).
