@@ -1,5 +1,5 @@
 // Source: CCC 2023 S4 (Minimum Cost Roads), https://dmoj.ca/problem/ccc23s4
-// Problem: N, M <= 2000; road i joins u_i, v_i with length l_i <= 1e9 and cost c_i <= 1e9.
+// Problem: N, M <= 2000; road i joins u_i, v_i with length 0 <= l_i <= 1e9 and cost c_i <= 1e9.
 //   Keep a subset of roads of least total cost such that every pair of intersections keeps its
 //   shortest distance. Print that cost.
 // Solution: take roads by (length, cost); keep a road iff the kept roads do not already join its
@@ -12,7 +12,7 @@ domain E = 0..m
 
 struct Road:
     u, v: V
-    len: 1..=1e9
+    len: 0..=1e9
     cost: 1..=1e9
 
 let roads: [E]Road = read()

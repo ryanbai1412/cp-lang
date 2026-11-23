@@ -5,7 +5,7 @@
 // Solution: after K moves A[P^K(i)] = P_i, i.e. A[P^(K-1)(j)] = j. Walk each cycle of P once and
 //   write j at the position K - 1 steps further along its cycle. O(n).
 // original: corpus/submissions/4416096.cpp
-let n: 1..=2e5 = read()
+let n: 1..=1e5 = read()
 let k: 1..=1e18 = read()
 domain V = 1..=n
 

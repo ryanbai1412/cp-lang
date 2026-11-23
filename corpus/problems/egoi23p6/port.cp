@@ -1,5 +1,5 @@
 // Source: EGOI 2023 Day 2 Problem 2 (Candy), https://dmoj.ca/problem/egoi23p6
-// Problem: n <= 100 boxes with a[i] <= 1e9 candy, f <= n and t <= 1e11. Print the fewest swaps
+// Problem: n <= 100 boxes with a[i] <= 1e9 candy, f <= n and 0 <= t <= 1e11. Print the fewest swaps
 //   of adjacent boxes after which the first f boxes hold at least t candy, or NO.
 // Solution: moving chosen boxes j_0 < ... < j_(f-1) to the front costs sum (j_i - i) swaps.
 //   best[i, j, s]: most candy from boxes j.. put into slots i..f-1 with at most s swaps; skip
@@ -9,7 +9,7 @@
 // Runnable on proto/cpc today.
 let n: 1..=100 = read()
 let m: 1..=n = read()
-let k: 1..=1e11 = read()
+let k: 0..=1e11 = read()
 domain Box = 0..n
 let a: [Box]0..=1e9 = read()
 
