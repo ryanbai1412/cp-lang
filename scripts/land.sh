@@ -40,18 +40,38 @@ fi
 crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p' | sort -u | tr '\n' ' ')
 [ -z "$crates" ] || cargo fmt --check $crates >/dev/null 2>&1 ||
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
-# Clippy as CI runs it (-D warnings) on the touched crates of the rebased tip;
-# past CPL_LAND_CLIPPY_SECS (cold cache) it warns and lands, leaving it to CI.
+# Clippy as CI runs it (-D warnings, every target) on the touched crates and
+# the workspace crates that depend on them, at the rebased tip; past
+# CPL_LAND_CLIPPY_SECS (cold cache) it warns and lands, leaving it to CI.
 if [ -n "$crates" ]; then
+    users=$(cargo metadata -q --format-version 1 --no-deps | python3 -c '
+import json, sys
+meta = json.load(sys.stdin)
+names = {p["name"] for p in meta["packages"]}
+users = {n: set() for n in names}
+for p in meta["packages"]:
+    for d in p["dependencies"]:
+        if d["name"] in names:
+            users[d["name"]].add(p["name"])
+todo, seen = [a for a in sys.argv[1:] if a != "-p"], set()
+while todo:
+    n = todo.pop()
+    if n in names and n not in seen:
+        seen.add(n)
+        todo += users[n]
+print(" ".join("-p " + n for n in sorted(seen)))
+' $crates)
+    gate_start=$(date +%s)
     set +e
-    out=$(timeout "${CPL_LAND_CLIPPY_SECS:-40}" cargo clippy -q $crates --all-targets -- -D warnings 2>&1)
+    out=$(timeout "${CPL_LAND_CLIPPY_SECS:-40}" cargo clippy -q $users --all-targets -- -D warnings 2>&1)
     rc=$?
     set -e
+    echo "land: clippy on $(printf '%s\n' $users | grep -vc -- -p) crate(s) in $(( $(date +%s) - gate_start ))s" >&2
     case "$rc" in
         0) ;;
         124) echo "land: clippy over ${CPL_LAND_CLIPPY_SECS:-40}s; landing, CI will check it" >&2 ;;
         *) printf '%s\n' "$out" | grep -E '^(error|warning)|-->' | head -20 >&2
-           echo "land: clippy fails on $crates; fix it before landing" >&2; exit 1 ;;
+           echo "land: clippy fails on $users; fix it before landing" >&2; exit 1 ;;
     esac
 fi
 regen=$([ ! -x scripts/regen.sh ] || scripts/regen.sh)
