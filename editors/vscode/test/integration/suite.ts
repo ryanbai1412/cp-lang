@@ -164,6 +164,38 @@ const tests: [string, () => Promise<void>][] = [
         },
     ],
     [
+        'the Stress command saves a failing case that Run All Samples reruns',
+        async () => {
+            // The debugger's knapsack demo, with its planted bug: stress against its `@alt(program)`.
+            const demo = path.resolve(__dirname, '../../../../../examples/debugging/knapsack.cp');
+            const planted = fs.readFileSync(demo, 'utf8');
+            assert.ok(planted.includes('for c in 0..=cap:'));
+            fs.writeFileSync(file('k.cp').fsPath, planted);
+            const document = await open('k.cp');
+            const lenses = await vscode.commands.executeCommand<vscode.CodeLens[]>(
+                'vscode.executeCodeLensProvider',
+                document.uri,
+            );
+            assert.ok(lenses.some(lens => lens.command?.command === 'cp.stress'), 'no Stress lens');
+            await vscode.commands.executeCommand('cp.stress', document.uri);
+            const saved = await until(
+                'the saved failing case',
+                () => {
+                    const dir = file('k.tests').fsPath;
+                    const names = fs.existsSync(dir) ? fs.readdirSync(dir).filter(n => /^stress-\d+\.in$/.test(n)) : [];
+                    return names.length > 0 ? names : undefined;
+                },
+                60000,
+            );
+            assert.equal(saved.length, 1);
+            await vscode.commands.executeCommand('cp.runAllSamples', document.uri);
+            fs.writeFileSync(file('k.cp').fsPath, planted.replace('for c in 0..=cap:', 'for c in (0..=cap).rev:'));
+            await vscode.commands.executeCommand('workbench.action.files.revert');
+            await vscode.commands.executeCommand('cp.runAllSamples', document.uri);
+            await vscode.commands.executeCommand('cp.stress', document.uri);
+        },
+    ],
+    [
         'completion offers keywords, the prelude and decorators',
         async () => {
             const document = await open('d.cp');
