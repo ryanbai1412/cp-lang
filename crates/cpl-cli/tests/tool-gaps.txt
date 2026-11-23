@@ -6,10 +6,3 @@ lint expr Map
 lint expr Mut
 lint expr TableFill
 lint stmt Mod
-trace expr HasBound
-trace expr Mut
-trace expr TableFill
-trace expr Without
-trace stmt Law
-trace stmt Lend
-trace stmt Unchecked

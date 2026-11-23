@@ -1,0 +1,10 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"n":{"name":"n","type":"Int","kind":"scalar"},"a":{"name":"a","type":"[Int]Int","kind":"array"},"c":{"name":"c","type":"Cells","kind":"json"},"s":{"name":"s","type":"(w: Int)","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":21,"label":"let n = 3","stage":"main","values":{"stdout":[],"n":3},"locals":{},"frames":[{"fn":"main","line":21}]},
+{"id":1,"line":22,"label":"var a: [0..n]Int = [0..n]0","stage":"main","values":{"stdout":[],"n":3,"a":[0,0,0]},"locals":{},"frames":[{"fn":"main","line":22}]},
+{"id":2,"line":23,"label":"let p = mut a[1]","stage":"main","values":{"stdout":[],"n":3,"a":[0,10,0]},"locals":{},"frames":[{"fn":"main","line":23}],"focus":{"variable":"a","path":[1]}},
+{"id":3,"line":25,"label":"var c = Cells([1, 2, 3])","stage":"main","values":{"stdout":[],"n":3,"a":[0,10,0],"c":{"t":[1,2,3]}},"locals":{},"frames":[{"fn":"main","line":25}]},
+{"id":4,"line":14,"label":"lend mut t[i]","stage":"main","values":{"stdout":[],"n":3,"a":[0,10,0],"c":{"t":[1,2,8]}},"locals":{"i":2},"frames":[{"fn":"main","line":14}]},
+{"id":5,"line":27,"label":"let s = strip((u: 1, w: 7))","stage":"main","values":{"stdout":[],"n":3,"a":[0,10,0],"c":{"t":[1,2,8]},"s":{"w":7}},"locals":{"i":2},"frames":[{"fn":"main","line":27}]},
+{"id":6,"line":28,"label":"print → 10 8 7 5 mix plain","stage":"main","values":{"stdout":["10 8 7 5 mix plain"],"n":3,"a":[0,10,0],"c":{"t":[1,2,8]},"s":{"w":7}},"locals":{"i":2},"checkpoint":"print 1","frames":[{"fn":"main","line":28}]},
+{"id":7,"line":30,"label":"print → 20","stage":"main","values":{"stdout":["10 8 7 5 mix plain","20"],"n":3,"a":[0,10,0],"c":{"t":[1,2,8]},"s":{"w":7}},"locals":{"i":2},"checkpoint":"print 2","frames":[{"fn":"main","line":30}]},
+{"id":8,"line":30,"label":"the program ended","stage":"main","values":{"stdout":["10 8 7 5 mix plain","20"],"n":3,"a":[0,10,0],"c":{"t":[1,2,8]},"s":{"w":7}},"locals":{"i":2},"checkpoint":"end","frames":[{"fn":"main","line":30}]}]}}}
+stderr:
