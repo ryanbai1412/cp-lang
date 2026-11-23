@@ -756,7 +756,7 @@ trait Index:
 
     let impl_src = "\
 impl<T: Add> Add for ?T:
-    fn add(a, b) -> ?T = if let x = a, y = b: x + y else: None
+    fn add(a, b) -> ?T = if let x = a, let y = b: x + y else: None
 impl<T: Eq> Eq for ?T
 ";
     assert_eq!(codes(impl_src), ["E0501", "E0501"]);

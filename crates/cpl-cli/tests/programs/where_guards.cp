@@ -10,9 +10,9 @@ let b: ?Int = 6
 let c: ?Int = None
 if let x = a and x > 3:
     print(x)
-if let x = a, y = b and x + y == 11:
+if let x = a, let y = b and x + y == 11:
     print(x * y)
-if let x = a, y = c:
+if let x = a, let y = c:
     print(x + y)
 else:
     print(-1)

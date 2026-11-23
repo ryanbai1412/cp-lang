@@ -1594,6 +1594,16 @@ impl<'a> Parser<'a> {
                 self.bump();
                 self.let_cond()
             } else if self.at_let_binding() {
+                let at = self.span();
+                self.error(
+                    Diagnostic::error(
+                        codes::UNEXPECTED_TOKEN,
+                        at,
+                        "a binder after `,` needs its own `let`",
+                    )
+                    .with_help("each binder repeats `let`: `if let a = x, let b = y:`")
+                    .with_fix("insert `let`", Span::point(at.start), "let "),
+                );
                 self.let_cond()
             } else {
                 self.more_clauses()
@@ -1625,7 +1635,8 @@ impl<'a> Parser<'a> {
     }
 
     /// True when the upcoming tokens form `pat = ...` (without a leading
-    /// `let`), as in `if let a = x, b = y:` or `if let (a, b) = p, (c, d) = q:`.
+    /// `let`), as in `if let a = x, b = y:` or `if let (a, b) = p, (c, d) = q:`:
+    /// a binder missing its `let` (R01.7.1).
     fn at_let_binding(&self) -> bool {
         let mut i = self.pos;
         match self.tokens.get(i).map(|t| t.kind) {
