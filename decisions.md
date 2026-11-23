@@ -6364,7 +6364,7 @@ constants and the `exit(3)` in the C++ runtime, and the sentence in
 - **Why.** Twelve parallel lanes ignore warnings.
 - **Reverse.** Make the ratchet step warn-only in `scripts/check.sh`.
 
-## 269. The v0.3 runtime bar is the perf set at p50 < 1.1x, p95 < 1.2x, max < 1.5x (perf-1) (2026-11-22)
+## 269. The v0.3 runtime bar is the perf set at p50 < 1.1x, p95 < 1.2x, max < 1.5x, tuned max < 1.1x (perf-1) (2026-11-22)
 
 - **Decision.** The runtime target is measured on the v0.3 perf set: dry
   runs with a matched `_ref.cpp`, `bench/<area>/*.cp` and corpus ports,

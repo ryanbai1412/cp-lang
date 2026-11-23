@@ -653,6 +653,6 @@ stdout check, emitted C++ bytes):
 | `crt` | `1,000,000` `std.math.crt` calls | 0.068s | 0.080s | 0.86x | 6,508 B |
 | `comb` | `Comb(2_000_000)` + `5,000,000` `choose` queries | 0.081s | 0.071s | 1.15x | 10,132 B |
 
-Aggregate: **p50 = 0.97x**, **max = 1.15x** (targets: `<= 1.1x` p50, `<= 1.5x` max).
+Aggregate: **p50 = 0.97x**, **max = 1.15x** (targets: `<= 1.1x` p50, `<= 1.5x` max, `<= 1.1x` max once tuned).
 Every emitted file is 8–25% of the 64 KB judge ceiling. Profiling history is in
 `research/frictions/bench-math.md`.

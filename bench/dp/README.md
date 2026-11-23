@@ -25,7 +25,7 @@ Best of 5 wall-clock runs, g++ 11 `-O2`, equal outputs on every pair:
 | `aliens` | `aliens` over an O(n) penalized DP, n = 1e6, k = 5000 | 0.132 s | 0.090 s | 0.68x | |
 | `slope` | `std.slope.Concave`, `cf2084g2` at n = 5e5 | 0.096 s | 0.119 s | 1.24x | |
 
-`run.sh` on the seven: p50 0.85x (target 1.1x), max 1.20x (target 1.5x).
+`run.sh` on the seven: p50 0.85x (target 1.1x), max 1.20x (target 1.5x; 1.1x once tuned).
 The first four rows are the older measurements; `run.sh` gives frog3
 0.87x, dnc 0.66x, knuth 1.11x, mono 0.38x.
 
