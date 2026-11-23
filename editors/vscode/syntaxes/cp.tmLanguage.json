@@ -274,8 +274,8 @@
         { "name": "storage.modifier.lends.cp", "match": "\\blends\\b" },
         { "name": "storage.modifier.$1.cp", "match": "\\b(pub|const)\\b" },
         { "name": "variable.language.self.cp", "match": "\\bself\\b" },
-        { "name": "constant.language.boolean.$1.cp", "match": "\\b(true|false)\\b" },
-        { "name": "constant.language.none.cp", "match": "\\bnone\\b" }
+        { "name": "constant.language.boolean.$1.cp", "match": "\\b(false|true)\\b" },
+        { "name": "constant.language.none.cp", "match": "\\b(None|none)\\b" }
       ]
     },
     "lambda-params": {

@@ -2,7 +2,7 @@
   "name": "cp-lang",
   "displayName": "CP Lang",
   "description": "CP Lang 0.2.2 syntax highlighting, contest snippets, cpl lsp integration, inlay hints, live sample overlays, and stress/trace commands.",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "publisher": "cp-lang",
   "icon": "icon.png",
   "homepage": "https://cp-lang.org/setup/",

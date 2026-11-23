@@ -1,7 +1,8 @@
 // Regenerates the prelude and stdlib name tables in src/languageData.ts and
 // the matching alternations in syntaxes/cp.tmLanguage.json from the compiler's
 // prelude (crates/cpl-check/src/prelude.rs) and std/*.cp, so the extension
-// never lags the stdlib. `npm run compile` runs it; `--check` only reports.
+// never lags the stdlib, the literal words from crates/cpl-syntax/src/token.rs, and
+// the version from the workspace's Cargo.toml. `npm run compile` runs it; `--check` only reports.
 
 const fs = require('node:fs');
 const path = require('node:path');
@@ -91,7 +92,11 @@ function main() {
     }
     const grammarFile = path.join(extension, 'syntaxes', 'cp.tmLanguage.json');
     let grammar = read(grammarFile);
+    const literals = rustStrings(read(path.join(repo, 'crates', 'cpl-syntax', 'src', 'token.rs')),
+        /pub const LITERAL_WORDS: &\[&str\] = &\[/, '];');
     const scopes = {
+        'constant.language.boolean.$1.cp': literals.filter(word => word === 'true' || word === 'false'),
+        'constant.language.none.cp': literals.filter(word => word !== 'true' && word !== 'false'),
         'support.type.builtin.cp': t.PRELUDE_TYPES,
         'support.type.stdlib.cp': t.STDLIB_TYPES,
         'support.function.builtin.cp': t.PRELUDE_VALUES,
@@ -99,13 +104,21 @@ function main() {
         'support.constant.stdlib.cp': [...t.PRELUDE_CONSTANTS, ...t.STDLIB_CONSTANTS],
     };
     for (const [scope, names] of Object.entries(scopes)) {
-        const rule = new RegExp(`("name": "${scope.replace(/\./g, '\\.')}",\\s*"match": "[^"]*?\\()[A-Za-z0-9_|]+(\\))`);
+        const rule = new RegExp(`("name": "${scope.replace(/[.$]/g, '\\$&')}",\\s*"match": "[^"]*?\\()[A-Za-z0-9_|]+(\\))`);
         if (!rule.test(grammar)) throw new Error(`no ${scope} rule in the grammar`);
         grammar = grammar.replace(rule, (_, open, close) => `${open}${alternation(names)}${close}`);
     }
+    // The extension's version is the workspace's, so the .vsix says what it ships with.
+    const version = /^\[workspace\.package\][^[]*?^version = "([^"]+)"/m.exec(read(path.join(repo, 'Cargo.toml')))[1];
+    const versioned = file => read(file).replace(/^(  "version": )"[^"]*"/m, `$1"${version}"`)
+        .replace(/("packages": \{\n    "": \{\n      "name": "[^"]*",\n      "version": )"[^"]*"/, `$1"${version}"`);
+    const packageFile = path.join(extension, 'package.json');
+    const lockFile = path.join(extension, 'package-lock.json');
     const stale = [
         [dataFile, data],
         [grammarFile, grammar],
+        [packageFile, versioned(packageFile)],
+        [lockFile, versioned(lockFile)],
     ].filter(([file, text]) => read(file) !== text);
     for (const [file, text] of stale) {
         if (check) {

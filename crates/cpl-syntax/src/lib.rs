@@ -25,7 +25,7 @@ pub mod visit;
 pub use items::{split_items, ItemRange};
 pub use lexer::{lex, Lexed};
 pub use parser::{parse_item, ParsedItem};
-pub use token::{removed_keyword, Token, TokenKind, KEYWORDS};
+pub use token::{removed_keyword, Token, TokenKind, KEYWORDS, LITERAL_WORDS};
 
 use cpl_diag::{Diagnostic, Span};
 

@@ -148,6 +148,11 @@ pub const KEYWORDS: [&str; 34] = [
     "yield",
 ];
 
+/// The words that are literal values, as editors highlight them: the
+/// booleans and `None` (a name the parser reads as the empty optional), and
+/// `none`, its 0.2 spelling, which still parses so the checker can name the fix.
+pub const LITERAL_WORDS: &[&str] = &["true", "false", "None", "none"];
+
 /// What to write instead of a word that v2.1 reserved and v2.2 does not.
 /// The word itself is an ordinary name now.
 pub fn removed_keyword(text: &str) -> Option<&'static str> {

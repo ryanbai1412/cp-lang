@@ -7,7 +7,9 @@ plugins {
 }
 
 group = "dev.cplang"
-version = providers.gradleProperty("pluginVersion").get()
+// The plugin's version is the workspace's, so the zip says what it ships with.
+version = Regex("""(?ms)^\[workspace\.package\][^\[]*?^version = "([^"]+)"""")
+    .find(rootDir.resolve("../../Cargo.toml").readText())!!.groupValues[1]
 
 kotlin {
     jvmToolchain(21)
@@ -32,7 +34,7 @@ dependencies {
 
 intellijPlatform {
     pluginConfiguration {
-        version = providers.gradleProperty("pluginVersion")
+        version = project.version.toString()
         ideaVersion {
             sinceBuild = "243"
             untilBuild = provider { null }

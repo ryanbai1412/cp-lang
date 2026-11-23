@@ -1985,3 +1985,14 @@ fn a_rust_closure_is_one_error_with_the_arrow_fix() {
     let fixed: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
     assert_eq!(fixed, ["x =>", "(a, b) =>"], "{d:?}");
 }
+
+#[test]
+fn every_literal_word_parses_as_a_literal() {
+    for word in crate::LITERAL_WORDS {
+        let kind = expr(word).kind;
+        assert!(
+            matches!(kind, ExprKind::None | ExprKind::Bool(_)),
+            "`{word}` parses as {kind:?}"
+        );
+    }
+}

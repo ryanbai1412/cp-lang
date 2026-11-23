@@ -143,7 +143,7 @@ fn judge(sol: Interactor):
 var opt_a: ?Int = None
 //         ^ meta.type.optional.cp keyword.operator.optional.cp
 //          ^^^ support.type.builtin.cp
-var opt_b: ??Int = none
+var opt_b: ??Int = None
 //         ^^ meta.type.optional.cp keyword.operator.optional.cp
 //           ^^^ support.type.builtin.cp
 var opt_c: ?[V]Int = None

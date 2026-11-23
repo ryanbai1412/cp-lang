@@ -23,7 +23,7 @@ elif x == y: continue
 //     ^^ keyword.operator.comparison.cp
 //           ^^^^^^^^ keyword.control.continue.cp
 
-else: return none
+else: return None
 // <---- keyword.control.else.cp
 //    ^^^^^^ keyword.control.return.cp
 //           ^^^^ constant.language.none.cp
