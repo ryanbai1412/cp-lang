@@ -1,0 +1,111 @@
+---
+title: "Input and output"
+description: "A program is top-level statements, read<T>() reads any type from its declaration, print mirrors input, and 1-based input is one io context."
+---
+
+A program is a flat sequence of top-level statements run top to bottom; there is no `main`.
+`read<T>()` reads any type from its declaration, and `print` writes values joined by the `io`
+context's separator. Nothing is compiler-special except dispatch on the expected type: I/O is two
+traits (`Read`, `Show`) and the `io` context. The normative rules are
+<Spec file="core/10-io">chapter 10 of the spec</Spec>.
+
+## Program shape
+
+`@!multitest` reads the test count and runs everything below it once per case. State declared below
+it is per test, so single-test and multitest code are the same lines
+(<a href="/learn/language/multitest-state">multitest state</a> has the rules):
+
+```cp run input="2\n3\n1 2 3\n2\n5 5\n"
+@!multitest
+let n: 1..=10 = read()
+let a = read<[n]Int>()
+print(a.sum())
+```
+
+## Reading follows the type
+
+`read<T>()` dispatches on the type the context expects, so `let n: 1..=2e5 = read()` and
+`read<[n]Int>()` are one mechanism. Ranges read with their contract: a value outside `1..=2e5`
+traps with its input position. An array over a domain reads `D.count` values, records read their
+fields in order, and an enum reads a tag and then that variant's fields, so a command stream is a
+`match` on `read<Cmd>()`:
+
+```cp run input="3\nAdd 4\nAdd 5\nAsk\n"
+enum Cmd:
+    Add(x: Int)
+    Ask
+let q: 1..=10 = read()
+var total = 0
+for _ in 0..q:
+    match read<Cmd>():
+        Add(x): total += x
+        Ask: print(total)
+```
+
+`read_all<T>()` reads to the end of input for statements that give no count. Input lines may end in
+`\n` or `\r\n` on every platform, and blank lines between tests are invisible to a token read
+(<Spec file="core/10-io" section="10.2 Reading">§10.2</Spec>).
+
+## Printing mirrors input
+
+`print(x, y)` joins by `io.sep` and ends the line; a sequence prints on one line, and a record
+prints its fields. Interpolation formats each piece (`{x:04}` pads with zeros, `{x:.9}` sets float
+precision). `Bool` and `?T` are not printable on their own: `yes(b)` prints the profile's answer
+words, and `none:` says what an absent element prints as:
+
+```cp run input="2\nann 7\nbo 81\n"
+let m: 1..=10 = read()
+domain E = [m]
+let es: [E](name: Str, score: Int) = read()
+for e in es:
+    print("{e.name}: {e.score:04}")
+print(yes(es.any(e => e.score > 50)))
+let ys: List<?Int> = [1, None, 3]
+print(ys, none: -1)
+```
+
+(<Spec file="core/10-io" section="10.3 Printing">§10.3</Spec>)
+
+## 1-based input is a context
+
+A domain with written ends (`1..=n`) reads and prints its positions as written. A counted domain
+(`[n]`, which is `0..n`) is 0-based inside the program; `with io(base: 1)` reads 1-based input into
+it and prints it back 1-based, so the two conventions never stack:
+
+```cp run input="3\n2 2 1\n"
+with io(base: 1):
+    let n: 1..=10 = read()
+    domain V = [n]
+    let p: [V]V = read()
+    if let v = V.find(v => p[v] == v):
+        print("fixed point", v)
+```
+
+Sizes, cuts and plain integers never shift.
+
+## Interaction and cost
+
+`Wire` switches to interactive mode: every read and every exit flushes first, and
+`wire.ask("? {x} {y}")` prints a query, flushes and reads the answer as the expected type. A
+program that never builds a `Wire` never flushes early. Otherwise input is one bulk read with a
+hand-rolled parser and output is one buffer written at exit, and since `io` is a compile-time
+context, the base shift folds away (<Spec file="core/10-io" section="10.6 Cost">§10.6</Spec>).
+
+## Why it's designed this way
+
+**No `main`, one divider.** Multitest state leakage is a P0 bug class. With a divider instead of a
+`solve()` function, moving a line across it is the whole change between "shared" and "per test",
+and nothing below it can survive into the next case.
+
+**Types read themselves.** The statement's constraints are written once, as the type, and that one
+declaration validates input, picks storage width and drives generators. A separate `cin >> n` plus
+an `assert` repeats the fact and drifts.
+
+**`Bool` and `?T` don't print.** `print(found)` printing `true` where the judge wants `YES`, or an
+absent value printing as a sentinel, are silent wrong answers. An error that names `yes(b)` or
+`none:` costs one edit.
+
+**Base is a context, not a shift.** Off-by-one is a P0 bug class. Writing `- 1` on every read and
+`+ 1` on every print spreads one fact across the file; `io(base: 1)` states it once.
+<Decision n={136} /> covers grader entry points for IOI-style tasks, and <Decision n={161} />
+`read_all(until:)` for sentinel-terminated input.

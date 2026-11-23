@@ -11,6 +11,7 @@
     "optionals",
     "traits-and-generics",
     "sequences-and-views",
+    "input-and-output",
     "multitest-state",
     "checked-operations",
     "standard-library",
