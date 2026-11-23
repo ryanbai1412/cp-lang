@@ -1,5 +1,5 @@
 code = "L0513"
 level = "warn"
 group = "idiom"
-title = "Dimension-suffixed prefix or diff helper instead of `prefix`/`Prefix`/`Diff`"
-summary = "`prefix1`/`prefix2`/`prefix_n`, `Prefix1`/`Prefix2`/`PrefixN`, `Diff1`/`Diff2`: write `prefix`, `Prefix`, or `Diff`"
+title = "Dimension-suffixed prefix or diff helper instead of `Prefix`/`Diff`"
+summary = "`prefix1`/`prefix2`/`prefix_n`, `Prefix1`/`Prefix2`/`PrefixN`, `Diff1`/`Diff2`: write `Prefix` or `Diff`"

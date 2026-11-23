@@ -222,7 +222,7 @@ fn map_contains_then_index_binds_one_lookup() {
 #[test]
 fn a_running_total_used_whole_keeps_its_loop() {
     // corpus/newcomer/n52_run1_cf2289d.cp (acceptance run 3, `prefix-sum-manual-push`):
-    // a `Prefix` has no `any`, so `prefix(a)` would not compile there.
+    // a `Prefix` has no `any`, so `Prefix(a)` would not compile there.
     let whole = "let n: 1..=10 = read()\nlet a: [0..n]Int = read()\nvar pre: List<Int> = []\nvar s = 0\nfor x in a:\n    s += x\n    pre.push(s)\nprint(yes(pre.any(t => t < 0)))\n";
     assert!(!codes(whole).contains(&"L0521"), "{:?}", codes(whole));
     let indexed = whole.replace(

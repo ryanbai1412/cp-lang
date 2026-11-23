@@ -370,7 +370,7 @@ impl<'a> Taste<'a> {
     /// Hand-rolled 1D/2D prefix-sum loop (L0521). When the preceding statement
     /// declares `var p` as zero-initialized and every later reference in the
     /// same block is a read `p[e]`, `cpl fix` folds the declaration, loop, and
-    /// reads into `let p = prefix(...)` and `p.prefix(e)`.
+    /// reads into `let p = Prefix(...)` and `p.prefix(e)`.
     fn prefix_sum(&mut self, stmts: &[(u32, &Stmt)], i: usize) {
         let (base, stmt) = stmts[i];
         let Some(found) = prefix_sum_loop(stmt) else {
@@ -385,10 +385,10 @@ impl<'a> Taste<'a> {
         let mut diag = Diagnostic::warning(
             HAND_ROLLED_PREFIX_SUM.code,
             stmt.span,
-            format!("a hand-rolled prefix sum into `{}`: use `prefix(...)`", found.arr),
+            format!("a hand-rolled prefix sum into `{}`: use `Prefix(...)`", found.arr),
         )
         .with_help(format!(
-            "`let {} = prefix(..)` builds the prefix table in O(n) with O(1) `.fold(range)` and `.prefix(cut)`",
+            "`let {} = Prefix(..)` builds the prefix table in O(n) with O(1) `.fold(range)` and `.prefix(cut)`",
             found.arr
         ));
         if let Some((decl_idx, decl_base, decl_stmt)) =
@@ -399,12 +399,12 @@ impl<'a> Taste<'a> {
                     PrefixLoopKind::Domain1d { var, domain } => {
                         if let Some((src_arr, ix)) = plain_index(found.rhs) {
                             if expr_name(ix) == Some(var) && src_arr != found.arr {
-                                format!("prefix({src_arr})")
+                                format!("Prefix({src_arr})")
                             } else {
-                                format!("prefix([{domain}] {var} => {rhs_text})")
+                                format!("Prefix([{domain}] {var} => {rhs_text})")
                             }
                         } else {
-                            format!("prefix([{domain}] {var} => {rhs_text})")
+                            format!("Prefix([{domain}] {var} => {rhs_text})")
                         }
                     }
                     PrefixLoopKind::RangeZero { var, hi } => {
@@ -414,12 +414,12 @@ impl<'a> Taste<'a> {
                                 && src_arr != found.arr
                                 && hi_text == format!("{src_arr}.len")
                             {
-                                format!("prefix({src_arr})")
+                                format!("Prefix({src_arr})")
                             } else {
-                                format!("prefix([{rhs_text} for {var} in 0..{hi_text}])")
+                                format!("Prefix([{rhs_text} for {var} in 0..{hi_text}])")
                             }
                         } else {
-                            format!("prefix([{rhs_text} for {var} in 0..{hi_text}])")
+                            format!("Prefix([{rhs_text} for {var} in 0..{hi_text}])")
                         }
                     }
                     PrefixLoopKind::RangeOne | PrefixLoopKind::Grid2d => String::new(),
@@ -448,7 +448,7 @@ impl<'a> Taste<'a> {
                         end: stmt.span.end + base - decl_base,
                     };
                     diag.fixes.push(Fix {
-                        title: "use `prefix(...)`".to_string(),
+                        title: "use `Prefix(...)`".to_string(),
                         edits,
                     });
                     self.base = decl_base;
@@ -1331,22 +1331,16 @@ impl<'a> Taste<'a> {
         }
     }
 
-    /// `prefix1(a)`, `prefix2(a)`, `prefix_n(a)` -> `prefix(a)`,
+    /// `prefix1(a)`, `prefix2(a)`, `prefix_n(a)` -> `Prefix(a)`,
     /// `Prefix1`/`Prefix2`/`PrefixN` -> `Prefix`, `Diff1`/`Diff2` -> `Diff`.
     fn prefix_twin(&mut self, expr: &Expr) {
         let (target_span, name, replacement) = match &expr.kind {
             ExprKind::Call { callee, args } => {
                 if let ExprKind::Name(name) = &callee.kind {
-                    if args.len() == 1
-                        && args[0].name.is_none()
-                        && !args[0].mutable
-                        && matches!(
-                            name.as_str(),
-                            "prefix1" | "prefix2" | "prefix_n" | "Prefix1" | "Prefix2" | "PrefixN"
-                        )
+                    let one_arg = args.len() == 1 && args[0].name.is_none() && !args[0].mutable;
+                    if matches!(name.as_str(), "Prefix1" | "Prefix2" | "PrefixN")
+                        || (one_arg && matches!(name.as_str(), "prefix1" | "prefix2" | "prefix_n"))
                     {
-                        (callee.span, name.as_str(), "prefix")
-                    } else if matches!(name.as_str(), "Prefix1" | "Prefix2" | "PrefixN") {
                         (callee.span, name.as_str(), "Prefix")
                     } else if matches!(name.as_str(), "Diff1" | "Diff2") {
                         (callee.span, name.as_str(), "Diff")
@@ -1380,7 +1374,9 @@ impl<'a> Taste<'a> {
             target_span,
             format!("use `{replacement}` instead of `{name}`"),
         )
-        .with_help("`prefix(a)`, `Prefix`, and `Diff` dispatch by shape across `[D]T`, `[R, C]T`, and `List<T>`");
+        .with_help(
+            "`Prefix(a)` and `Diff` dispatch by shape across `[D]T`, `[R, C]T`, and `List<T>`",
+        );
         diag.fixes.push(Fix {
             title: format!("rename to `{replacement}`"),
             edits: vec![(target_span, replacement.into())],

@@ -89,6 +89,7 @@ architecture after. Deadline ~09:30 PST 2026-11-23; hours, not days.
 | L0518 took only `false`/`0` as a sieve mark, missing `comp[j] = true` | marks are any constant written at a stepped multiple | lint-fmt (done in a5317254) |
 
 ## Why each milestone
+- Instance: L0521/L0510/L0513 helps and fixes wrote `prefix(a)` while decision 221, the practice refs and L0590 write `Prefix(a)`; acceptance run 2 counted four spellings (`prefix(a)`, `Prefix(a)`, `a.scan(+)`, `Prefix(+, a)`). Lint now emits only `Prefix(a)`. General fix: retire the `prefix` alias in `crates/cpl-check/src/prelude.rs` (or make it a lint-with-fix to `Prefix`) and migrate the 115 non-draft refs (std/fenwick.cp, std/prefix.cp, skills, 6 ports). Owner: stdlib (alias and refs), lint-fmt (the migration fix once the alias is deprecated).
 - **M1 first** because fmt is the smallest, nearly done, and every later
   bulk change (fixes, codemods, ports) is printed by it; a fmt that can change
   meaning makes every autofix suspect.

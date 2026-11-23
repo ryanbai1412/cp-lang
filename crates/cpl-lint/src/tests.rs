@@ -1054,9 +1054,9 @@ fn f(p: Prefix1<V, Int>, q: Prefix2<R, C, Int>, r: PrefixN<Int>) -> Int = 0
         fixed(src),
         "\
 let xs = [3, 1, 4]
-let a = prefix(xs)
-let b = prefix([0..3] i => i)
-let c = prefix([0..2, 0..2] (r, c) => r + c)
+let a = Prefix(xs)
+let b = Prefix([0..3] i => i)
+let c = Prefix([0..2, 0..2] (r, c) => r + c)
 let d1 = Diff<V, Int>()
 let d2 = Diff<R, C, Int>()
 fn f(p: Prefix<V, Int>, q: Prefix<R, C, Int>, r: Prefix<Int>) -> Int = 0
@@ -1605,7 +1605,7 @@ fn running_totals_teach_prefix() {
 
 #[test]
 fn hand_rolled_prefix_sum_becomes_prefix() {
-    // 1D List.filled + 0..a.len -> prefix(a) and p.prefix(...)
+    // 1D List.filled + 0..a.len -> Prefix(a) and p.prefix(...)
     let list_pref = "\
 let a = [1, 2, 3, 4]
 var p = List.filled(a.len + 1, 0)
@@ -1616,10 +1616,10 @@ print(p[3] - p[1])
     assert_eq!(taste_codes(list_pref), ["L0521"]);
     assert_eq!(
         fixed(list_pref),
-        "let a = [1, 2, 3, 4]\nlet p = prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n"
+        "let a = [1, 2, 3, 4]\nlet p = Prefix(a)\nprint(p.prefix(3) - p.prefix(1))\n"
     );
 
-    // 1D domain bounds (corpus/problems/atcoder_dp_m/port.cp shape) -> prefix(ways) and pre.prefix(...)
+    // 1D domain bounds (corpus/problems/atcoder_dp_m/port.cp shape) -> Prefix(ways) and pre.prefix(...)
     let dom_pref = "\
 domain C = 0..=4
 let ways: [C]Int = [1, 2, 3, 4, 5]
@@ -1630,10 +1630,10 @@ print(pre[C.last.r] - pre[C.first.l])
     assert_eq!(taste_codes(dom_pref), ["L0521"]);
     assert_eq!(
         fixed(dom_pref),
-        "domain C = 0..=4\nlet ways: [C]Int = [1, 2, 3, 4, 5]\nlet pre = prefix(ways)\nprint(pre.prefix(C.last.r) - pre.prefix(C.first.l))\n"
+        "domain C = 0..=4\nlet ways: [C]Int = [1, 2, 3, 4, 5]\nlet pre = Prefix(ways)\nprint(pre.prefix(C.last.r) - pre.prefix(C.first.l))\n"
     );
 
-    // 1D [0..=n]Int with expression RHS -> prefix([... for i in 0..n])
+    // 1D [0..=n]Int with expression RHS -> Prefix([... for i in 0..n])
     let range_pref = "\
 let n = 4
 let a = [1, 2, 3, 4]
@@ -1644,7 +1644,7 @@ print(pre[n] - pre[1])
     assert_eq!(taste_codes(range_pref), ["L0521"]);
     assert_eq!(
         fixed(range_pref),
-        "let n = 4\nlet a = [1, 2, 3, 4]\nlet pre = prefix([a[i] * 2 for i in 0..n])\nprint(pre.prefix(n) - pre.prefix(1))\n"
+        "let n = 4\nlet a = [1, 2, 3, 4]\nlet pre = Prefix([a[i] * 2 for i in 0..n])\nprint(pre.prefix(n) - pre.prefix(1))\n"
     );
 
     // 1D 1..=n and 2D inclusion-exclusion warn (no auto-fix).

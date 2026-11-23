@@ -1312,10 +1312,10 @@ impl Taste<'_> {
         let diag = Diagnostic::warning(
             HAND_ROLLED_PREFIX_SUM.code,
             stmt.span,
-            format!("`{table}` is a running total built by hand: use `prefix(...)`"),
+            format!("`{table}` is a running total built by hand: use `Prefix(...)`"),
         )
         .with_help(
-            "`prefix(a)` (or `a.scan(+)`) builds every prefix sum in O(n); `.prefix(cut)` reads one and `.fold(range)` sums a range in O(1)",
+            "`Prefix(a)` (or `a.scan(+)`) builds every prefix sum in O(n); `.prefix(cut)` reads one and `.fold(range)` sums a range in O(1)",
         );
         self.push(&HAND_ROLLED_PREFIX_SUM, diag);
     }
