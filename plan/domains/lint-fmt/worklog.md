@@ -281,3 +281,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 - 2026-11-23: L0577 `query_index_shift`, L0578 `tuple_points` (`rules/hand_input.rs`, decision 343). Newcomer 140/140 (100%), fixes 77/77 check-clean; 4 port hits, all real shifts.
 - 2026-11-23: `cpl-lint` build fails when two records claim one code (L0572/L0573 collided twice between allocation and landing).
 - 2026-11-23: L0577 skips a shift that is only written (difference array, `diff_by_hand`); newcomer marks for the 12 true unmarked findings, `score.py --unmarked`. Newcomer 152/152, 0 unmarked, fixes 77/77.
+- 2026-11-23: `cpl_fmt::format_range` / `format_on_type` (range.rs) for LSP range and on-type formatting; every newcomer line formats alone, idempotent, tokens kept. Tools wires `textDocument/rangeFormatting` and `onTypeFormatting` (`\n`, `:`).

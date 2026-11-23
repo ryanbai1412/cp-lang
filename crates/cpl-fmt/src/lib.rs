@@ -14,11 +14,13 @@
 
 mod imports;
 mod layout;
+mod range;
 mod spacing;
 mod style;
 
 pub mod cli;
 
+pub use range::{format_on_type, format_range, Edit};
 pub use style::{Style, StyleError};
 
 #[cfg(test)]
@@ -102,6 +104,15 @@ pub fn format_with(src: &str, style: &Style) -> Result<String, FormatError> {
 }
 
 fn format_lf(src: &str, style: &Style) -> Result<String, FormatError> {
+    let (_, out) = laid_out(src, style)?;
+    let sorted = imports::sort_use_runs(&out);
+    imports::verify(&out, &sorted)?;
+    Ok(sorted)
+}
+
+/// `src` laid out in `style`, checked token by token, before `use` runs are
+/// sorted; with the tokens it was laid out from.
+pub(crate) fn laid_out(src: &str, style: &Style) -> Result<(Vec<Token>, String), FormatError> {
     let lexed = cpl_syntax::lex(src);
     if !lexed.diagnostics.is_empty() {
         return Err(FormatError::Lex(lexed.diagnostics));
@@ -114,9 +125,7 @@ fn format_lf(src: &str, style: &Style) -> Result<String, FormatError> {
         out = layout::render(src, &lexed, style, false);
         verify(src, &lexed.tokens, &out)?;
     }
-    let sorted = imports::sort_use_runs(&out);
-    imports::verify(&out, &sorted)?;
-    Ok(sorted)
+    Ok((lexed.tokens, out))
 }
 
 /// Whether `src` is already formatted. A file that cannot be formatted is
@@ -126,7 +135,7 @@ pub fn is_formatted(src: &str) -> bool {
 }
 
 /// Checks that formatting changed nothing but whitespace and trailing commas.
-fn verify(src: &str, before: &[Token], out: &str) -> Result<(), FormatError> {
+pub(crate) fn verify(src: &str, before: &[Token], out: &str) -> Result<(), FormatError> {
     let after = cpl_syntax::lex(out);
     if let Some(diag) = after.diagnostics.first() {
         return Err(FormatError::Internal(format!(
@@ -154,7 +163,7 @@ fn verify(src: &str, before: &[Token], out: &str) -> Result<(), FormatError> {
 
 /// The tokens formatting must keep: all of them, less a comma right before
 /// a closing bracket.
-fn significant<'a>(src: &'a str, tokens: &[Token]) -> Vec<(TokenKind, &'a str)> {
+pub(crate) fn significant<'a>(src: &'a str, tokens: &[Token]) -> Vec<(TokenKind, &'a str)> {
     let mut out = Vec::with_capacity(tokens.len());
     for (i, tok) in tokens.iter().enumerate() {
         let before_closer = tokens.get(i + 1).is_some_and(|next| {

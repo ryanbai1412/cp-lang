@@ -7417,3 +7417,17 @@ values are `Int`. Matching `get` by name moves `--update lint_std_names`
 179 -> 180. One std hit (`std/geometry.cp` `edges`) is counted in
 `corpus_warnings.txt`. Reverse: delete `spec/lints/counter_by_map/` and
 `rules/counter.rs`.
+
+## 345. Range and on-type formatting splice whole statements from one layout (2026-11-23)
+
+`cpl_fmt::format_range` and `format_on_type` lay the whole file out once
+and splice back the laid-out text between two cuts: line starts between
+statements in both the source and the result, found through the shared
+tokens. Everything outside the cuts is byte-identical. When the splice does
+not lex to the same tokens (a block indented two spaces, part of it
+re-indented), the cuts widen to the top-level statements around it. After
+a newline only the line above is formatted and the cursor's line is never
+touched; after `:` the cursor's line. `use` runs are sorted only by a
+whole-file format. Reason: one layout engine for file, range and keystroke,
+so the three can never disagree. Reverse: drop `range.rs`; the LSP falls
+back to whole-file formatting.
