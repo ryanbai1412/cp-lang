@@ -92,6 +92,30 @@ check(vim.bo.omnifunc == 'v:lua.vim.lsp.omnifunc', 'omnifunc is ' .. vim.bo.omni
 vim.api.nvim_win_set_cursor(0, { 4, 10 })
 vim.cmd('normal gd')
 check(vim.wait(5000, function() return vim.api.nvim_win_get_cursor(0)[1] == 2 end), 'gd went to ' .. vim.inspect(vim.api.nvim_win_get_cursor(0)))
+-- Navigation past `gd`: type definition, implementations, call hierarchy and range formatting.
+local main_buf = vim.api.nvim_get_current_buf()
+local nav_file = dir .. '/nav.cp'
+vim.fn.writefile({ 'struct Road:', '    to: Int', 'impl Road:', '    fn twice(self) -> Int = self.to * 2',
+    'fn far(r: Road) -> Int = r.twice()', 'print( far(Road(to: 3)) )' }, nav_file)
+vim.cmd('edit ' .. nav_file)
+check(vim.wait(10000, function() return #vim.lsp.get_clients({ bufnr = 0 }) > 0 end), 'no LSP client on nav.cp')
+local function ask(method, extra)
+    local params = vim.tbl_extend('force', { textDocument = { uri = vim.uri_from_fname(nav_file) } }, extra)
+    for _, reply in pairs(vim.lsp.buf_request_sync(0, method, params, 5000) or {}) do
+        if reply.result then return reply.result end
+    end
+end
+local typedef = ask('textDocument/typeDefinition', { position = { line = 4, character = 25 } })
+check(typedef and typedef.range.start.line == 0, 'type definition is ' .. vim.inspect(typedef))
+local impls = ask('textDocument/implementation', { position = { line = 0, character = 8 } }) or {}
+check(#impls == 1 and impls[1].range.start.line == 2, 'implementations are ' .. vim.inspect(impls))
+local calls = ask('textDocument/prepareCallHierarchy', { position = { line = 4, character = 4 } }) or {}
+check(calls[1] and calls[1].name == 'far', 'call hierarchy item is ' .. vim.inspect(calls))
+local incoming = calls[1] and ask('callHierarchy/incomingCalls', { item = calls[1] }) or {}
+check(#incoming == 1, 'incoming calls are ' .. vim.inspect(incoming))
+local edits = ask('textDocument/rangeFormatting', { range = { start = { line = 5, character = 0 }, ['end'] = { line = 5, character = 5 } } }) or {}
+check(#edits == 1 and edits[1].newText == 'print(far(Road(to: 3)))\n', 'range formatting is ' .. vim.inspect(edits))
+vim.cmd('buffer ' .. main_buf)
 local lenses = {}
 check(vim.wait(10000, function()
     lenses = vim.lsp.codelens.get(0)
