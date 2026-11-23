@@ -1094,10 +1094,7 @@ const EDGE_FIXTURES: [(&str, &str); 4] = [
 
 /// Rows known to disagree, as (`Receiver.member`, fixture or `*`). Each is
 /// a bug in one engine; delete its entry with the fix.
-const KNOWN_EDGE_DIFFERS: [(&str, &str); 6] = [
-    // The C++ has no `first`/`last` for a fixed-size array and doesn't compile.
-    ("[D]T.first", "*"),
-    ("[D]T.last", "*"),
+const KNOWN_EDGE_DIFFERS: [(&str, &str); 4] = [
     // The interpreter stops on a `while` that isn't monotone; the C++ answers.
     ("Str.reach", "extreme"),
     ("[D]T.reach", "extreme"),

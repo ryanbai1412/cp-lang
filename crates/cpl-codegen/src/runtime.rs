@@ -780,7 +780,7 @@ inline std::optional<u8> pop(std::string& s) { if (s.empty()) return std::nullop
         name: "first",
         needs: &[],
         code: "\
-template <class T> std::optional<T> first(const std::vector<T>& v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.front()); }
+template <class C> auto first(const C& v) { using T = std::decay_t<decltype(*std::begin(v))>; return v.empty() ? std::optional<T>() : std::optional<T>(*std::begin(v)); }
 inline std::optional<u8> first(const std::string& s) { return s.empty() ? std::optional<u8>() : std::optional<u8>((u8)s.front()); }
 ",
     },
@@ -788,7 +788,7 @@ inline std::optional<u8> first(const std::string& s) { return s.empty() ? std::o
         name: "last",
         needs: &[],
         code: "\
-template <class T> std::optional<T> last(const std::vector<T>& v) { return v.empty() ? std::optional<T>() : std::optional<T>(v.back()); }
+template <class C> auto last(const C& v) { using T = std::decay_t<decltype(*std::begin(v))>; return v.empty() ? std::optional<T>() : std::optional<T>(*std::prev(std::end(v))); }
 inline std::optional<u8> last(const std::string& s) { return s.empty() ? std::optional<u8>() : std::optional<u8>((u8)s.back()); }
 ",
     },
