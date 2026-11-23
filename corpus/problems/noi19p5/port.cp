@@ -24,7 +24,7 @@ if n == 1:
     for i in 0..q:
         print(1)
 elif n == 2:
-    let inv2 = Z(2).inv
+    let inv2 = Z(2).inv()
     for idx in 0..m:
         let cut = cuts[idx]
         if cut == 1:
@@ -37,10 +37,10 @@ elif n == 2:
     for i in 0..q:
         print(eval(a, b, c, asks[i]))
 else:
-    let inv_n = Z(n).inv
-    let inv_n1 = Z(n - 1).inv
-    let inv_2 = Z(2).inv
-    let inv_n2 = Z(n - 2).inv
+    let inv_n = Z(n).inv()
+    let inv_n1 = Z(n - 1).inv()
+    let inv_2 = Z(2).inv()
+    let inv_n2 = Z(n - 2).inv()
 
     for idx in 0..m:
         let cut = cuts[idx]

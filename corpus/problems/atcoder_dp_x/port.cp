@@ -13,4 +13,4 @@ best[0] = 0
 for b in blocks.sorted(by: b => b.s + b.w):
     for x in (0..=b.s).rev:
         if let v = best[x]: best[x + b.w] max= v + b.v
-print(best.max())
+print(best.max()!)

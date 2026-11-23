@@ -24,7 +24,7 @@ fn det(m: Mat) -> Z:
             swap(mut a[pivot], mut a[c])
             d = -d
         d *= a[c][c]
-        let inv = a[c][c].inv
+        let inv = a[c][c].inv()
         for r in c + 1..n:
             if a[r][c] != 0:
                 let f = a[r][c] * inv

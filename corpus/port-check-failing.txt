@@ -11,7 +11,6 @@ atcoder_dp_o
 atcoder_dp_s
 atcoder_dp_u
 atcoder_dp_v
-atcoder_dp_x
 atcoder_dp_z
 btoi15p3
 btoi17p1
@@ -26,7 +25,6 @@ ccc00s5
 ccc02s4hard
 ccc05s5
 ccc10s4
-ccc14s4
 ccc14s4hard
 ccc20s1
 ccc21s4
@@ -128,7 +126,6 @@ noi03p4
 noi07p1
 noi07p2
 noi07p4
-noi07p5
 noi10p4
 noi15p2
 noi15p5
@@ -136,7 +133,6 @@ noi16p4
 noi17p2
 noi18p1
 noi18p2
-noi19p5
 noi20p2
 noi20p4
 noi21p1
