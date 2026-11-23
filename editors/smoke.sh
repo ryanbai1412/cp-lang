@@ -42,6 +42,12 @@ for path, words in lists.items():
     if got != compiler:
         bad = True
         print(f"  {path}: missing {sorted(compiler - got)}, extra {sorted(got - compiler)}", file=sys.stderr)
+literals = set(re.findall(r'"([A-Za-z]+)"', token.split("pub const LITERAL_WORDS: &[&str] = &[")[1].split("];")[0]))
+grammar = (root / "editors/tree-sitter-cp/grammar.js").read_text()
+words = set(re.findall(r"'([A-Za-z]+)'", re.search(r"boolean: _ =>(.*?)self: _ =>", grammar, re.S).group(1)))
+if words != literals:
+    bad = True
+    print(f"  editors/tree-sitter-cp/grammar.js literals: missing {sorted(literals - words)}, extra {sorted(words - literals)}", file=sys.stderr)
 sys.exit(1 if bad else 0)
 PY
 
@@ -76,6 +82,8 @@ emacs="${EMACS:-emacs}"
 if command -v "$emacs" >/dev/null; then
     echo "editors: emacs"
     CPL="$cpl" "$emacs" --batch -Q -l "$root/editors/emacs/smoke.el" 2>&1 | grep 'emacs smoke'
+    # eglot runs `cpl lsp` as cp-mode names it; the shared request matrix goes to that command.
+    python3 "$root/editors/lsp-smoke.py" emacs "$cpl" lsp
 else
     echo "editors: SKIPPED emacs (set \$EMACS)"
 fi
@@ -94,37 +102,10 @@ else
     echo "editors: SKIPPED zed (rustup target add wasm32-wasip1)"
 fi
 
-# The committed parser is what grammar.js generates (with tree-sitter 0.25), every port
-# and library parses without an error, and each editor's queries are the same patterns.
 ts="${TREE_SITTER:-tree-sitter}"
 if command -v "$ts" >/dev/null; then
     echo "editors: tree-sitter"
-    grammar="$root/editors/tree-sitter-cp"
-    work="$(mktemp -d)"
-    cp "$grammar/grammar.js" "$grammar/tree-sitter.json" "$work/"
-    (cd "$work" && "$ts" generate --abi 14 >/dev/null)
-    diff -r "$work/src" "$grammar/src" >/dev/null || { echo "editors: editors/tree-sitter-cp/src is stale; run tree-sitter generate --abi 14 there" >&2; exit 1; }
-    echo '{"parser-directories": ["'"$root/editors"'"]}' >"$work/config.json"
-    find "$root/corpus/problems" "$root/std" "$root/stdlib" -name '*.cp' >"$work/files"
-    stat="$(cd "$grammar" && "$ts" parse --config-path "$work/config.json" --quiet --stat --paths "$work/files" 2>&1)"
-    grep -q "failed parses: 0;" <<<"$stat" || { echo "$stat" >&2; echo "editors: the grammar fails on a .cp file" >&2; exit 1; }
-    for query in "$grammar/queries/highlights.scm" "$root/editors/helix/runtime/queries/cp/highlights.scm" "$root/editors/zed/languages/cp/highlights.scm"; do
-        [ -f "$query" ] || continue
-        (cd "$grammar" && "$ts" query --config-path "$work/config.json" --quiet "$query" "$root/corpus/problems/cf2062g/port.cp" >/dev/null) || { echo "editors: $query does not compile" >&2; exit 1; }
-    done
-    python3 - "$root/editors" <<'PY'
-import pathlib, re, sys
-editors = pathlib.Path(sys.argv[1])
-def patterns(path):
-    text = "\n".join(l for l in path.read_text().splitlines() if not l.startswith(";"))
-    return re.sub(r"@[a-z.]+", "@", text).strip()
-want = patterns(editors / "tree-sitter-cp/queries/highlights.scm")
-for path in [editors / "helix/runtime/queries/cp/highlights.scm", editors / "zed/languages/cp/highlights.scm"]:
-    if path.exists() and patterns(path) != want:
-        sys.exit(f"editors: {path} does not have the patterns of tree-sitter-cp/queries/highlights.scm")
-PY
-    rm -rf "$work"
-    echo "tree-sitter smoke: ok"
+    TREE_SITTER="$ts" "$root/editors/tree-sitter-cp/smoke.sh"
 else
     echo "editors: SKIPPED tree-sitter (set \$TREE_SITTER)"
 fi

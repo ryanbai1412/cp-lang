@@ -57,7 +57,8 @@ module.exports = grammar({
     )),
 
     boolean: _ => choice('true', 'false'),
-    none: _ => 'none',
+    // `none` is the old spelling; it still parses, so the checker can name the fix.
+    none: _ => choice('None', 'none'),
     self: _ => 'self',
 
     keyword: _ => choice(

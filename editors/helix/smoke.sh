@@ -20,7 +20,9 @@ XDG_CONFIG_HOME="$config" "$hx" --grammar build >/dev/null 2>&1 || {
     exit 1
 }
 health="$(XDG_CONFIG_HOME="$config" "$hx" --health cp 2>&1 | sed 's/\x1b\[[0-9;]*m//g')"
-for want in "✓ $cpl" "Tree-sitter parser: ✓" "Highlight queries: ✓"; do
+# Helix 25.07 names the server before its path (`✓ cpl: PATH`); older ones print `✓ PATH`.
+grep -qE "✓ (cpl: )?$cpl\$" <<<"$health" || { echo "$health" >&2; echo "helix smoke: the server \`$cpl\` is not found" >&2; exit 1; }
+for want in "Tree-sitter parser: ✓" "Highlight queries: ✓"; do
     grep -qF "$want" <<<"$health" || { echo "$health" >&2; echo "helix smoke: no \`$want\`" >&2; exit 1; }
 done
 mapfile -t command < <(python3 - "$config/helix/languages.toml" <<'PY'

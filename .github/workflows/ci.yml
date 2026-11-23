@@ -220,6 +220,39 @@ jobs:
       - name: The server handshake the plugin starts
         run: python3 editors/lsp-smoke.py jetbrains target/debug/cpl lsp
 
+  # The other editor setups (Emacs, Helix, Zed) and the tree-sitter grammar they
+  # share, each against the real `cpl lsp` with the request matrix tier 1 runs.
+  editors:
+    name: editors (emacs, helix, zed, tree-sitter)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install the pinned Rust toolchain
+        run: rustup show active-toolchain || rustup toolchain install && rustup target add wasm32-wasip1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: neovim
+      - name: Build cpl
+        run: cargo build -p cpl-cli
+      - name: Install Emacs, Helix and the tree-sitter CLI
+        run: |
+          sudo apt-get install -y -q emacs-nox >/dev/null
+          curl -sSfL https://github.com/helix-editor/helix/releases/download/25.07.1/helix-25.07.1-x86_64-linux.tar.xz | tar xJ -C "$RUNNER_TEMP"
+          echo "HX=$RUNNER_TEMP/helix-25.07.1-x86_64-linux/hx" >> "$GITHUB_ENV"
+          npm install --prefix "$RUNNER_TEMP/ts" --no-audit --no-fund tree-sitter-cli@0.25.10 >/dev/null
+          echo "TREE_SITTER=$RUNNER_TEMP/ts/node_modules/.bin/tree-sitter" >> "$GITHUB_ENV"
+      - name: Emacs smoke
+        run: |
+          CPL="$PWD/target/debug/cpl" emacs --batch -Q -l editors/emacs/smoke.el
+          python3 editors/lsp-smoke.py emacs "$PWD/target/debug/cpl" lsp
+      - name: Helix smoke
+        run: editors/helix/smoke.sh "$PWD/target/debug/cpl"
+      - name: Zed smoke
+        run: editors/zed/smoke.sh "$PWD/target/debug/cpl"
+      - name: Tree-sitter grammar
+        run: editors/tree-sitter-cp/smoke.sh
+
   # A main push with stale generated files (skill pages, COVERAGE.md, fixed
   # prelude gaps) or a machine-fixable clippy lint gets them regenerated and committed here, under the pushed
   # commit's Domain trailer, then CI is dispatched on the new tip: a push by
