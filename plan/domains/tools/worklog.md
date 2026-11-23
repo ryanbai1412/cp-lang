@@ -99,3 +99,9 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
 
 ## 2026-11-22: one command table for options and JSON spelling
 - `crates/cpl-cli/src/commands.rs`: each `Command` now carries its JSON spelling (`--json` or `--format json`) and, for the commands `cpl` parses itself, its options. The separate `JSON_FLAG`/`JSON_FORMAT` lists and the `unknown_option` match are gone; both read the table. First step of improve item 3 (one parser, one output layer). No behaviour change: `cargo test -p cpl-cli --lib` 32 passed (new `a_parsed_command_accepts_its_own_json_spelling`), `--test golden --test spec_sync` 28 + 1 passed.
+
+## 2026-11-22: `cpl --help --json` says each command's JSON spelling; `lint --format json` works
+- `cpl --help --json` gains `json` per command (`"--json"`, `"--format json"` or `null`), read from the command table; documented in `spec/tools/cli.md`.
+- Found by it: `cpl lint --format json` exited 2 (`unknown option`), against decisions.md 230. Now both spellings print the same report (`lint_json_prints_the_files_cpl_check_json_prints` checks it).
+- `measure.py json` now reads that field instead of grepping help text for "json", which had counted `new` (its `--companion` takes a JSON file) and `replay` (it reads a JSON trace) as having JSON output. Corrected value: 19/25, without dap, lsp, new, replay, self, watch (`python3 plan/domains/tools/measure.py json`). `replay` and `new` are the gaps left.
+- Tests: `cargo test -p cpl-cli --test golden` 28 passed, `--lib` and `--test spec_sync` below.

@@ -113,7 +113,7 @@ pub(crate) const COMMANDS: &[Command] = &[
         name: "lint",
         args: "[path]...",
         summary: &["warn about code that is legal but probably wrong or slow"],
-        json: Json::None,
+        json: Json::Flag,
         options: None,
     },
     Command {
@@ -260,6 +260,14 @@ pub(crate) fn help_json() -> String {
                     text(format!("{} {}", c.name, c.args).trim_end().into()),
                 ),
                 ("summary", text(c.summary.join(" "))),
+                (
+                    "json",
+                    match c.json {
+                        Json::Flag => text("--json".into()),
+                        Json::Format => text("--format json".into()),
+                        Json::None => Value::Null,
+                    },
+                ),
                 (
                     "help",
                     if help.is_empty() {

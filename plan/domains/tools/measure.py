@@ -9,7 +9,7 @@
 
 Uses $CPL, else target/release/cpl (build it first: cargo build --release -p cpl-cli).
 """
-import glob, os, re, subprocess, sys, time
+import glob, json, os, re, subprocess, sys, time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 CPL = os.environ.get("CPL", os.path.join(ROOT, "target/release/cpl"))
@@ -37,8 +37,9 @@ def help_():
 
 
 def json_():
-    cs = commands()
-    ok = [c for c in cs if "json" in cpl(c, "--help").stdout.lower()]
+    listed = json.loads(cpl("--help", "--json").stdout)["commands"]
+    cs = [c["name"] for c in listed]
+    ok = [c["name"] for c in listed if c["json"]]
     print(f"json {len(ok)}/{len(cs)}  without {sorted(set(cs) - set(ok))}")
 
 

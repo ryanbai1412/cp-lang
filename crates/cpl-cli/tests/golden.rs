@@ -373,13 +373,19 @@ fn every_command_has_help_and_rejects_an_unknown_option() {
 }
 
 #[test]
-fn help_json_lists_every_command_with_its_usage_summary_and_help() {
+fn help_json_lists_every_command_with_its_usage_summary_json_and_help() {
     let out = cpl(Path::new("."), &["--help", "--json"]);
     assert_eq!(out.status.code(), Some(0));
     let json = cpl_json::parse(&text(&out.stdout)).expect("cpl --help --json is JSON");
     let commands = json.at(&["commands"]).as_array().unwrap();
     assert_eq!(commands.len(), 25);
     let listed = text(&cpl(Path::new("."), &["--help"]).stdout);
+    let no_json: Vec<_> = commands
+        .iter()
+        .filter(|c| c.at(&["json"]).as_str().is_none())
+        .map(|c| c.at(&["name"]).as_str().unwrap())
+        .collect();
+    assert_eq!(no_json, ["new", "watch", "lsp", "dap", "replay", "self"]);
     for command in commands {
         let name = command.at(&["name"]).as_str().unwrap();
         let usage = command.at(&["usage"]).as_str().unwrap();
@@ -618,6 +624,8 @@ fn lint_json_prints_the_files_cpl_check_json_prints() {
         text(&out.stderr)
     );
     let report = text(&out.stdout);
+    let format = cpl(&dir, &["lint", "--format", "json", "w.cp", "t.cp"]);
+    assert_eq!(text(&format.stdout), report, "{}", text(&format.stderr));
     assert!(
         report.starts_with("{\"files\":[{\"diagnostics\":[],\"ok\":false,\"path\":\"t.cp\"},"),
         "{report}"
