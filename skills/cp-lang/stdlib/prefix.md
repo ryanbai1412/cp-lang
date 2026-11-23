@@ -24,15 +24,15 @@ Fields: `p: [D.cuts]T`.
 
 Prefix sums over a domain `D`, a 2-D grid `(R, C)`, or a `List<T>`, of `Int`s, `F64`s, `Mod`s, or anything else with `+`, `-` and a zero.
 
-Fields: `p: [D.cuts]T`.
+Fields: `p: [D.cuts]T`, `sums: Bool`.
 
 - `fn new(a: [D]T) -> Prefix<D, T>` — \(O(\lvert D \rvert)\) time and space; Build 1-D prefix sums over `a: [D]T`; `Prefix(a)` calls it.
 - `fn filling(order: FillOrder = FillOrder.Forward) -> FillPrefix<D, T>` — \(O(\lvert D \rvert)\) time and space; Create an append-only 1-D prefix/suffix sum table filled via `.set(i, x)` in `order`.
 - `fn prefix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything left of boundary `b`: zero at the first cut, `all` at the last.
-- `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.
-- `fn cyclic_sum(self, r: RingRange<D>) -> T` — \(O(1)\); The sum over a wrapping run of positions, e.g.
+- `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty: `prefix(r.r) - prefix(r.l)`.; traps: on a table from `scan(f)` with `f` other than `+`
+- `fn cyclic_sum(self, r: RingRange<D>) -> T` — \(O(1)\); The sum over a wrapping run of positions, e.g.; traps: on a table from `scan(f)` with `f` other than `+`
 - `fn at(self, c: Cut<D>) -> T` — \(O(1)\); `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`; at a position `v`, `p[v]` is the sum through `v`, the same as `p[v.r]` (R07.1.6).
-- `fn suffix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.
+- `fn suffix(self, b: Cut<D>) -> T` — \(O(1)\); The sum of everything right of boundary `b`: `all - prefix(b)`, zero at the last cut.; traps: on a table from `scan(f)` with `f` other than `+`
 - `@get fn all(self) -> T` — \(O(1)\); The sum of the entire domain: `prefix` at the last cut, zero for an empty domain.
 - `fn first_ge(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first boundary `b` with `prefix(b) >= target`, or `None` when even `all` is smaller.; traps: when some element is negative
 - `fn first_gt(self, target: T) -> ?Cut<D>` — \(O(\log \lvert D \rvert)\); The first boundary `b` with `prefix(b) > target`, or `None` when `all <= target`.; traps: when some element is negative
@@ -123,7 +123,7 @@ Fields: `d: [D.cuts]T`, `e: [D.cuts]T`.
 
 ## Functions
 
-- `fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>` — \(O(n)\) calls of `f`; \(O(n)\) space; \(O(n)\) calls of `f`.; traps: never (beyond what `f` traps on)
+- `fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>` — \(O(n)\) calls of `f`; \(O(n)\) space; \(O(n)\) calls of `f`.; traps: never (beyond what `f` traps on); see `fold` for range reads
 - `fn prefix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T` — \(O(n)\) calls of `op`; \(O(n)\) space; Prefix monoid folds of `a`, indexed by `Cut<D>`: `p[b]` is the fold of `..b`, with `p[D.cuts.nth(0)] == m.id`.; traps: never (beyond what `op` traps on)
 - `fn suffix_fold<D, T, M>(op: M, a: [D]T) -> [D.cuts]T` — \(O(n)\) calls of `op`; \(O(n)\) space; Suffix monoid folds of `a`, indexed by `Cut<D>`: `s[b]` is the fold of `b..`, with `s[D.cuts.nth(D.count)] == m.id`.; traps: never (beyond what `op` traps on)
 - `fn prefix_excl<D, T, M>(op: M, a: [D]T) -> [D]T` — \(O(\lvert D \rvert)\) calls of `op`; \(O(\lvert D \rvert)\) space; \(O(\lvert D \rvert)\).; traps: never (beyond what `op` traps on)
