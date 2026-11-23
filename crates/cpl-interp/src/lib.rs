@@ -364,6 +364,7 @@ fn run_from<O: Observer>(
 ) -> (Observed, checkpoint::Clock) {
     let top = 0u8;
     let seed = io.seed;
+    let last_values = io.last_values;
     let mut interp = Interp {
         program,
         globals: vec![Value::Unit; program.globals.len()],
@@ -457,6 +458,7 @@ fn run_from<O: Observer>(
         }
         tracer.finish(&view, failed)
     });
+    let recording = recording.or_else(|| Some(trace::last_values_of(&interp.view(), last_values?)));
     let observed = Observed {
         trap,
         debug: std::mem::take(&mut interp.debug_out),

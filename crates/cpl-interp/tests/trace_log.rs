@@ -734,3 +734,39 @@ fn a_list_rebuilt_from_its_pushes_holds_every_item_pushed() {
     }
     assert_eq!(seen, (300, 300));
 }
+
+#[test]
+fn an_untraced_run_keeps_the_last_values_a_traced_one_does() {
+    let failing = "var x = 5\nvar a: [0..3]Int = 0\nvar xs: List<Int> = []\nfor i in 0..400:\n    xs.push(i)\na[1] = x\nassert x < 0\n";
+    for source in [CALLS, CELLS, PUSHES, failing] {
+        let lives = |traced: bool| {
+            let program = program(source);
+            let io = cpl_interp::Io::fixed(b"");
+            let observed = match traced {
+                true => cpl_interp::run_observed(
+                    &program,
+                    io,
+                    &mut Vec::new(),
+                    Some(TraceConfig {
+                        source: source.into(),
+                        ..TraceConfig::default()
+                    }),
+                ),
+                false => cpl_interp::run_observed(
+                    &program,
+                    io.with_last_values(source),
+                    &mut Vec::new(),
+                    None,
+                ),
+            };
+            let rec = observed.recording.expect("kept");
+            rec.lives
+                .iter()
+                .map(|live| format!("{} {} {}", live.line, live.name, live.value))
+                .collect::<Vec<_>>()
+        };
+        let traced = lives(true);
+        assert!(!traced.is_empty(), "{source}");
+        assert_eq!(lives(false), traced, "{source}");
+    }
+}

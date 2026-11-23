@@ -1300,13 +1300,19 @@ fn observe_file(
             interact::run_traced(&compiled.program, judge, input, &mut printed, config)
         }
         // `--format json` without `--trace` reports each variable's last
-        // value, which only a whole traced run has.
+        // value, which the untraced run keeps too.
+        None if !args.trace => cpl_interp::run_observed(
+            &compiled.program,
+            cpl_interp::Io::fixed(input).with_last_values(&compiled.text),
+            &mut printed,
+            None,
+        ),
         None => traced(
             &compiled.program,
             input,
             &mut printed,
             config,
-            args.full_trace || !args.trace,
+            args.full_trace,
         ),
     };
     let millis = started.elapsed().as_millis();

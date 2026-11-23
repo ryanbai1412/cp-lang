@@ -12,6 +12,9 @@ pub struct Io<'a> {
     pub(crate) seed: Option<u64>,
     /// What ends the run early, if anything.
     pub(crate) stop: Option<Stop>,
+    /// The file's text, when the run reports each top-level variable's
+    /// last value.
+    pub(crate) last_values: Option<&'a str>,
 }
 
 pub(crate) enum Feed<'a> {
@@ -27,6 +30,7 @@ impl<'a> Io<'a> {
             peer: None,
             seed: None,
             stop: None,
+            last_values: None,
         }
     }
 
@@ -38,6 +42,7 @@ impl<'a> Io<'a> {
             peer: None,
             seed: None,
             stop: None,
+            last_values: None,
         }
     }
 
@@ -49,6 +54,18 @@ impl<'a> Io<'a> {
             peer: Some(solution),
             seed: None,
             stop: None,
+            last_values: None,
+        }
+    }
+
+    /// The same, and the run's recording holds each top-level variable's
+    /// last value ([`crate::trace::Recording::lives`]) as a traced run's
+    /// does, without tracing it. `source` is the file's text, for their
+    /// lines.
+    pub fn with_last_values(self, source: &'a str) -> Io<'a> {
+        Io {
+            last_values: Some(source),
+            ..self
         }
     }
 

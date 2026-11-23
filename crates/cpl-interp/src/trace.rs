@@ -16,10 +16,12 @@ use std::sync::Arc;
 
 mod compare;
 mod glob;
+mod last;
 mod lines;
 mod log;
 mod raw;
 mod trap;
+pub(crate) use last::last_values_of;
 mod unseen;
 mod window;
 pub use compare::{first_divergence, stages, Divergence, Stage};
@@ -1255,31 +1257,8 @@ impl Tracer {
             self.rec.truncated = true;
         }
         self.rec.log.shrink();
-        for id in 0..view.globals.len() {
-            let global = &view.program.globals[id];
-            let value = &view.globals[id];
-            if global.span.end == 0
-                || !self.visible[id]
-                || matches!(value, Value::Unit | Value::Moved)
-            {
-                continue;
-            }
-            if matches!(global.ty, Ty::Unit | Ty::Fn(..) | Ty::DomainVal | Ty::Error) {
-                continue;
-            }
-            let mut text = String::new();
-            if cells(value) > 200 {
-                text = format!("{} values", cells(value));
-            } else {
-                render(&mut text, value, &global.ty, view, Mode::Text);
-            }
-            self.rec.lives.push(Live {
-                line: self.line(global.span),
-                name: global.name.clone(),
-                value: text,
-            });
-        }
-        self.rec.lives.sort_by_key(|live| live.line);
+        let lives = last::last_values(view, |id| self.visible[id], |span| self.line(span));
+        self.rec.lives = lives;
         // A `[V]?V` that was a rooted tree at every step is drawn as one.
         for var in 0..self.rec.vars.len() {
             if self.kinds[var] != Kind::Parents {
