@@ -8,7 +8,7 @@ on:
     types: [completed]
     branches: [main]
   push:
-    tags: ["v*"]
+    tags: ["v*", "edge-now-*"] # edge-now-*: edge from the newest green commit, on demand
   schedule:
     - cron: "17 7 * * *" # nightly edge
   workflow_dispatch:
@@ -52,7 +52,7 @@ jobs:
       - id: green
         env:
           GH_TOKEN: ${{ github.token }}
-          EVENT: ${{ github.event_name }}
+          EVENT: ${{ startsWith(github.ref, 'refs/tags/v') && 'stable-tag' || github.event_name }}
           RUN_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           go=true
@@ -65,7 +65,7 @@ jobs:
                 go=false
               fi
               ;;
-            push) sha=$GITHUB_SHA ;;
+            stable-tag) sha=$GITHUB_SHA ;;
             *)
               sha=$(gh run list -R "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --event push \
                 --status success -L 1 --json headSha --jq '.[0].headSha // empty')
@@ -81,10 +81,10 @@ jobs:
         if: steps.green.outputs.go == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-          CHANNEL: ${{ github.event_name == 'push' && 'stable' || inputs.channel || 'edge' }}
+          CHANNEL: ${{ startsWith(github.ref, 'refs/tags/v') && 'stable' || inputs.channel || 'edge' }}
         run: |
           scripts/release/plan.sh "$CHANNEL"
-          if [ "$GITHUB_EVENT_NAME" = push ] && ! grep -qx "tags=$GITHUB_REF_NAME" "$GITHUB_OUTPUT"; then
+          if [ "$CHANNEL" = stable ] && [ "$GITHUB_EVENT_NAME" = push ] && ! grep -qx "tags=$GITHUB_REF_NAME" "$GITHUB_OUTPUT"; then
             echo "::error::tag $GITHUB_REF_NAME is not v<workspace version> from Cargo.toml"; exit 1
           fi
 

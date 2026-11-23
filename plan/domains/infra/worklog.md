@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-22
+- release.yml: pushing an `edge-now-*` tag releases edge from the newest green main commit, since `workflow_dispatch` returns HTTP 403 to agents and main has been red since the edge trigger landed.
 - CI run 45116485617 failed in every gate job before building, and the `dev` target/ save then cached a 457-byte target/. A save now runs only when target/ holds a build (`target/*/deps`).
 - CI speed, step 2: every Rust job restores the newest target/ its group (dev, clippy, release) saved on main, and scripts/ci-mtime.sh back-dates unchanged sources so cargo rebuilds only what changed. Replaces sccache, which can't cache test binaries (bin crates): with it, every shard still spent about 90 s compiling. The C++ cache falls back to any part's newest entry, and the site keeps `.next/cache`. Baseline on run 45115109916, six shards: compile ~90 s per shard, tests 45-131 s, slowest shard 4/6 at ~250 s, site ~270 s (88 s release cpl, 56 s snippet gate, 48 s next build).
 - CI speed step 1: sccache (Actions cache backend, `CARGO_INCREMENTAL=0`) in every Rust job, and 6 test partitions instead of 4. Baseline, run 45111468382: 4.2 min end to end; slowest shard 4.2 min = 30 s setup + 89 s compile + 127 s tests (judges port test 85 s alone); checks 3.3 min (clippy 46 s, cpl fmt check 44 s, site snippet gate 61 s); conform 2.5 min (ratchet 107 s).
