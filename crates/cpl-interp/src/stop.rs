@@ -30,10 +30,18 @@ pub(crate) const EVERY: u32 = 4096;
 #[derive(Clone, Debug, Default)]
 pub struct Stop {
     cancelled: Arc<AtomicBool>,
-    /// None in the browser, which has no clock; it stops a run by ending
-    /// its worker.
+    /// None in the browser, which has no clock: there `looks_left` keeps
+    /// the time.
     deadline: Option<std::time::Instant>,
+    /// Looks at the stop left before the run is out of time: a budget of
+    /// loop rounds and calls, each look [`EVERY`] of them.
+    looks_left: Option<u64>,
 }
+
+/// Loop rounds and calls a second at the slow end in the browser, which
+/// runs the tree-walker (about 1.07e6 a second on a tight loop under Node):
+/// what [`Stop::after`] budgets there for each second of its limit.
+const ROUNDS_PER_SECOND: f64 = 1e6;
 
 impl Stop {
     /// A stop that only [`Stop::cancel`] sets off.
@@ -42,15 +50,24 @@ impl Stop {
     }
 
     /// A stop that also goes off once the run has taken `limit`.
+    /// In the browser, which has no clock, the limit is a budget of loop
+    /// rounds and calls ([`Stop::after_rounds`]).
     pub fn after(limit: std::time::Duration) -> Stop {
+        if cfg!(target_family = "wasm") {
+            return Stop::after_rounds((limit.as_secs_f64() * ROUNDS_PER_SECOND) as u64);
+        }
         Stop {
             #[cfg(not(target_family = "wasm"))]
             deadline: std::time::Instant::now().checked_add(limit),
-            #[cfg(target_family = "wasm")]
-            deadline: {
-                let _ = limit;
-                None
-            },
+            ..Stop::default()
+        }
+    }
+
+    /// A stop that goes off, as out of time, once the run has taken about
+    /// `rounds` loop rounds and calls, on any clock.
+    pub fn after_rounds(rounds: u64) -> Stop {
+        Stop {
+            looks_left: Some(rounds / u64::from(EVERY)),
             ..Stop::default()
         }
     }
@@ -61,9 +78,15 @@ impl Stop {
     }
 
     /// Why the run must end now, if it must: the trap message.
-    pub(crate) fn reason(&self) -> Option<&'static str> {
+    pub(crate) fn reason(&mut self) -> Option<&'static str> {
         if self.cancelled.load(Ordering::Relaxed) {
             return Some(CANCELLED);
+        }
+        if let Some(left) = &mut self.looks_left {
+            if *left == 0 {
+                return Some(OUT_OF_TIME);
+            }
+            *left -= 1;
         }
         #[cfg(not(target_family = "wasm"))]
         if self
@@ -101,7 +124,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     #[cold]
     fn look_at_stop(&mut self, span: Span) -> Res<()> {
-        let Some(stop) = &self.stop else {
+        let Some(stop) = &mut self.stop else {
             self.countdown = u32::MAX;
             return Ok(());
         };

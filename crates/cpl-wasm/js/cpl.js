@@ -250,9 +250,11 @@ const METHODS = ["check", "lint", "run", "trace", "replay", "stress", "build", "
 
 /**
  * The compiler in a Web Worker: the same methods as `Cpl`, each returning a
- * promise. A call that takes longer than `timeoutMs` stops the worker and
- * rejects with a `CplError` of kind "timeout"; the next call starts a new
- * worker. Browsers only.
+ * promise. A program that runs too long already ends inside the module, as
+ * a trap that says it took longer than its time limit; a call that still
+ * takes longer than `timeoutMs` stops the worker and rejects with a
+ * `CplError` of kind "timeout", and the next call starts a new worker.
+ * Browsers only.
  */
 export function spawn({ timeoutMs = 10_000 } = {}) {
   let worker = null;

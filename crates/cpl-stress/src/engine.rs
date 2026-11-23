@@ -168,6 +168,9 @@ fn run_ir(
     }
 }
 
+/// How long the traced run that explains a counterexample may take.
+const TRACE_LIMIT: Duration = Duration::from_secs(10);
+
 fn observe_ir(
     program: &cpl_ir::Program,
     input: &[u8],
@@ -181,22 +184,18 @@ fn observe_ir(
         assignments,
         ..TraceConfig::default()
     };
+    let io = cpl_interp::Io::fixed(input).until(cpl_interp::Stop::after(TRACE_LIMIT));
     match stack_limit {
         Some(bytes) => cpl_interp::observe_on_this_thread(
             program,
-            input,
+            io,
             &mut sink,
             cpl_interp::Limits {
                 stack_bytes: bytes as usize,
             },
             Some(config),
         ),
-        None => cpl_interp::run_observed(
-            program,
-            cpl_interp::Io::fixed(input),
-            &mut sink,
-            Some(config),
-        ),
+        None => cpl_interp::run_observed(program, io, &mut sink, Some(config)),
     }
 }
 

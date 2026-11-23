@@ -275,6 +275,7 @@ impl Playground {
             &call,
             config(edited),
             limits,
+            cpl_interp::Stop::after(RUN_LIMIT),
         )
         .json()
     }
@@ -511,6 +512,14 @@ fn rendered(diagnostics: &[Diagnostic], name: &str, source: &str) -> String {
     }
 }
 
+/// How long one run in the module may take: it ends as a time limit trap,
+/// well before `js/cpl.js` would end the worker.
+const RUN_LIMIT: std::time::Duration = std::time::Duration::from_secs(5);
+
+fn bounded(input: &[u8]) -> cpl_interp::Io<'_> {
+    cpl_interp::Io::fixed(input).until(cpl_interp::Stop::after(RUN_LIMIT))
+}
+
 #[cfg(target_family = "wasm")]
 fn interpret(
     program: &cpl_ir::Program,
@@ -521,7 +530,7 @@ fn interpret(
     let limits = cpl_interp::Limits {
         stack_bytes: stack as usize,
     };
-    cpl_interp::run_on_this_thread(program, input, output, limits)
+    cpl_interp::run_with_on_this_thread(program, bounded(input), output, limits)
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -531,7 +540,7 @@ fn interpret(
     output: &mut Vec<u8>,
     _stack: u32,
 ) -> Result<(), cpl_interp::Trap> {
-    cpl_interp::run(program, input, output)
+    cpl_interp::run_with(program, bounded(input), output)
 }
 
 #[cfg(target_family = "wasm")]
@@ -545,7 +554,7 @@ fn observe(
     let limits = cpl_interp::Limits {
         stack_bytes: stack as usize,
     };
-    cpl_interp::observe_on_this_thread(program, input, output, limits, Some(config))
+    cpl_interp::observe_on_this_thread(program, bounded(input), output, limits, Some(config))
 }
 
 #[cfg(not(target_family = "wasm"))]
@@ -556,7 +565,7 @@ fn observe(
     _stack: u32,
     config: cpl_interp::trace::TraceConfig,
 ) -> cpl_interp::Observed {
-    cpl_interp::run_observed(program, cpl_interp::Io::fixed(input), output, Some(config))
+    cpl_interp::run_observed(program, bounded(input), output, Some(config))
 }
 
 /// What `cpl run` notes on a trap: the innermost call's locals where it

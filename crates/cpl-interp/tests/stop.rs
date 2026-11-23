@@ -103,3 +103,20 @@ fn run_for_stops_the_run_it_gives_up_on() {
 fn program_of_one() -> cpl_ir::Program {
     program("print(1)\n")
 }
+
+#[test]
+fn a_run_past_its_round_budget_traps_traced_or_not() {
+    // The browser's clock: a budget of loop rounds and calls.
+    for traced in [false, true] {
+        for source in NEVER_ENDS {
+            let trap = ends_at(source, Stop::after_rounds(1_000_000), traced);
+            assert_eq!(
+                trap.as_deref(),
+                Some(OUT_OF_TIME),
+                "traced {traced}: {source}"
+            );
+        }
+        let small = "var s = 0\nfor i in 0..1000:\n    s += i\nprint(s)\n";
+        assert_eq!(ends_at(small, Stop::after_rounds(1_000_000), traced), None);
+    }
+}

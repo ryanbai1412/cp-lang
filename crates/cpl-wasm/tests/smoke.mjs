@@ -67,6 +67,23 @@ test("replay runs one recorded call again with its fn edited", () => {
   assert.match(cpl.replay(source, "fn (", "", entry).error, /edited file does not build/);
 });
 
+test("a run that never ends stops as out of time, and the module goes on", () => {
+  // The browser has no clock: the limit is a budget of loop rounds and calls.
+  const forever = "var i = 0\nwhile i >= 0:\n    i = (i + 1) % 2\nprint(i)\n";
+  const late = /took longer than its time limit/;
+  assert.match(cpl.run(forever).diagnostics[0].message, late);
+  assert.match(cpl.trace(forever).diagnostics[0].message, late);
+  const stress = `let n: 1..=5 = read()\n${forever.replace("print(i)", "print(n)")}\n@alt(program)\nfn brute():\n    let n: 1..=5 = read()\n    print(n)\n`;
+  const stressed = cpl.stress(stress, { cases: 3 });
+  assert.equal(stressed.status, "fail");
+  assert.equal(stressed.counterexample.verdict, "TLE");
+  const source = "var total = 0\nfn add(i: Int) -> Int:\n    total += i\n    return total\nfor i in 1..=3:\n    print(add(i))\n";
+  const entry = cpl.trace(source, "").trace.runs.fast.steps.findIndex((step) => step.frames?.[0]?.fn === "add");
+  const edited = source.replace("return total", "while total >= 0:\n        total = (total + 1) % 2\n    return total");
+  assert.match(cpl.replay(source, edited, "", entry).trap, late);
+  assert.equal(cpl.run(DOUBLE, "21\n").stdout, "42\n");
+});
+
 test("trace records a live program for the trace viewer", () => {
   const source = [
     "let n: 1..=10 = read()",

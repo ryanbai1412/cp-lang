@@ -347,12 +347,12 @@ fn observe(
 /// [`run_on_this_thread`], keeping what [`run_observed`] keeps.
 pub fn observe_on_this_thread(
     program: &Program,
-    input: &[u8],
+    io: Io,
     output: &mut (dyn Write + Send),
     limits: Limits,
     trace: Option<trace::TraceConfig>,
 ) -> Observed {
-    run_io(program, Io::fixed(input), output, limits, trace, false)
+    run_io(program, io, output, limits, trace, false)
 }
 
 fn run_io(

@@ -6,7 +6,7 @@
 //! returns, and what the call did is compared with the recording.
 
 use crate::trace::{first_change_in, string, Call, Change, Recording, TraceConfig};
-use crate::{observe_on_this_thread, run_observed, Io, Limits, Observed, Trap};
+use crate::{observe_on_this_thread, run_observed, Io, Limits, Observed, Stop, Trap};
 use cpl_ir::{Program, Ty};
 
 /// What a call did: its result and each top-level variable it changed.
@@ -81,7 +81,7 @@ pub fn replay(
 }
 
 /// [`replay`] where no thread can be started (WebAssembly), its calls held
-/// to `limits`.
+/// to `limits` and each run ended by `stop`.
 pub fn replay_on_this_thread(
     recorded: &Recording,
     original: &Program,
@@ -90,6 +90,7 @@ pub fn replay_on_this_thread(
     call: &Call,
     config: TraceConfig,
     limits: Limits,
+    stop: Stop,
 ) -> Replay {
     replay_by(
         recorded,
@@ -99,7 +100,8 @@ pub fn replay_on_this_thread(
         call,
         config,
         &|program, input, config| {
-            observe_on_this_thread(program, input, &mut Vec::new(), limits, Some(config))
+            let io = Io::fixed(input).until(stop.clone());
+            observe_on_this_thread(program, io, &mut Vec::new(), limits, Some(config))
         },
     )
 }
@@ -566,6 +568,7 @@ for i in 1..=3:
             &call,
             config(&edit),
             limits,
+            Stop::new(),
         );
         let there = replay(
             &recorded,
