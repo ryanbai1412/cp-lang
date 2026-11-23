@@ -42,6 +42,8 @@ check crlf-source 14 sh -c 'cpl run crlf.cp < in.txt'
 check crlf-input 14 sh -c 'cpl run sum.cp < in-crlf.txt'
 check fmt "" cpl fmt sum.cp
 check lsp "" python3 "$repo/editors/lsp-smoke.py" acceptance cpl lsp
+check setup-neovim "" cpl setup neovim --dir "$work/nvim/pack/cpl/start/cpl"
+check setup-vim "" cpl setup vim --dir "$work/vim/pack/cpl/start/cpl"
 
 printf '{"os": "%s", "checks": [' "$os"
 ( IFS=,; printf '%s' "${checks[*]}" )

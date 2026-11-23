@@ -28,11 +28,11 @@ jobs:
           sparse-checkout-cone-mode: false
       - name: Install from the site
         if: runner.os != 'Windows'
-        run: curl -fsSL https://cp-lang.org/install.sh | sh -s -- --edge
+        run: curl -fsSL https://cp-lang.org/install.sh | sh
       - name: Install from the site (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: '& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1))) -Edge'
+        run: '& ([scriptblock]::Create((irm https://cp-lang.org/install.ps1)))'
       - name: Put the installer's bin folder on PATH for later steps
         shell: bash
         run: echo "$HOME/.cpl/bin" >> "$GITHUB_PATH"
