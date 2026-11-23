@@ -3756,15 +3756,10 @@ impl Checker<'_> {
         let ExprKind::Int(_) = at.kind else {
             return false;
         };
-        let domain = match want {
-            Ty::Pos(d) => d,
-            Ty::Array { elem, .. } => match elem.as_ref() {
-                Ty::Pos(d) => d,
-                _ => return false,
-            },
-            _ => return false,
+        let Some(domain) = want.literal_domain() else {
+            return false;
         };
-        let base = domain.strip_suffix(".cuts").unwrap_or(domain).to_string();
+        let base = domain.strip_suffix(".cuts").unwrap_or(&domain).to_string();
         if self
             .local(&base)
             .is_some_and(|l| matches!(l.ty, Ty::Domain(_)))

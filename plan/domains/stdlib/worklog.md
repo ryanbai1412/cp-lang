@@ -275,3 +275,4 @@ Newest first: what landed (commit), evidence, next, blocked, requests from other
   - `adjacency`: `std.graph.adjacency` exists but lacks the builtin's `into: Bitset` form (`cf2147h`, port and dream), which picks the result storage by a type name; needs a general way to choose the result type.
   - `find`/`rfind` on a list: the builtin `xs.find(x)` gives the index of an element equal to `x`; `std.seq.find(p)` gives the first element `p` holds for. Same name, two meanings; to settle before any move.
   - `prefix`: the std `prefix` bodies are `Fenwick` methods; no free-function body yet.
+- 2026-11-22: an integer literal now fills a `Cut<D>` parameter as it fills `D.cuts` (R04.2.18; `literal_position` in `cpl-check/src/check/expr.rs` knew only the `D.cuts` spelling). Docs 2495 -> 2505 pass (the 10 `Prefix` examples), 2 conformance cases in `core-04/literal-cut-param*.cp`; `conformance docs --check` 0 regressions.

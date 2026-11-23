@@ -74,6 +74,23 @@ pub struct Param {
 }
 
 impl Ty {
+    /// The domain an integer literal labels where this type is wanted (R04.2.18): `V` for a
+    /// position, `V.cuts` for a cut (also spelled `Cut<V>`), the cell's for an array of them.
+    pub fn literal_domain(&self) -> Option<String> {
+        match self {
+            Ty::Pos(d) => Some(d.clone()),
+            Ty::Array { elem, .. } => match elem.as_ref() {
+                Ty::Pos(d) => Some(d.clone()),
+                _ => None,
+            },
+            Ty::Named { name, args } if name == "Cut" => match args.as_slice() {
+                [Ty::Pos(d)] => Some(format!("{d}.cuts")),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     /// A number, character or tuple of them: what `print` and `read` handle
     /// in O(1). A position is not, since its label may be any value.
     pub fn is_fixed_size(&self) -> bool {
