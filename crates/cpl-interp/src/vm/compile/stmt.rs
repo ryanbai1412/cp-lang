@@ -682,6 +682,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     }
                 } else if let Some(dst) = self.try_compile_apply_v(expr) {
                     self.emit(Op::ClearV { reg: dst }, expr.span);
+                } else if let ExprKind::Local(_) = expr.kind {
+                    // Reading a local for nothing does nothing.
                 } else {
                     self.emit_fallback_stmt(stmt);
                 }
