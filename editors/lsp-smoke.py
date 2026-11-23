@@ -132,9 +132,32 @@ with tempfile.TemporaryDirectory() as root:
     fixed = [apply(linted.read_text(), edits(a)) for a in actions]
     if "var x = 1\nx += 1\nprint(x)\n" not in fixed:
         fail(f"no quick fix writes `x += 1`: {[a.get('title') for a in actions]} give {fixed}")
+    # Navigation past definition: type definition, implementations, call hierarchy, range format.
+    nav = pathlib.Path(root, "nav.cp")
+    nav.write_text("struct Road:\n    to: Int\nimpl Road:\n    fn twice(self) -> Int = self.to * 2\n"
+                   "fn far(r: Road) -> Int = r.twice()\nprint( far(Road(to: 3)) )\n")
+    send({"method": "textDocument/didOpen", "params": {"textDocument": {
+        "uri": nav.as_uri(), "languageId": "cp", "version": 1, "text": nav.read_text()}}})
+    found = ask(7, "textDocument/typeDefinition", nav.as_uri(), 4, 25)
+    if not found or found["range"]["start"]["line"] != 0:
+        fail(f"type definition of r is {found}")
+    found = ask(8, "textDocument/implementation", nav.as_uri(), 0, 8) or []
+    if [f["range"]["start"]["line"] for f in found] != [2]:
+        fail(f"implementations of Road are {found}")
+    items = ask(9, "textDocument/prepareCallHierarchy", nav.as_uri(), 4, 4) or []
+    if not items or items[0]["name"] != "far":
+        fail(f"call hierarchy item is {items}")
+    send({"id": 10, "method": "callHierarchy/incomingCalls", "params": {"item": items[0]}})
+    incoming = until(lambda m: m.get("id") == 10).get("result") or []
+    if len(incoming) != 1:
+        fail(f"incoming calls of far are {incoming}")
+    edits = ask(11, "textDocument/rangeFormatting", nav.as_uri(), options={"tabSize": 4, "insertSpaces": True},
+                range={"start": {"line": 5, "character": 0}, "end": {"line": 5, "character": 5}})
+    if not apply(nav.read_text(), edits or []).endswith("print(far(Road(to: 3)))\n"):
+        fail(f"range formatting gave {edits}")
     send({"id": 2, "method": "shutdown"})
     until(lambda m: m.get("id") == 2)
     send({"method": "exit"})
     if server.wait(timeout=10) != 0:
         fail(f"exit status {server.returncode}")
-print(f"{editor} lsp smoke: ok ({errors[0]['code']} on line 3; completion, definition, formatting, lint fix)")
+print(f"{editor} lsp smoke: ok ({errors[0]['code']} on line 3; completion, definition, formatting, lint fix, navigation)")

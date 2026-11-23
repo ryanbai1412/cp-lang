@@ -111,6 +111,50 @@ const tests: [string, () => Promise<void>][] = [
         },
     ],
     [
+        'type definition, implementations, call hierarchy and range format come from the server',
+        async () => {
+            const document = await open('nav.cp');
+            const at = (text: string, delta = 0) => document.positionAt(document.getText().indexOf(text) + delta);
+            const types = await until('a type definition', async () => {
+                const got = await vscode.commands.executeCommand<vscode.Location[]>(
+                    'vscode.executeTypeDefinitionProvider',
+                    document.uri,
+                    at('r.twice'),
+                );
+                return got && got.length > 0 ? got : undefined;
+            });
+            assert.equal(types[0].range.start.line, 0);
+            const impls = await vscode.commands.executeCommand<vscode.Location[]>(
+                'vscode.executeImplementationProvider',
+                document.uri,
+                at('Road', 1),
+            );
+            assert.deepEqual(impls.map(impl => impl.range.start.line), [2], JSON.stringify(impls));
+            const items = await vscode.commands.executeCommand<vscode.CallHierarchyItem[]>(
+                'vscode.prepareCallHierarchy',
+                document.uri,
+                at('far', 1),
+            );
+            assert.equal(items[0]?.name, 'far');
+            const incoming = await vscode.commands.executeCommand<vscode.CallHierarchyIncomingCall[]>(
+                'vscode.provideIncomingCalls',
+                items[0],
+            );
+            assert.equal(incoming.length, 1);
+            const edits = await vscode.commands.executeCommand<vscode.TextEdit[]>(
+                'vscode.executeFormatRangeProvider',
+                document.uri,
+                new vscode.Range(5, 0, 5, 5),
+                { tabSize: 4, insertSpaces: true },
+            );
+            const edit = new vscode.WorkspaceEdit();
+            edit.set(document.uri, edits);
+            assert.ok(await vscode.workspace.applyEdit(edit));
+            assert.equal(document.lineAt(5).text, 'print(far(Road(to: 3)))');
+            await vscode.commands.executeCommand('workbench.action.files.revert');
+        },
+    ],
+    [
         'formatting comes from cpl fmt through the server',
         async () => {
             const document = await open('messy.cp');
@@ -402,6 +446,10 @@ export async function run(): Promise<void> {
     await vscode.workspace.getConfiguration('cp').update('run.timeoutMs', 60000, vscode.ConfigurationTarget.Workspace);
     const failed: string[] = [];
     for (const [name, test] of tests) {
+        // `CP_TEST=<part of a name>` runs only the matching tests.
+        if (process.env.CP_TEST && !name.includes(process.env.CP_TEST)) {
+            continue;
+        }
         try {
             await test();
             console.log(`ok - ${name}`);
