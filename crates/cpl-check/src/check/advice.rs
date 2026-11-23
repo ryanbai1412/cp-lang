@@ -2,9 +2,92 @@
 
 use super::*;
 use cpl_diag::Fix;
-use cpl_syntax::ast::{Arg, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
+use cpl_syntax::ast::{Arg, BinOp, CmpOp, Expr, ExprKind, FnBody, FnDecl, Name, StmtKind};
 
 impl Checker<'_> {
+    /// `x.inv` names a method that does work, so it is called with `()`,
+    /// as R07.1.7 asks of built-in members.
+    pub(super) fn uncalled_method(
+        &mut self,
+        expr: &Expr,
+        base: &Expr,
+        name: &Name,
+        owner: &str,
+        ty: &Ty,
+    ) {
+        let Ty::Fn { params, ret } = ty else {
+            return;
+        };
+        if !params.is_empty() || matches!(**ret, Ty::Unit | Ty::Unknown | Ty::Error) {
+            return;
+        }
+        if let Some(Def::Struct { fields, .. }) = self.env.global(owner).as_deref() {
+            if fields.iter().any(|f| f.name == name.text) {
+                return;
+            }
+        }
+        let after = self.src.get(expr.span.end as usize..).unwrap_or("");
+        if after.trim_start().starts_with('(') {
+            return;
+        }
+        let shown = format!("{}.{}", self.quote(base.span), name.text);
+        let message = format!("`{shown}` does work, but without `()` it reads like an O(1) field");
+        let end = Span::new(expr.span.end, expr.span.end);
+        self.sink.push(
+            Diagnostic::warning(codes::PARENS_MEAN_WORK, expr.span, message)
+                .with_help(format!(
+                    "write `{shown}()`: `()` marks a call that does work"
+                ))
+                .with_fix(format!("write `{shown}()`"), end, "()"),
+        );
+    }
+
+    /// `a * inv` with no `impl Mul` for `inv`'s type. When `inv` is a
+    /// function not yet called (`x.inv`) whose result fits, the fix calls it.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn no_operator_impl(
+        &mut self,
+        op: BinOp,
+        op_span: Span,
+        rhs: &Expr,
+        right: &Ty,
+        wants: &[Ty],
+        trait_name: impl std::fmt::Display,
+        owner: impl std::fmt::Display,
+    ) -> Ty {
+        let o = op.text();
+        if let Ty::Fn { params, ret } = right {
+            if params.is_empty() && wants.iter().any(|w| ret.fits(w)) {
+                let name = self.quote(rhs.span);
+                let inline = matches!(rhs.kind, ExprKind::Field { .. });
+                let message = if inline {
+                    format!("`{o}` takes a {ret}, but `{name}` is a method that returns one")
+                } else {
+                    format!("`{o}` takes a {ret}, but `{name}` holds a method, not its result")
+                };
+                if let Some(diag) = self.error(codes::TYPE_MISMATCH, op_span, message) {
+                    if inline {
+                        diag.help = Some(format!("call it to get the {ret}: `{name}()`"));
+                        let end = Span::new(rhs.span.end, rhs.span.end);
+                        diag.fix(format!("write `{name}()`"), end, "()");
+                    } else {
+                        diag.help =
+                            Some(format!("call the method with `()` where `{name}` is made"));
+                    }
+                }
+                return Ty::Error;
+            }
+        }
+        let message =
+            format!("`{o}` needs `impl {trait_name}<{right}> for {owner}`, and there is none");
+        if let Some(diag) = self.error(codes::MISSING_IMPL, op_span, message) {
+            diag.help = Some(format!(
+                "write `impl {trait_name}<{right}> for {owner}` to define `{owner} {o} {right}`"
+            ));
+        }
+        Ty::Error
+    }
+
     /// Advice on a `for` header: a counter over a slice, and a pair pattern
     /// over `runs`, whose runs are slices (not `(value, count)` pairs).
     pub(super) fn loop_advice(&mut self, pat: &cpl_syntax::ast::Pattern, iter: &Expr, span: Span) {

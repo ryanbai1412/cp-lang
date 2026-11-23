@@ -370,3 +370,29 @@ fn summing_a_range_is_fixed_to_fold() {
         "{point:?}"
     );
 }
+
+#[test]
+fn an_uncalled_method_is_called() {
+    let head = "struct Z(v: Int)\n\
+                impl Mul for Z:\n\
+                \x20   fn mul(self, o: Z) -> Z = Z(self.v * o.v)\n\
+                impl Z:\n\
+                \x20   fn inv(self) -> Z = Z(self.v)\n\
+                let a = Z(3)\n";
+    for (body, fixed) in [
+        (
+            "let inv = a.inv\nprint((a * inv).v)\n",
+            "let inv = a.inv()\nprint((a * inv).v)\n",
+        ),
+        ("print((a * a.inv).v)\n", "print((a * a.inv()).v)\n"),
+    ] {
+        let d = check(&format!("{head}{body}"));
+        let calls = d
+            .iter()
+            .flat_map(|d| &d.fixes)
+            .filter(|f| f.edits[0].1 == "()");
+        assert!(calls.count() >= 1, "{d:?}");
+        let clean = check(&format!("{head}{fixed}"));
+        assert!(clean.is_empty(), "{clean:?}");
+    }
+}

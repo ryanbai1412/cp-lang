@@ -1292,17 +1292,11 @@ impl<'a> Checker<'a> {
                         Ty::Error
                     }
                     None => {
-                        let message = format!(
-                            "`{}` needs `impl {trait_name}<{right}> for {owner}`, and there is none",
-                            op.text()
-                        );
-                        if let Some(diag) = self.error(codes::MISSING_IMPL, op_span, message) {
-                            diag.help = Some(format!(
-                                "write `impl {trait_name}<{right}> for {owner}` to define `{owner} {} {right}`",
-                                op.text()
-                            ));
-                        }
-                        Ty::Error
+                        let wants: Vec<Ty> = matching
+                            .iter()
+                            .map(|m| m.0.clone().unwrap_or(left.clone()))
+                            .collect();
+                        self.no_operator_impl(op, op_span, rhs, &right, &wants, trait_name, owner)
                     }
                 }
             }
@@ -1935,7 +1929,7 @@ impl<'a> Checker<'a> {
             _ => None,
         };
         if let Some(owner) = owner.as_deref() {
-            self.missing_parens(expr, base, name, owner);
+            self.missing_parens(expr, base, name, owner, &ty);
         }
         // A catalog method the call types later (`xs.sorted()`) is still
         // known here, by its catalog signature.
@@ -4134,12 +4128,12 @@ impl Checker<'_> {
 
 impl Checker<'_> {
     /// R07.1.7: parentheses mark work, so `xs.sorted` reads as O(1) but isn't.
-    fn missing_parens(&mut self, expr: &Expr, base: &Expr, name: &ast::Name, owner: &str) {
+    fn missing_parens(&mut self, expr: &Expr, base: &Expr, name: &ast::Name, owner: &str, ty: &Ty) {
         if name.text.is_empty() {
             return;
         }
         let Some(member) = crate::builtins::builtin_member(owner, &name.text) else {
-            return;
+            return self.uncalled_method(expr, base, name, owner, ty);
         };
         if member.kind != crate::builtins::MemberKind::Method
             || !member.params.is_empty()

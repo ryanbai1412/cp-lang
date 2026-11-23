@@ -4,4 +4,4 @@ use std.strings.{SuffixArray}
 
 @!multitest
 let s: Str = read()
-print(1 + SuffixArray.new(s).distinct)
+print(1 + SuffixArray.new(s).distinct())
