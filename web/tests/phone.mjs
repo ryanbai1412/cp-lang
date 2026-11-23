@@ -9,7 +9,8 @@ const routes = ['/', '/docs/guides/tour', '/docs/ref/std/algebra', '/learn', '/l
   '/learn/language/optionals',
   '/learn/language/multitest-state',
   '/learn/language/checked-operations',
-  '/learn/language/types-widths-proofs', '/trace.html'];
+  '/learn/language/types-widths-proofs',
+  '/learn/language/values', '/trace.html'];
 const { page, errors } = await open();
 await page.setViewportSize({ width: 390, height: 844 });
 let bad = 0;

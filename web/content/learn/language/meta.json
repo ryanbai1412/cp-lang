@@ -3,6 +3,7 @@
   "defaultOpen": true,
   "pages": [
     "index",
+    "values",
     "ownership-and-mutation",
     "domains-and-index-spaces",
     "types-widths-proofs",

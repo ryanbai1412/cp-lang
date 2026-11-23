@@ -1,0 +1,156 @@
+---
+title: "Values"
+description: "The kinds of value, structs with var fields, enums and exhaustive match, literal unions, and the conversions CP Lang never makes for you."
+---
+
+CP Lang has a small set of value kinds, and every one of them behaves the same way wherever it
+appears: in a local, an array, a field or a function argument. This chapter is the map; the
+normative rules are <Spec file="core/02-values-types">values and types</Spec>.
+
+## The kinds of value
+
+Every value is one of four kinds. (<Spec file="core/02-values-types" section="2.1 The kinds of value" />)
+
+| Kind | Examples | On assignment |
+|---|---|---|
+| plain | numbers, `Bool`, `Char`, positions and cuts, `?T` of a plain `T`, tuples, records, structs and enums built from plain values | copies |
+| heap | `List`, `Str`, `[D]T`, `Map`, `Set`, every container, any struct holding one | moves; `.clone()` copies |
+| function | `fn` items, lambdas, operation values | zero size when capturing nothing, always inlined |
+| generator | a recipe that pushes elements to a loop body | consumed by the loop |
+
+Whether a value is owned or lent is not part of its type; that's the
+[ownership and mutation](/learn/language/ownership-and-mutation) chapter. Numbers, range types and
+their widths are [types, widths and proofs](/learn/language/types-widths-proofs), and `?T` is
+[optionals](/learn/language/optionals).
+
+## Structs
+
+A struct's fields are fixed after construction unless declared `var`, the same split as `let` and
+`var`. A field can be typed by its default, the constructor is generated, and methods that change
+the struct take `mut self`:
+
+```cp run input="3\n4 -1 9\n"
+struct Tally:
+    var top = 0
+    var sum = 0
+    fn add(mut self, x: Int):
+        self.top max= x
+        self.sum += x
+
+let n: 1..=10 = read()
+let xs: [n]Int = read()
+var t = Tally()
+for x in xs:
+    t.add(x)
+print(t.top, t.sum)
+```
+
+Assigning a field that isn't `var` is an error naming the field, with both fixes:
+
+```cp run rejects=E0405
+struct Edge: u: Int, v: Int, w: Int
+var e = Edge(1, 2, 5)
+e.w = 7
+print(e.w)
+```
+
+Records, `(lo: Int, hi: Int)`, are the anonymous form: structural, with named fields, and no
+declaration. (<Spec file="core/02-values-types" section="2.6 Structs" />)
+
+## Enums and `match`
+
+An enum's variants are `PascalCase`, like `Some` and `None`, and may carry fields. `read()`
+reads a variant by its name, so a query stream is one line, and `match` must cover every variant:
+
+```cp run input="3\nAdd 5\nAdd 2\nAsk 1 3\n"
+enum Ev:
+    Add(x: Int)
+    Ask(l: Int, r: Int)
+
+let q: 1..=10 = read()
+var total = 0
+for _ in 0..q:
+    let ev: Ev = read()
+    match ev:
+        Add(x) => total += x
+        Ask(l, r) => print(total * (r - l + 1))
+```
+
+Drop the `Ask` arm and the program doesn't compile:
+
+```cp run rejects=E0314
+enum Ev:
+    Add(x: Int)
+    Ask(l: Int, r: Int)
+
+let ev: Ev = read()
+match ev:
+    Add(x) => print(x)
+```
+
+A payload-free enum, `enum Dir = L | R | U | D`, is a domain: `[Dir]Int` is a table and
+`for d in Dir` walks it. (<Spec file="core/02-values-types" section="2.7 Enums" />)
+
+## Literal unions
+
+When a statement says an operation is one of a few tokens, the type says it too. `"dep" | "wd"`
+has exactly those two values: the read rejects anything else, and `match` is exhaustive over them.
+
+```cp run input="3\ndep 10\nwd 3\ndep 1\n"
+let q: 1..=10 = read()
+var bal = 0
+for _ in 0..q:
+    let op: "dep" | "wd" = read()
+    let x: 0..=1e9 = read()
+    match op:
+        "dep" => bal += x
+        "wd" => bal -= x
+print(bal)
+```
+
+## Never implicit
+
+No numeric conversion happens without being written, except into a wider range of the same type,
+`T` into `?T`, and `Int` into `Mod<P>`. `F64` to `Int` names its rounding:
+
+```cp run rejects=E0302
+let x: F64 = read()
+print(Int(x))
+```
+
+The help offers `floor(x)`, `ceil(x)`, `round(x)` or `trunc(x)`. There's also no implicit copy of a
+heap value, no implicit `Int` to position, no inheritance, no subtyping, no overloading by argument
+type and no user-defined implicit conversion. (<Spec file="core/02-values-types" section="2.11 Never implicit" />)
+
+Inference is local, too: it unifies the parts of one expression and never looks at later
+statements. `var best = None` followed by `best = 3` is an error at the declaration, asking for
+`var best: ?Int = None`, so the error points at the line that needs the fix.
+
+```cp run rejects=E0806
+var best = None
+best = 3
+print(best ?? 0)
+```
+
+## Why it's designed this way
+
+**`var` fields.** <Decision n={136} /> mirrors `let` and `var` on fields, so a reader sees which
+parts of a struct can change, and `cpl fix` adds `var` to every field a program assigns. The
+alternative, every field mutable, hides which state a struct's methods maintain.
+
+**Patterns match only the stored shape.** <Decision n={132} /> rejected user-defined patterns
+(Scala's `unapply`, F#'s active patterns). A custom pattern runs arbitrary code while looking like a
+free field read, defeats exhaustiveness checking, and needs a matcher protocol through the checker,
+LSP and trace, all to save one method call. A view is a method returning an enum.
+
+**Local inference.** <Decision n={131} />: inference that looks ahead to later statements gives
+errors far from their cause. Unifying within one expression covers list literals, branches and
+`match` arms, and every error points at the line to change.
+
+**No overloading.** <Decision n={127} />: one name, one function. Overloads by argument type make
+calls ambiguous to read and errors hard to explain; options are named arguments (`by:`) instead.
+
+**Exact conversions.** Each implicit conversion C++ makes is a known bug source: `int` to
+`double` and back truncating, `size_t` mixing with signed values, a `long long` narrowed into an
+`int` field. Requiring the conversion in the source costs one word and keeps the rounding or
+range check where it can be seen.
