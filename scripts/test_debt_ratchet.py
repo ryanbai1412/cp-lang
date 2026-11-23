@@ -99,6 +99,7 @@ class DebtRatchetTest(unittest.TestCase):
             root = Path(d)
             self._write(root, "crates/cpl-ir/src/lower/call.rs",
                         'match n {\n    "prefix" | "sum" => 1,\n    "sum" => 2,\n    x => 3,\n}\n')
+            self._write(root, "crates/cpl-ir/src/lower/call/fold.rs", 'match n {\n    "min" => 1,\n}\n')
             self._write(root, "crates/cpl-codegen/src/a.rs", 'if t == "Bitset" { Edition::V02 }\n')
             self._write(root, "crates/cpl-codegen/src/tests.rs", 'let _ = "Bitset";\n')
             body = "fn helper() {\n" + "".join(f"    let x{i} = {i};\n" for i in range(6)) + "}\n"
@@ -113,7 +114,7 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-lint/src/rules/a.rs", 'if m == "rotate" || m == "tmp" {}\n')
             self._write(root, "crates/cpl-lint/src/rules/tests.rs", 'let _ = "rotate";\n')
             self.assertEqual(dr.lint_std_names(root), ["crates/cpl-lint/src/rules/a.rs:1 rotate"])
-            self.assertEqual(dr.ir_builtin_names(root), ["prefix", "sum"])
+            self.assertEqual(dr.ir_builtin_names(root), ["min", "prefix", "sum"])
             self.assertEqual(dr.backend_std_names(root), ["crates/cpl-codegen/src/a.rs:1 Bitset"])
             self.assertEqual(dr.edition_refs(root), ["crates/cpl-codegen/src/a.rs:1"])
             self._write(root, "decisions.md", "## 9. a\n## 10. b\n## 9. c\n### 10. not a decision\n")

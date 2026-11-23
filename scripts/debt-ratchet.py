@@ -126,9 +126,10 @@ def edition_refs(root: Path) -> list[str]:
 
 def ir_builtin_names(root: Path) -> list[str]:
     """Distinct names string-matched in lowering: stdlib privilege."""
-    call = root / "crates/cpl-ir/src/lower/call.rs"
+    lower = root / "crates/cpl-ir/src/lower"
+    files = [lower / "call.rs", *sorted((lower / "call").glob("*.rs"))]
     names: set[str] = set()
-    for line in _lines(call) if call.is_file() else []:
+    for line in (ln for f in files if f.is_file() for ln in _lines(f)):
         if ARM_RE.match(line):
             names.update(re.findall(r'"([^"]+)"', line.split("=>")[0]))
     return sorted(names)
@@ -365,7 +366,7 @@ COUNTERS = {
     "rust_ignore": ("Rust #[ignore] attributes", rust_ignore, True),
     "pending_tests": ("crates/cpl-cli/tests/pending/ files", pending_tests, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
-    "ir_builtin_names": ("names string-matched in lower/call.rs", ir_builtin_names, True),
+    "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
     "lint_std_names": ("std fn names string-matched in lint rules", lint_std_names, True),
