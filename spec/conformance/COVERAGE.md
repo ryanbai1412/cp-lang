@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2218 (995 passing). Rules: 531.
+Cases: 2221 (995 passing). Rules: 531.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 50 rules, 100 cases; 0 uncovered, 4 happy-path only, 1 negative only
 - R02 (02-values-types.md): 51 rules, 100 cases; 0 uncovered, 7 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 58 cases; 0 uncovered, 6 happy-path only, 1 negative only
-- R04 (04-indices.md): 61 rules, 88 cases; 0 uncovered, 2 happy-path only, 0 negative only
+- R04 (04-indices.md): 61 rules, 89 cases; 0 uncovered, 1 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 50 cases; 0 uncovered, 1 happy-path only, 3 negative only
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 143 cases; 0 uncovered, 3 happy-path only, 3 negative only
@@ -38,7 +38,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R01 | 50 | 49 (98%) | 28 | 24 (85%) | 45 (90%) |
 | R02 | 51 | 51 (100%) | 29 | 22 (75%) | 44 (86%) |
 | R03 | 24 | 23 (95%) | 17 | 11 (64%) | 17 (70%) |
-| R04 | 61 | 61 (100%) | 14 | 12 (85%) | 59 (96%) |
+| R04 | 61 | 61 (100%) | 14 | 13 (92%) | 60 (98%) |
 | R04a | 39 | 36 (92%) | 4 | 3 (75%) | 35 (89%) |
 | R04b | 27 | 27 (100%) | 6 | 6 (100%) | 27 (100%) |
 | R05 | 43 | 40 (93%) | 23 | 20 (86%) | 37 (86%) |
@@ -50,7 +50,7 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 15 | 13 (86%) | 9 | 8 (88%) | 12 (80%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 7 | 4 (57%) | 19 (86%) |
-| all | 531 | 513 (96%) | 225 | 186 (82%) | 474 (89%) |
+| all | 531 | 513 (96%) | 225 | 187 (83%) | 475 (89%) |
 
 ## Rules
 
@@ -207,7 +207,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.11 [2+ 0-]: | `a[p]`, `a[x, y]` | for `P = (A, B)`, `[P]T` and `[A, B]T` are the same type: a `p: P` i...
 - R04.2.12 [1+ 0-]: | `Pair<V>` | the unordered pairs `{u, v}` of distinct positions, `V.count * (V.count - 1)...
 - R04.2.13 [1+ 0-]: | `V.wrap(x)` | integer to position, mod `V.count`: rings and cyclic shifts | O(1)
-- R04.2.14 [2+ 0-] *happy-path only*: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1)
+- R04.2.14 [2+ 1-]: | `if let V(j) = i - 10:` | the pattern form of `V.at`: matches only inside `V` | O(1)
 - R04.2.15 [1+ 0-]: | `Int(v)` | position to its integer (for `1..=n`, that's 1..n) | free
 - R04.2.16 [4+ 1-]: | `Int(c)` | cut to its integer: the number of positions before it, 0..=n whatever the bas...
 - R04.2.17 [1+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut: trapping, or `?V.cuts` | O(1)
@@ -665,7 +665,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0207 Private item: 1 case(s)
 - E0208 Uppercase value name: 1 case(s)
 - E0301 Wrong index domain: 15 case(s)
-- E0302 Type mismatch: 33 case(s)
+- E0302 Type mismatch: 34 case(s)
 - E0303 Wrong number of arguments: 6 case(s)
 - E0304 Value is not callable: 1 case(s)
 - E0305 Value is not indexable: 3 case(s)
@@ -827,8 +827,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (151/158 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (106/124 named by a case)
-  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.dfs_tree`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Visit`, `Complement`, `Only`
+- **graph** (107/124 named by a case)
+  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.dfs_tree`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Complement`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
@@ -863,12 +863,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (144/171 named by a case)
-  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.tour`, `Rooted.chains`, `Rooted.virtual`, `Rooted.sub_at`, `Rooted.events`, `VirtualTree`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `Events.enter`, `Events.exit`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
+- **tree** (148/171 named by a case)
+  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.chains`, `Rooted.virtual`, `Rooted.sub_at`, `VirtualTree`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2113 of 2245 std items are named by a case.
+2118 of 2245 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
