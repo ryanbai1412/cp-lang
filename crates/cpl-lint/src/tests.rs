@@ -1939,3 +1939,13 @@ print(p.x == 0, v.x == 0)\n";
     assert_eq!(floats.len(), 1, "{found:#?}");
     assert!(floats[0].span.text(src).starts_with("v.x"), "{found:#?}");
 }
+
+#[test]
+fn chmin_chmax_fix_keeps_the_line_break() {
+    // corpus ioi08p3: a two-line `if` became `max_len[g] max= l` glued to the next line.
+    let src = "var m = 0\nfor l in [3, 5]:\n    if l > m:\n        m = l\n\nprint(m)\n";
+    assert_eq!(
+        fixed(src),
+        "var m = 0\nfor l in [3, 5]:\n    m max= l\n\nprint(m)\n"
+    );
+}

@@ -192,9 +192,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 "write `{rewrite}`; `{f}=` names the place once, so the read and the write cannot drift apart"
             ));
             if !commented {
+                // The statement's span takes the line break after it; that stays.
+                let kept = whole.text(self.src).trim_end().len() as u32;
                 diag.fixes.push(Fix {
                     title: format!("use `{f}=`"),
-                    edits: vec![(whole, rewrite)],
+                    edits: vec![(Span::new(whole.start, whole.start + kept), rewrite)],
                 });
             }
             self.out.push(Finding {
