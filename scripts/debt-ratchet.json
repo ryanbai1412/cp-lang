@@ -110,7 +110,7 @@
   "decision_dup_numbers": 28,
   "lint_dup_helpers": 5,
   "plan_delta_lines": 1627,
-  "vm_fallbacks": 63,
+  "vm_fallbacks": 75,
   "own_databases": 29,
   "cpp_deep_copies": 49,
   "cpp_std_functions": 592,

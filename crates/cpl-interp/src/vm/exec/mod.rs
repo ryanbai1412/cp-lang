@@ -150,9 +150,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             aliases.push((k, part));
         }
         let lent = self.lent.len();
-        let base = self.base;
-        let held = aliases.iter().map(|(k, part)| (base + k, Rc::clone(part)));
-        self.lent.extend(held);
+        if chunk.traced {
+            let base = self.base;
+            let held = aliases.iter().map(|(k, part)| (base + k, Rc::clone(part)));
+            self.lent.extend(held);
+        }
         let mut vm_regs_i = std::mem::take(&mut self.vm_regs_i);
         let base_i = vm_regs_i.len();
         vm_regs_i.resize(base_i + chunk.num_i, 0);

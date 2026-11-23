@@ -10,6 +10,14 @@ expr:CallExpr
 expr:Closure
 expr:DomainVal
 expr:Read
+traced fn:SortedBag_Int.drain(part)
+traced fn:SortedSet_Int.drain(part)
+traced fn:m1_get_or_insert_with_Int_Int(part)
+traced fn:m1_get_or_insert_with_Str_D0_P(part)
+traced fn:m1_get_or_insert_with_Str_D1_P(part)
+traced fn:m6_get_or_insert_with_Int_Int(part)
+traced fn:m6_get_or_insert_with_Str_Int(part)
+traced fn:take_all(feeding)
 traced stmt:Assert
 traced stmt:Assign(Field,Set)
 traced stmt:Assign(Global,Binary(Add))
@@ -42,7 +50,11 @@ traced stmt:Let(Unwrap)
 traced stmt:Return
 traced stmt:Trap
 traced stmt:While
+untraced fn:SortedBag_Int.drain(part)
 untraced fn:SortedSet_Int.each(feeding)
+untraced fn:m1_get_or_insert_with_Int_Int(part)
+untraced fn:m1_get_or_insert_with_Str_D0_P(part)
+untraced fn:m1_get_or_insert_with_Str_D1_P(part)
 untraced stmt:Assert
 untraced stmt:Assign(Global,Binary(Add))
 untraced stmt:Assign(Global,Binary(Div))
