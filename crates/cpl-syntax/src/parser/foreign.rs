@@ -3,6 +3,43 @@
 use super::*;
 
 impl<'a> Parser<'a> {
+    /// Steps over a comparison operator, reading `!in` as `not in` and
+    /// Python's `x is None` and `x is not None` as `==` and `!=`, each one
+    /// error with a fix.
+    pub(super) fn cmp_token(&mut self) {
+        if self.at(T::Bang) {
+            let span = self.span();
+            self.error(
+                Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`!` doesn't negate in cp")
+                    .with_help("write `not in` instead of `!in`")
+                    .with_fix("replace with `not `", span, "not "),
+            );
+        }
+        if !self.at_ident("is") {
+            self.bump();
+            return;
+        }
+        let start = self.span();
+        self.bump();
+        let (foreign, ours) = if self.eat(T::Not) {
+            ("is not", "!=")
+        } else {
+            ("is", "==")
+        };
+        let span = Span::new(start.start, self.rel(self.tokens[self.pos - 1].span).end);
+        self.recovered(
+            Diagnostic::error(
+                codes::UNEXPECTED_TOKEN,
+                span,
+                format!("CP Lang compares with `{ours}`, not `{foreign}`"),
+            )
+            .with_help(format!(
+                "write `x {ours} None`; values are compared, there is no identity"
+            ))
+            .with_fix(format!("write `{ours}`"), span, ours),
+        );
+    }
+
     /// `if c: a else: b`, as the ternaries of other languages read.
     pub(super) fn inline_if(cond: Expr, yes: Expr, no: Expr, span: Span) -> Expr {
         let block = |e: Expr| Block {

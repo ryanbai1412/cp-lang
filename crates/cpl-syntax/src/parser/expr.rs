@@ -358,6 +358,8 @@ impl<'a> Parser<'a> {
             T::Gt => CmpOp::Gt,
             T::GtEq => CmpOp::Ge,
             T::Spaceship => CmpOp::Order,
+            T::Ident if self.text() == "is" && self.peek_n(1) == T::Not => CmpOp::Ne,
+            T::Ident if self.text() == "is" && begins_expr(self.peek_n(1)) => CmpOp::Eq,
             T::In => CmpOp::In,
             T::Not if self.peek_n(1) == T::In => CmpOp::NotIn,
             T::Bang
@@ -426,15 +428,7 @@ impl<'a> Parser<'a> {
         }
         let mut rest = Vec::new();
         while let Some(op) = self.cmp_op() {
-            if self.at(T::Bang) {
-                let span = self.span();
-                self.error(
-                    Diagnostic::error(codes::UNEXPECTED_TOKEN, span, "`!` doesn't negate in cp")
-                        .with_help("write `not in` instead of `!in`")
-                        .with_fix("replace with `not `", span, "not "),
-                );
-            }
-            self.bump();
+            self.cmp_token();
             if op == CmpOp::NotIn {
                 self.bump();
             }
