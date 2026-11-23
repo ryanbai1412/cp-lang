@@ -9,7 +9,7 @@ fn random_tree() -> [Road](u: City, v: City, len: 0..=1e6):
     [Road] t => (City(rand(0, t.label - 1)), City(t.label), rand(0, 1e6))
 
 let roads: [Road](u: City, v: City, len: 0..=1e6) = read(gen: random_tree)
-let tree = Rooted.weighted(Graph.undirected(roads), City.first, a => roads[a.e].len)
+let tree = Rooted(Graph.undirected(roads).weighted(a => roads[a.e].len), City.first!)
 
 // Small-to-large over the subtrees. reach[v] maps a distance from the root
 // to the fewest roads from the root, over the cities under v. A path that

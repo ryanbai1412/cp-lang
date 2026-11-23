@@ -9,7 +9,7 @@ domain V = 1..=n
 domain Road = 1..n
 domain Ask = 1..=q
 let exit: V = read()
-type Link = (a: V, b: V, len: 1..=1e9)
+type Link = (u: V, v: V, w: 1..=1e9)
 
 fn valley() -> [Road]Link:
     [Road] r => (V(rand(1, r.label)), V(r.label + 1), rand(1, 1e9))
@@ -24,7 +24,7 @@ let asks: [Ask](closed: Road, from: V) = read()
 // than the cut, then drops to the nearest shop under t:
 //   far[from] + (far[nearest shop under t] - 2 far[t])
 // with far[] measured from the exit.
-let tree = Rooted(roads, exit, weight: .len)
+let tree = Rooted(Graph.undirected(roads), exit)
 let far: [V]Int = [V] v => tree.dist(exit, v)
 var shop_under: [V]?Int = None  // far[] of the nearest shop in the subtree
 for v in shops: shop_under[v] = far[v]
@@ -52,7 +52,7 @@ for v in tree.at:
         let (u, w, _) = roads[asks[a].closed]
         let cut = if tree.parent(u) == w: u else: w
         if tree.is_anc(cut, v):
-            if let t = best_turn.fold(Depth(tree.depth(cut)), here): nearest[a] = far[v] + t
+            if let t = best_turn.fold(Depth(tree.depth(cut))..=here): nearest[a] = far[v] + t
         else:
             escaped[a] = true
 

@@ -1,7 +1,7 @@
 // NOI '21 P3 — Celebration (corpus/submissions/5669954.cpp)
 // Condense the directed graph into SCCs (`std.graph.scc`), peel the unique
 // transitive-reduction spanning tree via Kahn's algorithm, weight it with
-// `Rooted<C>.weighted`, and answer each query by building the virtual tree
+// `Rooted` over arcs carrying `w`, and answer each query by building the virtual tree
 // (`tree.virtual`) plus k <= 2 extra directed edges and running forward /
 // backward reachability.
 
@@ -28,7 +28,7 @@ for e in E:
         dag_adj[cu].push(cv)
         indeg[cv] += 1
 
-var root = C.first
+var root = C.first!
 for c in C:
     if indeg[c] == 0: root = c
 
@@ -42,7 +42,7 @@ while not stack.is_empty:
             tree_adj[u].push(v)
             stack.push(v)
 
-let tree = Rooted.weighted(u => [(to: v) for v in tree_adj[u]], root, a => wt[a.to])
+let tree = Rooted(u => [(to: v, w: wt[v]) for v in tree_adj[u]], root)
 
 // 3. Per-query virtual tree + forward/backward reachability.
 var fwd: [C]List<C> = []
@@ -69,7 +69,7 @@ for _ in 0..q:
         vis_f[u] = false
         vis_r[u] = false
     for x in vt.K:
-        if let p = vt.up[x]:
+        if let p = vt.parent[x]:
             fwd[vt.at[p]].push(vt.at[x])
             rev[vt.at[x]].push(vt.at[p])
     for e in extra:
@@ -104,5 +104,5 @@ for _ in 0..q:
     for x in vt.K:
         let u = vt.at[x]
         if vis_f[u] and vis_r[u]: ans += wt[u]
-        if let p = vt.up[x], vis_f[vt.at[p]] and vis_r[u]: ans += vt.len[x] - wt[u]
+        if let p = vt.parent[x], vis_f[vt.at[p]] and vis_r[u]: ans += vt.w[x] - wt[u]
     print(ans)

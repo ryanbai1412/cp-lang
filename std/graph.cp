@@ -91,9 +91,15 @@ pub type EdgeArc<V, E, R> = (to: V, e: E, ..R without (u, v))
 
 /// O(1) per arc read: `g.weighted(f)`, the arcs of `g` with `.w` read as
 /// `f(a)` (or `f(u, a)`), `.to` and `.e` passed through. Nothing is stored.
-pub struct Reweighted<G, F>:
-    g: G
-    f: F
+pub struct Reweighted<V, E, A, W>(g: Graph<V, A>, f: A -> W):
+    /// The arcs out of `u` as `(to:, e:, w: f(a))`.
+    ///
+    /// cost: \(O(1)\) per arc plus one call of `f`
+    /// order: the graph's arc order
+    /// traps: never
+    pub fn out(self, u: V) -> yields (to: V, e: E, w: W):
+        for a in g.out(u):
+            yield (to: a.to, e: a.e, w: f(a))
 
 /// O(n) to read.
 /// The `V.len - 1` edges of a tree on `V`, one `u v` pair per line, as an input
@@ -330,7 +336,8 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// cost: O(1) to make; `f` runs on every arc read
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; dijkstra(Graph.directed(es).weighted(a => 5), from: [(V(0), 0)])[2] == Some(10)`
-    pub fn weighted<W>(self, f: A -> W) -> lends Reweighted<Graph<V, A>, A -> W> = todo
+    pub fn weighted<E, W>(self, f: A -> W) -> Reweighted<V, E, A, W> where A: Edged<E> =
+        Reweighted(self, f)
 
     /// True when some arc `u -> v` exists. A scan of `u`'s arcs, not a lookup.
     ///
