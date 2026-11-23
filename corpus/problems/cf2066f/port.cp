@@ -36,7 +36,7 @@ fn cool(r: Range<PosA>) -> List<Range<PosA>>:
     let m = widest_max(r)
     cool(r.start..m.start) + [m] + cool(m.end..r.end)
 
-let spans = cool(PosA.first..=PosA.last)
+let spans = cool(PosA.first!..=PosA.last!)
 domain Seg = 0..spans.len
 let span = [Seg] s => spans[s.ord]
 let total = [Seg] s => a[span[s]].sum()
@@ -44,7 +44,7 @@ let total = [Seg] s => a[span[s]].sum()
 var mss: [PosB.cuts, PosB.cuts]Int = 0
 for l in PosB:
     var acc = MaxSub.empty()
-    for r in l..=PosB.last:
+    for r in l..=PosB.last!:
         acc = acc + MaxSub.of(b[r])
         mss[l.l, r.r] = acc.best
 
@@ -58,7 +58,7 @@ fn matches(j: PosB.cuts, s: Seg) -> ?PosB.cuts =
     if agree[span[s].start, j] >= span[s].len: some(PosB.cuts.nth(j.ord + span[s].len)) else: none
 
 struct Back(from: PosB.cuts, spent: Bool)
-struct Plan(piece: [Seg]Range<PosB>, free: Seg)
+struct Plan(piece: [Seg](from: PosB.cuts, to: PosB.cuts), free: Seg)
 
 fn plan(x: Int) -> ?Plan:
     var came: [Seg.cuts, PosB.cuts, Bool]?Back = none
@@ -81,13 +81,13 @@ fn plan(x: Int) -> ?Plan:
             if let i = PosB.cuts.first(j => fit(s.l, j, false)):
                 for j in PosB.cuts:
                     if j > i: came[s.r, j, true] = Back(i, false)
-    var at = Back(PosB.cuts.last, true)
-    if not fit(Seg.cuts.last, at.from, true): return none
-    var piece: [Seg]Range<PosB> = PosB.cuts.first!..PosB.cuts.first!
+    var at = Back(PosB.cuts.last!, true)
+    if not fit(Seg.cuts.last!, at.from, true): return none
+    var piece: [Seg](from: PosB.cuts, to: PosB.cuts) = (from: PosB.cuts.first!, to: PosB.cuts.first!)
     var free: ?Seg = none
     for s in Seg.rev:
         let back = came[s.r, at.from, at.spent]!
-        piece[s] = back.from..at.from
+        piece[s] = (from: back.from, to: at.from)
         if back.spent != at.spent: free = s
         at = back
     Plan(piece, free!)
@@ -106,10 +106,10 @@ var len = [Seg] s => span[s].len
 fn start(s: Seg) -> Int = sum(len[t] for t in Seg if t < s)
 var ops: List<(Int, Int, List<Int>)> = []
 for s in Seg.filter(s => total[s] >= x).sorted(by: s => desc(total[s])):
-    let into = if s == plan_x.free: [x] else: b[plan_x.piece[s]].to_list()
+    let into = if s == plan_x.free: [x] else: b[plan_x.piece[s].from..plan_x.piece[s].to].to_list()
     ops.push((start(s) + 1, start(s) + len[s], into))
     len[s] = into.len
-ops.push((start(plan_x.free) + 1, start(plan_x.free) + 1, b[plan_x.piece[plan_x.free]].to_list()))
+ops.push((start(plan_x.free) + 1, start(plan_x.free) + 1, b[plan_x.piece[plan_x.free].from..plan_x.piece[plan_x.free].to].to_list()))
 
 print(ops.len)
 for (l, r, into) in ops:
