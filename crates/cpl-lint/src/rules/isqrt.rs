@@ -5,21 +5,29 @@
 
 use crate::walk::Visitor;
 use crate::{File, Finding, FLOAT_SQRT_FOR_INT};
-use cpl_diag::{Diagnostic, Fix};
+use cpl_diag::{Diagnostic, Fix, Span};
 use cpl_syntax::ast::{Expr, ExprKind};
 
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Isqrt<'a> {
         src: &'a str,
         base: u32,
+        covered: Vec<Span>,
         out: Vec<Finding>,
     }
     impl Visitor for Isqrt<'_> {
         fn expr(&mut self, expr: &Expr) {
-            let Some(n) = rounded_root(expr) else {
+            let span = expr.span.shift(self.base);
+            if self.covered.iter().any(|c| c.contains(span)) {
+                return;
+            }
+            let Some(n) = call_of(expr, &["Int"])
+                .and_then(rounded_root)
+                .or_else(|| rounded_root(expr))
+            else {
                 return;
             };
-            let span = expr.span.shift(self.base);
+            self.covered.push(span);
             let isqrt = format!("{}.isqrt", n.span.shift(self.base).text(self.src));
             let mut diag = Diagnostic::warning(
                 FLOAT_SQRT_FOR_INT.code,
@@ -43,16 +51,21 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = Isqrt {
         src: file.src,
         base: 0,
+        covered: Vec::new(),
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
     v.out
 }
 
-/// `n` in `floor(sqrt(n))`, `trunc(sqrt(F64(n)))` or `floor(n.sqrt)`, when
-/// `n` is a name or a field.
+/// `n` in `floor(sqrt(n))`, `trunc(sqrt(F64(n)))`, `floor(n.sqrt)` or
+/// `sqrt(F64(n)).floor` (each also inside `Int(...)`), when `n` is a name or
+/// a field.
 fn rounded_root(expr: &Expr) -> Option<&Expr> {
-    let root = call_of(expr, &["floor", "trunc"])?;
+    let root = match &expr.kind {
+        ExprKind::Field { base, name } if matches!(name.text.as_str(), "floor" | "trunc") => base,
+        _ => call_of(expr, &["floor", "trunc"])?,
+    };
     let n = match &root.kind {
         ExprKind::Field { base, name } if name.text == "sqrt" => base,
         _ => call_of(root, &["sqrt"])?,
