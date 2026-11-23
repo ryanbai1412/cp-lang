@@ -87,7 +87,9 @@ impl<'a> Parser<'a> {
         let mut bounds = Vec::new();
         self.where_clause(&mut bounds);
         let sig_span = self.span_from(start);
-        let body = if self.eat(T::Eq) {
+        let body = if let Some(block) = self.eq_block_body(&name) {
+            FnBody::Block(block)
+        } else if self.eat(T::Eq) {
             FnBody::Expr(self.expr_body(&name))
         } else if self.at(T::Colon) {
             self.bump();
@@ -224,7 +226,9 @@ impl<'a> Parser<'a> {
         }
         self.where_clause(&mut bounds);
         let sig_span = self.span_from(start);
-        let body = if self.eat(T::Eq) {
+        let body = if let Some(block) = self.eq_block_body(&name) {
+            FnBody::Block(block)
+        } else if self.eat(T::Eq) {
             FnBody::Expr(self.expr_body(&name))
         } else if self.at(T::Colon) {
             self.bump();

@@ -917,10 +917,10 @@ fn an_expression_body_may_sit_on_the_next_lines() {
     ));
     // The fn ends with its block; the next statement is separate.
     assert_eq!(stmts("fn f() -> Int =\n    1 + 2\nprint(f())\n").len(), 2);
-    // `=` takes one expression; a second line says to use `:`.
+    // `=` takes one expression; statements below it say to use `:`.
     let diag = one_diag("fn f() -> Int =\n    let x = 1\n    x\n");
     assert!(
-        diag.message.contains("expected a value"),
+        diag.message.contains("starts with `:`, not `=`") && diag.fixes.len() == 1,
         "{}",
         diag.message
     );

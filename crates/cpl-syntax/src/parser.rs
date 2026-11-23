@@ -556,6 +556,31 @@ impl<'a> Parser<'a> {
         }
     }
 
+    /// `fn f() -> T =` with statements on the indented lines below: R01.11.1
+    /// asks for `:`, and the body is read as the block it is.
+    fn eq_block_body(&mut self, name: &Name) -> Option<Block> {
+        if !(self.at(T::Eq) && self.peek_n(1) == T::Newline && self.peek_n(2) == T::Indent)
+            || !matches!(
+                self.peek_n(3),
+                T::Let | T::Var | T::For | T::While | T::Return
+            )
+        {
+            return None;
+        }
+        let (eq, from) = (self.span(), self.prev_end());
+        self.error(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                eq,
+                "a body on the lines below starts with `:`, not `=`",
+            )
+            .with_help("`=` takes a body on the same line: `fn f() -> Int = a + 1`")
+            .with_fix("replace `=` with `:`", Span::new(from, eq.end), ":"),
+        );
+        self.bump();
+        Some(self.block(&format!("the signature of `{}`", name.text)))
+    }
+
     /// `{k: v}`, a map written the other languages' way: `[k: v]` in cp.
     fn brace_map(&mut self, span: Span, open: Span, close: Span) {
         let mut diag = Diagnostic::error(

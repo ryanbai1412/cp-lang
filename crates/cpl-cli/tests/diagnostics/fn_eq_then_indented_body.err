@@ -1,0 +1,8 @@
+error[E0503]: a body on the lines below starts with `:`, not `=`
+  --> fn_eq_then_indented_body.cp:2:15
+  |
+2 | fn f() -> Int =
+  |               ^
+  = help: `=` takes a body on the same line: `fn f() -> Int = a + 1`
+
+fn_eq_then_indented_body.cp: 1 error
