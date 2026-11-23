@@ -14,6 +14,23 @@ impl<'a> Lowerer<'a> {
         gen_names: &[String],
         env: &mut GenEnv,
     ) {
+        // A lambda whose parameters are all annotated has a type of its own, so it binds a bare
+        // type parameter as any other argument does: `op: M` given `(i: V, j: V) => ...`.
+        if let (ast::TypeKind::Named { name, args }, ast::ExprKind::Lambda { param_tys, .. }) =
+            (&pat.kind, &arg.kind)
+        {
+            if args.is_empty()
+                && gen_names.contains(&name.text)
+                && !env.contains_key(&name.text)
+                && !param_tys.is_empty()
+                && param_tys.iter().all(Option::is_some)
+            {
+                if let Some(ty @ Ty::Fn(..)) = self.probe_ty_silent(arg) {
+                    env.insert(name.text.clone(), GenArg::Ty(ty));
+                }
+            }
+            return;
+        }
         let (ast::TypeKind::Fn { params, .. }, ast::ExprKind::Lambda { param_tys, .. }) =
             (&pat.kind, &arg.kind)
         else {
