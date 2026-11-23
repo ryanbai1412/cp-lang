@@ -7,14 +7,14 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3112 (1092 passing). Rules: 583.
+Cases: 3113 (1092 passing). Rules: 583.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 175 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 52 rules, 152 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 185 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 186 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 49 rules, 228 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -223,7 +223,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.2 [1+ 0-]: | `V.count` | number of positions | \(O(1)\)
 - R04.2.20 [6+ 1-]: | `V.find(f)`, `V.count(f)`, `V.filter(f)`, `V.min(by: f)` | a domain is a `Seq<V>` of its...
 - R04.2.21 [1+ 0-]: | `f(V)` where a `Range<V>` is expected | a range-backed domain named as a value is its wh...
-- R04.2.3 [2+ 3-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
+- R04.2.3 [2+ 4-]: | `V.first`, `V.last` | `?V`, `None` when `V` is empty; write `V.first!` when you know it ...
 - R04.2.4 [2+ 0-]: | `V.range` | the whole range, same as `..` (`a.keys` for an array's) | \(O(1)\)
 - R04.2.5 [1+ 0-]: | `V.cuts` | the domain of cuts (type `Cut<V>`): `V.cuts.first` is the start, `.last` the ...
 - R04.2.6 [1+ 0-]: | `x in V` | is integer `x` a position | \(O(1)\)
@@ -756,7 +756,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0208 Uppercase value name: 2 case(s)
 - E0209 Definition cycle: 1 case(s)
 - E0301 Wrong index domain: 17 case(s)
-- E0302 Type mismatch: 48 case(s)
+- E0302 Type mismatch: 49 case(s)
 - E0303 Wrong number of arguments: 11 case(s)
 - E0304 Value is not callable: 3 case(s)
 - E0305 Value is not indexable: 10 case(s)
