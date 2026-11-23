@@ -1,17 +1,11 @@
-// Codeforces 2165 C — Binary Wine
-//
-// All values `a[i]` and query targets `c` are `< 2^BITS` (`BITS = 30`). We
-// match bits `b` of `c` from MSB (`BITS - 1`) down to `0`:
-// - If `cnt > want` (a bit of `c` is `0` while some element has bit `b` set, or
-//   two elements already have bit `b` set), the extra `1` at bit `b` dominates
-//   all lower bits `0..b`, so no further increments are needed (`break`).
-// - If `cnt < want` (`c` wants bit `b` set and no element has it), we must
-//   raise one element to the next multiple of `2^b`, costing `(1 << b) - (x & mask)`.
-//   Picking the element maximizing `x & mask` minimizes both this step's cost
-//   and leaves it at `0` on all lower bits (identical for future steps).
-// Because at most `BITS` elements are ever incremented and larger elements
-// dominate on high bits, only the `MAX_USED = min(n, BITS)` largest elements
-// of `a` can ever participate.
+// Source: Codeforces 2165 C (Binary Wine), https://codeforces.com/contest/2165/problem/C
+// Problem: n values a_i < 2^30; one coin raises an a_i by 1. Each of q independent queries
+//   gives c < 2^30: print the fewest coins so some b with 0 <= b_i <= a_i has XOR c.
+//   Multitest, sum of n <= 5e5, sum of q <= 5e4.
+// Solution: go from the high bit down. If more values have bit b than c needs, that value can
+//   take any lower bits: done. If c needs bit b and no value has it, raise the value with the
+//   largest low part to the next multiple of 2^b. At most 30 values are raised, always among
+//   the 30 largest, so keep only those: O(n log n + q 30^2).
 
 use std.seq.{argmax}
 

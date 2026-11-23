@@ -1,18 +1,12 @@
-// Codeforces 2152 E — Monotone Subsequence (interactive)
-//
-// By Erdős–Szekeres, every permutation of length `len = n * n + 1` contains a
-// monotone subsequence of length `n + 1`. Each query on the remaining
-// unassigned positions (`layer[v] == none`) returns their left-to-right maxima
-// `got`, which form a strictly increasing subsequence:
-// - If `got.len > n`, its first `n + 1` positions already form an increasing
-//   subsequence of length `n + 1`, so print them and finish immediately.
-// - Otherwise record `layer[v] = i` for every `v in got`. Every position left
-//   unassigned after round `i` must be smaller than some position in layer `i`
-//   to its left.
-// After `n` rounds, at least one position remains unassigned (`layer[v] == none`).
-// Walking backwards from that position through layers `n - 1` down to `0`
-// always finds a larger element to the left, yielding a decreasing subsequence
-// of length `n + 1`.
+// Source: Codeforces 2152 E (Monotone Subsequence), https://codeforces.com/contest/2152/problem/E
+// Problem: interactive, multitest (sum of n^2 + 1 <= 10001). A hidden permutation of length
+//   n^2 + 1 (n <= 100); query "? k i_1 < .. < i_k" returns the indices of the left-to-right
+//   maxima among them. In at most n queries, print "! s_1 .. s_{n+1}", the indices of an
+//   increasing or decreasing subsequence of length n + 1.
+// Solution: query all indices not yet returned; the maxima form an increasing run, so a reply
+//   longer than n is printed at once. Otherwise label them layer i. After n rounds some index
+//   is unlabelled, and each element left after round i has a larger layer-i element to its
+//   left; walking back from it through layers n - 1..0 gives a decreasing sequence. O(n^3).
 
 @!interactive
 @!multitest

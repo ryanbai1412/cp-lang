@@ -1,15 +1,12 @@
-// Codeforces 2150 C — Limited Edition Shop
-//
-// Process items in Alice's order `a[0..n]`. Maintaining the non-decreasing DP
-// `dp[j]` = max profit after prefix of `a` with Bob's frontier at `j` in `b`,
-// we store its positive increments in `deltas: Map<Int, Int>` (with base value
-// `tot = dp[0]`).
-//
-// When item `cur = a[z]` (value `v = vals[cur]`, Bob-position `pos = inv_b[cur]`)
-// arrives: Alice taking `cur` shifts `dp[0..pos]` by `+v` (`tot += v` and
-// `deltas[pos] -= v`), then prefix-maxing restores non-negativity of `deltas`
-// by cancelling any negative `deltas[pos]` against the smallest later positive
-// entries `deltas.first_gt(pos)`. The answer is `dp[n] = tot + sum(deltas)`.
+// Source: Codeforces 2150 C (Limited Edition Shop), https://codeforces.com/contest/2150/problem/C
+// Problem: n objects with values in [-1e9, 1e9]; Alice and Bob each have a preference order. In
+//   any order of visits, the visitor buys their favourite remaining object. Over all sets Alice
+//   can end with, print the maximum total value. Multitest, sum of n <= 2e5.
+// Solution: walk Alice's order keeping dp[j], the best value so far when Bob has taken his first
+//   j objects, which is non-decreasing in j. Alice taking an object at Bob position pos adds
+//   its value to dp[0..pos]; then prefix-max restores monotonicity. dp is kept as a base plus
+//   a map of positive increments, a negative increment cancelling the next positive ones;
+//   the answer is dp[n]. O(n log n) amortised.
 
 @!multitest
 let n: 1..=200_000 = read()

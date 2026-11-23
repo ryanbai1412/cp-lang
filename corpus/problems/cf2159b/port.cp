@@ -1,15 +1,11 @@
-// Codeforces 2159 B — Rectangles
-//
-// For each cell (i, j), find the minimum area of an axis-aligned rectangle
-// containing (i, j) whose four corners are all '1' (or 0 if none exists).
-//
-// Transpose if n0 > m0 so n <= m (hence n <= sqrt(n * m) and O(n^2 * m) is
-// O((n * m)^(3/2))). Iterate rectangle height l from min(n, m) down to 2 and
-// top row i0 from n - l down to 0: between consecutive columns j0 < j1 where
-// both g[i0, j] and g[i0 + l - 1, j] are '1', the rectangle [i0..=i1] x
-// [j0..=j1] has area `l * (j1 - j0 + 1)`, updating `ans[i0, j0..=j1]`.
-// Propagating `ans[i0 + 1, ..] min= ans[i0, ..]` after each height-l row
-// covers every interior row of all rectangles of height >= l in O(n * m).
+// Source: Codeforces 2159 B (Rectangles), https://codeforces.com/contest/2159/problem/B
+// Problem: an n x m binary grid (n, m >= 2). A rectangle uses two distinct rows and two distinct
+//   columns with 1s at all four corners. For each cell print the least area of a rectangle
+//   containing it, or 0. Multitest, sum of n m <= 2.5e5.
+// Solution: transpose so n <= m. For each pair of rows i0 < i1, only consecutive columns where
+//   both rows have a 1 matter: each such span updates row i0's cells with its area. Taking
+//   heights from tall to short and pushing row i0's minima down to row i0 + 1 covers every
+//   inner row. O(n^2 m) = O((n m)^1.5).
 
 @!multitest
 let (n0, m0): (2..=250_000, 2..=250_000) = read()

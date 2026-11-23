@@ -1,17 +1,12 @@
-// Codeforces 2207 E2 — N-MEX (Counting Version)
-//
-// `a[1..=n]` (with sentinel `a[0] = n`) must be non-increasing with
-// `a[i] >= n - i` at every step, since removing `i` elements from `0..n` can
-// lower the MEX by at most `i`.
-//
-// Scanning `i` from `n - 1` down to `0`, let `prv` be the current suffix MEX
-// and `pool` the count of still-free values `< prv`:
-// - If `cur = a[i] > prv`: the values in `(prv..cur)` are newly freed
-//   (`pool += cur - prv - 1`), and position `i` can take any of those `pool`
-//   values or any value in `cur..=n` (`n - cur + 1` choices), multiplying
-//   `ans` by `pool + (n - cur + 1)`.
-// - If `cur == prv`: position `i` must consume one of the `pool` free values
-//   below `prv` (`ans *= pool`, `pool -= 1`).
+// Source: Codeforces 2207 E2 (N-MEX, counting version),
+//   https://codeforces.com/contest/2207/problem/E2
+// Problem: given a_1..a_n (n <= 2e5, a_i <= 1e9), count arrays b with 0 <= b_i <= n where the
+//   (n - i + 1)-th smallest missing value of b_1..b_i is a_i for every i, modulo 1e9 + 7.
+//   Multitest, sum of n <= 2e5.
+// Solution: a must satisfy n - i <= a_i <= a_{i-1} (a_0 = n), else 0. Undo b_n, .., b_1 in
+//   turn, keeping pool, the free values below the current a. Going from a_i to a_{i-1}: if a
+//   rises to cur, the values strictly between join the pool and b_i is a pool value or any of
+//   cur..n (pool + n - cur + 1 ways); if it stays, b_i takes one pool value. O(n).
 
 type Z = Mod<1_000_000_007>
 

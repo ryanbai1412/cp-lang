@@ -1,15 +1,12 @@
-// Codeforces 2178 F — Tree Cut Reconnection
-//
-// Cut every edge above a non-root vertex whose remaining subtree size is even,
-// splitting the tree into the root component (size s_0) and `comps` cut
-// components of sizes s_1, ..., s_k.
-//
-// Counting ways to reconnect the components into a valid tree yields:
-// - If comps == 0 (no cuts): 1.
-// - Otherwise: s_0 * (prod_{i=1..k} s_i^2) * (k - 1)! * (sum_{i=1..k} 1 / s_i)
-//   (modulo 998_244_353), computed in one bottom-up pass by accumulating
-//   `ans = s_0 * prod(s_i^2) * k!` and `s_inv = sum(1 / s_i)`, then dividing
-//   by `comps` at the end.
+// Source: Codeforces 2178 F (Conquer or of Forest), https://codeforces.com/contest/2178/problem/F
+// Problem: a tree rooted at 1, vertex white iff its subtree size is even. It is conquered if all
+//   white vertices lie on one path from the root. An operation cuts the edge above a white
+//   non-root vertex, adds any edge keeping a tree, and recolours. Count the distinct conquered
+//   trees reachable, modulo 998244353. Multitest, n >= 2, sum of n <= 2e5.
+// Solution: cutting every edge above an even subtree gives a root part s_0 and k even parts
+//   s_1..s_k. A conquered tree chains the even parts below the root part: s_0 places to hang
+//   the chain, an entry and an exit vertex in each part but the last. Summing over orders:
+//   s_0 * (k - 1)! * prod s_i^2 * sum 1/s_i, or 1 if k = 0. One bottom-up pass, O(n).
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

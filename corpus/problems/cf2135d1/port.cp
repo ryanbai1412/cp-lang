@@ -1,18 +1,12 @@
-// Codeforces 2135 D1 — From the Unknown (Easy Version, interactive)
-//
-// Find hidden line width `W in 1..=WMAX` (`WMAX = 100_000`) in 2 queries of
-// total length `<= 100_000`:
-// - Query 1 sends `Q1 = 10_000` words of width `G = 125`.
-//   - If `resp1 == 0`, then `W < G`. Query 2 sends `Q02 = 15_000 >= G * (G - 1)`
-//     words of width `1`, making `resp2 = ceil(Q02 / W)` injective on `1..G`.
-//   - Otherwise each line holds `floor(W / G)` words, so
-//     `resp1 = ceil(Q1 / floor(W / G))` pins `W` to `[w_min, w_max]` with
-//     `w_min = ceil(Q1 / resp1) * G` and
-//     `w_max = min(WMAX, (Q1 - 1) / (resp1 - 1) * G + G - 1)` (width `<= 25_000`).
-// - Query 2 sends pairs `(w_min, i - w_min)` for `i in w_min + 1..=w_max`
-//   (`2 * (w_max - w_min) <= 50_000` words). Pair `i` fits on 1 line iff
-//   `i <= W` and 2 lines iff `i > W`, so `resp2 = (w_max - w_min) + (w_max - W)`,
-//   giving `W = (w_max - w_min) + w_max - resp2`.
+// Source: Codeforces 2135 D1 (From the Unknown, easy version),
+//   https://codeforces.com/contest/2135/problem/D1
+// Problem: interactive, t <= 10. An editor of hidden width W <= 1e5 puts words greedily on
+//   lines of total length <= W. Query "? n a_1 .. a_n" (n, a_i <= 1e5) returns the number of
+//   lines, or 0 if some a_i > W. Find W with at most 2 queries and print "! W".
+// Solution: first send 1e4 words of length 125. Answer 0 means W < 125: send 15000 ones,
+//   ceil(15000 / W) is distinct for each W < 125. Otherwise floor(W / 125) words fit a line,
+//   which pins W to [lo, hi] with hi - lo < 25000; send pairs (lo, i - lo) for i in lo+1..hi,
+//   each on one line iff i <= W, so the line count gives W directly.
 
 @!interactive
 

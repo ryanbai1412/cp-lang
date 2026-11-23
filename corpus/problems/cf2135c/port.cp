@@ -1,14 +1,12 @@
-// Codeforces 2135 C — By the Assignment
-//
-// Assign each unfixed vertex (`none`, read from -1) a value in `0..lim` so
-// every simple path between any two vertices has the same XOR of vertex values.
-//
-// Inside every 2-edge-connected component (bridge-cut component `C`), every
-// vertex must share the same value; moreover, if a component contains an odd
-// cycle (detected by an intra-component edge joining two vertices of equal
-// BFS depth parity), that common value is forced to 0. Any component with no
-// forced value (neither an odd cycle nor a pre-assigned vertex) contributes a
-// factor of `lim` to the count; any conflict sets `ans = 0`.
+// Source: Codeforces 2135 C (By the Assignment), https://codeforces.com/contest/2135/problem/C
+// Problem: a connected graph, n <= 2e5 vertices, m <= 4e5 edges; some vertices have weights,
+//   the rest (-1) get one in 0..V-1 (V <= 1e9). Count the assignments where every two vertices
+//   have the same XOR of weights along all simple paths between them, modulo 998244353.
+//   Multitest, sums of n and m bounded.
+// Solution: two paths differ by a cycle, so every 2-edge-connected component needs one common
+//   value, and 0 if it has an odd cycle (an inner edge joins equal BFS depth parities). Fixed
+//   weights force their component's value; a conflict gives 0, and each unforced component
+//   multiplies by V. Bridge decomposition and BFS, O(n + m).
 
 use std.graph.{two_edge_components}
 

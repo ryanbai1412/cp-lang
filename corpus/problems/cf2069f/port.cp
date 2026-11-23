@@ -1,8 +1,10 @@
-// Codeforces 2069 F: A includes B after adding the fewest edges exactly when
-// every edge of B joins two vertices that A already connects, so the answer
-// is components(A) - components(A + B). Offline: each edge lives on a range
-// of query times; TimeTree.run walks the segment tree over time and rolls the
-// two union-finds back on exit from each node.
+// Source: Codeforces 2069 F (Graph Inclusion), https://codeforces.com/contest/2069/problem/F
+// Problem: graphs A and B on n <= 4e5 vertices start empty; each of q <= 4e5 queries toggles an
+//   edge in A or B. After each query print the fewest edges to add to A so that every
+//   component of B lies inside a component of A.
+// Solution: the answer is components(A) - components(A + B). Offline: each edge is present
+//   over an interval of query times; a segment tree over time adds edges to two union-finds
+//   with rollback on the way down and undoes them on the way up. O(q log q log n).
 use std.dsu.{Mark}
 use std.timetree.{TimeTree}
 

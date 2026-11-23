@@ -1,12 +1,13 @@
-// Codeforces 2066 D2: Club of Young Aircraft Builders (hard version).
-// Process floors 1..n - 1 from bottom to top; floor n takes the last c launches.
-// If floors < f have taken `used` launches (in 0..=m - c), floor f sees only
-// the remaining launches and stops after c of them, so all of floor f's
-// launches must lie in the prefix of length `used + c`. That requires
-// `used + c >= last_pos[f]` (1-based position of floor f's last fixed launch),
-// leaves `avail = open[used + c] + fixed_below - used` free slots in that
-// prefix, and choosing k launches for floor f multiplies by
-// C(avail, k - fixed[f]).
+// Source: Codeforces 2066 D2 (Club of Young Aircraft Builders, hard version),
+//   https://codeforces.com/contest/2066/problem/D2
+// Problem: n <= 100 floors launch m planes in turn (c <= m <= n c); the resident of floor i sees
+//   launches from floors <= i and stops once they have seen c, and at the end every resident
+//   has seen >= c. Given the launch floors with gaps (0), count the ways to fill the gaps,
+//   modulo 1e9 + 7. Multitest, sum of m <= 1e4.
+// Solution: decide floors 1..n - 1 bottom up; floor n takes what is left. With `used` launches
+//   on lower floors, floor f stops after c more, so all its launches lie in the first used + c
+//   (which must cover its last fixed launch). DP over used: choosing k launches for floor f
+//   picks k - fixed[f] of the free slots in that prefix, a binomial. O(n m c).
 
 type M = Mod<1_000_000_007>
 let comb = Comb<M>(100)
