@@ -5,7 +5,7 @@
 //! length `n >= 0` (computing modulo `x^n`, returning length `n`; `n == 0` returns `[]`).
 use std.math.{mod_sqrt, pow_mod}
 use std.mod.{Mod}
-use std.ntt.{ntt}
+use std.ntt.{convolve, ntt}
 
 fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
     if a.is_empty or b.is_empty: return []
@@ -812,15 +812,18 @@ pub struct Poly<T: Div>(pub c: List<T>):
         let out = [T.zero] + [c[i] / T.from_int(i + 1) for i in 0..c.len]
         Poly(out)
 
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The transposed (middle) product: `out[i] = sum_j self[i + j] * b[j]` over `j in 0..b.len`, for
     /// each `i` in `0..max(0, self.len - b.len + 1)` (only complete sums).
     ///
-    /// cost: \(O((n + m) \log(n + m))\)
+    /// cost: one `*`, which is `convolve`'s product: \(O(n m)\) today
     /// traps: never
     /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).len == 3`
     /// example: `Poly<Int>([1, 2, 3, 4]).transposed_mul(Poly<Int>([1, 1])).at(2) == 7`
-    pub fn transposed_mul(self, b: Poly<T>) -> Poly<T> = todo
+    pub fn transposed_mul(self, b: Poly<T>) -> Poly<T>:
+        let (n, m) = (c.len, b.len)
+        if m == 0 or n < m: return Poly([])
+        let full = (self * Poly([b.c[m - 1 - j] for j in 0..m])).c
+        Poly([full[m - 1 + i] for i in 0..n - m + 1])
 
     /// Truncate or zero-pad to exactly `n` coefficients (mod `x^n`).
     ///
@@ -831,45 +834,85 @@ pub struct Poly<T: Div>(pub c: List<T>):
     pub fn truncated(self, n: Int) -> Poly<T>:
         Poly([self.at(i) for i in 0..n])
 
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The multiplicative inverse mod `x^n` (`self[0] != 0`), as the free `inv`.
     ///
-    /// cost: \(O(n \log n)\)
+    /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n^2)\) today; the free `inv` on `List<Mod<P>>` is \(O(n \log n)\)
     /// traps: as the free `inv`: `n < 0`, or `n > 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, -1]).inv(3).at(2) == Z(1)`
-    pub fn inv(self, n: Int) -> Poly<T> = todo
+    pub fn inv(self, n: Int) -> Poly<T>:
+        assert n >= 0, "Poly.inv requires n >= 0"
+        if n == 0: return Poly([])
+        assert self.at(0) != T.zero, "Poly.inv requires self.at(0) != 0"
+        var g = Poly([T.one / self.at(0)])
+        while g.len < n:
+            let m = min(2 * g.len, n)
+            g = (g * (Poly<T>.from_int(2) - self.truncated(m) * g)).truncated(m)
+        g
 
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The formal logarithm mod `x^n` (`self[0] == 1`), as the free `log`.
     ///
-    /// cost: \(O(n \log n)\)
+    /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n^2)\) today; the free `log` on `List<Mod<P>>` is \(O(n \log n)\)
     /// traps: as the free `log`: `n < 0`, or `n > 0` with `self.at(0) != 1`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).log(3).at(2) == Z(-1)`
-    pub fn log(self, n: Int) -> Poly<T> = todo
+    pub fn log(self, n: Int) -> Poly<T>:
+        assert n >= 0, "Poly.log requires n >= 0"
+        if n == 0: return Poly([])
+        assert self.at(0) == T.one, "Poly.log requires self.at(0) == 1"
+        (self.truncated(n).deriv() * self.inv(n)).truncated(n - 1).integral()
 
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The formal exponential mod `x^n` (`self[0] == 0`), as the free `exp`.
     ///
-    /// cost: \(O(n \log n)\)
+    /// cost: Newton doubling over `*` (`convolve`'s product): \(O(n^2)\) today; the free `exp` on `List<Mod<P>>` is \(O(n \log n)\)
     /// traps: as the free `exp`: `n < 0`, or `n > 0` with `self.at(0) != 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 2]).exp(3).at(2) == Z(2)`
-    pub fn exp(self, n: Int) -> Poly<T> = todo
+    pub fn exp(self, n: Int) -> Poly<T>:
+        assert n >= 0, "Poly.exp requires n >= 0"
+        if n == 0: return Poly([])
+        assert self.at(0) == T.zero, "Poly.exp requires self.at(0) == 0"
+        var g = Poly<T>.one
+        while g.len < n:
+            let m = min(2 * g.len, n)
+            g = (g * (Poly<T>.one - g.log(m) + self.truncated(m))).truncated(m)
+        g
 
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The formal power `self(x)^k mod x^n`, as the free `pow`.
     ///
-    /// cost: \(O(n \log n)\)
+    /// cost: \(O(\log k)\) truncated `*`: \(O(n^2 \log k)\) today; the free `pow` is \(O(n \log n)\)
     /// traps: as the free `pow`: `n < 0`, or `k < 0` with `self.at(0) == 0`
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 1]).pow(3, 4).at(2) == Z(3)`
-    pub fn pow(self, k: Int, n: Int) -> Poly<T> = todo
+    pub fn pow(self, k: Int, n: Int) -> Poly<T>:
+        assert n >= 0, "Poly.pow requires n >= 0"
+        if k < 0: return self.inv(n).pow(-k, n)
+        var out = Poly<T>.one.truncated(n)
+        var base = self.truncated(n)
+        var e = k
+        while e > 0:
+            if e % 2 == 1: out = (out * base).truncated(n)
+            base = (base * base).truncated(n)
+            e /= 2
+        out
 
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The formal square root mod `x^n`, or `None`, as the free `sqrt`.
     ///
-    /// cost: \(O(n \log n + \log^2 P)\)
-    /// traps: when `n < 0`
+    /// cost: Newton doubling over `*` and `inv`: \(O(n^2 \log n)\) today plus one `T.sqrt()`; the free `sqrt` is \(O(n \log n + \log^2 P)\)
+    /// traps: when `n < 0`; needs a `T.sqrt() -> ?T` (as `Mod<P>` has)
     /// example: `type Z = Mod<998244353>; Poly<Z>([1, 2, 1]).sqrt(3)!.at(1) == Z(1)`
-    pub fn sqrt(self, n: Int) -> ?Poly<T> = todo
+    pub fn sqrt(self, n: Int) -> ?Poly<T>:
+        assert n >= 0, "Poly.sqrt requires n >= 0"
+        if n == 0: return Some(Poly([]))
+        var d = 0
+        while d < n and self.at(d) == T.zero: d += 1
+        if d == n: return Some(Poly<T>.zero.truncated(n))
+        if d % 2 != 0: return None
+        let r0 = if let r = self.at(d).sqrt(): r else: return None
+        let m = n - d / 2
+        let h = Poly([self.at(d + i) for i in 0..m])
+        let half = T.one / T.from_int(2)
+        var g = Poly([r0])
+        while g.len < m:
+            let k = min(2 * g.len, m)
+            g = ((g + h.truncated(k) * g.inv(k)) * Poly([half])).truncated(k)
+        Some(Poly([T.zero for _ in 0..d / 2] + g.c))
 
     /// The value at `x` by Horner's rule.
     ///
@@ -881,13 +924,16 @@ pub struct Poly<T: Div>(pub c: List<T>):
         for i in (0..c.len).rev: acc = acc * x + c[i]
         acc
 
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
     /// The Taylor shift `self(x + c)`, as `taylor_shift`.
     ///
-    /// cost: \(O(n \log n)\)
-    /// traps: when `T` cannot divide by the factorials below `n` (`n > P` for `Mod<P>`)
+    /// cost: Horner over `x + c`: \(O(n^2)\); the free `taylor_shift` is \(O(n \log n)\)
+    /// traps: never
     /// example: `type Z = Mod<998244353>; Poly<Z>([0, 0, 1]).shift(Z(1)).at(1) == Z(2)`
-    pub fn shift(self, c: T) -> Poly<T> = todo
+    pub fn shift(self, c: T) -> Poly<T>:
+        let step = Poly([c, T.one])
+        var acc = Poly<T>.zero
+        for i in (0..self.len).rev: acc = acc * step + Poly([self.c[i]])
+        acc.truncated(self.len)
 
 impl Add for Poly<T>:
     fn add(a, b) = Poly([a.at(i) + b.at(i) for i in 0..max(a.len, b.len)])
@@ -899,12 +945,21 @@ impl Neg for Poly<T>:
     fn neg(a) = Poly([T.zero - a.at(i) for i in 0..a.len])
 
 impl Mul for Poly<T>:
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
-    fn mul(a, b) = todo
+    fn mul(a, b) = Poly(convolve(a.c, b.c))
 
 impl Div for Poly<T>:
-    // blocked: GAPS.md ntt `convolve` (no generic O(n log n) product over `T`)
-    fn div(a, b) = todo
+    fn div(a, b):
+        let db = b.deg()
+        assert db >= 0, "Poly division by the zero polynomial"
+        let da = a.deg()
+        if da < db: return Poly([])
+        var r = a.c
+        var q = List.filled(da - db + 1, T.zero)
+        for i in (0..=da - db).rev:
+            let f = r[i + db] / b.c[db]
+            q[i] = f
+            for j in 0..=db: r[i + j] = r[i + j] - f * b.c[j]
+        Poly(q)
 
 /// \(O(m \log^2 m)\) build. Prebuilt product tree over points `xs` for multipoint evaluation,
 /// transposed evaluation, and interpolation.

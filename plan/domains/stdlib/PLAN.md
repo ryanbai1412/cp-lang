@@ -43,6 +43,7 @@ W2 runs before W3 because writing bodies whose examples fail for a compiler reas
 
 ## General fixes owed
 
+- **`convolve`'s product is \(O(n m)\) for every `T`.** `Poly<T>` methods (`inv`, `log`, `exp`, `pow`, `sqrt`) run Newton over `*` = `convolve`, so they are \(O(n^2)\) where the free `List<Mod<P>>` functions are \(O(n \log n)\). General fix: `convolve` picks NTT / three-prime CRT / FFT by value type, as its doc promises, through an `if T: Trait` dispatch that user number types can join; then every `Poly` method gets \(O(n \log n)\) with no change (stdlib).
 - **A generic domain bound by a literal-sized table dimension is just `Int`** (5 `sparse.cp`
   `SparseTable2D` doc examples, `[2, 2] (r, c) => ..`): `R.K`, `R.first!` and `for r in R` need the
   size, which `Int` loses ("doesn't know the name `R`"). Works with declared domains. General fix:
