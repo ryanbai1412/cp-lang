@@ -258,15 +258,25 @@ pub struct Rooted<V, Pre>:
     /// with one child, `rest` is the identity. Prefix and suffix folds make it O(k) for `k`
     /// children.
     ///
-    ///     for (c, rest) in t.excl_fold(v, mul, c => down[c] + 1):
+    ///     for (c, rest) in t.excl_fold(v, *, c => down[c] + 1):
     ///         up[c] = (up[v] * rest + 1) % m
     ///
     /// cost: O(k) calls of `f` and of `op`, O(k) memory
     /// empty: nothing at a leaf
     /// order: child order
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.excl_fold(0, add, c => t.size(c)).collect() == [(c: 1, rest: 1), (c: 2, rest: 3)]`
-    pub fn excl_fold<T, M>(self, v: V, op: M, f: V -> T) -> yields (c: V, rest: T) = todo
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.excl_fold(0, +, c => t.size(c)).collect() == [(c: 1, rest: 1), (c: 2, rest: 3)]`
+    pub fn excl_fold<T, M>(self, v: V, op: M, f: V -> T) -> yields (c: V, rest: T):
+        let mon = Monoid<T>.of(op)
+        let g = mon.op
+        let k = k1[v] - k0[v]
+        let vals = [f(bfs[i]) for i in k0[v]..k1[v]]
+        var suf = List.filled(k + 1, mon.id)
+        for i in (0..k).rev: suf[i] = g(vals[i], suf[i + 1])
+        var pre = mon.id
+        for i in 0..k:
+            yield (c: bfs[k0[v] + i], rest: g(pre, suf[i + 1]))
+            pre = g(pre, vals[i])
 
     /// The number of edges between `v` and its root.
     ///
@@ -339,7 +349,7 @@ pub struct Rooted<V, Pre>:
     /// empty: never empty
     /// order: keyed by `V`
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.up(add, finish: (s, v) => s + 1) == [5, 3, 1, 1, 1]`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.up(+, finish: (s, v) => s + 1) == [5, 3, 1, 1, 1]`
     pub fn up<T, U, M>(
         self,
         op: M,
@@ -368,8 +378,8 @@ pub struct Rooted<V, Pre>:
     /// empty: never empty
     /// order: keyed by `V`
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reroot(add, lift: (x, c, p) => 1, finish: (s, v) => s) == [2, 3, 1, 1, 1]`
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reroot(add, finish: (s, v) => s + 1) == [5, 5, 5, 5, 5]`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reroot(+, lift: (x, c, p) => 1, finish: (s, v) => s) == [2, 3, 1, 1, 1]`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.reroot(+, finish: (s, v) => s + 1) == [5, 5, 5, 5, 5]`
     pub fn reroot<T, U, M>(
         self,
         op: M,
@@ -841,7 +851,7 @@ pub struct Rooted<V, Pre>:
     /// empty: never empty
     /// order: keyed by `V`
     /// traps: never
-    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.above(add, finish: (s, v) => s + 1) == [None, Some(2), Some(4), Some(4), Some(4)]`
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.above(+, finish: (s, v) => s + 1) == [None, Some(2), Some(4), Some(4), Some(4)]`
     pub fn above<T, U, M>(
         self,
         op: M,
@@ -1611,7 +1621,17 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
     pub fn new<M>(op: M, a: ?[V]T = None) -> LinkCut<V, T>:
         let m = Monoid<T>.of(op)
         let val = if let init = a: init else: [V] _ => m.id
-        LinkCut(m, [V] _ => None, [V] _ => None, [V] _ => None, [V] _ => false, val, val, [V] _ => 1, [])
+        LinkCut(
+            m,
+            [V] _ => None,
+            [V] _ => None,
+            [V] _ => None,
+            [V] _ => false,
+            val,
+            val,
+            [V] _ => 1,
+            [],
+        )
 
     fn top(self, x: V) -> Bool:
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
@@ -2170,7 +2190,12 @@ fn lazy_link_cut_matches_a_brute_forest():
     domain V = 1..=9
     var rng = Rng(11)
     var w = [V] _ => rng.int(-5, 5)
-    let add = Action<Int, Int>(0, (f, g) => f + g, (d, x, n) => x + d * n, Monoid<Int>(0, (a, b) => a + b))
+    let add = Action<Int, Int>(
+        0,
+        (f, g) => f + g,
+        (d, x, n) => x + d * n,
+        Monoid<Int>(0, (a, b) => a + b),
+    )
     var lct = LazyLinkCut<V, Int, Int>.new(add, Some(w))
     var adj: [V]List<V> = []
     for _ in 0..400:
@@ -2523,7 +2548,7 @@ pub struct LongPaths<V, L>:
     /// traps: unless `0 <= d <= height[v]`
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); let lp = t.long_paths(); lp.slot(1, 1) == lp.slot(3, 0) and lp.slot(0, 1) == lp.slot(1, 0)`
     pub fn slot(self, v: V, d: Int) -> L:
-        assert(0 <= d and d <= height[v])
+        assert (0 <= d and d <= height[v])
         L.nth(pos[v].to_idx + d)
 
 /// Lowest common ancestors in O(1) after O(n log n) preprocessing, by a sparse table over the
@@ -3167,7 +3192,7 @@ pub struct KruskalTree<V, N, W>:
     /// empty: never empty; every leaf has a value
     /// order: keyed by `N`
     /// traps: never
-    /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); let c = kt.up(add, leaf: v => 1); c[kt.reach(2, 3)] == 2 and c[kt.leaf[0]] == 1`
+    /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); let c = kt.up(+, leaf: v => 1); c[kt.reach(2, 3)] == 2 and c[kt.leaf[0]] == 1`
     pub fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T = todo
 
     /// The least possible largest edge weight on a path from `a` to `b`: the weight of their
@@ -3195,7 +3220,12 @@ pub struct KruskalTree<V, N, W>:
 /// ties: equal weights merge in edge key order, as `kruskal`
 /// traps: never
 /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); N.count == 5 and kt.bottleneck(0, 2) == Some(5)`
-pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (domain N, KruskalTree<V, N, W>):
+pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
+    domain N,
+    KruskalTree<V,
+    N,
+    W>,
+):
     var order = [e for e in E]
     order.sort(by: e => w(e))
     var dsu = Dsu<V>()
