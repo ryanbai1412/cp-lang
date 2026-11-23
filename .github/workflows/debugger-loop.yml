@@ -23,7 +23,7 @@ permissions:
 
 concurrency:
   group: debugger-loop-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 jobs:
   loop:

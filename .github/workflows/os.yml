@@ -5,8 +5,10 @@ name: os
 # the judges. A separate workflow, so its longer cold builds don't hold back
 # ci's result or the edge release that follows it.
 on:
-  push:
-    branches: [main]
+  # Every main push would queue a 30+ min run and starve ci of runners;
+  # the newest main is tested hourly instead.
+  schedule:
+    - cron: '23 * * * *'
   pull_request:
   # A lane can run some tests alone: `filter` is a nextest filterset, e.g.
   # `binary(debugger)`; infra dispatches it for lanes whose token can't.
@@ -21,7 +23,7 @@ permissions:
 
 concurrency:
   group: os-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  cancel-in-progress: true
 
 jobs:
   os:

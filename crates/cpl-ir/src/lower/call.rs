@@ -9381,7 +9381,7 @@ impl<'a> Lowerer<'a> {
                 if **inner != Ty::I128 =>
             {
                 // The new end is `shift` in from `lo` or from `hi`, and replaces `lo` or `hi`.
-                let (from_hi, cut_lo) = match &*method {
+                let (from_hi, cut_lo) = match method {
                     "drop" => (false, true),
                     "take" => (false, false),
                     "drop_last" => (true, false),
