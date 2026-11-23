@@ -808,12 +808,12 @@ impl<'a> Scanner<'a> {
         let inv_expr = if rhs_mod.is_some() {
             match &unparen(rhs).kind {
                 ExprKind::Name(_) | ExprKind::Field { .. } | ExprKind::Call { .. } => {
-                    format!("{rhs_text}.inv")
+                    format!("{rhs_text}.inv()")
                 }
-                _ => format!("({rhs_text}).inv"),
+                _ => format!("({rhs_text}).inv()"),
             }
         } else {
-            format!("{mty}({rhs_text}).inv")
+            format!("{mty}({rhs_text}).inv()")
         };
         let base_name = match &unparen(rhs).kind {
             ExprKind::Name(n) => format!("inv_{n}"),

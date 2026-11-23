@@ -10,12 +10,13 @@ use crate::{
     CEIL_DIV_FORMULA, CHMIN_CHMAX_IF, COMPOUND_SELF_REF, CONTAINS_THEN_ADD, COPY_COMPREHENSION,
     COUNTER_BY_MAP, FLOAT_EQUALITY, FLOAT_SQRT_FOR_INT, LAST_VIA_LEN, MANUAL_BIT_TEST,
     MANUAL_STARTS_WITH, MAP_AS_MULTISET, NEGATED_HEAP, NEG_MOD_FIXUP, PEEK_THEN_POP, POP_MIN_LOOP,
-    PUSH_POP_PAIR, REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP, UNPROVEN_LIST_INDEX,
+    POW_METHOD, PUSH_POP_PAIR, REVERSE_INDEX, SORT_FOR_EXTREME, STALE_ENTRY_SKIP,
+    UNPROVEN_LIST_INDEX,
 };
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 21] = [
+const TYPED: [cpl_diag::Code; 22] = [
     MANUAL_BIT_TEST.code,
     MANUAL_STARTS_WITH.code,
     LAST_VIA_LEN.code,
@@ -37,6 +38,7 @@ const TYPED: [cpl_diag::Code; 21] = [
     CONTAINS_THEN_ADD.code,
     COPY_COMPREHENSION.code,
     FLOAT_EQUALITY.code,
+    POW_METHOD.code,
 ];
 
 /// `diags` less the findings `analysis`'s facts rule out.
@@ -74,6 +76,7 @@ pub(crate) fn refine(diags: &mut Vec<Diagnostic>, src: &str) {
         None => diags.retain(|d| {
             d.code == UNPROVEN_LIST_INDEX.code
                 || d.code == FLOAT_EQUALITY.code
+                || d.code == POW_METHOD.code
                 || !TYPED.contains(&d.code)
         }),
     }
@@ -108,6 +111,14 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
     let label = || d.labels.first().map(|l| facts.place_type(l.span));
     match d.code {
         c if c == CHMIN_CHMAX_IF.code => scalar_place(d, facts),
+        // `**` is defined on numbers and `Mod`; a struct's own `pow` may
+        // have no `impl Pow` behind it.
+        c if c == POW_METHOD.code => match label() {
+            Some(Some(ty)) => {
+                ty.is_numeric() || matches!(ty, Ty::Named { name, .. } if name == "Mod")
+            }
+            _ => true,
+        },
         c if c == COMPOUND_SELF_REF.code => {
             let min_max = d
                 .fixes

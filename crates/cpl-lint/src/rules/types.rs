@@ -435,7 +435,8 @@ impl Visitor for Types<'_> {
                             span,
                             "power uses `**`, not `.pow(...)`",
                         )
-                        .with_help(format!("write `{replacement}`; `**` is the power operator, so there is no `.pow` to remember"));
+                        .with_help(format!("write `{replacement}`; `**` is the power operator, so there is no `.pow` to remember"))
+                        .with_label(base.span.shift(self.base), "the base");
                         diag.fixes.push(cpl_diag::Fix {
                             title: format!("replace with `{replacement}`"),
                             edits: vec![(span, replacement)],

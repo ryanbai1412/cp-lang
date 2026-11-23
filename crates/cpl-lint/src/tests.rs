@@ -1219,7 +1219,7 @@ fn loop_invariant_mod_div_hoists_inverse() {
     let after = fixed(basic);
     assert_eq!(
         after,
-        "type Z = Mod<998_244_353>\nlet d = Z(3)\nlet xs = [Z(1), Z(2)]\nvar ys = [Z(0), Z(0)]\nlet inv_d = d.inv\nfor i in 0..xs.len:\n    ys[i] = xs[i] * inv_d\nprint(ys)\n"
+        "type Z = Mod<998_244_353>\nlet d = Z(3)\nlet xs = [Z(1), Z(2)]\nvar ys = [Z(0), Z(0)]\nlet inv_d = d.inv()\nfor i in 0..xs.len:\n    ys[i] = xs[i] * inv_d\nprint(ys)\n"
     );
     assert_eq!(codes(&after), Vec::<&str>::new());
 
@@ -1227,7 +1227,7 @@ fn loop_invariant_mod_div_hoists_inverse() {
     assert_eq!(codes(assign), ["L0415"]);
     assert_eq!(
         fixed(assign),
-        "type Z = Mod<998_244_353>\nlet d = Z(5)\nvar xs = [Z(1), Z(2)]\nlet inv_d = d.inv\nfor i in 0..xs.len:\n    xs[i] *= inv_d\nprint(xs)\n"
+        "type Z = Mod<998_244_353>\nlet d = Z(5)\nvar xs = [Z(1), Z(2)]\nlet inv_d = d.inv()\nfor i in 0..xs.len:\n    xs[i] *= inv_d\nprint(xs)\n"
     );
 
     // Int literal divisor on Mod LHS hoists Z(2).inv once for multiple sites.
@@ -1235,7 +1235,7 @@ fn loop_invariant_mod_div_hoists_inverse() {
     assert_eq!(codes(int_lit), ["L0415", "L0415"]);
     assert_eq!(
         fixed(int_lit),
-        "type Z = Mod<998_244_353>\nvar a = [Z(1), Z(2)]\nvar b = [Z(3), Z(4)]\nlet inv_2 = Z(2).inv\nfor i in 0..a.len:\n    a[i] *= inv_2\n    b[i] *= inv_2\nprint(a, b)\n"
+        "type Z = Mod<998_244_353>\nvar a = [Z(1), Z(2)]\nvar b = [Z(3), Z(4)]\nlet inv_2 = Z(2).inv()\nfor i in 0..a.len:\n    a[i] *= inv_2\n    b[i] *= inv_2\nprint(a, b)\n"
     );
 
     // Guarded divisor warns but does not auto-fix (d may be zero).
@@ -1969,4 +1969,21 @@ fn chmin_chmax_needs_a_scalar() {
         .map(|d| d.span.text(src).trim().to_string())
         .collect();
     assert_eq!(found, ["if s < low: low = s"]);
+}
+
+#[test]
+fn pow_method_fix_needs_a_pow_operator() {
+    // tests/programs/user_pow_method.cp: a struct's own `pow` has no `impl Pow`
+    // behind it, so `p ** 3` would not check.
+    let src = concat!(
+        "struct P(c: Int):\n",
+        "    fn pow(self, k: Int) -> Int = self.c * k\n",
+        "print(P(c: 5).pow(3), (2).pow(10))\n",
+    );
+    let found: Vec<_> = lint(src, &all_on())
+        .into_iter()
+        .filter(|d| d.code == POW_METHOD.code)
+        .map(|d| d.span.text(src).to_string())
+        .collect();
+    assert_eq!(found, ["(2).pow(10)"]);
 }
