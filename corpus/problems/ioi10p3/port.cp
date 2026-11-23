@@ -1,5 +1,9 @@
-// IOI 2010 Quality of Living: an r x c grid holds each of 1..r*c once. Print
-// the smallest median of any h x w window (h and w odd).
+// Source: IOI 2010 P3 (Quality of Living), https://dmoj.ca/problem/ioi10p3
+// Problem: an r x c grid (r, c <= 3000) holds each of 1..r*c once. Print the smallest median of
+//   any h x w window (h <= r, w <= c, both odd). Input: r c h w, then the grid row by row.
+// Solution: binary search the answer x: some window has median <= x iff more than half its
+//   cells are <= x. Each check builds a 2D prefix sum of [rank <= x] and tests every h x w
+//   window in O(1): O(rc log(rc)) total.
 
 let (r, c, h, w): (1..=3000, 1..=3000, 1..=3000, 1..=3000) = read()
 domain Row = 0..r

@@ -1,4 +1,9 @@
-// Mock CCC '21 S2 (nccc8s2), runnable under proto/cp.py lib-run today
+// Source: Mock CCC '21 S2 (Colorful Strings), https://dmoj.ca/problem/nccc8s2
+// Problem: a lowercase string of length <= 1e5. Count, with multiplicity, its subsequences in
+//   which every letter appears at most once (the empty one included), mod 1e9 + 7.
+// Solution: each letter is either left out or taken from one of its cnt occurrences, so the
+//   answer is the product of (cnt[c] + 1) over the 26 letters. O(|s|).
+// Runnable under proto/cp.py lib-run today
 // (proto/cpc cannot iterate unknown-length Str). See ../nccc8s2.cp.
 // original: corpus/submissions/3381135.java
 

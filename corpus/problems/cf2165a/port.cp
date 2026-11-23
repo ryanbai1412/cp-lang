@@ -1,10 +1,9 @@
-// Codeforces 2165 A — Cyclic Merging
-//
-// Merging two adjacent elements `(x, y)` on the ring removes the smaller one
-// and pays `max(x, y)`. Merging elements in non-decreasing order eliminates
-// each non-maximum element into the smaller of its two remaining neighbors, so
-// every cyclic edge `(x, y)` pays `max(x, y)` exactly once except one edge
-// incident to the global maximum `a.max()`, which stays unmerged at the end.
+// Source: Codeforces 2165A (Cyclic Merging), https://codeforces.com/contest/2165/problem/A
+// Problem: n <= 2e5 values in 0..1e9 on a ring. Merging two adjacent x, y leaves max(x, y) and
+//   costs max(x, y); print the minimum total cost of n - 1 merges. Multitest, sum n <= 2e5.
+// Solution: each of the n ring edges (x, y) costs at least max(x, y) once, except that one edge
+//   at the global maximum is never paid; merging the smallest element into its smaller
+//   neighbour first achieves it. Answer: sum of max over cyclic adjacent pairs minus max(a), O(n).
 
 @!multitest
 let n: 2..=200_000 = read()
