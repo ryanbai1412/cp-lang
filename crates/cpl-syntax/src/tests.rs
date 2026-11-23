@@ -1652,13 +1652,13 @@ fn an_unclosed_paren_offers_each_closer_spot() {
         titles,
         [
             "insert `)`",
+            "insert `)` right after `(`",
             "insert `)` after `s`",
-            "insert `)` after `s.distinct()`",
-            "insert `)` right after `(`"
+            "insert `)` after `s.distinct()`"
         ]
     );
     let after_s = src.find("(s").unwrap() as u32 + 2;
-    assert_eq!(d.fixes[1].edits[0].0, cpl_diag::Span::point(after_s));
+    assert_eq!(d.fixes[2].edits[0].0, cpl_diag::Span::point(after_s));
     // Two unclosed openers need two closers: no single-spot candidates.
     let d = one_diag("let n = f(g(1\nprint(n)\n");
     assert_eq!(d.fixes.len(), 1, "{:?}", d.fixes);

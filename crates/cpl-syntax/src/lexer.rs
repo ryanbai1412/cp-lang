@@ -603,11 +603,11 @@ impl<'a> Lexer<'a> {
         Option::None
     }
 
-    /// Other places the closer may belong, nearest first, then the end of
-    /// the line, then right after the opener: before each `.name`, `,`,
-    /// `!` or binary operator at depth 0, as in `SuffixArray(s.distinct() + 1`,
-    /// or before the `:`, `=` or `=>` that ends the expression. Only types
-    /// can choose between them.
+    /// Other places the closer may belong, nearest first, ending with the
+    /// end of the line: right after the opener; before each `.name`, `,`,
+    /// `!`, `=>` or binary operator at depth 0, as in
+    /// `SuffixArray(s.distinct() + 1`; before the `:` or `=` that ends the
+    /// expression; inside a word for `[`. Only types can choose.
     fn closer_candidates(&self, opener: &Opener, close_at: usize) -> Vec<(usize, String)> {
         use TokenKind::*;
         let tokens = &self.out.tokens;
@@ -626,33 +626,53 @@ impl<'a> Lexer<'a> {
             }
         };
         let mut depth = 0usize;
-        let mut out = Vec::new();
-        for i in at + 2..tokens.len() {
+        let mut out = vec![(opener.span.end as usize, String::new())];
+        for i in at + 1..tokens.len() {
             let t = &tokens[i];
             if t.span.start as usize >= close_at {
                 break;
             }
+            let end = tokens[i - 1].span.end as usize;
+            let named_arg = tokens[i - 1].kind == Ident
+                && matches!(
+                    tokens.get(i.wrapping_sub(2)).map(|t| t.kind),
+                    Some(LParen | Comma)
+                );
             match t.kind {
                 LParen | LBracket | LBrace => depth += 1,
                 RParen | RBracket | RBrace => depth = depth.saturating_sub(1),
                 _ if depth > 0 => {}
-                Colon | Eq | OpEq | FatArrow | Arrow | In => {
-                    let end = tokens[i - 1].span.end as usize;
+                // `read<[nInt>()`: the `]` was dropped inside a word.
+                Ident | Int if opener.kind == LBracket => {
+                    let text = &self.src[t.span.start as usize..t.span.end as usize];
+                    let b = text.as_bytes();
+                    for j in 1..b.len() {
+                        let (x, y) = (b[j - 1], b[j]);
+                        if x.is_ascii_lowercase() && y.is_ascii_uppercase()
+                            || x.is_ascii_alphabetic() && y.is_ascii_digit()
+                            || x.is_ascii_digit() && y.is_ascii_alphabetic()
+                        {
+                            let at = t.span.start as usize + j;
+                            out.push((at, piece(at)));
+                        }
+                    }
+                }
+                _ if i == at + 1 => {}
+                Colon if named_arg => {}
+                // A match arm's pattern ends at `=>`; a lambda goes on.
+                FatArrow => out.push((end, piece(end))),
+                Colon | Eq | OpEq | Arrow | In => {
                     out.push((end, piece(end)));
                     return out;
                 }
                 Dot | Plus | Minus | Star | Slash | Percent | EqEq | NotEq | Lt | LtEq | Gt
                 | GtEq | Spaceship | DotDot | DotDotEq | And | Or | QuestionQuestion | Bang
-                | Comma => {
-                    let end = tokens[i - 1].span.end as usize;
-                    out.push((end, piece(end)));
-                }
+                | Comma => out.push((end, piece(end))),
                 _ => {}
             }
         }
         let end = tokens.last().map_or(close_at, |t| t.span.end as usize);
         out.push((end, piece(end)));
-        out.push((opener.span.end as usize, String::new()));
         out
     }
 
