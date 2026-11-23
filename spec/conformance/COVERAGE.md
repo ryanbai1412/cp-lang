@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2404 (995 passing). Rules: 559.
+Cases: 2405 (995 passing). Rules: 559.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 2404 (995 passing). Rules: 559.
 - R04b (04b-keys.md): 27 rules, 62 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 43 rules, 149 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 76 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 89 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 89 rules, 115 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 29 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 77 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -330,7 +330,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04b.1.5 [3+ 1-]: **An array can cover any run of keys.** `[r]T` for a range `r` of `K` is indexed by `K` an...
 - R04b.1.6 [4+ 0-]: To keep `w`'s keys, build a table over them: `[w.keys] k => w[k]`.
 - R04b.1.7 [6+ 3-]: `a.rekey(r)` is the inverse: the same cells re-keyed onto a range `r` of equal length, O(1...
-- R04b.1.8 [1+ 1-]: **Lint: literal index into a slice** (`w[0]`, `w[1]`). Suggests `w.first` or `w.nth(1)`.
+- R04b.1.8 [1+ 1-]: **Lint: literal index into a slice or a reversed view** (`w[0]`, `w[1]`, `a.sorted().rev[0...
 - R04b.1.9 [1+ 1-]: **Lint: 0-based counter used as a slice key** (`for k in 0..w.len: w[k]`). Suggests `w.ite...
 - R04b.1.10 [1+ 3-]: **Trap: an out-of-keys read.** The message names the key range, e.g. "`w` has keys 3..7 (i...
 - R04b.1.11 [4+ 1-]: **Compile error: a raw `Int` used to index a domain slice**, as before.
@@ -461,7 +461,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.4.4 [2+ 1-]: **Materializing counts from 0:** `.collect()`, `.sorted()`, `List(w)` and `Str(w)` build a...
 - R07.4.5 [1+ 3-]: **Lints:** a literal index into a slice (`w[0]`), and a 0-based counter used as a slice ke...
 - R07.4.6 [1+ 1-]: | `a[r]` (`r: Range<D>`; `a[j..i]` with cut ends is the piece) | `D`, only inside `r` | `r...
-- R07.4.7 [1+ 0-]: | `a.rev` | `D` | backwards | O(1)
+- R07.4.7 [2+ 0-]: | `a.rev` | `D` | backwards | O(1)
 - R07.4.8 [1+ 0-]: | `a.items` | `D`, gives `(i, a[i])` | in order | O(1)
 - R07.4.9 [3+ 0-]: | `a.map(f)` | `D`, gives `f(a[i])`, calling `f` on every read | in order | O(1); `f` per ...
 - R07.4.10 [1+ 1-]: | `zip(a, b)` | `a`'s keys, pairing by walk order: the k-th of `a` with the k-th of `b` | ...
@@ -828,7 +828,7 @@ prepends it.
 - 04-indices.md: 7 blocks, 3 with a case, 3 spec-only, 1 neither
   - line 247: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
 - 04b-keys.md: 13 blocks, 8 with a case, 4 spec-only, 1 neither
-  - line 165: `let t = s[l..r].rebase`
+  - line 166: `let t = s[l..r].rebase`
 - 05-ownership.md: 56 blocks, 54 with a case, 2 spec-only, 0 neither
 - 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
 - 07-sequences.md: 7 blocks, 1 with a case, 6 spec-only, 0 neither

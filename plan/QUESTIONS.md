@@ -91,6 +91,12 @@ Recommendation: (b) as the gate, (a) as a regression check.
 How to reverse it: gate on (a) only.
 Meanwhile: report both; gate on (a) until the first fresh set exists.
 
+### spec: should `.rev` keep its source's keys?
+Options: (a) keep keys, as spec says today (07: "a.rev[i] is still a[i]"; R07.4.7): `let b = xs.sorted().rev` then `b[0]` is the minimum and `b.nth(0)` the maximum, the same rule as slices (`s[2..5][3] is s[3]`) and range keys (decision 289); (b) `.rev` re-keys from 0, so `b[0]` is the maximum, and `.rev` stops being a keyed view of its source (a `Rev` of a `[V]T` could no longer be indexed by `V`). Evidence: acceptance run 2026-11-23 cf2285C printed 65 instead of 1000000000 from `b = xs.sorted().rev; b[0]` (plan/product/BLOCKERS.md #2).
+Recommendation: (a) plus lint R04b.1.8 extended to reversed views (`a.rev[0]` warns, suggesting `nth(0)` or `last`), so the newcomer's bug gets caught where it is written. (b) breaks the one rule "views keep keys" that slices, `rev`, `map` and `zip` share.
+How to reverse it: (b) changes R07.4.7 and the `.rev` getter in `std/seq.cp`; case `core-07/rev-keeps-keys.cp` flips.
+Meanwhile: (a); lint extension requested from lint-fmt.
+
 ## Answered
 
 ### tech-debt: which names may the compiler know (the builtin floor)?
