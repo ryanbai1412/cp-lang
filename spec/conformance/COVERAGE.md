@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 2559 (995 passing). Rules: 567.
+Cases: 2560 (995 passing). Rules: 567.
 
 ## Summary per chapter
 
@@ -20,7 +20,7 @@ Cases: 2559 (995 passing). Rules: 567.
 - R05 (05-ownership.md): 43 rules, 154 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 24 rules, 88 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 90 rules, 138 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 29 rules, 85 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 29 rules, 86 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 26 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 18 rules, 91 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 44 cases; 0 uncovered, 0 happy-path only, 1 negative only
@@ -541,7 +541,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R08.2.6 [1+ 1-]: **Trait aliases** name a bundle of bounds: `trait WeightedNext<V, W> = Next<V> where Arc: ...
 - R08.2.7 [1+ 0-]: **Associated types** are reached through the implementing type or a value: `S.Item`, `g.Ar...
 - R08.2.8 [1+ 0-]: Return-type dispatch: a call may be resolved by its expected type (`read<T>()`).
-- R08.2.9 [6+ 0-]: **Conditional code** on a bound: `if T: Commutative: ... else: ...` chooses at compile tim...
+- R08.2.9 [7+ 0-]: **Conditional code** on a bound: `if T: Commutative: ... else: ...` chooses at compile tim...
 - R08.3.1 [1+ 1-]: A `law` is a Boolean property of a trait's operations. Implementing a trait promises its l...
 - R08.3.2 [1+ 0-]: Laws are never assumed by the type checker. They select documented, answer-preserving spec...
 - R08.3.3 [1+ 0-]: `cpl stress` samples laws on the values a program actually builds; `laws_hold(op, samples)...
@@ -932,8 +932,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `CostFlow.potentials`, `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (153/160 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (111/123 named by a case)
-  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `TwoSat.add_or`, `Complement`
+- **graph** (113/124 named by a case)
+  - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `TwoSat.add_or`, `Complement`
 - **grid** (27/27 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
@@ -975,7 +975,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2175 of 2306 std items are named by a case.
+2177 of 2307 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

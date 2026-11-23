@@ -39,11 +39,11 @@ A graph whose arcs carry weights: shortest paths, MST over arcs, DAG folds.
 
 A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 
-## `struct Reweighted<G, F>`
+## `struct Reweighted<V, E, A, W>(g: Graph<V, A>, f: A -> W)`
 
 O(1) per arc read: `g.weighted(f)`, the arcs of `g` with `.w` read as `f(a)` (or `f(u, a)`), `.to` and `.e` passed through.
 
-Fields: `g: G`, `f: F`.
+- `fn out(self, u: V) -> yields (to: V, e: E, w: W)` — \(O(1)\) per arc plus one call of `f`; The arcs out of `u` as `(to:, e:, w: f(a))`.
 
 ## `struct Graph<V: Domain, A: Target<V>>`
 
@@ -58,7 +58,7 @@ O(n + m) memory and build.
 - `fn deg(self, u: V) -> Int` — O(1); The number of arcs out of `u`.
 - `fn next(self, u: V) -> yields V` — O(1) per vertex yielded; Where `u`'s arcs lead: `out(u)` mapped to `.to`, repeats kept.
 - `fn only(self, keep: V -> Bool = v => true, from: V -> Bool = v => true) -> Only<V, Self>` — O(1) to make; `keep` and `from` run per arc walked; The induced view on the vertices `keep` accepts: arcs from or to a rejected vertex are skipped.
-- `fn weighted<W>(self, f: A -> W) -> lends Reweighted<Graph<V, A>, A -> W>` — O(1) to make; `f` runs on every arc read; The same graph with each arc's `.w` read as `f(a)`; `.to` and `.e` pass through, so it is a `WeightedNext` and stays `Edged`.
+- `fn weighted<E, W>(self, f: A -> W) -> Reweighted<V, E, A, W> where A: Edged<E>` — O(1) to make; `f` runs on every arc read; The same graph with each arc's `.w` read as `f(a)`; `.to` and `.e` pass through, so it is a `WeightedNext` and stays `Edged`.
 - `fn has(self, u: V, v: V) -> Bool` — O(deg u); True when some arc `u -> v` exists.
 - `fn lists(self) -> [V]List<V>` — O(n + m); The targets of every vertex as plain lists, `lists()[u] == next(u).collect()`: the shape `std.flow` matchings take.
 - `fn hops(self) -> [V, V]Int` — O(n (n + m)) time, O(n^2) memory; The fewest arcs between every ordered pair, by a BFS from each vertex; `0` on the diagonal.; traps: when some vertex cannot reach another
