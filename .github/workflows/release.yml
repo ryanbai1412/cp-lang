@@ -39,7 +39,7 @@ concurrency:
 
 jobs:
   plan:
-    if: github.event_name != 'workflow_run' || ((github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure') && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
+    if: github.event_name != 'workflow_run' || ((github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled') && (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch'))
     runs-on: ubuntu-latest
     outputs:
       go: ${{ steps.green.outputs.go }}
@@ -68,8 +68,8 @@ jobs:
             workflow_run)
               sha=$RUN_SHA
               if [ "$RUN_CONCLUSION" != success ]; then
-                # Red CI: GitHub drops most hourly crons on this repo, so a
-                # red run ships the newest shippable commit instead
+                # Red or superseded CI: GitHub drops most hourly crons on this
+                # repo, so such a run ships the newest shippable commit instead
                 # (decision 408), at most once an hour and one at a time.
                 last=$(gh release view edge -R "$GITHUB_REPOSITORY" --json publishedAt --jq .publishedAt 2>/dev/null || true)
                 age=$(( $(date +%s) - $(date -d "${last:-1970-01-01T00:00:00Z}" +%s) ))
