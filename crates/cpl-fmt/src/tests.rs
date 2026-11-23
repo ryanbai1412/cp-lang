@@ -850,3 +850,55 @@ fn a_comment_deep_in_brackets_keeps_them_open() {
         );
     }
 }
+
+/// Spacing decided by a token's role (sign, generic, `!in`, `?`, member,
+/// word operator) comes back the same when every gap is widened.
+/// Rule: `lints/R22`.
+#[test]
+fn spacing_by_role_survives_widened_gaps() {
+    for line in [
+        "let x = 1 - - - 2",
+        "var b: [0..3]-5..=5 = 0",
+        "let z = 3 !in xs",
+        "let t: ?Int = none",
+        "let u = a ?b",
+        "fn f<T>(x: T) -> T: x",
+        "let p = read<(Int, Int)>()",
+        "let q = f<[Int]>(xs)",
+        "let r: Map<Int, List<Int>> = Map()",
+        "let s = a < (b) > c",
+        "let v = a < b and c > (d)",
+        "let e = {}",
+        "let g = [I] i => i.idx",
+        "let h = [i for i in 0..n by 2]",
+        "let k = t.0 + a.b",
+        "let m = x if c else y",
+        "let o = -(-x)",
+        "let o3 = f<Int>(3) + g < h",
+        "let y = 1 -- -2",
+        "let y2 = 1 - - -2",
+        "let u = f(x)?",
+        "let t: List<?Int> = []",
+        "let t2: [?Int]Int = 0",
+    ] {
+        let src = format!("{line}\n");
+        assert_eq!(fmt(&src), src, "not canonical: {line}");
+        let wide = src.replace(' ', "  ");
+        assert_eq!(fmt(&wide), src, "widened: {wide}");
+    }
+}
+
+/// A sign after a type, a sign after a sign, a `!` that is not `!in`, and
+/// a `<` that opens the file each get the spacing their role asks for.
+/// Rule: `lints/R22`.
+#[test]
+fn spacing_by_role_from_misspaced_input() {
+    for (src, want) in [
+        ("var b: [ 3 ]-5..=5 = 0", "var b: [3]-5..=5 = 0"),
+        ("let x = 1 - + - 2", "let x = 1 - +-2"),
+        ("let w = a !b", "let w = a! b"),
+        ("<a", "< a"),
+    ] {
+        assert_eq!(fmt(&format!("{src}\n")), format!("{want}\n"), "{src}");
+    }
+}

@@ -176,8 +176,8 @@ pub(crate) fn roles(toks: &[Tok]) -> Vec<Role> {
             K::Question => Role::Postfix,
             K::Lt => {
                 let tight_after = toks.get(i + 1).is_some_and(|next| !next.space_before);
-                let declares = i >= 2 && toks[i - 1].kind == K::Ident && toks[i - 2].kind == K::Fn
-                    || i >= 1 && toks[i - 1].kind == K::Impl;
+                // `fn f<T>(` is a generic call's shape, so only `impl<` needs naming.
+                let declares = i >= 1 && toks[i - 1].kind == K::Impl;
                 let generic_call = i > 0
                     && toks[i - 1].kind == K::Ident
                     && !tok.space_before
