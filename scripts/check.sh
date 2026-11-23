@@ -584,6 +584,9 @@ derived() {
 step "bundled skill (scripts/skill-gen.py --check)"
 uv run python scripts/skill-gen.py --check --cpl "$cpl" \
     || derived "bundled skill check failed; rerun: uv run python scripts/skill-gen.py, then with --check"
+step "skill prose uses current spellings (scripts/skill-prose.py)"
+uv run --quiet python scripts/skill-prose.py --cpl "$cpl" \
+    || fail "inline code in the skill's prose uses a removed spelling; the finding above names the span and its current form"
 
 step "conformance coverage: COVERAGE.md current, no new rule gaps"
 uv run scripts/conformance-coverage.py --check ||
