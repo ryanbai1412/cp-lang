@@ -1,0 +1,1 @@
+`pow_mod(a, P - 2, P)` is Fermat's little theorem written out: the inverse of `a` modulo a prime `P`. It is right only when `P` is prime and `a` is not a multiple of `P`, and every product around it still needs its own `% P`. `type Z = Mod<P>` (`std.mod`) computes in the residues: `Z(a).inv()` is the inverse, it traps when `a` has none, and `*`, `+` and `-` reduce on their own.

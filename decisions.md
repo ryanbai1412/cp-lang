@@ -7358,3 +7358,14 @@ keeps it only on a `List` or an array. Matching `sorted`, `first`,
 `--update lint_std_names` moves 165 -> 171; resolving std items by
 symbol stays the general fix owed with lint-fmt. Reverse: delete
 `spec/lints/sort_for_extreme/` and `rules/extreme.rs`.
+
+## 341. `pow_mod(a, P - 2, P)` with a constant `P` teaches `Mod<P>.inv()`: L0573 `fermat_inverse`; `lint_std_names` 171 -> 172 (2026-11-23)
+
+Fermat's inverse by hand is right only for a prime modulus and leaves
+every product around it to reduce by hand; `type Z = Mod<P>` has it as
+`Z(a).inv()`. L0573 fires only when the modulus is a literal or an
+uppercase `const`, since `Mod<P>` needs a compile-time `P`: `std/ntt.cp`'s
+runtime `p` stays quiet. No fix, because the type declaration and every
+use change. Matching `pow_mod` by name moves `--update lint_std_names`
+171 -> 172. Reverse: delete `spec/lints/fermat_inverse/` and
+`rules/fermat.rs`.

@@ -1,0 +1,5 @@
+code = "L0573"
+level = "warn"
+group = "idiom"
+title = "Modular inverse by Fermat, by hand"
+summary = "`pow_mod(a, P - 2, P)`: `Mod<P>` (`std.mod`) and `Z(a).inv()`"
