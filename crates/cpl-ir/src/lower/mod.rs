@@ -3484,6 +3484,7 @@ impl<'a> Lowerer<'a> {
                     Vec::new()
                 }
             };
+            let span = self.span(at);
             self.offset = item_offset;
             let ret = self.ret_of(fn_id, Span::default());
             let call = Expr {
@@ -3499,6 +3500,17 @@ impl<'a> Lowerer<'a> {
                     Span::default(),
                 );
                 out.push(Stmt::Expr(print));
+            } else if self.aside == Some(Aside::Checker) && call.ty == Ty::Bool {
+                // `@check fn ok() -> Bool` rejects by returning `false`, as a failing
+                // `assert` does. Not an `assert`: its report would run the fn again.
+                let rejected = format!("`{name}()` returned false: the check rejects this output");
+                out.push(Stmt::If(
+                    call,
+                    Block { stmts: Vec::new() },
+                    Block {
+                        stmts: vec![Stmt::Trap(rejected, span)],
+                    },
+                ));
             } else {
                 out.push(Stmt::Expr(call));
             }

@@ -942,6 +942,32 @@ fn stress_traces_the_failing_test_case_of_a_file_judged_by_its_checker() {
     );
 }
 
+/// A `@check fn ok() -> Bool` that returns `false` rejects, as a failing
+/// `assert` does, and one that returns `true` accepts a differing answer.
+#[test]
+fn test_judges_with_a_check_that_returns_a_bool() {
+    let source = "let n: Int = read()\nprint(n - 1)\n\n@check\nfn ok() -> Bool:\n    let n: Int = read()\n    let out: Int = read_output()\n    out < n\n";
+    let path = scratch("check-bool", "a.cp", source.as_bytes());
+    let tests = path.with_extension("tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    std::fs::write(tests.join("1.in"), "5\n").unwrap();
+    std::fs::write(tests.join("1.out"), "0\n").unwrap();
+    let out = cpl(&["test".as_ref(), path.as_os_str()], b"");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        out.status.success() && stdout.contains("1/1 passed"),
+        "{stdout}"
+    );
+    std::fs::write(&path, source.replace("out < n", "out > n")).unwrap();
+    let out = cpl(&["test".as_ref(), path.as_os_str()], b"");
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    assert!(
+        !out.status.success()
+            && stdout.contains("checker: `ok()` returned false: the check rejects this output"),
+        "{stdout}"
+    );
+}
+
 /// `cpl build --checked` stops on what `cpl run` stops on, where the
 /// sanitizers alone would go on with a wrong value: an `I128` shifted past
 /// its top, a negative power, a `U64` divided by zero.
