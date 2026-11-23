@@ -1,5 +1,13 @@
 import random, sys
 
+if sys.argv[1] == "--max":
+    # One test at the limit (the sums of n and of m over tests are at most 500). Values
+    # in [-10**6, 0] make every element its own cool segment, the heaviest shape tried.
+    r = random.Random(0)
+    print(1); print(500, 500)
+    print(*[r.randint(-10**6, 0) for _ in range(500)])
+    print(*[r.randint(-10**6, 0) for _ in range(500)])
+    sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 t = rng.randint(1, 5)

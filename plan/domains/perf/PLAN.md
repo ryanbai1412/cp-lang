@@ -76,6 +76,7 @@ Local fixes that landed, and the mechanism that would remove the whole class.
 | cf2183e: `cpl bench` derived five tests of `m = 3000`, past the statement's sum of `m` <= 3000 | derived inputs honor per-file sum constraints declared on multitest reads; meanwhile gen.py `--max` | tools |
 | bench/v03_perf_bench.py wrote `out_o.txt`/`out_p.txt` in the shared cache, so two concurrent benches compared each other's output (spurious `tuned output differs`) | per-process output files (done here) | perf |
 | cf2115c: tuned perf.cp double-buffers the round DP and swaps (0.74x); port.cp's `dp = step(dp)` through `diagonal` builds a fresh `[0..=shines, 0..n]F64` each of ~m rounds (1.363x) | a call whose result replaces the argument it consumed (`x = f(x)` with `f` building a same-shape fixed array) writes into a reused buffer: codegen passes the old storage as the destination, as swap-based C++ does | perf |
+| cf2066f: `cpl bench` derived five tests of n = m = 500, past the statement's sums <= 500 (port 1.21x there); gen.py `--max` now emits one valid test. Tuned perf.cp lays `came` out `[Seg.cuts, Bool, PosB.cuts]` (1.105x, still over 1.1x); `perf record` puts 24% of port.cp in the per-call `Grid<OptField<&Back::from>>` fill | a fixed array of a niche optional fills with `memset` when its empty pattern is one repeated byte, and a per-call `var` grid of a fixed shape reuses its storage across calls | perf (fill), tools (sum-bounded derived inputs, filed above) |
 
 ## Next
 
