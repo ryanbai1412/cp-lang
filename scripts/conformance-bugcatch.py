@@ -64,7 +64,7 @@ def broken(base, got):
 
 
 def run_suite(wt, env, board):
-    build = subprocess.run(["cargo", "build", "--release", "-q", "-p", "cpl-conform"], cwd=wt, env=env,
+    build = subprocess.run(["cargo", "build", "--release", "-q", "-p", "cpl-conform", "-p", "cpl-cli"], cwd=wt, env=env,
                            capture_output=True, text=True, check=False)
     if build.returncode:
         return None
