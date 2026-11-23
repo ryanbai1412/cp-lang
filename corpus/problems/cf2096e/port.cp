@@ -1,16 +1,12 @@
-// Codeforces 2096 E — Wonderful Teddy Bears
-//
-// Sort `'B'`s before `'P'`s using length-3 block swaps (which move a `'B'`
-// left by 2, removing 2 inversions while preserving every character's index
-// parity) and adjacent swaps (removing 1 inversion and flipping parity).
-//
-// Scanning `s` in reverse (`i = 0..n` from the right), `cnt_b` counts `'B'`s
-// to the right of the current position, so each `'P'` adds `cnt_b` inversions
-// to `inv`. In the sorted target, the `n - cnt_b` `'P'`s occupy reversed
-// indices `0..(n - cnt_b)`, of which `(n - cnt_b) / 2` are odd. Hence
-// `parity_fix = abs(cnt_p_odd - (n - cnt_b) / 2)` single-step swaps are forced,
-// and the remaining `inv - parity_fix` inversions pair into length-3 swaps,
-// giving `parity_fix + (inv - parity_fix) / 2 = (inv + parity_fix) / 2` moves.
+// Source: Codeforces 2096E (Wonderful Teddy Bears), https://codeforces.com/contest/2096/problem/E
+// Problem: a row of n bears, black (B) or pink (P). One move sorts three consecutive bears so the
+//   B's come first. Print the fewest moves that put every B before every P. Multitest, sum of
+//   n <= 2e5.
+// Solution: a move removes at most 2 inversions (P before B); removing 2 moves one bear by 2 and
+//   keeps every bear's index parity, removing 1 is an adjacent swap that changes the number of P's
+//   on odd indices by one. With D = |P's on odd indices - odd indices among the final P slots| the
+//   answer is D + (inv - D) / 2 = (inv + D) / 2. One scan from the right counts the inversions and
+//   the P's on odd indices (both counted from the right end). O(n).
 
 @!multitest
 let n: 1..=200_000 = read()

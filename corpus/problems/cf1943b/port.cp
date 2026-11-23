@@ -1,12 +1,12 @@
-// Codeforces 1943 B: Non-Palindromic Substring.
-//
-// t = s[l..=r] of length m is k-good when some length-k window of t is not a
-// palindrome; the answer is the sum of the good k. Length 1 is never good and
-// length m is good iff t is not a palindrome. For 2 <= k < m, every length-k
-// window is a palindrome iff t has period 2 (k odd) or period 1 (k even):
-// two overlapping palindromic windows reflect t[i] onto t[i + 2] (resp.
-// t[i + 1]). Each query is two period tests, one palindrome test and two
-// arithmetic series, all O(1).
+// Source: Codeforces 1943B (Non-Palindromic Substring),
+//   https://codeforces.com/contest/1943/problem/B
+// Problem: t is k-good if some length-k substring of t is not a palindrome; f(t) sums the good k.
+//   For a string s (n <= 2e5) answer q <= 2e5 queries f(s[l..=r]), l < r. Multitest, sums <= 2e5.
+// Solution: k = 1 is never good and k = m = |t| is good iff t is not a palindrome. For 2 <= k < m,
+//   all length-k windows are palindromes iff t has period 2 (k odd) or period 1 (k even): two
+//   overlapping palindromic windows reflect t[i] onto t[i + 2] (resp. t[i + 1]). Prefix counts of
+//   s[i] != s[i - d] test the periods, Manacher the palindrome, and the good k form two arithmetic
+//   series: O(n) setup, O(1) per query.
 @!multitest
 use std.strings.{manacher}
 

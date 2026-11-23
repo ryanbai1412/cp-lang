@@ -1,8 +1,13 @@
-// Codeforces 2062 F: with x = (a + b) / 2 and y = (a - b) / 2, the road i-j costs x_i + x_j + |y_i - y_j|.
-// A path pays x twice per inner city and once per end, and its y cost is twice its y-span less what the
-// two ends cut off; in y order each chosen city takes one role: the lowest (2b, or b if it is also an end),
-// a middle (a + b), an end (a or b by side) or the highest (2a, or a if an end). The DP over cities in
-// y order tracks how many are chosen and which roles are filled.
+// Source: Codeforces 2062F (Traveling Salescat), https://codeforces.com/contest/2062/problem/F
+// Problem: n <= 3000 cities with 0 <= a_i, b_i <= 1e9; the road i-j has length
+//   max(a_i + b_j, b_i + a_j). For each k = 2..n print the least cost of a simple path through
+//   exactly k cities. Multitest, sum of n^2 <= 9e6.
+// Solution: with x = (a + b) / 2 and y = (a - b) / 2 the road costs x_i + x_j + |y_i - y_j|.
+//   A path pays x twice per inner city and once per end; its least y cost is twice its y-span
+//   less the y gap of its two ends. So in y order each chosen city pays by role: the lowest 2b
+//   (b if also an end), a middle a + b, an end a or b by side, the highest 2a (a if also an end).
+//   DP over cities in y order on (cities chosen, roles filled: 5 stages) with 9 role transitions:
+//   O(n^2) per test.
 @!multitest
 let n: 2..=3000 = read()
 domain Stage = 0..5

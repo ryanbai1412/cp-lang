@@ -1,4 +1,10 @@
-// cp: 0.1 8ef64b9+dirty
+// Source: CCC 2023 S4 (Minimum Cost Roads), https://dmoj.ca/problem/ccc23s4
+// Problem: N, M <= 2000; road i joins u_i, v_i with length l_i <= 1e9 and cost c_i <= 1e9.
+//   Keep a subset of roads of least total cost such that every pair of intersections keeps its
+//   shortest distance. Print that cost.
+// Solution: take roads by (length, cost); keep a road iff the kept roads do not already join its
+//   ends within its length (a Dijkstra from one end over the kept graph). Shorter roads never
+//   need longer ones, so this is exact. O(M (N + M) log N).
 let n: 1..=2000 = read()
 let m: 1..=2000 = read()
 domain V = 1..=n

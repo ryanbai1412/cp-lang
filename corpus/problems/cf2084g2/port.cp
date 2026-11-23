@@ -1,6 +1,15 @@
-// Codeforces 2084 G2: Wish Upon a Satellite (Hard Version).
-// dp(c) over the number of evens c is concave: each step adds the quadratic
-// gain, and a free value takes max(dp(c), dp(c - 1)), a 0 slope merged in.
+// Source: Codeforces 2084G2 (Wish Upon a Satellite, Hard Version),
+//   https://codeforces.com/contest/2084/problem/G2
+// Problem: f(c) is the end value of a game on c: players alternately merge two adjacent entries,
+//   Turtle (first, maximising) into their min, Piggy (minimising) into their max, until one is
+//   left. The beauty of a permutation sums f over all subsegments. Fill the zeros of a partial
+//   permutation of n <= 5e5 to maximise the beauty; print it. Multitest, sum of n <= 5e5.
+// Solution: the beauty depends only on which values sit at even positions: it is
+//   (n(n+1)^2/2 + sum over k of gain(k, c)) / 2, where c counts the values <= k at even positions
+//   and gain is (evens - odds among values <= k) * (evens - odds among values > k). Place values
+//   1..n in order; dp(c) is concave: each step adds the concave quadratic gain(k, .), then a free
+//   value takes max(dp(c), dp(c - 1)) (max-convolve with a flat 0..=1) and a fixed one shifts by
+//   its parity. Slope trick (Concave, a lazy treap of slopes): O(n log n); answer at c = n / 2.
 @!multitest
 use std.slope.{Concave}
 

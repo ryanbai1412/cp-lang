@@ -1,6 +1,9 @@
-// Runnable today/ port of CCC '96 S3 (Pattern Generator) for proto/cpc.
-// Uses List<Char> (which prints with zero separators) and recursive backtracking
-// matching the v2.1 block-scoped defer solution.
+// Source: CCC 1996 S3 (Pattern Generator), https://dmoj.ca/problem/ccc96s3
+// Problem: for each of several pairs n, k (n <= 30, k < 8), print "The bit patterns are" and then
+//   all length-n bit patterns with k ones in descending binary order; blank line between cases.
+// Solution: backtracking that places a 1 before a 0 at each position, so patterns come out in
+//   descending order, and only while the remaining ones fit: O(C(n, k) * n) per case.
+// List<Char> prints with no separators, so `print(cur)` writes the pattern.
 // original: corpus/submissions/5515585.cpp
 
 fn main_solve():

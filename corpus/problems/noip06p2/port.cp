@@ -1,7 +1,10 @@
-// NOIP 2006 Jinming's Budget: buy items within a budget to maximise the sum
-// of price * importance; an accessory may only be bought with its main item.
-// Each main item becomes a group of bundles (itself plus any set of its
-// accessories), and the groups go through a 0/1 knapsack.
+// Source: NOIP 2006 Senior P2 (Jinming's Budget Plan), Luogu P1064 (not on DMOJ)
+// Problem: budget n <= 32000, m <= 60 items with price <= 1e4, importance 1..5 and a main item
+//   (0 if it is a main item; a main item has at most 2 accessories). An accessory can be bought
+//   only with its main item. Print the largest sum of price * importance within the budget.
+// Solution: each main item and its accessories form a group whose options are the main item plus
+//   any subset of its accessories (at most 4); a grouped 0/1 knapsack over money, descending,
+//   takes at most one option per group: O(n * m * 4).
 let budget: 1..=32000 = read()
 let n: 1..=60 = read()
 domain Item = 1..=n

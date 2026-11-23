@@ -1,6 +1,10 @@
-// CCC 2022 S4 Good Triplets: n points sit on c evenly spaced spots of a
-// circle. Count the triples of points whose triangle has the centre strictly
-// inside.
+// Source: CCC 2022 S4 (Good Triplets), https://dmoj.ca/problem/ccc22s4
+// Problem: N <= 1e6 points at integer spots 0..C-1 (C <= 1e6, repeats allowed) of a circle of
+//   circumference C. Count the triples of points whose triangle has the centre strictly inside.
+// Solution: count the complement: a triple is bad iff it fits in a closed half circle. Charge it
+//   to its first spot clockwise; the other two are there or within the next C / 2 spots, kept as
+//   a sliding count. For even C, a triple with two points at one end of a diameter and one at the
+//   other was charged at both ends, so subtract it once. O(N + C).
 use std.math.{choose}
 
 let (n, c): (3..=1e6, 3..=1e6) = read()
