@@ -65,6 +65,60 @@ pub fn argmin<S: Keyed, K, T: Ord>(self: S) -> ?K
 program. Each `example:` runs as a test. The full rules are in
 [std-docs.md](../guidelines/std-docs.md).
 
+## Why it looks this way
+
+Each paragraph is one call the spec relies on, with what it beat. The full
+record, and how to reverse each, is the numbered entry in `decisions.md`.
+
+**One definition per job, over every sequence.** Sequence fns take
+`self: [D]T` when they read by index, so one `runs` serves a `List<T>`, a
+`[V]T` and a `Str`, and keeps `D` in what it returns (`?D`, `Range<D>`).
+Pieces come back as ranges, not copied lists: a `List` per run made
+`runs_by` 50x slower than a hand loop (decision 41). The stdlib surface
+keeps names that already read the same everywhere, such as `first_ge` and
+`last_le`, and `Mod<P>`, over respellings the core can't express without
+overloading on argument labels (decision 26).
+
+**The element type picks the algorithm, never a suffix.** Real-valued
+searches are the integer ones on a `Range<F64>`:
+`(0.0..1e9).bsearch(ok, steps: 100)`, `.peak(by: f, steps:)`,
+`.valley(by: f, steps:)`. `bsearch_real` and `ternary_*_real` lost because a
+type-named variant is three more names for the same idea (decision 419).
+Interval DP is a table over `V.ranges`, whose keys are non-empty, so
+`r.first` is a `V` and not a `?V`; a hand-built `[V, V.cuts]` table wasted
+half its cells and left `l <= r` unchecked (decision 322).
+
+**A structure with a different invariant is a different type.**
+`DualSegTree` (range apply, point get) and `DualFenwick` are their own
+types rather than modes, because a mode would let you call `sum(r)` on a
+difference array and get nonsense (decision 42). The slope trick is
+`std.slope.Concave` and `Convex`, whose methods name the recurrence
+(`max_convolve`, `add_quadratic`), not a treap with hand-written lambdas
+every port rewrote (decision 81). A second algorithm for the same answer is
+a second method named after it: `FlowGraph.push_relabel` beside `max_flow`,
+like `dijkstra` beside `bellman_ford`. An `algo:` option lost because every
+program then carried the unused solver into its C++ (decision 112).
+
+**The obvious spelling is the fast one.** `Map<K, V>` is the lookup table;
+when nothing observes its order, the C++ is a salted hash table, so
+`HashMap` is only for a program that wants hashing regardless
+(decision 231). `s.range(2..)` on a `SortedSet` or `SortedBag` is an O(1)
+view that walks, counts and folds in O(log n + k), replacing five
+bound-query methods with one (decision 103).
+
+**Types carry what the algorithm produces.** A fn can return a fresh domain,
+`-> (domain P, [P]Int)`, so `components` hands back its parts already
+indexed by their own type (decision 33). A half-open range of cuts `j..i` is
+also the piece between them, so `pre.sum(j..i)` and `a[j..i]` take it
+directly; the two readings are the same set (decision 124).
+
+**Stress harness pieces see only what a judge would.** A `@check` reads the
+input and the output, never the solution's derived values, since trusting
+them would pass the solution's own bug (decision 374). Checkers and
+interactors are spelled as implemented, `@check fn ok()` with
+`read_output()` and `@interactor fn judge(mut sol: Interactor)`, after the
+spec showed parameter types that existed nowhere (decision 375).
+
 ## Changes
 
 - 2026-11-23: first version.
