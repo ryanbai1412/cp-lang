@@ -801,6 +801,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0904 memory_over_profile *(0.3)*: 1 case(s)
 - E9998 internal_unsupported *(retired)*: exempt (internal: a construct the compiler cannot lower)
 - E9999 Internal compiler error: exempt (internal compiler error)
+- L0302 int_shift_overflow_at_bounds: **no case**
 - L0540 manual_bit_test: **no case**
 - L0541 sort_desc_by_negation: **no case**
 - L0542 last_via_len: **no case**
@@ -877,7 +878,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - W0101 Unused expression value: 1 case(s)
 - W0201 Submission near the size limit: 1 case(s)
 
-53 of 153 testable codes have no negative case.
+54 of 154 testable codes have no negative case.
 
 ## Spec code blocks
 
