@@ -18,6 +18,9 @@ use cpl_ir::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+/// The constant offsets, low and high, each list is indexed at.
+type Offsets = BTreeMap<List, (i64, i64)>;
+
 /// A variable, or one field of a struct variable: `(global, slot or id,
 /// field)`.
 pub(crate) type Var = (bool, usize, Option<usize>);
@@ -258,7 +261,7 @@ impl<'p> Emitter<'p> {
         }
         // An index under `if i > e` is checked from `e + 1` when `e` stays put.
         let mut any = any;
-        let floored: Vec<(Expr, BTreeMap<List, (i64, i64)>)> = floored
+        let floored: Vec<(Expr, Offsets)> = floored
             .into_iter()
             .filter_map(|(floor, key, c)| {
                 if bound(&floor, &moving) {
