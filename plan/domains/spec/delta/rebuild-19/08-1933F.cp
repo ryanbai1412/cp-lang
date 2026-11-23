@@ -5,7 +5,7 @@
 let n: 3..=1e3 = read()
 let m: 3..=1e3 = read()
 let rock = read<[n][m]0..=1>()
-var dist = [-1] * (n * m)
+var dist = [n * m].filled(-1)
 var queue = List<Int>()
 dist[0] = 0
 queue.push(0)

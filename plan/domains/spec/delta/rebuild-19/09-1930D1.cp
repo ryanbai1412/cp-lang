@@ -2,7 +2,7 @@
 // '1', covering three pattern positions; f of every prefix of s[l..] falls out of one scan.
 @!multitest
 let n: 1..=100 = read()
-let s = read<Str(len: n..=n)>()
+let s: Str = read()
 var total = 0
 for l in 0..n:
     var ones = 0

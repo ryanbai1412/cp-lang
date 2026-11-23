@@ -62,3 +62,56 @@ Cold read of `spec/` and root `std/` only, then ten Codeforces problems from con
 | 08 | 1933F Turtle Mission | grid shortest path (BFS) | `min=` on `?Int` | H01 H13 |
 | 09 | 1930D1 Sum over all Substrings | strings, greedy | `Str(len:)` read | - |
 | 10 | 1922D Berserk Monsters | linked list sweep, large multitest | `v.prev/next`, `?.map`, `??` | H09 H15 |
+
+## After running
+
+`cargo build -p cpl-cli` at the branch base. Per solution: `cpl check`, `cpl run` on every
+sample, `cpl build` + `g++ -std=c++17 -O2` on every sample. 1927F accepts any cycle, so its
+samples go through `stress/check_1927F.py` (simple cycle, edges exist, lightest edge equals the
+judge's). Stress: `stress/gen_brute.py` (Python generators and brutes), 200 seeded random small
+multitest inputs per problem, each compared between `cpl run`, the C++ build and the brute.
+Timing: one maximum-size input per problem (`stress/gen_max.py`), C++ build, wall time.
+
+| # | Problem | check | run (samples) | C++ (samples) | stress (200) | max-size C++ |
+|---|---|---|---|---|---|---|
+| 01 | 1931F | ok | ok | ok | - | 0.00 s (n=1000, k=200) |
+| 02 | 1931G | ok | ok | ok | - | 0.02 s (all c = 1e6) |
+| 03 | 1929D | ok | ok | ok | 0 bad | 0.08 s (n=3e5, half path) |
+| 04 | 1923E | ok | ok | ok | 0 bad | 0.03 s (n=2e5 path) |
+| 05 | 1932F | ok after F1 fix | ok | ok | 0 bad | 0.02 s (n=1e6, m=2e5) |
+| 06 | 1928C | ok | ok | ok | 0 bad | 0.01 s (t=100, n ~ 7.4e8) |
+| 07 | 1927F | ok | ok (checker) | ok (checker) | - | 0.05 s (n=1e5, m=2e5) |
+| 08 | 1933F | ok after F1 fix | ok | ok | 0 bad | 0.03 s (1000 x 1000) |
+| 09 | 1930D1 | ok after F2 workaround | ok | ok | 0 bad | 0.00 s (n=100) |
+| 10 | 1922D | ok | ok | ok | 0 bad | 0.02 s (n=3e5) |
+
+Nothing is over 1 s; the interpreter takes 0.8 s (1929D) and 1.0 s (1923E) on the same inputs.
+No crash and no mismatch, so no sanitizer run was needed. Seven problems stressed
+(1922D, 1923E, 1928C, 1929D, 1930D1, 1932F, 1933F): 1400 cases, 0 disagreements.
+
+### Failures
+
+| ID | Problem | Class | Smallest reproduction | Fix in the solution |
+|---|---|---|---|---|
+| F1 | 05, 08 | reader error | `let n = 3`<br>`var a = [0] * n` gives E0309 "`*` can't be applied to `List<Int>` and `Int`"; the help names `[n].filled(x)`, which `core/03` and `core/04b` use | `[n + 2].filled(0)`, `[n * m].filled(-1)` |
+| F2 | 09 | implementation bug | `let n = 2`<br>`let s = read<Str(len: n..=n)>()` gives E0504 "not implemented yet: a string type with a bounded length"; `core/02` 2.3 (R02.3, *supported*) promises it; already a known gap (`core-02/str-len-runtime-bound*.cp`, owner compiler) | `let s: Str = read()` |
+
+### Holes after running
+
+Every guess in H01-H12 and H15 compiled and gave the right answers, so each of those is
+confirmed as the intended reading (still silent in the text). `cpl lint` on the ten files then
+answered two of the missing-stdlib holes:
+
+| ID | Class | Location | What running showed | M1 |
+|---|---|---|---|---|
+| H13 | withdrawn (was missing-stdlib) | `std/graph.cp` `bfs` | L0550 says `bfs(next, from: [s])` takes a `next` function, so an implicit grid BFS needs no hand queue; the `lib/graphs-trees.md` tables I read did not show the function form | yes |
+| H14 | withdrawn (was missing-stdlib) | `std/prefix.cp` `Diff<D, T>` | L0559 names `Diff<D, T>()` with `.add(l..r, x)` and `.finish()`; it exists, I missed it | yes |
+| H16 | found-late | `core/02` 2.3 `Str(len:)` | Specified and *supported*, rejected by the compiler (F2) | yes |
+| H17 | found-late | `lib/graphs-trees.md` traversal tables vs `std/graph.cp` | The tables do not say that a closure is a `Next<V>`; only the lint does (H13) | yes |
+| H18 | found-late | `lib/` tables vs `std/prefix.cp` | `Diff` is not where a cold reader looking for "range add, then read" finds it (H14) | yes |
+
+Revised counts: silent 11, contradiction 1, missing-stdlib 1 (H03), found-late 3 (H16-H18),
+2 withdrawn; 16 live holes, all inside the Milestone 1 subset. Implementation bugs: 1 (F2,
+already a known gap). Other lints: L0503 (07, the adjacency written for both orders: H03 again,
+since `Graph.undirected` cannot take an edge subset) and L0549 (10, `V.collect()` instead of a
+comprehension).

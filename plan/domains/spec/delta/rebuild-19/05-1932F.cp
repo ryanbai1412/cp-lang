@@ -5,13 +5,13 @@ let n: 1..=1e6 = read()
 let m: 1..=2e5 = read()
 domain P = 1..=n
 let cats = read<[m](l: P, r: P)>()
-var start = [0] * (n + 2)
+var start = [n + 2].filled(0)
 var min_l: [P]Int = n + 1
 for c in cats:
     start[Int(c.l)] += 1
     start[Int(c.r) + 1] -= 1
     min_l[c.r] min= Int(c.l)
-var dp = [0] * (n + 1)
+var dp = [n + 1].filled(0)
 var covering = 0
 var lo_suffix = n + 1
 var lo: [P]Int = 0
