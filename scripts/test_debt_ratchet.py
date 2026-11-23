@@ -32,6 +32,19 @@ class DebtRatchetTest(unittest.TestCase):
         (root / "std/seq.cp").write_text("pub fn foo() = todo\nfn bar():\n    todo\n")
         (root / "crates/cpl-cli/tests/pending/case1.cp").write_text("print(1)\n")
 
+    def test_corpus_test_files_skips_samples(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            files = ["corpus/problems/a/tests/sample1.in", "corpus/problems/a/tests/1.in",
+                     "corpus/problems/a/tests/1.ans", "corpus/problems/a/gen.py"]
+            for f in files:
+                (root / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / f).write_text("1\n")
+            subprocess.run(["git", "init", "-q", str(root)], check=True)
+            subprocess.run(["git", "-C", str(root), "add", "."], check=True)
+            self.assertEqual(dr.corpus_test_files(root),
+                             ["corpus/problems/a/tests/1.ans", "corpus/problems/a/tests/1.in"])
+
     def test_dead_code_allows_and_external_crates(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

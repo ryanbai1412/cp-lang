@@ -204,3 +204,10 @@ command = "python3 scripts/debt-ratchet.py --show external_crates"
 today = 5
 target = "<= 5"
 milestone = "M2"
+
+[[metric]]
+name = "corpus_test_files"
+command = "python3 scripts/debt-ratchet.py --show corpus_test_files"
+today = 2215
+target = "0"
+milestone = "M2"
