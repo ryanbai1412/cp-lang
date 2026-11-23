@@ -111,15 +111,11 @@ impl FnSummary {
 /// its body between the yields with no list. What the fn prints, reads
 /// from the input and stores to a global then happens between the turns
 /// of the body, in both back ends alike. It must not change an argument
-/// (the caller's variable is lent out for the whole call), size a domain
-/// or call a fn value.
+/// other than through a `mut` parameter, size a domain or call a fn value
+/// that writes a variable it captured by reference.
 fn pusher(f: &Function, summary: &FnSummary) -> Option<usize> {
     let acc = f.locals.iter().position(|local| local.name == "__yields")?;
-    if acc < f.params.len()
-        || f.params.iter().any(|p| p.mutable)
-        || summary.sizes
-        || (!summary.yields_fns && (summary.opaque || summary.calls_values))
-    {
+    if acc < f.params.len() || summary.sizes || (!summary.yields_fns && summary.opaque) {
         return None;
     }
     let is_acc = |e: &Expr| matches!(e.kind, ExprKind::Local(slot) if slot == acc);
@@ -186,9 +182,16 @@ impl Feeds {
             writes.extend(self.summaries[*f].writes.iter().copied());
         }
         let mut shared = false;
+        let mut touched = false;
         for arg in args {
-            let Arg::Value(value) = arg else {
-                return None;
+            let value = match arg {
+                Arg::Value(value) => value,
+                // The fn works on the caller's variable between the turns
+                // of the body, so the body must not see it at all.
+                Arg::Mut(place) => {
+                    touched |= self.sees(walk::root(place), body, &effects, &calls);
+                    continue;
+                }
             };
             walk::deep_expr(value, &mut |e| match e.kind {
                 ExprKind::Local(slot) => {
@@ -199,11 +202,12 @@ impl Feeds {
                 _ => {}
             });
         }
-        if !summary.yields_fns
-            && (opaque
-                || shared
-                || !summary.reads.is_disjoint(&writes)
-                || !summary.writes.is_disjoint(&writes))
+        if touched
+            || !summary.yields_fns
+                && (opaque
+                    || shared
+                    || !summary.reads.is_disjoint(&writes)
+                    || !summary.writes.is_disjoint(&writes))
         {
             return None;
         }
@@ -219,6 +223,34 @@ impl Feeds {
             .iter()
             .all(|to| inner.contains(to))
             .then_some((*callee, acc))
+    }
+}
+
+impl Feeds {
+    /// Whether `body`, or a fn it calls, reads or writes the variable `root`.
+    fn sees(
+        &self,
+        root: (bool, usize),
+        body: &Block,
+        effects: &Effects,
+        calls: &BTreeSet<usize>,
+    ) -> bool {
+        let mut seen = match root {
+            (false, slot) => effects.locals.contains(&slot),
+            (true, g) => {
+                effects.globals.contains(&g)
+                    || calls.iter().any(|f| {
+                        let summary = &self.summaries[*f];
+                        summary.reads.contains(&g) || summary.writes.contains(&g)
+                    })
+            }
+        };
+        walk::deep_exprs(body, &mut |e| match e.kind {
+            ExprKind::Local(slot) => seen |= root == (false, slot),
+            ExprKind::Global(g) => seen |= root == (true, g),
+            _ => {}
+        });
+        seen
     }
 }
 
