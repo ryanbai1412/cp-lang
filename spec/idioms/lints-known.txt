@@ -1,0 +1,2 @@
+# scripts/idioms-catalog.py findings not yet fixed; this list only shrinks.
+unknown-name match_to_and_then and_then

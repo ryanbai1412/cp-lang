@@ -263,7 +263,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | hld_by_hand | heavy child, head, pos arrays | `chains` / `apply_path` / `fold_path` | warn | #1 | loop |
 | kth_ancestor_loop | climb parent `k` times | `ancestor(v, k)` / `jump` | fix | #10 | loop |
 | virtual_tree_by_hand | sort by tin, add LCAs, stack | `VirtualTree` | warn | #1 | loop |
-| children_from_parents | build child lists from a parent array | `from_parents` / `parent.fibers()` | fix | #1 | loop |
+| children_from_parents | build child lists from a parent array | `Rooted.from_parents(par)` | fix | #1 | loop |
 
 ### S.strings
 
@@ -495,7 +495,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | hand_rolled_negative_cycle | Bellman-Ford `n`-th pass parent walk to extract a negative cycle | `g.negative_cycle()` | warn | #1 | loop |
 | hand_rolled_girth | BFS from every vertex tracking shortest cycle length | `g.girth()` | warn | #1 | loop |
 | hand_rolled_boruvka | component-cheapest-edge rounds merging with DSU | `g.boruvka()` | warn | #1 | loop |
-| hand_rolled_functional_graph | in-degree peeling + cycle decomposition on 1-out-degree graph | `functional(next)` | warn | #1 | loop |
+| hand_rolled_functional_graph | in-degree peeling + cycle decomposition on 1-out-degree graph | `Functional(next)` | warn | #1 | loop |
 | manual_flow_min_cut_arcs | BFS on residual graph after max-flow to collect cut edges | `net.min_cut(s, t)` / `net.cut_arcs(s, t)` | fix? | #1 | loop |
 | hand_rolled_circulation | supersource/supersink demand reduction for lower-bounded flow | `circulation` / `max_bounded_flow` / `min_bounded_flow` | warn | #1 | loop |
 | hand_rolled_gomory_hu | `n - 1` recursive min-cut splits to build all-pairs min-cut tree | `gomory_hu` | warn | #1 | loop |
@@ -653,7 +653,7 @@ One sub-family per module. Each says: you rebuilt something the library has.
 | memset_reset | loop setting every entry to 0 between uses | `fill` / declare per test / `Marks` | fix | #8 | loop |
 | comparator_bool | `sort(by:)` with a less-than lambda | key function | fix | #13 | ty |
 | big_inf_literal | `1e18`, `LLONG_MAX`, `0x3f3f3f3f` | `?T` / `inf` where a bound is meant | fix? | #5 | syn |
-| global_counter_id | `id[x] = cnt++` to number a subset | `numbered()` / `compress` | fix? | #3 | loop |
+| global_counter_id | `id[x] = cnt++` to number a subset | `compress` | fix? | #3 | loop |
 | early_return_flag | `var ok = true` ... `if not ok: print(...)` | `all(p)` / early `return` | fix? | #2 | loop |
 | ternary_spelling | `a if c else b` / `c ? a : b` (parse error today) | `if c: a else: b` (diagnostic, not lint) | n/a | #13 |  |
 

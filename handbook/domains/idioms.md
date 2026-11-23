@@ -173,7 +173,7 @@ GCC and LLVM's differential testing against a reference.
 | The skill teaches the normative spelling | skill and corpus lines using a removed spelling (`some(...)`, `none`, `.enumerate()`, `assume`) | `handbook/guidelines/idiomatic-code-checklist.md#r8`; generated: `cpl migrate --check` knows every removed spelling | `scripts/skill-gen.py --check` (skill code blocks); `corpus/differential.py` (`removed-spelling`, v03 ports, dreams and specs); skill prose: `missing` |
 | Showcase ports read like the editorial | taste-review median and count under 3 and under 4 | `handbook/guidelines/idiomatic-code-checklist.md#r2`; process: cold review per port; ratchet on the count under 4 | `scripts/review-check.py --check` |
 | The idiom catalog covers what newcomers write | marked newcomer spots a lint flags | generated suite | `corpus/newcomer/score.py`, `crates/cpl-cli/tests/newcomer.rs` |
-| Every idiom in the catalog has an example that checks and a lint or a reason | catalog entries with a checked example and a linked lint | `missing` | `missing` |
+| Every idiom in the catalog has an example that checks and a lint or a reason | built lints whose `before.cp`, `after.cp` and near miss check; proposals whose replacement names a real API | generated suite over every record; generated check over every catalog row | `crates/cpl-lint/src/record_tests.rs`; `scripts/idioms-catalog.py` |
 
 ### A stranger's whole contest attempt (J1 to J9)
 
@@ -233,7 +233,7 @@ GCC and LLVM's differential testing against a reference.
 | Each profile matches its judge's compiler, flags, stack and size limit | fields cited to the judge's published settings | hand-written suite | `crates/cpl-judge/src/tests.rs` |
 | Resolution order is the documented one | cases per source (flag, `// judge:`, `cp.toml`, default) | hand-written suite | `crates/cpl-judge/src/tests.rs` |
 | Local runs mimic the profile (stack, widths) | profiles whose stack and integer widths a test exercises | generated matrix | `crates/cpl-cli/tests/judges.rs` |
-| A deep recursion that fits the judge's stack fits locally | ports with deep recursion passing under each profile's stack | `missing` | `missing` |
+| A deep recursion that fits the judge's stack fits locally | profiles on which a million nested calls run in the emitted C++ and give the interpreter's answer | generated matrix over every profile | `crates/cpl-cli/tests/judges.rs` (`deep_recursion_runs_on_the_stack_each_judge_gives`) |
 
 ### Long-term use and contributing (J10)
 
@@ -314,3 +314,4 @@ the chunks touched (4); find a planted off-by-one with stress and trace
 - 2026-11-23: the accepted-C++ agreement row names `corpus/generators.py`.
 - 2026-11-23: the verdict and privacy rows name their checks.
 - 2026-11-23: the dream-and-spec row names `corpus/audit.py`.
+- 2026-11-23: the deep-recursion and catalog rows name their checks.
