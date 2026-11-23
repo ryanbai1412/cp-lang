@@ -827,8 +827,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
 - **geometry** (151/158 named by a case)
   - uncovered: `ByAngle`, `PI`, `Vec.from_angle`, `planar_faces`, `point_location_planar`, `delaunay`, `voronoi_cells`
-- **graph** (106/123 named by a case)
-  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Graph.dfs_tree`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Complement`, `Only`
+- **graph** (106/122 named by a case)
+  - uncovered: `Weighted`, `Edged`, `WeightedNext`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Graph.weighted`, `Walk`, `Lit.flip`, `TwoSat.add_or`, `Complement`, `Only`
 - **grid** (23/23 named by a case)
 - **hashmap** (37/37 named by a case)
 - **heap** (88/88 named by a case)
@@ -863,8 +863,8 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`
 - **subset** (15/15 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (150/172 named by a case)
-  - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
+- **tree** (150/173 named by a case)
+  - uncovered: `dfs_tree`, `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.shapes`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PreferredPaths`, `PreferredPaths.new`, `PreferredPaths.access`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
