@@ -20,5 +20,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "loop else (parser gap); string interpolation."
+ "notes": "loop else (parser gap); string interpolation.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "d4cf2f64b507517b034888a5167b9ce3cf71c88b"
+ }
 }

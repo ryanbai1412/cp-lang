@@ -24,5 +24,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "Rooted + nested recursive fn mutating a captured counter; SortedBag pairing."
+ "notes": "Rooted + nested recursive fn mutating a captured counter; SortedBag pairing.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "0c83e9855fbe52656cb982d05626516b4772675c"
+ }
 }
