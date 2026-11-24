@@ -423,6 +423,23 @@ class TailTest(unittest.TestCase):
             code, _, _, err, _, _ = self._part("full", mode="full")
         self.assertEqual(code, 1)
         self.assertIn("a --full suite failed", err)
+        self.assertTrue(steps.call_args.kwargs["keep_going"])
+
+    def test_keep_going_runs_every_step_and_names_each_failure(self) -> None:
+        calls = []
+
+        def run(cmd, **kw):
+            line = " ".join(map(str, cmd))
+            calls.append(line)
+            return subprocess.CompletedProcess(cmd, int(" metamorphic" in line or " flakes" in line), "", "")
+        out, err = io.StringIO(), io.StringIO()
+        with mock.patch.object(sys, "stdout", out), mock.patch.object(sys, "stderr", err), \
+                mock.patch.object(ci.shutil, "which", return_value="/bin/x"):
+            self.assertEqual(ci.run_steps("full", run=run, keep_going=True), 1)
+        for step in ci.STEPS["full"]:
+            self.assertIn(f"==> {step.title}", out.getvalue())
+        self.assertIn("check: failed: spec-gate.py metamorphic", err.getvalue())
+        self.assertIn("check: failed: spec-gate.py flakes --runs 2", err.getvalue())
 
     def test_a_part_needs_fast_and_checks_is_not_a_part(self) -> None:
         self.assertEqual(self._part("fmt", mode="land")[0], 1)

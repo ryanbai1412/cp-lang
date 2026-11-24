@@ -297,11 +297,12 @@ def _argv(step: Step, values: dict[str, str]) -> list[str]:
 
 
 def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, healed: bool | None = None,
-              only=None) -> int:
+              only=None, keep_going: bool = False) -> int:
     """Runs the tier's steps, or with `only` the touched steps running those scripts, in order,
-    and stops at the first that fails."""
+    and stops at the first that fails; `keep_going` runs them all and names every failure."""
     if healed is None:
         healed = os.environ.get("CPL_DERIVED_HEALED") == "1"
+    failed: list[str] = []
     with tempfile.TemporaryDirectory(prefix="cpl-ci-") as tmp:
         values = {"cpl": cpl, "tmp": tmp, "nproc": str(os.cpu_count() or 1)}
         for step in touched_steps(only) if only else STEPS[tier]:
@@ -309,7 +310,10 @@ def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, heal
             missing = [c for c in step.needs if not shutil.which(c)]
             if missing:
                 print(f"check: `{missing[0]}` is not installed; {step.title} needs it", file=sys.stderr)
-                return 1
+                if not keep_going:
+                    return 1
+                failed.append(step.title)
+                continue
             kw = {"cwd": ROOT, "text": True}
             if step.env:
                 kw["env"] = {**os.environ, **{k: v.format(**values) for k, v in step.env}}
@@ -332,8 +336,12 @@ def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, heal
                 print(f"warning: {step.fail} (the regen job commits the fix)", file=sys.stderr)
                 continue
             print(f"check: {step.fail}", file=sys.stderr)
-            return 1
-    return 0
+            if not keep_going:
+                return 1
+            failed.append(step.title)
+    for title in failed:
+        print(f"check: failed: {title}", file=sys.stderr)
+    return 1 if failed else 0
 
 
 # The --fast tier after its build: the workspace tests and what overlaps them. Each
@@ -795,8 +803,8 @@ class Tail:
             if self.call(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"]):
                 raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
             self.step("the --full suites (scripts/ci.py steps full)")
-            if run_steps("full", self.cpl, run=self.run):
-                raise Failed("a --full suite failed; the step above names it")
+            if run_steps("full", self.cpl, run=self.run, keep_going=True):
+                raise Failed("a --full suite failed; the lines above name each one")
             return "full part"
         raise ValueError(f"CPL_GATE_PART={self.gate_part} runs through `ci.py tail`")
 
