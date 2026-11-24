@@ -7,4 +7,5 @@ fn sized(n: Int) -> Int:
     with checks(asserts: on):
         assert n == 3, "need 3, got {n}"
     n
-print(sized(read()))
+let n: Int = read()
+print(sized(n))
