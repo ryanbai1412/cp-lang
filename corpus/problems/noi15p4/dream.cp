@@ -3,12 +3,12 @@
 let (n, k) = read<(1..=1e5, 2..=9)>()
 let w = read<[n]0..=1e11>()
 var heap = MinHeap<(w: Int, depth: Int)>()
-heap.extend(w.map(x => (w: x, depth: 0)))
-heap.extend([(w: 0, depth: 0) for _ in 0..(k - 1 - (n - 1) % (k - 1)) % (k - 1)])
+heap.push_all(w.map(x => (w: x, depth: 0)))
+heap.push_all([(w: 0, depth: 0) for _ in 0..(k - 1 - (n - 1) % (k - 1)) % (k - 1)])
 var total = 0
 while heap.len > 1:
     let kids = [heap.pop()! for _ in 0..k]
-    let merged = (w: kids.sum(of: .w), depth: kids.max(of: .depth) + 1)
+    let merged = (w: kids.sum(of: .w), depth: kids.map(.depth).max()! + 1)
     total += merged.w
     heap.push(merged)
 print(total)

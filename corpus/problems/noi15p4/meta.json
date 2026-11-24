@@ -25,5 +25,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "k-ary Huffman with MinHeap by (w, depth)."
+ "notes": "k-ary Huffman with MinHeap by (w, depth).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "a327d5a09e9e41bdcee85653cc826253ef4374bd"
+ }
 }
