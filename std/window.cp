@@ -7,7 +7,7 @@
 use std.algebra.{Op}
 use std.dsu.{Mark, Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.hashmap.{Counter}
-use std.seq.{collect}
+use std.seq.{Track, collect}
 
 /// A sliding fold queue over `op`. `push` and `pop` are \(O(1)\) amortized; `all` is \(O(1)\).
 pub struct Window<T, M>(op: M):
@@ -90,26 +90,22 @@ pub struct Window<T, M>(op: M):
         head += 1
         front.pop()
 
-/// State a window can add to at the back and remove from at the front. `pop(x)` is passed the
-/// element leaving the front. `Window(op)`, `Counter<K, Int>`, `Tracked` and `Undoing` implement it.
-pub trait Track<T>:
-    fn push(mut self, x: T)
-    fn pop(mut self, x: T)
-
-/// `push(x)` adds 1 to `x`'s count and `pop(x)` takes 1 away, so `len` is the number of distinct
-/// values in the window.
-impl Track<K> for Counter<K, Int>:
-    fn push(mut self, x: K):
-        self.add(x, 1)
-    fn pop(mut self, x: K):
-        self.add(x, -1)
-
 /// `push(x)` and `pop(x)` are `Window`'s own `push(x)` and `pop(x)`.
 impl Track<T> for Window<T, M>:
     fn push(mut self, x: T):
         self.push_back(x)
     fn pop(mut self, x: T):
         self.drop_front(x)
+
+/// `push(x)` and `pop(x)` are the `Tracked`'s own `push(x)` and `pop(x)`.
+impl Track<T> for Tracked<S, T>:
+    fn push(mut self, x: T) = self.push(x)
+    fn pop(mut self, x: T) = self.pop(x)
+
+/// `push(x)` and `pop(x)` are the `Undoing`'s own `push(x)` and `pop(x)`.
+impl Track<T> for Undoing<S, T>:
+    fn push(mut self, x: T) = self.push(x)
+    fn pop(mut self, x: T) = self.pop(x)
 
 /// A `Track` over any structure: `add(mut state, x)` applies an element at the back and
 /// `remove(mut state, x)` takes the front one back out, so `ok` reads `w.state`. The same shape

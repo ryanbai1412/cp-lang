@@ -3309,6 +3309,20 @@ fn piece<S: Indexed>(s: S, i: Int, j: Int) -> Slice<S>:
 
 /// Which end of a piece a two-pointer result is keyed by.
 pub enum Anchor = Start | End
+/// State a window can add to at the back and remove from at the front. `pop(x)` is passed the
+/// element leaving the front. `Window(op)`, `Counter<K, Int>`, `Tracked` and `Undoing` implement it.
+pub trait Track<T>:
+    fn push(mut self, x: T)
+    fn pop(mut self, x: T)
+
+/// `push(x)` adds 1 to `x`'s count and `pop(x)` takes 1 away, so `len` is the number of distinct
+/// values in the window.
+impl Track<K> for Counter<K, Int>:
+    fn push(mut self, x: K):
+        self.add(x, 1)
+    fn pop(mut self, x: K):
+        self.add(x, -1)
+
 /// Two pointers: for each right end, the longest piece ending there that is `ok`, fed through
 /// `state: Track`, as its positions.
 ///
@@ -3322,7 +3336,7 @@ pub enum Anchor = Start | End
 /// order: keyed by `D`, by right end (or left end with `Anchor.Start`)
 /// traps: never in release; debug traps when `ok` fails on a single element after a shrink
 /// example: `[1, 1, 2].maximal(state: Counter<Int, Int>(), ok: c => c.len <= 1).map(w => w.len) == [1, 2, 1]`
-pub fn maximal<D, T, St>(
+pub fn maximal<D, T, St: Track<T>>(
     self: [D]T,
     state: St,
     ok: St -> Bool,
@@ -3369,7 +3383,7 @@ pub fn maximal<D, T, St>(
 /// [1, 2, 3].minimal(state: sum, ok: w => w.state >= 3).map(w => w.map(.len))
 ///     == [None, Some(2), Some(1)]
 /// ```
-pub fn minimal<D, T, St>(
+pub fn minimal<D, T, St: Track<T>>(
     self: [D]T,
     state: St,
     ok: St -> Bool,
@@ -3474,7 +3488,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: never
     /// example: `[1, 1, 2].ring.maximal(state: Counter<Int, Int>(), ok: c => c.len <= 2).map(w => w.len) == [3, 3, 3]`
     /// ties: none: each last element has one longest piece
-    pub fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>:
+    pub fn maximal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>:
         let n = D.count
         var st = state
         var out: List<RingSlice<D, T>> = []
@@ -3496,7 +3510,7 @@ pub struct Ring<D, T>(pub src: [D]T):
     /// traps: never
     /// example: `[2, 0, 1].ring.minimal(state: track(0, (mut s, x) => s += x, (mut s, x) => s -= x), ok: w => w.state >= 3).map(w => w.map(.len)) == [Some(2), Some(3), Some(3)]`
     /// ties: none: each last element has one shortest piece
-    pub fn minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>:
+    pub fn minimal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>:
         let n = D.count
         var st = state
         var out: [D]?RingSlice<D, T> = [D] _ => None

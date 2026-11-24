@@ -4,7 +4,7 @@
 
 Sequences: reductions, scans, runs, searching, permutations, monotone stacks, and compression.  - Reductions & extrema: `prod`, `is_sorted`, `min`/`max` (with `by:`), `argmax`/`argmin` (with `by:`). - Binary & unimodal search: moved to `std.search` (`bsearch_real`, `ternary_max`/`ternary_min`, `ternary_max_real`/`ternary_min_real`, `parallel_bsearch`). - Sorted lookup: `first_ge`/`first_gt`/`last_le`/`last_lt` (with optional `by:`), returning `?D` on `[D]T`, `?Int` on `List<T>`, and `?(K, V)` on `Map<K, V>`. - Runs, chunking & windows: `runs` (with `by:` or `link:`), `buckets`, `windows`, `chunks`, `adjacent`, `pairs`, `with_prev`, `cyclic_pairs`, `zip`. - Scans & folds: `scan` (`.rev.scan` for suffixes); the fold of everything but `i` is `op(pre[i.l], suf[i.r])` over `a.scan(op)` and `a.rev.scan(op)`. - Reordering & selection: `reverse`, `rotate_left`/`rotate_right`, `dedup`/`deduped`, `partition`, `select`, `merge_sorted`. - Permutations: `next_permutation`, `prev_permutation`, `inverse`, `compose`, `perm_cycles`, `perm_pow`, `inversions`. - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.windows(k).fold(op)` or `Window(op)` (`std.window`). - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
-In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `Rev`, `RingSlice`, `Slice`, `Stepped`, `Ties`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `prev_permutation`, `prod`, `product`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `span`, `step`, `sum`, `take_while`, `tally`, `windows`, `zip`.
+In prelude (no `use` needed): `Anchor`, `Compressed`, `Perm`, `Rev`, `RingSlice`, `Slice`, `Stepped`, `Ties`, `Track`, `adjacent`, `all`, `any`, `buckets`, `chain`, `chunks`, `compress`, `count`, `cyclic_pairs`, `dedup`, `deduped`, `distinct`, `drop_while`, `equal_range`, `find`, `first_gt`, `flat_map`, `flatten`, `get_or_insert`, `group`, `insert`, `inverse`, `inversions`, `is_sorted`, `is_subsequence`, `iterate`, `last_lt`, `lis`, `next_permutation`, `pairs`, `partition`, `prev_permutation`, `prod`, `product`, `reduce`, `remove`, `reverse`, `rotate_left`, `rotate_right`, `rotated_left`, `rotated_right`, `runs`, `select`, `span`, `step`, `sum`, `take_while`, `tally`, `windows`, `zip`.
 
 ## Types & Constants
 
@@ -148,6 +148,10 @@ What `split(sep:)` cuts at: an element equal to a value, or one where a predicat
 
 Which end of a piece a two-pointer result is keyed by.
 
+## `trait Track<T>`
+
+State a window can add to at the back and remove from at the front.
+
 ## `struct Ring<D, T>(pub src: [D]T)`
 
 `a.ring`; see `ring`.
@@ -158,8 +162,8 @@ Which end of a piece a two-pointer result is keyed by.
 - `fn from(self, i: D) -> yields D` — \(O(1)\) per step; All n positions, starting at `i` and wrapping.
 - `fn span(self, start: D, len: Int) -> RingRange<D>` — \(O(1)\); The `len` positions from `start` on, wrapping (`len <= n`).; traps: when `len` is not in `0..=n`
 - `fn windows(self, k: Int) -> yields RingSlice<D, T>` — \(O(1)\) per window; The n windows of `k` elements, one starting at each position, wrapping.; traps: when `k` is not in `1..=n`
-- `fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; Two pointers round the cycle: for each position as the last element, the longest wrapping piece (at most n elements) ending there that is `ok`, fed through `state: Track`.
-- `fn minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; For each position as the last element, the shortest wrapping piece ending there that is `ok`, or None.
+- `fn maximal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; Two pointers round the cycle: for each position as the last element, the longest wrapping piece (at most n elements) ending there that is `ok`, fed through `state: Track`.
+- `fn minimal<St: Track<T>>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; For each position as the last element, the shortest wrapping piece ending there that is `ok`, or None.
 
 ## `struct RingSlice<D, T>()`
 
@@ -308,8 +312,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 - `@get fn swap<A>(self: (A, A)) -> (A, A)` — \(O(1)\)
 - `fn split<S: Indexed, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>` — \(O(n)\); Pieces between separators: elements equal to `sep`, or where the predicate `sep` holds.
-- `fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>` — \(O(n)\) amortized pushes and pops on `state`; Two pointers: for each right end, the longest piece ending there that is `ok`, fed through `state: Track`, as its positions.; traps: never in release; debug traps when `ok` fails on a single element after a shrink
-- `fn minimal<D, T, St>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Range<D>` — \(O(n)\) amortized pushes and pops on `state`; For each right end, the shortest piece ending there that is `ok` (its positions), or None, keyed by that end like the ring forms; `anchor: Anchor.Start` keys by left end.
+- `fn maximal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>` — \(O(n)\) amortized pushes and pops on `state`; Two pointers: for each right end, the longest piece ending there that is `ok`, fed through `state: Track`, as its positions.; traps: never in release; debug traps when `ok` fails on a single element after a shrink
+- `fn minimal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Range<D>` — \(O(n)\) amortized pushes and pops on `state`; For each right end, the shortest piece ending there that is `ok` (its positions), or None, keyed by that end like the ring forms; `anchor: Anchor.Start` keys by left end.
 - `@get fn ring<D, T>(self: [D]T) -> Ring<D, T>` — \(O(1)\); \(O(1)\) to make.
 - `fn valleys<D, T>(self: [D]T) -> yields Range<D>` — \(O(n)\) to walk; The non-empty ranges whose every element is strictly below both elements just outside it (both must exist).
 - `fn spans<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]Range<D>` — \(O(n)\); For each position, the widest piece where it is the minimum of `by` (ties: the left one extends).

@@ -1,6 +1,6 @@
 //! Ordered multiset and set with order statistics, range views, and cursors: `SortedBag<K>`, `SortedSet<K>`.
 
-use std.seq.{remove}
+use std.seq.{Track, remove}
 
 /// Read-only handle into a `SortedBag<K>` node, valid until the next mutation.
 pub struct BagCursor(id: Int)
@@ -2516,6 +2516,13 @@ pub struct SortedRange<K>:
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..7).rev.collect() == [3, 1]`
     @get pub fn rev(self) -> yields K = bag.range_each_rev(lo, lo_inc, hi, hi_inc)
+
+/// `push(x)` adds one copy of `x` and `pop(x)` removes one.
+impl Track<K> for SortedBag<K>:
+    fn push(mut self, x: K):
+        self.add(x)
+    fn pop(mut self, x: K):
+        self.remove(x)
 
 impl Show for SortedBag<K>:
     fn show(b):

@@ -112,7 +112,7 @@ step by calling `state.push(a[r])` and `state.pop(a[l])`. They return one
 piece per right end as its positions, `[D]Range<D>` (`minimal`:
 `[D]?Range<D>`), like `spans`; `a[w]` reads the piece.
 
-<!-- signatures: std/window.cp std/seq.cp -->
+<!-- signatures: std/seq.cp -->
 ```cp
 pub trait Track<T>:
     fn push(mut self, x: T)       // x joins at the right end
@@ -120,8 +120,8 @@ pub trait Track<T>:
 
 pub enum Anchor = Start | End
 
-pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool,
-                         anchor: Anchor = Anchor.End) -> [D]Range<D>
+pub fn maximal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool,
+                                   anchor: Anchor = Anchor.End) -> [D]Range<D>
 ```
 
 `Track` implementations that already exist:

@@ -4,7 +4,7 @@
 
 Sliding-window folds and stateful windows (round 7, `lib/sequence-patterns.md`).  `a.windows(k).fold(op)` and `Window(op)` pick their strategy from the op's laws: a `Group` adds and subtracts, a `Selective` op keeps a monotone deque, anything else uses two stacks. State that is not a fold implements `Track` (`push`/`pop`); two pointers, Mo and divide-and-conquer DP all accept a `Track`.
 
-In prelude (no `use` needed): `Sweep`, `Track`, `Undo`, `Undoing`, `Window`, `track`, `undoing`.
+In prelude (no `use` needed): `Sweep`, `Undo`, `Undoing`, `Window`, `track`, `undoing`.
 
 ## `struct Window<T, M>(op: M)`
 
@@ -17,10 +17,6 @@ Fields: `q: List<T>`, `front: List<T>`, `olds: List<T>`, `head: Int`, `back: ?T`
 - `fn pop(mut self, x: T)` — \(O(1)\) amortized calls of `op`; Pop the front: remove the oldest element, `x`.; traps: on an empty window, or in a checked build when `x` is not the oldest element
 - `@get fn all(self) -> ?T` — \(O(1)\); The fold of the current contents, oldest first (`op(op(x1, x2), x3)` for pushes `x1`, `x2`, `x3`), so a non-commutative op folds in push order; `None` when empty.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of elements in the window: pushes minus pops.
-
-## `trait Track<T>`
-
-State a window can add to at the back and remove from at the front.
 
 ## `struct Tracked<S, T>(pub state: S, add: (mut S, T) -> (), remove: (mut S, T) -> ())`
 
