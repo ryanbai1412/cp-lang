@@ -782,9 +782,9 @@ if [ "$mode" = full ]; then
     uv run scripts/explain-copies.py --check --max 1 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
     uv run scripts/tool-vocab.py || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
     uv run scripts/conformance-flakes.py --runs 2 --check || fail "a conformance case changed verdict between runs; see above"
-    step "conformance gaps: every failing case has a // gap: line, every gap case fails (scripts/spec-gate.py gaps)"
+    step "conformance gaps: every // gap: line left is well formed and its case fails (scripts/spec-gate.py gaps)"
     uv run --quiet python scripts/spec-gate.py gaps --conform "$target/debug/cpl-conform" \
-        || fail "a failing case has no // gap: line or a gap case passes; see above"
+        || fail "a // gap: line is malformed or its case passes; delete the line"
 
     step "cargo test: every port compiled with every judge profile's flags"
     cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags

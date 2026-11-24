@@ -81,7 +81,7 @@ class GatesTest(unittest.TestCase):
             board.write_text(json.dumps({"suites": {"conformance": {"cases": {
                 "c/f.cp": "fail", "c/g.cp": "fail", "c/h.cp": "fail"}}}}))
             got = {p.where: p.what for p in run("gaps", "--board", str(board))}
-            self.assertEqual(set(got), {"c/g.cp", "c/h.cp"})
+            self.assertEqual(set(got), {"c/h.cp"})
             self.assertIn("no reason text", got["c/h.cp"])
             board.write_text(json.dumps({"suites": {"conformance": {"cases": {"c/f.cp": "pass"}}}}))
             self.assertIn("passes", {p.where: p.what for p in run("gaps", "--board", str(board))}["c/f.cp"])
@@ -107,7 +107,8 @@ class GatesTest(unittest.TestCase):
         from specgate import subset
         files = {"spec/core/01-x.md": "# 1. Lexing\n\n## 1.5 Literals\n\nA rule (R01.5.1).\n",
                  "spec/core/02-y.md": "## 2.1 Types\n\nA rule (R02.1.1).\n",
-                 "spec/conformance/c/f.cp": "// expect: ok\n// gap: compiler 2026-11-24T05Z\n// rule: 01.5.1\nx\n",
+                 "spec/conformance/c/f.cp": "// expect: ok\n// rule: 01.5.1\nx\n",
+                 "research/scoreboard.json": '{"suites": {"conformance": {"cases": {"c/f.cp": "fail"}}}}',
                  "spec/SUBSET.md": "| R02.1 | 2.1 Types | documented | later |\n"}
         with Tree(files) as t, mock.patch.object(subset, "SUBSET", t.root / "spec/SUBSET.md"), \
                 mock.patch.object(subset, "SPEC", t.root / "spec"):
@@ -116,7 +117,7 @@ class GatesTest(unittest.TestCase):
             text = t.read("spec/SUBSET.md")
             self.assertIn("| R01.5 | 1.5 Literals | supported | 1 known gap |", text)
             self.assertIn("| R02.1 | 2.1 Types | documented | later |", text)
-            self.assertIn("- c/f.cp: compiler 2026-11-24T05Z", text)
+            self.assertIn("- c/f.cp: fail", text)
             self.assertEqual(run("subset"), [])
 
 

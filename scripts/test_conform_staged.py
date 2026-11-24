@@ -14,24 +14,21 @@ cpl-conform: finished in 0.02s
 
 
 class NewFailures(unittest.TestCase):
-    def test_a_failing_case_reports_its_message_and_detail(self):
-        got = conform_staged.new_failures("a/wrong.cp", OUT, False)
+    def test_a_new_failing_case_reports_its_message_and_detail(self):
+        got = conform_staged.new_failures("a/wrong.cp", OUT, set())
         self.assertEqual(len(got), 2)
         self.assertIn("write `at 2`", got[0])
 
-    def test_a_gap_case_that_fails_passes(self):
-        self.assertEqual(conform_staged.new_failures("a/wrong.cp", OUT, True), [])
+    def test_a_case_the_board_records_failing_passes(self):
+        self.assertEqual(conform_staged.new_failures("a/wrong.cp", OUT, {"a/wrong.cp"}), [])
 
-    def test_a_gap_case_that_passes_must_drop_its_line(self):
-        out = "conformance     1/1    pass (1 pass)\n"
-        self.assertIn("delete its `// gap:` line", conform_staged.new_failures("b/ok.cp", out, True)[0])
-
-    def test_gap_line_is_read_from_the_header_only(self):
-        self.assertTrue(conform_staged.is_gap("// expect: ok\n// gap: compiler 2026-11-24T05Z\nx\n"))
-        self.assertFalse(conform_staged.is_gap("// expect: ok\nx\n// gap: compiler 2026-11-24T05Z\n"))
+    def test_board_failing_reads_the_board(self):
+        board = '{"suites": {"conformance": {"cases": {"a/wrong.cp": "fail", "b/ok.cp": "pass"}}}}'
+        self.assertEqual(conform_staged.board_failing(board), {"a/wrong.cp"})
+        self.assertEqual(conform_staged.board_failing(None), set())
 
     def test_only_the_named_case_counts(self):
-        self.assertEqual(conform_staged.new_failures("b/ok.cp", OUT, False), [])
+        self.assertEqual(conform_staged.new_failures("b/ok.cp", OUT, set()), [])
 
 
 class Flake(unittest.TestCase):

@@ -20,6 +20,17 @@ class Problem:
     what: str
 
 
+def failing() -> dict[str, str]:
+    """case id -> verdict for every conformance case research/scoreboard.json
+    records as not passing: the one record of a known failure."""
+    import json
+    board = ROOT / "research" / "scoreboard.json"
+    if not board.is_file():
+        return {}
+    cases = json.loads(board.read_text()).get("suites", {}).get("conformance", {}).get("cases", {})
+    return {c: v for c, v in sorted(cases.items()) if v != "pass"}
+
+
 def cases() -> list[pathlib.Path]:
     return sorted(CONFORMANCE.rglob("*.cp"))
 

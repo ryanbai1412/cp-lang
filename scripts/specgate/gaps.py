@@ -1,7 +1,8 @@
-"""A case that fails today carries `// gap: <owner> <YYYY-MM-DDTHHZ>`, and only such a case.
+"""`// gap:` lines are going (the debt ratchet counts them to 0): research/scoreboard.json
+is the one record of a known failure, and `conformance_failing` counts it.
 
-The gap line is the one record of a known failure: no shared list, no
-reason text. The time is when the gap was opened (UTC, to the hour); the
+A failing case needs no line. A line left is well formed and its case still
+fails; no reason text. The time is when the gap was opened (UTC, to the hour); the
 `gap-age` gate fails a gap past 48 h. Results come from `--board` (a
 scoreboard JSON) or from a fresh run of `--conform <cpl-conform>`.
 """
@@ -17,7 +18,7 @@ import re
 import specgate
 from specgate import Problem, case_id, cases, header, read
 
-HELP = "every failing case has a `// gap:` line and every gap line's case fails"
+HELP = "every `// gap:` line left is well formed and its case still fails"
 OWNERS = ("compiler", "stdlib", "diagnostics", "tools", "lint-fmt", "perf", "debugger", "site", "infra", "idioms")
 GAP = re.compile(r"^// gap: (\S+) (\d{4}-\d\d-\d\dT\d\dZ)$")
 
@@ -75,9 +76,6 @@ def run(a) -> list[Problem]:
     status = board(a)
     gaps = all_gaps()
     problems = [Problem(c, f"`{line}` {p}") for c, (line, p) in gaps.items() if isinstance(p, str)]
-    for c, verdict in sorted(status.items()):
-        if verdict in ("fail", "bad", "timeout", "panic") and c not in gaps:
-            problems.append(Problem(c, f"fails ({verdict}) with no `// gap: <owner> <time>` line; fix it or add one"))
     for c in sorted(gaps):
         if status.get(c) == "pass":
             problems.append(Problem(c, "passes; delete its `// gap:` line"))

@@ -28,15 +28,16 @@ both sides of a boundary, empty and one-element inputs.
 
 ### conformance/R3. A known gap fails for the reason it names
 
-A case with a `// gap: <owner> <YYYY-MM-DDTHHZ>` line (decision 515) is a
-known gap and is expected to fail, so a
-mistake in the case itself (a wrong `// <- here` line, a stale API) hides until the
-implementation catches up. Before you open a gap, check that the failure is
-the bug the case is about. Enforced by `scripts/conformance-gaps.py`
-(the case's own code at another line, or a printed `?T` without `!`) and by
-`scripts/spec-gate.py gaps` (every failing case has a gap line, and a gap
-that starts passing must be dropped) and `gap-age` (no gap past 48 h, none
-re-dated).
+A failing case is a known gap when research/scoreboard.json records it as
+failing; `conformance_failing` counts them (target 0) and the case carries no
+marker line. A mistake in a failing case itself (a wrong `// <- here` line, a
+stale API) hides until the implementation catches up, so before you commit
+one, check that the failure is the bug the case is about. Enforced by
+`scripts/conformance-gaps.py` (the case's own code at another line, or a
+printed `?T` without `!`) and by `scripts/conform_staged.py` (a staged case
+that fails blocks the commit unless HEAD's scoreboard already records it as
+failing). `// gap:` lines still left must be well formed and still fail
+(`scripts/spec-gate.py gaps`, `gap-age`) until the ratchet counts none.
 
 ### conformance/R4. Every fixed bug lands with a case that fails without the fix
 
