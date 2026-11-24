@@ -1110,7 +1110,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn block_has_outer_loop_jump(block: &Block, fed_id: LoopId) -> bool {
-        fn check_block(b: &Block, fed_id: LoopId, inner: &mut Vec<LoopId>) -> bool {
+        fn check_block(b: &Block, fed_id: LoopId, inner: &mut Vec<LoopId>, in_do: bool) -> bool {
             for s in &b.stmts {
                 match s {
                     Stmt::Break(Some(id)) | Stmt::Continue(Some(id)) => {
@@ -1119,13 +1119,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         }
                     }
                     Stmt::If(_, t, e) => {
-                        if check_block(t, fed_id, inner) || check_block(e, fed_id, inner) {
+                        if check_block(t, fed_id, inner, in_do)
+                            || check_block(e, fed_id, inner, in_do)
+                        {
                             return true;
                         }
                     }
                     Stmt::While(lid, _, body) | Stmt::For(lid, _, _, body) => {
                         inner.push(*lid);
-                        let bad = check_block(body, fed_id, inner);
+                        let bad = check_block(body, fed_id, inner, in_do);
                         inner.pop();
                         if bad {
                             return true;
@@ -1133,18 +1135,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     }
                     Stmt::Expr(e) if matches!(e.kind, ExprKind::Do(_)) => {
                         if let ExprKind::Do(b2) = &e.kind {
-                            if check_block(b2, fed_id, inner) {
+                            if check_block(b2, fed_id, inner, true) {
                                 return true;
                             }
                         }
                     }
-                    Stmt::Give(_) => return true,
+                    // A `give` leaves the innermost `do`, so only one outside it leaves the loop.
+                    Stmt::Give(_) if !in_do => return true,
                     _ => {}
                 }
             }
             false
         }
-        check_block(block, fed_id, &mut Vec::new())
+        check_block(block, fed_id, &mut Vec::new(), false)
     }
 
     pub(super) fn try_compile_for_fed(

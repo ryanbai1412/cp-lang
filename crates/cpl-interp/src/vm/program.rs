@@ -217,7 +217,6 @@ impl<'p> CompiledProgram<'p> {
         traced: bool,
         profiled: bool,
     ) -> Self {
-        let empty_fed: Vec<bool> = vec![false; program.fns.len()];
         let fed_fn = |id: usize, fed_ok: &[bool]| -> Option<Chunk<'p>> {
             let f = &program.fns[id];
             if traced || profiled || program.judge_fns.contains(&id) {
@@ -252,29 +251,22 @@ impl<'p> CompiledProgram<'p> {
             fchunk.guarded_domains = guarded_domains;
             Some(fchunk)
         };
-        let mut fed_fns: Vec<Option<Chunk<'p>>> = (0..program.fns.len())
-            .map(|id| fed_fn(id, &empty_fed))
+        // Every `yields` fn is first taken to compile, so one that feeds
+        // itself or another does; one that doesn't is dropped and the rest
+        // are compiled again, until none drops.
+        let mut known: Vec<bool> = (0..program.fns.len())
+            .map(|id| feeds.pushers.contains_key(&id))
             .collect();
-        // A `yields` fn walking another feeds its loop from the other's form,
-        // so it is compiled again each time more fed forms are known.
-        let walkers: Vec<usize> = (0..program.fns.len())
-            .filter(|&id| {
-                feeds.pushers.contains_key(&id) && feeds.walks_a_fed_fn(&program.fns[id].body)
-            })
-            .collect();
-        loop {
-            let known: Vec<bool> = fed_fns.iter().map(Option::is_some).collect();
-            let mut more = false;
-            for &id in &walkers {
-                if let Some(again) = fed_fn(id, &known) {
-                    more |= !known[id];
-                    fed_fns[id] = Some(again);
-                }
+        let fed_fns: Vec<Option<Chunk<'p>>> = loop {
+            let fed_fns: Vec<_> = (0..program.fns.len())
+                .map(|id| known[id].then(|| fed_fn(id, &known)).flatten())
+                .collect();
+            let now: Vec<bool> = fed_fns.iter().map(Option::is_some).collect();
+            if now == known {
+                break fed_fns;
             }
-            if !more {
-                break;
-            }
-        }
+            known = now;
+        };
         let fed_ok: Vec<bool> = fed_fns.iter().map(Option::is_some).collect();
         let body_chunk = |locals, cur_fn, params, ret, body, def, captures: &[cpl_ir::Capture]| {
             let mut c = Compiler::new(program, feeds, &fed_ok, locals, cur_fn, params, def);
