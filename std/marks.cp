@@ -85,6 +85,17 @@ pub struct Marks<D>:
     @get pub fn is_empty(self) -> Bool:
         cnt == 0
 
+    /// Visit every marked position; `for v in m` uses this.
+    ///
+    /// cost: \(O(\lvert D \rvert)\): it scans the whole domain
+    /// empty: `Marks<0..5>().each().collect() == []`
+    /// order: ascending position in `D`
+    /// traps: never
+    /// example: `var m = Marks<0..5>(); m.add(3); m.add(1); m.each().collect() == [1, 3]`
+    pub fn each(self) -> yields D:
+        for v in D:
+            if stamp[v] == gen: yield v
+
 /// Epoch-stamped map over domain `D` with \(O(1)\) `get`, `set`, `contains`, `remove`, and `clear()`.
 pub struct MarkMap<D, T>:
     stamp: [D]0..=2_000_000_000
@@ -118,6 +129,17 @@ pub struct MarkMap<D, T>:
     /// example: `var m = MarkMap<0..5, Int>(0); m.set(2, 1); m.remove(2); m.is_empty`
     @get pub fn is_empty(self) -> Bool:
         cnt == 0
+
+    /// Visit every set `(position, value)` pair.
+    ///
+    /// cost: \(O(\lvert D \rvert)\): it scans the whole domain
+    /// empty: `MarkMap<0..5, Int>(0).items.collect() == []`
+    /// order: ascending position in `D`
+    /// traps: never
+    /// example: `var m = MarkMap<0..5, Int>(0); m.set(3, 7); m.set(1, 9); m.items.collect() == [(1, 9), (3, 7)]`
+    @get pub fn items(self) -> yields (D, T):
+        for v in D:
+            if stamp[v] == gen: yield (v, vals[v])
 
     /// Whether `v` has a value. A key set to `default_val` is present.
     ///
@@ -198,6 +220,16 @@ pub struct Interner<K>:
     /// example: `var t = Interner<Str>(); t.id("a"); t.clear(); t.is_empty`
     @get pub fn is_empty(self) -> Bool:
         keys.len == 0
+
+    /// Visit every interned key; `for k in t` uses this.
+    ///
+    /// cost: \(O(1)\) per step
+    /// empty: `Interner<Str>().each().collect() == []`
+    /// order: id order, `key(0)` first, so it never depends on hash order
+    /// traps: never
+    /// example: `var t = Interner<Str>(); t.id("b"); t.id("a"); t.id("b"); t.each().collect() == ["b", "a"]`
+    pub fn each(self) -> yields K:
+        for k in keys: yield k
 
     /// Forget every key, so the next new key gets id `0` again.
     ///
@@ -334,7 +366,7 @@ pub struct SparseSet<D>:
     /// element into the removed one's slot.
     ///
     /// cost: \(O(\mathit{len})\)
-    /// empty: yields nothing for an empty set
+    /// empty: `SparseSet<0..5>().each().collect() == []`
     /// order: dense order (insertion order adjusted by removals, as above)
     /// traps: never
     /// example: `var s = SparseSet<0..5>(); s.add(2); s.add(0); s.add(4); s.each().collect() == [2, 0, 4]`
@@ -374,6 +406,16 @@ pub struct Arena<T>:
     /// example: `var a = Arena<Int>(); a.alloc(5); a.clear(); a.is_empty`
     @get pub fn is_empty(self) -> Bool:
         _xs.len == 0
+
+    /// Visit every node with its handle.
+    ///
+    /// cost: \(O(1)\) per step
+    /// empty: `Arena<Str>().items.collect() == []`
+    /// order: allocation order, handle `0` first
+    /// traps: never
+    /// example: `var a = Arena<Str>(); a.alloc("p"); a.alloc("q"); a.items.collect() == [(Id<Str>(0), "p"), (Id<Str>(1), "q")]`
+    @get pub fn items(self) -> yields (Id<T>, T):
+        for i in 0.._xs.len: yield (Id(i), _xs[i])
 
     /// Store `x` as a new node and return its handle; handles are issued in order `0, 1, 2, ...`.
     ///
@@ -528,10 +570,70 @@ fn interval_map_cross_module_assign():
     assert total_len == 4 and sum_old == 6
     assert im.runs == 3 and im.run_at(P(5)).range.len == 6
 
+@test
+fn marks_walk_and_show():
+    domain V = 0..6
+    var m = Marks<V>()
+    m.add(V(4))
+    m.add(V(1))
+    m.remove(V(4))
+    m.add(V(5))
+    assert m.each().collect() == [V(1), V(5)] and "{m}" == "1 5"
+    var mm = MarkMap<V, Int>(0)
+    mm.set(V(2), 8)
+    mm.set(V(0), 3)
+    assert mm.items.collect() == [(V(0), 3), (V(2), 8)] and "{mm}" == "0=3, 2=8"
+    mm.clear()
+    assert mm.items.collect().is_empty and "{mm}" == ""
+    var s = SparseSet<V>()
+    s.add(V(3))
+    s.add(V(0))
+    assert "{s}" == "3 0"
+    var a = Arena<Int>()
+    a.alloc(7)
+    a.alloc(2)
+    assert [x for (_, x) in a.items] == [7, 2] and "{a}" == "7 2"
+    var t = Interner<Str>()
+    t.id("y")
+    t.id("x")
+    assert t.each().collect() == ["y", "x"]
+
 impl Show for Interner<K>:
     fn show(t):
         var out = ""
         for k in t.keys:
             if not out.is_empty: out += " "
             out += "{k}"
+        out
+
+impl Show for Marks<D>:
+    fn show(m):
+        var out = ""
+        for v in m.each():
+            if not out.is_empty: out += " "
+            out += "{v}"
+        out
+
+impl Show for MarkMap<D, T>:
+    fn show(m):
+        var out = ""
+        for (v, x) in m.items:
+            if not out.is_empty: out += ", "
+            out += "{v}={x}"
+        out
+
+impl Show for SparseSet<D>:
+    fn show(s):
+        var out = ""
+        for v in s.each():
+            if not out.is_empty: out += " "
+            out += "{v}"
+        out
+
+impl Show for Arena<T>:
+    fn show(a):
+        var out = ""
+        for (_, x) in a.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
         out

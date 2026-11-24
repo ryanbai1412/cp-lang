@@ -864,6 +864,7 @@ std/hashmap.cp: FlatMap.values(self) -> yields V
 std/hashmap.cp: pop<K>(mut self: Counter<K, Int>, x: K)
 std/hashmap.cp: push<K>(mut self: Counter<K, Int>, x: K)
 std/heap.cp: ErasableHeap.clear(mut self)
+std/heap.cp: ErasableHeap.each(self) -> yields T
 std/heap.cp: ErasableHeap.is_empty(self) -> Bool
 std/heap.cp: ErasableHeap.len(self) -> Int
 std/heap.cp: ErasableHeap.new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>
@@ -874,6 +875,7 @@ std/heap.cp: ErasableHeap.remove(mut self, x: T)
 std/heap.cp: ErasableHeap.take(mut self) -> ErasableHeap<T>
 std/heap.cp: Heap.clear(mut self)
 std/heap.cp: Heap.drain(mut self) -> yields T
+std/heap.cp: Heap.each(self) -> yields T
 std/heap.cp: Heap.is_empty(self) -> Bool
 std/heap.cp: Heap.len(self) -> Int
 std/heap.cp: Heap.new<K>(by: ?(T -> K) = None) -> Heap<T>
@@ -889,6 +891,7 @@ std/heap.cp: Heap.take(mut self) -> Heap<T>
 std/heap.cp: IndexedHeap.clear(mut self)
 std/heap.cp: IndexedHeap.contains(self, v: D) -> Bool
 std/heap.cp: IndexedHeap.decrease(mut self, v: D, k: K) -> Bool
+std/heap.cp: IndexedHeap.each(self) -> yields (D, K)
 std/heap.cp: IndexedHeap.get(self, v: D) -> ?K
 std/heap.cp: IndexedHeap.increase(mut self, v: D, k: K) -> Bool
 std/heap.cp: IndexedHeap.is_empty(self) -> Bool
@@ -900,6 +903,7 @@ std/heap.cp: IndexedHeap.remove(mut self, v: D) -> ?K
 std/heap.cp: IndexedHeap.set(mut self, v: D, k: K)
 std/heap.cp: MaxHeap.clear(mut self)
 std/heap.cp: MaxHeap.drain(mut self) -> yields T
+std/heap.cp: MaxHeap.each(self) -> yields T
 std/heap.cp: MaxHeap.is_empty(self) -> Bool
 std/heap.cp: MaxHeap.len(self) -> Int
 std/heap.cp: MaxHeap.new() -> MaxHeap<T>
@@ -918,6 +922,7 @@ std/heap.cp: MeldHeap.absorb(mut self, mut other: MeldHeap<T>)
 std/heap.cp: MeldHeap.add_all(mut self, delta: T)
 std/heap.cp: MeldHeap.clear(mut self)
 std/heap.cp: MeldHeap.drain(mut self) -> List<T>
+std/heap.cp: MeldHeap.each(self) -> yields T
 std/heap.cp: MeldHeap.is_empty(self) -> Bool
 std/heap.cp: MeldHeap.len(self) -> Int
 std/heap.cp: MeldHeap.meld(mut self, other: MeldHeap<T>)
@@ -940,6 +945,7 @@ std/heap.cp: MeldHeaps.push_all(mut self, mut h: Meld<T>, items: Seq<T>)
 std/heap.cp: MeldHeaps.reserve(mut self, nodes: Int)
 std/heap.cp: MeldHeaps.top(self, h: Meld<T>) -> ?T
 std/heap.cp: MinMaxHeap.clear(mut self)
+std/heap.cp: MinMaxHeap.each(self) -> yields T
 std/heap.cp: MinMaxHeap.first(self) -> ?T
 std/heap.cp: MinMaxHeap.is_empty(self) -> Bool
 std/heap.cp: MinMaxHeap.last(self) -> ?T
@@ -1040,12 +1046,14 @@ std/marks.cp: Arena.alloc(mut self, x: T) -> Id<T>
 std/marks.cp: Arena.clear(mut self)
 std/marks.cp: Arena.get(self, id: Id<T>) -> T
 std/marks.cp: Arena.is_empty(self) -> Bool
+std/marks.cp: Arena.items(self) -> yields (Id<T>, T)
 std/marks.cp: Arena.len(self) -> Int
 std/marks.cp: Arena.new(cap: Int = 0) -> Arena<T>
 std/marks.cp: Arena.reserve(mut self, cap: Int)
 std/marks.cp: Arena.set(mut self, id: Id<T>, x: T)
 std/marks.cp: Interner.clear(mut self)
 std/marks.cp: Interner.contains(self, k: K) -> Bool
+std/marks.cp: Interner.each(self) -> yields K
 std/marks.cp: Interner.get(self, k: K) -> ?Int
 std/marks.cp: Interner.id(mut self, k: K) -> Int
 std/marks.cp: Interner.is_empty(self) -> Bool
@@ -1057,6 +1065,7 @@ std/marks.cp: MarkMap.clear(mut self)
 std/marks.cp: MarkMap.contains(self, v: D) -> Bool
 std/marks.cp: MarkMap.get(self, v: D) -> ?T
 std/marks.cp: MarkMap.is_empty(self) -> Bool
+std/marks.cp: MarkMap.items(self) -> yields (D, T)
 std/marks.cp: MarkMap.len(self) -> Int
 std/marks.cp: MarkMap.new(default_val: T) -> MarkMap<D, T>
 std/marks.cp: MarkMap.remove(mut self, v: D) -> ?T
@@ -1064,6 +1073,7 @@ std/marks.cp: MarkMap.set(mut self, v: D, val: T)
 std/marks.cp: Marks.add(mut self, v: D) -> Bool
 std/marks.cp: Marks.clear(mut self)
 std/marks.cp: Marks.contains(self, v: D) -> Bool
+std/marks.cp: Marks.each(self) -> yields D
 std/marks.cp: Marks.is_empty(self) -> Bool
 std/marks.cp: Marks.len(self) -> Int
 std/marks.cp: Marks.new() -> Marks<D>
