@@ -7312,6 +7312,86 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.add": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "geometry.OnlineHull.add",
+   "measured": 1.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.area2": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.OnlineHull.area2",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.OnlineHull.clear",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.extreme": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "geometry.OnlineHull.extreme",
+   "measured": 0.84,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.OnlineHull.is_empty",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.iter": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.OnlineHull.iter",
+   "measured": 5.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.OnlineHull.len",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.locate": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "geometry.OnlineHull.locate",
+   "measured": 1.3,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.OnlineHull.new",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/online_hull.cp::geometry.OnlineHull.vertices": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.OnlineHull.vertices",
+   "measured": 5.98,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/opt.cp::opt.and_then": {
    "cost": "1",
    "documented": 1.0,
@@ -13394,16 +13474,6 @@
   "dsu.PersistentDsuWithin.is_empty",
   "dsu.PersistentDsuWithin.items",
   "dsu.PersistentDsuWithin.len",
-  "geometry.OnlineHull.add",
-  "geometry.OnlineHull.area2",
-  "geometry.OnlineHull.clear",
-  "geometry.OnlineHull.extreme",
-  "geometry.OnlineHull.is_empty",
-  "geometry.OnlineHull.iter",
-  "geometry.OnlineHull.len",
-  "geometry.OnlineHull.locate",
-  "geometry.OnlineHull.new",
-  "geometry.OnlineHull.vertices",
   "geometry.PointSet.contains",
   "geometry.PointSet.drain",
   "geometry.PointSet.each",
@@ -13721,6 +13791,8 @@
   "seq.Filtered.src",
   "seq.Items.src",
   "seq.Mapped.src",
+  "seq.contains",
+  "seq.reversed",
   "slope.Concave.add_abs",
   "slope.Concave.add_const",
   "slope.Concave.add_left",
