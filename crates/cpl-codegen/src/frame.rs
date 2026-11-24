@@ -6,7 +6,7 @@
 
 use crate::uses::effects;
 use crate::walk;
-use cpl_ir::{Arg, Block, Expr, ExprKind, FnId, Program, SortBy, Stmt};
+use cpl_ir::{Arg, Block, Expr, ExprKind, FnId, Program, Stmt};
 use std::collections::{BTreeMap, BTreeSet};
 
 /// The outer locals a cold suffix reads, each passed by reference whatever
@@ -158,17 +158,8 @@ fn returns_outer(stmts: &[Stmt]) -> bool {
 
 fn declared(b: &Block) -> BTreeSet<usize> {
     let mut inner = BTreeSet::new();
-    walk::deep_stmts(b, &mut |s| match s {
-        Stmt::Let(slot, _) | Stmt::For(_, slot, ..) => {
-            inner.insert(*slot);
-        }
-        _ => {}
-    });
-    // A sort key's parameter (`sorted(by: x => desc(x))`) is bound by the sort itself.
-    walk::deep_exprs(b, &mut |e| {
-        if let ExprKind::Sort(_, SortBy::Key(slot, _), _) = &e.kind {
-            inner.insert(*slot);
-        }
+    walk::binders(b, &mut |slot| {
+        inner.insert(slot);
     });
     inner
 }
