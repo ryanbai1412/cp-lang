@@ -15,32 +15,37 @@ impl Server {
         params: &Value,
     ) -> Option<Result<Reply, (i32, String)>> {
         Some(match method {
-            "textDocument/typeDefinition" => self.position(params).map(|(uri, offset)| {
+            "textDocument/typeDefinition" => self.position(params).map(|(uri, offset, _)| {
                 let def = self.db.type_definition(&uri, offset);
-                Reply::result(def.map_or(Value::Null, |def| self.location(&uri, &def)))
+                let location = def.and_then(|def| self.location(&uri, &def));
+                Reply::result(location.unwrap_or(Value::Null))
             }),
-            "textDocument/implementation" => self.position(params).map(|(uri, offset)| {
+            "textDocument/implementation" => self.position(params).map(|(uri, offset, _)| {
                 let defs = self.db.implementations(&uri, offset);
                 Reply::result(Value::Array(
-                    defs.iter().map(|def| self.location(&uri, def)).collect(),
+                    defs.iter()
+                        .filter_map(|def| self.location(&uri, def))
+                        .collect(),
                 ))
             }),
-            "textDocument/linkedEditingRange" => self.position(params).map(|(uri, offset)| {
-                // Only a name declared in this file is safe to edit as one.
-                let Some((target, spans)) = crate::rename::references(&mut self.db, &uri, offset)
-                else {
-                    return Reply::default();
-                };
-                let analysis = self.db.analyze(&uri).expect("references imply an analysis");
-                if !crate::rename::same_file(&target.path, &uri) || spans.len() < 2 {
-                    return Reply::default();
-                }
-                let ranges = spans
-                    .iter()
-                    .map(|&span| range_json(span, &analysis.text, &analysis.lines))
-                    .collect::<Vec<_>>();
-                Reply::result(obj([("ranges", ranges.into())]))
-            }),
+            "textDocument/linkedEditingRange" => {
+                self.position(params).map(|(uri, offset, analysis)| {
+                    // Only a name declared in this file is safe to edit as one.
+                    let Some((target, spans)) =
+                        crate::rename::references(&mut self.db, &uri, offset)
+                    else {
+                        return Reply::default();
+                    };
+                    if !crate::rename::same_file(&target.path, &uri) || spans.len() < 2 {
+                        return Reply::default();
+                    }
+                    let ranges = spans
+                        .iter()
+                        .map(|&span| range_json(span, &analysis.text, &analysis.lines))
+                        .collect::<Vec<_>>();
+                    Reply::result(obj([("ranges", ranges.into())]))
+                })
+            }
             "textDocument/documentLink" => super::uri_of(params).map(|uri| {
                 let uri = uri.to_string();
                 Reply::result(Value::Array(self.use_links(&uri)))
@@ -61,23 +66,21 @@ impl Server {
         })
     }
 
-    /// `def` as an LSP `Location`, from the open document `uri`.
-    pub(super) fn location(&self, uri: &str, def: &Definition) -> Value {
+    /// `def` as an LSP `Location`, from the open document `uri`; `None`
+    /// once its file is no longer loaded.
+    pub(super) fn location(&self, uri: &str, def: &Definition) -> Option<Value> {
         // Only the target's text: analyzing a module the file merely
         // imports would check all of it again, as if it were open.
-        let text = self
-            .db
-            .file_text(&def.path)
-            .expect("definition implies a loaded file");
+        let text = self.db.file_text(&def.path)?;
         let target = if def.path == uri {
             def.path.clone()
         } else {
             uri_of_path(&def.path)
         };
-        obj([
+        Some(obj([
             ("uri", target.into()),
             ("range", range_json(def.span, &text, &LineIndex::new(&text))),
-        ])
+        ]))
     }
 
     /// A link from the module path of each `use` line to that module's file.

@@ -263,11 +263,10 @@ impl Server {
                 Ok(Reply::notify(publish(uri, Vec::new())))
             }
             "textDocument/hover" => {
-                let (uri, offset) = self.position(params)?;
+                let (uri, offset, analysis) = self.position(params)?;
                 let proven = self.loop_hover(&uri, offset);
                 let proven = proven.or_else(|| self.index_hover(&uri, offset, false));
                 if let Some(hover) = proven.or_else(|| self.arith_hover(&uri, offset)) {
-                    let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                     return Ok(Reply::result(obj([
                         (
                             "contents",
@@ -282,7 +281,7 @@ impl Server {
                         ),
                     ])));
                 }
-                let hover = self.named_hover(&uri, offset);
+                let hover = self.named_hover(&uri, &analysis, offset);
                 let Some(mut hover) = hover else {
                     return Ok(Reply::default());
                 };
@@ -297,7 +296,7 @@ impl Server {
                     .db
                     .definition(&uri, offset)
                     .map_or(hover.span.start, |d| d.start);
-                let facts = self.proven(&uri).expect("hover implies an analysis");
+                let facts = self.proven_of(&uri, analysis.clone());
                 let proven = facts
                     .ranges()
                     .iter()
@@ -375,7 +374,6 @@ impl Server {
                         );
                     }
                 }
-                let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                 Ok(Reply::result(obj([
                     (
                         "contents",
@@ -391,11 +389,7 @@ impl Server {
                 ])))
             }
             "textDocument/completion" => {
-                let (uri, offset) = self.position(params)?;
-                let analysis = self
-                    .db
-                    .analyze(&uri)
-                    .expect("a position implies an analysis");
+                let (uri, offset, analysis) = self.position(params)?;
                 let cursor = Cursor {
                     uri: &uri,
                     analysis: &analysis,
@@ -422,18 +416,14 @@ impl Server {
                 Ok(Reply::result(item))
             }
             "textDocument/signatureHelp" => {
-                let (uri, offset) = self.position(params)?;
-                let analysis = self
-                    .db
-                    .analyze(&uri)
-                    .expect("a position implies an analysis");
+                let (uri, offset, analysis) = self.position(params)?;
                 let cursor = Cursor {
                     uri: &uri,
                     analysis: &analysis,
                     offset,
                 };
                 let doc = complete::callee_start(&cursor)
-                    .and_then(|at| self.named_hover(&uri, at))
+                    .and_then(|at| self.named_hover(&uri, &analysis, at))
                     .and_then(|h| h.doc);
                 Ok(
                     match complete::signature_help(&cursor, &mut self.std, doc) {
@@ -443,13 +433,12 @@ impl Server {
                 )
             }
             "textDocument/references" => {
-                let (uri, offset) = self.position(params)?;
+                let (uri, offset, analysis) = self.position(params)?;
                 let Some((target, spans)) = rename::references(&mut self.db, &uri, offset) else {
                     return Ok(Reply::result(Value::Array(Vec::new())));
                 };
                 let with_decl =
                     params.at(&["context", "includeDeclaration"]) != &Value::Bool(false);
-                let analysis = self.db.analyze(&uri).expect("references imply an analysis");
                 let locations = spans
                     .into_iter()
                     .filter(|span| with_decl || target.path != uri || *span != target.span)
@@ -465,11 +454,10 @@ impl Server {
             // The references in this file, the declaration marked as the
             // write: the same answer as find-references.
             "textDocument/documentHighlight" => {
-                let (uri, offset) = self.position(params)?;
+                let (uri, offset, analysis) = self.position(params)?;
                 let Some((target, spans)) = rename::references(&mut self.db, &uri, offset) else {
                     return Ok(Reply::result(Value::Array(Vec::new())));
                 };
-                let analysis = self.db.analyze(&uri).expect("references imply an analysis");
                 let highlights = spans
                     .into_iter()
                     .map(|span| {
@@ -505,11 +493,7 @@ impl Server {
             // A name declared in an open file or a library of the user's can
             // be renamed; the standard library's names belong to it.
             "textDocument/prepareRename" => {
-                let (uri, offset) = self.position(params)?;
-                let analysis = self
-                    .db
-                    .analyze(&uri)
-                    .expect("a position implies an analysis");
+                let (uri, offset, analysis) = self.position(params)?;
                 let Some((span, name)) = rename::word_at(&analysis.text, offset) else {
                     return Ok(Reply::default());
                 };
@@ -534,7 +518,7 @@ impl Server {
                 }
             }
             "textDocument/rename" => {
-                let (uri, offset) = self.position(params)?;
+                let (uri, offset, analysis) = self.position(params)?;
                 let new_name = params
                     .get("newName")
                     .and_then(Value::as_str)
@@ -562,16 +546,12 @@ impl Server {
                     ));
                 }
                 if rename::spelled_by_input(&mut self.db, &target, &[&uri]) {
-                    let name = self
-                        .db
-                        .analyze(&uri)
-                        .and_then(|a| rename::word_at(&a.text, offset).map(|(_, w)| w.to_string()));
+                    let name = rename::word_at(&analysis.text, offset).map(|(_, w)| w.to_string());
                     return Err((
                         INVALID_PARAMS,
                         Self::spelled_by_input(&name.unwrap_or_default()),
                     ));
                 }
-                let analysis = self.db.analyze(&uri).expect("references imply an analysis");
                 let name = rename::word_at(&analysis.text, offset)
                     .map_or(String::new(), |(_, w)| w.to_string());
                 // Every open file, the declaring file, and each file of the
@@ -649,13 +629,15 @@ impl Server {
                 Ok(Reply::result(obj([("changes", Value::Object(changes))])))
             }
             "textDocument/definition" => {
-                let (uri, offset) = self.position(params)?;
+                let (uri, offset, _) = self.position(params)?;
                 let defs = self.db.definitions(&uri, offset);
                 Ok(match defs.as_slice() {
                     [] => Reply::default(),
-                    [def] => Reply::result(self.location(&uri, def)),
+                    [def] => self
+                        .location(&uri, def)
+                        .map_or_else(Reply::default, Reply::result),
                     _ => Reply::result(Value::Array(
-                        defs.iter().map(|d| self.location(&uri, d)).collect(),
+                        defs.iter().filter_map(|d| self.location(&uri, d)).collect(),
                     )),
                 })
             }
@@ -750,7 +732,7 @@ impl Server {
                 let Some(facts) = self.proven(uri) else {
                     return Ok(Reply::result(Value::Array(Vec::new())));
                 };
-                let analysis = self.db.analyze(uri).expect("proven implies an analysis");
+                let analysis = facts.analysis().clone();
                 let mut hints = Vec::new();
                 let proven: HashMap<u32, (i128, i128)> = facts
                     .ranges()
@@ -883,38 +865,46 @@ impl Server {
     /// once per edit and shared by every request until the next.
     fn proven(&mut self, uri: &str) -> Option<Arc<Proven>> {
         let analysis = self.db.analyze(uri)?;
+        Some(self.proven_of(uri, analysis))
+    }
+
+    fn proven_of(&mut self, uri: &str, analysis: Arc<cpl_check::Analysis>) -> Arc<Proven> {
         if let Some(facts) = self.proven.get(uri).filter(|f| {
             Arc::ptr_eq(f.analysis(), &analysis) || *f.analysis().text == *analysis.text
         }) {
-            return Some(facts.clone());
+            return facts.clone();
         }
         let facts = Arc::new(Proven::new(analysis));
         self.proven.insert(uri.to_string(), facts.clone());
-        Some(facts)
+        facts
     }
 
     /// What hover shows for the name at `offset`, before the facts proven about
     /// it; signature help takes its doc from here too.
-    fn named_hover(&mut self, uri: &str, offset: u32) -> Option<cpl_check::Hover> {
+    fn named_hover(
+        &mut self,
+        uri: &str,
+        analysis: &cpl_check::Analysis,
+        offset: u32,
+    ) -> Option<cpl_check::Hover> {
         let checked = self.db.hover(uri, offset);
         // `j.jump(a, b, k)` beside a field `jump`: the call names the fn.
         let called_field = checked.as_ref().is_some_and(|h| {
-            !matches!(h.ty, None | Some(cpl_check::Ty::Fn { .. }))
-                && (self.db.analyze(uri)).is_some_and(|a| {
-                    let name = &a.text[h.span.start as usize..h.span.end as usize];
-                    a.text[..h.span.start as usize].ends_with('.')
-                        && a.text[h.span.end as usize..].starts_with('(')
-                        && h.text.starts_with(&format!("{name}: "))
-                })
+            !matches!(h.ty, None | Some(cpl_check::Ty::Fn { .. })) && {
+                let text = &analysis.text;
+                let name = &text[h.span.start as usize..h.span.end as usize];
+                text[..h.span.start as usize].ends_with('.')
+                    && text[h.span.end as usize..].starts_with('(')
+                    && h.text.starts_with(&format!("{name}: "))
+            }
         });
         // `s.runs` names a library `fn runs(self: S, ..)`: the checker's
         // fact is the free form, so show the declaration as written,
         // as completion and signature help do.
         if called_field || checked.as_ref().is_none_or(|h| h.signature) {
-            let analysis = self.db.analyze(uri).expect("hover implies an analysis");
             let cursor = Cursor {
                 uri,
-                analysis: &analysis,
+                analysis,
                 offset,
             };
             let member = complete::member_hover(&cursor, &mut self.std);
@@ -933,7 +923,7 @@ impl Server {
                     Some(member) => member,
                     None => checked,
                 }),
-                None => crate::syntax_hover::hover(&analysis, offset).or(member),
+                None => crate::syntax_hover::hover(analysis, offset).or(member),
             }
         } else {
             checked
@@ -1059,17 +1049,19 @@ impl Server {
         })
     }
 
-    fn position(&mut self, params: &Value) -> Result<(String, u32), (i32, String)> {
+    /// The document, offset and analysis a positioned request is about.
+    fn position(
+        &mut self,
+        params: &Value,
+    ) -> Result<(String, u32, Arc<cpl_check::Analysis>), (i32, String)> {
         let uri = uri_of(params)?;
         let position = position_of(params.get("position").unwrap_or(&Value::Null))?;
         let analysis = self
             .db
             .analyze(uri)
             .ok_or((INVALID_PARAMS, format!("`{uri}` is not open")))?;
-        Ok((
-            uri.to_string(),
-            analysis.lines.offset_utf16(position, &analysis.text),
-        ))
+        let offset = analysis.lines.offset_utf16(position, &analysis.text);
+        Ok((uri.to_string(), offset, analysis))
     }
 }
 

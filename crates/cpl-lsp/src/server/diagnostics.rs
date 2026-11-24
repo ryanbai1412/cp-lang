@@ -56,7 +56,7 @@ impl Server {
         let Some(facts) = self.proven(uri) else {
             return publish(uri, Vec::new());
         };
-        let analysis = self.db.analyze(uri).expect("proven implies an analysis");
+        let analysis = facts.analysis().clone();
         let reported = reported(uri, &facts);
         // A lint on the same span (L0306) already says it, with a fix.
         let mut notes = overflows(&facts);

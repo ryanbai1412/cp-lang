@@ -1324,11 +1324,12 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
             .enumerate()
             .map(|(i, ty)| (plain(&i.to_string(), Kind::Field, ty.to_string(), ""), 0))
             .collect(),
-        Ty::Named { .. } | Ty::Str | Ty::Array { .. } if builtin_receiver(ty).is_some() => {
-            let (receiver, bindings) = builtin_receiver(ty).expect("checked by the guard");
-            builtin_members(receiver)
-                .map(|member| (builtin_entry(member, &bindings), 0))
-                .collect()
+        Ty::Named { .. } | Ty::Str | Ty::Array { .. } => {
+            builtin_receiver(ty).map_or_else(Vec::new, |(receiver, bindings)| {
+                builtin_members(receiver)
+                    .map(|member| (builtin_entry(member, &bindings), 0))
+                    .collect()
+            })
         }
         // The checker's own members of an optional, beside std's `self: ?T` fns.
         Ty::Optional(inner) => cpl_check::OPTIONAL_MEMBERS

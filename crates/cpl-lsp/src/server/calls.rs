@@ -6,6 +6,7 @@ use crate::uri::uri_of_path;
 use cpl_check::Definition;
 use cpl_diag::{LineIndex, Span};
 use cpl_json::{obj, Value};
+use std::collections::btree_map::Entry;
 use std::collections::BTreeMap;
 
 impl Server {
@@ -16,7 +17,7 @@ impl Server {
         params: &Value,
     ) -> Option<Result<Reply, (i32, String)>> {
         Some(match method {
-            "textDocument/prepareCallHierarchy" => self.position(params).map(|(uri, offset)| {
+            "textDocument/prepareCallHierarchy" => self.position(params).map(|(uri, offset, _)| {
                 let def = self.db.definition_location(&uri, offset);
                 let item = def.and_then(|def| self.fn_item(&uri, &def));
                 Reply::result(item.map_or(Value::Null, |item| Value::Array(vec![item])))
@@ -38,39 +39,16 @@ impl Server {
             .fns(&def.path)
             .into_iter()
             .find(|s| s.name_span == def.span)?;
-        Some(self.item(
+        let text = self.db.file_text(&def.path)?;
+        Some(item(
             uri,
             &def.path,
+            &text,
             &symbol.name,
             12,
             symbol.span,
             symbol.name_span,
         ))
-    }
-
-    fn item(&self, uri: &str, path: &str, name: &str, kind: u32, span: Span, at: Span) -> Value {
-        let text = self.db.file_text(path).expect("a loaded file");
-        let lines = LineIndex::new(&text);
-        let target = if path == uri {
-            path.to_string()
-        } else {
-            uri_of_path(path)
-        };
-        obj([
-            ("name", name.into()),
-            ("kind", kind.into()),
-            ("uri", target.into()),
-            ("range", range_json(span, &text, &lines)),
-            ("selectionRange", range_json(at, &text, &lines)),
-            (
-                "data",
-                obj([
-                    ("path", path.into()),
-                    ("start", at.start.into()),
-                    ("end", at.end.into()),
-                ]),
-            ),
-        ])
     }
 
     /// Each caller of `target` in the open documents, with where it calls:
@@ -102,11 +80,11 @@ impl Server {
                 let from = match caller {
                     Some(i) => {
                         let f = &fns[i];
-                        self.item(&doc, &doc, &f.name, 12, f.span, f.name_span)
+                        item(&doc, &doc, &text, &f.name, 12, f.span, f.name_span)
                     }
                     None => {
                         let whole = Span::new(spans[0].start, spans[spans.len() - 1].end);
-                        self.item(&doc, &doc, "top level", 2, whole, spans[0])
+                        item(&doc, &doc, &text, "top level", 2, whole, spans[0])
                     }
                 };
                 let ranges = spans
@@ -155,14 +133,17 @@ impl Server {
                 continue;
             }
             let key = (def.path.clone(), def.span.start);
-            if !found.contains_key(&key) {
-                let Some(item) = self.fn_item(&path, &def) else {
-                    continue;
-                };
-                found.insert(key.clone(), (item, Vec::new()));
-            }
+            let spans = match found.entry(key) {
+                Entry::Occupied(entry) => entry.into_mut(),
+                Entry::Vacant(entry) => {
+                    let Some(item) = self.fn_item(&path, &def) else {
+                        continue;
+                    };
+                    entry.insert((item, Vec::new()))
+                }
+            };
             let span = rename::word_at(&analysis.text, at).map_or(Span::new(at, at), |(s, _)| s);
-            found.get_mut(&key).expect("inserted").1.push(span);
+            spans.1.push(span);
         }
         Value::Array(
             found
@@ -202,4 +183,29 @@ fn item_of(params: &Value) -> Result<(Definition, String), (i32, String)> {
         span: Span::new(start, end),
     };
     Ok((def, name))
+}
+
+/// The `CallHierarchyItem` of `name`, declared at `at` in `path`, whose text is `text`.
+fn item(uri: &str, path: &str, text: &str, name: &str, kind: u32, span: Span, at: Span) -> Value {
+    let lines = LineIndex::new(text);
+    let target = if path == uri {
+        path.to_string()
+    } else {
+        uri_of_path(path)
+    };
+    obj([
+        ("name", name.into()),
+        ("kind", kind.into()),
+        ("uri", target.into()),
+        ("range", range_json(span, text, &lines)),
+        ("selectionRange", range_json(at, text, &lines)),
+        (
+            "data",
+            obj([
+                ("path", path.into()),
+                ("start", at.start.into()),
+                ("end", at.end.into()),
+            ]),
+        ),
+    ])
 }

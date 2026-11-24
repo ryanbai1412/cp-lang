@@ -20,6 +20,43 @@ fn closing_a_document_clears_its_diagnostics() {
 }
 
 #[test]
+fn positioned_requests_on_a_closed_document_get_errors_not_crashes() {
+    let (mut server, _) = open(SOURCE);
+    server.handle(&notification(
+        "textDocument/didClose",
+        obj([("textDocument", doc())]),
+    ));
+    let methods = [
+        "textDocument/hover",
+        "textDocument/completion",
+        "textDocument/signatureHelp",
+        "textDocument/references",
+        "textDocument/documentHighlight",
+        "textDocument/prepareRename",
+        "textDocument/definition",
+        "textDocument/typeDefinition",
+        "textDocument/implementation",
+        "textDocument/linkedEditingRange",
+        "textDocument/prepareCallHierarchy",
+    ];
+    for (id, method) in (10..).zip(methods) {
+        let params = obj([("textDocument", doc()), ("position", pos(6, 13))]);
+        let reply = server.handle(&request(id, method, params));
+        assert_eq!(
+            reply[0].at(&["error", "code"]),
+            &Value::Int(-32602),
+            "{method}"
+        );
+    }
+    let hints = server.handle(&request(
+        30,
+        "textDocument/inlayHint",
+        obj([("textDocument", doc())]),
+    ));
+    assert_eq!(hints[0].at(&["result"]), &Value::Array(Vec::new()));
+}
+
+#[test]
 fn unknown_and_malformed_messages_get_errors_not_crashes() {
     let (mut server, _) = open(SOURCE);
     let reply = server.handle(&request(2, "textDocument/selectionRange", obj([])));
