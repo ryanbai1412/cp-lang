@@ -47,6 +47,27 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// A scope naming the trait's own fns without `self`, so its laws and default
+    /// bodies call them unqualified: `law assoc(..) = op(op(a, b), c) == ..` (R08.3.1).
+    pub(crate) fn own_fns_scope(&mut self, trait_name: &str, body: &[Stmt]) {
+        let sigs = match self.global(trait_name).as_deref() {
+            Some(Def::Trait { methods, .. }) => methods.clone(),
+            _ => Vec::new(),
+        };
+        self.push_scope();
+        for stmt in body {
+            let StmtKind::Fn(f) = &stmt.kind else {
+                continue;
+            };
+            if f.params.first().is_some_and(|p| p.name.text == "self") {
+                continue;
+            }
+            if let Some(m) = sigs.iter().find(|m| m.name == f.name.text) {
+                self.declare(&f.name.text, f.name.span, m.ty.clone(), false, "fn");
+            }
+        }
+    }
+
     /// Every trait a bound names must exist: `where T: Ord + Bounded`.
     pub(crate) fn bounds_exist(&mut self, bounds: &[ast::Bound]) {
         for bound in bounds {

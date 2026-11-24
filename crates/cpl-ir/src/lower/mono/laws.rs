@@ -165,6 +165,7 @@ impl<'a> Lowerer<'a> {
                 let saved_offset = std::mem::replace(&mut lw.offset, law.offset);
                 let saved_env = std::mem::replace(&mut lw.gen_env, struct_env.clone());
                 let saved_self = lw.self_struct.replace(sid);
+                let saved_fns = std::mem::replace(&mut lw.law_fns, law.trait_fns.clone());
 
                 // Resolve each law parameter's sample list slot.
                 let mut pools: Vec<(String, Slot, Ty)> = Vec::new();
@@ -194,6 +195,7 @@ impl<'a> Lowerer<'a> {
                 lw.offset = saved_offset;
                 lw.gen_env = saved_env;
                 lw.self_struct = saved_self;
+                lw.law_fns = saved_fns;
             }
 
             lw.cx.receiver = saved_recv;

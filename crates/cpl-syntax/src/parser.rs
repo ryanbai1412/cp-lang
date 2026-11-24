@@ -14,6 +14,7 @@ mod expr;
 mod foreign;
 mod generator;
 mod item;
+mod laws;
 mod pattern;
 mod stmt;
 mod types;

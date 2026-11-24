@@ -157,6 +157,15 @@ trait Commutative<T>: Op<T>:
 - `cpl stress` samples laws on the values a program actually builds;
   `laws_hold(op, samples)` checks them directly; `--laws=off` skips. (R08.3.3)
 - A false law gives wrong answers, never undefined behaviour. (R08.3.4, permits)
+- A struct that declares `law`s has a derived member
+  `@get laws(self) -> List<(name: Str, sizes: S -> List<Int>, holds: (S, List<Int>) -> Bool)>`,
+  one entry per law in declaration order, so a library checks laws with an
+  ordinary body. `S` is the samples: `List<T>` when every law parameter has the
+  one type `T`, else a record of one list per parameter type, named by the
+  type, `(T: List<T>, F: List<F>)`. `sizes(s)` is the length of each
+  parameter's list, and `holds(s, picks)` is the law with parameter `k` bound
+  to element `picks[k]` of its list. A struct that writes its own `laws` keeps
+  it. (R08.3.5)
 
 ## 8.4 Record row types (trial)
 

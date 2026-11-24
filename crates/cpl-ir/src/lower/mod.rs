@@ -773,6 +773,8 @@ struct Lowerer<'a> {
     /// type parameter only its return type names: `let x: Int = gen(r)`.
     call_hint: (Option<Ty>, Option<lambda_infer::WantBound>),
     self_struct: Option<StructId>,
+    /// The trait fns a law being lowered names unqualified (`LawInfo::trait_fns`).
+    law_fns: Vec<String>,
     /// Start of the item being lowered; its spans are relative to it.
     offset: u32,
     /// Declared types shown as their source writes them, innermost last.
@@ -909,6 +911,7 @@ impl<'a> Lowerer<'a> {
             gen_env: HashMap::new(),
             call_hint: (None, None),
             self_struct: None,
+            law_fns: Vec::new(),
             offset: 0,
             asked_at: report::Asked::default(),
             sig_param_at: HashMap::new(),

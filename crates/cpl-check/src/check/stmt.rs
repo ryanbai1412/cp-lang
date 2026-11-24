@@ -1128,7 +1128,9 @@ impl<'a> Checker<'a> {
                 }
                 self.type_hover(name);
                 self.owned(&name.text, &body.stmts);
+                self.own_fns_scope(&name.text, &body.stmts);
                 self.methods(&body.stmts, &self_ty);
+                self.pop_scope();
                 self.param_bounds.truncate(outer_bounds);
                 self.leave_body(scope);
             }

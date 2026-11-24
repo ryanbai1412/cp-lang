@@ -649,7 +649,7 @@ impl<'a> Parser<'a> {
                 methods: Vec::new(),
             });
         }
-        let methods = self.members(&format!("`struct {}`", name.text), |p| {
+        let mut methods = self.members(&format!("`struct {}`", name.text), |p| {
             let mut cached = false;
             if p.at(T::At) && p.peek_n(1) == T::Ident {
                 p.bump();
@@ -686,6 +686,7 @@ impl<'a> Parser<'a> {
                 });
             }
         });
+        laws::derive_laws(&mut methods);
         StmtKind::Struct(StructDecl {
             name,
             generics,

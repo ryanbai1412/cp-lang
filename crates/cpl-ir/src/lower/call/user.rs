@@ -627,7 +627,16 @@ impl<'a> Lowerer<'a> {
                         );
                         self.err_expr(span)
                     }
-                    None => self.prelude(name, args, hint, span),
+                    None => match self
+                        .self_struct
+                        .filter(|_| self.law_fns.iter().any(|f| f == name))
+                    {
+                        Some(sid) if self.structs[sid].methods.contains_key(name) => {
+                            let fn_id = self.structs[sid].methods[name];
+                            self.method_call(fn_id, None, args, span)
+                        }
+                        _ => self.prelude(name, args, hint, span),
+                    },
                 }
             }
             ast::ExprKind::Generic { base, args: types } => {

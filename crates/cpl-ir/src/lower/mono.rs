@@ -149,6 +149,9 @@ pub(super) struct LawInfo<'a> {
     pub name: String,
     pub params: &'a [ast::Param],
     pub body: &'a ast::Expr,
+    /// A trait's law names the trait's fns without `self` unqualified (R08.3.1);
+    /// empty for a struct's own law.
+    pub trait_fns: Vec<String>,
 }
 
 pub(super) use super::keyed::OwnedDomainInit;
