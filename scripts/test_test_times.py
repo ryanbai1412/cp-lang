@@ -2,7 +2,9 @@
 
 import importlib.util
 import json
+import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location("test_times", Path(__file__).parent / "test-times.py")
@@ -38,6 +40,19 @@ class TestTimesTest(unittest.TestCase):
         self.assertEqual(list(tt.merged(old, JUNIT).items()),
                          [("cpl-cli::budget all", 140.0), ("cpl-lsp tests::slower", 61.2),
                           ("cpl-cli::judges slow", 30.0)])
+
+
+    def test_write_times_the_tests_with_ci_s_g_plus_plus_cache(self) -> None:
+        def cache(target, env):
+            env["CPL_CXX_SHIM_DIR"] = str(target / "cxx-shim")
+        with mock.patch.object(tt.ci, "cxx_cache", side_effect=cache), \
+                mock.patch.object(tt.subprocess, "run") as run, \
+                mock.patch.object(tt, "slow_tests", return_value={}), \
+                mock.patch.object(Path, "read_text", return_value=""), \
+                mock.patch.object(Path, "write_text"), \
+                mock.patch.object(sys, "argv", ["test-times.py", "--write"]):
+            tt.main()
+        self.assertEqual(run.call_args.kwargs["env"]["CPL_CXX_SHIM_DIR"], str(tt.ROOT / "target" / "cxx-shim"))
 
 
 if __name__ == "__main__":

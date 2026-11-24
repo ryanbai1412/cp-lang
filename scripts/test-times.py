@@ -9,19 +9,24 @@
 
 `--write` runs `cargo nextest run` over TOOLS_CRATES with the `times` profile
 (.config/nextest.toml), which writes target/nextest/times/junit.xml, and keeps
-each test over LIMIT_S in research/perf/tools-test-times.json. The debt ratchet's
+each test over LIMIT_S in research/perf/tools-test-times.json. g++ goes
+through scripts/cxx-cache.py, as in CI's test parts. The debt ratchet's
 `tools_tests_over_30s` counts that list, so a slow test fails the gate until it
 is cut or sharded under the limit.
 """
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+import ci  # noqa: E402
+
 RECORD = "research/perf/tools-test-times.json"
 TOOLS_CRATES = ("cpl-cli", "cpl-lsp", "cpl-contest", "cpl-stress", "cpl-corpus")
 LIMIT_S = 30.0
@@ -72,7 +77,11 @@ def main() -> int:
         argv = ["cargo", "nextest", "run", "--profile", "times", "--no-fail-fast"]
         for crate in TOOLS_CRATES:
             argv += ["-p", crate]
-        subprocess.run(argv, cwd=ROOT, check=False)
+        # CI's tests build C++ through the g++ cache (ci.cxx_cache); so does
+        # the record, or it times builds no CI run makes.
+        env = dict(os.environ)
+        ci.cxx_cache(ROOT / "target", env)
+        subprocess.run(argv, cwd=ROOT, env=env, check=False)
     elif not args.junit:
         ap.error("pass --write, --junit PATH or --show")
     if args.merge and not args.junit:
