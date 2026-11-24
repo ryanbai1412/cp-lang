@@ -277,3 +277,17 @@ fn a_let_of_a_field_read_never_again_moves_it() {
     let kept = cpp(&src(", p.s"));
     assert!(!kept.contains("std::move(p.s)"), "{kept}");
 }
+
+#[test]
+fn a_let_of_a_nested_field_read_never_again_moves_it() {
+    let src = |tail: &str| {
+        format!(
+            "struct Q:\n    s: Str\n    t: Str\nstruct P:\n    q: Q\n    n: Int\nfn f(n: Int):\n    let p = P(q: Q(s: \"ab\".repeat(n), t: \"x\"), n: n)\n    var acc = p.q.s\n    for i in 0..p.n: acc += p.q.t\n    print(acc{tail})\nf(read())\n"
+        )
+    };
+    let moved = cpp(&src(""));
+    assert!(moved.contains("acc = std::move(p.q.s)"), "{moved}");
+    // `p.q.s` is read again, so the `var` copies it.
+    let kept = cpp(&src(", p.q.s"));
+    assert!(!kept.contains("std::move(p.q.s)"), "{kept}");
+}

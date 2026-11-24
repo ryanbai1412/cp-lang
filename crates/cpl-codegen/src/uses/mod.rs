@@ -14,7 +14,7 @@ use crate::walk;
 use cpl_ir::{
     Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, PlaceKind, Program, Stmt, Ty,
 };
-use effects::Stores;
+use effects::{Runs, Stores};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub(crate) use effects::Effects;
@@ -465,9 +465,7 @@ impl crate::emit::Emitter<'_> {
 pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
     if let Stmt::Let(_, Some(init)) = &block.stmts[k] {
         return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
-            || matches!(init.kind, ExprKind::Local(src)
-                if dead_after(program, block, k, src))
-            || field_dies(block, k, in_place(init));
+            || place_dies(program, block, k, in_place(init));
     }
     let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
         return false;
@@ -480,38 +478,55 @@ pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
     walk::root(place) != (false, *slot) && dead_after(program, block, k, *slot)
 }
 
-/// `init` reads a field of a local this block declared, and nothing after
-/// statement `k` reads that field again or the local whole, sets the local
-/// or captures it: `var acc = m.id` when only `m.op` is read later.
-fn field_dies(block: &Block, k: usize, init: &Expr) -> bool {
-    let mut path = init;
-    let mut first = None;
-    while let ExprKind::Field(base, f) = &path.kind {
-        first = Some(*f);
-        path = base;
+/// The local a place expression starts from and the fields it follows:
+/// `m.a.b` is `m` and `[a, b]`, `m` alone is `m` and `[]`.
+fn field_path(e: &Expr) -> Option<(usize, Vec<usize>)> {
+    match &e.kind {
+        ExprKind::Local(slot) => Some((*slot, Vec::new())),
+        ExprKind::Field(base, f) => field_path(base).map(|(slot, mut fields)| {
+            fields.push(*f);
+            (slot, fields)
+        }),
+        _ => None,
     }
-    let (Some(first), ExprKind::Local(slot)) = (first, &path.kind) else {
+}
+
+/// Whether the place `init` names, a local this block declared or a field
+/// path into one, is dead after statement `k`: no closure of the block can
+/// reach the local, nothing after `k` sets it, and every later read of it
+/// leaves the path at a different field (`var acc = m.a.id` when only
+/// `m.a.op` and `m.n` are read later). That read may move it.
+fn place_dies(program: &Program, block: &Block, k: usize, init: &Expr) -> bool {
+    let Some((slot, fields)) = field_path(init) else {
         return false;
     };
-    let slot = *slot;
+    if fields.is_empty() {
+        return dead_after(program, block, k, slot);
+    }
     let declared = block.stmts[..k]
         .iter()
         .any(|stmt| matches!(stmt, Stmt::Let(s, _) if *s == slot));
     let rest = Block {
         stmts: block.stmts[k + 1..].to_vec(),
     };
-    let (mut reads, mut apart, mut closure) = (0, 0, false);
-    walk::deep_exprs(block, &mut |e| {
-        closure |= matches!(e.kind, ExprKind::Closure(_))
-    });
+    let (mut reads, mut apart) = (0, 0);
     walk::deep_exprs(&rest, &mut |e| match &e.kind {
         ExprKind::Local(s) if *s == slot => reads += 1,
-        ExprKind::Field(base, f) if *f != first => {
-            apart += usize::from(matches!(base.kind, ExprKind::Local(s) if s == slot))
+        ExprKind::Field(base, f) => {
+            let leaves = |(s, at): (usize, Vec<usize>)| {
+                s == slot
+                    && at.len() < fields.len()
+                    && fields.starts_with(&at)
+                    && fields[at.len()] != *f
+            };
+            apart += usize::from(field_path(base).is_some_and(leaves));
         }
         _ => {}
     });
-    declared && !closure && reads == apart && !Stores::of_block(&rest).locals.contains(&slot)
+    declared
+        && !Runs::of_block(block).closures
+        && reads == apart
+        && !Stores::of_block(&rest).locals.contains(&slot)
 }
 
 /// Value parameters whose one read copies them into a local the body
