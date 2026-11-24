@@ -5,8 +5,8 @@
 //   (0, V1) to (R - 1, V2).
 // Solution: cut the rows into blocks of 20 and keep each block's C x C matrix of least costs
 //   from its top row to the row below it, built by C left/right relaxations per row in
-//   O(10 C^2). A SegTree over blocks multiplies them in the (min, +) semiring, with `?Cost`
-//   (None = no route) as its zero. Routes from neighbouring tops never need to cross, so the
+//   O(10 C^2). A SegTree over blocks multiplies them in the (min, +) semiring, with NONE = 2^30
+//   (no route) as its zero. Routes from neighbouring tops never need to cross, so the
 //   best middle column is monotone (opt[i][j-1] <= k <= opt[i+1][j]) and a product is O(C^2).
 //   A change rebuilds one block and its O(log R) ancestors and keeps the root; an escape reads it.
 // limits: 9000 ms, 256 MB
@@ -20,18 +20,19 @@ let r: 1..=5000 = read()
 let c: 1..=200 = read()
 domain Row = 0..r
 domain Col = 0..c
-domain Gap = 0..c - 1  // the road between columns g and g + 1
+domain Gap = 0..c - 1   // the road between columns g and g + 1
 domain Drop = 0..r - 1  // the road below row d
 var east: [Row, Gap]Wombats = read()
 var south: [Drop, Col]Wombats = read()
 domain Block = 0..ceil_div(r, BLOCK)
 
-type Matrix = [Col, Col]?Cost
+const NONE = 1 << 30  // no route
+type Matrix = [Col, Col]0..=NONE
 
-fn identity() -> Matrix = [Col, Col] (i, j) => if i == j: Some(0) else: None
+fn identity() -> Matrix = [Col, Col] (i, j) => if i == j: 0 else: NONE
 
 fn mul(x: Matrix, y: Matrix) -> Matrix:
-    var out: Matrix = None
+    var out: Matrix = NONE
     var opt: [Col, Col]Col = Col.first!
     for i in Col.all.rev:
         for j in Col:
@@ -39,10 +40,10 @@ fn mul(x: Matrix, y: Matrix) -> Matrix:
             let hi = i.next.map(n => opt[n, j]) ?? Col.last!
             opt[i, j] = min(max(i, lo), hi)  // where no route exists (the identity's off-diagonal)
             for k in lo..=hi:
-                if let via = x[i, k] + y[k, j]:
-                    if out[i, j].map(best => via < best) ?? true:
-                        out[i, j] = Some(via)
-                        opt[i, j] = k
+                let via = x[i, k] + y[k, j]
+                if via < out[i, j]:
+                    out[i, j] = via
+                    opt[i, j] = k
 
     out
 
@@ -51,7 +52,7 @@ fn block(b: Block) -> Matrix:
     let top = rows.first!
     var along: [Col]Int = 0  // the cost along the top row from column 0
     for g in Gap: along[Col(g.ord + 1)] = along[Col(g.ord)] + east[top, g]
-    var out: Matrix = None
+    var out: Matrix = NONE
     for s in Col:
         var cost = [Col] j => abs(along[j] - along[s])
         for row in rows:
@@ -60,7 +61,7 @@ fn block(b: Block) -> Matrix:
                 for g in Gap.all.rev: cost[Col(g.ord)] min= cost[Col(g.ord + 1)] + east[row, g]
             if let d = Drop.at(row.ord):
                 for j in Col: cost[j] += south[d, j]
-        for j in Col: out[s, j] = Some(cost[j])
+        for j in Col: out[s, j] = cost[j]
     out
 
 var routes = SegTree<Block, Matrix>(Monoid(identity(), mul), [Block] b => block(b))
@@ -82,4 +83,4 @@ for _ in 0..events:
         root = routes.all
     else:
         let (v1, v2): (Col, Col) = read()
-        print(root[v1, v2]!)
+        print(root[v1, v2])
