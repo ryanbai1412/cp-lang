@@ -3,6 +3,7 @@
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
 ## 2026-11-24
+- 2026-11-24 landed (VM-stmt, tree-walker deletion): `xs.sort()` and `xs.sort(by: ..)` over an element or key type with a user `<` run on the VM (`Op::SortPlaceCmp`, `Op::SortByKeysPlaceCmp`): the VM takes the place (and computes the keys) itself and sorts through the interpreter's one stable merge sort with the frame synced, so the `<` can run. `traced` and `untraced stmt:Expr(Sort)` leave vm_fallbacks.txt (16 to 14); tests: operator_fns.cp, sort_stable_ord_ties.cp.
 - 2026-11-24 landed (VM-stmt, tree-walker deletion): a call's `mut` args may be any places that provably never overlap (different roots, fields or literal keys; `disjoint` in vm/compile/call_mix.rs), scalar ones included, each taken by path and written back after the call; a path that ends at a map entry stores through it (`Op::StorePlaceV`). `swap(mut xs[0], mut xs[4])` (functions.cp) and `adj[3].reverse()` (vm_map_key_place.cp) run on the VM; cpl-interp's `vm_walks_map_entries_itself`, red on main, passes again.
 - 2026-11-24 landed (VM-stmt, tree-walker deletion): a mutation of a struct, enum or a container of them with no fn inside (`owned` in vm/compile/apply.rs) runs on the VM by `Op::MutatePlace` through the shared `mutation::mutate_cell`, as plain data did; `batch19_list_plus` and `modulus_from_a_local_let` no longer fall back.
 

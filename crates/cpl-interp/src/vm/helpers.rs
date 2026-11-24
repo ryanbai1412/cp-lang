@@ -460,6 +460,26 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
     }
 }
 
+/// The elements of a list or an array, with the array's dims.
+pub(super) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i64>>)> {
+    match seq {
+        Value::List(items) => Ok((Rc::unwrap_or_clone(items), None)),
+        Value::Array(arr) => Ok((
+            (0..arr.len()).map(|k| arr.get_unchecked_val(k)).collect(),
+            Some(arr.dims.clone()),
+        )),
+        _ => trap(span, LENT),
+    }
+}
+
+/// The inverse of `seq_items`.
+pub(super) fn seq_of_items(items: Vec<Value>, dims: Option<Vec<i64>>) -> Value {
+    match dims {
+        None => Value::List(Rc::new(items)),
+        Some(dims) => Value::Array(Rc::new(Array::from_values(dims, items))),
+    }
+}
+
 pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res<()> {
     fn sort_ord<T: Ord>(v: &mut [T], desc: bool) {
         v.sort_unstable();

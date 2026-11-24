@@ -210,6 +210,101 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 exec_sort_place(target, desc, spans[cur_pc])?;
             }
+            Op::SortPlaceCmp { idx, path, desc_r } => {
+                let span = spans[cur_pc];
+                let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
+                let cpl_ir::ExprKind::Sort(place, _, _) = &chunk.applies[idx as usize].expr.kind
+                else {
+                    return trap(span, "internal: not a sort");
+                };
+                let (cpl_ir::Ty::List(elem) | cpl_ir::Ty::Array { elem, .. }) = &place.ty else {
+                    return trap(span, "internal: not a sequence sort");
+                };
+                let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                let seq = std::mem::replace(
+                    walk_place_mut(root, &pp.steps, regs_i, &keys, span)?,
+                    Value::Unit,
+                );
+                let (items, dims) = seq_items(seq, span)?;
+                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                sync_to_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    self.base,
+                    chunk.traced,
+                );
+                self.show_lent();
+                let sorted = self.merge_sort_ty(items, elem, desc, span);
+                self.hide_lent();
+                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                sync_from_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    self.base,
+                    chunk.traced,
+                );
+                let sorted = seq_of_items(sorted?, dims);
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                *walk_place_mut(root, &pp.steps, regs_i, &keys, span)? = sorted;
+            }
+            Op::SortByKeysPlaceCmp {
+                idx,
+                path,
+                seq_v,
+                keys_v,
+                desc_r,
+            } => {
+                let span = spans[cur_pc];
+                let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
+                let key_ty = match &chunk.applies[idx as usize].expr.kind {
+                    cpl_ir::ExprKind::Sort(_, cpl_ir::SortBy::Key(_, key), _) => &key.ty,
+                    cpl_ir::ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) => match &func.ty
+                    {
+                        cpl_ir::Ty::Fn(_, ret) => &**ret,
+                        _ => return trap(span, "internal: not a key fn"),
+                    },
+                    _ => return trap(span, "internal: not a keyed sort"),
+                };
+                let seq = std::mem::replace(&mut regs_v[seq_v as usize], Value::Unit);
+                let Value::List(by) = std::mem::replace(&mut regs_v[keys_v as usize], Value::Unit)
+                else {
+                    return trap(span, "internal: expected the sort keys");
+                };
+                let (items, dims) = seq_items(seq, span)?;
+                let keyed: Vec<(Value, Value)> = by.iter().cloned().zip(items).collect();
+                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                sync_to_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    self.base,
+                    chunk.traced,
+                );
+                self.show_lent();
+                let sorted = self.merge_sort_keyed(keyed, key_ty, desc, span);
+                self.hide_lent();
+                let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                sync_from_stack(
+                    &chunk.slot_map,
+                    regs_i,
+                    regs_v,
+                    &mut self.stack,
+                    self.base,
+                    chunk.traced,
+                );
+                let sorted = seq_of_items(sorted?.into_iter().map(|(_, x)| x).collect(), dims);
+                let pp = &chunk.places[path as usize];
+                let keys = place_keys(pp, regs_v);
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                *walk_place_mut(root, &pp.steps, regs_i, &keys, span)? = sorted;
+            }
             Op::RangeCheckI {
                 dst,
                 val,

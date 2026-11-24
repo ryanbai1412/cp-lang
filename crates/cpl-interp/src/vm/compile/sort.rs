@@ -37,11 +37,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
     /// of their keys, as the tree-walker does.
     pub(super) fn try_compile_sort_key_stmt(
         &mut self,
+        expr: &'p Expr,
         place: &'p Place,
         by: SortKey<'p>,
         desc: Option<&'p Expr>,
-        span: Span,
     ) -> bool {
+        let span = expr.span;
         let seq_kind = match &place.ty {
             Ty::List(_) => SeqKind::List,
             Ty::Array { dims, .. } if dims.len() == 1 => SeqKind::Array,
@@ -54,9 +55,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 _ => return false,
             },
         };
-        if !ty_uses_structural_cmp(key_ty, self.program) {
-            return false;
-        }
+        let user_cmp = !ty_uses_structural_cmp(key_ty, self.program);
         let key_kind = ScalarKind::of_ty(key_ty, self.program);
         if key_kind.is_none() && ScalarKind::of_opt_ty(key_ty, self.program).is_some() {
             return false;
@@ -183,16 +182,68 @@ impl<'p, 'f> Compiler<'p, 'f> {
         );
         let end_pc = self.ops.len() as u32;
         self.patch(j_skip, end_pc);
-        self.emit(
-            Op::SortByKeysPlace {
-                path,
-                seq_v: r_seq,
-                keys_v: r_keys,
-                desc_r,
-            },
-            span,
-        );
+        if user_cmp {
+            let idx = self.push_sort_spec(expr);
+            self.emit(
+                Op::SortByKeysPlaceCmp {
+                    idx,
+                    path,
+                    seq_v: r_seq,
+                    keys_v: r_keys,
+                    desc_r,
+                },
+                span,
+            );
+        } else {
+            self.emit(
+                Op::SortByKeysPlace {
+                    path,
+                    seq_v: r_seq,
+                    keys_v: r_keys,
+                    desc_r,
+                },
+                span,
+            );
+        }
         true
+    }
+
+    /// `xs.sort()` over elements with a user `<`: sorts in place through
+    /// the interpreter's comparison, as the tree-walker does.
+    pub(super) fn try_compile_sort_cmp_stmt(
+        &mut self,
+        expr: &'p Expr,
+        place: &'p Place,
+        desc: Option<&'p Expr>,
+    ) -> bool {
+        match &place.ty {
+            Ty::List(_) => {}
+            Ty::Array { dims, .. } if dims.len() == 1 => {}
+            _ => return false,
+        }
+        let saved = (self.ops.len(), self.spans.len(), self.places.len());
+        let Some(path) = self.compile_place_path_to(place, true) else {
+            self.ops.truncate(saved.0);
+            self.spans.truncate(saved.1);
+            self.places.truncate(saved.2);
+            return false;
+        };
+        let desc_r = match desc {
+            Some(e) => self.compile_expr_i(e),
+            None => u16::MAX,
+        };
+        let idx = self.push_sort_spec(expr);
+        self.emit(Op::SortPlaceCmp { idx, path, desc_r }, expr.span);
+        true
+    }
+
+    /// Records the sort `expr` for an op that compares with a user `<`,
+    /// which can run user code and so needs the frame on the stack.
+    fn push_sort_spec(&mut self, expr: &'p Expr) -> u32 {
+        self.applies_sync = true;
+        let idx = self.applies.len() as u32;
+        self.applies.push(ApplySpec { expr, regs: vec![] });
+        idx
     }
 
     /// Calls the fn value `callee_v` on element `r_idx` of `r_seq`, its

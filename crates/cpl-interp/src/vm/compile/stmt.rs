@@ -662,11 +662,13 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         self.emit_fallback_stmt(stmt);
                     }
                 } else if let ExprKind::Sort(place, cpl_ir::SortBy::Natural, desc) = &expr.kind {
-                    if !self.try_compile_sort_stmt(place, desc.as_deref(), expr.span) {
+                    if !self.try_compile_sort_stmt(place, desc.as_deref(), expr.span)
+                        && !self.try_compile_sort_cmp_stmt(expr, place, desc.as_deref())
+                    {
                         self.emit_fallback_stmt(stmt);
                     }
                 } else if let Some((place, by, desc)) = sort_key_of(&expr.kind) {
-                    if !self.try_compile_sort_key_stmt(place, by, desc, expr.span) {
+                    if !self.try_compile_sort_key_stmt(expr, place, by, desc) {
                         self.emit_fallback_stmt(stmt);
                     }
                 } else if let ExprKind::Call(fn_id, args) = &expr.kind {
