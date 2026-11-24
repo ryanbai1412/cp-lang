@@ -61,7 +61,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
             ) => (await exec('test', uri?.fsPath, '--add', '-', { stdin: await stdin, typed: [await typed] }))?.ok,
         ),
         command('cp.importProblem', (folder: unknown = active()?.fsPath) =>
-            vscode.commands.executeCommand('cpl.import', folder, config().get('companion.port')),
+            vscode.commands.executeCommand('cpl.import', folder, config().get('companion.port', 10043)),
         ),
         command('cp.debug', (uri = active()) =>
             vscode.debug.startDebugging(undefined, {
