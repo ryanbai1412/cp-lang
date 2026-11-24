@@ -5,8 +5,23 @@ input = "1 2\n1\n0 3\n"
 
 [[case]]
 seed = 1
-size = 8
+size = 3
 
 [[case]]
 seed = 2
-size = 100
+size = 8
+
+[[case]]
+seed = 3
+size = 40
+
+[[case]]
+seed = 4
+size = 300
+
+[[case]]
+seed = 5
+size = 1500
+
+[[case]]
+args = ["--max"]
