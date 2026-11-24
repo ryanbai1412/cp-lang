@@ -990,3 +990,6 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - `reverse` and `Str.join` lower from their std bodies (std/seq.cp, std/strings.cp): the
   compiler arms in lower/call/value_method.rs are gone, with a both-backend case over lists,
   strings, tables and slices (`ir_builtin_derived` 32 -> 30).
+- An enum whose tags are all one letter reads its tag as a `Char` (lower/call/prelude.rs
+  `tagged_read`), so `[Game]Outcome` reads `WLW` as well as `W L W`, in both backends
+  (R10.2.3). Regression: programs/packed_letter_enum_read; cases/ergo/columns now runs.

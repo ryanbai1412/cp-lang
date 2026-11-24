@@ -1668,11 +1668,17 @@ impl<'a> Lowerer<'a> {
             Ty::Pos(d) => Some(d),
             _ => None,
         };
+        // Tags of one letter each read as a `Char`, so a column of them
+        // reads packed (`WLW`) or spaced (`W L W`), as `[V]Char` does.
+        let letters = tokens
+            .iter()
+            .all(|t| t.len() == 1 && !t.as_bytes()[0].is_ascii_digit());
+        let tok_ty = if letters { Ty::Char } else { Ty::Str };
         Some(self.do_expr(Some(&ty), span, |lw, out| {
-            let token = lw.temp(Ty::Str);
+            let token = lw.temp(tok_ty.clone());
             let read = lw.mk(
-                ExprKind::Read(Box::new(Spec::Plain(Ty::Str))),
-                Ty::Str,
+                ExprKind::Read(Box::new(Spec::Plain(tok_ty.clone()))),
+                tok_ty.clone(),
                 span,
             );
             out.push(Stmt::Let(token, Some(read)));
@@ -1680,7 +1686,10 @@ impl<'a> Lowerer<'a> {
                 let tags = [tokens[tag].clone()];
                 let mut cond: Option<Expr> = None;
                 for text in tags {
-                    let lit = lw.mk(ExprKind::Str(text.into_bytes()), Ty::Str, span);
+                    let lit = match letters {
+                        true => lw.mk(ExprKind::Char(text.as_bytes()[0]), Ty::Char, span),
+                        false => lw.mk(ExprKind::Str(text.into_bytes()), Ty::Str, span),
+                    };
                     let tok = lw.local(token, span);
                     let eq = lw.mk(
                         ExprKind::Cmp(CmpOp::Eq, Box::new(tok), Box::new(lit)),
