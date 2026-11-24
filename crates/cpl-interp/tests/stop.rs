@@ -45,7 +45,7 @@ fn a_run_past_its_deadline_traps_traced_or_not() {
             let trap = ends_at(source, Stop::after(Duration::from_millis(100)), traced);
             assert_eq!(
                 trap.as_deref(),
-                Some(OUT_OF_TIME),
+                Some(OUT_OF_TIME.text()),
                 "traced {traced}: {source}"
             );
         }
@@ -59,7 +59,7 @@ fn a_cancel_from_another_thread_ends_the_run() {
     std::thread::spawn(move || canceller.cancel());
     assert_eq!(
         ends_at(NEVER_ENDS[0], stop, false).as_deref(),
-        Some(CANCELLED)
+        Some(CANCELLED.text())
     );
 }
 
@@ -99,7 +99,7 @@ fn a_run_past_its_round_budget_traps_traced_or_not() {
             let trap = ends_at(source, Stop::after_rounds(1_000_000), traced);
             assert_eq!(
                 trap.as_deref(),
-                Some(OUT_OF_TIME),
+                Some(OUT_OF_TIME.text()),
                 "traced {traced}: {source}"
             );
         }

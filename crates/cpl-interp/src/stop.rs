@@ -18,9 +18,9 @@ pub struct Limits {
 }
 
 /// The message of the trap that ends a run at its deadline.
-pub const OUT_OF_TIME: &str = "the run took longer than its time limit";
+pub const OUT_OF_TIME: cpl_diag::msgs::Msg = cpl_diag::msgs::interp::OUT_OF_TIME;
 /// The message of the trap that ends a run [`Stop::cancel`] stopped.
-pub const CANCELLED: &str = "the run was stopped";
+pub const CANCELLED: cpl_diag::msgs::Msg = cpl_diag::msgs::interp::CANCELLED;
 
 /// Loop rounds and calls between two looks at the [`Stop`].
 pub(crate) const EVERY: u32 = 4096;
@@ -80,13 +80,13 @@ impl Stop {
     }
 
     /// Why the run must end now, if it must: the trap message.
-    pub(crate) fn reason(&mut self) -> Option<&'static str> {
+    pub(crate) fn reason(&mut self) -> Option<&'static cpl_diag::msgs::Msg> {
         if self.cancelled.load(Ordering::Relaxed) {
-            return Some(CANCELLED);
+            return Some(&cpl_diag::msgs::interp::CANCELLED);
         }
         if let Some(left) = &mut self.looks_left {
             if *left == 0 {
-                return Some(OUT_OF_TIME);
+                return Some(&cpl_diag::msgs::interp::OUT_OF_TIME);
             }
             *left -= 1;
         }
@@ -95,7 +95,7 @@ impl Stop {
             .deadline
             .is_some_and(|d| std::time::Instant::now() >= d)
         {
-            return Some(OUT_OF_TIME);
+            return Some(&cpl_diag::msgs::interp::OUT_OF_TIME);
         }
         None
     }
@@ -131,7 +131,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let next = self.ckpt.reload(if watched { EVERY } else { u32::MAX });
         self.countdown = self.ckpt.after_look(next);
         if let Some(reason) = self.stop.as_mut().and_then(Stop::reason) {
-            return trap(span, reason);
+            return trap(span, reason.at(&[]));
         }
         self.unstopped(span)?;
         Ok(self.ckpt.due())
@@ -144,7 +144,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             let callee = callee.map_or("a closure".into(), |name| format!("`{name}`"));
             return trap(
                 span,
-                format!("the stack ran out: {callee} never stops calling itself?"),
+                cpl_diag::msgs::interp::STACK_RAN_OUT_NEVER_STOPS.at(&[&callee]),
             );
         }
         Ok(())

@@ -8,6 +8,7 @@ use std::fmt::{Display, Write};
 
 pub mod check;
 pub mod foreign;
+pub mod interp;
 pub mod ir;
 pub mod lexer;
 pub mod lint;
@@ -226,6 +227,7 @@ mod tests {
         [
             ("check", check::ALL),
             ("foreign", foreign::ALL),
+            ("interp", interp::ALL),
             ("ir", ir::ALL),
             ("lexer", lexer::ALL),
             ("lint", lint::ALL),

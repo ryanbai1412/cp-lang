@@ -143,7 +143,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             {
                 return trap(
                     span,
-                    "sort `cmp:` comparator is not a strict weak order: cmp(x, x) is true",
+                    cpl_diag::msgs::interp::SORT_CMP_COMPARATOR_NOT_STRICT.at(&[]),
                 );
             }
         }
@@ -166,7 +166,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 {
                     return trap(
                         span,
-                        "sort `cmp:` comparator is not a strict weak order: result is not ordered",
+                        cpl_diag::msgs::interp::SORT_CMP_COMPARATOR_NOT_STRICT_2.at(&[]),
                     );
                 }
             }
@@ -213,7 +213,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             {
                 return trap(
                     span,
-                    "sort `cmp:` comparator is not a strict weak order: both cmp(a, b) and cmp(b, a) are true",
+                    cpl_diag::msgs::interp::SORT_CMP_COMPARATOR_NOT_STRICT_3.at(&[]),
                 );
             }
         }

@@ -1789,7 +1789,7 @@ mod tests {
         assert!(started.elapsed().as_secs() < 5, "{:?}", started.elapsed());
         assert_eq!(out.code, EXIT_FAILED, "{}", out.stderr);
         assert!(
-            out.stderr.contains(cpl_interp::OUT_OF_TIME),
+            out.stderr.contains(cpl_interp::OUT_OF_TIME.text()),
             "{}",
             out.stderr
         );

@@ -15,7 +15,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Div | BinOp::Rem if b == 0 => {
                     return release::div_zero(
                         span,
-                        format!("division by zero: `{a} {} 0`", op.text()),
+                        cpl_diag::msgs::interp::DIV_BY_ZERO_OP.at(&[&a, &(op.text())]),
                     )
                     .map(Value::Int)
                 }
@@ -26,7 +26,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                     Err(_) if b < 0 => {
                         return trap(
                             span,
-                            format!("`**` needs a power that is not negative, and this is {b}"),
+                            cpl_diag::msgs::interp::NEEDS_POWER_THAT_NOT_NEGATIVE.at(&[&b]),
                         )
                     }
                     Err(_) => match a {
@@ -39,11 +39,14 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::BitOr => Some(a | b),
                 BinOp::BitXor => Some(a ^ b),
                 BinOp::Shl | BinOp::Shr if !(0..64).contains(&b) => {
-                    return trap(span, format!("a shift by {b} is outside 0..64"))
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::SHIFT_BY_OUTSIDE_0_64.at(&[&b]),
+                    )
                 }
                 BinOp::Shl => {
                     if a < 0 {
-                        return trap(span, format!("`<<` of the negative number {a}"));
+                        return trap(span, cpl_diag::msgs::interp::NEGATIVE_NUMBER.at(&[&a]));
                     }
                     Some(a << b).filter(|shifted| *shifted >= 0 && shifted >> b == a)
                 }
@@ -53,10 +56,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             match result.filter(|v| *v != i64::MIN) {
                 Some(value) => Value::Int(value),
                 None => {
-                    let why = format!(
-                        "integer overflow: `{a} {} {b}` does not fit in an `Int` (64 bits)",
-                        op.text()
-                    );
+                    let why = cpl_diag::msgs::interp::INT_OVERFLOW_BINOP.at(&[&a, &op.text(), &b]);
                     return release::overflow(span, why, release::wrapping(op, a, b))
                         .map(Value::Int);
                 }
@@ -68,7 +68,10 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 BinOp::Sub => a.checked_sub(b),
                 BinOp::Mul => a.checked_mul(b),
                 BinOp::Div | BinOp::Rem if b == 0 => {
-                    return trap(span, format!("division by zero: `{a} {} 0`", op.text()))
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::DIV_BY_ZERO_OP.at(&[&a, &(op.text())]),
+                    )
                 }
                 BinOp::Div => a.checked_div_euclid(b),
                 BinOp::Rem => a.checked_rem_euclid(b),
@@ -77,7 +80,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                     Err(_) if b < 0 => {
                         return trap(
                             span,
-                            format!("`**` needs a power that is not negative, and this is {b}"),
+                            cpl_diag::msgs::interp::NEEDS_POWER_THAT_NOT_NEGATIVE.at(&[&b]),
                         )
                     }
                     Err(_) => match a {
@@ -96,21 +99,21 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                 None => {
                     return trap(
                         span,
-                        format!(
-                            "integer overflow: `{a} {} {b}` does not fit in an `I128` (128 bits)",
-                            op.text()
-                        ),
+                        cpl_diag::msgs::interp::I128_OVERFLOW_BINOP.at(&[&a, &(op.text()), &b]),
                     )
                 }
             }
         }
         (Value::I128(Wide(a)), Value::Int(b)) => {
             if !(0..128).contains(&b) {
-                return trap(span, format!("a shift by {b} is outside 0..128"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::SHIFT_BY_OUTSIDE_0_128.at(&[&b]),
+                );
             }
             match op {
                 BinOp::Shl if a < 0 => {
-                    return trap(span, format!("`<<` of the negative number {a}"))
+                    return trap(span, cpl_diag::msgs::interp::NEGATIVE_NUMBER.at(&[&a]))
                 }
                 BinOp::Shl => {
                     match Some(a << b).filter(|shifted| *shifted >= 0 && shifted >> b == a) {
@@ -118,9 +121,7 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
                         None => {
                             return trap(
                                 span,
-                                format!(
-                            "integer overflow: `{a} << {b}` does not fit in an `I128` (128 bits)"
-                        ),
+                                cpl_diag::msgs::interp::I128_OVERFLOW_BINOP.at(&[&a, &"<<", &b]),
                             )
                         }
                     }
@@ -134,8 +135,11 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             BinOp::Sub => a.wrapping_sub(b),
             BinOp::Mul => a.wrapping_mul(b),
             BinOp::Div | BinOp::Rem if b == 0 => {
-                return release::div_zero(span, format!("division by zero: `{a} {} 0`", op.text()))
-                    .map(Value::U64)
+                return release::div_zero(
+                    span,
+                    cpl_diag::msgs::interp::DIV_BY_ZERO_OP.at(&[&a, &(op.text())]),
+                )
+                .map(Value::U64)
             }
             BinOp::Div => a / b,
             BinOp::Rem => a % b,
@@ -157,7 +161,10 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
         }),
         (Value::U64(a), Value::Int(b)) => {
             if !(0..64).contains(&b) {
-                return trap(span, format!("a shift by {b} is outside 0..64"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::SHIFT_BY_OUTSIDE_0_64.at(&[&b]),
+                );
             }
             Value::U64(if op == BinOp::Shl { a << b } else { a >> b })
         }
@@ -167,7 +174,12 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             BinOp::Mul => a * b,
             BinOp::Div => a / b,
             BinOp::Pow => a.powf(b),
-            _ => return trap(span, "internal: this operator has no float form"),
+            _ => {
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::INTERNAL_THIS_OPERATOR_HAS_NO.at(&[]),
+                )
+            }
         }),
         (Value::Bool(a), Value::Bool(b)) => Value::Bool(match op {
             BinOp::BitAnd => a & b,
@@ -178,7 +190,12 @@ pub(super) fn binary(op: BinOp, l: Value, r: Value, span: Span) -> Res<Value> {
             Rc::make_mut(&mut a).extend_from_slice(&b);
             Value::Str(a)
         }
-        _ => return trap(span, "internal: operands of different kinds"),
+        _ => {
+            return trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_OPERANDS_DIFFERENT_KINDS.at(&[]),
+            )
+        }
     })
 }
 

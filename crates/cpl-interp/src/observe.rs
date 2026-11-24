@@ -332,7 +332,9 @@ impl<O: Observer> Interp<'_, '_, O> {
     /// A trap once the tracer has what it wanted, as after the call to replay.
     pub(crate) fn unstopped(&self, span: Span) -> crate::Res<()> {
         match &self.tracer {
-            Some(tracer) if tracer.stopped() => crate::trap(span, trace::STOPPED),
+            Some(tracer) if tracer.stopped() => {
+                crate::trap(span, cpl_diag::msgs::interp::STOPPED.at(&[]))
+            }
             _ => Ok(()),
         }
     }

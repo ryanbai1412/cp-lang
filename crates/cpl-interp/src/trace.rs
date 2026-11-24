@@ -83,7 +83,7 @@ pub struct TraceConfig {
 }
 
 /// The message of the trap that ends a run at [`TraceConfig::stop_after_call`].
-pub(crate) const STOPPED: &str = "the call to replay returned";
+pub(crate) const STOPPED: cpl_diag::msgs::Msg = cpl_diag::msgs::interp::STOPPED;
 
 /// A traced run is bounded like any other, with [`crate::Io::until`].
 pub use crate::stop::OUT_OF_TIME;

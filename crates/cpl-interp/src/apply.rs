@@ -213,7 +213,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             },
             ExprKind::Payload(_, tag, index) => match vals.into_iter().next().unwrap() {
                 Value::Enum(actual, payload) if actual as usize == *tag => payload[*index].clone(),
-                _ => return trap(span, "internal: payload of another variant"),
+                _ => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_PAYLOAD_ANOTHER_VARIANT.at(&[]),
+                    )
+                }
             },
             ExprKind::Unary(op, _) => match (op, vals.into_iter().next().unwrap()) {
                 (UnOp::Neg, Value::Int(v)) => match v.checked_neg() {
@@ -221,7 +226,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     None => {
                         return trap(
                             span,
-                            format!("integer overflow: `-{v}` does not fit in an `Int` (64 bits)"),
+                            cpl_diag::msgs::interp::INTEGER_OVERFLOW_DOES_NOT_FIT.at(&[&v]),
                         )
                     }
                 },
@@ -230,9 +235,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     None => {
                         return trap(
                             span,
-                            format!(
-                                "integer overflow: `-{v}` does not fit in an `I128` (128 bits)"
-                            ),
+                            cpl_diag::msgs::interp::INTEGER_OVERFLOW_DOES_NOT_FIT_2.at(&[&v]),
                         )
                     }
                 },
@@ -257,7 +260,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (l, r) = (vals.next().unwrap(), vals.next().unwrap());
                 binary(*op, l, r, span)?
             }
-            _ => return trap(span, "internal: no shared evaluation for this expression"),
+            _ => {
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::INTERNAL_NO_SHARED_EVALUATION_FOR.at(&[]),
+                )
+            }
         })
     }
 
@@ -270,7 +278,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             return Ok(got.bool());
         };
         let (Value::Enum(tag, _), &Ty::Enum(e)) = (&got, &self.program.fns[f].ret) else {
-            return trap(span, "`cmp` must return an `Ordering`");
+            return trap(
+                span,
+                cpl_diag::msgs::interp::CMP_MUST_RETURN_ORDERING.at(&[]),
+            );
         };
         Ok(self.program.enums[e].variants[*tag as usize].0 == "Less")
     }

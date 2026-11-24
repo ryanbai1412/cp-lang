@@ -73,14 +73,20 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if matches!(base.ty, Ty::MutView(..)) {
                     let mv = match self.resolve(base, indices)? {
                         Value::MutView(mv) => Rc::clone(mv),
-                        Value::Moved => return trap(span, LENT),
-                        _ => return trap(span, "internal: expected mutable view"),
+                        Value::Moved => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+                        _ => {
+                            return trap(
+                                span,
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_MUTABLE_VIEW.at(&[]),
+                            )
+                        }
                     };
                     let index = indices.next().map_or(0, Value::int);
                     let Some(i) = usize::try_from(index).ok().filter(|i| *i < mv.len) else {
                         return trap(
                             span,
-                            format!("index {index} is outside a list of length {}", mv.len),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH
+                                .at(&[&index, &mv.len]),
                         );
                     };
                     let target = self.part_mut(&mv.target, span)?;
@@ -89,8 +95,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         Value::Array(arr) => {
                             Ok(&mut Rc::make_mut(arr).as_mut_values()[mv.lo + i * mv.step])
                         }
-                        Value::Moved => trap(span, LENT),
-                        _ => trap(span, "internal: mutable view target is not a list or array"),
+                        Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+                        _ => trap(
+                            span,
+                            cpl_diag::msgs::interp::INTERNAL_MUTABLE_VIEW_TARGET_NOT.at(&[]),
+                        ),
                     };
                 }
                 let holder = self.resolve(base, indices)?;
@@ -195,14 +204,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if idx >= mv.len {
             return trap(
                 span,
-                format!("index {idx} is outside a list of length {}", mv.len),
+                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &mv.len]),
             );
         }
         match self.part(&mv.target) {
             Some(Value::List(items)) => Ok(items.get_unchecked_val(mv.lo + idx * mv.step)),
             Some(Value::Array(arr)) => Ok(arr.get_unchecked_val(mv.lo + idx * mv.step)),
-            Some(Value::Moved) => trap(span, LENT),
-            _ => trap(span, "internal: mutable view target is not a list or array"),
+            Some(Value::Moved) => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_MUTABLE_VIEW_TARGET_NOT.at(&[]),
+            ),
         }
     }
 
@@ -219,8 +231,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 Ok(out)
             }
-            Some(Value::Moved) => trap(span, LENT),
-            _ => trap(span, "internal: mutable view target is not a list or array"),
+            Some(Value::Moved) => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_MUTABLE_VIEW_TARGET_NOT.at(&[]),
+            ),
         }
     }
 }

@@ -2,7 +2,7 @@
 //! and the VM, which find the value each their own way.
 
 use crate::value::{self, OptVal, Value};
-use crate::{trap, Res, LENT};
+use crate::{trap, Res};
 use cpl_diag::Span;
 use cpl_ir::{Mutation, Program, Ty};
 use std::rc::Rc;
@@ -19,7 +19,7 @@ pub(crate) fn mutate_cell(
     span: Span,
 ) -> Res<Value> {
     Ok(match (op, cell) {
-        (_, Value::Moved) => return trap(span, LENT),
+        (_, Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
         (Mutation::Push, Value::List(items)) => {
             Rc::make_mut(items).push(arg);
             Value::Unit
@@ -66,7 +66,7 @@ pub(crate) fn mutate_cell(
         }
         (Mutation::PopVal, Value::List(items)) => match Rc::make_mut(items).pop() {
             Some(v) => v,
-            None => return trap(span, "pop from an empty list"),
+            None => return trap(span, cpl_diag::msgs::interp::POP_FROM_EMPTY_LIST.at(&[])),
         },
         (Mutation::Insert, Value::Set(items)) => {
             let k = match ty {
@@ -126,7 +126,7 @@ pub(crate) fn mutate_cell(
                 _ => {
                     return trap(
                         span,
-                        format!("swap({i}, {j}) is outside a list of length {len}"),
+                        cpl_diag::msgs::interp::SWAP_OUTSIDE_LIST_LENGTH.at(&[&i, &j, &len]),
                     )
                 }
             }
@@ -141,7 +141,7 @@ pub(crate) fn mutate_cell(
                     let len = v.len();
                     return trap(
                         span,
-                        format!("insert({i}) is outside a list of length {len}"),
+                        cpl_diag::msgs::interp::INSERT_OUTSIDE_LIST_LENGTH.at(&[&i, &len]),
                     );
                 }
             }
@@ -156,7 +156,7 @@ pub(crate) fn mutate_cell(
                     let len = v.len();
                     return trap(
                         span,
-                        format!("remove({i}) is outside a list of length {len}"),
+                        cpl_diag::msgs::interp::REMOVE_OUTSIDE_LIST_LENGTH.at(&[&i, &len]),
                     );
                 }
             }
@@ -170,7 +170,7 @@ pub(crate) fn mutate_cell(
                 _ => {
                     return trap(
                         span,
-                        format!("swap({i}, {j}) is outside an array of length {len}"),
+                        cpl_diag::msgs::interp::SWAP_OUTSIDE_ARRAY_LENGTH.at(&[&i, &j, &len]),
                     )
                 }
             }
@@ -185,7 +185,7 @@ pub(crate) fn mutate_cell(
                 _ => {
                     return trap(
                         span,
-                        format!("swap({i}, {j}) is outside a list of length {len}"),
+                        cpl_diag::msgs::interp::SWAP_OUTSIDE_LIST_LENGTH.at(&[&i, &j, &len]),
                     )
                 }
             }
@@ -194,7 +194,10 @@ pub(crate) fn mutate_cell(
         (Mutation::Resize, Value::List(items)) => {
             let n = arg.int();
             if n < 0 {
-                return trap(span, format!("resize to negative length {n}"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::RESIZE_TO_NEGATIVE_LENGTH.at(&[&n]),
+                );
             }
             Rc::make_mut(items).resize(n as usize, arg2);
             Value::Unit
@@ -202,7 +205,10 @@ pub(crate) fn mutate_cell(
         (Mutation::Resize, Value::Str(bytes)) => {
             let n = arg.int();
             if n < 0 {
-                return trap(span, format!("resize to negative length {n}"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::RESIZE_TO_NEGATIVE_LENGTH.at(&[&n]),
+                );
             }
             let fill = match arg2 {
                 Value::Char(c) => c,
@@ -214,7 +220,10 @@ pub(crate) fn mutate_cell(
         (Mutation::Truncate, Value::List(items)) => {
             let n = arg.int();
             if n < 0 {
-                return trap(span, format!("truncate to negative length {n}"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::TRUNCATE_TO_NEGATIVE_LENGTH.at(&[&n]),
+                );
             }
             Rc::make_mut(items).truncate(n as usize);
             Value::Unit
@@ -222,7 +231,10 @@ pub(crate) fn mutate_cell(
         (Mutation::Truncate, Value::Str(bytes)) => {
             let n = arg.int();
             if n < 0 {
-                return trap(span, format!("truncate to negative length {n}"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::TRUNCATE_TO_NEGATIVE_LENGTH.at(&[&n]),
+                );
             }
             Rc::make_mut(bytes).truncate(n as usize);
             Value::Unit
@@ -230,7 +242,10 @@ pub(crate) fn mutate_cell(
         (Mutation::Reserve, Value::List(items)) => {
             let n = arg.int();
             if n < 0 {
-                return trap(span, format!("reserve to negative capacity {n}"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::RESERVE_TO_NEGATIVE_CAPACITY.at(&[&n]),
+                );
             }
             let v = Rc::make_mut(items);
             let extra = (n as usize).saturating_sub(v.len());
@@ -241,7 +256,10 @@ pub(crate) fn mutate_cell(
         (Mutation::Reserve, Value::Map(_)) => {
             let n = arg.int();
             if n < 0 {
-                return trap(span, format!("reserve to negative capacity {n}"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::RESERVE_TO_NEGATIVE_CAPACITY.at(&[&n]),
+                );
             }
             Value::Unit
         }
@@ -273,6 +291,11 @@ pub(crate) fn mutate_cell(
             Rc::make_mut(bytes).fill(fill);
             Value::Unit
         }
-        _ => return trap(span, "internal: this value can't be changed that way"),
+        _ => {
+            return trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_THIS_VALUE_CAN_BE.at(&[]),
+            )
+        }
     })
 }

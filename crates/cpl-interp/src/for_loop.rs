@@ -106,7 +106,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         if value <= 0 {
                             return trap(
                                 step.span,
-                                format!("a range steps forward: `by {value}` is not positive"),
+                                cpl_diag::msgs::interp::RANGE_STEPS_FORWARD_BY_NOT.at(&[&value]),
                             );
                         }
                         value

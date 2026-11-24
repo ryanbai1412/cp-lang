@@ -5,8 +5,11 @@ use super::*;
 pub(super) fn field_mut(holder: &mut Value, index: usize, span: Span) -> Res<&mut Value> {
     match holder {
         Value::Tuple(fields) => Ok(&mut fields.as_mut_vec()[index]),
-        Value::Moved => trap(span, LENT),
-        _ => trap(span, "internal: field of a value without fields"),
+        Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+        _ => trap(
+            span,
+            cpl_diag::msgs::interp::INTERNAL_FIELD_VALUE_WITHOUT_FIELDS.at(&[]),
+        ),
     }
 }
 
@@ -18,12 +21,12 @@ pub(super) fn inside_mut(holder: &mut Value, span: Span) -> Res<&mut Value> {
             }
             match opt {
                 OptVal::Boxed(inner) => Ok(Rc::make_mut(inner)),
-                OptVal::None => trap(span, "there is no value here: it is `None`"),
+                OptVal::None => trap(span, cpl_diag::msgs::interp::THERE_NO_VALUE_HERE_IT.at(&[])),
                 OptVal::Int(_) => unreachable!(),
             }
         }
-        Value::Moved => trap(span, LENT),
-        _ => trap(span, "there is no value here: it is `None`"),
+        Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+        _ => trap(span, cpl_diag::msgs::interp::THERE_NO_VALUE_HERE_IT.at(&[])),
     }
 }
 
@@ -46,7 +49,7 @@ pub(super) fn cell_mut<'s>(
                 Some(i) => Ok(Rc::make_mut(items).cell_mut(i)),
                 None => trap(
                     span,
-                    format!("index {index} is outside a list of length {len}"),
+                    cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&index, &len]),
                 ),
             }
         }
@@ -54,14 +57,14 @@ pub(super) fn cell_mut<'s>(
             let key = indices.next().cloned().unwrap_or_default();
             match Rc::make_mut(entries).get_mut(&key) {
                 Some(value) => Ok(value),
-                None => trap(
-                    span,
-                    "this key is not in the map; store with `m[k] = v` first",
-                ),
+                None => trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[])),
             }
         }
-        Value::Moved => trap(span, LENT),
-        _ => trap(span, "internal: index of a value that has no elements"),
+        Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+        _ => trap(
+            span,
+            cpl_diag::msgs::interp::INTERNAL_INDEX_VALUE_THAT_HAS.at(&[]),
+        ),
     }
 }
 
@@ -86,7 +89,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let old = std::mem::take(cell);
                         if matches!(old, Value::Moved) {
                             *cell = old;
-                            return trap(place.span, LENT);
+                            return trap(place.span, cpl_diag::msgs::interp::LENT.at(&[]));
                         }
                         *cell = combine(op, old, value, place.span)?;
                     }
@@ -99,7 +102,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let old = std::mem::take(cell);
                     if matches!(old, Value::Moved) {
                         *cell = old;
-                        return trap(place.span, LENT);
+                        return trap(place.span, cpl_diag::msgs::interp::LENT.at(&[]));
                     }
                     *cell = combine(op, old, value, place.span)?;
                 }
@@ -114,7 +117,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let old = std::mem::take(cell);
                     if matches!(old, Value::Moved) {
                         *cell = old;
-                        return trap(place.span, LENT);
+                        return trap(place.span, cpl_diag::msgs::interp::LENT.at(&[]));
                     }
                     *cell = combine(op, old, value, place.span)?;
                 }
@@ -166,7 +169,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         if i0 < 0 || i0 >= len {
                             return trap(
                                 span,
-                                format!("index {i0} is outside an array dimension of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                    .at(&[&i0, &len]),
                             );
                         }
                         let at = i0 as usize;
@@ -185,14 +189,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 span,
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                    .at(&[&i0, &l0]),
                             );
                         }
                         let l1 = array.dims[1];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 span,
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                    .at(&[&i1, &l1]),
                             );
                         }
                         let at = (i0 * l1 + i1) as usize;
@@ -213,7 +219,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             None => {
                                 return trap(
                                     span,
-                                    format!("index {i0} is outside a list of length {len}"),
+                                    cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH
+                                        .at(&[&i0, &len]),
                                 )
                             }
                         }
@@ -229,7 +236,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let old = std::mem::take(cell);
                     if matches!(old, Value::Moved) {
                         *cell = old;
-                        return trap(span, LENT);
+                        return trap(span, cpl_diag::msgs::interp::LENT.at(&[]));
                     }
                     *cell = combine(op, old, value, span)?;
                 }
@@ -266,7 +273,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let Some(i) = usize::try_from(index).ok().filter(|i| *i < len) else {
                             return trap(
                                 place.span,
-                                format!("index {index} is outside a string of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_STRING_LENGTH
+                                    .at(&[&index, &len]),
                             );
                         };
                         let old = Value::Char(bytes[i]);
@@ -294,33 +302,34 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             _ => key.clone(),
                         };
                         let map = Rc::make_mut(entries);
-                        let next =
-                            if let Some(old) = map.get(&k).cloned() {
-                                combine(op, old, value, place.span)?
-                            } else {
-                                match op {
-                                    AssignOp::Max
-                                    | AssignOp::Min
-                                    | AssignOp::Binary(
-                                        BinOp::Add
-                                        | BinOp::Mul
-                                        | BinOp::BitOr
-                                        | BinOp::BitXor
-                                        | BinOp::BitAnd,
-                                    ) => value,
-                                    AssignOp::Binary(BinOp::Sub) => {
-                                        combine(op, zero(&place.ty, program), value, place.span)?
-                                    }
-                                    _ => return trap(
-                                        place.span,
-                                        "this key is not in the map; store with `m[k] = v` first",
-                                    ),
+                        let next = if let Some(old) = map.get(&k).cloned() {
+                            combine(op, old, value, place.span)?
+                        } else {
+                            match op {
+                                AssignOp::Max
+                                | AssignOp::Min
+                                | AssignOp::Binary(
+                                    BinOp::Add
+                                    | BinOp::Mul
+                                    | BinOp::BitOr
+                                    | BinOp::BitXor
+                                    | BinOp::BitAnd,
+                                ) => value,
+                                AssignOp::Binary(BinOp::Sub) => {
+                                    combine(op, zero(&place.ty, program), value, place.span)?
                                 }
-                            };
+                                _ => {
+                                    return trap(
+                                        place.span,
+                                        cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]),
+                                    )
+                                }
+                            }
+                        };
                         map.insert(k, next);
                         return Ok(indices);
                     }
-                    Value::Moved => return trap(place.span, LENT),
+                    Value::Moved => return trap(place.span, cpl_diag::msgs::interp::LENT.at(&[])),
                     _ => {}
                 }
             }
@@ -332,7 +341,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             let old = std::mem::take(cell);
             if matches!(old, Value::Moved) {
                 *cell = old;
-                return trap(place.span, LENT);
+                return trap(place.span, cpl_diag::msgs::interp::LENT.at(&[]));
             }
             *cell = combine(op, old, value, place.span)?;
         }
@@ -393,7 +402,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     _ => {
                         return trap(
                             span,
-                            "internal: a `yields` fn did something else to its list",
+                            cpl_diag::msgs::interp::INTERNAL_YIELDS_FN_DID_SOMETHING.at(&[]),
                         )
                     }
                 }
@@ -409,7 +418,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some(mv) = mv_opt {
             let target = self.part_mut(&mv.target, span)?;
             return Ok(match (op, target) {
-                (_, Value::Moved) => return trap(span, LENT),
+                (_, Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                 (Mutation::Reverse, Value::List(items)) => {
                     Rc::make_mut(items).reverse_range(mv.lo, mv.lo + mv.len);
                     Value::Unit
@@ -431,7 +440,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         _ => {
                             return trap(
                                 span,
-                                format!("swap({i}, {j}) is outside a list of length {}", mv.len),
+                                cpl_diag::msgs::interp::SWAP_OUTSIDE_LIST_LENGTH
+                                    .at(&[&i, &j, &mv.len]),
                             )
                         }
                     }
@@ -447,7 +457,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         _ => {
                             return trap(
                                 span,
-                                format!("swap({i}, {j}) is outside an array of length {}", mv.len),
+                                cpl_diag::msgs::interp::SWAP_OUTSIDE_ARRAY_LENGTH
+                                    .at(&[&i, &j, &mv.len]),
                             )
                         }
                     }
@@ -464,7 +475,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     }
                     Value::Unit
                 }
-                _ => return trap(span, "internal: this value can't be changed that way"),
+                _ => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_THIS_VALUE_CAN_BE.at(&[]),
+                    )
+                }
             });
         }
         let program = self.program;

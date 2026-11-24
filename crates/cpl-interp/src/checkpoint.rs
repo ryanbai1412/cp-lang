@@ -1169,10 +1169,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         k: usize,
     ) -> Res<Flow> {
         let Some(mark) = mark(at, frames[k].site.map(|s| s.0)) else {
-            return trap(Span::default(), "the checkpoint is at no loop and no call");
+            return trap(
+                Span::default(),
+                cpl_diag::msgs::interp::CHECKPOINT_AT_NO_LOOP_AND.at(&[]),
+            );
         };
         let Some(i) = block.stmts.iter().position(|s| holds(s, mark)) else {
-            return trap(Span::default(), "the checkpoint does not match the program");
+            return trap(
+                Span::default(),
+                cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
+            );
         };
         let stmt = &block.stmts[i];
         let mut flow = match mark {
@@ -1245,7 +1251,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 self.ckpt.seq_from = Some((frames[k].held[held].clone(), from));
                 self.stmt(stmt)
             }
-            _ => trap(Span::default(), "the checkpoint does not match the program"),
+            _ => trap(
+                Span::default(),
+                cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
+            ),
         }
     }
 
@@ -1258,7 +1267,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let flow = self.stmt(stmt);
         self.ckpt.returned.clear();
         if self.ckpt.pending.take().is_some() {
-            return trap(Span::default(), "the checkpoint does not match the program");
+            return trap(
+                Span::default(),
+                cpl_diag::msgs::interp::CHECKPOINT_DOES_NOT_MATCH_PROGRAM.at(&[]),
+            );
         }
         flow
     }

@@ -63,10 +63,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if self.queries > limit {
                     return trap(
                         span,
-                        format!(
-                            "query limit exceeded: this is query {}, and the limit is {limit}",
-                            self.queries
-                        ),
+                        cpl_diag::msgs::interp::QUERY_LIMIT_EXCEEDED_THIS_QUERY
+                            .at(&[&self.queries, &limit]),
                     );
                 }
                 Value::Unit
@@ -81,7 +79,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Builtin::SwapInput => {
                 match &mut self.peer {
                     Some(peer) => std::mem::swap(&mut self.input, peer),
-                    None => return trap(span, "there is no solution to talk to: an `@interactor` runs under `cpl run` or `cpl stress`"),
+                    None => {
+                        return trap(
+                            span,
+                            cpl_diag::msgs::interp::THERE_NO_SOLUTION_TO_TALK.at(&[]),
+                        )
+                    }
                 }
                 Value::Unit
             }
@@ -104,7 +107,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 } else {
                     let shift = 64 - ((x - 1) as u64).leading_zeros();
                     if shift > 62 {
-                        return trap(span, format!("integer overflow: `bit_ceil({x})` does not fit in an `Int` (64 bits)"));
+                        return trap(
+                            span,
+                            cpl_diag::msgs::interp::INTEGER_OVERFLOW_BIT_CEIL_DOES.at(&[&x]),
+                        );
                     }
                     Value::Int(1 << shift)
                 }
@@ -113,7 +119,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let lo = first.int();
                 let hi = values.next().unwrap_or_default().int();
                 if lo > hi {
-                    return trap(span, format!("rand({lo}, {hi}): lo > hi"));
+                    return trap(span, cpl_diag::msgs::interp::RAND_LO_HI.at(&[&lo, &hi]));
                 }
                 let span_u = (hi as i128 - lo as i128 + 1) as u128;
                 let choices = self.choices.as_deref();
@@ -125,7 +131,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let n = first.int();
                 let val = values.next().unwrap_or_default();
                 if n < 0 {
-                    return trap(span, format!("List.filled with negative length {n}"));
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::LIST_FILLED_WITH_NEGATIVE_LENGTH.at(&[&n]),
+                    );
                 }
                 Value::List(Rc::new(crate::value::Cells::filled(n as usize, val)))
             }
@@ -216,7 +225,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let s = std::str::from_utf8(&bytes).unwrap_or("").trim();
                     match s.parse::<i64>() {
                         Ok(v) => Value::Int(v),
-                        Err(_) => return trap(span, format!("`{s}` is not an Int")),
+                        Err(_) => return trap(span, cpl_diag::msgs::interp::NOT_INT.at(&[&s])),
                     }
                 }
                 Value::StrView(view) => {
@@ -224,7 +233,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let s = std::str::from_utf8(&bytes).unwrap_or("").trim();
                     match s.parse::<i64>() {
                         Ok(v) => Value::Int(v),
-                        Err(_) => return trap(span, format!("`{s}` is not an Int")),
+                        Err(_) => return trap(span, cpl_diag::msgs::interp::NOT_INT.at(&[&s])),
                     }
                 }
                 other => other,
@@ -308,7 +317,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             None => {
                                 return trap(
                                     span,
-                                    format!("integer overflow: range `{lo}..{hi}` length does not fit in an `Int` (64 bits)"),
+                                    cpl_diag::msgs::interp::INTEGER_OVERFLOW_RANGE_LENGTH_DOES
+                                        .at(&[&lo, &hi]),
                                 );
                             }
                         }
@@ -324,7 +334,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             None => {
                                 return trap(
                                     span,
-                                    format!("integer overflow: range `{lo}..{hi}` length does not fit in an `Int` (64 bits)"),
+                                    cpl_diag::msgs::interp::INTEGER_OVERFLOW_RANGE_LENGTH_DOES
+                                        .at(&[&lo, &hi]),
                                 );
                             }
                         }
@@ -339,7 +350,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Builtin::FirstVal | Builtin::LastVal => {
                 match self.seq_end(&first, matches!(op, Builtin::LastVal), span)? {
                     Some(v) => v,
-                    None => return trap(span, format!("the {} is empty", seq_noun(&first))),
+                    None => {
+                        return trap(
+                            span,
+                            cpl_diag::msgs::interp::EMPTY.at(&[&(seq_noun(&first))]),
+                        )
+                    }
                 }
             }
             Builtin::Contains => {
@@ -521,7 +537,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::Array(arr) => arr.to_values(),
                     Value::Str(bytes) => bytes.iter().copied().map(Value::Char).collect(),
                     Value::StrView(view) => view.to_vec().into_iter().map(Value::Char).collect(),
-                    _ => return trap(span, LENT),
+                    _ => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                 };
                 let m = elems.len();
                 let mut out = Vec::with_capacity(m);
@@ -558,7 +574,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         if !check_res? {
                             return trap(
                                 span,
-                                "reach: `while` predicate is not monotone (reach dropped by more than one)",
+                                cpl_diag::msgs::interp::REACH_WHILE_PREDICATE_NOT_MONOTONE.at(&[]),
                             );
                         }
                     }
@@ -613,12 +629,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let n = v.len;
                         ((*v).clone(), n)
                     }
-                    _ => return trap(span, "slice expects a string"),
+                    _ => return trap(span, cpl_diag::msgs::interp::SLICE_EXPECTS_STRING.at(&[])),
                 };
                 if lo < 0 || hi < lo || hi as usize > len {
                     return trap(
                         span,
-                        format!("slice {lo}..{hi} is outside a string of length {len}"),
+                        cpl_diag::msgs::interp::SLICE_OUTSIDE_STRING_LENGTH.at(&[&lo, &hi, &len]),
                     );
                 }
                 Value::StrView(Rc::new(view.slice(lo as usize, hi as usize)))
@@ -638,12 +654,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::Array(a) => (0, a.len() as i64, false),
                     Value::List(items) => (0, items.len() as i64, false),
                     Value::Str(bytes) => (0, bytes.len() as i64, false),
-                    _ => return trap(span, "cuts need a sequence"),
+                    _ => return trap(span, cpl_diag::msgs::interp::CUTS_NEED_SEQUENCE.at(&[])),
                 };
                 if key < lo || key >= lo + len {
                     return trap(
                         span,
-                        format!("key {key} is not one of the view's keys {lo}..{}", lo + len),
+                        cpl_diag::msgs::interp::KEY_NOT_ONE_VIEW_KEYS.at(&[&key, &lo, &(lo + len)]),
                     );
                 }
                 Value::Int(if (op == Builtin::CutAfter) != rev {
@@ -659,17 +675,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::StrView(v) => (v.lo as i64, v.len as i64, v.rev),
                     Value::MutView(v) => (v.key0, v.len as i64, false),
                     Value::Range(lo, hi) => (*lo, hi.saturating_sub(*lo).max(0), false),
-                    _ => return trap(span, "keys need a slice"),
+                    _ => return trap(span, cpl_diag::msgs::interp::KEYS_NEED_SLICE.at(&[])),
                 };
                 Value::Int(if op == Builtin::KeyPos {
                     let i = at - lo;
                     if i < 0 || i >= len {
                         return trap(
                             span,
-                            format!(
-                                "key {at} is not one of the view's keys {lo}..{}: `.nth(k)` reads by position",
-                                lo + len
-                            ),
+                            cpl_diag::msgs::interp::KEY_NOT_ONE_VIEW_KEYS_2.at(&[
+                                &at,
+                                &lo,
+                                &(lo + len),
+                            ]),
                         );
                     } else if rev {
                         len - 1 - i
@@ -684,10 +701,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let at = values.next().unwrap_or_default().int();
                 let axis = values.next().unwrap_or_default().int();
                 let Value::Array(a) = first else {
-                    return trap(span, "internal: a grid line needs a 2D array");
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_GRID_LINE_NEEDS_2D.at(&[]),
+                    );
                 };
                 let &[rows, cols] = &a.dims[..] else {
-                    return trap(span, "internal: a grid line needs a 2D array");
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_GRID_LINE_NEEDS_2D.at(&[]),
+                    );
                 };
                 let (fixed, len) = if axis == 1 {
                     (rows, cols)
@@ -697,7 +720,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if at < 0 || at >= fixed {
                     return trap(
                         span,
-                        format!("index {at} is outside an axis of length {fixed}"),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_AXIS_LENGTH.at(&[&at, &fixed]),
                     );
                 }
                 let cell = |k: i64| {
@@ -726,15 +749,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         ListViewVal::whole(Rc::new(crate::value::Cells::from(a.to_values())), false)
                     }
                     Value::ListView(v) => (*v).clone(),
-                    _ => return trap(span, "rekey needs a list"),
+                    _ => return trap(span, cpl_diag::msgs::interp::REKEY_NEEDS_LIST.at(&[])),
                 };
                 if hi - lo != view.len as i64 {
                     return trap(
                         span,
-                        format!(
-                            "rekey needs as many keys as cells: {lo}..{hi} for {} cells",
-                            view.len
-                        ),
+                        cpl_diag::msgs::interp::REKEY_NEEDS_AS_MANY_KEYS.at(&[&lo, &hi, &view.len]),
                     );
                 }
                 view.shift = lo - view.lo as i64;
@@ -765,15 +785,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let (first_key, len) = match &first {
                     Value::ListView(v) => (v.first_key(), v.len as i64),
                     Value::StrView(v) => (v.lo as i64, v.len as i64),
-                    _ => return trap(span, "keys need a slice"),
+                    _ => return trap(span, cpl_diag::msgs::interp::KEYS_NEED_SLICE.at(&[])),
                 };
                 if lo < first_key || hi < lo || hi > first_key + len {
                     return trap(
                         span,
-                        format!(
-                            "slice {lo}..{hi} is outside the keys {first_key}..{}",
-                            first_key + len
-                        ),
+                        cpl_diag::msgs::interp::SLICE_OUTSIDE_KEYS.at(&[
+                            &lo,
+                            &hi,
+                            &first_key,
+                            &(first_key + len),
+                        ]),
                     );
                 }
                 let rel = (lo - first_key) as usize..(hi - first_key) as usize;
@@ -803,12 +825,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let n = items.len();
                         (ListViewVal::whole(items, false), n)
                     }
-                    _ => return trap(span, "slice expects a list"),
+                    _ => return trap(span, cpl_diag::msgs::interp::SLICE_EXPECTS_LIST.at(&[])),
                 };
                 if lo < 0 || hi < lo || hi as usize > len {
                     return trap(
                         span,
-                        format!("slice {lo}..{hi} is outside a list of length {len}"),
+                        cpl_diag::msgs::interp::SLICE_OUTSIDE_LIST_LENGTH.at(&[&lo, &hi, &len]),
                     );
                 }
                 Value::ListView(crate::value::Shared::new(
@@ -911,7 +933,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Builtin::PosCyc(d) => {
                 let (_, len) = self.domains[d];
                 if len <= 0 {
-                    return trap(span, "cyc on empty domain");
+                    return trap(span, cpl_diag::msgs::interp::CYC_ON_EMPTY_DOMAIN.at(&[]));
                 }
                 let ord = first.int();
                 let delta = values.next().unwrap_or_default().int();
@@ -923,7 +945,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let k = values.next().unwrap_or_default().int();
                 let b = ord + 1 - k;
                 if b < 0 || b > len {
-                    return trap(span, format!("window of {k} leaves domain (0..={len})"));
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::WINDOW_LEAVES_DOMAIN_0.at(&[&k, &len]),
+                    );
                 }
                 Value::Int(b)
             }
@@ -933,7 +958,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let k = values.next().unwrap_or_default().int();
                 let b = ord + k;
                 if b < 0 || b > len {
-                    return trap(span, format!("window of {k} leaves domain (0..={len})"));
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::WINDOW_LEAVES_DOMAIN_0.at(&[&k, &len]),
+                    );
                 }
                 Value::Int(b)
             }
@@ -963,7 +991,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if by <= 0 {
                     return trap(
                         span,
-                        format!("a range steps forward: `by {by}` is not positive"),
+                        cpl_diag::msgs::interp::RANGE_STEPS_FORWARD_BY_NOT.at(&[&by]),
                     );
                 }
                 let Value::Range(lo, hi) = first else {
@@ -974,7 +1002,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     None => {
                         let why =
                             format!("the `sum` of `{lo}..{hi}` does not fit in an `Int` (64 bits)");
-                        return trap(span, format!("integer overflow: {why}"));
+                        return trap(span, cpl_diag::msgs::interp::INTEGER_OVERFLOW.at(&[&why]));
                     }
                 }
             }

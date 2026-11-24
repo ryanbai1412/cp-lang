@@ -91,7 +91,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 match i64::try_from(v) {
                     Ok(iv) => regs_i[dst as usize] = iv,
                     Err(_) => {
-                        return trap(spans[cur_pc], format!("{v} does not fit in an `Int`"));
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::DOES_NOT_FIT_IN_INT_2.at(&[&v]),
+                        );
                     }
                 }
             }
@@ -179,7 +182,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::List(items) => {
                         Rc::make_mut(items).pop();
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 }
             }
             Op::ListPushPlaceI { path, val_i, kind } => {
@@ -192,7 +200,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::List(items) => {
                         Rc::make_mut(items).push(val);
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 }
             }
             Op::ListPushPlaceV { path, val_v } => {
@@ -205,7 +218,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::List(items) => {
                         Rc::make_mut(items).push(val);
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 }
             }
             Op::SortByKeysPlace {
@@ -236,10 +254,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let desc = desc_r != u16::MAX && regs_i[desc_r as usize] != 0;
                 let cpl_ir::ExprKind::Sort(place, _, _) = &chunk.applies[idx as usize].expr.kind
                 else {
-                    return trap(span, "internal: not a sort");
+                    return trap(span, cpl_diag::msgs::interp::INTERNAL_NOT_SORT.at(&[]));
                 };
                 let (cpl_ir::Ty::List(elem) | cpl_ir::Ty::Array { elem, .. }) = &place.ty else {
-                    return trap(span, "internal: not a sequence sort");
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_NOT_SEQUENCE_SORT.at(&[]),
+                    );
                 };
                 let pp = &chunk.places[path as usize];
                 let keys = place_keys(pp, regs_v);
@@ -288,14 +309,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     cpl_ir::ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) => match &func.ty
                     {
                         cpl_ir::Ty::Fn(_, ret) => &**ret,
-                        _ => return trap(span, "internal: not a key fn"),
+                        _ => {
+                            return trap(span, cpl_diag::msgs::interp::INTERNAL_NOT_KEY_FN.at(&[]))
+                        }
                     },
-                    _ => return trap(span, "internal: not a keyed sort"),
+                    _ => {
+                        return trap(
+                            span,
+                            cpl_diag::msgs::interp::INTERNAL_NOT_KEYED_SORT.at(&[]),
+                        )
+                    }
                 };
                 let seq = std::mem::replace(&mut regs_v[seq_v as usize], Value::Unit);
                 let Value::List(by) = std::mem::replace(&mut regs_v[keys_v as usize], Value::Unit)
                 else {
-                    return trap(span, "internal: expected the sort keys");
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_SORT_KEYS.at(&[]),
+                    );
                 };
                 let (items, dims) = seq_items(seq, span)?;
                 let keyed: Vec<(Value, Value)> = by.iter().zip(items).collect();
@@ -338,7 +369,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let hi_v = regs_i[hi as usize];
                 if v < lo_v || v > hi_v {
                     let text = chunk.range_texts[text_idx as usize];
-                    return trap(spans[cur_pc], format!("{v} is outside `{text}`"));
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::OUTSIDE.at(&[&v, &text]),
+                    );
                 }
                 regs_i[dst as usize] = v;
             }
@@ -373,7 +407,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::List(items) => Rc::make_mut(items).reverse(),
                     Value::Array(arr) => Rc::make_mut(arr).reverse(),
                     Value::Str(bytes) => Rc::make_mut(bytes).reverse(),
-                    _ => return trap(spans[cur_pc], "internal: cannot reverse this value"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_CANNOT_REVERSE_THIS_VALUE.at(&[]),
+                        )
+                    }
                 }
             }
             Op::BitWidthI { dst, src } => {
@@ -386,7 +425,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::FloatSqrt { dst, src } => {
                 let x = regs_v[src as usize].float();
                 if x < 0.0 {
-                    return trap(spans[cur_pc], format!("sqrt({x}) of a negative number"));
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::SQRT_NEGATIVE_NUMBER.at(&[&x]),
+                    );
                 }
                 regs_v[dst as usize] = Value::Float(x.sqrt());
             }
@@ -446,7 +488,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let key: String = key.iter().map(|b| *b as char).collect();
                     return trap(
                         spans[cur_pc],
-                        format!("the key `{key}` is not in the map; `m.get(k)` gives an optional"),
+                        cpl_diag::msgs::interp::KEY_NOT_IN_MAP_M.at(&[&key]),
                     );
                 }
             }
@@ -468,7 +510,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     _ => {
                         return trap(
                             spans[cur_pc],
-                            "internal: this value can't be changed that way",
+                            cpl_diag::msgs::interp::INTERNAL_THIS_VALUE_CAN_BE.at(&[]),
                         );
                     }
                 };
@@ -514,7 +556,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 _ => {
                                     return trap(
                                         spans[cur_pc],
-                                        "this key is not in the map; store with `m[k] = v` first",
+                                        cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]),
                                     );
                                 }
                             }
@@ -522,7 +564,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         map.insert(key, next);
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected map");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_MAP.at(&[]),
+                    );
                 }
             }
             Op::SetMapBoundV {
@@ -593,7 +638,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     _ => {
                         return trap(
                             spans[cur_pc],
-                            "internal: this value can't be changed that way",
+                            cpl_diag::msgs::interp::INTERNAL_THIS_VALUE_CAN_BE.at(&[]),
                         );
                     }
                 };
@@ -619,7 +664,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= n_len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {n_len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH
+                                    .at(&[&idx, &n_len]),
                             );
                         }
                         list.get_small_tuple(idx as usize, n, &mut regs_i[b..b + n]);
@@ -630,12 +676,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= n_len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {n_len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH
+                                    .at(&[&idx, &n_len]),
                             );
                         }
                         view.get(idx as usize).unwrap()
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 };
                 if let Value::Tuple(TupleVal::Boxed(fs)) = elem {
                     for (k, f) in fs.iter().take(n).enumerate() {
@@ -665,22 +717,28 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array of length {l0}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         let i1 = regs_i[r_j as usize];
                         let arr_mut = Rc::make_mut(arr);
                         let Cells::Values(rows) = &mut arr_mut.data else {
-                            return trap(spans[cur_pc], "internal: expected nested array");
+                            return trap(
+                                spans[cur_pc],
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_NESTED_ARRAY.at(&[]),
+                            );
                         };
                         let Value::Array(row_arr) = &mut rows[i0 as usize] else {
-                            return trap(spans[cur_pc], "internal: expected inner array");
+                            return trap(
+                                spans[cur_pc],
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_INNER_ARRAY.at(&[]),
+                            );
                         };
                         let l1 = row_arr.dims[0];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array of length {l1}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i1, &l1]),
                             );
                         }
                         let row_mut = Rc::make_mut(row_arr);
@@ -721,7 +779,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                    .at(&[&i0, &l0]),
                             );
                         }
                         let i1 = regs_i[r_j as usize];
@@ -729,7 +788,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                    .at(&[&i1, &l1]),
                             );
                         }
                         (i0 * l1 + i1) as usize
@@ -738,7 +798,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array of length {l0}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         i0 as usize
@@ -769,7 +829,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected array");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+                    );
                 }
             }
             Op::LoadIdxFieldIdxOptI {
@@ -794,7 +857,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&i, &len]),
                             );
                         }
                         &list.get_unchecked_val(i as usize)
@@ -804,19 +867,35 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside an array of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
                         match &arr.data {
                             Cells::Values(v) => &v[i as usize],
-                            _ => return trap(spans[cur_pc], "internal: expected struct element"),
+                            _ => {
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_STRUCT_ELEMENT
+                                        .at(&[]),
+                                )
+                            }
                         }
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected list or array"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_ARRAY.at(&[]),
+                        )
+                    }
                 };
                 let field_val = match elem {
                     Value::Tuple(TupleVal::Boxed(fs)) => &fs[field as usize],
-                    _ => return trap(spans[cur_pc], "internal: expected struct/tuple"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_STRUCT_TUPLE.at(&[]),
+                        )
+                    }
                 };
                 let (v, s) = match field_val {
                     Value::Array(arr) => {
@@ -824,7 +903,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if j < 0 || j >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {j} is outside an array of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&j, &len]),
                             );
                         }
                         read_array_opt_i(arr, j as usize)
@@ -834,7 +913,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if j < 0 || j >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {j} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&j, &len]),
                             );
                         }
                         match &list.get_unchecked_val(j as usize) {
@@ -844,7 +923,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             _ => (0, 0),
                         }
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected array or list field"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST_2.at(&[]),
+                        )
+                    }
                 };
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
@@ -870,12 +954,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside an array of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
                         match &arr.data {
                             Cells::Values(v) => &v[i as usize],
-                            _ => return trap(spans[cur_pc], "internal: expected nested array"),
+                            _ => {
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_NESTED_ARRAY.at(&[]),
+                                )
+                            }
                         }
                     }
                     Value::List(list) => {
@@ -883,12 +972,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&i, &len]),
                             );
                         }
                         &list.get_unchecked_val(i as usize)
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                        )
+                    }
                 };
                 let (v, s) = match inner_val {
                     Value::Array(arr) => {
@@ -896,12 +990,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if j < 0 || j >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {j} is outside an array of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&j, &len]),
                             );
                         }
                         read_array_opt_i(arr, j as usize)
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected inner array"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_INNER_ARRAY.at(&[]),
+                        )
+                    }
                 };
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
@@ -926,12 +1025,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside an array of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
                         match &arr.data {
                             Cells::Values(v) => &v[i as usize],
-                            _ => return trap(spans[cur_pc], "internal: expected nested array"),
+                            _ => {
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_NESTED_ARRAY.at(&[]),
+                                )
+                            }
                         }
                     }
                     Value::List(list) => {
@@ -939,12 +1043,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&i, &len]),
                             );
                         }
                         &list.get_unchecked_val(i as usize)
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                        )
+                    }
                 };
                 regs_i[dst as usize] = match inner_val {
                     Value::Array(arr) => {
@@ -952,12 +1061,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if j < 0 || j >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {j} is outside an array of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&j, &len]),
                             );
                         }
                         read_array_i(arr, j as usize)
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected inner array"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_INNER_ARRAY.at(&[]),
+                        )
+                    }
                 };
             }
             Op::SeqIdxEndOptI {
@@ -980,12 +1094,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside an array of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
                         match &arr.data {
                             Cells::Values(v) => &v[i as usize],
-                            _ => return trap(spans[cur_pc], "internal: expected sequence element"),
+                            _ => {
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_SEQUENCE_ELEMENT
+                                        .at(&[]),
+                                )
+                            }
                         }
                     }
                     Value::List(list) => {
@@ -993,12 +1113,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&i, &len]),
                             );
                         }
                         &list.get_unchecked_val(i as usize)
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                        )
+                    }
                 };
                 let (v, s) = match self.seq_end(inner_val, is_last, spans[cur_pc])? {
                     Some(x) => (ScalarKind::unbox_val(&x), 1),
@@ -1444,7 +1569,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::MutatePlace { idx, path, dst } => {
                 let spec = &chunk.applies[idx as usize];
                 let cpl_ir::ExprKind::Mutate(op, place, _) = &spec.expr.kind else {
-                    return trap(spans[cur_pc], "internal: not a mutation");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_NOT_MUTATION.at(&[]),
+                    );
                 };
                 let arg = |n: usize| {
                     spec.regs

@@ -33,7 +33,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         None => {
                             return trap(
                                 spans[cur_pc],
-                                format!("integer overflow: range `{lo}..{hi}` length does not fit in an `Int` (64 bits)"),
+                                cpl_diag::msgs::interp::INTEGER_OVERFLOW_RANGE_LENGTH_DOES
+                                    .at(&[&lo, &hi]),
                             );
                         }
                     },
@@ -44,9 +45,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             Some(d) => d,
                             None => {
                                 return trap(
-                                        spans[cur_pc],
-                                        format!("integer overflow: range `{lo}..{hi}` length does not fit in an `Int` (64 bits)"),
-                                    );
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTEGER_OVERFLOW_RANGE_LENGTH_DOES
+                                        .at(&[&lo, &hi]),
+                                );
                             }
                         }
                     }
@@ -69,7 +71,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             Op::RangeBoundsI { lo, hi, src_v } => {
                 let (l, h) = match &regs_v[src_v as usize] {
                     Value::Range(l, h) => (*l, *h),
-                    _ => return trap(spans[cur_pc], "internal: expected a range"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_RANGE.at(&[]),
+                        )
+                    }
                 };
                 regs_i[lo as usize] = l;
                 regs_i[hi as usize] = h;
@@ -94,11 +101,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let shift = 64 - ((x - 1) as u64).leading_zeros();
                     if shift > 62 {
                         return trap(
-                                spans[cur_pc],
-                                format!(
-                                    "integer overflow: `bit_ceil({x})` does not fit in an `Int` (64 bits)"
-                                ),
-                            );
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTEGER_OVERFLOW_BIT_CEIL_DOES.at(&[&x]),
+                        );
                     }
                     1i64 << shift
                 };
@@ -117,7 +122,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if idx < 0 || idx >= d0 {
                         return trap(
                             spans[cur_pc],
-                            format!("index {idx} is outside an array dimension of length {d0}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                .at(&[&idx, &d0]),
                         );
                     }
                     let a = Rc::make_mut(arr);
@@ -152,7 +158,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected array");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+                    );
                 }
             }
             Op::MinMaxLArr1SmallTuple {
@@ -169,7 +178,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if idx < 0 || idx >= d0 {
                         return trap(
                             spans[cur_pc],
-                            format!("index {idx} is outside an array dimension of length {d0}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                .at(&[&idx, &d0]),
                         );
                     }
                     let a = Rc::make_mut(arr);
@@ -204,7 +214,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected array");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+                    );
                 }
             }
             Op::ListPushGArr1I {
@@ -220,17 +233,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if idx < 0 || idx >= d0 {
                         return trap(
                             spans[cur_pc],
-                            format!("index {idx} is outside an array dimension of length {d0}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                .at(&[&idx, &d0]),
                         );
                     }
                     if let Value::List(list) = &mut Rc::make_mut(arr).as_mut_values()[idx as usize]
                     {
                         Rc::make_mut(list).push(v);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected list element");
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_ELEMENT.at(&[]),
+                        );
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected array");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+                    );
                 }
             }
             Op::ListPushGArr1V { gid, r_i, val_v } => {
@@ -245,17 +265,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if idx < 0 || idx >= d0 {
                         return trap(
                             spans[cur_pc],
-                            format!("index {idx} is outside an array dimension of length {d0}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                .at(&[&idx, &d0]),
                         );
                     }
                     if let Value::List(list) = &mut Rc::make_mut(arr).as_mut_values()[idx as usize]
                     {
                         Rc::make_mut(list).push(v);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected list element");
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_ELEMENT.at(&[]),
+                        );
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected array");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+                    );
                 }
             }
             Op::ListPushLArr1I {
@@ -271,17 +298,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if idx < 0 || idx >= d0 {
                         return trap(
                             spans[cur_pc],
-                            format!("index {idx} is outside an array dimension of length {d0}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                .at(&[&idx, &d0]),
                         );
                     }
                     if let Value::List(list) = &mut Rc::make_mut(arr).as_mut_values()[idx as usize]
                     {
                         Rc::make_mut(list).push(v);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected list element");
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_ELEMENT.at(&[]),
+                        );
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected array");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+                    );
                 }
             }
             Op::ListPushLArr1V { arr_v, r_i, val_v } => {
@@ -296,17 +330,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if idx < 0 || idx >= d0 {
                         return trap(
                             spans[cur_pc],
-                            format!("index {idx} is outside an array dimension of length {d0}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                .at(&[&idx, &d0]),
                         );
                     }
                     if let Value::List(list) = &mut Rc::make_mut(arr).as_mut_values()[idx as usize]
                     {
                         Rc::make_mut(list).push(v);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected list element");
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_ELEMENT.at(&[]),
+                        );
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected array");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+                    );
                 }
             }
             Op::ListPushLV { list_v, val_v } => {
@@ -322,7 +363,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             Rc::make_mut(bytes).push(c);
                         }
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
+                        )
+                    }
                 }
             }
             Op::ListPushGV { gid, val_v } => {
@@ -338,7 +384,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             Rc::make_mut(bytes).push(c);
                         }
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
+                        )
+                    }
                 }
             }
             Op::ListPushLI {
@@ -350,7 +401,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 match &mut regs_v[list_v as usize] {
                     Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
                     Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
-                    _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
+                        )
+                    }
                 }
             }
             Op::ListPushGI { gid, val_i, kind } => {
@@ -358,14 +414,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 match &mut self.globals[gid as usize] {
                     Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
                     Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
-                    _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
+                        )
+                    }
                 }
             }
             Op::ListPopLV { dst_v, list_v } => {
                 let popped = match &mut regs_v[list_v as usize] {
                     Value::List(items) => Rc::make_mut(items).pop(),
                     Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 };
                 regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(popped));
             }
@@ -373,7 +439,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let popped = match &mut self.globals[gid as usize] {
                     Value::List(items) => Rc::make_mut(items).pop(),
                     Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 };
                 regs_v[dst_v as usize] = Value::Opt(OptVal::from_option(popped));
             }
@@ -385,7 +456,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let popped = match &mut regs_v[list_v as usize] {
                     Value::List(items) => Rc::make_mut(items).pop(),
                     Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 };
                 match popped {
                     Some(x) => {
@@ -406,7 +482,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let popped = match &mut self.globals[gid as usize] {
                     Value::List(items) => Rc::make_mut(items).pop(),
                     Value::Str(bytes) => Rc::make_mut(bytes).pop().map(Value::Char),
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 };
                 match popped {
                     Some(x) => {
@@ -426,7 +507,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 Value::Str(bytes) => {
                     Rc::make_mut(bytes).pop();
                 }
-                _ => return trap(spans[cur_pc], "internal: expected list"),
+                _ => {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                    )
+                }
             },
             Op::ListPopDiscardG { gid } => match &mut self.globals[gid as usize] {
                 Value::List(items) => {
@@ -435,7 +521,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 Value::Str(bytes) => {
                     Rc::make_mut(bytes).pop();
                 }
-                _ => return trap(spans[cur_pc], "internal: expected list"),
+                _ => {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                    )
+                }
             },
             Op::LoadGlobalVMove { dst, gid } => {
                 regs_v[dst as usize] =
@@ -455,7 +546,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Tuple(TupleVal::OneInt(v)) if field == 0 => {
                         *v = regs_i[src_i as usize];
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected tuple/struct"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                        )
+                    }
                 }
             }
             Op::StoreLFieldV {
@@ -472,7 +568,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Tuple(TupleVal::Boxed(fs)) => {
                         crate::value::Shared::make_mut(fs)[field as usize] = val;
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected tuple/struct"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                        )
+                    }
                 }
             }
             Op::StoreLFieldOptI {
@@ -487,7 +588,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Tuple(TupleVal::Boxed(fs)) => {
                         crate::value::Shared::make_mut(fs)[field as usize] = boxed;
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected tuple/struct"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                        )
+                    }
                 }
             }
             Op::StoreLFieldIdx1I {
@@ -506,7 +612,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside an array of length {len}"),
+                                    cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH
+                                        .at(&[&idx, &len]),
                                 );
                             }
                             write_array_i(Rc::make_mut(arr), idx as usize, val);
@@ -516,15 +623,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH
+                                        .at(&[&idx, &len]),
                                 );
                             }
                             Rc::make_mut(list).set(idx as usize, kind.box_val(val));
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                        _ => {
+                            return trap(
+                                spans[cur_pc],
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                            )
+                        }
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                    );
                 }
             }
             Op::StoreLFieldIdx1V {
@@ -546,7 +662,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside an array of length {len}"),
+                                    cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH
+                                        .at(&[&idx, &len]),
                                 );
                             }
                             Rc::make_mut(arr).set(idx as usize, val);
@@ -556,15 +673,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH
+                                        .at(&[&idx, &len]),
                                 );
                             }
                             Rc::make_mut(list).set(idx as usize, val);
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                        _ => {
+                            return trap(
+                                spans[cur_pc],
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                            )
+                        }
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                    );
                 }
             }
             Op::StoreLFieldIdx1OptI {
@@ -585,7 +711,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside an array of length {len}"),
+                                    cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH
+                                        .at(&[&idx, &len]),
                                 );
                             }
                             write_array_opt_i(Rc::make_mut(arr), idx as usize, v, s, kind);
@@ -595,15 +722,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH
+                                        .at(&[&idx, &len]),
                                 );
                             }
                             Rc::make_mut(list).set(idx as usize, kind.box_opt(v, s));
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                        _ => {
+                            return trap(
+                                spans[cur_pc],
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                            )
+                        }
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                    );
                 }
             }
             Op::ListPushFieldLI {
@@ -617,10 +753,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     match &mut crate::value::Shared::make_mut(fs)[field as usize] {
                         Value::List(items) => Rc::make_mut(items).push(kind.box_val(raw)),
                         Value::Str(bytes) => Rc::make_mut(bytes).push(raw as u8),
-                        _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                        _ => {
+                            return trap(
+                                spans[cur_pc],
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
+                            )
+                        }
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                    );
                 }
             }
             Op::ListPushFieldLV {
@@ -641,10 +785,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 Rc::make_mut(bytes).push(c);
                             }
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected list or string"),
+                        _ => {
+                            return trap(
+                                spans[cur_pc],
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST_OR_STRING.at(&[]),
+                            )
+                        }
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                    );
                 }
             }
             Op::ListPopDiscardFieldL { obj_v, field } => {
@@ -653,10 +805,18 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         Value::List(items) => {
                             Rc::make_mut(items).pop();
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                        _ => {
+                            return trap(
+                                spans[cur_pc],
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                            )
+                        }
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                    );
                 }
             }
             Op::StoreGList1V { gid, r_i, r_val } => {
@@ -671,12 +831,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if idx < 0 || idx >= len {
                         return trap(
                             spans[cur_pc],
-                            format!("index {idx} is outside a list of length {len}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                         );
                     }
                     Rc::make_mut(list).set(idx as usize, val);
                 } else {
-                    return trap(spans[cur_pc], "internal: expected list");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                    );
                 }
             }
             Op::StoreLList1V { list_v, r_i, r_val } => {
@@ -691,12 +854,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if idx < 0 || idx >= len {
                         return trap(
                             spans[cur_pc],
-                            format!("index {idx} is outside a list of length {len}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                         );
                     }
                     Rc::make_mut(list).set(idx as usize, val);
                 } else {
-                    return trap(spans[cur_pc], "internal: expected list");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                    );
                 }
             }
             Op::LoadGList1V { dst, gid, r_i } => {
@@ -706,12 +872,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     if idx < 0 || idx >= len {
                         return trap(
                             spans[cur_pc],
-                            format!("index {idx} is outside a list of length {len}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                         );
                     }
                     regs_v[dst as usize] = list.get_unchecked_val(idx as usize);
                 } else {
-                    return trap(spans[cur_pc], "internal: expected list");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                    );
                 }
             }
             Op::LoadLList1V { dst, list_v, r_i } => {
@@ -722,7 +891,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         regs_v[dst as usize] = list.get_unchecked_val(idx as usize);
@@ -732,12 +901,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         regs_v[dst as usize] = view.get(idx as usize).unwrap_or(Value::Unit);
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 }
             }
             Op::LoadLList1OptI {
@@ -753,7 +927,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         ScalarKind::unbox_opt(&list.get_unchecked_val(idx as usize))
@@ -763,12 +937,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         ScalarKind::unbox_opt(&view.get(idx as usize).unwrap_or(Value::Unit))
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        )
+                    }
                 };
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
@@ -783,7 +962,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Array(array) => (0..array.len())
                         .map(|k| array.get_unchecked_val(k))
                         .collect(),
-                    _ => return trap(spans[cur_pc], "internal: expected a set, map or table"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_SET_MAP_OR.at(&[]),
+                        )
+                    }
                 };
                 regs_v[dst as usize] = Value::List(Rc::new(crate::value::Cells::from(items)));
             }
@@ -808,10 +992,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                         }
                     } else {
-                        return trap(spans[cur_pc], "internal: expected list");
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        );
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                    );
                 }
             }
             Op::ListPopFieldLV {
@@ -826,10 +1016,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         regs_v[dst_v as usize] =
                             Value::Opt(OptVal::from_option(Rc::make_mut(items).pop()));
                     } else {
-                        return trap(spans[cur_pc], "internal: expected list");
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_LIST.at(&[]),
+                        );
                     }
                 } else {
-                    return trap(spans[cur_pc], "internal: expected tuple/struct");
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_STRUCT.at(&[]),
+                    );
                 }
             }
             Op::MakeRange { dst, r_lo, r_hi } => {
@@ -879,9 +1075,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                    .at(&[&idx, &len]),
                             );
                         }
                         match &arr.data {
@@ -903,7 +1098,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         match &list.get_unchecked_val(idx as usize) {
@@ -914,7 +1109,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             _ => 0,
                         }
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                        )
+                    }
                 };
                 regs_i[dst as usize] = v;
             }
@@ -933,9 +1133,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                    .at(&[&idx, &len]),
                             );
                         }
                         let a = Rc::make_mut(arr);
@@ -949,9 +1148,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                         kind.box_val(raw);
                                 }
                                 Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
-                                _ => return trap(spans[cur_pc], "internal: expected tuple"),
+                                _ => {
+                                    return trap(
+                                        spans[cur_pc],
+                                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
+                                    )
+                                }
                             },
-                            _ => return trap(spans[cur_pc], "internal: expected tuple array"),
+                            _ => {
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_ARRAY.at(&[]),
+                                )
+                            }
                         }
                     }
                     Value::List(list) => {
@@ -959,7 +1168,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         match &mut Rc::make_mut(list).as_mut_values()[idx as usize] {
@@ -968,10 +1177,20 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     kind.box_val(raw);
                             }
                             Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
-                            _ => return trap(spans[cur_pc], "internal: expected tuple"),
+                            _ => {
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
+                                )
+                            }
                         }
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                        )
+                    }
                 }
             }
             Op::LoadLIdxFieldI {
@@ -987,9 +1206,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                    .at(&[&idx, &len]),
                             );
                         }
                         match &arr.data {
@@ -1011,7 +1229,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         match &list.get_unchecked_val(idx as usize) {
@@ -1022,7 +1240,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             _ => 0,
                         }
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                        )
+                    }
                 };
                 regs_i[dst as usize] = v;
             }
@@ -1041,9 +1264,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                    .at(&[&idx, &len]),
                             );
                         }
                         let a = Rc::make_mut(arr);
@@ -1057,9 +1279,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                         kind.box_val(raw);
                                 }
                                 Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
-                                _ => return trap(spans[cur_pc], "internal: expected tuple"),
+                                _ => {
+                                    return trap(
+                                        spans[cur_pc],
+                                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
+                                    )
+                                }
                             },
-                            _ => return trap(spans[cur_pc], "internal: expected tuple array"),
+                            _ => {
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE_ARRAY.at(&[]),
+                                )
+                            }
                         }
                     }
                     Value::List(list) => {
@@ -1067,7 +1299,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         match &mut Rc::make_mut(list).as_mut_values()[idx as usize] {
@@ -1076,10 +1308,20 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     kind.box_val(raw);
                             }
                             Value::Tuple(TupleVal::OneInt(x)) => *x = raw,
-                            _ => return trap(spans[cur_pc], "internal: expected tuple"),
+                            _ => {
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
+                                )
+                            }
                         }
                     }
-                    _ => return trap(spans[cur_pc], "internal: expected array or list"),
+                    _ => {
+                        return trap(
+                            spans[cur_pc],
+                            cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                        )
+                    }
                 }
             }
             _ => unreachable!("non-container op routed to exec_seq_and_list"),

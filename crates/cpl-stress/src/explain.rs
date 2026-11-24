@@ -87,7 +87,7 @@ pub fn trap_report_in(
         }
         None => cpl_interp::run_with(&program, io, &mut sink).err()?,
     };
-    if trap.message == cpl_interp::OUT_OF_TIME {
+    if trap.message == cpl_interp::OUT_OF_TIME.text() {
         return None;
     }
     let lines = cpl_diag::LineIndex::new(&text);
@@ -145,7 +145,7 @@ pub fn checker_trap_in(
         }
         None => cpl_interp::run_with(&program, io, &mut sink).err()?,
     };
-    if trap.message == cpl_interp::OUT_OF_TIME {
+    if trap.message == cpl_interp::OUT_OF_TIME.text() {
         return None;
     }
     let lines = cpl_diag::LineIndex::new(text);

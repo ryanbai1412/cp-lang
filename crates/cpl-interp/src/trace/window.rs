@@ -165,7 +165,7 @@ pub fn resumed_tail_every(
 
 /// Whether a run ended with this trap because its [`Stop`] went off.
 fn is_stop(message: &str) -> bool {
-    [OUT_OF_TIME, CANCELLED].contains(&message)
+    [OUT_OF_TIME.text(), CANCELLED.text()].contains(&message)
 }
 
 /// The last `steps` steps of the run on `input`, traced again from the
@@ -432,13 +432,10 @@ impl Replay {
         match sent.ok().and_then(|()| answer.recv().ok()) {
             Some(observed) => observed,
             None => Observed {
-                trap: Some(crate::Trap {
-                    message: "the interpreter itself failed; this is a bug in cpl".into(),
-                    span: cpl_diag::Span::default(),
-                    call_stack: Vec::new(),
-                    case: None,
-                    notes: Vec::new(),
-                }),
+                trap: Some(crate::Trap::said(
+                    cpl_diag::Span::default(),
+                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                )),
                 ..Observed::default()
             },
         }

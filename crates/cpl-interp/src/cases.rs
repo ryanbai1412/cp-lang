@@ -24,10 +24,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
                 Ok((count, _)) => Some(count),
                 Err(error) => {
-                    return trap(
-                        program.multitest_span,
-                        format!("reading the number of tests: {}", error.message),
-                    )
+                    let said = cpl_diag::msgs::interp::READING_NUMBER_TESTS.at(&[&error.message]);
+                    let mut failed = trap::<()>(program.multitest_span, said).unwrap_err();
+                    failed.code = error.code;
+                    return Err(failed);
                 }
             }
         };

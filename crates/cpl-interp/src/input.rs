@@ -3,6 +3,7 @@
 /// Why a read failed, with where in the input.
 pub(crate) struct InputError {
     pub message: String,
+    pub code: cpl_diag::Code,
 }
 
 /// Gives the next bytes of an input that arrives while the program runs,
@@ -190,6 +191,10 @@ impl<'a> Input<'a> {
     }
 
     /// Line and column of a byte of the input, both from 1.
+    fn is_input(&self) -> bool {
+        self.name == "input"
+    }
+
     fn at(&self, pos: usize) -> String {
         let before = &self.data[..pos.saturating_sub(self.gone).min(self.data.len())];
         let line = self.gone_lines + before.iter().filter(|b| **b == b'\n').count() + 1;
@@ -219,10 +224,15 @@ impl<'a> Input<'a> {
         self.pos = start;
     }
 
-    pub fn fail(&self, start: usize, message: String) -> InputError {
-        InputError {
-            message: format!("{message} ({})", self.at(start)),
-        }
+    pub fn fail(&self, start: usize, said: cpl_diag::msgs::Said) -> InputError {
+        use cpl_diag::codes;
+        // A value the program's input breaks is the input's fault (R02.3.2).
+        let code = match said.code() {
+            codes::RANGE_STORE | codes::OVERFLOW if self.is_input() => codes::INPUT_OUT_OF_CONTRACT,
+            code => code,
+        };
+        let message = cpl_diag::msgs::interp::READ_FAILED_AT.say(&[&said.text(), &self.at(start)]);
+        InputError { message, code }
     }
 
     /// The next run of non-space bytes, and where it starts.
@@ -239,7 +249,11 @@ impl<'a> Input<'a> {
         if start == self.pos {
             return Err(self.fail(
                 start,
-                format!("the {} ended where {what} was expected", self.name),
+                if self.is_input() {
+                    cpl_diag::msgs::interp::INPUT_ENDED_WHERE_WAS_EXPECTED.at(&[&what])
+                } else {
+                    cpl_diag::msgs::interp::ENDED_WHERE_WAS_EXPECTED.at(&[&self.name, &what])
+                },
             ));
         }
         Ok((&self.data[start - self.gone..self.pos - self.gone], start))
@@ -249,7 +263,7 @@ impl<'a> Input<'a> {
     pub fn int_in(&mut self, lo: i64, hi: i64, text: &str) -> Result<i64, InputError> {
         let (value, start) = self.int()?;
         if value < lo || value > hi {
-            return Err(self.fail(start, format!("{value} is outside `{text}`")));
+            return Err(self.fail(start, cpl_diag::msgs::interp::OUTSIDE.at(&[&value, &text])));
         }
         Ok(value)
     }
@@ -265,13 +279,13 @@ impl<'a> Input<'a> {
         let (word, start) = self.token("a word")?;
         let word = word.to_vec();
         let len = word.len() as i64;
-        let found = format!("expected a `{text}`, found `{}`", lossy(&word));
+        let found = lossy(&word);
         let message = if len < lo || len > hi {
-            format!("{found}, of length {len}")
+            cpl_diag::msgs::interp::WORD_WRONG_LENGTH.at(&[&text, &found, &len])
         } else if let Some(&bad) =
             alphabet.and_then(|a| word.iter().find(|b| !a.as_bytes().contains(b)))
         {
-            format!("{found}: `{}` is not in its alphabet", char::from(bad))
+            cpl_diag::msgs::interp::WORD_OUTSIDE_ALPHABET.at(&[&text, &found, &char::from(bad)])
         } else {
             return Ok(word);
         };
@@ -286,7 +300,7 @@ impl<'a> Input<'a> {
             rest => (false, rest),
         };
         if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
-            let message = format!("expected a number, found `{}`", lossy(token));
+            let message = cpl_diag::msgs::interp::EXPECTED_NUMBER_FOUND.at(&[&(lossy(token))]);
             return Err(self.fail(start, message));
         }
         let mut value: Option<i64> = Some(0);
@@ -303,7 +317,7 @@ impl<'a> Input<'a> {
         match value.filter(|v| *v != i64::MIN) {
             Some(value) => Ok((value, start)),
             None => {
-                let message = format!("`{}` does not fit in an `Int`", lossy(token));
+                let message = cpl_diag::msgs::interp::DOES_NOT_FIT_IN_INT.at(&[&(lossy(token))]);
                 Err(self.fail(start, message))
             }
         }
@@ -317,7 +331,7 @@ impl<'a> Input<'a> {
             .or(token.strip_prefix(b"+"))
             .unwrap_or(token);
         if digits.is_empty() || !digits.iter().all(u8::is_ascii_digit) {
-            let message = format!("expected a number, found `{}`", lossy(token));
+            let message = cpl_diag::msgs::interp::EXPECTED_NUMBER_FOUND.at(&[&(lossy(token))]);
             return Err(self.fail(start, message));
         }
         let parsed = std::str::from_utf8(token)
@@ -326,7 +340,7 @@ impl<'a> Input<'a> {
         match parsed {
             Some(value) => Ok(value),
             None => {
-                let message = format!("`{}` does not fit in {name}", lossy(token));
+                let message = cpl_diag::msgs::interp::DOES_NOT_FIT_IN.at(&[&(lossy(token)), &name]);
                 Err(self.fail(start, message))
             }
         }
@@ -340,7 +354,7 @@ impl<'a> Input<'a> {
         match parsed {
             Some(value) => Ok(value),
             None => {
-                let message = format!("expected a number, found `{}`", lossy(token));
+                let message = cpl_diag::msgs::interp::EXPECTED_NUMBER_FOUND.at(&[&(lossy(token))]);
                 Err(self.fail(start, message))
             }
         }
@@ -357,7 +371,11 @@ impl<'a> Input<'a> {
             }
             None => Err(self.fail(
                 self.pos,
-                format!("the {} ended where a character was expected", self.name),
+                if self.is_input() {
+                    cpl_diag::msgs::interp::INPUT_ENDED_FOR_CHARACTER.at(&[])
+                } else {
+                    cpl_diag::msgs::interp::ENDED_WHERE_CHARACTER_WAS_EXPECTED.at(&[&self.name])
+                },
             )),
         }
     }

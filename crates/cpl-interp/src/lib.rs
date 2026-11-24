@@ -83,6 +83,8 @@ pub struct Frame {
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Trap {
     pub message: String,
+    /// The catalogued `R` code (`spec/diagnostics.md`) for this trap's kind.
+    pub code: cpl_diag::Code,
     /// The expression or statement that failed.
     pub span: Span,
     /// Active calls from innermost to outermost (`main` is not listed).
@@ -96,44 +98,30 @@ pub struct Trap {
 impl Trap {
     /// The catalogued `R` code (`spec/diagnostics.md`) for this trap's kind.
     pub fn code(&self) -> cpl_diag::Code {
-        use cpl_diag::codes;
-        let m = self.message.as_str();
-        let m = m.strip_prefix("reading the number of tests: ").unwrap_or(m);
-        if m.contains("input line")
-            && (m.contains(" is outside `") || m.contains("does not fit in"))
-        {
-            codes::INPUT_OUT_OF_CONTRACT
-        } else if m.contains("integer overflow") || m.contains("does not fit in") {
-            codes::OVERFLOW
-        } else if m.starts_with("division by zero") {
-            codes::DIVISION_BY_ZERO
-        } else if m.starts_with("`!` on")
-            || m.contains("unwrapped a `None`")
-            || m.contains("there is no value here")
-        {
-            codes::UNWRAP_NONE
-        } else if m.starts_with("assertion failed") {
-            codes::ASSERTION_FAILED
-        } else if m.starts_with("the stack ran out") {
-            codes::STACK_EXHAUSTED
-        } else if m.contains(" is outside `") {
-            codes::RANGE_STORE
-        } else if m.starts_with("expected a number, found")
-            || m.starts_with("the input ended")
-            || m.starts_with("expected a `")
-        {
-            codes::BAD_INPUT_TOKEN
-        } else if m.starts_with("`todo` reached") {
-            codes::TODO_REACHED
-        } else if m.contains(" is not in `") {
-            codes::DOMAIN_CAST
-        } else if ((m.starts_with("index ") || m.starts_with("swap(")) && m.contains("outside"))
-            || (m.starts_with("key ") && m.contains(" is not one of "))
-            || (m.starts_with("slice ") && m.contains(" is outside "))
-        {
-            codes::INDEX_OUT_OF_RANGE
-        } else {
-            codes::RUNTIME
+        self.code
+    }
+
+    fn said(span: Span, said: cpl_diag::msgs::Said) -> Trap {
+        Trap {
+            code: said.code(),
+            message: said.text(),
+            span,
+            call_stack: Vec::new(),
+            case: None,
+            notes: Vec::new(),
+        }
+    }
+
+    /// A trap whose text the program wrote, an `assert` or a lowered `Trap`
+    /// statement: its code is read from that text.
+    fn written(span: Span, message: String) -> Trap {
+        Trap {
+            code: written_code(&message),
+            message,
+            span,
+            call_stack: Vec::new(),
+            case: None,
+            notes: Vec::new(),
         }
     }
 
@@ -169,6 +157,45 @@ impl Trap {
             diagnostic = diagnostic.with_note(format!("call stack: {}", parts.join(" <- ")));
         }
         diagnostic
+    }
+}
+
+fn written_code(m: &str) -> cpl_diag::Code {
+    use cpl_diag::codes;
+    let m = m.strip_prefix("reading the number of tests: ").unwrap_or(m);
+    if m.contains("input line") && (m.contains(" is outside `") || m.contains("does not fit in")) {
+        codes::INPUT_OUT_OF_CONTRACT
+    } else if m.contains("integer overflow") || m.contains("does not fit in") {
+        codes::OVERFLOW
+    } else if m.starts_with("division by zero") {
+        codes::DIVISION_BY_ZERO
+    } else if m.starts_with("`!` on")
+        || m.contains("unwrapped a `None`")
+        || m.contains("there is no value here")
+    {
+        codes::UNWRAP_NONE
+    } else if m.starts_with("assertion failed") {
+        codes::ASSERTION_FAILED
+    } else if m.starts_with("the stack ran out") {
+        codes::STACK_EXHAUSTED
+    } else if m.contains(" is outside `") {
+        codes::RANGE_STORE
+    } else if m.starts_with("expected a number, found")
+        || m.starts_with("the input ended")
+        || m.starts_with("expected a `")
+    {
+        codes::BAD_INPUT_TOKEN
+    } else if m.starts_with("`todo` reached") {
+        codes::TODO_REACHED
+    } else if m.contains(" is not in `") {
+        codes::DOMAIN_CAST
+    } else if ((m.starts_with("index ") || m.starts_with("swap(")) && m.contains("outside"))
+        || (m.starts_with("key ") && m.contains(" is not one of "))
+        || (m.starts_with("slice ") && m.contains(" is outside "))
+    {
+        codes::INDEX_OUT_OF_RANGE
+    } else {
+        codes::RUNTIME
     }
 }
 
@@ -269,14 +296,8 @@ fn observe(
 /// shared by reference, so that a spawn that fails (too little address
 /// space for the stack) can be tried again smaller.
 pub(crate) fn on_interp_thread(run: &(dyn Fn(Limits) -> Observed + Sync)) -> Observed {
-    let failed = |message: &str| Observed {
-        trap: Some(Trap {
-            message: message.into(),
-            span: Span::default(),
-            call_stack: Vec::new(),
-            case: None,
-            notes: Vec::new(),
-        }),
+    let failed = |msg: &cpl_diag::msgs::Msg| Observed {
+        trap: Some(Trap::said(Span::default(), msg.at(&[]))),
         ..Observed::default()
     };
     let memory = memory_for_stack();
@@ -290,12 +311,12 @@ pub(crate) fn on_interp_thread(run: &(dyn Fn(Limits) -> Observed + Sync)) -> Obs
                 .stack_size(bytes)
                 .spawn_scoped(scope, move || run(limits));
             if let Ok(handle) = spawned {
-                return handle.join().unwrap_or_else(|_| {
-                    failed("the interpreter itself failed; this is a bug in cpl")
-                });
+                return handle
+                    .join()
+                    .unwrap_or_else(|_| failed(&cpl_diag::msgs::interp::INTERPRETER_FAILED));
             }
         }
-        failed("could not start the interpreter thread")
+        failed(&cpl_diag::msgs::interp::NO_INTERPRETER_THREAD)
     })
 }
 
@@ -430,7 +451,7 @@ fn run_from<O: Observer>(
         trace_raw: Vec::new(),
     };
     let result = match interp.main() {
-        Err(trap) if trap.message == trace::STOPPED => Ok(()),
+        Err(trap) if trap.message == trace::STOPPED.text() => Ok(()),
         result => result,
     };
     let _ = interp.sink.write_all(&interp.out);
@@ -482,7 +503,10 @@ type Res<T> = Result<T, Box<Trap>>;
 /// A whole float as an `Int`: strictly between `-2^63` and `2^63`.
 fn float_int(v: f64, span: Span) -> Res<Value> {
     if !(v > -9223372036854775808.0 && v < 9223372036854775808.0) {
-        return trap(span, format!("{v} does not fit in an `Int`"));
+        return trap(
+            span,
+            cpl_diag::msgs::interp::DOES_NOT_FIT_IN_INT_2.at(&[&v]),
+        );
     }
     Ok(Value::Int(v as i64))
 }
@@ -498,23 +522,17 @@ fn stmt_failure(stmt: &Stmt, message: Option<Value>) -> Box<Trap> {
                 report.push_str(if text.is_empty() { "" } else { ": " });
                 report.extend(bytes.iter().map(|b| *b as char));
             }
-            let mut failed = trap::<()>(*span, report).unwrap_err();
+            let mut failed = Box::new(Trap::written(*span, report));
             failed.notes.extend(note.clone());
             failed
         }
-        Stmt::Trap(message, span) => trap::<()>(*span, message.clone()).unwrap_err(),
+        Stmt::Trap(message, span) => Box::new(Trap::written(*span, message.clone())),
         _ => unreachable!("only an assert or a trap fails"),
     }
 }
 
-fn trap<T>(span: Span, message: impl Into<String>) -> Res<T> {
-    Err(Box::new(Trap {
-        message: message.into(),
-        span,
-        call_stack: Vec::new(),
-        case: None,
-        notes: Vec::new(),
-    }))
+fn trap<T>(span: Span, said: cpl_diag::msgs::Said) -> Res<T> {
+    Err(Box::new(Trap::said(span, said)))
 }
 
 enum Flow {
@@ -980,7 +998,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Value::Range128(r) => {
                 (r.0 < r.1).then(|| Value::I128((if last { r.1 - 1 } else { r.0 }).into()))
             }
-            other => return trap(span, format!("internal: `first`/`last` of {other:?}")),
+            other => {
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::INTERNAL_FIRST_LAST.at(&[&format_args!("{:?}", other)]),
+                )
+            }
         })
     }
 }
@@ -1000,11 +1023,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             ExprKind::None => Value::Opt(OptVal::None),
             ExprKind::Some(inner) => Value::some(self.eval(inner)?),
             ExprKind::Local(slot) => match self.local(*slot) {
-                Value::Moved => return trap(span, LENT),
+                Value::Moved => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                 value => value.clone(),
             },
             ExprKind::Global(id) => match &self.globals[*id] {
-                Value::Moved => return trap(span, LENT),
+                Value::Moved => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                 value => value.clone(),
             },
             ExprKind::Binary(op, lhs, rhs) => match op {
@@ -1058,12 +1081,17 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Some(Value::Tuple(fields)) => {
                         fields.get(*index).expect("field index within tuple")
                     }
-                    Some(Value::Moved) => return trap(span, LENT),
+                    Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                     _ => match self.eval(base)? {
                         Value::Tuple(fields) => {
                             fields.get(*index).expect("field index within tuple")
                         }
-                        _ => return trap(span, "internal: field of a value without fields"),
+                        _ => {
+                            return trap(
+                                span,
+                                cpl_diag::msgs::interp::INTERNAL_FIELD_VALUE_WITHOUT_FIELDS.at(&[]),
+                            )
+                        }
                     },
                 }
             }
@@ -1073,9 +1101,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             ExprKind::Unwrap(value, _) => match self.eval(value)? {
                 Value::Opt(opt) => match opt.unwrap_owned() {
                     Some(v) => v,
-                    None => return trap(span, "`!` on `None`: there is no value here"),
+                    None => {
+                        return trap(span, cpl_diag::msgs::interp::ON_NONE_THERE_NO_VALUE.at(&[]))
+                    }
                 },
-                _ => return trap(span, "`!` on `None`: there is no value here"),
+                _ => return trap(span, cpl_diag::msgs::interp::ON_NONE_THERE_NO_VALUE.at(&[])),
             },
             ExprKind::RangeCheck {
                 value,
@@ -1093,7 +1123,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     None => i64::MAX,
                 };
                 if v < lo || v > hi {
-                    return trap(span, format!("{v} is outside `{text}`"));
+                    return trap(span, cpl_diag::msgs::interp::OUTSIDE.at(&[&v, &text]));
                 }
                 Value::Int(v)
             }
@@ -1106,7 +1136,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             ExprKind::Do(block) => match self.block(block)? {
                 Flow::Give(value) => value,
-                _ => return trap(span, "internal: a block ended without its value"),
+                _ => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_BLOCK_ENDED_WITHOUT_ITS.at(&[]),
+                    )
+                }
             },
             ExprKind::Call(id, args) => self.call_or_resume(e, *id, args, span)?,
             ExprKind::CallExpr(callee, args) => self.call_expr(e, callee, args, span)?,
@@ -1166,13 +1201,19 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Some(Value::MutView(mv)) => {
                         (mv.target.clone(), mv.lo, mv.len, mv.step, mv.key0)
                     }
-                    Some(Value::Moved) => return trap(span, LENT),
-                    _ => return trap(span, "slice expects a list or array"),
+                    Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+                    _ => {
+                        return trap(
+                            span,
+                            cpl_diag::msgs::interp::SLICE_EXPECTS_LIST_OR_ARRAY.at(&[]),
+                        )
+                    }
                 };
                 if lo < 0 || hi < lo || hi as usize > base_len {
                     return trap(
                         span,
-                        format!("slice {lo}..{hi} is outside a list of length {base_len}"),
+                        cpl_diag::msgs::interp::SLICE_OUTSIDE_LIST_LENGTH
+                            .at(&[&lo, &hi, &base_len]),
                     );
                 }
                 Value::MutView(Rc::new(MutViewVal {
@@ -1192,8 +1233,13 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Some(Value::Array(arr)) if arr.dims.len() == 2 => {
                         (arr.dims[0] as usize, arr.dims[1] as usize)
                     }
-                    Some(Value::Moved) => return trap(span, LENT),
-                    _ => return trap(span, "internal: a grid line needs a 2D array"),
+                    Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+                    _ => {
+                        return trap(
+                            span,
+                            cpl_diag::msgs::interp::INTERNAL_GRID_LINE_NEEDS_2D.at(&[]),
+                        )
+                    }
                 };
                 let (fixed, len, step) = if *axis == 1 {
                     (rows, cols, 1)
@@ -1203,7 +1249,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let Some(at) = usize::try_from(at).ok().filter(|at| *at < fixed) else {
                     return trap(
                         span,
-                        format!("index {at} is outside an axis of length {fixed}"),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_AXIS_LENGTH.at(&[&at, &fixed]),
                     );
                 };
                 let lo = if *axis == 1 { at * cols } else { at };
@@ -1254,7 +1300,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let v = self.mut_view_to_vec(&mv, span)?;
                         (v, SortKind::MutView(mv))
                     }
-                    _ => return trap(span, LENT),
+                    _ => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                 };
                 let elem_ty = match &place.ty {
                     Ty::List(e) | Ty::MutView(e, _) | Ty::Array { elem: e, .. } => (**e).clone(),
@@ -1312,7 +1358,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                                     dst.set(mv.lo + k * mv.step, item);
                                 }
                             }
-                            _ => return trap(span, LENT),
+                            _ => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                         }
                     }
                     SortKind::Array(dims) => {
@@ -1523,7 +1569,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     if idx < 0 || idx >= len {
                         return trap(
                             span,
-                            format!("index {idx} is outside an array dimension of length {len}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                .at(&[&idx, &len]),
                         );
                     }
                     idx as usize
@@ -1533,7 +1580,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     if i0 < 0 || i0 >= l0 {
                         return trap(
                             span,
-                            format!("index {i0} is outside an array dimension of length {l0}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                .at(&[&i0, &l0]),
                         );
                     }
                     let i1 = values[1].int();
@@ -1541,7 +1589,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     if i1 < 0 || i1 >= l1 {
                         return trap(
                             span,
-                            format!("index {i1} is outside an array dimension of length {l1}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH
+                                .at(&[&i1, &l1]),
                         );
                     }
                     (i0 * l1 + i1) as usize
@@ -1556,7 +1605,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Some(item) => Ok(item.clone()),
                     None => trap(
                         span,
-                        format!("index {index} is outside a list of length {}", items.len()),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH
+                            .at(&[&index, &items.len()]),
                     ),
                 }
             }
@@ -1566,7 +1616,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Some(item) => Ok(item.clone()),
                     None => trap(
                         span,
-                        format!("index {index} is outside a list of length {}", view.len),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&index, &view.len]),
                     ),
                 }
             }
@@ -1576,7 +1626,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Some(i) => self.mut_view_get(mv, i, span),
                     None => trap(
                         span,
-                        format!("index {index} is outside a list of length {}", mv.len),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&index, &mv.len]),
                     ),
                 }
             }
@@ -1586,10 +1636,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Some(byte) => Ok(Value::Char(*byte)),
                     None => trap(
                         span,
-                        format!(
-                            "index {index} is outside a string of length {}",
-                            bytes.len()
-                        ),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_STRING_LENGTH
+                            .at(&[&index, &bytes.len()]),
                     ),
                 }
             }
@@ -1599,7 +1647,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if index < 0 || index >= len {
                     trap(
                         span,
-                        format!("index {index} is outside a range of length {len}"),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_RANGE_LENGTH.at(&[&index, &len]),
                     )
                 } else {
                     Ok(Value::Int(lo + index))
@@ -1611,7 +1659,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Some(byte) => Ok(Value::Char(byte)),
                     None => trap(
                         span,
-                        format!("index {index} is outside a string of length {}", view.len),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_STRING_LENGTH
+                            .at(&[&index, &view.len]),
                     ),
                 }
             }
@@ -1630,17 +1679,15 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             show(&mut key, &values[0], key_ty, 6, self.program, &self.domains);
                         }
                         let key: String = key.iter().map(|b| *b as char).collect();
-                        trap(
-                            span,
-                            format!(
-                                "the key `{key}` is not in the map; `m.get(k)` gives an optional"
-                            ),
-                        )
+                        trap(span, cpl_diag::msgs::interp::KEY_NOT_IN_MAP_M.at(&[&key]))
                     }
                 }
             }
-            Value::Moved => trap(span, LENT),
-            _ => trap(span, "internal: index of a value that has no elements"),
+            Value::Moved => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_INDEX_VALUE_THAT_HAS.at(&[]),
+            ),
         }
     }
 
@@ -1651,15 +1698,30 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Cast::IntToU64 => Value::U64(value.int() as u64),
             Cast::I128ToInt => match (&value, i64::try_from(value.i128())) {
                 (_, Ok(v)) if v != i64::MIN => Value::Int(v),
-                _ => return trap(span, format!("{} does not fit in an `Int`", value.i128())),
+                _ => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::DOES_NOT_FIT_IN_INT_2.at(&[&value.i128()]),
+                    )
+                }
             },
             Cast::U64ToInt => match i64::try_from(value.u64()) {
                 Ok(v) => Value::Int(v),
-                Err(_) => return trap(span, format!("{} does not fit in an `Int`", value.u64())),
+                Err(_) => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::DOES_NOT_FIT_IN_INT_2.at(&[&value.u64()]),
+                    )
+                }
             },
             Cast::I128ToU64 => match u64::try_from(value.i128()) {
                 Ok(v) => Value::U64(v),
-                Err(_) => return trap(span, format!("{} does not fit in a `U64`", value.i128())),
+                Err(_) => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::DOES_NOT_FIT_IN_U64.at(&[&value.i128()]),
+                    )
+                }
             },
             Cast::U64ToI128 => Value::I128(i128::from(value.u64()).into()),
             Cast::I128ToFloat => Value::Float(value.i128() as f64),
@@ -1674,11 +1736,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             },
             Cast::StepToChar => match u8::try_from(value.int()) {
                 Ok(c) if c.is_ascii() => Value::Char(c),
-                _ => return trap(span, "`Char + Int` left ASCII (0..=127)"),
+                _ => return trap(span, cpl_diag::msgs::interp::CHAR_INT_LEFT_ASCII_0.at(&[])),
             },
             Cast::IntToChar => match u8::try_from(value.int()) {
                 Ok(c) if c.is_ascii() => Value::Char(c),
-                _ => return trap(span, format!("{} is outside `0..=127`", value.int())),
+                _ => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::OUTSIDE_0_127.at(&[&value.int()]),
+                    )
+                }
             },
             Cast::EnumOrd(_) => match value {
                 Value::Enum(tag, _) => Value::Int(tag as i64),
@@ -1710,7 +1777,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let name = &self.program.domains[d];
                     return trap(
                         span,
-                        format!("{label} is not in `{name}`, which is {}", describe(lo, len)),
+                        cpl_diag::msgs::interp::NOT_IN_WHICH.at(&[
+                            &label,
+                            &name,
+                            &(describe(lo, len)),
+                        ]),
                     );
                 }
                 Value::Int(label - lo)
@@ -1722,10 +1793,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let name = &self.program.domains[d];
                     return trap(
                         span,
-                        format!(
-                            "`{name}` has no position {ord}: it is {}",
-                            describe(lo, len)
-                        ),
+                        cpl_diag::msgs::interp::HAS_NO_POSITION_IT.at(&[
+                            &name,
+                            &ord,
+                            &(describe(lo, len)),
+                        ]),
                     );
                 }
                 value
@@ -1779,10 +1851,6 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     // ----- input -----
 }
 
-const CPP_ONLY: &str =
-    "this fn's body is C++ (`@cpp`), so only the C++ build runs it: `cpl run` does that by itself";
-const NO_GRADER: &str =
-    "this fn has no body: the judge's grader supplies it, so there is nothing to run here";
 /// The 64 bits of an `Int` or a `U64`.
 /// The table's VM implementation of `p` on `vals` (R12.14.3).
 pub(crate) fn intrinsic(p: Prim, vals: &[Value], span: Span) -> Res<Value> {
@@ -1801,7 +1869,7 @@ pub(crate) fn intrinsic(p: Prim, vals: &[Value], span: Span) -> Res<Value> {
         Ok(Scalar::U64(v)) => Value::U64(v),
         Ok(Scalar::F64(v)) => Value::Float(v),
         Ok(Scalar::Bool(v)) => Value::Bool(v),
-        Err(message) => return trap(span, message),
+        Err(message) => return Err(Box::new(Trap::written(span, message))),
     })
 }
 
@@ -1811,8 +1879,6 @@ fn bits64(value: &Value) -> u64 {
         other => other.int() as u64,
     }
 }
-
-const LENT: &str = "this variable is being changed by a call that has not returned yet";
 
 /// A domain for a message: `1..=5`, or that it is empty.
 pub(crate) fn describe(lo: i64, len: i64) -> String {
@@ -1835,7 +1901,7 @@ fn array_offset<'v>(
         if index < 0 || index >= *len {
             return trap(
                 span,
-                format!("index {index} is outside an array dimension of length {len}"),
+                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&index, &len]),
             );
         }
         at = at * len + index;

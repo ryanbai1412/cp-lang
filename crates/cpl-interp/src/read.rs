@@ -29,6 +29,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let fail = |error: input::InputError| -> Box<Trap> {
             Box::new(Trap {
                 message: error.message,
+                code: error.code,
                 span,
                 call_stack: Vec::new(),
                 case: None,
@@ -48,7 +49,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Ty::Bool => match self.input.int().map_err(fail)? {
                     (bit @ (0 | 1), _) => Value::Bool(bit == 1),
                     (other, start) => {
-                        let message = format!("{other} is not a `Bool`, which is read as 0 or 1");
+                        let message = cpl_diag::msgs::interp::NOT_BOOL_WHICH_READ_AS.at(&[&other]);
                         return Err(fail(self.input.fail(start, message)));
                     }
                 },
@@ -60,8 +61,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     let (lo, len) = self.domains[*d];
                     if label < lo || label - lo >= len {
                         let name = &self.program.domains[*d];
-                        let message =
-                            format!("{label} is not in `{name}`, which is {}", describe(lo, len));
+                        let message = cpl_diag::msgs::interp::NOT_IN_WHICH.at(&[
+                            &label,
+                            &name,
+                            &(describe(lo, len)),
+                        ]);
                         return Err(fail(self.input.fail(start, message)));
                     }
                     Value::Int(label - lo)
@@ -71,7 +75,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let (lo, _) = self.input.int().map_err(fail)?;
                         let (hi, start) = self.input.int().map_err(fail)?;
                         if lo > hi {
-                            let message = format!("range end {hi} is before start {lo}");
+                            let message =
+                                cpl_diag::msgs::interp::RANGE_END_BEFORE_START.at(&[&hi, &lo]);
                             return Err(fail(self.input.fail(start, message)));
                         }
                         Value::Range(lo, hi.saturating_add(1))
@@ -81,23 +86,26 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let (lo, len) = self.domains[*d];
                         if l_label < lo || l_label - lo >= len {
                             let name = &self.program.domains[*d];
-                            let message = format!(
-                                "{l_label} is not in `{name}`, which is {}",
-                                describe(lo, len)
-                            );
+                            let message = cpl_diag::msgs::interp::NOT_IN_WHICH.at(&[
+                                &l_label,
+                                &name,
+                                &(describe(lo, len)),
+                            ]);
                             return Err(fail(self.input.fail(l_start, message)));
                         }
                         let (r_label, r_start) = self.input.int().map_err(fail)?;
                         if r_label < lo || r_label - lo >= len {
                             let name = &self.program.domains[*d];
-                            let message = format!(
-                                "{r_label} is not in `{name}`, which is {}",
-                                describe(lo, len)
-                            );
+                            let message = cpl_diag::msgs::interp::NOT_IN_WHICH.at(&[
+                                &r_label,
+                                &name,
+                                &(describe(lo, len)),
+                            ]);
                             return Err(fail(self.input.fail(r_start, message)));
                         }
                         if l_label > r_label {
-                            let message = format!("range end {r_label} is before start {l_label}");
+                            let message = cpl_diag::msgs::interp::RANGE_END_BEFORE_START
+                                .at(&[&r_label, &l_label]);
                             return Err(fail(self.input.fail(r_start, message)));
                         }
                         Value::Range(l_label - lo, r_label - lo + 1)
@@ -171,14 +179,22 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 DimSpec::Int(len) | DimSpec::IntFrom(_, len) => {
                     let len = self.given(len, given)?.int();
                     if len < 0 {
-                        return trap(span, format!("an array can't have length {len}"));
+                        return trap(
+                            span,
+                            cpl_diag::msgs::interp::ARRAY_CAN_HAVE_LENGTH.at(&[&len]),
+                        );
                     }
                     len
                 }
             };
             cells = match cells.checked_mul(len).filter(|c| *c <= 1 << 32) {
                 Some(cells) => cells,
-                None => return trap(span, "this array is too large to allocate"),
+                None => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::THIS_ARRAY_TOO_LARGE_TO.at(&[]),
+                    )
+                }
             };
             out.push(len);
         }

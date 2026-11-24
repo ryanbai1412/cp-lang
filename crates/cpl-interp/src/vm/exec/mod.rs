@@ -4,6 +4,7 @@ use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::Flow;
 use crate::{describe, release, trap, Interp, Res};
+use cpl_diag::msgs::interp as rows;
 use cpl_ir::{CmpOp, FnId, LoopId};
 use std::rc::Rc;
 
@@ -284,7 +285,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let bv = regs_i[b as usize];
                     match av.checked_add(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => regs_i[dst as usize] = release::overflow(spans[cur_pc], format!("integer overflow: `{av} + {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_add(bv))?,
+                        None => {
+                            regs_i[dst as usize] = release::overflow(
+                                spans[cur_pc],
+                                rows::INT_OVERFLOW_BINOP.at(&[&av, &"+", &bv]),
+                                av.wrapping_add(bv),
+                            )?
+                        }
                     }
                 }
                 Op::SubI { dst, a, b } => {
@@ -292,7 +299,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let bv = regs_i[b as usize];
                     match av.checked_sub(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => regs_i[dst as usize] = release::overflow(spans[cur_pc], format!("integer overflow: `{av} - {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_sub(bv))?,
+                        None => {
+                            regs_i[dst as usize] = release::overflow(
+                                spans[cur_pc],
+                                rows::INT_OVERFLOW_BINOP.at(&[&av, &"-", &bv]),
+                                av.wrapping_sub(bv),
+                            )?
+                        }
                     }
                 }
                 Op::MulI { dst, a, b } => {
@@ -300,27 +313,39 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let bv = regs_i[b as usize];
                     match av.checked_mul(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => regs_i[dst as usize] = release::overflow(spans[cur_pc], format!("integer overflow: `{av} * {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_mul(bv))?,
+                        None => {
+                            regs_i[dst as usize] = release::overflow(
+                                spans[cur_pc],
+                                rows::INT_OVERFLOW_BINOP.at(&[&av, &"*", &bv]),
+                                av.wrapping_mul(bv),
+                            )?
+                        }
                     }
                 }
                 Op::DivI { dst, a, b } => {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
                     let at = spans[cur_pc];
-                    regs_i[dst as usize] = match av.checked_div_euclid(bv).filter(|v| *v != i64::MIN) {
-                        _ if bv == 0 => release::div_zero(at, format!("division by zero: `{av} / 0`"))?,
-                        Some(v) => v,
-                        None => release::overflow(at, format!("integer overflow: `{av} / {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_div_euclid(bv))?,
-                    }
+                    regs_i[dst as usize] =
+                        match av.checked_div_euclid(bv).filter(|v| *v != i64::MIN) {
+                            _ if bv == 0 => {
+                                release::div_zero(at, rows::DIV_BY_ZERO_OP.at(&[&av, &"/"]))?
+                            }
+                            Some(v) => v,
+                            None => release::overflow(
+                                at,
+                                rows::INT_OVERFLOW_BINOP.at(&[&av, &"/", &bv]),
+                                av.wrapping_div_euclid(bv),
+                            )?,
+                        }
                 }
                 Op::RemI { dst, a, b } => {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
                     regs_i[dst as usize] = match av.checked_rem_euclid(bv) {
-                        _ if bv == 0 => release::div_zero(
-                            spans[cur_pc],
-                            format!("division by zero: `{av} % 0`"),
-                        )?,
+                        _ if bv == 0 => {
+                            release::div_zero(spans[cur_pc], rows::DIV_BY_ZERO_OP.at(&[&av, &"%"]))?
+                        }
                         v => v.unwrap_or(0),
                     };
                 }
@@ -355,7 +380,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let bv = i64::from(imm);
                     match av.checked_add(bv).filter(|v| *v != i64::MIN) {
                         Some(v) => regs_i[dst as usize] = v,
-                        None => regs_i[dst as usize] = release::overflow(spans[cur_pc], format!("integer overflow: `{av} + {bv}` does not fit in an `Int` (64 bits)"), av.wrapping_add(bv))?,
+                        None => {
+                            regs_i[dst as usize] = release::overflow(
+                                spans[cur_pc],
+                                rows::INT_OVERFLOW_BINOP.at(&[&av, &"+", &bv]),
+                                av.wrapping_add(bv),
+                            )?
+                        }
                     }
                 }
                 Op::NegI { dst, a } => {
@@ -365,9 +396,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         None => {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "integer overflow: `-{av}` does not fit in an `Int` (64 bits)"
-                                ),
+                                rows::INTEGER_OVERFLOW_DOES_NOT_FIT.at(&[&av]),
                             )
                         }
                     }
@@ -376,7 +405,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let (av, bv) = (regs_i[a as usize], regs_i[b as usize]);
                     let v = av & bv;
                     if v == i64::MIN {
-                        return trap(spans[cur_pc], format!("integer overflow: `{av} & {bv}` does not fit in an `Int` (64 bits)"));
+                        return trap(
+                            spans[cur_pc],
+                            rows::INT_OVERFLOW_BINOP.at(&[&av, &"&", &bv]),
+                        );
                     }
                     regs_i[dst as usize] = v;
                 }
@@ -384,7 +416,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let (av, bv) = (regs_i[a as usize], regs_i[b as usize]);
                     let v = av | bv;
                     if v == i64::MIN {
-                        return trap(spans[cur_pc], format!("integer overflow: `{av} | {bv}` does not fit in an `Int` (64 bits)"));
+                        return trap(
+                            spans[cur_pc],
+                            rows::INT_OVERFLOW_BINOP.at(&[&av, &"|", &bv]),
+                        );
                     }
                     regs_i[dst as usize] = v;
                 }
@@ -392,7 +427,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let (av, bv) = (regs_i[a as usize], regs_i[b as usize]);
                     let v = av ^ bv;
                     if v == i64::MIN {
-                        return trap(spans[cur_pc], format!("integer overflow: `{av} ^ {bv}` does not fit in an `Int` (64 bits)"));
+                        return trap(
+                            spans[cur_pc],
+                            rows::INT_OVERFLOW_BINOP.at(&[&av, &"^", &bv]),
+                        );
                     }
                     regs_i[dst as usize] = v;
                 }
@@ -400,13 +438,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
                     if !(0..64).contains(&bv) {
-                        return trap(spans[cur_pc], format!("a shift by {bv} is outside 0..64"));
+                        return trap(spans[cur_pc], rows::SHIFT_BY_OUTSIDE_0_64.at(&[&bv]));
                     }
                     if av < 0 {
-                        return trap(spans[cur_pc], format!("`<<` of the negative number {av}"));
+                        return trap(spans[cur_pc], rows::NEGATIVE_NUMBER.at(&[&av]));
                     }
                     if bv > 0 && av > (i64::MAX >> bv) {
-                        return trap(spans[cur_pc], format!("integer overflow: `{av} << {bv}` does not fit in an `Int` (64 bits)"));
+                        return trap(
+                            spans[cur_pc],
+                            rows::INT_OVERFLOW_BINOP.at(&[&av, &"<<", &bv]),
+                        );
                     }
                     regs_i[dst as usize] = av << bv;
                 }
@@ -414,7 +455,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let av = regs_i[a as usize];
                     let bv = regs_i[b as usize];
                     if !(0..64).contains(&bv) {
-                        return trap(spans[cur_pc], format!("a shift by {bv} is outside 0..64"));
+                        return trap(spans[cur_pc], rows::SHIFT_BY_OUTSIDE_0_64.at(&[&bv]));
                     }
                     regs_i[dst as usize] = av >> bv;
                 }
@@ -457,9 +498,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         None => {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                "integer overflow: `abs({av})` does not fit in an `Int` (64 bits)"
-                            ),
+                                rows::INTEGER_OVERFLOW_ABS_DOES_NOT.at(&[&av]),
                             )
                         }
                     }
@@ -477,7 +516,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let name = &self.program.domains[dom as usize];
                         return trap(
                             spans[cur_pc],
-                            format!("{label} is not in `{name}`, which is {}", describe(lo, len)),
+                            rows::NOT_IN_WHICH.at(&[&label, &name, &(describe(lo, len))]),
                         );
                     }
                     regs_i[dst as usize] = label - lo;
@@ -489,10 +528,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         let name = &self.program.domains[dom as usize];
                         return trap(
                             spans[cur_pc],
-                            format!(
-                                "`{name}` has no position {ord}: it is {}",
-                                describe(lo, len)
-                            ),
+                            rows::HAS_NO_POSITION_IT.at(&[&name, &ord, &(describe(lo, len))]),
                         );
                     }
                     regs_i[dst as usize] = ord;
@@ -509,14 +545,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= d0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside an array of length {d0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &d0]),
                             );
                         }
                         let b = dst_base as usize;
                         let n = len as usize;
                         arr.get_small_tuple(i as usize, n, &mut regs_i[b..b + n]);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadLArr1SmallTuple {
@@ -531,14 +567,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= d0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside an array of length {d0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &d0]),
                             );
                         }
                         let b = dst_base as usize;
                         let n = len as usize;
                         arr.get_small_tuple(i as usize, n, &mut regs_i[b..b + n]);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreGArr1SmallTuple {
@@ -556,12 +592,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= d0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside an array of length {d0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &d0]),
                             );
                         }
                         Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], &kinds);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreLArr1SmallTuple {
@@ -579,12 +615,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= d0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i} is outside an array of length {d0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &d0]),
                             );
                         }
                         Rc::make_mut(arr).set_small_tuple(i as usize, n, &regs_i[b..b + n], &kinds);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadGArr2SmallTuple {
@@ -602,16 +638,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= d0 || j < 0 || j >= d1 {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index ({i}, {j}) is outside an array of shape ({d0}, {d1})"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_SHAPE.at(&[&i, &j, &d0, &d1]),
                             );
                         }
                         let b = dst_base as usize;
                         let n = len as usize;
                         arr.get_small_tuple((i * d1 + j) as usize, n, &mut regs_i[b..b + n]);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadLArr2SmallTuple {
@@ -629,16 +663,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= d0 || j < 0 || j >= d1 {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index ({i}, {j}) is outside an array of shape ({d0}, {d1})"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_SHAPE.at(&[&i, &j, &d0, &d1]),
                             );
                         }
                         let b = dst_base as usize;
                         let n = len as usize;
                         arr.get_small_tuple((i * d1 + j) as usize, n, &mut regs_i[b..b + n]);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreGArr2SmallTuple {
@@ -659,9 +691,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= d0 || j < 0 || j >= d1 {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index ({i}, {j}) is outside an array of shape ({d0}, {d1})"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_SHAPE.at(&[&i, &j, &d0, &d1]),
                             );
                         }
                         Rc::make_mut(arr).set_small_tuple(
@@ -671,7 +701,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             &kinds,
                         );
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreLArr2SmallTuple {
@@ -692,9 +722,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i < 0 || i >= d0 || j < 0 || j >= d1 {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index ({i}, {j}) is outside an array of shape ({d0}, {d1})"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_SHAPE.at(&[&i, &j, &d0, &d1]),
                             );
                         }
                         Rc::make_mut(arr).set_small_tuple(
@@ -704,7 +732,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             &kinds,
                         );
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::BoxSmallTuple {
@@ -789,10 +817,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let kv = regs_i[k as usize];
                     let b = regs_i[ord as usize] + 1 - kv;
                     if b < 0 || b > len {
-                        return trap(
-                            spans[cur_pc],
-                            format!("window of {kv} leaves domain (0..={len})"),
-                        );
+                        return trap(spans[cur_pc], rows::WINDOW_LEAVES_DOMAIN_0.at(&[&kv, &len]));
                     }
                     regs_i[dst as usize] = b;
                 }
@@ -801,16 +826,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let kv = regs_i[k as usize];
                     let b = regs_i[ord as usize] + kv;
                     if b < 0 || b > len {
-                        return trap(
-                            spans[cur_pc],
-                            format!("window of {kv} leaves domain (0..={len})"),
-                        );
+                        return trap(spans[cur_pc], rows::WINDOW_LEAVES_DOMAIN_0.at(&[&kv, &len]));
                     }
                     regs_i[dst as usize] = b;
                 }
                 Op::UnwrapOptI { dst, val, some } => {
                     if regs_i[some as usize] == 0 {
-                        return trap(spans[cur_pc], "`!` on `None`: there is no value here");
+                        return trap(spans[cur_pc], rows::ON_NONE_THERE_NO_VALUE.at(&[]));
                     }
                     regs_i[dst as usize] = regs_i[val as usize];
                 }
@@ -997,14 +1019,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         regs_i[dst as usize] = read_array_i(arr, idx as usize);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreGArr1I { gid, r_i, r_val } => {
@@ -1015,14 +1035,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         write_array_i(Rc::make_mut(arr), idx as usize, val);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadGArr2I { dst, gid, r_i, r_j } => {
@@ -1033,19 +1051,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         let l1 = arr.dims[1];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i1, &l1]),
                             );
                         }
                         regs_i[dst as usize] = read_array_i(arr, (i0 * l1 + i1) as usize);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected 2D array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreGArr2I {
@@ -1062,19 +1080,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         let l1 = arr.dims[1];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i1, &l1]),
                             );
                         }
                         write_array_i(Rc::make_mut(arr), (i0 * l1 + i1) as usize, val);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected 2D array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadLArr1I { dst, arr_v, r_i } => {
@@ -1085,9 +1103,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!(
-                                        "index {idx} is outside an array dimension of length {len}"
-                                    ),
+                                    rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             regs_i[dst as usize] = read_array_i(arr, idx as usize);
@@ -1097,13 +1113,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             regs_i[dst as usize] =
                                 ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected array"),
+                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[])),
                     }
                 }
                 Op::StoreLArr1I { arr_v, r_i, r_val } => {
@@ -1115,9 +1131,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!(
-                                        "index {idx} is outside an array dimension of length {len}"
-                                    ),
+                                    rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             write_array_i(Rc::make_mut(arr), idx as usize, val);
@@ -1127,7 +1141,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             let slot = &mut Rc::make_mut(list).as_mut_values()[idx as usize];
@@ -1139,7 +1153,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 _ => Value::Int(val),
                             };
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected array"),
+                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[])),
                     }
                 }
                 Op::LoadLArr2I {
@@ -1155,19 +1169,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         let l1 = arr.dims[1];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i1, &l1]),
                             );
                         }
                         regs_i[dst as usize] = read_array_i(arr, (i0 * l1 + i1) as usize);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected 2D array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreLArr2I {
@@ -1184,19 +1198,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         let l1 = arr.dims[1];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i1, &l1]),
                             );
                         }
                         write_array_i(Rc::make_mut(arr), (i0 * l1 + i1) as usize, val);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected 2D array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadGArr1OptI {
@@ -1211,16 +1225,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         let (v, s) = read_array_opt_i(arr, idx as usize);
                         regs_i[dst_val as usize] = v;
                         regs_i[dst_some as usize] = s;
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreGArr1OptI {
@@ -1238,14 +1250,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         write_array_opt_i(Rc::make_mut(arr), idx as usize, val, some, kind);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadGArr2OptI {
@@ -1262,21 +1272,21 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         let l1 = arr.dims[1];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i1, &l1]),
                             );
                         }
                         let (v, s) = read_array_opt_i(arr, (i0 * l1 + i1) as usize);
                         regs_i[dst_val as usize] = v;
                         regs_i[dst_some as usize] = s;
                     } else {
-                        return trap(spans[cur_pc], "internal: expected 2D array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreGArr2OptI {
@@ -1296,14 +1306,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         let l1 = arr.dims[1];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i1, &l1]),
                             );
                         }
                         write_array_opt_i(
@@ -1314,7 +1324,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             kind,
                         );
                     } else {
-                        return trap(spans[cur_pc], "internal: expected 2D array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadLArr1OptI {
@@ -1329,16 +1339,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         let (v, s) = read_array_opt_i(arr, idx as usize);
                         regs_i[dst_val as usize] = v;
                         regs_i[dst_some as usize] = s;
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreLArr1OptI {
@@ -1356,14 +1364,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         write_array_opt_i(Rc::make_mut(arr), idx as usize, val, some, kind);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadLArr2OptI {
@@ -1380,21 +1386,21 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         let l1 = arr.dims[1];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i1, &l1]),
                             );
                         }
                         let (v, s) = read_array_opt_i(arr, (i0 * l1 + i1) as usize);
                         regs_i[dst_val as usize] = v;
                         regs_i[dst_some as usize] = s;
                     } else {
-                        return trap(spans[cur_pc], "internal: expected 2D array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreLArr2OptI {
@@ -1414,14 +1420,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if i0 < 0 || i0 >= l0 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i0} is outside an array dimension of length {l0}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i0, &l0]),
                             );
                         }
                         let l1 = arr.dims[1];
                         if i1 < 0 || i1 >= l1 {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {i1} is outside an array dimension of length {l1}"),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i1, &l1]),
                             );
                         }
                         write_array_opt_i(
@@ -1432,7 +1438,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             kind,
                         );
                     } else {
-                        return trap(spans[cur_pc], "internal: expected 2D array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_2D_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadGList1I { dst, gid, r_i } => {
@@ -1443,7 +1449,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             regs_i[dst as usize] =
@@ -1454,13 +1460,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             regs_i[dst as usize] =
                                 ScalarKind::unbox_val(&view.get(idx as usize).unwrap());
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[])),
                     }
                 }
                 Op::StoreGList1I {
@@ -1476,12 +1482,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         Rc::make_mut(list).set(idx as usize, kind.box_val(val));
                     } else {
-                        return trap(spans[cur_pc], "internal: expected list");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[]));
                     }
                 }
                 Op::LoadFieldList1I {
@@ -1496,19 +1502,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || (idx as usize) >= list.len() {
                                 return trap(
                                     spans[cur_pc],
-                                    format!(
-                                        "index {idx} is outside a list of length {}",
-                                        list.len()
-                                    ),
+                                    rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &list.len()]),
                                 );
                             }
                             regs_i[dst as usize] =
                                 ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
                         } else {
-                            return trap(spans[cur_pc], "internal: expected list field");
+                            return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST_FIELD.at(&[]));
                         }
                     } else {
-                        return trap(spans[cur_pc], "internal: expected struct");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_STRUCT.at(&[]));
                     }
                 }
                 Op::FieldListLen { dst, obj_v, field } => {
@@ -1563,7 +1566,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             regs_i[dst as usize] =
@@ -1574,13 +1577,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             regs_i[dst as usize] =
                                 ScalarKind::unbox_val(&view.get(idx as usize).unwrap());
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected list"),
+                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[])),
                     }
                 }
                 Op::StoreLList1I {
@@ -1596,12 +1599,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!("index {idx} is outside a list of length {len}"),
+                                rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         Rc::make_mut(list).set(idx as usize, kind.box_val(val));
                     } else {
-                        return trap(spans[cur_pc], "internal: expected list");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_LIST.at(&[]));
                     }
                 }
                 Op::GArrLen { dst, gid } => {
@@ -1639,14 +1642,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         regs_v[dst as usize] = arr.get(idx as usize).unwrap_or(Value::Unit);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::StoreGArr1V { gid, r_i, r_val } => {
@@ -1661,14 +1662,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         if idx < 0 || idx >= len {
                             return trap(
                                 spans[cur_pc],
-                                format!(
-                                    "index {idx} is outside an array dimension of length {len}"
-                                ),
+                                rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                             );
                         }
                         Rc::make_mut(arr).set(idx as usize, val);
                     } else {
-                        return trap(spans[cur_pc], "internal: expected array");
+                        return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[]));
                     }
                 }
                 Op::LoadLArr1V { dst, arr_v, r_i } => {
@@ -1679,9 +1678,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!(
-                                        "index {idx} is outside an array dimension of length {len}"
-                                    ),
+                                    rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             regs_v[dst as usize] = arr.get(idx as usize).unwrap_or(Value::Unit);
@@ -1691,12 +1688,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             regs_v[dst as usize] = list.get_unchecked_val(idx as usize);
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected array"),
+                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[])),
                     }
                 }
                 Op::StoreLArr1V { arr_v, r_i, r_val } => {
@@ -1712,9 +1709,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!(
-                                        "index {idx} is outside an array dimension of length {len}"
-                                    ),
+                                    rows::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             Rc::make_mut(arr).set(idx as usize, val);
@@ -1724,12 +1719,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             if idx < 0 || idx >= len {
                                 return trap(
                                     spans[cur_pc],
-                                    format!("index {idx} is outside a list of length {len}"),
+                                    rows::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                                 );
                             }
                             Rc::make_mut(list).set(idx as usize, val);
                         }
-                        _ => return trap(spans[cur_pc], "internal: expected array"),
+                        _ => return trap(spans[cur_pc], rows::INTERNAL_EXPECTED_ARRAY.at(&[])),
                     }
                 }
                 Op::FeedTree {

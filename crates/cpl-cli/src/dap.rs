@@ -790,7 +790,8 @@ impl Session {
             .map(|t| render_trap(&program, &compiled.text, t));
         // A run stopped from outside would not end at the same step again.
         let ended = !observed.trap.as_ref().is_some_and(|t| {
-            [cpl_interp::OUT_OF_TIME, cpl_interp::CANCELLED].contains(&t.message.as_str())
+            [cpl_interp::OUT_OF_TIME.text(), cpl_interp::CANCELLED.text()]
+                .contains(&t.message.as_str())
         });
         self.stopped = !ended;
         self.pager = (self.recording.truncated && ended).then(|| {

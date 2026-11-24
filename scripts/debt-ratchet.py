@@ -2434,15 +2434,49 @@ def diag_text_outside_registry(root: Path) -> list[str]:
     return out
 
 
-TRAP_SITE_RE = re.compile(r"\btrap(?:::<[^>]*>)?\(|\bTrap \{|\.fail\(")
+TRAP_SITE_RE = re.compile(r"\btrap(?:::<[^>]*>)?\(|(?<!impl )(?<!struct )\bTrap \{|\.fail\(|\b(?:overflow|div_zero)\(")
+# A string literal with words in it once its `{..}` holes are gone: message text.
+TEXT_LITERAL_RE = re.compile(r'"((?:\\.|[^"\\])*)"')
+
+
+def _call_args(lines: list[str], at: int, col: int) -> str:
+    """From `lines[at][col:]`, the text up to the bracket that closes the first one opened."""
+    depth, out = 0, []
+    for line in lines[at:at + 40]:
+        for ch in line[col:]:
+            out.append(ch)
+            if ch in "([{":
+                depth += 1
+            elif ch in ")]}":
+                depth -= 1
+                if depth == 0:
+                    return "".join(out)
+        col = 0
+        out.append("\n")
+    return "".join(out)
 
 
 def trap_text_outside_registry(root: Path) -> list[str]:
     """Runtime trap messages written inline in cpl-interp: a trap's text is a
     user-facing diagnostic (run, trace and explain show it), so it belongs in a
-    cpl_diag::msgs row like any other message."""
-    return [f"{rel}:{i}" for rel, i, line in _src_lines(root, "crates/cpl-interp")
-            if TRAP_SITE_RE.search(line) and not re.search(r"\bfn (?:trap|fail)\b", line)]
+    cpl_diag::msgs row like any other message. A site counts when its arguments
+    hold a string literal with words, rather than a `msgs::interp` row."""
+    by_file: dict[str, list[tuple[int, str]]] = {}
+    for rel, i, line in _src_lines(root, "crates/cpl-interp"):
+        by_file.setdefault(rel, []).append((i, line))
+    sites = []
+    for rel, numbered in by_file.items():
+        lines = [line for _, line in numbered]
+        for k, (i, line) in enumerate(numbered):
+            if re.search(r"\bfn (?:trap|fail|overflow|div_zero)\b", line):
+                continue
+            for m in TRAP_SITE_RE.finditer(line):
+                args = _call_args(lines, k, m.end() - 1)
+                if any(re.search(r"[A-Za-z]{2}", re.sub(r"\{[^{}]*\}", "", t))
+                       for t in TEXT_LITERAL_RE.findall(args)):
+                    sites.append(f"{rel}:{i}")
+                    break
+    return sites
 
 
 # The VM's one event model: the `observe::Observer` its `tracer` slot holds.
@@ -2651,7 +2685,7 @@ HARD_ZERO = frozenset({
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",
     "measure_broken", "mono_unguarded", "ts_ignore",
     "site_rederived", "browser_lsp_gaps",
-    "unrun_script_tests",
+    "unrun_script_tests", "trap_text_outside_registry",
     "permits", "written_twice",
     "plan_delta_lines", "idioms_evidenced_unlinted", "v02_port_files", "judge_tables",
     "trait_gaps",

@@ -289,7 +289,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             let part = self.part_of(place, &mut indices.into_iter());
             let value = std::mem::replace(self.part_mut(&part, place.span)?, Value::Moved);
             if matches!(value, Value::Moved) {
-                return crate::trap(place.span, crate::LENT);
+                return crate::trap(place.span, cpl_diag::msgs::interp::LENT.at(&[]));
             }
             args[i] = value;
             parts.push((i, place, part));

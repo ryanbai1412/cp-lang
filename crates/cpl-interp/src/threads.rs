@@ -44,7 +44,7 @@ pub fn run_for(
     let mut out = Vec::new();
     let io = Io::fixed(input).until(Stop::after(limit));
     match run_with(program, io, &mut out) {
-        Err(trap) if trap.message == OUT_OF_TIME => None,
+        Err(trap) if trap.message == OUT_OF_TIME.text() => None,
         result => Some((out, result)),
     }
 }

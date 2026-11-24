@@ -79,7 +79,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 let cell = self.resolve(place, &mut indices.iter())?;
                 let value = std::mem::replace(cell, Value::Moved);
                 if matches!(value, Value::Moved) {
-                    return trap(place.span, LENT);
+                    return trap(place.span, cpl_diag::msgs::interp::LENT.at(&[]));
                 }
                 vals[i] = value;
                 lent.push((i, place, indices));
@@ -108,7 +108,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         span: Span,
     ) -> Res<(Value, Vec<Value>)> {
         let Value::Closure(cid, caps) = fv else {
-            return trap(span, "internal: tried to call a non-function value");
+            return trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_TRIED_TO_CALL_NON.at(&[]),
+            );
         };
         let def = &self.program.closures[cid];
         self.stack_left(span, None)?;
@@ -179,7 +182,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     pub(crate) fn lend_at(&mut self, place: &'p Place, indices: Vec<Value>) -> Res<Value> {
         let part = self.part_of(place, &mut indices.into_iter());
         if matches!(self.part_mut(&part, place.span)?, Value::Moved) {
-            return trap(place.span, LENT);
+            return trap(place.span, cpl_diag::msgs::interp::LENT.at(&[]));
         }
         Ok(match part.steps.is_empty() {
             true => Value::Alias(part.global, part.at),

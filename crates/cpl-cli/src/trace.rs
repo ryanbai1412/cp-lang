@@ -56,7 +56,9 @@ pub fn trap_locals(
     trap: &cpl_interp::Trap,
 ) -> Option<String> {
     // A run stopped from outside would not stop at the same place again.
-    if [cpl_interp::OUT_OF_TIME, cpl_interp::CANCELLED].contains(&trap.message.as_str()) {
+    if [cpl_interp::OUT_OF_TIME.text(), cpl_interp::CANCELLED.text()]
+        .contains(&trap.message.as_str())
+    {
         return None;
     }
     // Untraced again with checkpoints, and only the end traced from the last one.

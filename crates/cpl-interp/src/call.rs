@@ -55,7 +55,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             other => other,
         };
         self.fed_loops.last_mut().expect("still the innermost").left = Some(left);
-        trap(span, String::new())
+        Err(Box::new(Trap {
+            message: String::new(),
+            code: cpl_diag::codes::RUNTIME,
+            span,
+            call_stack: Vec::new(),
+            case: None,
+            notes: Vec::new(),
+        }))
     }
 
     pub(super) fn call(&mut self, id: FnId, args: &'p [Arg], span: Span) -> Res<Value> {
@@ -73,7 +80,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let f = &self.program.fns[id];
         if !self.program.judge_fns.is_empty() && self.program.judge_fns.contains(&id) {
             let cpp = self.program.cpp_bodies.iter().any(|(c, _)| *c == id);
-            return trap(span, if cpp { CPP_ONLY } else { NO_GRADER });
+            let said = if cpp {
+                &cpl_diag::msgs::interp::CPP_ONLY
+            } else {
+                &cpl_diag::msgs::interp::NO_GRADER
+            };
+            return trap(span, said.at(&[]));
         }
         self.stack_left(span, Some(&f.name))?;
         let base = match args {

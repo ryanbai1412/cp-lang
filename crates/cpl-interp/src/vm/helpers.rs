@@ -1,6 +1,6 @@
 use super::ir::*;
 use crate::value::{Array, Cells, TupleVal, Value};
-use crate::{release, trap, Res, LENT};
+use crate::{release, trap, Res};
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::rc::Rc;
@@ -55,7 +55,7 @@ pub(crate) fn yielded_items(seq: Value, span: Span) -> Res<Vec<Value>> {
         Value::Array(a) => Ok((0..a.len()).map(|i| a.get_unchecked_val(i)).collect()),
         _ => trap(
             span,
-            "internal: a `yields` fn did something else to its list",
+            cpl_diag::msgs::interp::INTERNAL_YIELDS_FN_DID_SOMETHING.at(&[]),
         ),
     }
 }
@@ -452,13 +452,19 @@ fn exec_bin_u64_rest(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> 
     let out = match op {
         BinOp::Div => {
             if bv == 0 {
-                return release::div_zero(span, format!("division by zero: `{av} / 0`"));
+                return release::div_zero(
+                    span,
+                    cpl_diag::msgs::interp::DIV_BY_ZERO_OP.at(&[&av, &"/"]),
+                );
             }
             av / bv
         }
         BinOp::Rem => {
             if bv == 0 {
-                return release::div_zero(span, format!("division by zero: `{av} % 0`"));
+                return release::div_zero(
+                    span,
+                    cpl_diag::msgs::interp::DIV_BY_ZERO_OP.at(&[&av, &"%"]),
+                );
             }
             av % bv
         }
@@ -477,17 +483,28 @@ fn exec_bin_u64_rest(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> 
         }
         BinOp::Shl => {
             if !(0..64).contains(&b_raw) {
-                return trap(span, format!("a shift by {b_raw} is outside 0..64"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::SHIFT_BY_OUTSIDE_0_64.at(&[&b_raw]),
+                );
             }
             av << b_raw
         }
         BinOp::Shr => {
             if !(0..64).contains(&b_raw) {
-                return trap(span, format!("a shift by {b_raw} is outside 0..64"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::SHIFT_BY_OUTSIDE_0_64.at(&[&b_raw]),
+                );
             }
             av >> b_raw
         }
-        _ => return trap(span, "internal: unsupported U64 op"),
+        _ => {
+            return trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_UNSUPPORTED_U64_OP.at(&[]),
+            )
+        }
     };
     Ok(out as i64)
 }
@@ -497,7 +514,10 @@ fn exec_bin_u64_rest(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> 
 /// per element; `desc` puts larger keys first and keeps ties in order.
 pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> Res<Value> {
     let Value::List(keys) = keys else {
-        return trap(span, "internal: expected the sort keys");
+        return trap(
+            span,
+            cpl_diag::msgs::interp::INTERNAL_EXPECTED_SORT_KEYS.at(&[]),
+        );
     };
     let order = crate::sort::stable_order(keys.len(), &mut |a, b| {
         let (a, b) = (keys.get_unchecked_val(a), keys.get_unchecked_val(b));
@@ -514,7 +534,7 @@ pub(super) fn sort_by_keys(seq: Value, keys: &Value, desc: bool, span: Span) -> 
                 values,
             ))))
         }
-        _ => trap(span, LENT),
+        _ => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
     }
 }
 
@@ -526,7 +546,7 @@ pub(super) fn seq_items(seq: Value, span: Span) -> Res<(Vec<Value>, Option<Vec<i
             (0..arr.len()).map(|k| arr.get_unchecked_val(k)).collect(),
             Some(arr.dims.clone()),
         )),
-        _ => trap(span, LENT),
+        _ => trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
     }
 }
 
@@ -561,7 +581,12 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
                 a.data.reverse();
             }
         }
-        _ => return trap(span, "internal: cannot sort this value"),
+        _ => {
+            return trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_CANNOT_SORT_THIS_VALUE.at(&[]),
+            )
+        }
     }
     Ok(())
 }
@@ -634,7 +659,7 @@ pub(super) fn write_slot(loc: &SlotLoc, regs_i: &mut [i64], regs_v: &mut [Value]
 
 pub(super) fn take_value(cell: &mut Value, span: Span) -> Res<Value> {
     if matches!(cell, Value::Moved) {
-        return trap(span, LENT);
+        return trap(span, cpl_diag::msgs::interp::LENT.at(&[]));
     }
     let empty = match &*cell {
         Value::List(_) => Value::List(Rc::default()),
@@ -664,7 +689,7 @@ pub(super) fn array_flat_index(
             if idx < 0 || idx >= len {
                 return trap(
                     span,
-                    format!("index {idx} is outside an array dimension of length {len}"),
+                    cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&idx, &len]),
                 );
             }
             Ok(idx as usize)
@@ -677,13 +702,13 @@ pub(super) fn array_flat_index(
             if i < 0 || i >= d0 {
                 return trap(
                     span,
-                    format!("index {i} is outside an array dimension of length {d0}"),
+                    cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i, &d0]),
                 );
             }
             if j < 0 || j >= d1 {
                 return trap(
                     span,
-                    format!("index {j} is outside an array dimension of length {d1}"),
+                    cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&j, &d1]),
                 );
             }
             Ok((i * d1 + j) as usize)
@@ -691,7 +716,10 @@ pub(super) fn array_flat_index(
         PlaceStep::IndexN(idx, n) => {
             nd_flat_index(&arr.dims, &regs_i[idx as usize..(idx + n) as usize], span)
         }
-        PlaceStep::Field(_) => trap(span, "internal: expected index step"),
+        PlaceStep::Field(_) => trap(
+            span,
+            cpl_diag::msgs::interp::INTERNAL_EXPECTED_INDEX_STEP.at(&[]),
+        ),
     }
 }
 
@@ -709,7 +737,7 @@ pub(super) fn step_first(
     if step <= 0 {
         return trap(
             span,
-            format!("a range steps forward: `by {step}` is not positive"),
+            cpl_diag::msgs::interp::RANGE_STEPS_FORWARD_BY_NOT.at(&[&step]),
         );
     }
     // One past the last value, which an `Int` may not hold.
@@ -744,7 +772,7 @@ pub(super) fn nd_flat_index(dims: &[i64], indices: &[i64], span: Span) -> Res<us
         if i < 0 || i >= d {
             return trap(
                 span,
-                format!("index {i} is outside an array dimension of length {d}"),
+                cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_DIMENSION_LENGTH.at(&[&i, &d]),
             );
         }
         flat = flat * d + i;
@@ -769,7 +797,7 @@ pub(super) fn combine_in_place(cell: &mut Value, op: AssignOp, val: Value, span:
     let old = std::mem::take(cell);
     if matches!(old, Value::Moved) {
         *cell = old;
-        return trap(span, LENT);
+        return trap(span, cpl_diag::msgs::interp::LENT.at(&[]));
     }
     *cell = crate::combine(op, old, val, span)?;
     Ok(())
@@ -816,19 +844,21 @@ pub(super) fn walk_place_mut<'a>(
                 Value::Map(entries) => match Rc::make_mut(entries).get_mut(&keys[n as usize]) {
                     Some(value) => cur = value,
                     None => {
-                        return trap(
-                            span,
-                            "this key is not in the map; store with `m[k] = v` first",
-                        );
+                        return trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]));
                     }
                 },
-                _ => return trap(span, "internal: expected map"),
+                _ => return trap(span, cpl_diag::msgs::interp::INTERNAL_EXPECTED_MAP.at(&[])),
             },
             PlaceStep::Field(f) => match cur {
                 Value::Tuple(TupleVal::Boxed(fs)) => {
                     cur = &mut crate::value::Shared::make_mut(fs)[f as usize];
                 }
-                _ => return trap(span, "internal: expected tuple"),
+                _ => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
+                    )
+                }
             },
             PlaceStep::Index1(r_i) => match cur {
                 Value::List(items) => {
@@ -837,7 +867,7 @@ pub(super) fn walk_place_mut<'a>(
                     if idx < 0 || idx >= len {
                         return trap(
                             span,
-                            format!("index {idx} is outside a list of length {len}"),
+                            cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                         );
                     }
                     cur = &mut Rc::make_mut(items).as_mut_values()[idx as usize];
@@ -847,10 +877,21 @@ pub(super) fn walk_place_mut<'a>(
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
                         Cells::Values(vs) => cur = &mut vs[flat],
-                        _ => return trap(span, "internal: expected boxed array element"),
+                        _ => {
+                            return trap(
+                                span,
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_BOXED_ARRAY_ELEMENT
+                                    .at(&[]),
+                            )
+                        }
                     }
                 }
-                _ => return trap(span, "internal: expected array or list"),
+                _ => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+                    )
+                }
             },
             PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match cur {
                 Value::Array(arr) => {
@@ -858,10 +899,21 @@ pub(super) fn walk_place_mut<'a>(
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
                         Cells::Values(vs) => cur = &mut vs[flat],
-                        _ => return trap(span, "internal: expected boxed array element"),
+                        _ => {
+                            return trap(
+                                span,
+                                cpl_diag::msgs::interp::INTERNAL_EXPECTED_BOXED_ARRAY_ELEMENT
+                                    .at(&[]),
+                            )
+                        }
                     }
                 }
-                _ => return trap(span, "internal: expected array"),
+                _ => {
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+                    )
+                }
             },
         }
     }
@@ -890,7 +942,10 @@ pub(super) fn store_place_leaf_scalar(
                 *x = raw;
                 Ok(())
             }
-            _ => trap(span, "internal: expected tuple"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
+            ),
         },
         PlaceStep::Index1(r_i) => match container {
             Value::Array(arr) => {
@@ -911,13 +966,16 @@ pub(super) fn store_place_leaf_scalar(
                 if idx < 0 || idx >= len {
                     return trap(
                         span,
-                        format!("index {idx} is outside a list of length {len}"),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                     );
                 }
                 Rc::make_mut(items).set(idx as usize, kind.box_val(raw));
                 Ok(())
             }
-            _ => trap(span, "internal: expected array or list"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+            ),
         },
         PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
@@ -932,7 +990,10 @@ pub(super) fn store_place_leaf_scalar(
                 }
                 Ok(())
             }
-            _ => trap(span, "internal: expected array"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+            ),
         },
     }
 }
@@ -956,7 +1017,10 @@ pub(super) fn store_place_leaf_opt_scalar(
                 crate::value::Shared::make_mut(fs)[f as usize] = kind.box_opt(raw, some);
                 Ok(())
             }
-            _ => trap(span, "internal: expected tuple"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
+            ),
         },
         PlaceStep::Index1(r_i) => match container {
             Value::Array(arr) => {
@@ -975,13 +1039,16 @@ pub(super) fn store_place_leaf_opt_scalar(
                 if idx < 0 || idx >= len {
                     return trap(
                         span,
-                        format!("index {idx} is outside a list of length {len}"),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                     );
                 }
                 Rc::make_mut(items).set(idx as usize, kind.box_opt(raw, some));
                 Ok(())
             }
-            _ => trap(span, "internal: expected array or list"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+            ),
         },
         PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
@@ -994,7 +1061,10 @@ pub(super) fn store_place_leaf_opt_scalar(
                 }
                 Ok(())
             }
-            _ => trap(span, "internal: expected array"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+            ),
         },
     }
 }
@@ -1016,7 +1086,10 @@ pub(super) fn store_place_leaf_val(
                 crate::value::Shared::make_mut(fs)[f as usize] = val;
                 Ok(())
             }
-            _ => trap(span, "internal: expected tuple"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
+            ),
         },
         PlaceStep::Index1(r_i) => match container {
             Value::Array(arr) => {
@@ -1030,13 +1103,16 @@ pub(super) fn store_place_leaf_val(
                 if idx < 0 || idx >= len {
                     return trap(
                         span,
-                        format!("index {idx} is outside a list of length {len}"),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                     );
                 }
                 Rc::make_mut(items).set(idx as usize, val);
                 Ok(())
             }
-            _ => trap(span, "internal: expected array or list"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+            ),
         },
         PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
@@ -1044,7 +1120,10 @@ pub(super) fn store_place_leaf_val(
                 Rc::make_mut(arr).set(flat, val);
                 Ok(())
             }
-            _ => trap(span, "internal: expected array"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+            ),
         },
     }
 }
@@ -1066,13 +1145,19 @@ pub(super) fn apply_scalar_assign_op(
             AssignOp::Binary(BinOp::Mul) => a.wrapping_mul(b),
             AssignOp::Binary(BinOp::Div) => {
                 if b == 0 {
-                    return release::div_zero(span, format!("division by zero: `{a} / 0`"));
+                    return release::div_zero(
+                        span,
+                        cpl_diag::msgs::interp::DIV_BY_ZERO_OP.at(&[&a, &"/"]),
+                    );
                 }
                 a / b
             }
             AssignOp::Binary(BinOp::Rem) => {
                 if b == 0 {
-                    return release::div_zero(span, format!("division by zero: `{a} % 0`"));
+                    return release::div_zero(
+                        span,
+                        cpl_diag::msgs::interp::DIV_BY_ZERO_OP.at(&[&a, &"%"]),
+                    );
                 }
                 a % b
             }
@@ -1081,13 +1166,19 @@ pub(super) fn apply_scalar_assign_op(
             AssignOp::Binary(BinOp::BitXor) => a ^ b,
             AssignOp::Binary(BinOp::Shl) => {
                 if !(0..64).contains(&rhs) {
-                    return trap(span, format!("a shift by {rhs} is outside 0..64"));
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::SHIFT_BY_OUTSIDE_0_64.at(&[&rhs]),
+                    );
                 }
                 a << rhs
             }
             AssignOp::Binary(BinOp::Shr) => {
                 if !(0..64).contains(&rhs) {
-                    return trap(span, format!("a shift by {rhs} is outside 0..64"));
+                    return trap(
+                        span,
+                        cpl_diag::msgs::interp::SHIFT_BY_OUTSIDE_0_64.at(&[&rhs]),
+                    );
                 }
                 a >> rhs
             }
@@ -1102,7 +1193,7 @@ pub(super) fn apply_scalar_assign_op(
             Some(v) => v,
             None => release::overflow(
                 span,
-                format!("integer overflow: `{cur} + {rhs}` does not fit in an `Int` (64 bits)"),
+                cpl_diag::msgs::interp::INT_OVERFLOW_BINOP.at(&[&cur, &"+", &rhs]),
                 cur.wrapping_add(rhs),
             )?,
         },
@@ -1110,7 +1201,7 @@ pub(super) fn apply_scalar_assign_op(
             Some(v) => v,
             None => release::overflow(
                 span,
-                format!("integer overflow: `{cur} - {rhs}` does not fit in an `Int` (64 bits)"),
+                cpl_diag::msgs::interp::INT_OVERFLOW_BINOP.at(&[&cur, &"-", &rhs]),
                 cur.wrapping_sub(rhs),
             )?,
         },
@@ -1118,32 +1209,38 @@ pub(super) fn apply_scalar_assign_op(
             Some(v) => v,
             None => release::overflow(
                 span,
-                format!("integer overflow: `{cur} * {rhs}` does not fit in an `Int` (64 bits)"),
+                cpl_diag::msgs::interp::INT_OVERFLOW_BINOP.at(&[&cur, &"*", &rhs]),
                 cur.wrapping_mul(rhs),
             )?,
         },
         AssignOp::Binary(BinOp::Div) => {
             if rhs == 0 {
-                return release::div_zero(span, format!("division by zero: `{cur} / 0`"));
+                return release::div_zero(
+                    span,
+                    cpl_diag::msgs::interp::DIV_BY_ZERO_OP.at(&[&cur, &"/"]),
+                );
             }
             match cur.checked_div_euclid(rhs) {
                 Some(v) => v,
                 None => release::overflow(
                     span,
-                    format!("integer overflow: `{cur} / {rhs}` does not fit in an `Int` (64 bits)"),
+                    cpl_diag::msgs::interp::INT_OVERFLOW_BINOP.at(&[&cur, &"/", &rhs]),
                     cur.wrapping_div_euclid(rhs),
                 )?,
             }
         }
         AssignOp::Binary(BinOp::Rem) => {
             if rhs == 0 {
-                return release::div_zero(span, format!("division by zero: `{cur} % 0`"));
+                return release::div_zero(
+                    span,
+                    cpl_diag::msgs::interp::DIV_BY_ZERO_OP.at(&[&cur, &"%"]),
+                );
             }
             match cur.checked_rem_euclid(rhs) {
                 Some(v) => v,
                 None => release::overflow(
                     span,
-                    format!("integer overflow: `{cur} % {rhs}` does not fit in an `Int` (64 bits)"),
+                    cpl_diag::msgs::interp::INT_OVERFLOW_BINOP.at(&[&cur, &"%", &rhs]),
                     cur.wrapping_rem_euclid(rhs),
                 )?,
             }
@@ -1153,13 +1250,19 @@ pub(super) fn apply_scalar_assign_op(
         AssignOp::Binary(BinOp::BitXor) => cur ^ rhs,
         AssignOp::Binary(BinOp::Shl) => {
             if !(0..64).contains(&rhs) {
-                return trap(span, format!("a shift by {rhs} is outside 0..64"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::SHIFT_BY_OUTSIDE_0_64.at(&[&rhs]),
+                );
             }
             cur.wrapping_shl(rhs as u32)
         }
         AssignOp::Binary(BinOp::Shr) => {
             if !(0..64).contains(&rhs) {
-                return trap(span, format!("a shift by {rhs} is outside 0..64"));
+                return trap(
+                    span,
+                    cpl_diag::msgs::interp::SHIFT_BY_OUTSIDE_0_64.at(&[&rhs]),
+                );
             }
             cur.wrapping_shr(rhs as u32)
         }
@@ -1196,7 +1299,10 @@ pub(super) fn assign_place_leaf_scalar(
                 *x = apply_scalar_assign_op(*x, rhs, op, kind, span)?;
                 Ok(())
             }
-            _ => trap(span, "internal: expected tuple"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_TUPLE.at(&[]),
+            ),
         },
         PlaceStep::Index1(r_i) => match container {
             Value::Array(arr) => {
@@ -1211,7 +1317,12 @@ pub(super) fn assign_place_leaf_scalar(
                         let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                         v[flat] = kind.box_val(next);
                     }
-                    _ => return trap(span, "internal: unsupported array assign"),
+                    _ => {
+                        return trap(
+                            span,
+                            cpl_diag::msgs::interp::INTERNAL_UNSUPPORTED_ARRAY_ASSIGN.at(&[]),
+                        )
+                    }
                 }
                 Ok(())
             }
@@ -1221,7 +1332,7 @@ pub(super) fn assign_place_leaf_scalar(
                 if idx < 0 || idx >= len {
                     return trap(
                         span,
-                        format!("index {idx} is outside a list of length {len}"),
+                        cpl_diag::msgs::interp::INDEX_OUTSIDE_LIST_LENGTH.at(&[&idx, &len]),
                     );
                 }
                 let slice = Rc::make_mut(items);
@@ -1230,7 +1341,10 @@ pub(super) fn assign_place_leaf_scalar(
                 slice.set(idx as usize, kind.box_val(next));
                 Ok(())
             }
-            _ => trap(span, "internal: expected array or list"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY_OR_LIST.at(&[]),
+            ),
         },
         PlaceStep::Index2(..) | PlaceStep::IndexN(..) => match container {
             Value::Array(arr) => {
@@ -1245,11 +1359,19 @@ pub(super) fn assign_place_leaf_scalar(
                         let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                         v[flat] = kind.box_val(next);
                     }
-                    _ => return trap(span, "internal: unsupported array assign"),
+                    _ => {
+                        return trap(
+                            span,
+                            cpl_diag::msgs::interp::INTERNAL_UNSUPPORTED_ARRAY_ASSIGN.at(&[]),
+                        )
+                    }
                 }
                 Ok(())
             }
-            _ => trap(span, "internal: expected array"),
+            _ => trap(
+                span,
+                cpl_diag::msgs::interp::INTERNAL_EXPECTED_ARRAY.at(&[]),
+            ),
         },
     }
 }

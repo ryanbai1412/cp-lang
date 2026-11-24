@@ -34,7 +34,7 @@ pub(crate) fn keeps(check: Check) -> bool {
 /// An `Int` result that does not fit: the trap, or the `wrapped` bits
 /// release keeps (R09.3.4).
 #[cold]
-pub(crate) fn overflow<T>(span: Span, message: String, wrapped: T) -> Res<T> {
+pub(crate) fn overflow<T>(span: Span, message: cpl_diag::msgs::Said, wrapped: T) -> Res<T> {
     if keeps(Check::Overflow) {
         trap(span, message)
     } else {
@@ -44,7 +44,7 @@ pub(crate) fn overflow<T>(span: Span, message: String, wrapped: T) -> Res<T> {
 
 /// A zero divisor: the trap, or release's fallback, 0 (R09.3.6).
 #[cold]
-pub(crate) fn div_zero<T: Default>(span: Span, message: String) -> Res<T> {
+pub(crate) fn div_zero<T: Default>(span: Span, message: cpl_diag::msgs::Said) -> Res<T> {
     if keeps(Check::Div) {
         trap(span, message)
     } else {
