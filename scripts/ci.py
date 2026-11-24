@@ -17,9 +17,12 @@ from __future__ import annotations
 import argparse
 import os
 import shlex
+import shutil
 import subprocess
 import sys
-from dataclasses import dataclass
+import tempfile
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from pathlib import Path
 
 # Which --fast leaves to --full (the reasons are in scripts/check.sh's nextest step).
@@ -109,8 +112,11 @@ SPEC_GATE = ROOT / "scripts/spec-gate.py"
 
 @dataclass(frozen=True)
 class Step:
-    """One checking script check.sh runs and what it says when the script fails.
-    `argv` starts with the script's repo path; `{cpl}` is the debug cpl binary.
+    """One step check.sh runs through here and what it says when the step fails.
+    `argv` starts with a `.py` script's repo path (run with this Python), another
+    repo path or a command; `{cpl}` is the debug cpl binary, `{tmp}` a directory
+    the tier removes after and `{nproc}` the CPU count. `env` adds variables;
+    `needs` names the commands it fails without; `fn(run, cpl)` replaces `argv`.
     A `derived` step checks generated files the regen job rewrites, so it only
     warns once CPL_DERIVED_HEALED=1; a `quiet` one shows its output only on
     failure; `stdout=False` never shows stdout; `drop` hides matching lines."""
@@ -121,6 +127,9 @@ class Step:
     quiet: bool = False
     stdout: bool = True
     drop: str | None = None
+    env: tuple[tuple[str, str], ...] = ()
+    needs: tuple[str, ...] = ()
+    fn: Callable | None = field(default=None, compare=False)
 
 
 def gate(*args: str, fail: str, **kw) -> Step:
@@ -138,7 +147,7 @@ USECASES = Step("use cases: unique IDs, every field, evidence that exists (scrip
                 ("scripts/check-usecases.py", "--check"), "use-case catalogue check failed; see above", stdout=False)
 
 # Every checking script check.sh runs, by tier, in order: `commit` before a
-# commit, `checks` after --fast's build, `full` after --full's.
+# commit, `checks` after --fast's build, `full` (with --full's slow suites) last.
 STEPS = {
     "commit": (RATCHET, USECASES),
     "checks": (
@@ -197,14 +206,67 @@ STEPS = {
              "taste review gate failed; see research/reviews/README.md"),
     ),
     "full": (
+        Step("cargo test: the prover fuzzer",
+             ("cargo", "test", "-p", "cpl-prover", "--test", "fuzz", "--", "--exact",
+              "products_and_variable_divisors_are_never_decided_wrongly"),
+             "the prover decided a product or divisor wrong; rerun: cargo test -p cpl-prover --test fuzz"),
+        Step("random programs: interpreter, C++ and sanitized C++ match an independent model (conformance/R6)",
+             ("scripts/gen-programs.py", "-n", "100", "--seed", "1", "--jobs", "{nproc}", "--out", "{tmp}/gen",
+              "--avoid", "rev-pieces", "--cxxflags", "-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG"),
+             "a random program's engines disagree with the model; see above, then rerun: uv run scripts/gen-programs.py -n 100 --seed 1"),
+        Step("programs derived from the grammar (scripts/grammar-fuzz.py)",
+             ("scripts/grammar-fuzz.py", "--n", "300", "--check", "--max-syntax", "231", "--show", "0"),
+             "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"),
         gate("metamorphic", fail="a meaning-preserving edit changed a case's output; see above"),
         gate("speed", fail="the conformance and spec-block suites went over their CPU budget; see above"),
         gate("explain-copies", "--max", "1",
              fail="cpl explain claims more copies than the C++ makes in more cases; see above"),
         gate("tool-vocab", fail="help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"),
         gate("flakes", "--runs", "2", fail="a conformance case changed verdict between runs; see above"),
+        Step("cargo test: every port compiled with every judge profile's flags",
+             ("cargo", "test", "-p", "cpl-cli", "--test", "judges", "--", "--ignored", "--exact",
+              "every_port_compiles_with_every_judges_flags"),
+             "a port fails to compile under a judge profile; rerun: cargo test -p cpl-cli --test judges -- --ignored",
+             needs=("g++",)),
+        Step("cargo test: the budget tests, alone", ("cargo", "test", "-p", "cpl-cli", "--test", "budget", "--",
+                                                     "--test-threads=1"),
+             "a budget test is over; rerun: cargo test -p cpl-cli --test budget -- --test-threads=1"),
+        Step("cargo test: the front-end latency, alone",
+             ("cargo", "test", "-p", "cpl-lsp", "--test", "latency", "--", "--exact", "front_end_check_is_under_50_ms"),
+             "the front-end check is over 50 ms; rerun: cargo test -p cpl-lsp --test latency"),
+        Step("wasm build and crates/cpl-wasm/tests/smoke.mjs", ("scripts/build-wasm.sh", "--smoke", "--out", "{tmp}/wasm"),
+             "the wasm build or its smoke test failed; rerun: scripts/build-wasm.sh --smoke", needs=("node",)),
+        Step("scripts/site-check.sh: site build, cpl.wasm size cap, browser smoke", ("scripts/site-check.sh", "--no-cache"),
+             "the site build, its cpl.wasm cap or its browser smoke failed; rerun: CPL=target/debug/cpl scripts/site-check.sh",
+             env=(("CPL", "{cpl}"),), needs=("node",)),
+        Step("editors/vscode: npm test", (), "the VS Code extension tests failed; rerun: cd editors/vscode && npm test",
+             needs=("node", "npm"), fn=lambda run, cpl: vscode_tests(run)),
+        Step("editors/smoke.sh: the other editor setups against cpl lsp", ("editors/smoke.sh",),
+             "an editor setup failed against cpl lsp; rerun: editors/smoke.sh"),
     ),
 }
+
+
+def vscode_tests(run=subprocess.run) -> int:
+    """The extension's unit tests, then its extension-host suite under a display or xvfb-run."""
+    ext = ROOT / "editors/vscode"
+    cmds = [(["cargo", "build", "-q", "-p", "cpl-cli"], ROOT)]  # the LSP test starts target/debug/cpl
+    if not (ext / "node_modules").is_dir():
+        cmds.append((["npm", "ci", "--no-audit", "--no-fund"], ext))
+    cmds.append((["npm", "test"], ext))
+    host = ["npm", "run", "test:integration"]
+    if os.environ.get("DISPLAY"):
+        cmds.append((host, ext))
+    elif shutil.which("xvfb-run"):
+        cmds.append((["xvfb-run", "-a", *host], ext))
+    else:
+        host = None
+    for cmd, cwd in cmds:
+        if run(cmd, cwd=cwd).returncode:
+            return 1
+    if host is None:
+        print("editors/vscode: SKIPPED extension-host tests (no display and no xvfb-run)")
+    return 0
 
 
 # The tiers a touched checking script's own step comes from; the full tier's are too slow.
@@ -224,34 +286,51 @@ def step_scripts() -> set[str]:
     return {s.argv[0] for tier in TOUCHED_TIERS for s in STEPS[tier]}
 
 
+def _argv(step: Step, values: dict[str, str]) -> list[str]:
+    """The command `step` runs, its placeholders filled in."""
+    first, *args = (a.format(**values) for a in step.argv)
+    if first.endswith(".py"):
+        return [sys.executable, str(ROOT / first), *args]
+    return [str(ROOT / first) if "/" in first else first, *args]
+
+
 def run_steps(tier: str, cpl: str = "target/debug/cpl", run=subprocess.run, healed: bool | None = None,
               only=None) -> int:
     """Runs the tier's steps, or with `only` the touched steps running those scripts, in order,
     and stops at the first that fails."""
     if healed is None:
         healed = os.environ.get("CPL_DERIVED_HEALED") == "1"
-    for step in touched_steps(only) if only else STEPS[tier]:
-        print(f"\n==> {step.title}", flush=True)
-        script, *args = (a.replace("{cpl}", cpl) for a in step.argv)
-        cmd = [sys.executable, str(ROOT / script), *args]
-        if step.drop:
-            done = run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-            sys.stdout.writelines(l for l in done.stdout.splitlines(True) if step.drop not in l)
-        elif step.quiet:
-            done = run(cmd, capture_output=True, text=True)
-            if done.returncode:
-                sys.stdout.write(done.stdout)
-                sys.stderr.write(done.stderr)
-        else:
-            done = run(cmd, stdout=None if step.stdout else subprocess.DEVNULL, text=True)
-        sys.stdout.flush()
-        if done.returncode == 0:
-            continue
-        if step.derived and healed:
-            print(f"warning: {step.fail} (the regen job commits the fix)", file=sys.stderr)
-            continue
-        print(f"check: {step.fail}", file=sys.stderr)
-        return 1
+    with tempfile.TemporaryDirectory(prefix="cpl-ci-") as tmp:
+        values = {"cpl": cpl, "tmp": tmp, "nproc": str(os.cpu_count() or 1)}
+        for step in touched_steps(only) if only else STEPS[tier]:
+            print(f"\n==> {step.title}", flush=True)
+            missing = [c for c in step.needs if not shutil.which(c)]
+            if missing:
+                print(f"check: `{missing[0]}` is not installed; {step.title} needs it", file=sys.stderr)
+                return 1
+            kw = {"cwd": ROOT, "text": True}
+            if step.env:
+                kw["env"] = {**os.environ, **{k: v.format(**values) for k, v in step.env}}
+            if step.fn:
+                done = subprocess.CompletedProcess((), step.fn(run, cpl))
+            elif step.drop:
+                done = run(_argv(step, values), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, **kw)
+                sys.stdout.writelines(l for l in done.stdout.splitlines(True) if step.drop not in l)
+            elif step.quiet:
+                done = run(_argv(step, values), capture_output=True, **kw)
+                if done.returncode:
+                    sys.stdout.write(done.stdout)
+                    sys.stderr.write(done.stderr)
+            else:
+                done = run(_argv(step, values), stdout=None if step.stdout else subprocess.DEVNULL, **kw)
+            sys.stdout.flush()
+            if done.returncode == 0:
+                continue
+            if step.derived and healed:
+                print(f"warning: {step.fail} (the regen job commits the fix)", file=sys.stderr)
+                continue
+            print(f"check: {step.fail}", file=sys.stderr)
+            return 1
     return 0
 
 

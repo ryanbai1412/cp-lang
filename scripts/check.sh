@@ -26,7 +26,8 @@
 #         7. the site's snippet gate (node web/scripts/gate.mjs): every
 #            program on the site is at least at its declared status,
 #            and the trace viewer's node tests (tools/trace/*.test.cjs)
-# --full  8. the prover's products fuzzer, and 100 random programs
+# --full  (the steps are scripts/ci.py STEPS["full"])
+#         8. the prover's products fuzzer, and 100 random programs
 #            (scripts/gen-programs.py) against an independent model
 #         9. the budget tests and the front-end latency test, each alone
 #        10. the WebAssembly build and crates/cpl-wasm/tests/smoke.mjs
@@ -501,7 +502,7 @@ cleanup() {
         # kill exits 1 when the job already finished.
         if kill -0 "$pid" 2>/dev/null; then kill "$pid" 2>/dev/null || [ $? = 1 ]; fi
     done
-    rm -rf "$lib_logs" "$manifest" "$manifest.reads" ${tmp:+"$tmp"}
+    rm -rf "$lib_logs" "$manifest" "$manifest.reads"
 }
 trap cleanup EXIT
 
@@ -641,51 +642,9 @@ elif [ -n "${recovery_pid:-}" ]; then
     cache_save recovery
 fi
 if [ "$mode" = full ]; then
-    need node "the wasm smoke test and the VS Code tests run on it"
-    need npm "the VS Code tests run on it"
-    need g++ "the judge-profile test compiles the ports with it"
-
-    tmp="$(mktemp -d)"
-
-    step "cargo test: the prover fuzzer"
-    cargo test -p cpl-prover --test fuzz -- --exact products_and_variable_divisors_are_never_decided_wrongly
-
-    step "random programs: interpreter, C++ and sanitized C++ match an independent model (conformance/R6)"
-    uv run scripts/gen-programs.py -n 100 --seed 1 --jobs "$(nproc)" --out "$tmp/gen" --avoid rev-pieces \
-        --cxxflags '-O1 -g -fsanitize=address,undefined -D_GLIBCXX_DEBUG'
-    uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 231 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
+    # The slow suites and the full tier's spec gates, in order (scripts/ci.py STEPS["full"]).
+    step "the --full suites (scripts/ci.py steps full)"
     uv run --quiet python scripts/ci.py steps full --cpl "$cpl" || exit 1
-
-    step "cargo test: every port compiled with every judge profile's flags"
-    cargo test -p cpl-cli --test judges -- --ignored --exact every_port_compiles_with_every_judges_flags
-
-    step "cargo test: budget, then the front-end latency, each on its own"
-    cargo test -p cpl-cli --test budget -- --test-threads=1
-    cargo test -p cpl-lsp --test latency -- --exact front_end_check_is_under_50_ms
-
-    step "wasm build and crates/cpl-wasm/tests/smoke.mjs"
-    scripts/build-wasm.sh --smoke --out "$tmp/wasm"
-
-    step "scripts/site-check.sh: site build, cpl.wasm size cap, browser smoke"
-    CPL="$cpl" scripts/site-check.sh --no-cache
-
-    step "editors/vscode: npm test"
-    cargo build -q -p cpl-cli    # the LSP test starts target/debug/cpl
-    (
-        cd editors/vscode
-        [ -d node_modules ] || npm ci --no-audit --no-fund
-        npm test
-        if [ -n "${DISPLAY:-}" ]; then
-            npm run test:integration
-        elif command -v xvfb-run >/dev/null; then
-            xvfb-run -a npm run test:integration
-        else
-            echo "editors/vscode: SKIPPED extension-host tests (no display and no xvfb-run)"
-        fi
-    )
-
-    step "editors/smoke.sh: the other editor setups against cpl lsp"
-    editors/smoke.sh
 fi
 
 # The Trap Parity Gate's open register: wrong programs that `cpl run`, the

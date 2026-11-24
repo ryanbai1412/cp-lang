@@ -3,6 +3,7 @@ import contextlib
 import io
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -82,6 +83,9 @@ class StepsTest(unittest.TestCase):
         spec.loader.exec_module(sg)
         for tier in ci.STEPS.values():
             for step in tier:
+                self.assertTrue(step.fn or step.argv, step.title)
+                if step.fn or "/" not in step.argv[0]:
+                    continue
                 self.assertTrue((ci.ROOT / step.argv[0]).is_file(), step.argv[0])
                 if step.argv[0] == "scripts/spec-gate.py":
                     self.assertIn(step.argv[1], sg.GATES)
@@ -131,12 +135,57 @@ class StepsTest(unittest.TestCase):
         self.assertFalse(any(s in ci.STEPS["full"] and s not in ci.STEPS["checks"]
                              for s in ci.touched_steps(ci.step_scripts())))
 
+    def test_full_runs_commands_scripts_and_fns_with_their_placeholders(self) -> None:
+        seen, fns = [], []
+        steps = (ci.Step("cmd", ("cargo", "test", "--jobs", "{nproc}"), "rerun"),
+                 ci.Step("sh", ("scripts/site-check.sh", "--out", "{tmp}/w"), "rerun", env=(("CPL", "{cpl}"),)),
+                 ci.Step("py", ("scripts/gen-programs.py",), "rerun"),
+                 ci.Step("fn", (), "rerun", fn=lambda run, cpl: fns.append(cpl) or 0))
+        with mock.patch.dict(ci.STEPS, {"full": steps}):
+            status = ci.run_steps("full", cpl="/x/cpl",
+                                  run=lambda cmd, **kw: seen.append((cmd, kw)) or subprocess.CompletedProcess(cmd, 0))
+        self.assertEqual(status, 0)
+        (cargo, _), (sh, sh_kw), (py, _) = seen
+        self.assertEqual(cargo[:3], ["cargo", "test", "--jobs"])
+        self.assertTrue(cargo[3].isdigit())
+        self.assertEqual(sh[0], str(ci.ROOT / "scripts/site-check.sh"))
+        self.assertTrue(sh[2].endswith("/w") and "{tmp}" not in sh[2])
+        self.assertFalse(Path(sh[2]).parent.exists(), "the tier removes its {tmp}")
+        self.assertEqual(sh_kw["env"]["CPL"], "/x/cpl")
+        self.assertEqual(py[:2], [sys.executable, str(ci.ROOT / "scripts/gen-programs.py")])
+        self.assertEqual(fns, ["/x/cpl"])
+
+    def test_a_missing_command_fails_before_the_step_runs(self) -> None:
+        seen = []
+        step = ci.Step("needs", ("x",), "rerun", needs=("no-such-command-cpl",))
+        with mock.patch.dict(ci.STEPS, {"full": (step,)}), contextlib.redirect_stderr(io.StringIO()) as err:
+            status = ci.run_steps("full", run=lambda cmd, **kw: seen.append(cmd))
+        self.assertEqual((status, seen), (1, []))
+        self.assertIn("no-such-command-cpl` is not installed", err.getvalue())
+
+    def test_vscode_runs_the_host_suite_only_with_a_display(self) -> None:
+        for display, xvfb, host in (("1", None, ["npm", "run", "test:integration"]),
+                                    ("", "/bin/xvfb-run", ["xvfb-run", "-a", "npm", "run", "test:integration"]),
+                                    ("", None, None)):
+            seen = []
+            with mock.patch.dict(ci.os.environ, {"DISPLAY": display}), \
+                    mock.patch.object(ci.shutil, "which", return_value=xvfb), contextlib.redirect_stdout(io.StringIO()):
+                ci.vscode_tests(run=lambda cmd, **kw: seen.append(cmd) or subprocess.CompletedProcess(cmd, 0))
+            self.assertIn(["npm", "test"], seen)
+            self.assertEqual(seen[-1] if host else None, host)
+            self.assertNotIn("test:integration", seen[-1] if not host else [])
+
     def test_check_sh_runs_no_step_itself(self) -> None:
-        check = (Path(__file__).parent / "check.sh").read_text(encoding="utf-8")
+        check = "\n".join(l for l in (Path(__file__).parent / "check.sh").read_text(encoding="utf-8").splitlines()
+                          if not l.lstrip().startswith("#")) + "\n"
         self.assertNotIn("spec-gate.py ", check)
         for tier in ci.STEPS.values():
             for step in tier:
-                self.assertNotIn(f"python {step.argv[0]}", check)
+                if step.argv[:1] and step.argv[0].endswith(".py"):
+                    self.assertNotIn(f"python {step.argv[0]}", check)
+                elif step.argv:
+                    self.assertNotIn(" ".join(step.argv), check)
+        self.assertNotIn("npm test\n", check)
         for tier in ci.STEPS:
             self.assertIn(f"scripts/ci.py steps {tier}", check)
 
