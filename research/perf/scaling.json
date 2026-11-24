@@ -15724,7 +15724,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "math.Sieve.div_count_table",
-   "measured": 4.3,
+   "measured": 4.15,
    "n": 16384,
    "ok": true
   },
@@ -15732,15 +15732,15 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "math.Sieve.div_sum_table",
-   "measured": 4.36,
+   "measured": 4.42,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/sieve.cp::math.Sieve.divisors": {
-   "cost": "\\log x",
-   "documented": 1.14,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "math.Sieve.divisors",
-   "measured": 1.09,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -15748,7 +15748,7 @@
    "cost": "\\log x",
    "documented": 1.14,
    "fn": "math.Sieve.factor",
-   "measured": 1.01,
+   "measured": 0.98,
    "n": 16384,
    "ok": true
   },
@@ -15764,7 +15764,7 @@
    "cost": "\\log x",
    "documented": 1.14,
    "fn": "math.Sieve.mobius",
-   "measured": 1.02,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -15772,15 +15772,15 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "math.Sieve.mobius_table",
-   "measured": 4.4,
+   "measured": 4.47,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/sieve.cp::math.Sieve.new": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "n \\log \\log n",
+   "documented": 4.2,
    "fn": "math.Sieve.new",
-   "measured": 4.44,
+   "measured": 5.47,
    "n": 16384,
    "ok": true
   },
@@ -15788,7 +15788,7 @@
    "cost": "\\log x",
    "documented": 1.14,
    "fn": "math.Sieve.phi",
-   "measured": 1.02,
+   "measured": 0.91,
    "n": 16384,
    "ok": true
   },
@@ -15796,7 +15796,15 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "math.Sieve.phi_table",
-   "measured": 4.36,
+   "measured": 4.64,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/sieve.cp::math.Sieve.spf": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "math.Sieve.spf",
+   "measured": 4.7,
    "n": 16384,
    "ok": true
   },

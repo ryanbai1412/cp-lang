@@ -875,7 +875,7 @@ impl<'p> Emitter<'p> {
                     // `plan.sorted(by: tree.pos)`: the lambda's own type, not a std::function.
                     "auto".to_string()
                 } else {
-                    self.ty(&e.ty)
+                    self.ty_with_elem_layout(&e.ty, self.expr_elem_layout(e))
                 };
                 self.do_lambda(block, &e.ty, ret)
             }

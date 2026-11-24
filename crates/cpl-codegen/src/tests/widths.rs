@@ -357,3 +357,20 @@ print(grid.count(c => c == Colour.Blue), area)
         "{out}"
     );
 }
+
+#[test]
+fn a_narrow_list_lent_from_a_temporary_owner_is_copied_out_in_its_cells() {
+    let out = cpp("struct Box:
+    n: Int
+    @cache _xs: List<0..1000>
+    fn build(self):
+        if _xs.is_empty: _xs = List.filled(n, 7)
+    @get pub fn items(self) -> List<0..1000>:
+        self.build()
+        _xs
+let n: 1..=100 = read()
+print(Box(n, []).items.len)
+");
+    assert!(out.contains("[&]() -> std::vector<uint16_t>"), "{out}");
+    assert!(!out.contains("std::vector<ll>"), "{out}");
+}

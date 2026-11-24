@@ -3,7 +3,6 @@ let n: Int = read()
 var acc = 0
 for _ in 0..128:
     if Sieve(n).is_prime(7): acc += 1 // timed: math.Sieve.new
-    acc += Sieve(n).primes.len // timed: math.Sieve.primes
     acc += Sieve(n).spf.len // timed: math.Sieve.spf
 let s = Sieve(n)
 for i in 0..8 * n:
