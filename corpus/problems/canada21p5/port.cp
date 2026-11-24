@@ -1,4 +1,5 @@
 // Source: Canada Day Contest 2021 P5, https://dmoj.ca/problem/canada21p5
+// limits: 1000 ms, 524 MB
 // Problem: binary strings s, t of length n <= 128. Each second x of the n bits of s (0 <= x <= n),
 //   chosen uniformly, are flipped. Print the probability that s equals t after K <= 1e9
 //   seconds, modulo 1e9+7. (Here x is m and K is k.)

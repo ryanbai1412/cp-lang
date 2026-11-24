@@ -1,4 +1,5 @@
 // Source: Codeforces 2035F (Tree Operations), https://codeforces.com/contest/2035/problem/F
+// limits: 4000 ms, 250 MB
 // Problem: a tree on n nodes rooted at x, values a_i <= 1e9 (multitest, sum of n <= 2000).
 //   Operation i acts on node ((i - 1) mod n) + 1 and adds or subtracts 1 at one node of its
 //   subtree; none may be skipped. Print the fewest operations zeroing every value, or -1.
