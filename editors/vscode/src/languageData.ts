@@ -113,9 +113,9 @@ export const PRELUDE_VALUES: readonly string[] = [
     'seg_dist', 'segments_meet', 'select', 'shuffle', 'sieve_multiplicative', 'sign', 'sign_eps',
     'sin', 'smawk', 'some', 'sort', 'sorted', 'sos', 'span', 'split_best', 'splitmix64', 'sqrt',
     'starts_with', 'step', 'suffix_array', 'sum', 'swap', 'take_while', 'tally', 'tan',
-    'ternary_max', 'ternary_max_real', 'ternary_min', 'ternary_min_real', 'to_str', 'topo', 'track',
-    'trunc', 'turn', 'two_color', 'two_edge_components', 'undoing', 'upper', 'upper_hull',
-    'window_fold', 'windows', 'yes', 'z_function', 'zip',
+    'ternary_max', 'ternary_min', 'to_str', 'topo', 'track', 'trunc', 'turn', 'two_color',
+    'two_edge_components', 'undoing', 'upper', 'upper_hull', 'window_fold', 'windows', 'yes',
+    'z_function', 'zip',
 ];
 
 /** Public `std/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */
