@@ -675,19 +675,29 @@ impl<'a> Parser<'a> {
     }
 
     /// `{1, 2}`, a set written the other languages' way: `Set([1, 2])`.
-    fn brace_set(&mut self, span: Span, open: Span, close: Span) {
+    /// `f({a, b})`, C++'s braced argument, is a pair: `f((a, b))`.
+    fn brace_set(&mut self, span: Span, open: Span, close: Span, pair: bool) {
         if self.c_decl().is_some() {
             return;
         }
-        let mut diag = Diagnostic::error(
-            codes::REMOVED_SYNTAX,
-            span,
-            "a set is made from a list, `Set([a, b])`, not written in braces",
-        )
-        .with_help("braces make a block; brackets make lists and maps");
+        let (message, help, l, r) = match pair {
+            true => (
+                "a pair is written `(a, b)`, not in braces",
+                "braces make a block; parentheses make a tuple",
+                "(",
+                ")",
+            ),
+            false => (
+                "a set is made from a list, `Set([a, b])`, not written in braces",
+                "braces make a block; brackets make lists and maps",
+                "Set([",
+                "])",
+            ),
+        };
+        let mut diag = Diagnostic::error(codes::REMOVED_SYNTAX, span, message).with_help(help);
         diag.fixes.push(cpl_diag::Fix {
-            title: "write `Set([..])`".into(),
-            edits: vec![(open, "Set([".into()), (close, "])".into())],
+            title: format!("write `{l}..{r}`"),
+            edits: vec![(open, l.into()), (close, r.into())],
         });
         self.error(diag);
     }

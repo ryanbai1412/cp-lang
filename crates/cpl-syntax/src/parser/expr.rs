@@ -1279,14 +1279,14 @@ impl<'a> Parser<'a> {
             }
             T::LBrace if self.brace_literal().is_some() => {
                 let brace = self.brace_literal().unwrap();
-                let open = self.span();
+                let (open, at) = (self.span(), self.pos);
                 self.pos = after_group(self.tokens, self.pos);
                 let span = self.span_from(start);
                 let close = Span::new(span.end - 1, span.end);
                 match brace {
                     Brace::Planned(planned) => self.planned(span, planned),
                     Brace::Map => self.brace_map(span, open, close),
-                    Brace::Set => self.brace_set(span, open, close),
+                    Brace::Set => self.brace_set(span, open, close, self.pair_arg(at)),
                 }
                 ExprKind::Error
             }

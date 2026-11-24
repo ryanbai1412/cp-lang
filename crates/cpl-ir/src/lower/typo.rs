@@ -494,6 +494,50 @@ impl<'a> Lowerer<'a> {
         self.err_expr(whole.span)
     }
 
+    /// C++'s `m.insert({k, v})` or `m.emplace(k, v)`: a map sets a key by
+    /// index. `insert` keeps a key already there, so the fix tests it first.
+    pub(super) fn map_insert(
+        &mut self,
+        whole: &ast::Expr,
+        base: &ast::Expr,
+        name: &ast::Name,
+        args: &[ast::Arg],
+        ty: &Ty,
+    ) -> Expr {
+        let a: Vec<String> = args.iter().map(|a| self.source(a.value.span)).collect();
+        let pair = match a.as_slice() {
+            [k, v] => Some((k.clone(), v.clone())),
+            [p] => p
+                .strip_prefix(['(', '{'])
+                .and_then(|p| p.strip_suffix([')', '}']))
+                .and_then(split_pair),
+            _ => None,
+        };
+        let m = self.source(base.span);
+        let message = format!(
+            "a `{}` has no method `{}`: a key is set by index, `{m}[k] = v`",
+            self.show(ty),
+            name.text
+        );
+        self.error(codes::UNKNOWN_FIELD, whole.span, message);
+        let at = self.span(whole.span);
+        let text = &self.mods[self.cur_mod].text;
+        let line = text[..at.start as usize].rsplit('\n').next().unwrap_or("");
+        let rest = text[at.end as usize..].split('\n').next().unwrap_or("");
+        let statement = line.trim().is_empty() && rest.trim().is_empty();
+        if let (Some(last), Some((k, v))) = (self.diags.last_mut(), pair) {
+            let new = format!("if {k} not in {m}: {m}[{k}] = {v}");
+            last.help = Some(format!(
+                "`{m}[{k}] = {v}` replaces a key already there, which C++'s `{}` keeps: `{new}`",
+                name.text
+            ));
+            if statement {
+                last.fix(format!("write `{new}`"), at, new);
+            }
+        }
+        self.err_expr(whole.span)
+    }
+
     /// `x.m<T>()` where `x`'s type has no generic method `m`.
     pub(super) fn no_generic_method(&mut self, ty: &Ty, name: &ast::Name, span: Span) -> Expr {
         if !matches!(ty, Ty::Error) {
@@ -798,6 +842,28 @@ impl<'a> Lowerer<'a> {
 }
 
 /// The error for `Name<..>` written with `given` type arguments too few.
+/// C++'s names for putting a key in a map.
+pub(super) fn foreign_insert(method: &str) -> bool {
+    matches!(method, "insert" | "emplace")
+}
+
+/// `k, v` split at its one top-level comma.
+fn split_pair(inner: &str) -> Option<(String, String)> {
+    let mut depth = 0i32;
+    let mut cuts = Vec::new();
+    for (i, c) in inner.char_indices() {
+        match c {
+            '(' | '[' | '{' => depth += 1,
+            ')' | ']' | '}' => depth -= 1,
+            ',' if depth == 0 => cuts.push(i),
+            _ => {}
+        }
+    }
+    let [cut] = cuts[..] else { return None };
+    let (k, v) = (inner[..cut].trim(), inner[cut + 1..].trim());
+    (!k.is_empty() && !v.is_empty()).then(|| (k.to_string(), v.to_string()))
+}
+
 pub(super) fn missing_type_args(name: &str, given: usize) -> String {
     if given == 0 {
         return format!("`{name}` needs its element type: `{name}<Int>`");

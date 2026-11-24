@@ -1287,6 +1287,28 @@ impl<'a> Parser<'a> {
         ))
     }
 
+    /// Whether the braces opening at `open`, closed just before the cursor,
+    /// hold two values and are a call's only argument: `m.insert({k, v})`.
+    pub(super) fn pair_arg(&self, open: usize) -> bool {
+        let kind = |i: Option<usize>| i.and_then(|i| self.tokens.get(i)).map(|t| t.kind);
+        let mut depth = 0;
+        let commas = self.tokens[open + 1..self.pos - 1]
+            .iter()
+            .filter(|t| {
+                match t.kind {
+                    T::LParen | T::LBracket | T::LBrace => depth += 1,
+                    T::RParen | T::RBracket | T::RBrace => depth -= 1,
+                    _ => {}
+                }
+                depth == 0 && t.kind == T::Comma
+            })
+            .count();
+        commas == 1
+            && kind(open.checked_sub(1)) == Some(T::LParen)
+            && kind(open.checked_sub(2)) == Some(T::Ident)
+            && kind(Some(self.pos)) == Some(T::RParen)
+    }
+
     /// `while (n--)`, C's count-down loop, after the `while`: the header's
     /// span, the counter, the `:` a one-line body needs, and where the body
     /// starts. `c_countdown_report` reports it once the body is read.

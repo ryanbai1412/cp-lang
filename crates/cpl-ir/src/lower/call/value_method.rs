@@ -958,6 +958,11 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
+            (Ty::Map(..) | Ty::HashMap(..), m)
+                if super::super::typo::foreign_insert(m) && matches!(args.len(), 1 | 2) =>
+            {
+                self.map_insert(whole, base, name, args, &ty)
+            }
             (Ty::Map(..) | Ty::HashMap(..) | Ty::Set(_), "count") if args.len() == 1 => {
                 self.keyed_count(whole, base, &args[0], &ty)
             }
