@@ -15,7 +15,7 @@ from specgate import Problem
 HELP = "every Rnn.n.n mention names a rule spec/core defines"
 ID = r"R\d\d\.\d+\.\d+"
 MENTION = re.compile(r"(?<![\w.])" + ID + r"(?![\w.]*\d)")
-DEF = re.compile(r"\(((?:" + ID + r")(?:,\s*" + ID + r")*)\)")
+DEF = re.compile(r"\(((?:" + ID + r")(?:,\s*" + ID + r")*)(?:,\s*permits)?\)")
 SEARCHED = ("spec", "handbook", "std", "crates", "site", "editors", "plan", "decisions.md")
 SUFFIXES = (".md", ".cp", ".rs", ".toml", ".txt", ".json", ".ts", ".js")
 

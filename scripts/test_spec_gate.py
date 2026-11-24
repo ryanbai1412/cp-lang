@@ -82,7 +82,8 @@ class GatesTest(unittest.TestCase):
 
     def test_xref(self):
         import subprocess
-        files = {"spec/core/01-a.md": "A rule (R01.1.1).\n", "handbook/x.md": "See R01.1.1 and R01.1.2.\n"}
+        files = {"spec/core/01-a.md": "A rule (R01.1.1). A permit (R01.1.3, permits).\n",
+                 "handbook/x.md": "See R01.1.1, R01.1.3 and R01.1.2.\n"}
         with Tree(files) as t:
             subprocess.run(["git", "init", "-q"], cwd=t.root, check=True)
             subprocess.run(["git", "add", "."], cwd=t.root, check=True)
