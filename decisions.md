@@ -9450,3 +9450,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 Amends decision 486. R08.1.4 picks among a call's candidates in one precedence order: a member of the receiver's type, declared or catalog, beats any extension fn; at equal specificity, a fn the calling module declares beats one it imports, from std or any other library; two candidates that tie at one level are E0701. The rule never names std: a user library's fn yields to the importer's own fn exactly as std's does (`core-08/own-module-fn-beats-equal-imported.cp`), and two imported fns that tie stay E0701 (`core-08/imported-fns-of-equal-specificity-ambiguous.cp`). This lets std declare closed-form `sum(self: Range<Int>)` while `core-08/concrete-extension-beats-std-generic.cp` still prints 7. The member level is 7a8dcef2's amendment to decision 486 (Core, after std/seq.cp's false E0701s). Reverse: drop the own-module level from R08.1.4 and `own_fn` from `pick_method_for`, so equal candidates across modules are E0701 again.
 
 ## 643. (reserved, compiler)
+
+## 644. (reserved, compiler)
