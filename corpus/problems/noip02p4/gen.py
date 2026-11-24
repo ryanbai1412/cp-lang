@@ -1,4 +1,6 @@
 import sys, random
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "50"]
 # seed size: n = size points (or fewer), k in 1..=4, coordinates 0..=500; some cases place
 # four clusters as a pinwheel, the arrangement no straight cut separates
 rng = random.Random(int(sys.argv[1])); S = min(int(sys.argv[2]), 50)

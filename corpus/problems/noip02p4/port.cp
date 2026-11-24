@@ -11,71 +11,62 @@
 // original: corpus/submissions/5096459.cpp (k <= 3)
 let n: 1..=50 = read()
 let k: 1..=4 = read()
-var pts: List<(Int, Int)> = []
-for _ in 0..n:
-    let (x, y): (0..=500, 0..=500) = read()
-    pts.push((x, y))
+let given: [n](x: 0..=500, y: 0..=500) = read()
+
+type Box = (xl: Int, xr: Int, yl: Int, yr: Int)
+
+fn grow(b: ?Box, p: (Int, Int)) -> Box:
+    let (x, y) = p
+    if let (xl, xr, yl, yr) = b: (min(xl, x), max(xr, x), min(yl, y), max(yr, y)) else: (x, x, y, y)
+
+fn size(b: ?Box) -> Int:
+    if let (xl, xr, yl, yr) = b: (xr - xl) * (yr - yl) else: 0
 
 fn area(ps: List<(Int, Int)>) -> Int:
-    if ps.len == 0: return 0
-    var (xl, xr, yl, yr) = (ps[0].0, ps[0].0, ps[0].1, ps[0].1)
-    for p in ps:
-        xl min= p.0
-        xr max= p.0
-        yl min= p.1
-        yr max= p.1
-    (xr - xl) * (yr - yl)
+    var b: ?Box = None
+    for p in ps: b = Some(grow(b, p))
+    size(b)
 
-// four arms round the hole x1 < x <= x2, y1 < y <= y2 (no point inside): the top arm takes
-// x <= x2, the right one x > x2 down to y1, the bottom one x > x1, the left one the rest
-fn pinwheel(ps: List<(Int, Int)>) -> Int:
-    var xs = [p.0 for p in ps]
-    var ys = [p.1 for p in ps]
-    xs.sort()
-    ys.sort()
-    xs.dedup()
-    ys.dedup()
-    var best = 1e18
+// four arms round the hole x1 < x <= x2, y1 < y <= y2: the top arm takes x <= x2, the right
+// one x > x2 down to y1, the bottom one x > x1, the left one the rest; None inside the hole
+fn arm(p: (Int, Int), x1: Int, x2: Int, y1: Int, y2: Int) -> ?0..4:
+    let (x, y) = p
+    if y > y2: Some(if x <= x2: 0 else: 1)
+    elif y > y1: (if x > x2: Some(1) elif x <= x1: Some(3) else: None)
+    else: Some(if x > x1: 2 else: 3)
+
+fn pinwheel(ps: List<(Int, Int)>) -> ?Int:
+    let xs = [p.0 for p in ps].sorted().deduped()
+    let ys = [p.1 for p in ps].sorted().deduped()
+    var best: ?Int = None
     for x1 in xs:
         for x2 in xs:
-            if x2 <= x1: continue
             for y1 in ys:
                 for y2 in ys:
-                    if y2 <= y1: continue
-                    // each arm's bounding box, empty while lo > hi
-                    var xl: [4]Int = 1e9
-                    var yl: [4]Int = 1e9
-                    var xr: [4]Int = -1e9
-                    var yr: [4]Int = -1e9
-                    var hole = false
-                    for (x, y) in ps:
-                        let arm = if y > y2: (if x <= x2: 0 else: 1)
-                            elif y > y1: (if x > x2: 1 elif x <= x1: 3 else: 4)
-                            else: (if x > x1: 2 else: 3)
-                        if arm == 4:
-                            hole = true
-                            break
-                        xl[arm] min= x
-                        xr[arm] max= x
-                        yl[arm] min= y
-                        yr[arm] max= y
-                    if not hole: best min= sum((xr[a] - xl[a]) * (yr[a] - yl[a]) for a in 0..4 if xl[a] <= xr[a])
+                    if x1 < x2 and y1 < y2:
+                        var box: [0..4]?Box = None
+                        var hole = false
+                        for p in ps:
+                            if let a = arm(p, x1, x2, y1, y2): box[a] = Some(grow(box[a], p))
+                            else:
+                                hole = true
+                                break
+                        if not hole: best min= sum(size(box[a]) for a in 0..4)
     best
 
 // least total area of at most `k` rectangles
 fn cover(ps: List<(Int, Int)>, k: Int) -> Int:
-    if k == 1 or ps.len == 0: return area(ps)
-    var best = 1e18
+    var best = area(ps)
+    if k == 1: return best
     for turn in 0..2:
-        var s: List<(Int, Int)> = [if turn == 0: p else: (p.1, p.0) for p in ps]
-        s.sort()
-        for i in 0..s.len:
-            if i == 0 or s[i - 1].0 < s[i].0:
-                let (a, b) = (s[0..i].to_list(), s[i..s.len].to_list())
+        let s = [if turn == 0: p else: (p.1, p.0) for p in ps].sorted()
+        for i in 1..s.len:
+            if s[i - 1].0 < s[i].0:
+                let (a, b) = (s[0..i].collect(), s[i..s.len].collect())
                 for j in 1..k: best min= cover(a, j) + cover(b, k - j)
     if k == 4:
-        best min= pinwheel(ps)
-        best min= pinwheel([(-p.0, p.1) for p in ps])  // the other turning direction
+        if let w = pinwheel(ps): best min= w
+        if let w = pinwheel([(-p.0, p.1) for p in ps]): best min= w  // the other turning direction
     best
 
-print(cover(pts, k))
+print(cover([(p.x, p.y) for p in given], k))

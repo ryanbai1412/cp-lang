@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # usage: gen.py seed size; budget <= 32000, m <= 60 items, prices 0..=1e4 (multiples of 10, some free)
 import sys, random
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "1000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 big = S >= 1000
 n = 60 if big else r.randint(1, min(60, S + 1))

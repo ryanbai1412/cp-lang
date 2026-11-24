@@ -5,21 +5,23 @@
 // Solution: each main item and its accessories form a group whose options are the main item plus
 //   any subset of its accessories (at most 4); a grouped 0/1 knapsack over money, descending,
 //   takes at most one option per group: O(n * m * 4).
+// original: corpus/submissions/5165705.cpp
 let budget: 1..=32000 = read()
 let n: 1..=60 = read()
 domain Item = 1..=n
 domain Money = 0..=budget
 let items: [Item](price: 0..=10000, weight: 1..=5, main: 0..=n) = read()
 
-fn worth(i: Item) -> Int: items[i].price * items[i].weight
+let owner = [Item] i => Item.at(items[i].main)  // None for a main item
+fn worth(i: Item) -> Int = items[i].price * items[i].weight
 
 var extras: [Item]List<Item> = []
 for i in Item:
-    if items[i].main != 0: extras[Item(items[i].main)].push(i)
+    if let o = owner[i]: extras[o].push(i)
 
 var best: [Money]Int = 0
 for i in Item:
-    if items[i].main == 0:
+    if owner[i] == None:
         var bundles: List<(cost: Int, worth: Int)> = [(items[i].price, worth(i))]
         for e in extras[i]:
             let plain = bundles.len  // bundles without this accessory

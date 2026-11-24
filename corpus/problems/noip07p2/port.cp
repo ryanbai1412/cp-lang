@@ -14,7 +14,7 @@ fn same_kind(l: Char, r: Char) -> Bool = (l.is_digit and r.is_digit) or (l.is_lo
 
 fn shown(c: Char) -> Char:
     if p1 == 3: return '*'
-    if p1 == 2 and c.is_lower: return Char(c.ord - 'a'.ord + 'A'.ord)
+    if p1 == 2: return c.upper
     c
 
 var out = Str()

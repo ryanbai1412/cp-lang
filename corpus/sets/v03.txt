@@ -323,6 +323,9 @@ csps21p2
 ctsc04p4
 ctsc06p1
 dmopc18c1p6
+coi06p2
+csps21p2
+ctsc06p1
 dmpg16g2
 egoi23p7
 etsr23r1p3
@@ -339,6 +342,8 @@ etsr23r2p2
 ioi13p4
 ioi15p1
 ioi15p4
+etsr23r2p2
+ioi13p4
 ioi15p5
 ioi16p1
 ioi16p6
@@ -361,11 +366,16 @@ noi18p1
 noip00p1
 noip01p2
 noip01p4
+noip02p4
 noip04p1
 noip04p2
 noip04p3
+noip05p2
 noip06p1
+noip06p2
+noip06p3
 noip07p1
+noip07p2
 noip09p2
 noip09p4
 noip10p1
