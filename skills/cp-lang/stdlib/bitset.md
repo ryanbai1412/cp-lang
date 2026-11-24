@@ -120,7 +120,7 @@ The node store shared by every `BitTrie<W>` built in it: one `List` of nodes, ea
 
 Fields: `nodes: List<BitTrieNode>`.
 
-- `fn new(cap: Int = 0) -> BitTrieArena<W>` — \(O(\mathit{cap})\); An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
+- `fn new(cap: Int = 0) -> BitTrieArena<W>` — \(O(1)\); An empty arena with room for `cap` nodes before it reallocates.; traps: when `cap < 0`
 - `@get fn node_count(self) -> Int` — \(O(1)\); The number of nodes held, over every trie built in the arena.
 
 ## `struct BitTrie<W>`
