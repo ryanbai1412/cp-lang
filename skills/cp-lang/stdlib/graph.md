@@ -49,8 +49,8 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 
 \(O(n + m)\) memory and build.
 
-- `fn directed<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(edges: [E]R, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — \(O(n + m)\) time and memory, plus `m` calls of `keep`; A graph with one arc `u -> v` per edge of `edges`, in compressed sparse rows.
-- `fn undirected<E: Domain, R: (u: V, v: V, ..), B: Target<V>>(edges: [E]R, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — \(O(n + m)\) time and memory, plus `2m` calls of `keep`; A graph with two arcs per edge of `edges`, `u -> v` and `v -> u`, both carrying the same `e`.
+- `fn directed<E, R: (u: V, v: V, ..), B: Target<V>>(edges: [E]R, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — \(O(n + m)\) time and memory, plus `m` calls of `keep`; A graph with one arc `u -> v` per edge of `edges`, in compressed sparse rows.
+- `fn undirected<E, R: (u: V, v: V, ..), B: Target<V>>(edges: [E]R, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — \(O(n + m)\) time and memory, plus `2m` calls of `keep`; A graph with two arcs per edge of `edges`, `u -> v` and `v -> u`, both carrying the same `e`.
 - `fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>` — \(O(n + m)\); A graph from `(from, arc)` pairs: `arc` is stored as one of `from`'s arcs.
 - `fn at(self, u: V) -> lends Slice<A>` — \(O(1)\); `g[u]`: the arcs out of `u` as an `Indexed` view, without copying.
 - `fn out(self, u: V) -> yields A` — \(O(1)\) to make, \(O(1)\) per arc; The arcs out of `u`, lazily: the `Next` implementation.
