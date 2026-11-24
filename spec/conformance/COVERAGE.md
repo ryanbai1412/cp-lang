@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3420 (3312 passing). Rules: 615.
+Cases: 3421 (3312 passing). Rules: 615.
 
 ## Summary per chapter
 
@@ -785,7 +785,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - E0112 `let ... else` block falls through: 1 case(s)
 - E0201 Unresolved name: 14 case(s)
 - E0202 Duplicate definition: 4 case(s)
-- E0203 Unknown field or method: 18 case(s)
+- E0203 Unknown field or method: 19 case(s)
 - E0204 Unknown type: 4 case(s)
 - E0205 Used before initialization: 2 case(s)
 - E0206 Unresolved module: 2 case(s)
