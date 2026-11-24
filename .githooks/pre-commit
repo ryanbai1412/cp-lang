@@ -10,8 +10,11 @@ set -uo pipefail
 root="$(git rev-parse --show-toplevel)"
 limit="${CPL_COMMIT_TIMEOUT:-25}"
 out="$(mktemp)"
-trap 'rm -f "$out"' EXIT
-timeout "$limit" "$root/scripts/check.sh" --commit 2>&1 | tee "$out"
+common="$(cd "$(git rev-parse --git-common-dir)" && pwd)"
+# scripts/ci.py lists here the commit-tier steps it has yet to finish.
+progress="$common/cpl-commit-progress.$$"
+trap 'rm -f "$out" "$progress"' EXIT
+CPL_COMMIT_PROGRESS="$progress" timeout "$limit" "$root/scripts/check.sh" --commit 2>&1 | tee "$out"
 status=${PIPESTATUS[0]}
 if [ "$status" -ne 124 ]; then
     # land.sh shows this when a failed hook left nothing to land.
@@ -42,6 +45,12 @@ esac
 if [ -n "$slices" ]; then
     printf '%s\n' $slices >>"$(git rev-parse --git-common-dir)/cpl-pending-slices"
     echo "pre-commit: the touched-path slices ($slices) didn't run; scripts/land.sh runs them before it pushes" >&2
+fi
+# The commit-tier steps the cut never reached (scripts/ci.py COMMIT_STEPS), such
+# as b3b3c30dd's wasm check: land.sh runs them on the rebased tip before it pushes.
+if [ -s "$progress" ]; then
+    cat "$progress" >>"$common/cpl-pending-steps"
+    echo "pre-commit: the commit-tier steps from $(head -1 "$progress") on didn't run; scripts/land.sh runs them before it pushes" >&2
 fi
 # A cut before or in the staged conformance cases' step lands them unrun (4aaa8b0db);
 # land.sh runs them on the rebased tip before it pushes.

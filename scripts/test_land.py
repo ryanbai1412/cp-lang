@@ -212,6 +212,74 @@ class LandTest(unittest.TestCase):
                 git(ours, "rm", "-q", case)
                 self.commit(ours, "drop " + case)
 
+    def _steps_runner(self, repo, check_steps="", sleep=0):
+        """main's hook and a check.sh that lists `check_steps` as unrun and takes
+        `sleep` s, and a ci.py whose `commit --only` refuses wasm with a warning."""
+        hooks = repo / ".githooks"
+        hooks.mkdir(exist_ok=True)
+        shutil.copy(HERE.parent / ".githooks" / "pre-commit", hooks / "pre-commit")
+        check = repo / "scripts" / "check.sh"
+        check.write_text(f'#!/bin/sh\nprintf "{check_steps}" >"$CPL_COMMIT_PROGRESS"\n'
+                         f'echo "==> cargo check -p cpl-wasm"\nexec sleep {sleep}\n')
+        check.chmod(0o755)
+        (repo / "scripts" / "ci.py").write_text(
+            "import os, subprocess, sys\n"
+            "runs = os.environ['CI_RUNS']\n"
+            "first = not os.path.exists(runs)\n"
+            "open(runs, 'a').write(' '.join(sys.argv[1:]) + '\\n')\n"
+            "if first and os.environ.get('RACE'):\n"
+            "    subprocess.run(['git', 'push', '-q', 'origin', 'HEAD:main'], cwd=os.environ['RACE'], check=True)\n"
+            "sys.exit('warning: field `0` is never read' if 'wasm' in sys.argv[-1] else 0)\n")
+        self.commit(repo, "a commit tier")
+        git(repo, "push", "-q", "origin", "HEAD:main")
+        return repo / ".git" / "cpl-pending-steps", self.tmp / "ci.runs"
+
+    def _hooked_commit(self, repo, msg):
+        env = {**os.environ, "CPL_COMMIT_TIMEOUT": "1"}
+        git(repo, "add", "-A")
+        subprocess.run(["git", "-c", "core.hooksPath=.githooks", "commit", "-q", "-m", msg, "-m", "Domain: infra"],
+                       cwd=repo, env=env, check=True, capture_output=True, text=True)
+
+    def test_a_cut_before_the_wasm_check_leaves_it_to_land_which_refuses_its_warning(self):
+        ours = self.clone("ours")
+        pending, runs = self._steps_runner(ours, "wasm\\nnextest\\n", sleep=5)
+        (ours / "pkg.txt").write_text("x\n")
+        self._hooked_commit(ours, "ours")
+        self.assertEqual(pending.read_text().split(), ["wasm", "nextest"])
+        r = self.land(ours, CI_RUNS=str(runs))
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("warning: field `0` is never read", r.stderr)
+        self.assertIn("uv run scripts/ci.py commit --only nextest,wasm", r.stderr)
+        self.assertEqual(runs.read_text(), "commit --only nextest,wasm\n")
+        self.assertTrue(pending.exists())
+        git(ours, "fetch", "-q")
+        self.assertEqual(git(ours, "ls-tree", "origin/main", "pkg.txt"), "")
+
+    def test_a_hook_that_got_through_leaves_no_step_pending(self):
+        ours = self.clone("ours")
+        pending, runs = self._steps_runner(ours, "wasm\\n")
+        (ours / "pkg.txt").write_text("x\n")
+        self._hooked_commit(ours, "ours")
+        self.assertFalse(pending.exists())
+        r = self.land(ours, CI_RUNS=str(runs))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(runs.exists())
+
+    def test_after_a_lost_push_race_the_pending_steps_run_again_on_the_new_tip(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        pending, runs = self._steps_runner(ours)
+        git(theirs, "pull", "-q", "origin", "main")
+        (theirs / "theirs.txt").write_text("x\n")
+        self.commit(theirs, "theirs")
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        pending.write_text("nextest\n")
+        r = self.land(ours, CI_RUNS=str(runs), RACE=str(theirs), CPL_LAND_TRIES="2")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(runs.read_text(), "commit --only nextest\n" * 2)
+        self.assertIn("(try 2)", r.stdout)
+        self.assertFalse(pending.exists())
+
     def test_a_std_change_runs_the_traits_gate_and_the_signature_callers(self):
         ours = self.clone("ours")
         (ours / "scripts" / "spec-gate.py").write_text(

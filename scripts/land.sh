@@ -163,6 +163,26 @@ if [ -s "$pending" ]; then
         { echo "land: a touched-path slice fails at the rebased tip; fix it and land again: uv run scripts/affected.py --run-slices $slices" >&2; exit 1; }
     rm -f "$pending"
 fi
+# The commit-tier steps a hook's cut never reached (b3b3c30dd's came before its
+# wasm check), on the rebased tip staged against main as the hook stages them,
+# and again on the new tip after a lost push race.
+pending_steps="$(git rev-parse --git-common-dir)/cpl-pending-steps"
+run_pending_steps() {
+    [ -s "$pending_steps" ] || return 0
+    steps=$(sort -u "$pending_steps" | tr '\n' ',' | sed 's/,$//')
+    echo "land: running the commit-tier steps the hook's cut skipped: $steps" >&2
+    tip=$(git rev-parse HEAD)
+    trap 'git reset -q --soft "$tip"' EXIT
+    git reset -q --soft FETCH_HEAD
+    set +e
+    uv run --quiet python scripts/ci.py commit --only "$steps" >&2
+    rc=$?
+    set -e
+    git reset -q --soft "$tip"
+    trap - EXIT
+    [ "$rc" = 0 ] || { echo "land: a commit-tier step the hook's cut skipped fails at the rebased tip (above); fix it and land again: uv run scripts/ci.py commit --only $steps" >&2; exit 1; }
+}
+run_pending_steps
 # The staged conformance cases a hook's cut skipped, against what lands: 4aaa8b0db
 # landed a case without the codegen fix its author had left unstaged.
 # Checks too quick to leave to a hook a cut may have skipped (7e3ff18e1 landed
@@ -296,12 +316,14 @@ push() {
     if [ "$try" != 1 ]; then
         pull || exit 1
         recheck
+        run_pending_steps
         # What landed meanwhile can break this change's files: check again.
         [ -z "$users" ] || refuse_if_broken "$(cargo check -q $users --all-targets 2>&1)"
     fi
     git push -q --no-verify "$remote" HEAD:main
 }
 RETRY_TRIES=$tries RETRY_WAIT=0 retry push || { echo "land: gave up after $tries tries" >&2; exit 1; }
+rm -f "$pending_steps"
 secs=$(( $(date +%s) - t0 ))
 printf '{"domain":"%s","landed":%s,"seconds":%s,"tries":%s,"commit":"%s"}\n' \
     "$domain" "$(date +%s)" "$secs" "$try" "$(git rev-parse HEAD)" \
