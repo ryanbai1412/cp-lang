@@ -163,9 +163,10 @@ def test_argv(cpl: Path | str, file: str) -> list[str]:
 
 
 def test_cases(out: str, code: int) -> dict:
-    """{fn: pass|fail} from `cpl test` on a std file; {"*": error} when it did not compile."""
-    cases = {m.group(2): "pass" if m.group(1) == "ok" else "fail"
-             for m in re.finditer(r"^\s*(ok|FAIL)\s+\S*?::(\w+)", out, re.M)}
+    """{fn: pass|fail|timeout} from `cpl test` on a std file; {"*": error} when it did not
+    compile. A fn cut by the time limit timed out: it did not fail an assertion."""
+    cases = {m.group(2): "pass" if m.group(1) == "ok" else "timeout" if m.group(3) else "fail"
+             for m in re.finditer(r"^\s*(ok|FAIL)\s+\S*?::(\w+)(: still running after)?", out, re.M)}
     if not cases and code:
         return {"*": "error" if "error[E" in out else "fail"}
     return cases
@@ -182,6 +183,10 @@ def test_fn_lines(lines: list[str]) -> set[int]:
         if inside:
             out.add(i)
     return out
+
+
+class BaselineRed(Exception):
+    """A suite slice fails on unmutated std, so it cannot judge a mutant."""
 
 
 class Runner:
@@ -242,31 +247,33 @@ class Runner:
             out[f"{path.name}@{seed}"] = "pass" if ok else ("error" if "error[E" in r.stderr else "fail")
         return out
 
-    def clean(self, sl: tuple) -> dict | None:
+    def clean(self, sl: tuple) -> dict:
+        """The slice's cases on unmutated std. A spec case std does not meet yet judges
+        nothing; a red std @test, or a slice that timed out or crashed, stops the run:
+        it would score its mutants for a reason that is not the mutant."""
         if sl not in self.baseline:
-            self.baseline[sl] = self.run(sl, STD, self.timeout)
+            base = self.run(sl, STD, self.timeout)
+            bad = {k: v for k, v in (base or {"*": "crash"}).items()
+                   if v in ("timeout", "crash") or sl[0] == "test" and v != "pass"}
+            if bad:
+                raise BaselineRed(f"{' '.join(sl)} is red on unmutated std: {bad}")
+            self.baseline[sl] = base
         return self.baseline[sl]
 
     def outcome(self, m: dict, std: Path) -> str:
         """CaughtMutant, MissedMutant, Unviable or Timeout for mutant `m` written into `std`."""
-        unviable = False
+        seen: set[str] = set()
         for sl in self.slices(m):
-            base = self.clean(sl)
-            if not base or base.get("*") == "timeout":
-                continue
-            passed = {k for k, v in base.items() if v == "pass"}
+            passed = {k for k, v in self.clean(sl).items() if v == "pass"}
             got = self.run(sl, std, self.timeout)
             if got is None:
                 return "CaughtMutant"
-            if got.get("*") == "timeout":
-                return "Timeout"
             whole = got.get("*", "missing")
-            broke = {k: got.get(k, whole) for k in passed if got.get(k) != "pass"}
-            if broke and all(v == "error" for v in broke.values()):
-                unviable = True
-            elif broke:
+            broke = set(got.get(k, whole) for k in passed if got.get(k) != "pass")
+            if broke - {"error", "timeout"}:
                 return "CaughtMutant"
-        return "Unviable" if unviable else "MissedMutant"
+            seen |= broke
+        return "Timeout" if "timeout" in seen else "Unviable" if seen else "MissedMutant"
 
 
 def run_all(mutants: list[dict], runner: Runner, jobs: int, out: Path) -> dict:
