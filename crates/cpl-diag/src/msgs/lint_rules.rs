@@ -83,7 +83,6 @@ super::msgs! {
     POP_MIN_LOOP = "L0576", "`{}.{}!` then `{}.remove({})` is `{}`";
     POSITION_ARITHMETIC = "L0101", "`{}` builds a `{}` from a 0-based count";
     POSITION_ARITHMETIC_2 = "L0101", "`{}` builds a `{}` from a position";
-    PUSH_POP_PAIR = "L0575", "a push and then a pop on `{}` is `{}`";
     QUERY_INDEX_SHIFT = "L0577", "`{}` is read as `{}` and shifted back with `{} - 1` to index";
     QUEUE_HEAD_INDEX = "L0550", "`{}` is walked as a queue by the head index `{}`";
     READ_LOOP = "L0564", "`{}` is read one item per step of `for _ in {}`";

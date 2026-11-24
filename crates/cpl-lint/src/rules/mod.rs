@@ -40,7 +40,6 @@ mod overflow;
 mod pop_end;
 mod pops;
 mod proven;
-mod push_pop;
 mod read_loop;
 mod reverse;
 mod scopes;
@@ -73,7 +72,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(extreme::check(file));
     findings.extend(fermat::check(file));
     findings.extend(letters::check(file));
-    findings.extend(push_pop::check(file));
     findings.extend(pop_end::check(file));
     findings.extend(counter::check(file));
     findings.extend(scopes::check(file));

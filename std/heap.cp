@@ -189,6 +189,7 @@ pub struct Heap<T>:
     /// traps: never
     /// example: `var h = Heap.of([2, 5]); h.push_pop(3) == 2 and h.peek == Some(3)`
     /// example: `var h = Heap.of([2]); h.push_pop(1) == 1 and h.peek == Some(2)`
+    @lint(push_pop_pair, from: "self.push(x)\nlet y = self.pop()!", to: "let y = self.push_pop(x)")
     pub fn push_pop(mut self, x: T) -> T:
         if self.xs.len == 0 or not self.less(self.xs[0], x): return x
         let top = self.xs[0]
