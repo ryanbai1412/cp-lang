@@ -142,6 +142,17 @@ impl<'a> Checker<'a> {
             (Ty::Tuple(a), Ty::Tuple(b)) if a.len() == b.len() => {
                 return a.iter().zip(b).all(|(g, w)| self.fits(g, w));
             }
+            // A struct passes where a trait it implements is written, by the
+            // arguments its impl gives that trait: a std view such as
+            // `Mapped<S, T, U>` is a `Seq<U>` (R07.1.2).
+            (Ty::Named { .. }, Ty::Named { name, args })
+                if !args.is_empty()
+                    && matches!(self.type_def(name).as_deref(), Some(Def::Trait { .. })) =>
+            {
+                if let Some(given) = self.trait_args_of(got, name, args.len()) {
+                    return given.iter().zip(args).all(|(g, w)| self.fits(g, w));
+                }
+            }
             (_, Ty::Optional(inner)) => {
                 return self.fits(got, inner);
             }
