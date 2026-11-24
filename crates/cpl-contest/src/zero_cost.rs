@@ -27,13 +27,19 @@ pub const DEFAULT_MAX_RATIO: f64 = 1.05;
 /// times the code, not one address.
 pub const LAYOUTS: [usize; 4] = [0, 16, 32, 48];
 
-/// `cpp` with `pad` bytes at the start of `.text.startup`, which the linker
-/// puts before `.text`, so every function moves by `pad`.
+/// `cpp` with `pad` bytes before its code, so every function moves by `pad`.
+/// On ELF they start `.text.startup`, where g++ -O2 puts `main` and which GNU
+/// ld puts before `.text`. Mach-O and COFF have no such section (macOS's
+/// assembler rejects it) and keep `main` in the text section, so there they
+/// start the file's `.text`, which top-level asm is emitted ahead of.
 pub(crate) fn padded(cpp: &str, pad: usize) -> String {
     if pad == 0 {
         return cpp.to_string();
     }
-    format!("asm(\".pushsection .text.startup\\n.skip {pad}, 0x90\\n.popsection\");\n{cpp}")
+    format!(
+        "#ifdef __ELF__\nasm(\".pushsection .text.startup\\n.skip {pad}, 0x90\\n.popsection\");\n\
+         #else\nasm(\".text\\n.skip {pad}, 0x90\");\n#endif\n{cpp}"
+    )
 }
 
 #[derive(Debug, Clone)]

@@ -1510,17 +1510,20 @@ fn zero_cost_layouts_move_every_function_by_their_pad() {
             .arg(&cpp)
             .arg("-o")
             .arg(&bin)
-            .status()
+            .output()
             .unwrap();
-        assert!(built.success());
+        let err = String::from_utf8_lossy(&built.stderr);
+        assert!(built.status.success(), "g++ at pad {pad}:\n{err}");
         let nm = std::process::Command::new("nm").arg(&bin).output().unwrap();
         let text = String::from_utf8(nm.stdout).unwrap();
         let line = text
             .lines()
             .find(|l| {
+                // Mach-O spells every symbol with one more leading `_`.
+                let bare = |n: &str| n.trim_start_matches('_').to_string();
                 l.split_whitespace()
                     .last()
-                    .is_some_and(|n| n.starts_with(sym))
+                    .is_some_and(|n| bare(n).starts_with(&bare(sym)))
             })
             .unwrap_or_else(|| panic!("no {sym} in\n{text}"));
         u64::from_str_radix(line.split_whitespace().next().unwrap(), 16).unwrap()
