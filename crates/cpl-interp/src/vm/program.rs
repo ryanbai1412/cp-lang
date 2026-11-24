@@ -74,6 +74,8 @@ pub(crate) struct Chunk<'p> {
     /// variable while it is lent to the chunk.
     pub leaf: bool,
     pub has_by_ref_closure: bool,
+    /// A param holds a fn value, which may reach a place the caller holds lent.
+    pub takes_fn: bool,
     /// The slots `has_by_ref_closure` syncs around a call; `None` is all.
     pub ref_slots: Option<Vec<u16>>,
     pub back_edges: Vec<BackEdge>,
@@ -251,6 +253,7 @@ impl<'p> CompiledProgram<'p> {
                 return None;
             }
             fchunk.param_count = f.params.len();
+            fchunk.takes_fn = (f.locals.iter().take(f.params.len())).any(|l| l.ty.has_fn(program));
             fchunk.ret_kind = None;
             fchunk.guarded_domains = guarded_domains;
             Some(fchunk)
@@ -285,6 +288,8 @@ impl<'p> CompiledProgram<'p> {
             c.compile_block(body, ret_kind, true);
             let mut chunk = c.finish();
             chunk.param_count = params;
+            chunk.takes_fn =
+                (locals.iter().take(params)).any(|l: &cpl_ir::Local| l.ty.has_fn(program));
             chunk.ret_kind = ret_kind;
             chunk.guarded_domains = program.fn_guarded_domains(ret, body);
             chunk

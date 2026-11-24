@@ -773,7 +773,13 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 arg_buf_i.copy_from_slice(&regs_i[abi..abi + ni]);
                 let abv = arg_base_v as usize;
                 let needs_stack = callee.needs_stack;
-                if chunk.has_by_ref_closure {
+                // A fn value passed on may read a place this frame holds lent.
+                let lend_back = callee.takes_fn && self.lends();
+                if lend_back {
+                    let (lent, base) = (&self.lent, self.base);
+                    sync_reachable_to_stack(chunk, lent, regs_i, regs_v, &mut self.stack, base);
+                    self.show_lent()?;
+                } else if chunk.has_by_ref_closure {
                     sync_refs_to_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 }
                 let saved_base = self.base;
@@ -813,7 +819,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let exit = res?;
                 self.call_frames.pop();
                 regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
-                if chunk.has_by_ref_closure {
+                if lend_back {
+                    self.hide_lent()?;
+                    let (lent, base) = (&self.lent, self.base);
+                    sync_reachable_from_stack(chunk, lent, regs_i, regs_v, &mut self.stack, base);
+                } else if chunk.has_by_ref_closure {
                     sync_refs_from_stack(chunk, regs_i, regs_v, &mut self.stack, self.base);
                 }
                 if f.params.iter().any(|p| p.mutable) {

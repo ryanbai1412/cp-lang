@@ -322,6 +322,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             leaf: leaf && !self.ref_all && self.ref_slots.is_empty(),
             needs_stack: needs_stack || self.ref_all || !self.ref_slots.is_empty(),
             has_by_ref_closure: self.ref_all || !self.ref_slots.is_empty(),
+            takes_fn: false,
             ref_slots: (!self.ref_all).then_some(self.ref_slots),
             back_edges: self.back_edges,
             call_sites: self.call_sites,
