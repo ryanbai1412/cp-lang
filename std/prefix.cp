@@ -505,7 +505,7 @@ pub struct FillPrefix<T: Add + Sub>:
         self.cut(r.end) - self.cut(r.start)
 
 /// List prefix sums `Prefix<T>`, built by `Prefix(a)` or `Prefix<T>.filling(n, ...)`.
-pub struct Prefix<T: Sub>:
+pub struct Prefix<T: Add + Sub>:
     p: List<T>
 
     /// Build 1-D prefix sums over `a: List<T>`; `Prefix(a)` on a list calls it.
