@@ -288,10 +288,11 @@ impl Recording {
         let Some(step) = self.step(step) else {
             return BTreeMap::new();
         };
-        step.values
-            .into_iter()
-            .map(|(var, json)| (self.vars[var].id.clone(), json.to_string()))
-            .collect()
+        let mut out = BTreeMap::new();
+        for (var, json) in step.values {
+            out.insert(self.vars[var].id.clone(), json.to_string());
+        }
+        out
     }
 
     /// How many bytes the recording holds.
