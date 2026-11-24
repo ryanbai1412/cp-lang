@@ -110,12 +110,16 @@ fi
 crates=$(printf '%s\n' "$changed" | sed -n 's|^crates/\([^/]*\)/.*\.rs$|-p \1|p' | sort -u | tr '\n' ' ')
 [ -z "$crates" ] || cargo fmt --check $crates >/dev/null 2>&1 ||
     { echo "land: not formatted; run: cargo fmt $crates" >&2; exit 1; }
-# The files of this change that rustc rejects (error[E...]) in cargo's output
-# on stdin: two changes each green alone can combine into one that doesn't
-# compile, and that one must not land.
+# The files that rustc rejects (error[E...]) in cargo's output on stdin, in a
+# crate this change touches: two changes each green alone can combine into one
+# that doesn't compile (5246e1c33 retyped a field another file still pushed),
+# and that one must not land.
 own_compile_errors() {
     awk '/^(error|warning)/ {e = /^error\[E/} e && /^ *--> / {sub(/^ *--> /, ""); sub(/:.*/, ""); print}' |
-        sort -u | grep -Fx -- "$changed" || [ $? = 1 ]
+        sort -u | while IFS= read -r f; do
+            c=${f#crates/}; c=${c%%/*}
+            case " $crates " in *" -p $c "*) echo "$f" ;; *) printf '%s\n' "$changed" | grep -Fx -- "$f" || : ;; esac
+        done
 }
 refuse_if_broken() {
     bad=$(printf '%s\n' "$1" | own_compile_errors)
@@ -124,7 +128,7 @@ refuse_if_broken() {
 }
 # Clippy as CI runs it (-D warnings, every target) on the touched crates and
 # the workspace crates that depend on them, at the rebased tip. A compile
-# error in this change's own files refuses the land; past
+# error in a crate this change touches refuses the land; past
 # CPL_LAND_CLIPPY_SECS (cold cache) or on any other failure it warns and
 # lands, leaving it to CI (whose regen job applies `clippy --fix`).
 users=""

@@ -253,7 +253,13 @@ class CheckCacheTest(unittest.TestCase):
 
     def test_land_refuses_when_its_own_file_no_longer_compiles(self):
         # Two lanes moved the same fn, each green alone: the rebased tip
-        # defines it twice, in a file this change touched.
+        # defines it twice, in a file this change touched, or (a field
+        # retyped under another file's use) elsewhere in a crate it touched.
+        for broken in ("lib.rs", "other.rs"):
+            with self.subTest(broken=broken):
+                self._land_refuses_when_its_crate_no_longer_compiles(broken)
+
+    def _land_refuses_when_its_crate_no_longer_compiles(self, broken):
         root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         env = hermetic_env()
         with tempfile.TemporaryDirectory() as tmp:
@@ -263,7 +269,7 @@ class CheckCacheTest(unittest.TestCase):
             with open(os.path.join(bin_dir, "cargo"), "w", encoding="utf-8") as f:
                 f.write('#!/bin/sh\ncase "$1" in\n'
                         'metadata) echo \'{"packages":[{"name":"a","dependencies":[]}]}\' ;;\n'
-                        'clippy) printf "error[E0592]: duplicate definitions\\n  --> crates/a/src/lib.rs:3:1\\n"; exit 101 ;;\n'
+                        f'clippy) printf "error[E0592]: duplicate definitions\\n  --> crates/a/src/{broken}:3:1\\n"; exit 101 ;;\n'
                         'esac\n')
             os.chmod(os.path.join(bin_dir, "cargo"), 0o755)
             env["PATH"] = bin_dir + os.pathsep + env["PATH"]
@@ -272,7 +278,7 @@ class CheckCacheTest(unittest.TestCase):
             r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,
                                capture_output=True, text=True, env=env)
             self.assertNotEqual(r.returncode, 0)
-            self.assertIn("crates/a/src/lib.rs no longer compiles", r.stderr)
+            self.assertIn(f"crates/a/src/{broken} no longer compiles", r.stderr)
             self.assertNotEqual(git("rev-parse", "main", cwd=remote), git("rev-parse", "HEAD"))
 
     def test_land_refuses_when_nothing_is_ahead_of_main(self):
