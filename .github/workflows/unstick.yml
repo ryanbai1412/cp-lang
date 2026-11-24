@@ -29,3 +29,8 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: uv run --quiet python scripts/ci_unstick.py | tee -a "$GITHUB_STEP_SUMMARY"
+      - name: Delete superseded caches
+        if: ${{ !cancelled() }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: uv run --quiet python scripts/ci_cache_prune.py | tee -a "$GITHUB_STEP_SUMMARY"
