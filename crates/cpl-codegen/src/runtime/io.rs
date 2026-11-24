@@ -240,7 +240,28 @@ inline ll read_int() {
         name: "read_in",
         needs: &["read_int", "fail"],
         code: "\
-inline ll read_in(ll lo, ll hi) { ll x = read_int(); if (x < lo || x > hi) fail(\"a number in the input is outside its range\"); return x; }
+// A range that starts at 0 or above has no sign to read and no -2^63 to
+// guard: up to 19 digits with a space after them, already in the buffer,
+// are read in one scan. Anything else takes `read_int`, which traps.
+inline ll read_in(ll lo, ll hi) {
+    if (lo >= 0) {
+        while (in_at < in.size() && is_space(in[in_at])) in_at++;
+        if (in.size() - in_at >= 32 && digit(in[in_at])) {
+            const char* p = in.data() + in_at;
+            const char* e = p + 19;
+            unsigned long long x = 0;
+            while (p < e && digit(*p)) x = x * 10 + (unsigned long long)(*p++ - '0');
+            if (is_space(*p)) {
+                if (x < (unsigned long long)lo || x > (unsigned long long)hi) fail(\"a number in the input is outside its range\");
+                in_at = (size_t)(p - in.data());
+                return (ll)x;
+            }
+        }
+    }
+    ll x = read_int();
+    if (x < lo || x > hi) fail(\"a number in the input is outside its range\");
+    return x;
+}
 ",
     },
     Piece {
