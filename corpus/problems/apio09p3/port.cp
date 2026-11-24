@@ -4,6 +4,7 @@
 // Solution: a strongly connected component can be robbed whole, so condense to a DAG with each
 //   component's total cash; best[c] = loot[c] + the max best of its successors (0 at a pub
 //   component), filled in reverse topological order. O(N + M).
+// limits: 2000 ms, 64 MB
 
 let (n, m): (Int, Int) = read()
 domain Spot = 1..=n

@@ -550,13 +550,17 @@ pub fn topo<V>(g: Next<V>) -> ?List<V>:
 /// traps: never
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [0], [0]]; let (domain C, comp) = scc(g); C.count == 2 and comp[0] == comp[1] and comp[2] < comp[0]`
 pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
-    var adj: [V]List<V> = []
+    // the arcs flat, u's at flat[ptr[u]..end[u]]: one list, not one per vertex
+    var flat: List<V> = []
+    var ptr: [V]Int = 0
+    var end: [V]Int = 0
     for u in V:
-        for a in g.out(u): adj[u].push(a.to)
+        ptr[u] = flat.len
+        for a in g.out(u): flat.push(a.to)
+        end[u] = flat.len
     var idx: [V]?Int = None
     var low: [V]Int = 0
     var done: [V]Int = 0
-    var ptr: [V]Int = 0
     var on: [V]Bool = false
     var st: List<V> = []
     var call: List<V> = []
@@ -572,8 +576,8 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
         call.push(s)
         while call.len > 0:
             let u = call.last!
-            if ptr[u] < adj[u].len:
-                let v = adj[u][ptr[u]]
+            if ptr[u] < end[u]:
+                let v = flat[ptr[u]]
                 ptr[u] += 1
                 if idx[v] == None:
                     idx[v] = t
