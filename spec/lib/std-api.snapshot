@@ -1464,7 +1464,7 @@ std/range.cp: mid<D>(self: Range<D>) -> Cut<D>
 std/range.cp: r<D>(self: Range<D>) -> Cut<D>
 std/range.cp: shift<D>(self: D, r: Range<Int>) -> Range<D>
 std/range.cp: splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)
-std/search.cp: bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
+std/search.cp: bsearch(self: Range<F64>, ok: F64 -> Bool, steps: Int = 100) -> ?F64
 std/search.cp: dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64
 std/search.cp: gallop_first<I: Add>(from: I, ok: I -> Bool) -> ?I
 std/search.cp: parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (), apply: I -> (), ok: Int -> Bool) -> List<?I>
@@ -1572,7 +1572,7 @@ std/seq.cp: Ring.next(self, i: D) -> D
 std/seq.cp: Ring.prev(self, i: D) -> D
 std/seq.cp: Ring.span(self, start: D, len: Int) -> RingRange<D>
 std/seq.cp: Ring.step(self, i: D, d: Int) -> D
-std/seq.cp: Ring.windows(self, k: Int) -> yields RingSlice<D, T>
+std/seq.cp: Ring.windows(self, k: Int) -> RingWindows<D, T>
 std/seq.cp: RingSlice.each(self) -> yields D
 std/seq.cp: RingSlice.end(self) -> D
 std/seq.cp: RingSlice.is_empty(self) -> Bool
@@ -1694,7 +1694,7 @@ std/seq.cp: prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool 
 std/seq.cp: prod<S: Seq, T>(self: S) -> T
 std/seq.cp: product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U)
 std/seq.cp: radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x)
-std/seq.cp: rebase<S: Indexed>(self: S) -> Rebased<S>
+std/seq.cp: rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>
 std/seq.cp: record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D
 std/seq.cp: reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T
 std/seq.cp: rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T
@@ -2162,7 +2162,7 @@ std/tree.cp: Rooted.size(self, v: V) -> Int
 std/tree.cp: Rooted.sub(self, v: V) -> Range<Pre>
 std/tree.cp: Rooted.sub_at(self, v: V, root: V) -> yields Range<Pre>
 std/tree.cp: Rooted.subtree(self, v: V) -> yields V
-std/tree.cp: Rooted.subtree_sizes(self) -> [V]Int
+std/tree.cp: Rooted.subtree_sizes(self) -> [V]1..
 std/tree.cp: Rooted.top(self, v: V) -> V
 std/tree.cp: Rooted.tour(self) -> yields Visit<V, V>
 std/tree.cp: Rooted.try_from_parents(par: [V]?V) -> ?Rooted<V, _, _>

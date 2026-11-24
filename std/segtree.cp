@@ -11,6 +11,23 @@ struct NoOp
 struct NoOver
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
+/// The positions a `SegTree` runs over. A domain brings its own; `Int` has none, so a
+/// `SegTree<Int, T>` takes them from `over: lo..hi`.
+pub trait Positions:
+    fn count() -> Int
+    fn at(k: Int) -> Self
+    fn cut(k: Int) -> Cut<Self>
+
+impl<D: Domain> Positions for D:
+    fn count() -> Int = D.count
+    fn at(k: Int) -> D = D.nth(k)
+    fn cut(k: Int) -> Cut<D> = D.cuts.nth(k)
+
+impl Positions for Int:
+    fn count() -> Int = 0
+    fn at(k: Int) -> Int = k
+    fn cut(k: Int) -> Int = k
+
 /// Point update and range fold. The operation is a bare operator (`+`, `*`, `^`, `&`, `|`,
 /// `min`, `max`, `gcd`) or your own `Monoid(id, op)`: `SegTree<V, Int>(max, a)`,
 /// `SegTree<V, Int>(+)`, `SegTree<V, Run>(Monoid(Run.empty, Run.join), a)`.
@@ -19,7 +36,7 @@ fn same<A, B>(a: A, b: B) -> Bool = a == b
 /// non-commutative operations work. `SegTree<Int, T>(op, over: lo..hi)` covers a huge range
 /// instead, making nodes on first touch: every call is \(O(\log(hi - lo))\) and makes at most
 /// \(2 \log_2(hi - lo)\) nodes, so memory grows with the positions touched, not with `hi - lo`.
-pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
+pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     t: List<T>
     lz: List<F>
     has_lz: List<Bool>
@@ -66,7 +83,6 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         act: A = NoAction(),
         over: O = NoOver(),
     ) -> SegTree<D, T, F>:
-        // Only the domain path reads `D.count`, so `SegTree<Int, T>(op, over: lo..hi)` never reaches it.
         if same(over, NoOver()): return SegTree<D, T, F>.on_domain(op, a, fill, act)
         assert a == None, "pass either `a` or `over:`, not both"
         if same(op, NoOp()):
@@ -84,7 +100,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
             // Dual tree: tags only, read one point at a time. Internal nodes hold tags and never
             // values, so `apply` runs on leaves only.
             assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
-            let seed = if let init = a: init[D.first!] else: fill!
+            let seed = if let init = a: init[D.at(0)] else: fill!
             let left = Monoid<T>(seed, (x, _) => x)
             var st = SegTree<D, T, F>.build_lazy(left, a, fill, Action<T, F>.of(act, left))
             st.dual = true
@@ -141,7 +157,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         if lc.len == 0: return if right: 2 * p + 1 else: 2 * p
         if right: rc[p] else: lc[p]
 
-    @get fn count(self) -> Int = if lc.len > 0: n else: D.count
+    @get fn count(self) -> Int = if lc.len > 0: n else: D.count()
 
     fn slot(self, x: Int) -> Int:
         let y = x - base
@@ -184,26 +200,26 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         self.pull_node(p, lc[p], rc[p], self.width(p, nl, nr))
 
     fn build(m: Monoid<T>, a: ?[D]T, fill: ?T) -> SegTree<D, T, F>:
-        let size = bit_ceil(D.count)
+        let size = bit_ceil(D.count())
         var t = List.filled(2 * size, m.id)
         if let init = a:
             assert fill == None, "pass either `a` or `fill`, not both"
-            for i in D: t[size + i.ord] = init[i]
+            for i in 0..D.count(): t[size + i] = init[D.at(i)]
         elif let v = fill:
-            for i in 0..D.count: t[size + i] = v
+            for i in 0..D.count(): t[size + i] = v
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
         SegTree(m, t, [], [], [], size, 0, None, None)
 
     fn build_lazy(m: Monoid<T>, a: ?[D]T, fill: ?T, resolved: Action<T, F>) -> SegTree<D, T, F>:
-        let size = bit_ceil(D.count)
+        let size = bit_ceil(D.count())
         var t = List.filled(2 * size, m.id)
         var span = List.filled(2 * size, 0)
-        for i in 0..D.count: span[size + i] = 1
+        for i in 0..D.count(): span[size + i] = 1
         if let init = a:
             assert fill == None, "pass either `a` or `fill`, not both"
-            for i in D: t[size + i.ord] = init[i]
+            for i in 0..D.count(): t[size + i] = init[D.at(i)]
         elif let v = fill:
-            for i in 0..D.count: t[size + i] = v
+            for i in 0..D.count(): t[size + i] = v
         for p in (1..size).rev:
             t[p] = m.op(t[2 * p], t[2 * p + 1])
             span[p] = span[2 * p] + span[2 * p + 1]
@@ -404,7 +420,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         let x = from.ord - base
         if x == k: return from
         let (at, _) = self.right_from(1, 0, size, x, None, m.id, ok)
-        D.cuts.nth(base + (if at < 0: k else: at))
+        D.cut(base + (if at < 0: k else: at))
 
     /// The first cut `d` at or left of `to` such that `ok(fold(d..to))` holds. `ok` must be
     /// monotone (once false it stays false as `d` moves left) and true on the identity, so `to`
@@ -420,7 +436,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
         let x = to.ord - base
         if x == 0: return to
         let (at, _) = self.left_from(1, 0, size, x, None, m.id, ok)
-        D.cuts.nth(base + (if at < 0: 0 else: at))
+        D.cut(base + (if at < 0: 0 else: at))
 
     /// A tree whose position `i` holds `f(i)`. `f` is kept: when something it reads changes,
     /// `refresh(i)` recomputes position `i`, so the formula is written once instead of at every
@@ -593,7 +609,7 @@ pub struct SegTree<D, T, F = Int>(m: Monoid<T>):
             for p in 0..has_lz.len:
                 lz[p] = f.id
                 has_lz[p] = false
-        for i in 0..size: t[size + i] = if i < D.count: v else: m.id
+        for i in 0..size: t[size + i] = if i < D.count(): v else: m.id
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
 
     /// The values of the canonical nodes that exactly cover `r`: the maximal aligned blocks of the
