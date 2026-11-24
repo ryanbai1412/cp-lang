@@ -203,6 +203,10 @@ print(acc)
     dap.send("variables", Some("{\"variablesReference\":2}"));
     let vars = dap.recv_until("\"command\":\"variables\"");
     assert_eq!(variable(&vars, "acc").as_deref(), Some("1"), "{vars}");
+    assert!(
+        vars.contains("\"type\":\"Int\""),
+        "variables say their type: {vars}"
+    );
     assert_eq!(variable(&vars, "last_v").as_deref(), Some("1"), "{vars}");
 
     // Continue to next hit of line 6 (second vertex, v = 2, acc = 3).
@@ -1129,6 +1133,23 @@ fn step_in_from_entry_and_logic_in_watches() {
     let frame = dap.recv_until("\"command\":\"stackTrace\"");
     assert!(frame.contains("\"line\":2"), "{frame}");
     for (expr, want) in [
+        ("x >= 2", "true"),
+        ("x >= 3", "false"),
+        ("x < 3", "true"),
+        ("x < 2", "false"),
+        ("x > 1", "true"),
+        ("x > 2", "false"),
+        ("x * 3 * 2", "12"),
+        ("7 / x", "3"),
+        ("7 % x", "1"),
+        ("-x", "-2"),
+        ("not x == 2", "false"),
+        ("not x == 1 and x == 2", "true"),
+        ("not not true", "true"),
+        ("!false", "true"),
+        ("true", "true"),
+        ("false", "false"),
+        ("None", "None"),
         ("x <= 2", "true"),
         ("x <= 1", "false"),
         ("x == 1 or x == 2", "true"),
@@ -1143,6 +1164,26 @@ fn step_in_from_entry_and_logic_in_watches() {
             "{expr}: {reply}"
         );
     }
+    dap.finish();
+}
+
+#[test]
+fn launch_reads_a_named_input_file() {
+    let input = write_temp("input_file_in", "7\n");
+    let input = input.to_str().unwrap().replace('\\', "\\\\");
+    let path = write_temp("input_file", "let n: Int = read()\nprint(n * 2)\n");
+    let p = path.to_str().unwrap().replace('\\', "\\\\");
+    let mut dap = DapClient::spawn();
+    dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
+    let _ = dap.recv_until("\"event\":\"initialized\"");
+    dap.send(
+        "launch",
+        Some(&format!(
+            "{{\"program\":\"{p}\",\"input\":\"{input}\",\"stopOnEntry\":true}}"
+        )),
+    );
+    let out = dap.recv_until("\"category\":\"stdout\"");
+    assert!(out.contains("\"output\":\"14\\n\""), "{out}");
     dap.finish();
 }
 
@@ -1267,10 +1308,14 @@ print(acc)
             rng ^= rng >> 7;
             rng ^= rng << 17;
             let op = ops[(rng % ops.len() as u64) as usize];
-            let Some(next) = target(op, k) else { continue };
             dap.send(op, Some("{\"threadId\":1}"));
-            let _ = dap.recv_until("\"event\":\"stopped\"");
             done.push(op);
+            // Past the run's end the session ends there, still standing at its last step.
+            let (event, next) = match target(op, k) {
+                Some(next) => ("\"event\":\"stopped\"", next),
+                None => ("\"event\":\"terminated\"", last),
+            };
+            let _ = dap.recv_until(event);
             assert_eq!(
                 state(&mut dap),
                 straight[next],
