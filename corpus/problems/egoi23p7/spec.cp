@@ -5,6 +5,7 @@
 // complement of those "cannot" arcs. Its root can only be where the last search of a full
 // search forest starts; then each block hangs under the first block reached before it that may
 // take it, and the root is paid for once per "cannot" arc skipped.
+// copies: 1
 let (n, m, k) = read<(2..=300_000, 0..=300_000, 0..=300_000)>()
 domain V = [n]
 let existing = read<[m](from: V, to: V)>()

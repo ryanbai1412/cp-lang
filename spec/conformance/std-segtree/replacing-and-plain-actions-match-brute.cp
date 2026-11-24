@@ -2,6 +2,7 @@
 // rule: std.segtree.SegTree.fold
 // A fold over a replacing action (`assign`, `replaces:`) stops at the first tag that sets its
 // span (`assign_add` too); a non-replacing action, a commuting one, and `None` (assign's id) tags agree with an array.
+// copies: 1
 use std.algebra.{Action}
 var ok = true
 for trial in 0..30:

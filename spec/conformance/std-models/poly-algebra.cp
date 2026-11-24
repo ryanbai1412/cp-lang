@@ -13,6 +13,7 @@
 // coefficient at a time, one linear factor at a time, binomial expansion of (x + c)^i and
 // Pascal's triangle. Lengths reach past 32 so the NTT paths run. Reads `seed n`; prints the
 // first op that differs.
+// copies: 4
 use std.poly.{div_mod, gcd_poly, pow_mod_poly, transposed_mul, bostan_mori, prod_linear}
 use std.poly.{taylor_shift, binomial_transform}
 use std.mod.{Mod}

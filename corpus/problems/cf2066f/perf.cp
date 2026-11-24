@@ -4,6 +4,7 @@
 // (4 bytes, not a 2-field struct) with `spent` as its outer axis, so each threshold's
 // fresh table is half the bytes and a row of b cuts is contiguous. The one transition
 // that spends the free segment is marked in `freed`.
+// copies: 1
 @!multitest
 use std.algebra.{MaxSub}
 domain PosA = read(1..=500)

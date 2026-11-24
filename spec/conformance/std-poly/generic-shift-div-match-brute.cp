@@ -2,6 +2,7 @@
 // `Poly<T>.shift` splits at a power of two and `div` goes through `inv` of the reversed divisor
 // when its lead is a unit, so both are fast for a `FastProduct` `T`; this checks both against
 // Horner and long division, over `Mod<P>` and over exact `Int`, past the size where they switch.
+// copies: 4
 use std.poly.{Poly}
 
 type Z = Mod<998244353>

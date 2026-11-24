@@ -69,6 +69,9 @@ fn disagreements(src: &Path, out: &Path) -> Vec<String> {
             _ => {}
         }
     }
+    if let Some(cpp) = cpp.as_ref().filter(|_| built.stderr.contains("as written, the C++")) {
+        wrong.extend(compaction_disagreements(src, out, cpp));
+    }
     if let Some(cpp) = &cpp {
         for (name, count) in NEVER {
             if count(cpp) > 0 {
@@ -84,6 +87,30 @@ fn disagreements(src: &Path, out: &Path) -> Vec<String> {
         }
     }
     wrong
+}
+
+/// Each count a compacted build of `src`, `cpp`, reads differently from its
+/// `--full` build: the counts are of the program, not of how it was fitted.
+fn compaction_disagreements(src: &Path, out: &Path, cpp: &str) -> Vec<String> {
+    let full = out.with_extension("full.cpp");
+    let built = cpl_cli::run(&["build", "--full", src.to_str().unwrap(), "-o", full.to_str().unwrap()]);
+    let text = std::fs::read_to_string(&full).ok().filter(|_| built.code == 0);
+    let _ = std::fs::remove_file(&full);
+    let Some(text) = text else {
+        return vec!["the --full build fails where the compacted one builds".to_string()];
+    };
+    DIRECTIVES
+        .iter()
+        .chain(NEVER.iter())
+        .filter(|(_, count)| count(cpp) != count(&text))
+        .map(|(key, count)| {
+            format!(
+                "a compacted build makes {} {key}, its --full build {}",
+                count(cpp),
+                count(&text)
+            )
+        })
+        .collect()
 }
 
 /// The `.cp` files one directory down from each root: the corpus

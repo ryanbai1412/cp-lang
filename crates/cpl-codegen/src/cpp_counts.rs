@@ -4,6 +4,232 @@
 //! independent of what codegen reports. They read text, never the IR, so a
 //! codegen bug can't hide from them; `cpp_counts_tests.rs` pins each shape.
 
+/// `cpp` as codegen wrote it before it was fitted to its size bar
+/// (`compact.rs`): each line spaced and indented the way codegen writes
+/// it, and the library names a fitted file shortens written in full, so a
+/// count reads the same of a fitted file as of its `--full` build.
+pub fn unfitted(cpp: &str) -> std::borrow::Cow<'_, str> {
+    if !cpp.lines().any(|l| l == "using ll=long long;") {
+        return cpp.into();
+    }
+    let mut long: Longs = Longs::new();
+    for line in cpp.lines() {
+        if let Some((short, name)) = line
+            .strip_prefix("template<class...T>using ")
+            .and_then(|r| r.strip_suffix("<T...>;"))
+            .and_then(|r| r.split_once('='))
+        {
+            long.insert(short, name.to_string());
+        } else if let Some(name) = line.strip_prefix("using std::").and_then(|r| r.strip_suffix(';')) {
+            long.insert(name, format!("std::{name}"));
+        } else if let Some((short, name)) = line
+            .strip_prefix("using ")
+            .and_then(|r| r.strip_suffix(';'))
+            .and_then(|r| r.split_once('='))
+            .filter(|(short, _)| *short != "ll")
+        {
+            long.insert(short, name.to_string());
+        }
+    }
+    let lines: Vec<(&str, Option<Vec<String>>)> = cpp
+        .lines()
+        .filter(|line| {
+            !(line.starts_with("template<class...T>using ")
+                || line.starts_with("using std::")
+                || *line == "namespace cpl{}using namespace cpl;"
+                || line.strip_prefix("using ").is_some_and(|r| r.contains('=') && !r.starts_with("ll=")))
+        })
+        .map(|line| (line, words(line, &long)))
+        .collect();
+    let runtime = runtime_longs(lines.iter().filter_map(|(_, w)| w.as_deref()));
+    let mut out = String::with_capacity(cpp.len() * 5 / 4);
+    // What each open brace opened: a block, a namespace, whose body codegen
+    // does not indent, or the runtime's namespace.
+    let mut open: Vec<u8> = Vec::new();
+    for (line, words) in lines {
+        let Some(words) = words else {
+            out += line;
+            out.push('\n');
+            continue;
+        };
+        let in_cpl = open.contains(&2);
+        let mut full: Vec<String> = Vec::with_capacity(words.len());
+        for w in words {
+            let scoped = full.last().is_some_and(|l| matches!(l.as_str(), "::" | "." | "->"));
+            match runtime.get(w.as_str()) {
+                Some(name) if !in_cpl && !scoped => {
+                    full.extend(["cpl".into(), "::".into(), name.to_string()])
+                }
+                Some(name) => full.push(name.to_string()),
+                None => full.push(w),
+            }
+        }
+        let closes = full.iter().take_while(|w| w.as_str() == "}").count().min(1);
+        let depth = open[..open.len().saturating_sub(closes)].iter().filter(|n| **n == 0).count();
+        out += &"  ".repeat(depth);
+        out += &spaced(&full);
+        out.push('\n');
+        let namespace = match (full.first(), full.get(1)) {
+            (Some(n), Some(c)) if n == "namespace" => 1 + u8::from(c == "cpl"),
+            _ => 0,
+        };
+        for w in &full {
+            match w.as_str() {
+                "{" => open.push(namespace),
+                "}" => {
+                    open.pop();
+                }
+                _ => {}
+            }
+        }
+    }
+    out.into()
+}
+
+/// The library name each short name of a fitted file stands for.
+type Longs<'a> = std::collections::BTreeMap<&'a str, String>;
+
+/// The words of a line of code, the two characters of an operator as one
+/// and each shortened library name in full; `None` for a preprocessor line
+/// or a comment.
+fn words(line: &str, long: &Longs) -> Option<Vec<String>> {
+    let tokens = crate::compact::tokens(line).filter(|_| !line.starts_with(['#', '/']))?;
+    let mut out: Vec<String> = Vec::new();
+    let mut end = 0;
+    for &(space, t) in &tokens {
+        let at = t.as_ptr() as usize - line.as_ptr() as usize;
+        let glued = !space && at == end;
+        end = at + t.len();
+        if let Some(l) = out.last_mut().filter(|l| {
+            glued && l.len() == 1 && t.len() == 1 && crate::compact::JOINED.contains(&format!("{l}{t}").as_str())
+        }) {
+            l.push_str(t);
+            continue;
+        }
+        // A short name stands for its long one everywhere, even after a
+        // trailing `->`; a library name is a member's own after `.`.
+        let member = out.last().is_some_and(|l| matches!(l.as_str(), "::" | "." | "->"));
+        match long.get(t).filter(|_| !member || is_short(t)) {
+            Some(name) => out.extend(name.split("::").enumerate().flat_map(|(i, part)| {
+                (i > 0).then(|| "::".to_string()).into_iter().chain([part.to_string()])
+            })),
+            None => out.push(t.to_string()),
+        }
+    }
+    Some(out)
+}
+
+/// A name fitting gave: `Q0`, `Qa`, `Q1z`.
+fn is_short(w: &str) -> bool {
+    w.strip_prefix('Q').is_some_and(|r| {
+        !r.is_empty() && r.bytes().all(|c| c.is_ascii_digit() || c.is_ascii_lowercase())
+    })
+}
+
+/// The runtime name each short name of a fitted file stands for, read off
+/// the runtime's own lines: a line of the file that differs from exactly
+/// one runtime line only where that line writes a runtime name gives each
+/// of those names its short one.
+fn runtime_longs<'a>(
+    lines: impl Iterator<Item = &'a [String]>,
+) -> std::collections::BTreeMap<String, &'static str> {
+    use std::collections::{BTreeMap, HashMap};
+    type Shapes = HashMap<String, Option<Vec<String>>>;
+    static SHAPES: std::sync::OnceLock<Shapes> = std::sync::OnceLock::new();
+    let names = crate::compact::runtime_names();
+    let shape = |words: &[String], hole: &dyn Fn(&str) -> bool| -> String {
+        let holes = words.iter().map(|w| if hole(w) { "\u{1}" } else { w.as_str() });
+        holes.collect::<Vec<_>>().join(" ")
+    };
+    let runtime = |w: &str| names.contains(w);
+    let shapes = SHAPES.get_or_init(|| {
+        let mut shapes = Shapes::new();
+        for piece in crate::runtime::pieces() {
+            let code = crate::compact::compact(piece.code, false, &BTreeMap::new());
+            for words in code.lines().filter_map(|l| words(l, &Longs::new())) {
+                if !words.iter().any(|w| runtime(w)) {
+                    continue;
+                }
+                let key = shape(&words, &runtime);
+                let words = Some(words);
+                shapes
+                    .entry(key)
+                    .and_modify(|seen| {
+                        if *seen != words {
+                            *seen = None;
+                        }
+                    })
+                    .or_insert(words);
+            }
+        }
+        shapes
+    });
+    let short = is_short;
+    let mut longs: BTreeMap<&str, Option<&'static str>> = BTreeMap::new();
+    for words in lines {
+        if !words.iter().any(|w| short(w)) {
+            continue;
+        }
+        let Some(Some(full)) = shapes.get(&shape(words, &|w| short(w) || runtime(w))) else {
+            continue;
+        };
+        for (w, long) in words.iter().zip(full) {
+            let Some(&long) = names.get(long.as_str()).filter(|_| short(w)) else {
+                continue;
+            };
+            longs
+                .entry(w.as_str())
+                .and_modify(|seen| {
+                    if *seen != Some(long) {
+                        *seen = None;
+                    }
+                })
+                .or_insert(Some(long));
+        }
+    }
+    longs.into_iter().filter_map(|(short, long)| Some((short.to_string(), long?))).collect()
+}
+
+/// `words` written out with the spaces codegen puts between them.
+fn spaced(words: &[String]) -> String {
+    const SPACED: &[&str] = &[
+        "=", "==", "!=", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<=", ">=", "&&", "||",
+        "?", ":",
+    ];
+    const BINARY: &[&str] = &["+", "-", "*", "/", "%", "|", "^", "<<"];
+    let word = |w: &str| w.starts_with(|c: char| c.is_alphanumeric() || c == '_' || c == '"' || c == '\'');
+    let value = |w: &str| word(w) && !matches!(w, "return" | "case" | "else") || matches!(w, ")" | "]");
+    let mut out = String::new();
+    let mut arrow = false;
+    for (i, w) in words.iter().enumerate() {
+        let (w, prev) = (w.as_str(), i.checked_sub(1).map(|p| words[p].as_str()));
+        let last = i + 1 == words.len();
+        let gap = prev.is_some_and(|p| {
+            crate::compact::needs_space(p, w)
+                || matches!(p, "," | ";")
+                || SPACED.contains(&p)
+                || SPACED.contains(&w)
+                || matches!(p, "&" | "*") && word(w) && i >= 2 && (value(&words[i - 2]) || words[i - 2].ends_with('>'))
+                || BINARY.contains(&w) && value(p)
+                || BINARY.contains(&p) && i >= 2 && value(&words[i - 2])
+                || w == "->" && p == ")"
+                || p == "->" && arrow
+                || w == "{" && (p == ")" || last || arrow)
+                || p == "}" && word(w)
+                || p.ends_with('>') && word(w)
+                || w == "(" && matches!(p, "if" | "for" | "while" | "switch")
+        });
+        if w == "->" {
+            arrow = prev == Some(")");
+        }
+        if gap {
+            out.push(' ');
+        }
+        out += w;
+    }
+    out
+}
+
 /// The C++ container types a copy of which is deep.
 pub const CONTAINERS: [&str; 6] = [
     "std::vector<",
@@ -89,6 +315,7 @@ pub fn scalar_decl(line: &str) -> Option<&str> {
 /// optional, as a `?T` argument used to be. Counted apart from
 /// [`container_copies`], under its own `// optional_copies:` header.
 pub fn optional_copies(cpp: &str) -> usize {
+    let cpp = &*unfitted(cpp);
     cpp.lines()
         .map(|l| optional_copies_on(l.trim(), &is_container))
         .sum()
@@ -126,6 +353,7 @@ pub(crate) fn optional_copies_on(line: &str, container: &dyn Fn(&str) -> bool) -
 }
 
 pub fn container_copies(cpp: &str) -> usize {
+    let cpp = &*unfitted(cpp);
     let container = is_container;
     let mut held = std::collections::BTreeSet::new();
     let mut count = 0;
@@ -300,6 +528,7 @@ fn top_level(list: &str) -> Vec<&str> {
 /// (`template<class...T>using Qy=std::function<T...>;`): the alias line
 /// declares nothing, and each use of the alias counts.
 pub fn std_functions(cpp: &str) -> usize {
+    let cpp = &*unfitted(cpp);
     let code: Vec<&str> = cpp
         .lines()
         .filter(|l| !l.trim_start().starts_with("//"))
@@ -341,6 +570,7 @@ pub(crate) fn uses_of(line: &str, name: &str) -> usize {
 /// `std::optional<std::vector<..>> t = cpl::map_get(m, k)`: the entry
 /// copied out of the map to be read.
 pub fn map_get_copies(cpp: &str) -> usize {
+    let cpp = &*unfitted(cpp);
     cpp.lines()
         .filter(|l| l.contains("std::optional<std::vector<") && l.contains("= cpl::map_get("))
         .count()
@@ -349,6 +579,7 @@ pub fn map_get_copies(cpp: &str) -> usize {
 /// `[&]() -> std::vector<..> { D_len = ..; return xs; }()`: a block that
 /// sizes a domain from a list, then gives the list by value.
 pub fn block_copies(cpp: &str) -> usize {
+    let cpp = &*unfitted(cpp);
     let lines: Vec<&str> = cpp.lines().collect();
     (0..lines.len())
         .filter(|&i| lines[i].contains("[&]() -> std::vector<") && lines[i].ends_with('{'))
@@ -376,6 +607,7 @@ pub fn block_copies(cpp: &str) -> usize {
 /// `std::vector<ll>(cpl::map_or(m, k, d))`: a copy of an entry, made to
 /// be changed.
 pub fn entry_copies(cpp: &str) -> usize {
+    let cpp = &*unfitted(cpp);
     cpp.lines().filter(|l| l.contains(">(cpl::map_or(")).count()
 }
 
@@ -448,6 +680,7 @@ pub fn flat_structs(lines: &[&str]) -> std::collections::BTreeSet<String> {
 /// struct it returns, and a call hands it a named place, which is copied.
 /// A lent field points to its value instead (R05.4.4, R13.4).
 pub fn sunk_copies(cpp: &str) -> usize {
+    let cpp = &*unfitted(cpp);
     let lines: Vec<&str> = cpp.lines().collect();
     let flat = flat_structs(&lines);
     let head = |l: &str| -> Option<(String, String)> {
@@ -512,6 +745,7 @@ pub fn sunk_copies(cpp: &str) -> usize {
 /// `@get` of a stored list, that copies out a part of what it was lent
 /// instead of lending it on.
 pub fn lent_part_copies(cpp: &str) -> usize {
+    let cpp = &*unfitted(cpp);
     let lines: Vec<&str> = cpp.lines().collect();
     lines
         .windows(2)

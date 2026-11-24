@@ -450,3 +450,51 @@ fn a_flat_struct_holds_no_container_or_std_function_even_through_another() {
         set(&["A"])
     );
 }
+
+/// A file fitted to its size bar (no spaces it does not need, shortened
+/// names) counts what its `--full` build counts.
+#[test]
+fn a_fitted_file_counts_what_its_full_build_counts() {
+    let full = concat!(
+        "using ll = long long;\n",
+        "namespace cpl {\n",
+        "struct Bag {\n",
+        "  std::vector<ll> xs;\n",
+        "};\n",
+        "}\n",
+        "struct H {\n",
+        "  std::vector<ll> xs;\n",
+        "};\n",
+        "inline H wrap(std::vector<ll> xs) {\n",
+        "  return H{std::move(xs)};\n",
+        "}\n",
+        "inline std::vector<ll> B_view(const cpl::Bag& self) {\n",
+        "  return self.xs;\n",
+        "}\n",
+        "void solve(const std::vector<ll>& y, std::map<ll, std::vector<ll>>& m) {\n",
+        "  std::vector<ll> t2 = y;\n",
+        "  std::vector<std::vector<ll>> t3 = std::vector<std::vector<ll>>{y};\n",
+        "  std::optional<std::vector<ll>> o = y;\n",
+        "  std::optional<std::vector<ll>> g = cpl::map_get(m, 1);\n",
+        "  auto f = [t4 = t2](ll i) -> ll { return t4[i]; };\n",
+        "  ll s = (ll)wrap(t2).xs.size() + f(0) + (ll)o->size() + (ll)g->size();\n",
+        "}\n",
+    );
+    let map_get = crate::runtime::pieces().find(|p| p.name == "map_get_any").unwrap();
+    let full = &full.replacen("namespace cpl {\n", &format!("namespace cpl {{\n{}", map_get.code), 1);
+    let names = crate::compact::short_names(&crate::compact::compact(full, true, &Default::default()));
+    let fitted = crate::compact::compact(full, true, &names);
+    assert!(fitted.contains("<ll>t2=y;"), "{fitted}");
+    let counts = |cpp: &str| {
+        [
+            container_copies(cpp),
+            optional_copies(cpp),
+            sunk_copies(cpp),
+            map_get_copies(cpp),
+            lent_part_copies(cpp),
+            std_functions(cpp),
+        ]
+    };
+    assert_eq!(counts(&fitted), counts(full), "{fitted}\n{}", unfitted(&fitted));
+    assert!(counts(full).iter().filter(|&&n| n > 0).count() >= 4, "{:?}", counts(full));
+}

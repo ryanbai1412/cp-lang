@@ -12,6 +12,7 @@
 //   only needs the latest reachable start. Replay in decreasing sum, the free one by [x] and
 //   then by its piece. O(n^2 m).
 // Bounds: a, b: -1e6..=1e6; PosA.count, PosB.count: 1..=500
+// copies: 1
 @!multitest
 use std.algebra.{MaxSub, MaxSubAt}
 domain PosA = read(1..=500)

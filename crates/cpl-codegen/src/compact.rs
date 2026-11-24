@@ -7,7 +7,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Two characters that read as one token when nothing is between them.
-const JOINED: &[&str] = &[
+pub(crate) const JOINED: &[&str] = &[
     "++", "--", "+=", "-=", "*=", "/=", "%=", "&=", "|=", "^=", "<<", ">>", "<=", ">=", "==", "!=",
     "&&", "||", "->", "::", "//", "/*", "*/", ".*", "<:", ":>", "<%", "%>", "%:", "##", "..",
 ];
@@ -230,7 +230,7 @@ fn numbered(name: &str) -> bool {
 /// The names the runtime's pieces define. One is shortened like a numbered
 /// name unless the file also writes it as a member (`x.at`), which may be a
 /// library's, or it is one the language or library finds by its name.
-fn runtime_names() -> &'static BTreeSet<&'static str> {
+pub(crate) fn runtime_names() -> &'static BTreeSet<&'static str> {
     static NAMES: std::sync::OnceLock<BTreeSet<&'static str>> = std::sync::OnceLock::new();
     NAMES.get_or_init(|| {
         crate::runtime::pieces()
