@@ -1594,6 +1594,14 @@ pub(crate) enum Op {
     Trace {
         idx: u32,
     },
+    /// `StoreGlobalI` and the `Trace` of its write as one op: a traced
+    /// round's `Int` global write records its step straight from `src`.
+    StoreGlobalITraced {
+        gid: u16,
+        src: u16,
+        kind: ScalarKind,
+        idx: u32,
+    },
 }
 
 /// A write a traced run reports: the same steps the tree-walker's

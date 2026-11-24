@@ -216,10 +216,29 @@ impl<'p, 'f> Compiler<'p, 'f> {
         Some(TracePoint::Cell(place, regs))
     }
 
+    /// A `Trace` after the op that did the write; an `Int` global's store
+    /// takes it into itself, recording the step from its register.
     pub(super) fn emit_trace(&mut self, point: TracePoint<'p>, span: Span) {
         let idx = self.trace_points.len() as u32;
+        match (&point, self.ops.last_mut()) {
+            (
+                TracePoint::Cell(place, regs),
+                Some(op @ &mut Op::StoreGlobalI { gid, src, kind }),
+            ) if regs.is_empty()
+                && matches!(place.kind, PlaceKind::Global(g) if g == gid as usize) =>
+            {
+                *op = Op::StoreGlobalITraced {
+                    gid,
+                    src,
+                    kind,
+                    idx,
+                };
+            }
+            _ => {
+                self.emit(Op::Trace { idx }, span);
+            }
+        }
         self.trace_points.push(point);
-        self.emit(Op::Trace { idx }, span);
     }
 
     /// In a traced run the VM runs control flow and expressions that

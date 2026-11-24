@@ -5,6 +5,7 @@ use crate::value::Value;
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::Interp;
+use cpl_diag::Span;
 use cpl_ir::{Place, PlaceKind};
 use std::rc::Rc;
 
@@ -230,6 +231,41 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         place: &'p Place,
         indices: &[u16],
     ) -> bool {
+        place
+            .root_global()
+            .is_some_and(|id| self.trace_int_global(chunk, regs_i, regs_v, id, place.span, indices))
+    }
+
+    /// The step of a `StoreGlobalITraced`, as `exec_trace` takes its `Cell`:
+    /// its write recorded from the registers, else quiet, else the rest.
+    pub(super) fn trace_global_i(
+        &mut self,
+        chunk: &Chunk<'p>,
+        gid: usize,
+        idx: u32,
+        regs_i: &mut [i64],
+        regs_v: &mut [Value],
+    ) -> crate::Res<()> {
+        match chunk.trace_points[idx as usize] {
+            TracePoint::Cell(place, _)
+                if self.trace_int_global(chunk, regs_i, regs_v, gid, place.span, &[])
+                    || self.quiet_write(place) =>
+            {
+                Ok(())
+            }
+            _ => self.exec_trace(chunk, idx, regs_i, regs_v),
+        }
+    }
+
+    fn trace_int_global(
+        &mut self,
+        chunk: &Chunk<'p>,
+        regs_i: &[i64],
+        regs_v: &[Value],
+        id: usize,
+        span: Span,
+        indices: &[u16],
+    ) -> bool {
         if !self.observed() || self.lends() {
             return false;
         }
@@ -237,9 +273,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         if !(self.tracer.as_ref()).is_some_and(|t| t.keeps_step(depth)) {
             return false;
         }
-        let Some(id) = place.root_global() else {
-            return false;
-        };
         if !self.raw_frame(chunk, regs_i, regs_v) {
             return false;
         }
@@ -251,7 +284,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             value: &self.globals[id],
             ty: &global.ty,
             named: global.span.end != 0,
-            span: place.span,
+            span,
             raw: &self.trace_raw,
             call_frames: &self.call_frames,
         };

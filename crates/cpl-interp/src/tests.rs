@@ -1378,15 +1378,31 @@ print(x, a[0])
         !compiled.main.ops.iter().any(in_loop),
         "a traced write in the loop fell back"
     );
-    let traces = compiled
-        .main
-        .ops
-        .iter()
-        .filter(|op| matches!(op, crate::vm::Op::Trace { .. }))
-        .count();
+    let count =
+        |is: fn(&crate::vm::Op) -> bool| compiled.main.ops.iter().filter(|op| is(op)).count();
+    let traces = count(|op| {
+        matches!(
+            op,
+            crate::vm::Op::Trace { .. } | crate::vm::Op::StoreGlobalITraced { .. }
+        )
+    });
     assert!(
         traces >= 3,
         "the loop variable and both writes are reported: {traces}"
+    );
+    // The scalar writes record from their own store, with no separate
+    // `Trace` dispatch per step.
+    assert_eq!(
+        count(|op| matches!(op, crate::vm::Op::StoreGlobalITraced { .. })),
+        2
+    );
+    assert!(
+        !compiled
+            .main
+            .ops
+            .iter()
+            .any(|op| matches!(op, crate::vm::Op::StoreGlobalI { .. })),
+        "the traced scalar write kept a separate Trace"
     );
 }
 

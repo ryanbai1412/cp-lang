@@ -245,8 +245,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 Op::LoadGlobalI { dst, gid } => {
                     regs_i[dst as usize] = ScalarKind::unbox_val(&self.globals[gid as usize]);
                 }
-                Op::StoreGlobalI { gid, src, kind } => {
+                Op::StoreGlobalI { gid, src, kind }
+                | Op::StoreGlobalITraced { gid, src, kind, .. } => {
                     set_scalar(&mut self.globals[gid as usize], kind, regs_i[src as usize]);
+                    if let Op::StoreGlobalITraced { idx, .. } = op {
+                        self.trace_global_i(chunk, gid as usize, idx, regs_i, regs_v)?;
+                    }
                 }
                 Op::LoadGlobalOptI {
                     dst_val,
