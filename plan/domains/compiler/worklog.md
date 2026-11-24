@@ -1158,3 +1158,10 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   checkpoint tests (calls, fed loops, setup, cases, traced windows).
   A fn or closure body is entered through one `run_body_vm`, fresh or
   resumed.
+  resumed; the browser build drops `Walked`/`FellBack`, which its tracer
+  ignores. cpl_interp wasm 239,208 B gz against its parent's 240,127.
+- 2026-11-24: differential parity argmin_own_index failed `cpl run` with
+  E0606 since e3d6bb7e0 typed `argmax(l)` as its method form's `?Int`,
+  which is not `Show` (R10.3.7); L0608 was only ever a warning. The
+  program now unwraps with `!` or prints with `none:` and calls
+  `argmin()`/`argmax()`, with the same .out.
