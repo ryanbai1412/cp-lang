@@ -1109,11 +1109,11 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Edged`, `EdgedNext`, `EdgeArc`, `Reweighted`, `SimpleGraph`, `ConnectedGraph`, `Dag`, `Digraph`, `Walk`, `Lit.neg`, `TwoSat.add_or`, `Complement`
 - **grid** (39/39 named by a case)
 - **hashmap** (37/37 named by a case)
-- **heap** (102/102 named by a case)
+- **heap** (108/108 named by a case)
 - **interval** (44/44 named by a case)
 - **io** (5/5 named by a case)
 - **lazy** (41/41 named by a case)
-- **marks** (46/46 named by a case)
+- **marks** (50/50 named by a case)
 - **math** (83/83 named by a case)
 - **matrix** (60/60 named by a case)
 - **mo** (5/6 named by a case)
@@ -1149,7 +1149,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (21/22 named by a case)
   - uncovered: `Undo`
 
-2307 of 2418 std items are named by a case.
+2317 of 2428 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

@@ -20,6 +20,7 @@ Fields: `lt: ?((T, T) -> Bool)`.
 - `fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>` — \(O(n)\); Build a `Heap<T>` from `xs` via Floyd heapify.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements currently in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
+- `fn each(self) -> yields T` — \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged; Visit every element in pop order; `for x in h` uses this.
 - `@get fn peek(self) -> ?T` — \(O(1)\); The smallest element, or `None` if the heap is empty.
 - `fn clear(mut self)` — \(O(1)\); Remove all elements from the heap.
 - `fn take(mut self) -> Heap<T>` — \(O(1)\); Move the heap's contents out in \(O(1)\), leaving `self` empty.
@@ -40,6 +41,7 @@ Fields: `live: Heap<T>`, `dead: Heap<T>`.
 - `fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>` — \(O(1)\); Create an empty `ErasableHeap<T>`, optionally ordered by key extractor `by:` (W7).
 - `@get fn len(self) -> Int` — \(O(1)\); Number of active elements in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no active elements remain.
+- `fn each(self) -> yields T` — \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged; Visit every active element in pop order; `for x in h` uses this.
 - `fn clear(mut self)` — \(O(1)\); Remove all elements from the heap.
 - `fn take(mut self) -> ErasableHeap<T>` — \(O(1)\); Move the heap's contents out in \(O(1)\), leaving `self` empty.
 - `fn push(mut self, x: T)` — \(O(\log n)\); Push `x` into the heap.
@@ -56,6 +58,7 @@ Fields: `heap: List<D>`, `pos: [D]Int`, `keys: [D]?K`.
 - `fn new() -> IndexedHeap<D, K>` — \(O(\lvert D \rvert)\); Create an empty `IndexedHeap<D, K>`.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of keys currently in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
+- `fn each(self) -> yields (D, K)` — \(O(\lvert D \rvert + n \log n)\) in total: it pops a copy, and `self` is unchanged; Visit every `(position, key)` entry in pop order; `for x in h` uses this.
 - `fn contains(self, v: D) -> Bool` — \(O(1)\); Whether `v` is currently in the heap.
 - `fn get(self, v: D) -> ?K` — \(O(1)\); Current priority of `v`, or `None` if absent.
 - `@get fn peek(self) -> ?(D, K)` — \(O(1)\); Pair `(v, key)` with the smallest key, or `None` if empty.
@@ -75,6 +78,7 @@ Fields: `lt: ?((T, T) -> Bool)`.
 - `fn reserve(mut self, cap: Int)` — \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise; Reserve backing storage for at least `cap` elements.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements currently in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
+- `fn each(self) -> yields T` — \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged; Visit every element from the smallest up; `for x in h` uses this.
 - `@get fn first(self) -> ?T` — \(O(1)\); The smallest element, or `None` if empty.
 - `@get fn last(self) -> ?T` — \(O(1)\); The largest element, or `None` if empty.
 - `fn push(mut self, x: T)` — \(O(\log n)\), amortized over list growth; Insert `x`.
@@ -91,6 +95,7 @@ One meldable min-heap (a skew heap) that owns its nodes, with \(O(1)\) lazy offs
 - `fn of(xs: List<T>) -> MeldHeap<T>` — \(O(n)\); Build a `MeldHeap<T>` from `xs`.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements currently in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
+- `fn each(self) -> yields T` — \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged; Visit every element in pop order; `for x in h` uses this.
 - `@get fn peek(self) -> ?T` — \(O(1)\); The smallest element, or `None` if empty.
 - `@get fn top(self) -> ?T` — \(O(1)\); The smallest element, or `None` if empty (alias for `peek`).
 - `fn push(mut self, x: T)` — \(O(\log n)\) amortized; Push `x` into the heap.
@@ -135,6 +140,7 @@ Fields: `h: Heap<Desc<T>>`.
 - `fn of(xs: List<T>) -> MaxHeap<T>` — \(O(n)\); Build a `MaxHeap<T>` from `xs` via Floyd heapify.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of elements currently in the heap.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the heap is empty.
+- `fn each(self) -> yields T` — \(O(n \log n)\) in total: it pops a copy, and `self` is unchanged; Visit every element in pop order; `for x in h` uses this.
 - `@get fn peek(self) -> ?T` — \(O(1)\); The largest element, or `None` when empty.
 - `fn clear(mut self)` — \(O(1)\); Remove every element.
 - `fn take(mut self) -> MaxHeap<T>` — \(O(1)\); Move the contents out, leaving this heap empty.
