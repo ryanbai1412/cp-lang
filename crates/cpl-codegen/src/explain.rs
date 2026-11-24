@@ -390,12 +390,12 @@ fn explain_views(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, St
             }
         }
     };
-    cpl_ir::walk::deep_exprs(&program.setup, &mut visit_expr);
-    cpl_ir::walk::deep_exprs(&program.main, &mut visit_expr);
+    crate::uses::split::each_value(&program.setup, &mut visit_expr);
+    crate::uses::split::each_value(&program.main, &mut visit_expr);
     // Library bodies' spans index their own files, not `text`.
     for (id, f) in program.fns.iter().enumerate() {
         if !program.library_fns.get(id).copied().unwrap_or(false) {
-            cpl_ir::walk::deep_exprs(&f.body, &mut visit_expr);
+            crate::uses::split::each_value(&f.body, &mut visit_expr);
         }
     }
     ops.sort_by_key(|(l, c, _)| (*l, *c));

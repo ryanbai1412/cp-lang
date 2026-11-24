@@ -72,3 +72,13 @@ pub(crate) fn each_let_run<'a>(block: &'a Block, f: &mut dyn FnMut(Option<(Slot,
         _ => f(None),
     });
 }
+
+/// The value of every `give` in `block`, at any depth: what each `Do` block
+/// hands out.
+pub(crate) fn each_give<'a>(block: &'a Block, f: &mut dyn FnMut(&'a Expr)) {
+    walk::deep_stmts(block, &mut |stmt| {
+        if let Stmt::Give(e) = stmt {
+            f(e);
+        }
+    });
+}

@@ -1585,10 +1585,8 @@ impl Emitter<'_> {
 
 fn gives_one_closure(block: &cpl_ir::Block) -> bool {
     let mut gives = Vec::new();
-    walk::deep_stmts(block, &mut |stmt| {
-        if let Stmt::Give(value) = stmt {
-            gives.push(matches!(value.kind, ExprKind::Closure(_)));
-        }
+    crate::uses::split::each_give(block, &mut |value| {
+        gives.push(matches!(value.kind, ExprKind::Closure(_)));
     });
     gives == [true]
 }

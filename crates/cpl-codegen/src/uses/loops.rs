@@ -110,3 +110,11 @@ pub(crate) fn has_jump(block: &Block) -> bool {
     });
     found
 }
+
+/// Every statement of `block` at any depth, in order, by address: the sites
+/// a profile keys.
+pub(crate) fn stmt_sites(block: &Block) -> Vec<*const Stmt> {
+    let mut sites = Vec::new();
+    walk::deep_stmts(block, &mut |s| sites.push(s as *const Stmt));
+    sites
+}

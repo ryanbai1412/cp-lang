@@ -140,13 +140,13 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "extend-borrow",
         "expr.rs",
-        Uses(&["extend_borrows", "touch"]),
+        Uses(&["extend_borrows", "touch", "each_give"]),
         "extend_borrows_its_source_and_push_takes_a_dying_local",
     ),
     pass(
         "lend-call-args",
         "expr/call.rs",
-        Uses(&["uses.effects"]),
+        Uses(&["uses.effects", "each_part"]),
         "a_read_only_call_on_a_global_a_closure_writes_copies_nothing",
     ),
     pass(
@@ -189,7 +189,13 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "loop-fusion",
         "fuse.rs",
-        Uses(&["trap_free_block", "block_touch", "writes_own"]),
+        Uses(&[
+            "trap_free_block",
+            "block_touch",
+            "writes_own",
+            "stmt_sites",
+            "each_part",
+        ]),
         "filter_map_sum_fuses_without_intermediate_vectors",
     ),
     pass(
@@ -338,7 +344,15 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "row-cache",
         "rowcache.rs",
-        Uses(&["Touch::of_block"]),
+        Uses(&[
+            "Touch::of_block",
+            "each_sink",
+            "each_put",
+            "defines_domain",
+            "each_index",
+            "each_call",
+            "each_write",
+        ]),
         "a_row_a_loop_never_moves_is_checked_once_per_loop",
     ),
     pass(

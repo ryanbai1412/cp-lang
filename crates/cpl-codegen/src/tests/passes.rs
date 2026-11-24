@@ -590,3 +590,70 @@ fn branches_and_binds_only_rejects_a_store_or_a_loop() {
         "g stores in a loop"
     );
 }
+
+#[test]
+fn each_index_reports_the_outer_base_first() {
+    use crate::uses::places::each_index;
+    let program = lower(concat!(
+        "fn f() -> Int:\n",
+        "    let a = [1, 2]\n",
+        "    let b = [0]\n",
+        "    a[b[0]]\n",
+        "print(f())\n",
+    ));
+    let mut slots = Vec::new();
+    each_index(&program.fns[0].body, &mut |base| {
+        if let cpl_ir::ExprKind::Local(s) = base.kind {
+            slots.push(s);
+        }
+    });
+    assert_eq!(slots.len(), 2, "two index reads: {slots:?}");
+    assert!(
+        slots[0] < slots[1],
+        "`a`, declared first, is the outer base: {slots:?}"
+    );
+}
+
+#[test]
+fn stmt_sites_lists_every_statement_once() {
+    use crate::uses::loops::{stmt_count, stmt_sites};
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var s = 0\n",
+        "    for i in 0..n:\n",
+        "        if i > 1:\n",
+        "            s += i\n",
+        "    s\n",
+        "print(f(3))\n",
+    ));
+    let body = &program.fns[0].body;
+    let sites = stmt_sites(body);
+    assert_eq!(sites.len(), stmt_count(body));
+    assert_eq!(sites[0], &body.stmts[0] as *const cpl_ir::Stmt);
+}
+
+#[test]
+fn defines_domain_and_notes_an_assert_see_their_statements() {
+    use crate::uses::places::{defines_domain, notes_an_assert};
+    let mut with = lower(concat!(
+        "domain V = 0..5\n",
+        "fn f(n: Int) -> Int:\n",
+        "    assert n == 3, \"need 3, got {n}\"\n",
+        "    n\n",
+        "print(f(3))\n",
+    ));
+    let without = lower("fn f(n: Int) -> Int:\n    n\nprint(f(3))\n");
+    assert!(defines_domain(&with.setup) || defines_domain(&with.main));
+    assert!(!defines_domain(&without.setup) && !defines_domain(&without.main));
+    // The user's own assert has no library note; one inlined from a library does.
+    assert!(!notes_an_assert(&with.fns[0].body));
+    let mut noted = false;
+    for stmt in &mut with.fns[0].body.stmts {
+        if let cpl_ir::Stmt::Assert { note, .. } = stmt {
+            *note = Some("std/math.cp:1".into());
+            noted = true;
+        }
+    }
+    assert!(noted, "f holds its assert");
+    assert!(notes_an_assert(&with.fns[0].body));
+}

@@ -4,10 +4,11 @@
 //! line in `cpl::site` first, as the interpreter shows the user's call
 //! (R09.4.5).
 
-use cpl_ir::{walk, Block, Expr, ExprKind, Program, Stmt};
+use cpl_ir::{Block, Expr, Program, Stmt};
 
 use crate::emit::Emitter;
 use crate::expr::string_literal;
+use crate::uses::places::{each_call, each_closure, notes_an_assert};
 
 /// Where each user source line starts, the line of the user statement
 /// being emitted, and the library fns whose traps name it.
@@ -57,18 +58,17 @@ fn noted_fns(program: &Program) -> Vec<bool> {
 }
 
 fn scan(program: &Program, body: &Block, seen: &mut Vec<usize>, fact: &mut (bool, Vec<usize>)) {
-    walk::deep_stmts(body, &mut |stmt| {
-        if let Stmt::Assert { note: Some(_), .. } = stmt {
-            fact.0 = true;
+    fact.0 |= notes_an_assert(body);
+    each_call(body, &mut |id, _| {
+        if program.library_fns.get(id).copied().unwrap_or(false) {
+            fact.1.push(id);
         }
     });
     let mut closures = Vec::new();
-    walk::deep_exprs(body, &mut |e| match e.kind {
-        ExprKind::Call(id, _) if program.library_fns.get(id).copied().unwrap_or(false) => {
-            fact.1.push(id)
+    each_closure(body, &mut |cid| {
+        if !seen.contains(&cid) {
+            closures.push(cid);
         }
-        ExprKind::Closure(cid) if !seen.contains(&cid) => closures.push(cid),
-        _ => {}
     });
     for cid in closures {
         if !seen.contains(&cid) {

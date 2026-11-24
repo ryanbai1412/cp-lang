@@ -6,8 +6,11 @@
 
 use crate::emit::Emitter;
 use crate::uses::effects::Touch;
-use cpl_ir::walk::{deep_exprs, deep_stmts};
-use cpl_ir::{Arg, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
+use crate::uses::places::{
+    defines_domain, each_call, each_index, each_put, each_write, Put, Write,
+};
+use crate::uses::split::{each_sink, Sink};
+use cpl_ir::{Block, Expr, ExprKind, Place, PlaceKind, Ty};
 
 #[derive(Clone, PartialEq, Debug)]
 pub struct Row {
@@ -116,10 +119,13 @@ impl<'p> Emitter<'p> {
         };
         let mut declared = vec![slot];
         let mut stores: Vec<&'b Place> = Vec::new();
-        let mut sizes = false;
-        deep_stmts(body, &mut |stmt| match stmt {
-            Stmt::Let(at, _) | Stmt::For(_, at, ..) => declared.push(*at),
-            Stmt::Assign(place, ..) => {
+        each_sink(body, &mut |sink| {
+            if let Sink::Let(at, _) | Sink::For(at) = sink {
+                declared.push(at);
+            }
+        });
+        each_put(body, &mut |put, _| {
+            if let Put::Store(place, _) = put {
                 stores.push(place);
                 if let PlaceKind::Index(base, _) = &place.kind {
                     if let Some(row) = of_place(base) {
@@ -127,32 +133,20 @@ impl<'p> Emitter<'p> {
                     }
                 }
             }
-            Stmt::DefDomain { .. } | Stmt::DefDomainFromVal { .. } => sizes = true,
-            _ => {}
         });
+        let sizes = defines_domain(body);
         let values = Touch::of_block(body).unnamed();
         let mut calls = Vec::new();
-        deep_exprs(body, &mut |e| match &e.kind {
-            ExprKind::Index(base, _) => {
-                if let Some(row) = of_expr(base) {
-                    add(row, Use::Expr(base));
-                }
+        each_index(body, &mut |base| {
+            if let Some(row) = of_expr(base) {
+                add(row, Use::Expr(base));
             }
-            ExprKind::Call(id, args) => {
-                calls.push(*id);
-                stores.extend(args.iter().filter_map(|a| match a {
-                    Arg::Mut(p) => Some(p),
-                    Arg::Value(_) => None,
-                }));
+        });
+        each_call(body, &mut |id, _| calls.push(id));
+        each_write(body, &mut |how, place| {
+            if matches!(how, Write::Mut | Write::Mutate(_) | Write::Sort) {
+                stores.push(place);
             }
-            ExprKind::CallExpr(_, args) => {
-                stores.extend(args.iter().filter_map(|a| match a {
-                    Arg::Mut(p) => Some(p),
-                    Arg::Value(_) => None,
-                }));
-            }
-            ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, ..) => stores.push(place),
-            _ => {}
         });
         if sizes || values || uses.is_empty() {
             return Vec::new();

@@ -2,7 +2,7 @@
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{ExprKind, Program};
+use cpl_ir::Program;
 
 /// The `reachable` fns, each after every fn it calls but the ones it reaches
 /// back through a cycle, so only recursion needs a declaration ahead.
@@ -26,11 +26,7 @@ fn visit(
         return;
     }
     let mut callees = Vec::new();
-    crate::walk::deep_exprs(&program.fns[id].body, &mut |e| {
-        if let ExprKind::Call(callee, _) = &e.kind {
-            callees.push(*callee);
-        }
-    });
+    crate::uses::places::each_call(&program.fns[id].body, &mut |callee, _| callees.push(callee));
     for callee in callees {
         visit(program, reachable, callee, seen, order);
     }

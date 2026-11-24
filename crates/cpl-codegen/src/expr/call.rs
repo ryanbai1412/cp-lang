@@ -330,7 +330,7 @@ impl<'p> Emitter<'p> {
                     Arg::Mut(place) => walk::root(place) == (global, local),
                     Arg::Value(other) => {
                         let mut used = false;
-                        walk::deep_expr(other, &mut |e| {
+                        crate::uses::places::each_part(other, &mut |e| {
                             used |= match e.kind {
                                 ExprKind::Local(s) => !global && s == local,
                                 ExprKind::Global(g) => global && g == local,

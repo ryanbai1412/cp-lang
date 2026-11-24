@@ -5,6 +5,8 @@
 
 use crate::emit::Emitter;
 use crate::uses::effects::{trap_free_block, writes_own};
+use crate::uses::loops::stmt_sites;
+use crate::uses::places::each_part;
 use crate::walk;
 use cpl_ir::{Block, Expr, ExprKind, Iter, LoopId, Mutation, Place, PlaceKind, Stmt, Ty};
 
@@ -163,10 +165,8 @@ impl<'p> Emitter<'p> {
 /// The statements of `copy` (a clone of `from`) put in `set` where the
 /// ones they copy are: a profile's sites are keyed by address.
 fn carry(set: &mut std::collections::HashSet<*const Stmt>, from: &Block, copy: &Block) {
-    let mut froms = Vec::new();
-    cpl_ir::walk::deep_stmts(from, &mut |s| froms.push(s as *const Stmt));
-    let mut copies = Vec::new();
-    cpl_ir::walk::deep_stmts(copy, &mut |s| copies.push(s as *const Stmt));
+    let froms = stmt_sites(from);
+    let copies = stmt_sites(copy);
     debug_assert_eq!(froms.len(), copies.len());
     for (from, copy) in froms.into_iter().zip(copies) {
         if set.contains(&from) {
@@ -248,7 +248,7 @@ pub(crate) fn iter_exprs<'p>(iter: &'p Iter, f: &mut dyn FnMut(&'p Expr)) {
 
 fn expr_mentions_local(e: &Expr, target: usize) -> bool {
     let mut found = false;
-    walk::deep_expr(e, &mut |sub| {
+    each_part(e, &mut |sub| {
         if matches!(sub.kind, ExprKind::Local(s) if s == target) {
             found = true;
         }

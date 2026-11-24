@@ -195,3 +195,31 @@ pub(crate) fn branches_and_binds_only(block: &Block) -> bool {
     });
     only
 }
+
+/// The base of every index read `base[..]` in `block`, at any depth, outermost
+/// first.
+pub(crate) fn each_index<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Index(base, _) = &e.kind {
+            f(base);
+        }
+    });
+}
+
+/// Whether `block` defines a domain at any depth: its sizes change as it runs.
+pub(crate) fn defines_domain(block: &Block) -> bool {
+    let mut found = false;
+    walk::deep_stmts(block, &mut |stmt| {
+        found |= matches!(stmt, Stmt::DefDomain { .. } | Stmt::DefDomainFromVal { .. });
+    });
+    found
+}
+
+/// Whether `block` has an `assert` with a note, at any depth.
+pub(crate) fn notes_an_assert(block: &Block) -> bool {
+    let mut found = false;
+    walk::deep_stmts(block, &mut |stmt| {
+        found |= matches!(stmt, Stmt::Assert { note: Some(_), .. });
+    });
+    found
+}
