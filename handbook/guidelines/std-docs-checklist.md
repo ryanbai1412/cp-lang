@@ -21,7 +21,7 @@ Each `pub fn` doc carries the three required labels.
 
 - **Why:** cost, failure and a copyable call are what a contestant needs mid-contest.
 - **Example:** `cost: \(O(\log n)\)`, `traps: never`, ``example: `[3, 1].sorted() == [1, 3]` ``.
-- **Enforced by:** `scripts/spec-stub.py --audit`, at 0 in `scripts/check.sh`.
+- **Enforced by:** `scripts/spec-gate.py std-docs --audit`, at 0 in `scripts/check.sh`.
 
 ### R2. `empty:`, `ties:` and `order:` wherever they apply
 

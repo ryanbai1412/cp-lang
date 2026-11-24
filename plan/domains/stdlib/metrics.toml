@@ -54,14 +54,14 @@ milestone = "M2"
 
 [[metric]]
 name = "pub_fns_missing_doc_label"
-command = "python3 scripts/spec-stub.py --audit"
+command = "python3 scripts/spec-gate.py std-docs --audit"
 value = "0 of 2035"
 target = 0
 milestone = "M2"
 
 [[metric]]
 name = "spec_stub_problems"
-command = "python3 scripts/spec-stub.py --check"
+command = "python3 scripts/spec-gate.py std-docs"
 value = 13
 target = 0
 milestone = "M2"

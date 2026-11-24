@@ -9,8 +9,8 @@ fi
 if [ $# -eq 0 ]; then
     uv run --quiet --project "$root" python "$root/scripts/spec-gate.py" vocab | tail -1
     cargo run -q -p cpl-conform -- spec-blocks --check
-    uv run --quiet --project "$root" python "$root/scripts/spec-stub.py" --check >/dev/null ||
-        echo "spec-check: WARNING: std has doc or signature problems; run scripts/spec-stub.py --check" >&2
+    uv run --quiet --project "$root" python "$root/scripts/spec-gate.py" std-docs >/dev/null ||
+        echo "spec-check: WARNING: std has doc or signature problems; run scripts/spec-gate.py std-docs" >&2
     mapfile -t gold < <(grep -v '^#' "$root/corpus/gold/GOLD.txt" | sed '/^$/d; s|^|'"$root"'/|')
     uv run --quiet --project "$root" python "$root/scripts/corpus.py" gaps "${gold[@]}" | sed '1s/^dreams:/gold:/'
     echo

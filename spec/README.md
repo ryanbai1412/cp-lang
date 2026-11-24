@@ -81,7 +81,7 @@ plain-Unicode fallback (`O(n log n)`). Code blocks are source and keep their
 ## Checking
 
 - `std/` is the standard library, built into `cpl`. Every fn has a doc comment, a cost and a body
-  written in CP Lang. `scripts/spec-stub.py --check` checks the docs.
+  written in CP Lang. `scripts/spec-gate.py std-docs` checks the docs.
 - `scripts/spec-check.sh` holds the gold dreams (`corpus/gold/`) and
   the port dreams to the stubs. A failing dream is either a spec gap (add
   the signature or the power) or a dream that ignores a decision (fix the

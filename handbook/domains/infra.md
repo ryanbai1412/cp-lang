@@ -73,7 +73,7 @@ below lists every quality with its check, `missing` where there is none.
 | The gate `scripts/check.sh` (`--commit`, `--fast`, `--full`, `--timing`), its caches `scripts/check_cache.py`, `scripts/cxx-cache.py`, and test selection `scripts/affected.py` | Emitted-C++ bugs CI finds (perf, compiler) |
 | Landing `scripts/land.sh`, `scripts/land_stats.py`; hooks `.githooks/`, `scripts/install-hooks.sh` | The site's content and Worker code (site) |
 | Keeping main green: triage, fix forward or revert any red, culprit finding `scripts/culprit.py` | `cpl self` and the launcher (tools) |
-| Releases: `release.yml`, `scripts/release/` (plan, build, package, editors, manifest, publish, `shippable.sh`) | Another domain's tool kept in `scripts/`, e.g. `debt-ratchet.py` (tech-debt), `spec-stub.py` (spec), `review-check.py` (idioms): infra keeps only the gate wiring |
+| Releases: `release.yml`, `scripts/release/` (plan, build, package, editors, manifest, publish, `shippable.sh`) | Another domain's tool kept in `scripts/`, e.g. `debt-ratchet.py` (tech-debt), `spec-gate.py std-docs` (spec), `review-check.py` (idioms): infra keeps only the gate wiring |
 | Installers `web/public/install.sh`, `install.ps1` and the install smoke | Repository secrets (coordinator) |
 | The site deploy workflow `site.yml` and `scripts/build-wasm.sh` | Editor plugin code (tools, editors) |
 | Devex measurement `scripts/devex_stats.py`; toolchain pins `rust-toolchain.toml`, `mise.toml`, `justfile`, lockfiles | |

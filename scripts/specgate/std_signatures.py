@@ -5,7 +5,7 @@ must agree after whitespace is removed: a chapter that says `?Int` where std
 returns `?K`, or `List<Int>` where std returns `List<K>`, teaches a type the
 code doesn't have. Only top-level fns are compared (methods inside a struct
 or trait block are indented); a name std declares more than once matches any
-of its return types. Fns std doesn't declare are the prelude gate's and `scripts/spec-stub.py`'s business.
+of its return types. Fns std doesn't declare are the prelude gate's and `scripts/spec-gate.py std-docs`'s business.
 Enforces handbook/guidelines/spec-rules-checklist.md#spec-rulesr5-chapters-and-std-say-the-same-thing
 """
 from __future__ import annotations

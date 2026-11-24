@@ -195,7 +195,7 @@ Anything that looks O(1) is O(1), a getter (`@get`) does O(1) work, and an alloc
 
 - **Why:** the contestant reasons about complexity from the code they read.
 - **Example:** `a.rev` is a free view; `List(a.rev)` allocates and looks like it; `factor(x)` is O(sqrt x), `Sieve(n).factor(x)` is O(log x).
-- **Enforced by:** `scripts/spec-stub.py --audit` (`@get` members that do work); `missing` (scaling test per fn).
+- **Enforced by:** `scripts/spec-gate.py std-docs --audit` (`@get` members that do work); `missing` (scaling test per fn).
 
 ### R17. Fixed-size windows don't allocate
 

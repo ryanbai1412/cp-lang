@@ -248,6 +248,45 @@ class GatesTest(unittest.TestCase):
             (t.root / "decisions.md").write_text("## 1. A\n## 2. B\n")
             self.assertEqual(run("decisions", "--check", "--file", str(t.root / "decisions.md")), [])
 
+    def test_std_docs(self):
+        doc = "/// Adds.\n/// cost: O(1)\n/// traps: never\n/// example: f(1) == 1\n"
+        files = {"std/a.cp": doc + "pub fn f(x: Int) -> Int = x\nstruct S(n: Int):\n    /// cost: O(n)\n    @get pub fn g(self) -> Int = 1\n",
+                 "std/prelude.cp": "use std.a.{f, h}\n",
+                 "spec/core/a.md": "`f(x)`\n"}
+        with Tree(files) as t:
+            got = [(p.where, p.what.split(" ")[0]) for p in run("std-docs")]
+            self.assertIn(("std/prelude.cp", "`h`"), got)
+            self.assertIn(("std/a.cp:8", "`g`"), got)
+            self.assertEqual([p.where for p in run("std-docs", "--audit", str(t.root / "std/a.cp"))], ["std/a.cp:8"])
+            self.assertEqual(run("std-docs", "--stub", str(t.root / "std/a.cp")), [])
+            self.assertIn("todo", t.read("std/a.cp"))
+
+    def test_tool_vocab(self):
+        from specgate import tool_vocab as tv
+        self.assertEqual(tv.prose("a `borrow` b"), "a   b")
+
+        class Out:
+            def __init__(self, out):
+                self.stdout, self.stderr = out, ""
+
+        def sh(cmd, **_):
+            if cmd[1:] == ["--help"]:
+                return Out("Usage\n  run   runs it\n")
+            if cmd[1:] == ["explain", "--json"]:
+                return Out(json.dumps([{"code": "E0001", "title": "a node id", "summary": "`borrow`"}]))
+            return Out("this panics")
+
+        class Lsp:
+            def __init__(self, cpl):
+                self.p = mock.Mock()
+
+            def hovers(self, path, src):
+                yield "an inout param"
+
+        with Tree({"spec/conformance/a.cp": "print(1)\n"}), mock.patch.object(tv, "sh", sh), mock.patch.object(tv, "Lsp", Lsp):
+            got = sorted(p.where for p in run("tool-vocab"))
+        self.assertEqual(got, ["cpl explain E0001 (title)", "cpl run --help", "hover in spec/conformance/a.cp"])
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:

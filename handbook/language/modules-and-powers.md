@@ -121,7 +121,7 @@ Methods need no import at all: `xs.sorted()` and `g.adjacent(v)` are
 found on the receiver's type wherever the type came from. Only free
 names need the prelude or a `use`. The prelude itself is one ordinary
 file, `std/prelude.cp`, made of `use` lines, and
-`scripts/spec-stub.py --check` keeps it in step with the chapter tables.
+`scripts/spec-gate.py std-docs` keeps it in step with the chapter tables.
 Library modules don't get the prelude: they `use` what they need, so a
 library never depends on what a program happened to import. An inline
 `mod` inside a program is part of the program and does see it.

@@ -33,7 +33,7 @@ pub fn argmin<S: Keyed, K, T: Ord>(self: S) -> ?K = todo
 | `see:` | optional | the neighbour to use instead (`sort` for `sorted`) |
 
 Struct methods document the same way; a struct's own doc says its invariant and its layout.
-`scripts/spec-stub.py --audit` lists every entry missing a required label; `--check` fails on
+`scripts/spec-gate.py std-docs --audit` lists every entry missing a required label; `--check` fails on
 any, so a new `pub fn` lands with its labels.
 
 ## Where the surface is

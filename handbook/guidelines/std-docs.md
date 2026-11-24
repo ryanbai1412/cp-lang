@@ -59,7 +59,7 @@ against the checklist and recorded that in the tracker.
 ## How we check it
 
 [std-docs-checklist.md](std-docs-checklist.md) lists every rule with an id
-(`std-docs/R4`). `scripts/spec-stub.py --audit` finds fns missing a
+(`std-docs/R4`). `scripts/spec-gate.py std-docs --audit` finds fns missing a
 required label, and `cpl-conform docs` runs every `example:` line. Every rule
 R1 to R10 runs in `scripts/check.sh`. The weakest areas today are that a
 failing example is ratcheted rather than a hard gate and that rendered docs

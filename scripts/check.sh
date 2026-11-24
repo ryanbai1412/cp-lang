@@ -646,9 +646,9 @@ step "std docs follow the std-docs checklist (scripts/std-docs-lint.py)"
 uv run --quiet python scripts/std-docs-lint.py --max 0 \
     || fail "a std doc breaks a std-docs rule; see above"
 
-step "every public std fn has its required doc labels (scripts/spec-stub.py --audit)"
-uv run --quiet scripts/spec-stub.py --audit > /dev/null \
-    || { uv run --quiet scripts/spec-stub.py --audit; fail "a public std fn lacks a required doc label; see above"; }
+step "every public std fn has its required doc labels (scripts/spec-gate.py std-docs --audit)"
+uv run --quiet scripts/spec-gate.py std-docs --audit > /dev/null \
+    || { uv run --quiet scripts/spec-gate.py std-docs --audit; fail "a public std fn lacks a required doc label; see above"; }
 
 step "std, spec and lints use only GLOSSARY spellings (scripts/spec-gate.py vocab)"
 uv run --quiet python scripts/spec-gate.py vocab || fail "a spelling spec/GLOSSARY.md bans; see above"
@@ -751,7 +751,7 @@ if [ "$mode" = full ]; then
     uv run scripts/grammar-fuzz.py --n 300 --check --max-syntax 231 --show 0 || fail "a program derived from the grammar crashed cpl, or more derived programs are syntax errors; see above"
     uv run --quiet python scripts/spec-gate.py speed || fail "the conformance and spec-block suites went over their CPU budget; see above"
     uv run --quiet python scripts/spec-gate.py explain-copies --max 1 || fail "cpl explain claims more copies than the C++ makes in more cases; see above"
-    uv run scripts/tool-vocab.py || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
+    uv run scripts/spec-gate.py tool-vocab || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
     uv run --quiet python scripts/spec-gate.py flakes --runs 2 || fail "a conformance case changed verdict between runs; see above"
 
     step "cargo test: every port compiled with every judge profile's flags"

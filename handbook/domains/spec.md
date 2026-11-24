@@ -4,7 +4,7 @@
 |---|---|
 | Kind | Domain charter |
 | Owner | spec |
-| Describes | `spec/core/`, `spec/lib/`, `spec/tools/`, `spec/conformance/`, `spec/SUBSET.md`, `spec/GLOSSARY.md`, `handbook/language/`, `crates/cpl-conform/`, `scripts/conformance-*.py`, `scripts/spec-gate.py vocab`, `scripts/spec-check.sh`, `scripts/spec-stub.py`, `scripts/spec-gate.py decisions` |
+| Describes | `spec/core/`, `spec/lib/`, `spec/tools/`, `spec/conformance/`, `spec/SUBSET.md`, `spec/GLOSSARY.md`, `handbook/language/`, `crates/cpl-conform/`, `scripts/conformance-*.py`, `scripts/spec-gate.py vocab`, `scripts/spec-check.sh`, `scripts/spec-gate.py std-docs`, `scripts/spec-gate.py decisions` |
 
 The spec domain says exactly what CP Lang is, explains why it is shaped
 that way, and holds the compiler to it. A contestant reading a chapter, a
@@ -72,7 +72,7 @@ rows marked `missing` in the register below.
 | `spec/SUBSET.md`: which sections are supported, documented or a known gap, with an owner per failing case | `handbook/language/std.md` (stdlib) |
 | `handbook/language/` design docs, except `std.md` | The gate script and CI (infra) |
 | `crates/cpl-conform` (the runner: `conformance`, `spec-blocks`, `corpus`, `docs`, `diff`) | The corpus programs and scoreboard (idioms) |
-| `scripts/conformance-*.py`, `spec-gate.py vocab`, `spec-check.sh`, `spec-stub.py`, `spec-gate.py decisions` | Site chapters built from the language docs (site) |
+| `scripts/conformance-*.py`, `spec-gate.py vocab`, `spec-check.sh`, `spec-gate.py std-docs`, `spec-gate.py decisions` | Site chapters built from the language docs (site) |
 | Settling spec ambiguities, logged in `decisions.md` | |
 
 Spec writes cases, never compiler code. A failing case goes to the owning
@@ -120,7 +120,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Every trait method on every claimer is tested ([conformance/R5](../guidelines/conformance-checklist.md)) | trait methods with no case | generated table, ratchet | `scripts/spec-gate.py traits` |
 | Chapters and `std` agree on named arguments | named args no std fn takes | gate: zero | `scripts/spec-gate.py sigs` |
 | What the chapters call is in the prelude | chapter functions missing from the prelude | ratchet | `scripts/spec-gate.py prelude`, `prelude-gaps.txt` |
-| Chapters and `std` agree on return types and existence (e.g. a chapter naming a type `std` doesn't have) | chapter fns whose return type differs from std's; chapter fns std lacks | gate on top-level fns ([spec-rules/R5](../guidelines/spec-rules-checklist.md)); prelude and stub checks for existence; methods compared only by rebuild rounds | `scripts/spec-gate.py std-signatures`, `scripts/spec-gate.py prelude`, `scripts/spec-stub.py` |
+| Chapters and `std` agree on return types and existence (e.g. a chapter naming a type `std` doesn't have) | chapter fns whose return type differs from std's; chapter fns std lacks | gate on top-level fns ([spec-rules/R5](../guidelines/spec-rules-checklist.md)); prelude and stub checks for existence; methods compared only by rebuild rounds | `scripts/spec-gate.py std-signatures`, `scripts/spec-gate.py prelude`, `scripts/spec-gate.py std-docs` |
 | The suite catches compiler bugs | share of reverted compiler fixes the suite turns red | mutation suite over history | `scripts/spec-gate.py bugcatch`, `plan/domains/spec/bugcatch.md` |
 | The suite catches bugs no past fix shows ([conformance/R9](../guidelines/conformance-checklist.md)) | share of one-line compiler mutants the suite catches, among those that build | seeded mutants of the compiler's sources, each run against the conformance suite; each survivor gets a case or is shown equivalent | `scripts/spec-gate.py mutants` in `ci-slow.yml` (`mutants`), `plan/domains/spec/mutants.md` |
 | Interpreter and C++ agree ([conformance/R6](../guidelines/conformance-checklist.md)) | cases whose output differs between `cpl run` and the built C++ | differential suite | `cpl-conform diff` |

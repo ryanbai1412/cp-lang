@@ -1,16 +1,20 @@
-#!/usr/bin/env python3
-# Enforces handbook/guidelines/errors-checklist.md#r5-name-what-the-user-wrote-in-the-specs-words (errors/R5)
 """Fail on spellings spec/GLOSSARY.md's "Never" column bans, in what the tools
 say: every command's `--help`, every `cpl explain` entry, `cpl explain` on
 conformance files, and `cpl lsp` hovers over them.
 
-Prose only: words inside backticks or code are quoted, not used. Usage:
-    uv run scripts/tool-vocab.py [--cpl target/debug/cpl] [--files 200]
+Prose only: words inside backticks or code are quoted, not used.
+Enforces handbook/guidelines/errors-checklist.md#r5-name-what-the-user-wrote-in-the-specs-words (errors/R5)
 """
-import argparse, json, re, subprocess, sys
-from pathlib import Path
+from __future__ import annotations
 
-ROOT = Path(__file__).resolve().parent.parent
+import json
+import re
+import subprocess
+
+import specgate
+from specgate import Problem
+
+HELP = "cpl --help, cpl explain and LSP hovers use no spelling spec/GLOSSARY.md bans"
 NEVER = [
     (r"\bindex (space )?types?\b", "domain"),
     (r"\bnode ids?\b", "position"),
@@ -36,7 +40,7 @@ def prose(text):
     return re.sub(r"\\\(.*?\\\)", " ", text)
 
 
-def run(cmd, **kw):
+def sh(cmd, **kw):
     return subprocess.run(cmd, capture_output=True, text=True, timeout=120, **kw)
 
 
@@ -85,30 +89,29 @@ class Lsp:
         self.say("textDocument/didClose", {"textDocument": {"uri": uri}})
 
 
-def main():
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--cpl", default=str(ROOT / "target" / "debug" / "cpl"))
+def args(ap) -> None:
+    ap.add_argument("--cpl")
     ap.add_argument("--files", type=int, default=200, help="conformance files to explain and hover")
-    args = ap.parse_args()
-    cpl = args.cpl
+
+
+def run(args) -> list[Problem]:
+    cpl = args.cpl or str(specgate.ROOT / "target" / "debug" / "cpl")
     texts = []  # (where, text)
-    top = run([cpl, "--help"]).stdout
+    top = sh([cpl, "--help"]).stdout
     texts.append(("cpl --help", top))
     for cmd in re.findall(r"^  (\w+)\b", top, re.M):
-        r = run([cpl, cmd, "--help"])
+        r = sh([cpl, cmd, "--help"])
         texts.append((f"cpl {cmd} --help", r.stdout + r.stderr))
-    for e in json.loads(run([cpl, "explain", "--json"]).stdout):
+    for e in json.loads(sh([cpl, "explain", "--json"]).stdout):
         for field in ("title", "summary", "explanation", "fix"):
             texts.append((f"cpl explain {e['code']} ({field})", e.get(field) or ""))
-    cases = sorted(p for p in (ROOT / "spec" / "conformance").rglob("*.cp"))
+    cases = sorted(specgate.CONFORMANCE.rglob("*.cp"))
     step = max(1, len(cases) // args.files)
     lsp = Lsp(cpl)
-    hovered = 0
     for case in cases[::step][: args.files]:
-        rel = case.relative_to(ROOT)
-        texts.append((f"cpl explain {rel}", run([cpl, "explain", str(case)]).stdout))
+        rel = case.relative_to(specgate.ROOT)
+        texts.append((f"cpl explain {rel}", sh([cpl, "explain", str(case)]).stdout))
         for h in lsp.hovers(case, case.read_text()):
-            hovered += 1
             texts.append((f"hover in {rel}", h))
     lsp.p.kill()
     bad = {}
@@ -118,11 +121,5 @@ def main():
             for m in re.finditer(pat, plain, re.I if pat[2:3].islower() else 0):
                 ctx = plain[max(0, m.start() - 40) : m.end() + 30].replace("\n", " ")
                 bad.setdefault((m.group().lower(), term, ctx.strip()), where)
-    for (word, term, ctx), where in sorted(bad.items(), key=lambda kv: kv[1]):
-        print(f"{where}: `{word}`, the spec says {term}: ...{ctx}...")
-    print(f"tool-vocab: {len(texts)} texts ({hovered} hovers), {len(bad)} banned spelling(s)")
-    return 1 if bad else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    return [Problem(where, f"`{word}`, the spec says {term}: ...{ctx}...")
+            for (word, term, ctx), where in sorted(bad.items(), key=lambda kv: kv[1])]

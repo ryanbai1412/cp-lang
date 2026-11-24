@@ -69,7 +69,7 @@ built-in list. Rules:
   chapter's main tables is in it, together with every std type a prelude
   signature names (parameters, results, getters, yields), so any value a
   program can get it can also annotate; nothing else is.
-  `std/prelude.cp` is the authoritative list; `scripts/spec-stub.py`
+  `std/prelude.cp` is the authoritative list; `scripts/spec-gate.py std-docs`
   checks it against the tables. Adding an API to a
   chapter's table adds it to the prelude; a helper the tables don't list
   needs a `use`. There is no name budget: the cost of a prelude name is a
@@ -85,7 +85,7 @@ built-in list. Rules:
 - A method call needs no import: `xs.sorted()`, `g.adjacent(v)` and
   `p.adj4` find the method on the receiver's type wherever the type
   came from. Only free names need the prelude or a `use`. (R11.3.4)
-- `scripts/spec-stub.py --check` keeps `std/prelude.cp` and the chapter
+- `scripts/spec-gate.py std-docs` keeps `std/prelude.cp` and the chapter
   tables in step. The groups are: core types and traits; sequence
   vocabulary (`07-sequences.md`, `lib/sequence-patterns.md`); search and
   DP; graphs and trees; operations and range structures; containers;

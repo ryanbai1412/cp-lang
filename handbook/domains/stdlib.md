@@ -61,7 +61,7 @@ and its check; rows marked `missing` are built in order of user impact.
   run `target/release/cpl-conform conformance std-<m>` and
   `target/release/cpl-conform diff std-<m>`.
 - **Checking docs:** `target/release/cpl-conform docs <m>.cp` and
-  `python3 scripts/spec-stub.py --audit`.
+  `python3 scripts/spec-gate.py std-docs --audit`.
 
 ---
 
@@ -159,7 +159,7 @@ Provides:
 |---|---|---|
 | Module source, bundled into every `cpl` binary | `crates/cpl-check/build.rs`, `crates/cpl-check/src/modules.rs` | every command, LSP, playground |
 | The prelude list | `std/prelude.cp`, read by `crates/cpl-check/src/prelude.rs` | checker, LSP completion, lint `redundant_prelude_import` |
-| Doc comments | `cpl doc --format json std` | site reference, LSP hover, `scripts/spec-stub.py` |
+| Doc comments | `cpl doc --format json std` | site reference, LSP hover, `scripts/spec-gate.py std-docs` |
 | `/// example:` lines as tests | `crates/cpl-conform/src/docs.rs` | `cpl-conform docs`, the scoreboard |
 | Algebra laws | `std/algebra.cp` | `crates/cpl-prover/src/laws.rs` |
 | Names the compiler binds to std (`BUILT_ON`, `INTERNAL_BUILT_ON`, `std_module`) | `crates/cpl-check/src/prelude.rs` | checker, `cpl fix` import edits |
@@ -228,10 +228,10 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Quality | Metric | Mechanism |
 |---|---|---|
 | Any value a program gets, it can name without a `use` | std types named by prelude signatures but not exported | rule `std-api/R18`; `scripts/prelude-signatures.py` (in `scripts/check.sh`) |
-| Spec tables and the prelude agree | missing prelude names | `scripts/spec-gate.py prelude`; `scripts/spec-stub.py --check` the other way |
+| Spec tables and the prelude agree | missing prelude names | `scripts/spec-gate.py prelude`; `scripts/spec-gate.py std-docs` the other way |
 | Findable without knowing the name (`lower_bound` finds `first_ge`) | common C++/Python names with no alias line in docs | `missing` (alias table checked against the docs index) |
 | Hover and completion show the full signature, options and bounds | std fns whose `cpl doc --format json` lacks bounds or defaults | rule `std-docs/R5`; `scripts/test_std_doc_json.py` (every public fn's bounds and defaults in its doc JSON signature) |
-| Go-to-definition opens readable std source | std files over the size cap, fns with no doc | `scripts/debt-ratchet.py` caps; `scripts/spec-stub.py --audit` |
+| Go-to-definition opens readable std source | std files over the size cap, fns with no doc | `scripts/debt-ratchet.py` caps; `scripts/spec-gate.py std-docs --audit` |
 
 ### Documented truthfully (J2, J5, J8)
 
@@ -239,7 +239,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 |---|---|---|
 | Every doc example compiles and runs | failing `example:` lines | rule `std-docs/R6`; `cpl-conform docs`, ratcheted by the scoreboard; `web/scripts/gen-ref.mjs` fails the site build on a newly failing example (`site/R1`, shrink-only `web/scripts/doc-examples-failing.txt`) |
 | Every spec/lib example compiles and runs | failing code blocks in `spec/lib/*.md` | `crates/cpl-conform/src/spec_blocks.rs` in `cpl-conform all --check` |
-| Every public fn states cost, traps and edge cases | fns missing a required label | rule `std-docs/R1`; `scripts/spec-stub.py --audit` |
+| Every public fn states cost, traps and edge cases | fns missing a required label | rule `std-docs/R1`; `scripts/spec-gate.py std-docs --audit` |
 | The documented cost is the real cost | fns slower than their `cost:` | rule `std-docs/R3`; `bench/scaling.py --check` (one `bench/scaling/*.cp` case per fn, time at n and 4n; `scaling_mismatches`, `std_fns_unscaled`) |
 | Docs show trait bounds and required labels | rendered docs missing bounds | rule `std-docs/R5`; `scripts/test_std_doc_json.py` |
 | Docs are readable: summary first, short, example near the top | pages over the length limit, summaries over one line | rule `std-docs/R8`; `scripts/std-docs-lint.py` (in `scripts/check.sh`, shrink-only) |
@@ -315,7 +315,7 @@ Probes, run by a reader with only the docs (pass or fail, time, files touched):
 | `scripts/spec-gate.py traits` | trait methods with no case | `uv run --quiet python scripts/spec-gate.py traits` |
 | `scripts/spec-gate.py sigs` | spec named arguments std lacks | `uv run --quiet python scripts/spec-gate.py sigs` |
 | `scripts/spec-gate.py prelude` | spec table names missing from the prelude | `uv run --quiet python scripts/spec-gate.py prelude` |
-| `scripts/spec-stub.py` | missing doc labels, `@get` members that do work | `python3 scripts/spec-stub.py --check`, `--audit` |
+| `scripts/spec-gate.py std-docs` | missing doc labels, `@get` members that do work | `python3 scripts/spec-gate.py std-docs`, `--audit` |
 | `scripts/spec-gate.py vocab` | banned spellings | `uv run scripts/spec-gate.py vocab` |
 | `std_checks` | std breaking user-library rules | `cargo test --release -p cpl-cli --test std_checks` |
 | `scripts/debt-ratchet.py` | `todo` count growing | `python3 scripts/debt-ratchet.py --check` |

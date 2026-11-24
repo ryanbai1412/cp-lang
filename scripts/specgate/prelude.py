@@ -3,7 +3,7 @@
 A table entry is a top-level `fn name` line in a fenced block of spec/lib/*.md,
 or a Markdown table row starting with a `name(...)` cell, whose name std
 declares as a top-level `pub fn`. Each must be imported by std/prelude.cp.
-(`scripts/spec-stub.py --check` checks the other way: prelude names against
+(`scripts/spec-gate.py std-docs` checks the other way: prelude names against
 the chapters.) Known misses live in spec/conformance/prelude-gaps.txt, which
 may only shrink: `--write` rewrites it and refuses to add a line.
 Rule: handbook/process/quality.md#which-test-to-write.

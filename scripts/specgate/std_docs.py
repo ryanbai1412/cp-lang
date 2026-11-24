@@ -1,22 +1,29 @@
-#!/usr/bin/env python3
 """Check std/*.cp, or reduce it to reference docs (every fn body `todo`).
 
-`--audit` enforces handbook/guidelines/std-docs-checklist.md#r1 (required doc labels).
+`--audit` (doc labels only) enforces handbook/guidelines/std-docs-checklist.md#r1 (required doc labels).
 
 std is the standard library: signatures, docs, costs and bodies.
-Without --check, only fn bodies change: headers, docs, traits, structs and bodiless
+With `--stub`, only fn bodies change: headers, docs, traits, structs and bodiless
 trait methods are kept as written. `lends` fns keep their bodies, since the
 checker needs the `lend place` to type the place they return.
 
-Usage: scripts/spec-stub.py [--check] [FILE...]   (default std/*.cp)
---check changes nothing and exits 1 if an
+`spec-gate.py std-docs [FILE...]` (default std/*.cp) changes nothing and fails if an
 `@get` member is documented as costing more than O(1) to make: anything
 that does work up front takes parentheses (decision 140), or if a fn that
 mutates nothing declares no return type: the checker cannot type its result,
 so every method called on it would go unchecked, or if a prelude name
 appears in no core or lib chapter (core 11.3).
 """
-import glob, json, os, re, sys
+from __future__ import annotations
+
+import glob
+import os
+import re
+
+import specgate
+from specgate import Problem
+
+HELP = "std docs: required labels, O(1) @get members, typed results, prelude names in a chapter; --stub reduces bodies to todo"
 
 DOC_LABELS = ("cost", "traps", "example", "empty", "ties", "order")
 SEQ_INPUT = re.compile(r"\b(Seq|Indexed|IndexedMut|Keyed|List<|Range<|Domain)\b|\[[^\]]*\]\w|yields")
@@ -216,61 +223,42 @@ def undocumented_prelude(root):
             if not re.search(r"`[^`\n]*\b" + re.escape(n) + r"\b[^`\n]*`", docs)]
 
 
-def audit(files):
-    counts, total, fns = {}, 0, 0
-    for f in files:
-        lines = open(f).read().split("\n")
-        gaps = doc_gaps(lines)
-        fns += sum(1 for l in lines if PUB_FN.match(l))
-        total += len(gaps)
-        for line, name, missing in gaps:
-            print(f"{os.path.relpath(f)}:{line}: `{name}` lacks {', '.join(missing)}")
-    print(f"spec-stub audit: {total} of {fns} pub fns lack a required doc label")
-    return 1 if total else 0
-
-
 def label_gaps(files):
     """Every pub fn carries its required doc labels (std/README.md): no baseline, zero allowed."""
-    return [f"{os.path.relpath(f)}:{line}: `{name}` lacks {', '.join(missing)} (std/README.md)"
+    return [Problem(f"{rel(f)}:{line}", f"`{name}` lacks {', '.join(missing)} (std/README.md)")
             for f in files for line, name, missing in doc_gaps(open(f).read().split("\n"))]
 
 
-def main(argv):
-    check = "--check" in argv
-    flags = ("--check", "--audit")
-    files = [a for a in argv if a not in flags] or sorted(glob.glob(
-        os.path.join(os.path.dirname(__file__), "..", "std", "*.cp")))
-    if "--audit" in argv:
-        return audit(files)
-    total = 0
-    for f in files:
-        lines = open(f).read().split("\n")
-        if not check:
-            new, n = stub(lines)
-            total += n
+def rel(f) -> str:
+    return os.path.relpath(f, specgate.ROOT)
+
+
+def args(ap) -> None:
+    ap.add_argument("--audit", action="store_true", help="only the required doc labels")
+    ap.add_argument("--stub", action="store_true", help="rewrite every fn body to `todo`")
+    ap.add_argument("files", nargs="*")
+
+
+def run(a) -> list[Problem]:
+    files = a.files or sorted(glob.glob(str(specgate.ROOT / "std" / "*.cp")))
+    if a.audit:
+        return label_gaps(files)
+    if a.stub:
+        for f in files:
+            new, n = stub(open(f).read().split("\n"))
             if n:
                 open(f, "w").write("\n".join(new))
-                print(f"{os.path.relpath(f)}: {n} body(ies) stubbed")
-        if check:
-            for line, name, cost in costly_getters(lines):
-                print(f"{os.path.relpath(f)}:{line}: `@get {name}` costs {cost}; "
-                      "work up front takes parentheses")
-                total += 1
-            for line, name in untyped(lines):
-                print(f"{os.path.relpath(f)}:{line}: `{name}` mutates nothing but declares "
-                      "no return type")
-                total += 1
-    if check:
-        for msg in label_gaps(files):
-            print(msg)
-            total += 1
-    if check and len(files) > 1:
-        for name in undocumented_prelude(os.path.join(os.path.dirname(__file__), "..")):
-            print(f"std/prelude.cp: `{name}` is in no core or lib chapter (core 11.3)")
-            total += 1
-    print(f"spec-stub: {total} {'problem(s)' if check else 'fn body(ies) stubbed'}")
-    return 1 if check and total else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main(sys.argv[1:]))
+                print(f"{rel(f)}: {n} body(ies) stubbed")
+        return []
+    out = []
+    for f in files:
+        lines = open(f).read().split("\n")
+        out += [Problem(f"{rel(f)}:{line}", f"`@get {name}` costs {cost}; work up front takes parentheses")
+                for line, name, cost in costly_getters(lines)]
+        out += [Problem(f"{rel(f)}:{line}", f"`{name}` mutates nothing but declares no return type")
+                for line, name in untyped(lines)]
+    out += label_gaps(files)
+    if len(files) > 1:
+        out += [Problem("std/prelude.cp", f"`{name}` is in no core or lib chapter (core 11.3)")
+                for name in undocumented_prelude(str(specgate.ROOT))]
+    return out
