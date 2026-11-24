@@ -97,7 +97,7 @@ fn release() -> bool {
 /// The release build needs a `cpl` binary; without `CPL_CONFORM_CLI` it is
 /// the one built next to this runner.
 fn cli_override() -> Option<PathBuf> {
-    let snapshot = SNAPSHOT.lock().unwrap().clone();
+    let snapshot = held_cli();
     std::env::var_os("CPL_CONFORM_CLI")
         .map(PathBuf::from)
         .or_else(|| {
@@ -117,9 +117,19 @@ fn cli_override() -> Option<PathBuf> {
 /// beside the suite) would otherwise fail every tool case in flight.
 static SNAPSHOT: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
 
+fn held_cli() -> Option<PathBuf> {
+    SNAPSHOT.lock().ok()?.clone()
+}
+
+fn hold_cli(cpl: Option<PathBuf>) {
+    if let Ok(mut held) = SNAPSHOT.lock() {
+        *held = cpl;
+    }
+}
+
 /// The `cpl` a case execs: `CPL_CONFORM_CLI`, else the one beside cpl-conform.
 fn cli_binary() -> Result<PathBuf, String> {
-    if let Some(held) = SNAPSHOT.lock().unwrap().clone() {
+    if let Some(held) = held_cli() {
         return Ok(held);
     }
     let cpl = match cli_override() {
@@ -832,7 +842,7 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
         let dir = bin
             .parent()?
             .join(format!(".cpl-conform-{}", std::process::id()));
-        *SNAPSHOT.lock().unwrap() = Some(snapshot(&bin, &dir).ok()?);
+        hold_cli(Some(snapshot(&bin, &dir).ok()?));
         Some(dir)
     });
     let outcomes = runner::parallel_with_db(&cases, |db, case| {
@@ -843,7 +853,7 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
             });
         (case.id.clone(), outcome)
     });
-    *SNAPSHOT.lock().unwrap() = None;
+    hold_cli(None);
     if let Some(dir) = held {
         let _ = std::fs::remove_dir_all(dir);
     }
