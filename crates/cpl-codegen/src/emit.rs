@@ -1727,6 +1727,12 @@ impl<'p> Emitter<'p> {
                 runner.push_str(
                     &THREAD_MAIN.replace("STACK_BYTES", &format!("(size_t){} << 20", bytes >> 20)),
                 );
+                // A program with lists frees and rebuilds them; one without
+                // keeps the bytes.
+                let heap = out.contains("std::vector");
+                runner = runner
+                    .replace("MALLOC_H", if heap { "#include <malloc.h>\n" } else { "" })
+                    .replace("KEEP_HEAP", if heap { KEEP_HEAP } else { "" });
                 out.push_str(&runner);
                 self.chunks
                     .push((crate::Part::Runtime, "thread stack".into(), runner));
@@ -1792,13 +1798,19 @@ static bool cpl_on(size_t n) {
 }
 ";
 
+/// glibc trims the heap's free top back to the OS, so a buffer freed and
+/// built again each round faults its pages in anew: keep them instead.
+const KEEP_HEAP: &str = "    // Freed heap is kept, not trimmed and faulted back in.
+    mallopt(M_TRIM_THRESHOLD, -1), mallopt(M_MMAP_THRESHOLD, 32 << 20);
+";
+
 const POSIX_THREAD: &str = "
 // ASan follows a thread's stack, not one `setcontext` switched to.
 #if defined(__GLIBC__) && !defined(__SANITIZE_ADDRESS__)
-#include <sys/mman.h>
+MALLOC_H#include <sys/mman.h>
 #include <ucontext.h>
 static bool cpl_on(size_t n) {
-    static ucontext_t u;
+KEEP_HEAP    static ucontext_t u;
     void* p = mmap(0, n, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON | MAP_NORESERVE, -1, 0);
     if (p == MAP_FAILED || mprotect(p, 4096, PROT_NONE)) return false;
     getcontext(&u);

@@ -750,6 +750,21 @@ fn a_printed_sequence_streams_into_out() {
 }
 
 #[test]
+fn a_program_with_lists_keeps_its_freed_heap() {
+    let cpp = cpp(concat!(
+        "let n: Int = read()\n",
+        "for r in 0..n:\n",
+        "    let v = [0..n] i => i * r\n",
+        "    print(v[n - 1])\n",
+    ));
+    assert!(cpp.contains("#include <malloc.h>\n"), "{cpp}");
+    assert!(
+        cpp.contains("mallopt(M_TRIM_THRESHOLD, -1), mallopt(M_MMAP_THRESHOLD, 32 << 20);"),
+        "{cpp}"
+    );
+}
+
+#[test]
 fn the_program_runs_with_the_profile_stack() {
     let source = "let n: Int = read()\nprint(n)\n";
     let cpp = cpp(source);
@@ -761,7 +776,8 @@ fn the_program_runs_with_the_profile_stack() {
         cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"),
         "{cpp}"
     );
-    // One thread, so glibc keeps malloc's single-thread fast path.
+    // One thread, so glibc keeps malloc's single-thread fast path; no list,
+    // so no heap to keep.
     assert!(!cpp.contains("mallopt"), "{cpp}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
