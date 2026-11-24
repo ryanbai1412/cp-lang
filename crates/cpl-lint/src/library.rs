@@ -433,7 +433,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             }
         }
     }
-    let mut out = Vec::new();
+    let (mut out, mut reported) = (Vec::new(), Vec::new());
     // One fn's spellings of a lint share their sites: the first spelling
     // that matches a site takes it.
     let mut taken: HashMap<(&str, Span), Vec<Span>> = HashMap::new();
@@ -534,14 +534,20 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 continue;
             };
             let span = Span::new(site[0].start, toks[stop - 1].span.end);
-            if (d.module.is_empty() && d.decl.item.contains(span))
-                || taken.iter().any(|t| t.contains(span))
-                || (fixes
-                    && d.decl.receiver.is_none()
-                    && (spans.fns.iter()).any(|(f, at)| *f == d.decl.fn_name && at.contains(span)))
-            {
+            // Not inside a fn of this file that declares the lint: it is
+            // where the file writes the idiom for others.
+            let own = |o: &Declared| {
+                o.module.is_empty() && o.decl.name == d.decl.name && o.decl.item.contains(span)
+            };
+            if taken.iter().any(|t| t.contains(span)) {
                 continue;
             }
+            // Kept to the end, so a shorter spelling of the lint here is
+            // dropped beside it.
+            let inside = (d.module.is_empty() && declared.iter().any(own))
+                || (fixes
+                    && d.decl.receiver.is_none()
+                    && (spans.fns.iter()).any(|(f, at)| *f == d.decl.fn_name && at.contains(span)));
             let mut holes = vec![None; d.decl.holes.len()];
             let mut names = Vec::new();
             let matched = site.iter().zip(&parts).all(|(s, m)| {
@@ -679,8 +685,21 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             }
             taken.push(span);
             out.push(Finding { lint: d.lint, diag });
+            reported.push((d.from.len(), span, inside));
         }
     }
+    // Two spellings of one lint at one place: the longer `from` is the
+    // closer one (`factor`'s loop is also `divisors`').
+    let wider = |i: usize, j: usize| {
+        let (a, b): (&Finding, &Finding) = (&out[i], &out[j]);
+        let ((la, sa, _), (lb, sb, _)) = (reported[i], reported[j]);
+        a.lint.name == b.lint.name && sa == sb && (lb, i) > (la, j)
+    };
+    let keep: Vec<bool> = (0..out.len())
+        .map(|i| !reported[i].2 && !(0..out.len()).any(|j| j != i && wider(i, j)))
+        .collect();
+    let mut keep = keep.into_iter();
+    out.retain(|_| keep.next().unwrap_or(true));
     out
 }
 

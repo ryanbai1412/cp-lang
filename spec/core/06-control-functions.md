@@ -263,7 +263,8 @@ library or by this spec:
   A finding inside a wider one is shown with it when `from` still
   matches the wider fix's text, which keeps the code it is about.
   It applies in every file that uses the module, and in the module outside
-  the fn; std's apply in every program, as std's names need no `use`. A
+  the fn; std's apply in every program, as std's names need no `use`. Where two
+  spellings of a name match the same code, the longer `from` reports. A
   struct's or enum's method may declare one like a top-level fn. E0505
   (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:` (or has both `to:` and `advice:`), when `from`,

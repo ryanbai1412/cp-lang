@@ -14,6 +14,31 @@ fn fixture(name: &str) -> PathBuf {
     to
 }
 
+/// Where two spellings of one lint match the same code, the longer `from`
+/// reports, so the fn it teaches is the one the code's shape asks for.
+/// Rule: R06.4.9.
+#[test]
+fn the_longer_of_two_spellings_reports() {
+    let decl = "@lint(trial_division, from: \"while d * d <= x:\\n    if x % d == 0:\\n        body\\n    d += 1\", to: \"divisors(x)\", holes: \"d, body\")\npub fn divisors(x: Int) -> Int = x\n@lint(trial_division, from: \"while d * d <= x:\\n    if x % d == 0:\\n        while x % d == 0:\\n            inner\\n        after\\n    d += 1\", to: \"factor(x)\", holes: \"d, inner, after\")\npub fn factor(x: Int) -> Int = x\n";
+    let found = |body: &str| -> Vec<String> {
+        let src = format!("{decl}var x: Int = read()\nvar n = 0\nvar d = 2\nwhile d * d <= x:\n    if x % d == 0:\n{body}    d += 1\nprint(n)\n");
+        crate::lint(&src, &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "L0561" && d.message.starts_with("write"))
+            .map(|d| d.message)
+            .collect()
+    };
+    assert_eq!(found("        n += 1\n"), ["write `divisors(x)`"]);
+    let factors = "        while x % d == 0:\n            x /= d\n        n += 1\n";
+    assert_eq!(found(factors), ["write `factor(x)`"]);
+    let inside = decl.replace(
+        "pub fn factor(x: Int) -> Int = x",
+        "pub fn factor(x: Int) -> Int:\n    var (r, n, d) = (x, 0, 2)\n    while d * d <= r:\n        if r % d == 0:\n            while r % d == 0:\n                r /= d\n            n += 1\n        d += 1\n    n",
+    );
+    let own = crate::lint(&inside, &crate::Config::default());
+    assert!(!own.iter().any(|d| d.code.0 == "L0561"), "{own:?}");
+}
+
 /// A library's `@lint` fires in a program that uses it, keeps quiet where the
 /// two sides differ, where a repeated side calls something, and under
 /// `with lint(name: allow)`; `cpl fix` writes the call.
