@@ -19,7 +19,7 @@ Cases: 3744 (3602 passing). Rules: 617.
 - R04b (04b-keys.md): 28 rules, 82 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 97 rules, 265 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 97 rules, 266 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -529,7 +529,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.8.1 [2+ 2-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
 - R07.9.2 [8+ 1-]: | `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bo...
-- R07.9.3 [5+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty...
+- R07.9.3 [6+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty...
 - R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
 - R07.9.5 [4+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
 - R07.9.6 [5+ 4-]: , generic code included, and the compiler never pattern matches a pipeline. User types get...
@@ -1089,8 +1089,8 @@ Every `pub` item in `std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (60/69 named by a case)
-  - uncovered: `Desc`, `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
+- **algebra** (61/69 named by a case)
+  - uncovered: `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (166/166 named by a case)
 - **beats** (25/25 named by a case)
 - **bitset** (106/107 named by a case)
@@ -1141,7 +1141,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2441 of 2477 std items are named by a case.
+2442 of 2477 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

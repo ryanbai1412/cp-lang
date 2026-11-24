@@ -189,7 +189,7 @@ impl<'a> Lowerer<'a> {
                     self.error(codes::BAD_OPERANDS, body.span, message);
                     return self.err_expr(span);
                 }
-                if let Some(inner) = self.desc_key(&key) {
+                if let Some(inner) = self.reversed_key(&key) {
                     let turned = self.mk(ExprKind::Bool(true), Ty::Bool, body.span);
                     let by = SortBy::Key(slot, Box::new(inner));
                     let kind = ExprKind::Sort(Box::new(place), by, Some(Box::new(turned)));
@@ -286,10 +286,10 @@ impl<'a> Lowerer<'a> {
         };
         self.mk(ExprKind::Sort(Box::new(place), key, None), Ty::Unit, span)
     }
-
-    /// `by: x => desc(k)`: the whole key reversed is `k` asked the other way
-    /// round, the same stable order without a `Desc` per element.
-    fn desc_key(&self, key: &Expr) -> Option<Expr> {
+    /// `by: x => w(k)`, where `w` wraps its one argument in a one-field struct whose `Ord` asks
+    /// that field the other way round (`lt(a, b) = b.f < a.f`, as std's `desc` does): the same
+    /// stable order is `k` sorted descending, without a wrapper per element.
+    fn reversed_key(&self, key: &Expr) -> Option<Expr> {
         let ExprKind::Call(fid, args) = &key.kind else {
             return None;
         };
@@ -299,9 +299,40 @@ impl<'a> Lowerer<'a> {
         let Ty::Struct(sid) = key.ty else {
             return None;
         };
-        let desc = self.view_struct("Desc")?;
-        let made = self.structs[sid].origin_gen.as_ref()?.0 == desc;
-        (made && self.sigs[*fid].decl.name.text == "desc").then(|| inner.clone())
+        let gid = self.structs[sid].origin_gen.as_ref()?.0;
+        let tpl = &self.gen_structs[gid];
+        let [field] = &tpl.decl.fields[..] else {
+            return None;
+        };
+        let wrap = self.sigs[*fid].decl;
+        let ([param], ast::FnBody::Expr(made)) = (&wrap.params[..], &wrap.body) else {
+            return None;
+        };
+        let is_name = |e: &ast::Expr, n: &str| matches!(&e.kind, ast::ExprKind::Name(m) if m == n);
+        let field_of = |e: &ast::Expr, n: &str| matches!(&e.kind, ast::ExprKind::Field { base, name } if is_name(base, n) && name.text == field.name.text);
+        let ast::ExprKind::Call { callee, args } = &made.kind else {
+            return None;
+        };
+        let wraps = is_name(callee, &tpl.decl.name.text)
+            && matches!(&args[..], [arg] if arg.name.is_none() && is_name(&arg.value, &param.name.text));
+        let reversed = self.impls.iter().any(|imp| {
+            imp.mod_id == tpl.mod_id
+                && imp.trait_name.as_deref() == Some("Ord")
+                && matches!(&imp.target.kind, ast::TypeKind::Named { name, .. } if name.text == tpl.decl.name.text)
+                && imp.body.stmts.iter().any(|st| match &st.kind {
+                    ast::StmtKind::Fn(lt) => match (&lt.params[..], &lt.body) {
+                        ([a, b], ast::FnBody::Expr(e)) if lt.name.text == "lt" => matches!(
+                            &e.kind,
+                            ast::ExprKind::Compare { first, rest }
+                                if field_of(first, &b.name.text)
+                                    && matches!(&rest[..], [(ast::CmpOp::Lt, r)] if field_of(r, &a.name.text))
+                        ),
+                        _ => false,
+                    },
+                    _ => false,
+                })
+        });
+        (wraps && reversed).then(|| inner.clone())
     }
 
     pub(in crate::lower) fn array_filled(
