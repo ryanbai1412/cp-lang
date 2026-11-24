@@ -21,6 +21,9 @@ pub struct LibraryLint {
     /// `from` calls the fn and `to` does not: the lint drops a needless
     /// call of it (`s.last!` before `s.pop()`).
     pub drops: bool,
+    /// The type whose method the fn is, when it takes `self`: the lint
+    /// keeps a finding only where `self` matched a value of that type.
+    pub receiver: Option<String>,
     /// The fn's parameter names, then the names `holes:` adds.
     pub holes: Vec<String>,
     /// How many of `holes` are the fn's parameters; `to` may drop the rest.
@@ -97,21 +100,25 @@ pub fn bounds(src: &str) -> Option<Vec<Bound>> {
 /// methods (a struct's or enum's), and the errors for those that cannot be
 /// used.
 pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) {
-    let (mut lints, mut errors) = declared_on(stmt, offset);
-    let methods = match &stmt.kind {
-        StmtKind::Struct(s) => s.methods.as_slice(),
-        StmtKind::Enum(e) => e.methods.as_slice(),
-        _ => &[],
+    let (mut lints, mut errors) = declared_on(stmt, offset, None);
+    let (ty, methods) = match &stmt.kind {
+        StmtKind::Struct(s) => (Some(&s.name.text), s.methods.as_slice()),
+        StmtKind::Enum(e) => (Some(&e.name.text), e.methods.as_slice()),
+        _ => (None, &[][..]),
     };
     for m in methods {
-        let (l, e) = declared_on(m, offset);
+        let (l, e) = declared_on(m, offset, ty);
         lints.extend(l);
         errors.extend(e);
     }
     (lints, errors)
 }
 
-fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) {
+fn declared_on(
+    stmt: &Stmt,
+    offset: u32,
+    ty: Option<&String>,
+) -> (Vec<LibraryLint>, Vec<Diagnostic>) {
     let (mut lints, mut errors) = (Vec::new(), Vec::new());
     for d in stmt
         .decorators
@@ -272,6 +279,9 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
             fn_name: f.name.text.clone(),
             suggests,
             drops,
+            receiver: ty
+                .filter(|_| f.params.iter().any(|p| p.name.text == "self"))
+                .cloned(),
             holes,
             params,
             when,
@@ -359,12 +369,13 @@ pub fn compound(to: &[(TokenKind, String)], f: &str) -> bool {
 
 /// The errors for the `@lint`s of one module, given as its items and their
 /// offsets: those [`declared`] reports, and one name declared twice with the
-/// same `from`. A name may be declared once per spelling, on several fns
-/// when its fix calls one of them (`min=` or `max=`).
+/// same `from` on one receiver. A name may be declared once per spelling, on
+/// several fns when its fix calls one of them (`min=` or `max=`), and once
+/// per receiver on methods (`pop_first` on `SortedBag` and `SortedSet`).
 pub fn module_errors<'a>(
     items: impl IntoIterator<Item = (u32, &'a ParsedItem)>,
 ) -> Vec<Diagnostic> {
-    type Seen = (String, Option<Tokens>, Span);
+    type Seen = (String, Option<String>, Option<Tokens>, Span);
     let (mut first, mut errors): (Vec<Seen>, Vec<Diagnostic>) = (Vec::new(), Vec::new());
     for (offset, item) in items {
         for stmt in &item.stmts {
@@ -372,17 +383,16 @@ pub fn module_errors<'a>(
             errors.extend(found);
             for lint in lints {
                 let from = run(&lint.from).map(|(toks, _)| toks);
-                match first
-                    .iter()
-                    .find(|(name, f, _)| *name == lint.name && *f == from)
-                {
-                    Some((_, _, at)) => errors.push(
+                match first.iter().find(|(name, ty, f, _)| {
+                    *name == lint.name && *ty == lint.receiver && *f == from
+                }) {
+                    Some((.., at)) => errors.push(
                         msgs::syntax::LINT_TWICE
                             .error(lint.decorator, &[&lint.name])
                             .with_help("give each spelling of a lint its own `from`")
                             .with_label(*at, "first declared here"),
                     ),
-                    None => first.push((lint.name, from, lint.decorator)),
+                    None => first.push((lint.name, lint.receiver, from, lint.decorator)),
                 }
             }
         }
@@ -567,6 +577,8 @@ mod tests {
             })
         };
         assert!(ok(keep));
+        let methods = "struct A(v: Int):\n    @lint(by_hand, from: \"self.v * 2\", to: \"self.twice()\")\n    pub fn twice(self) -> Int = v * 2\n    @lint(by_hand, from: \"self.v * 3\", to: \"self.thrice()\")\n    pub fn thrice(self) -> Int = v * 3\nstruct B(v: Int):\n    @lint(by_hand, from: \"self.v * 2\", to: \"self.twice()\")\n    pub fn twice(self) -> Int = v * 2\n";
+        assert!(errors(methods).is_empty(), "{:?}", errors(methods));
     }
 
     #[test]

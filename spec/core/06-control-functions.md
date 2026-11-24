@@ -259,8 +259,13 @@ library or by this spec:
   holes `from` uses compared with integers, when neither `to` (not `advice:`) calls the
   fn (or its `builtin:`) or writes only its body's operators nor `from`
   calls the fn, or when one module declares a
-  name twice with the same `from` (a name is declared once per spelling,
-  on several fns when its fix calls one of them: `min=` or `max=`). (R06.4.9)
+  name twice with the same `from` on one receiver (a name is declared once
+  per spelling, on several fns when its fix calls one of them: `min=` or
+  `max=`, and once per receiver on methods: `pop_first` on `SortedBag` and
+  `SortedSet`). A method's `@lint` whose `from` uses `self`, and whose
+  name another type's method also declares, keeps a finding only where the
+  checker types what `self` matched as the method's type.
+  (R06.4.9)
 - An idiom whose fix is one library call is declared this way beside the
   fn it teaches, not as a lint in the linter: std's own idiom lints are
   `@lint` declarations in `std/`, and the linter keeps only lints a pattern
