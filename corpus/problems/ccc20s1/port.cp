@@ -10,8 +10,5 @@
 let n: 2..=1e5 = read()
 var seen: [n](t: -1e9..=1e9, x: -1e9..=1e9) = read()
 seen.sort(by: o => o.t)
-let top = max(
-    (dx: abs(b.x - a.x), dt: b.t - a.t) for (a, b) in seen.adjacent,
-    by: s => Ratio(s.dx, s.dt)
-)!
-print(fixed(top.dx, top.dt, 5))
+let (a, b) = seen.adjacent.max(by: ((a, b)) => Ratio(abs(b.x - a.x), b.t - a.t))!
+print(fixed(abs(b.x - a.x), b.t - a.t, 5))
