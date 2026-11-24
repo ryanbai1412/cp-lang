@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 # usage: gen.py seed size; n = min(size, 1e6) cities, fans >= 1 each and 2e9 in total at most
 import random, sys
+if sys.argv[1] == "--max":  # the largest case the bounds allow
+    sys.argv[1:] = ["1", "1000000"]
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 n = min(size, 10**6) if size > 50 else r.randint(1, max(1, size))

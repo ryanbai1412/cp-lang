@@ -1,4 +1,6 @@
 import sys, random
+if sys.argv[1] == "--max":  # the largest case the bounds allow
+    sys.argv[1:] = ["1", "200000"]
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 n = r.randint(1, S) if S < 1000 else S
 q = r.randint(1, S) if S < 1000 else S

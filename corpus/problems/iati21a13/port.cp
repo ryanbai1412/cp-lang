@@ -25,12 +25,12 @@ var ups: [V]List<Q> = [V] _ => []
 for i in Q:
     if qs[i].ty == 1: ups[qs[i].x].push(i)
 
-// first[v]: the first update that reaches v, q when none does.
+// first[v]: the first update that reaches v.
 domain Lim = 0..n
 var reach = SegTree(min, [Lim] _ => q)
 var undo: List<(l: Lim, old: Int)> = []
 var open: List<(v: V, mark: Int)> = []
-var first: [V]0..=q = [V] _ => q
+var first: [V]?Q = None
 for p in t.Pre:
     let v = t.at[p]
     while open.len > 0 and not t.is_anc(open.last!.v, v):
@@ -38,16 +38,17 @@ for p in t.Pre:
         while undo.len > mark:
             let u = undo.pop()!
             reach.set(u.l, u.old)
-    open.push((v: v, mark: undo.len))
+    open.push((v:, mark: undo.len))
     for i in ups[v]:
         let l = Lim(min(t.depth(v) + qs[i].k, n - 1))
-        undo.push((l: l, old: reach.get(l)))
+        undo.push((l:, old: reach.get(l)))
         reach.set(l, min(reach.get(l), i.ord))
-    first[v] = reach.fold(Lim(t.depth(v))..)
+    first[v] = Q.at(reach.fold(Lim(t.depth(v))..))
 
 var wake: [Q]List<V> = [Q] _ => []
 for v in V:
-    if knows[v] == 0 and first[v] < q: wake[Q(first[v])].push(v)
+    if let f = first[v]:
+        if knows[v] == 0: wake[f].push(v)
 
 var told = DynamicOrderTree([t.Pre] p => if knows[t.at[p]] == 1: t.depth(t.at[p]) else: n)
 for i in Q:

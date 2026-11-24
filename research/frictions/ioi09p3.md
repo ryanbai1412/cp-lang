@@ -10,3 +10,13 @@
   is E0301; the same `key` with a top-level use, `print(key(C(1)))`, checks clean.
 - **Goal it hurt:** express (an annotation the uses already fix).
 - **Routed:** compiler worklog.
+
+## Dream
+
+```cp
+let worth = [Task] t => C.count(c => solved[c, t] == 0)
+let key = c => (desc(score[c]), desc(solved[c].sum()), c)
+print(score[philip], 1 + C.count(c => key(c) < key(philip)))
+```
+
+The port writes `(c: C)` on `key` and spells the descending keys with `-`.
