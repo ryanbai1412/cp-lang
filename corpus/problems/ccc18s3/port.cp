@@ -1,4 +1,5 @@
 // Source: CCC 2018 S3 (RoboThieves), https://dmoj.ca/problem/ccc18s3
+// limits: 500 ms, 256 MB
 // Problem: an n x m grid (4 <= n, m <= 100) walled on the border: '.', 'W', cameras 'C',
 //   conveyors L R U D and the start S. Cameras see along rows and columns up to a wall, over
 //   conveyors; the robot may not stand on a seen cell or a camera. Conveyors move it for free.

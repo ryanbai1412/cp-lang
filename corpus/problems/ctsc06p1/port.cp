@@ -1,4 +1,5 @@
 // Source: CTSC 2006 (Singing Kingdom), https://dmoj.ca/problem/ctsc06p1
+// limits: 3000 ms, 256 MB
 // Problem: letters 1..m (m <= 1e5) are drawn uniformly at random until a given name appears
 //   as a block of consecutive draws. For each of t <= 50 names (length <= 1e5), print the
 //   last 4 digits of the expected number of draws (an integer), zero-padded.

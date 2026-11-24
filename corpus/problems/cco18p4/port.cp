@@ -1,4 +1,5 @@
 // Source: CCO 2018 P4 (Gradient Descent), https://dmoj.ca/problem/cco18p4
+// limits: 600 ms, 1024 MB
 // Problem: interactive. N <= 100 hidden tokens on an R x C grid (R, C <= 1e7); a cell's score
 //   is the sum of Manhattan distances to all tokens (<= 2e9). Ask "? p q" for a score at most K
 //   times (K <= 170, 75 in the last subtask), then print "! Z", the minimum score.

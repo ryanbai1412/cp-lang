@@ -1,4 +1,5 @@
 // Source: Codeforces 2261H, https://codeforces.com/contest/2261/problem/H
+// limits: 3000 ms, 500 MB
 // Problem: communication, run twice, multitest (t <= 1024). Run "first": given h and n bits b
 //   (n = 2030, h = 11), print the 2^h - 1 bits of a complete binary tree (heap order). Someone
 //   flips one node and swaps its two children; run "second" gets the relabelled tree's bits

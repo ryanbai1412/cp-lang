@@ -1,4 +1,5 @@
 // Source: NOI 2010 P3 (Altitude), https://dmoj.ca/problem/noi10p3
+// limits: 1000 ms, 512 MB
 // Problem: an (n+1) x (n+1) lattice of junctions, n <= 500; every street segment has a flow up
 //   to 1e6 in each direction (input: the east, south, west, north flows). Heights are 0 at the
 //   top-left and 1 at the bottom-right; climbing by h costs flow * h. Choose the other heights to

@@ -1,4 +1,5 @@
 // Source: Codeforces 2147F (Exchange Queries), https://codeforces.com/contest/2147/problem/F
+// limits: 2000 ms, 250 MB
 // Problem: two permutations p and s rank n <= 1e5 items; item i trades for item j when
 //   p[i] > p[j] or s[i] > s[j]. After each of q <= 1e5 swaps of two entries of p or of s,
 //   print how many pairs (i, j) have j reachable from i (i = j counts). Multitest.

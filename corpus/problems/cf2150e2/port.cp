@@ -1,5 +1,6 @@
 // Source: Codeforces 2150E2 (Hidden Single (Version 2)),
 //   https://codeforces.com/contest/2150/problem/E2
+// limits: 5000 ms, 250 MB
 // Problem: interactive, multitest (t <= 20), n = 300. A hidden array of length 2n - 1 holds
 //   every value 1..n twice except one, which appears once. A query "? x |S| S..." answers
 //   whether value x occurs at some position in S. Print "! y", the single value, using at

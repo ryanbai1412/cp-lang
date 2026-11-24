@@ -1,4 +1,5 @@
 // Source: IOI 2020 P4 (Packing Biscuits), https://dmoj.ca/problem/ioi20p4
+// limits: 500 ms, 1024 MB
 // Problem: k <= 60 biscuit types, a[i] of type i, each of tastiness 2^i, total tastiness <= 1e18.
 //   Count the y for which x <= 1e18 bags can each be packed with total tastiness exactly y.
 //   q <= 1000 independent calls.

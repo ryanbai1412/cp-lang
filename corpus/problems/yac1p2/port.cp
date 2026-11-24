@@ -1,4 +1,5 @@
 // Source: Yet Another Contest 1 P2 (A Boring Problem), https://dmoj.ca/problem/yac1p2
+// limits: 1000 ms, 256 MB
 // Problem: a tree of 3 <= n <= 2e5 nodes, each black (B) or white (W). Count the simple paths
 //   (unordered, single nodes included) that contain at least three nodes of the same colour.
 // Solution: count the complement, paths with at most two nodes of each colour, and subtract

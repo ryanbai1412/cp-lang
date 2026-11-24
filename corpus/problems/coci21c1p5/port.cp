@@ -1,4 +1,5 @@
 // Source: COCI '21 Contest 1 #5 (Volontiranje), https://dmoj.ca/problem/coci21c1p5
+// limits: 1000 ms, 512 MB
 // Problem: a permutation of 1..n, n <= 1e6, whose longest increasing subsequence has length l.
 //   Pick as many index-disjoint increasing subsequences of length l as possible: print their
 //   count and l, then the indices of each.

@@ -1,4 +1,5 @@
 // Source: CCC 2020 S1 (Surmising a Sprinter's Speed), https://dmoj.ca/problem/ccc20s1
+// limits: 1000 ms, 512 MB
 // Problem: n <= 1e5 observations (t, x) of a sprinter, times distinct, |t|, |x| <= 1e9.
 //   Print the largest speed he certainly reached (relative error 1e-5).
 // Solution: sorted by time, the answer is the largest |dx| / dt between neighbours. Keep the

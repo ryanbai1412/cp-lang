@@ -1,4 +1,5 @@
 // Source: CCO 2017 Day 1 P1 (Vera and Trail Building), https://dmoj.ca/problem/cco17p1
+// limits: 600 ms, 1024 MB
 // Problem: given K <= 1e7, print a connected multigraph with V, E <= 5000 that has exactly K
 //   pairs a < b joined by a round trip a -> b -> a using no trail twice.
 // Solution: such pairs are the pairs inside one 2-edge-connected component, so a cycle on c

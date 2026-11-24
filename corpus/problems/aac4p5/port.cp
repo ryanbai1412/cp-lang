@@ -1,4 +1,5 @@
 // Source: An Animal Contest 4 P5 (Neighbourly Neighbourhoods), https://dmoj.ca/problem/aac4p5
+// limits: 1000 ms, 256 MB
 // Problem: n, m, q <= 5e5, 1 <= x <= n. Print m distinct directed edges, no self loops, whose
 //   graph has exactly x SCCs and puts each of the q given pairs in one SCC; else -1.
 // Solution: unite the pairs; -1 if fewer than x groups. Merging two groups never shrinks the

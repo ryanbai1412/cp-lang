@@ -1,4 +1,5 @@
 // Source: Codeforces 2066F (Curse), https://codeforces.com/contest/2066/problem/F
+// limits: 3000 ms, 1000 MB
 // Problem: multitest, t <= 200. Arrays a and b (n, m <= 500, sums over tests <= 500, |values|
 //   <= 1e6). An operation picks any maximum-sum non-empty subarray of a and replaces it with any
 //   non-empty array. Print -1 if b is unreachable, else the operations, with replacements of

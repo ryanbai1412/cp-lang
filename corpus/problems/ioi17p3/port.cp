@@ -1,4 +1,5 @@
 // Source: IOI 2017 P3 Toy Train, https://dmoj.ca/problem/ioi17p3
+// limits: 1000 ms, 256 MB
 // Problem: a directed graph (n <= 5000 stations, m <= 20000 tracks, self-loops allowed, every
 //   station has an out-track); each station is owned by Arezou or Borzou and may be a charging
 //   station. The owner of the current station picks the next track; Arezou wins iff charging

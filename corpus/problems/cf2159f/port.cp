@@ -1,4 +1,5 @@
 // Source: Codeforces 2159F, Grand Finale: Snakes, https://codeforces.com/contest/2159/problem/F
+// limits: 4000 ms, 500 MB
 // Problem: an n x n grid (n <= 500) holds a permutation of 1..=n^2; hidden snakes of length
 //   l = 1..=n start on row 1 and move down/right to (n, n) by second 2n - 1. Query f(l, T), the
 //   max cell under snake l at second T, at most 120n + m times; print the m smallest f values.

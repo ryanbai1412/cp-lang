@@ -1,4 +1,5 @@
 // Source: NOI 2018 D1P1 (Return), https://dmoj.ca/problem/noi18p1
+// limits: 4000 ms, 524 MB
 // Problem: T <= 3 tests, each a connected undirected graph, 1 <= n <= 2e5, n - 1 <= m <= 4e5,
 //   roads with length 1 <= l <= 1e4 and altitude 1 <= a <= 1e9; home is vertex 1. Each of
 //   1 <= q <= 4e5 days gives start v and water level 0 <= p <= S <= 1e9: drive free over roads

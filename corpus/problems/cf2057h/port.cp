@@ -1,4 +1,5 @@
 // Source: Codeforces 2057H (Coffee Break), https://codeforces.com/contest/2057/problem/H
+// limits: 2000 ms, 250 MB
 // Problem: rooms 1..n hold a[i] <= 1e9 students. Turning off room i's light sends floor(x/2) of
 //   its x students to each neighbour (rooms 0 and n+1 absorb them). For every i print the most
 //   students that can gather in room i. n, sum n <= 1e6; multitest.

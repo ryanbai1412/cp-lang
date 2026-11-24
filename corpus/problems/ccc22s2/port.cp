@@ -1,4 +1,5 @@
 // Source: CCC 2022 S2 (Good Groups), https://dmoj.ca/problem/ccc22s2
+// limits: 4000 ms, 1024 MB
 // Problem: X <= 1e5 pairs of names that must share a group, Y <= 1e5 pairs that must not, then G
 //   <= 1e5 groups of three names. Print how many of the X + Y constraints are violated.
 // Solution: map each name to its group (Map<Str, Group>) as the groups are read, then count

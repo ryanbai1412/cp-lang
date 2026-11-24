@@ -1,4 +1,5 @@
 // Source: CSP-S 2021 P2 (Bracket Sequence), https://dmoj.ca/problem/csps21p2
+// limits: 1000 ms, 512 MB
 // Problem: a pattern of n <= 500 characters from ( ) * ?, and k <= n. Count, mod 1e9+7, the
 //   fillings of the ?s that are super bracket sequences: (), (S), AB, ASB, (AS), (SA) with
 //   A, B super sequences and S a run of 1 to k stars (in () and (S), up to k stars inside).

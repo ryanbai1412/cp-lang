@@ -1,4 +1,5 @@
 // Source: CCC 2021 S4 (Daily Commute), https://dmoj.ca/problem/ccc21s4
+// limits: 3000 ms, 1024 MB
 // Problem: N, W, D <= 2e5. One-way walkways take a minute each; a train leaves station 1 along
 //   the route S_1..S_N and is at S_i after i - 1 minutes. Each day two route positions (not
 //   the first) are swapped; print that day's least minutes from station 1 to station N.

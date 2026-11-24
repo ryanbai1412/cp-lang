@@ -1,4 +1,5 @@
 // Source: NOI 2002 P1 (Galactic Heroes), https://dmoj.ca/problem/noi02p1
+// limits: 1000 ms, 16 MB
 // Problem: 30000 ships, each its own column. T <= 5e5 lines: "M i j" moves i's whole column
 //   behind j's (they differ); "C i j" prints how many ships stand between i and j, or -1 if
 //   they are in different columns.

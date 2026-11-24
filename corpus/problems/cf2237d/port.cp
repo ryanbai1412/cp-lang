@@ -1,4 +1,5 @@
 // Source: Codeforces 2237D (Fullmetal Bitchemist), https://codeforces.com/contest/2237/problem/D
+// limits: 2000 ms, 250 MB
 // Problem: a binary string is beautiful if replacing two equal adjacent characters by one
 //   opposite character, repeatedly, can bring it to length 1. Count the beautiful non-empty
 //   substrings of s. Multitest, sum of n <= 1e6.

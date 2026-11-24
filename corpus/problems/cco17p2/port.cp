@@ -1,4 +1,5 @@
 // Source: CCO 2017 Day 1 P2, Cartesian Conquest, https://dmoj.ca/problem/cco17p2
+// limits: 1000 ms, 1024 MB
 // Problem: districts are integer k x 2k rectangles added one at a time, the empire always a
 //   rectangle. For an N x M empire (N, M <= 1e8), print the fewest and the most districts.
 // Solution: the last district is a full strip along one side, so dp(n, m) peels k strips n x jump

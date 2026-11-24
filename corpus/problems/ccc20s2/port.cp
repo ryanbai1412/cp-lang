@@ -1,4 +1,5 @@
 // Source: CCC '20 S2 (Escape Room), https://dmoj.ca/problem/ccc20s2
+// limits: 2000 ms, 512 MB
 // Problem: an M x N grid (M, N <= 1000) of values <= 1e6. From a cell holding x you may
 //   jump to any cell (r, c) with r * c = x. Print yes if you can reach (M, N) from (1, 1),
 //   else no.

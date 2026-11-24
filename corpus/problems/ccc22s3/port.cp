@@ -1,4 +1,5 @@
 // Source: CCC 2022 S3 (Good Samples), https://dmoj.ca/problem/ccc22s3
+// limits: 1000 ms, 1024 MB
 // Problem: print n <= 1e6 pitches in 1..=m (m <= n) with exactly k <= 1e18 good samples
 //   (contiguous runs with no repeated pitch), or -1 if there is no such piece.
 // Solution: the good samples ending at note i are 1 plus the distinct notes just before it, so

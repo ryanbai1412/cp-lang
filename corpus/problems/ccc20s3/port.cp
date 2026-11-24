@@ -1,4 +1,5 @@
 // Source: CCC 2020 S3, Searching for Strings, https://dmoj.ca/problem/ccc20s3
+// limits: 500 ms, 512 MB
 // Problem: lowercase needle N and haystack H, |N|, |H| <= 2e5. Count the distinct permutations
 //   of N that occur as a substring of H.
 // Solution: slide a window of length |N| over H keeping letter-count differences and how many are

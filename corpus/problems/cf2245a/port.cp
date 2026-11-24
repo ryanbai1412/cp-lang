@@ -1,5 +1,6 @@
 // Source: Codeforces 2245A (Who Watches the Watchpig?),
 //   https://codeforces.com/contest/2245/problem/A
+// limits: 1000 ms, 250 MB
 // Problem: n <= 100 pigs in a row face L or R; pigs x < y with x facing R and y facing L form a
 //   pair. Given 1 <= k < n, flip the fewest pigs so every pig is in >= k pairs; print that count,
 //   or -1. Multitest.

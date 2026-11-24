@@ -1,4 +1,5 @@
 // Source: Codeforces 2165F (Arctic Acquisition), https://codeforces.com/contest/2165/problem/F
+// limits: 5000 ms, 1000 MB
 // Problem: a permutation a of n <= 1e6 (sum of n <= 1e6, multitest). Count the intervals [l, r]
 //   that contain a 21435 subsequence: i1 < ... < i5 with a[i2] < a[i1] < a[i4] < a[i3] < a[i5].
 // Solution: for each right end r let best[r] be the latest l starting a pattern that ends by r;

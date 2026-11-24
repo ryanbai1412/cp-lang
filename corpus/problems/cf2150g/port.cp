@@ -1,4 +1,5 @@
 // Source: Codeforces 2150G (Counting Is Fun), https://codeforces.com/contest/2150/problem/G
+// limits: 5000 ms, 1000 MB
 // Problem: given x, y, k (k < x + y) and a binary string a of length x + y, count mod 998244353
 //   the binary strings b > a (lexicographically) with exactly x zeros and y ones that split into a
 //   prefix and a suffix both with longest non-decreasing subsequence (LNDS) >= k. Multitest; sum

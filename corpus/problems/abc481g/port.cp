@@ -1,4 +1,5 @@
 // Source: AtCoder ABC481 G (Half-Baked), https://atcoder.jp/contests/abc481/tasks/abc481_g
+// limits: 4000 ms, 1024 MB
 // Problem: n <= 120000 pancakes, pancake i has size a_i or b_i (a_i < b_i < 998244353) with
 //   probability 1/2 each. For each k print 2^n E[k-th smallest size] mod 998244353.
 // Solution: write the k-th smallest as v_min plus each gap dv between consecutive sorted

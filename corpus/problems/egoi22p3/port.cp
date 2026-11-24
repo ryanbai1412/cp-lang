@@ -1,4 +1,5 @@
 // Source: EGOI 2022 Day 1 Social Engineering, https://dmoj.ca/problem/egoi22p3
+// limits: 5000 ms, 256 MB
 // Problem: interactive: a connected simple graph, n <= 2e5, m <= 4e5, Maria at vertex 1. Moves
 //   walk along unused edges, Maria choosing hers and you everyone else's; whoever cannot move
 //   loses. Give up at once if Maria wins, else play until she has no move.

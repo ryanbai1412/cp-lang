@@ -1,4 +1,5 @@
 // Source: Codeforces 2022E1 (Billetes MX, easy), https://codeforces.com/contest/2022/problem/E1
+// limits: 2000 ms, 500 MB
 // Problem: an n x m grid (n, m <= 1e5) with k <= 1e5 cells fixed to values < 2^30, q = 0
 //   (multitest). Count the fillings with values < 2^30 where every subgrid's four corners xor to
 //   0, mod 1e9+7.

@@ -1,4 +1,5 @@
 // Source: Codeforces 2165D (Path Split), https://codeforces.com/contest/2165/problem/D
+// limits: 4000 ms, 500 MB
 // Problem: split a_1..a_n (1 <= a_i <= 2n) into the fewest subsequences whose consecutive
 //   elements differ by exactly 1; print that number. n <= 1e6 (sum), multitest.
 // Solution: the answer is n minus the most links i -> j (i < j, |a_i - a_j| = 1) with every

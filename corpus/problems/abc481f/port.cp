@@ -1,4 +1,5 @@
 // Source: AtCoder ABC481 F (Evil Shortest Path), https://atcoder.jp/contests/abc481/tasks/abc481_f
+// limits: 2000 ms, 1024 MB
 // Problem: a directed graph, N, M <= 2e5, each edge with a digit 1..9, and every vertex
 //   reachable from 1. For each v = 2..N, the smallest number spelled by the digits of a walk
 //   from 1 to v, modulo 998244353.

@@ -1,5 +1,6 @@
 // Source: Codeforces 2255C (Even If the World Turns),
 //   https://codeforces.com/contest/2255/problem/C
+// limits: 2000 ms, 250 MB
 // Problem: run twice, multitest, n <= 800 (sum of n^2 <= 800^2). First run: an n x n '#'/'.'
 //   picture with w black cells, gcd(n, w) = 1, and a target cell; swap the colours of two cells.
 //   The jury then shifts cyclically, rotates, reflects and inverts the picture (the target moves

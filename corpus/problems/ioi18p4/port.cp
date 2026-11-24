@@ -1,4 +1,5 @@
 // Source: IOI 2018 P4 (Mechanical Doll), https://dmoj.ca/problem/ioi18p4
+// limits: 1000 ms, 256 MB
 // Problem: m <= 1e5 triggers and a sequence A of n <= 2e5 of them. Build a circuit: an exit
 //   for the origin and each trigger, and switches (exits X, Y, alternating from X) so a ball
 //   from the origin enters the triggers exactly in order A, then returns to the origin with

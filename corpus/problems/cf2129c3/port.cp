@@ -1,5 +1,6 @@
 // Source: Codeforces 2129C3 (Interactive RBS (Hard Version)),
 //   https://codeforces.com/contest/2129/problem/C3
+// limits: 2000 ms, 250 MB
 // Problem: interactive, multitest. A hidden bracket string s of length n <= 1000 with at least
 //   one '(' and one ')'. A query lists up to 1000 indices (repeats allowed) and returns the
 //   number of balanced substrings of that sequence; recover s in at most 100 queries.

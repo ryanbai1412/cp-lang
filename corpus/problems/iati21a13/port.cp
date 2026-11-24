@@ -1,4 +1,5 @@
 // Source: IATI 2021 Senior Day 1 Task 3 (News), https://dmoj.ca/problem/iati21a13
+// limits: 2800 ms, 1024 MB
 // Problem: a tree of N <= 2e5 workers rooted at 1, some initially knowing the news; Q <= 2e5
 //   queries on x's subtree down to k levels below x (0 <= k <= N): "1 x k" tells all of them
 //   the news, "2 x k" prints how many of them know it.

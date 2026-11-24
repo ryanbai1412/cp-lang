@@ -1,5 +1,6 @@
 // Source: Codeforces 2129F2 (Top-K Tracker (Hard Version)),
 //   https://codeforces.com/contest/2129/problem/F2
+// limits: 3000 ms, 250 MB
 // Problem: interactive, multitest (t <= 40). Find a hidden permutation p of n <= 890 with at most
 //   30 queries on index sets: types 1/2 return the top min(60, m) of the p (resp. pos) values,
 //   types 3/4 the top min(300, m), and at most one query of type 3 or 4.

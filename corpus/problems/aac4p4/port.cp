@@ -1,4 +1,5 @@
 // Source: An Animal Contest 4 P4 (Reindeer Racing), https://dmoj.ca/problem/aac4p4
+// limits: 1000 ms, 256 MB
 // Problem: n lanes, m hurdles (n, m <= 2000); the baton starts in lane s, and when its holder hits
 //   hurdle j it passes to lane k_j. A banana at (lane i, hurdle j) makes lane i hit hurdle j.
 //   Given 0 <= L <= R <= nm, print a count X in L..=R and an n x m 0/1 matrix of X bananas

@@ -1,5 +1,6 @@
 // Source: SHOI 2016 / JLOI 2016 (成绩比较, Grade Comparison), https://dmoj.ca/problem/shoi16p3
 //   (not public; statement read on Luogu as P3270)
+// limits: 1000 ms, 125 MB
 // Problem: n <= 100 students including B, m <= 100 courses. Course i scores are 1..top[i]
 //   (top <= 1e9) and B ranks rank[i] there (rank - 1 students strictly above him). Exactly k
 //   other students score no higher than B in every course. Count the score tables modulo 1e9+7.

@@ -1,5 +1,6 @@
 // Source: Codeforces 2006 D, Iris and Adjacent Products,
 //   https://codeforces.com/contest/2006/problem/D
+// limits: 3000 ms, 250 MB
 // Problem: multitest: an array b of n values in 1..k (n, q <= 1e5 summed, k <= 1e6). For each
 //   of q subarrays b[l..r] print the fewest elements to change (to any value in 1..k) so that
 //   some rearrangement has every adjacent product <= k.

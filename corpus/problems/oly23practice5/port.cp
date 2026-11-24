@@ -1,4 +1,5 @@
 // Source: OLY 2023 Practice 5, https://dmoj.ca/problem/oly23practice5
+// limits: 1000 ms, 512 MB
 // Problem: change as few elements as possible of an array a (n <= 3e5, values in 1..=n)
 //   so that it alternates between two distinct values x and y, with x on even positions
 //   and y on odd ones. Multitest.

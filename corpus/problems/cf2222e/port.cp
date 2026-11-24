@@ -1,4 +1,5 @@
 // Source: Codeforces 2222E (Seek the Truth), https://codeforces.com/contest/2222/problem/E
+// limits: 4000 ms, 250 MB
 // Problem: interactive, multitest (t <= 1e4, 2 <= n <= 60). Hidden k in {AND, OR, XOR} and a
 //   mask 1 <= c < 2^n; f(x) = x k c. Pick a start a for a set S = {a}; "I x" inserts f(x) and
 //   returns |S|, "Q y" counts z in S with z >= y. Within n + 3 interactions print "A k c".

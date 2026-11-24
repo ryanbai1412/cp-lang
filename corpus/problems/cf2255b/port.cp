@@ -1,4 +1,5 @@
 // Source: Codeforces 2255B (A Ribbon for Tomorrow), https://codeforces.com/contest/2255/problem/B
+// limits: 2000 ms, 250 MB
 // Problem: multitest (t <= 1e4, sum n <= 1e6): a binary string s of length n <= 1e6. An
 //   operation picks l <= r with s[l] = s[r] and reverses s[l..r]. Print how many distinct
 //   strings can be reached, mod 998244353.

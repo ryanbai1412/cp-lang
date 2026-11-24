@@ -1,4 +1,5 @@
 // Source: CCO 2019 P5 (Marshmallow Molecules), https://dmoj.ca/problem/cco19p5
+// limits: 1800 ms, 1024 MB
 // Problem: N <= 1e5 marshmallows and M <= 1e5 required skewers (a, b), a < b. The set must be
 //   closed: if a < b < c and skewers a-b and a-c exist, so does b-c. Print the fewest skewers
 //   in a closed set containing all the required ones.

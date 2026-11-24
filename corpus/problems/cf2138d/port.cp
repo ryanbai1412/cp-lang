@@ -1,5 +1,6 @@
 // Source: Codeforces 2138 D, Antiamuny and Slider Movement,
 //   https://codeforces.com/contest/2138/problem/D
+// limits: 5000 ms, 500 MB
 // Problem: multitest (sum n, sum q <= 5000): n sliders at increasing positions a_i on a track
 //   1..m (m <= 1e9); q operations "move slider i to x", pushing neighbours to keep them
 //   distinct and ordered. For each slider print the sum of its final position over all q!

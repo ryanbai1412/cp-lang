@@ -1,4 +1,5 @@
 // Source: NEERC 2010 K (K-Graph Oddity), https://dmoj.ca/problem/neerc10k
+// limits: 1000 ms, 64 MB
 // Problem: a connected graph, odd n <= 9999 vertices, m <= 1e5 edges. Print the least odd
 //   k >= the maximum degree and a proper colouring of the vertices with colours 1..=k.
 // Solution: n and k odd means not every degree is k, so start a BFS at a vertex of degree

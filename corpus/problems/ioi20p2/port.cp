@@ -1,4 +1,5 @@
 // Source: IOI 2020 Day 1 P2 (Connecting Supertrees), https://dmoj.ca/problem/ioi20p2
+// limits: 2000 ms, 512 MB
 // Problem: n <= 1000 towers and a symmetric matrix p with p[i][i] = 1 and 0 <= p[i][j] <= 3.
 //   Build bridges (a simple undirected graph) with exactly p[i][j] simple paths from i to j
 //   for every pair, or report that it is impossible.

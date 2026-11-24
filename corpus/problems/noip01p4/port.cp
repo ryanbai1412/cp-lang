@@ -1,4 +1,5 @@
 // Source: NOIP 2001 Senior P4 (Car's Travel Route), https://dmoj.ca/problem/noip01p4
+// limits: 1000 ms, 125 MB
 // Problem: n <= 100 cities, each a rectangle with an airport on every corner, three of them
 //   given. Rail between airports of one city costs the city's price per unit length; a flight
 //   between airports of different cities costs `air` per unit. Print the cheapest trip from

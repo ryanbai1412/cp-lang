@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 6 P3, An Art Problem, https://dmoj.ca/problem/dmopc21c6p3
+// limits: 3000 ms, 1024 MB
 // Problem: an N x M grid (N, M, K <= 1500) of colours c <= 1e9, 0 meaning blank. Every blank
 //   pixel within K four-neighbour steps of a coloured one takes the colour of the closest
 //   coloured pixel, the lowest colour on a tie. Print the grid after this expansion.

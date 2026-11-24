@@ -1,4 +1,5 @@
 // Source: IATI 2021 Senior Day 2 Task 2, https://dmoj.ca/problem/iati21a22
+// limits: 1900 ms, 256 MB
 // Problem: n <= 2e5 points with |x|, |y| <= 1e9. From (x, y) one may step to a point whose
 //   rotated coordinates u = x + y, v = x - y satisfy u' <= u and v' > v. Print the most points
 //   on one chain (the statement is not mirrored here; this follows the accepted solution).

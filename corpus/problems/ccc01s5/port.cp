@@ -1,4 +1,5 @@
 // Source: CCC 2001 S5 (Post's Correspondence Problem), https://dmoj.ca/problem/ccc01s5
+// limits: 1000 ms, 256 MB
 // Problem: words a_1..a_n and b_1..b_n of at most 20 letters, m * n <= 40. Find indices
 //   i_1..i_k, 0 < k < m, repeats allowed, with a_i1 ... a_ik = b_i1 ... b_ik. Print k and the
 //   list, one number to a line, or "No solution.".

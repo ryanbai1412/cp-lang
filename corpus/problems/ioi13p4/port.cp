@@ -1,4 +1,5 @@
 // Source: IOI 2013 Day 2 P4, Cave, https://dmoj.ca/problem/ioi13p4
+// limits: 1000 ms, 32 MB
 // Problem: interactive: N switches (N <= 5000), each up or down, each wired to a different
 //   door of N doors in a row; a door is open iff its switch is in its hidden correct position.
 //   tryCombination(S) returns the first closed door (or -1); within 70 000 calls, find every

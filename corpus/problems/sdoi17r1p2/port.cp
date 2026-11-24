@@ -1,4 +1,5 @@
 // Source: SDOI 2017 Round 1 P2 (Tree Colouring), https://dmoj.ca/problem/sdoi17r1p2
+// limits: 1000 ms, 500 MB
 // Problem: a tree on n <= 1e5 vertices rooted at 1, every vertex its own colour; m <= 1e5 ops:
 //   "1 x" paints the path root..x a brand-new colour, "2 x y" prints the number of colours on
 //   path x..y, "3 x" prints the most colours on a path from the root to a vertex in sub(x).

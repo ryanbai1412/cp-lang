@@ -1,4 +1,5 @@
 // Source: IOI 2009 (Salesman), https://dmoj.ca/problem/ioi09p8
+// limits: 1400 ms, 128 MB
 // Problem: n <= 5e5 fairs on a river, fair k on day T_k at location L_k (<= 500001, all distinct)
 //   with profit M_k. Starting and ending at home S, moving upstream (towards smaller locations)
 //   costs U per metre and downstream D (D <= U <= 10); fairs must be visited in day order, any

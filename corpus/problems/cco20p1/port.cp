@@ -1,4 +1,5 @@
 // Source: CCO 2020 P1, A Game with Grundy, https://dmoj.ca/problem/cco20p1
+// limits: 1000 ms, 1024 MB
 // Problem: N <= 1e5 friends at (x_i, 0) with v_i, h_i <= 100; friend i sees (x, Y) iff
 //   |x - x_i| v_i < h_i Y. For each i = 0..N print how many integers x in L..=R
 //   (|L|, |R| <= 1e9, Y <= 1e6) are seen by at most i friends.

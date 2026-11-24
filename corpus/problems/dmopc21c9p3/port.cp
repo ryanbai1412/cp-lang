@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 9 P3 (Terrible Trains), https://dmoj.ca/problem/dmopc21c9p3
+// limits: 2000 ms, 256 MB
 // Problem: a connected graph of n <= 3000 stations and m <= 3000 one-hour routes. Each of q <= 1e6
 //   commuters asks: after adding one new one-hour route of our choice, can one go S -> T within X
 //   hours and U -> V within Y hours? Print YES or NO for each.

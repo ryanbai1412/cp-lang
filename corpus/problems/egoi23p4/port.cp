@@ -1,4 +1,5 @@
 // Source: EGOI 2023 Day 1 P4 (Bikes vs Cars), https://dmoj.ca/problem/egoi23p4
+// limits: 5000 ms, 1024 MB
 // Problem: n <= 500 places, streets of width k <= 1e6 split into a bike lane b and a car lane
 //   k - b. Given, per pair, the widest car C and the widest bike B that can travel between them
 //   (and no wider), print at most 2023 streets u v b that realise both, or NO.

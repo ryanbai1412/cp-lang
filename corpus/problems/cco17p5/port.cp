@@ -1,4 +1,5 @@
 // Source: CCO 2017 P5 (Professional Network), https://dmoj.ca/problem/cco17p5
+// limits: 1000 ms, 1024 MB
 // Problem: n <= 2e5 people; person i befriends Kevin once he has A_i <= n friends, or at any time
 //   for B_i <= 1e4 points. Print the fewest points to befriend all n.
 // Solution: go through k = n down to 0, keeping a min-heap of the unpaid people with A >= k. They

@@ -1,4 +1,5 @@
 // Source: IOI 2016 P5 (Unscrambling a Messy Bug), https://dmoj.ca/problem/ioi16p5
+// limits: 1000 ms, 256 MB
 // Problem: interactive. A hidden permutation p of n bits (n = 2^b <= 128). Add at most w
 //   n-bit strings to a set, compile once (every string's bits get reordered by p), then ask
 //   at most r membership queries; recover p. Hardest subtask: n = 128, w = r = 896.

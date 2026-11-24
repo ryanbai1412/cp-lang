@@ -1,4 +1,5 @@
 // Source: NOI 2010 P1 (Energy Harvesting), https://dmoj.ca/problem/noi10p1
+// limits: 600 ms, 512 MB
 // Problem: a plant at every (x, y), 1 <= x <= n, 1 <= y <= m (n, m <= 1e5); the machine is
 //   at (0, 0) and a plant with k plants on the segment to it loses 2k + 1 energy. Print
 //   the total energy lost.

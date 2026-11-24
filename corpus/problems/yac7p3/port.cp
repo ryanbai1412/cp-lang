@@ -1,4 +1,5 @@
 // Source: Yet Another Contest 7 P3 (No More Math Homework), https://dmoj.ca/problem/yac7p3
+// limits: 3000 ms, 512 MB
 // Problem: a functional graph P on n <= 1e6 subjects; students i and j must share a group if
 //   P^d(i) = P^d(j) for some d. Set one P_A = B to maximise the number of groups; print A B
 //   and a group label for each student.

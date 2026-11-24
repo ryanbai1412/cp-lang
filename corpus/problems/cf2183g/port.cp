@@ -1,4 +1,5 @@
 // Source: Codeforces 2183 G (Snake Instructions), https://codeforces.com/contest/2183/problem/G
+// limits: 3000 ms, 250 MB
 // Problem: interactive, multitest. n <= 1e5 snakes at distinct positions a_1 < ... <= 4n with
 //   unknown speeds in 0..=2. A query is a string of L/R (length <= 4n); all snakes move with
 //   it, the faster of two that meet is removed, and the survivors' final positions are

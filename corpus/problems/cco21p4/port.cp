@@ -1,4 +1,5 @@
 // Source: CCO 2021 P4 (Travelling Merchant), https://dmoj.ca/problem/cco21p4
+// limits: 1000 ms, 1024 MB
 // Problem: n, m <= 2e5; one-way road i from a to b needs at least r_i money and then pays
 //   p_i >= 0. For every starting city print the least starting money that lets the merchant
 //   travel forever, or -1.

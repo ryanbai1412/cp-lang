@@ -1,4 +1,5 @@
 // Source: IOI 2009 P5 (Garage), https://dmoj.ca/problem/ioi09p5
+// limits: 1000 ms, 16 MB
 // Problem: a garage has n <= 100 spaces with rates R_s; m <= 2000 cars with weights W_k arrive
 //   and leave in a given order of 2m events. An arriving car takes the lowest free space, or
 //   waits in a FIFO queue until one frees up, and pays R_s * W_k. Print the total revenue.

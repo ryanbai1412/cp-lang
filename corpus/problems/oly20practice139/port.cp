@@ -1,4 +1,5 @@
 // Source: DMOJ OLY 2020 Practice 139 (Bob's Function), https://dmoj.ca/problem/oly20practice139
+// limits: 2000 ms, 512 MB
 // Problem: f(x, y) = a if a <= x, else b if b <= y, else 0. Given n <= 150000 pairs with
 //   0 <= y_i <= x_i <= 1e9, choose constants a, b to maximise sum f(x_i, y_i); print the maximum.
 // Solution: some x_i is an optimal a (or a is above every x); then the sum is

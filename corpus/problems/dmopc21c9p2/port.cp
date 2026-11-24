@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 9 P2 (String Puzzle), https://dmoj.ca/problem/dmopc21c9p2
+// limits: 2000 ms, 256 MB
 // Problem: T puzzles (sum of lengths <= 1e6), each two lowercase strings A and B. One move
 //   replaces two adjacent equal letters by one copy of the next letter ("zz" cannot merge).
 //   Print YES if A can be turned into B, else NO.

@@ -1,4 +1,5 @@
 // Source: IOI 2015 Day 1 P1 (Boxes with Souvenirs), https://dmoj.ca/problem/ioi15p1
+// limits: 2000 ms, 256 MB
 // Problem: n teams (n <= 1e7) sit at sorted positions on a circle of l sections (l <= 1e9);
 //   start at section 0, carry at most k souvenirs per trip, give one to every team and
 //   finish back at 0. Print the least total walking distance (sections moved).

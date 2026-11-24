@@ -1,4 +1,5 @@
 // Source: CCC 2018 S2 (Sunflowers), https://dmoj.ca/problem/ccc18s2
+// limits: 1000 ms, 256 MB
 // Problem: an n x n grid, 2 <= n <= 100, of positive values <= 1e9 is a rotation by a multiple of
 //   90 degrees of a table whose rows increase left to right and columns top to bottom. Print the
 //   original table.

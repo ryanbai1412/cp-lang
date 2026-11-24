@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest I (Coins), https://atcoder.jp/contests/dp/tasks/dp_i
+// limits: 2000 ms, 1024 MB
 // Problem: N coins, N odd and <= 2999; coin i shows heads with probability p_i, 0 < p_i < 1.
 //   Print the probability of more heads than tails, to absolute error 1e-9.
 // Solution: chance[h] is the probability of h heads among the coins tossed so far. Each coin

@@ -1,4 +1,5 @@
 // Source: Codeforces 2062F (Traveling Salescat), https://codeforces.com/contest/2062/problem/F
+// limits: 2000 ms, 500 MB
 // Problem: n <= 3000 cities with 0 <= a_i, b_i <= 1e9; the road i-j has length
 //   max(a_i + b_j, b_i + a_j). For each k = 2..n print the least cost of a simple path through
 //   exactly k cities. Multitest, sum of n^2 <= 9e6.

@@ -1,4 +1,5 @@
 // Source: CCC 2005 S5 (Pinball Ranking), https://dmoj.ca/problem/ccc05s5
+// limits: 200 ms, 256 MB
 // Problem: t <= 1e5 game scores in 0..1e9, in order. After each game its rank is one more than
 //   the number of games so far with a strictly higher score. Print the average rank (abs error
 //   1e-2; printed to two decimals). Scores may repeat.

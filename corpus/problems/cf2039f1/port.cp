@@ -1,5 +1,6 @@
 // Source: Codeforces 2039F1 (Shohag Loves Counting, Easy Version),
 //   https://codeforces.com/contest/2039/problem/F1
+// limits: 4000 ms, 500 MB
 // Problem: f(k) is the gcd of the maxima of all length-k subarrays; an array is good if f(1..n)
 //   are pairwise distinct. Given m, count non-empty good arrays of any length over 1..=m,
 //   mod 998244353. Multitest, sum of m <= 1e5.

@@ -1,4 +1,5 @@
 // Source: CCC 1999 S5 (Letter Arithmetic), https://dmoj.ca/problem/ccc99s5
+// limits: 1000 ms, 256 MB
 // Problem: n puzzles, each three words of at most 20 capital letters with word1 + word2 =
 //   word3 (SEND + MORE = MONEY). Give distinct letters distinct digits, no leading zero; each
 //   puzzle has exactly one answer. Print the three numbers, one per line, and a blank line

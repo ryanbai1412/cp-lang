@@ -1,4 +1,5 @@
 // Source: DMOPC 2021 Contest 6 P4 (Colourful Paths), https://dmoj.ca/problem/dmopc21c6p4
+// limits: 3000 ms, 1024 MB
 // Problem: a connected simple graph, n, m <= 2e5, and distinct houses A, B, C, D. Colour the
 //   roads so that some A-B path is one colour and every C-D path has two colours, using the
 //   fewest colours and then the shortest one-colour A-B path. Print -1 or K and the colours.

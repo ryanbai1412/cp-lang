@@ -1,4 +1,5 @@
 // Source: Mock CCC '22 Contest 1 J4 (Snowball Fight), https://dmoj.ca/problem/mccc3j4
+// limits: 600 ms, 256 MB
 // Problem: N <= 2000 students each start with one target in a queue. In each of T <= 2000
 //   rounds, every student with a nonempty queue throws at its front and pops it; then each
 //   hit student appends its throwers in increasing order. Print each student's last target.

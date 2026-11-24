@@ -1,4 +1,5 @@
 // Source: Codeforces 2124D (Make a Palindrome), https://codeforces.com/contest/2124/problem/D
+// limits: 2000 ms, 250 MB
 // Problem: an array a of n <= 2e5 values and k <= n (multitest, sum n <= 2e5). An operation
 //   deletes the k-th smallest of some window of length >= k. Print YES if some sequence of
 //   operations leaves a palindrome (the empty array counts), else NO.

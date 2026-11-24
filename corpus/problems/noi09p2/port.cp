@@ -1,4 +1,5 @@
 // Source: NOI '09 P2 (Little G the Poet), https://dmoj.ca/problem/noi09p2
+// limits: 2500 ms, 256 MB
 // Problem: N <= 1e5 sentences (length <= 30), in order, set into lines joined by single
 //   spaces; a line of length x costs |x - L|^P (L <= 3e6, P <= 10). Minimise the total: print
 //   it and the lines, or "Too hard to arrange" if it exceeds 1e18; then 20 dashes. Multitest.

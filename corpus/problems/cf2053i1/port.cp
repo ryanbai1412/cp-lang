@@ -1,5 +1,6 @@
 // Source: Codeforces 2053I1 (Affectionate Arrays, easy version),
 //   https://codeforces.com/contest/2053/problem/I1
+// limits: 3000 ms, 500 MB
 // Problem: multitest; a_1..a_n (n <= 3e6, sum of n <= 3e6, |a_i| <= 1e9, max|a_i| <= sum
 //   s). Among arrays b with a as a subsequence and sum s, take those of least boredom (max
 //   subarray sum), then least length; print that length m.

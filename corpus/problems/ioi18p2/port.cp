@@ -1,4 +1,5 @@
 // Source: IOI 2018 Day 1 P2 (Seats), https://dmoj.ca/problem/ioi18p2
+// limits: 3000 ms, 256 MB
 // Problem: an h x w hall (h * w <= 1e6) seats contestants 0..h*w; a prefix 0..k is beautiful when
 //   its seats form a rectangle. After each of q <= 5e4 swaps of two contestants' seats, print the
 //   number of beautiful prefixes.

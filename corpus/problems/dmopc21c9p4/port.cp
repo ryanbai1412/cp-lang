@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 9 P4 (Ace of Diamonds), https://dmoj.ca/problem/dmopc21c9p4
+// limits: 2000 ms, 256 MB
 // Problem: an N x M grid of coins, each H or T, N * M <= 1e6, N and M both odd. Remove every
 //   coin one at a time; only a heads coin may be removed, and removing it flips the coins
 //   still in the edge-adjacent cells. Print a removal order (r c per line), or -1.

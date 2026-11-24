@@ -1,4 +1,5 @@
 // Source: IOI 2015 Day 2, Horses, https://dmoj.ca/problem/ioi15p4
+// limits: 1000 ms, 256 MB
 // Problem: n <= 5e5 years; in year i the herd multiplies by x[i], then horses sell for y[i]
 //   each (1 <= x, y <= 1e9). Starting with one horse, print the most money obtainable, mod
 //   1e9+7, initially and after each of m <= 1e5 updates setting one x[i] or y[i].

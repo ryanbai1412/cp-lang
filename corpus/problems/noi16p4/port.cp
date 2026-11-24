@@ -1,4 +1,5 @@
 // Source: NOI 2016 Interval, https://dmoj.ca/problem/noi16p4
+// limits: 3000 ms, 256 MB
 // Problem: n <= 5e5 closed intervals [l, r], 0 <= l <= r <= 1e9. Choose m <= 2e5 of them sharing
 //   a common point, minimizing (longest length - shortest length), length = r - l. Print the
 //   minimum, or -1 if no m intervals share a point.

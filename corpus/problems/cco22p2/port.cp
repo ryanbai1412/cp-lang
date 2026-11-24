@@ -1,4 +1,5 @@
 // Source: CCO 2022 P2 (Rainy Markets), https://dmoj.ca/problem/cco22p2
+// limits: 1500 ms, 1024 MB
 // Problem: n <= 1e6 bus stops hold B_i <= 2e9 people; market i, between stops i and i + 1, has
 //   P_i <= 1e9 people and U_i <= 1e9 umbrellas at cost 1. Each person goes to stop i, to stop
 //   i + 1 or buys an umbrella. Print NO if someone gets wet, else YES, the least money spent and

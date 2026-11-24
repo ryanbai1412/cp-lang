@@ -1,5 +1,6 @@
 // Source: Codeforces 2135 D1 (From the Unknown, easy version),
 //   https://codeforces.com/contest/2135/problem/D1
+// limits: 3000 ms, 500 MB
 // Problem: interactive, t <= 10. An editor of hidden width W <= 1e5 puts words greedily on
 //   lines of total length <= W. Query "? n a_1 .. a_n" (n, a_i <= 1e5) returns the number of
 //   lines, or 0 if some a_i > W. Find W with at most 2 queries and print "! W".

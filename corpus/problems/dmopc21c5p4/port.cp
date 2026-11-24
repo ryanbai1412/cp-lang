@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 5 P4 (Permutations & Primes), https://dmoj.ca/problem/dmopc21c5p4
+// limits: 2000 ms, 256 MB
 // Problem: given N, print a permutation of 1..N whose adjacent gaps |p[i+1] - p[i]| are all
 //   prime and whose signed differences p[i+1] - p[i] take as few distinct values as possible,
 //   or -1 if none exists. Up to T tests, T, N <= 1e6, sum of N <= 1e6.

@@ -1,4 +1,5 @@
 // Source: Codeforces 2150F (Cycle Closing), https://codeforces.com/contest/2150/problem/F
+// limits: 2000 ms, 250 MB
 // Problem: a connected simple graph, n <= 200 (sum n^2 <= 4e4). An operation picks k, prints
 //   simple paths of k vertices, then adds the edge joining each path's ends (usable only by later
 //   operations). Make the graph complete, each edge exactly once, in at most 2 operations; print

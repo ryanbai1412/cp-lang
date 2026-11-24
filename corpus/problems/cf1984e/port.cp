@@ -1,4 +1,5 @@
 // Source: Codeforces 1984E (Shuffle), https://codeforces.com/contest/1984/problem/E
+// limits: 2000 ms, 250 MB
 // Problem: a tree of n <= 2e5 nodes (sum n <= 3e5, multitest) is shuffled once: pick a root V,
 //   remove it, shuffle each remaining subtree the same way and hang their roots under V. Print
 //   the most leaves (degree-1 nodes, a root with one child included) the new tree can have.

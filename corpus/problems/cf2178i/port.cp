@@ -1,4 +1,5 @@
 // Source: Codeforces 2178I (Numbers or Fireworks), https://codeforces.com/contest/2178/problem/I
+// limits: 12000 ms, 1000 MB
 // Problem: n <= 31 distinct lattice points (cities) and k <= 2e4. For every proper subset T
 //   (fireworks), take the product over cities outside T of 1 + (number of cities of T at
 //   distance exactly sqrt(k)); print the sum over all T modulo 998244353. Multitest.

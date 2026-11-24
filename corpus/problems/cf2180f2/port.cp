@@ -1,5 +1,6 @@
 // Source: Codeforces 2180F2 (Control Car, Hard Version),
 //   https://codeforces.com/contest/2180/problem/F2
+// limits: 2000 ms, 250 MB
 // Problem: each of the (n+1)(m+1) grid points of an n x m grid gets a wall of length 1 pointing
 //   up, down, left or right. A car starts in cell (1, 1), moves down when it can, else right,
 //   and stops when blocked or out of the grid. Count orientations where it stops inside the

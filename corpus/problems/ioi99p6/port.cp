@@ -1,4 +1,5 @@
 // Source: IOI 1999 Day 2 P3 (IOI '99 P6), A Strip of Land, https://dmoj.ca/problem/ioi99p6
+// limits: 2500 ms, 1024 MB
 // Problem: a U x V grid of heights (U, V <= 700, |h| <= 30000) and a limit C <= 10. Print the
 //   largest-area rectangle at most 100 squares wide (west-east) whose highest and lowest
 //   heights differ by at most C, as Xmin Ymin Xmax Ymax (y grows to the north, the first

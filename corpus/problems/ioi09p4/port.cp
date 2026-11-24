@@ -1,4 +1,5 @@
 // Source: IOI 2009 P4 (Raisins), https://dmoj.ca/problem/ioi09p4
+// limits: 3000 ms, 128 MB
 // Problem: an n x m chocolate (n, m <= 50), 1..=1000 raisins per piece. Cut it into single pieces
 //   with straight end-to-end cuts of one block at a time; each cut costs the raisins on the block
 //   being cut. Print the least total cost.

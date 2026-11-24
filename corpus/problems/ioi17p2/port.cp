@@ -1,4 +1,5 @@
 // Source: IOI 2017 Day 1 P2 (Wiring), https://dmoj.ca/problem/ioi17p2
+// limits: 600 ms, 256 MB
 // Problem: n red and m blue points on a line (n, m <= 1e5, sorted, positions <= 1e9). Wire
 //   points so that each has a wire to a point of the other colour; print the least total length.
 // Solution: merge the points by position. cost[p] = cheapest wiring of the first p points: point

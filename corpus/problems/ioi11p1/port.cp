@@ -1,4 +1,5 @@
 // Source: IOI 2011 P1 (Tropical Garden), https://dmoj.ca/problem/ioi11p1
+// limits: 2500 ms, 256 MB
 // Problem: n <= 150000 fountains and m <= 150000 trails listed from most to least
 //   beautiful. A walker takes the most beautiful trail at a fountain, unless it is the one
 //   just used and there is another; then the second. For each of q <= 2000 lengths

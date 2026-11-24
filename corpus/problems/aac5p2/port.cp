@@ -1,4 +1,5 @@
 // Source: An Animal Contest 5 P2, https://dmoj.ca/problem/aac5p2
+// limits: 3000 ms, 256 MB
 // Problem: interactive. A hidden permutation a of 1..=N (3 <= N <= 1e5); "? i j" answers
 //   a_i * a_j, at most N - 1 queries. Print "! a_1 ... a_N".
 // Solution: ask the N - 1 neighbour products a_g a_(g+1). Then try each first value dividing the

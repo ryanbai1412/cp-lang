@@ -1,4 +1,5 @@
 // Source: IOI 2017 P4 (The Big Prize), https://dmoj.ca/problem/ioi17p4
+// limits: 600 ms, 1024 MB
 // Problem: interactive. n <= 2e5 boxes hold prizes of types 1..v, one diamond (type 1),
 //   and more than k^2 of type t when type t - 1 has k. ask(i) returns how many boxes left and
 //   right of i hold a more valuable prize. Find the diamond, ideally in <= 5000 asks.

@@ -1,5 +1,6 @@
 // Source: AtCoder ABC478 E (Inequality Sequence Construction),
 //   https://atcoder.jp/contests/abc478/tasks/abc478_e
+// limits: 2000 ms, 1024 MB
 // Problem: find A of length n with values in 1..=n meeting q conditions A[u] <= A[v] (t = 0) or
 //   A[u] < A[v] (t = 1); print Yes and A, or No. n, q <= 2e5.
 // Solution: conditions are arcs u -> v of weight t. A strict arc inside a strongly connected

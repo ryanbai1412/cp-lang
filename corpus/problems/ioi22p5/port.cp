@@ -1,4 +1,5 @@
 // Source: IOI 2022 Day 2 Rarest Insects, https://dmoj.ca/problem/ioi22p5
+// limits: 2000 ms, 512 MB
 // Problem: interactive: N <= 2000 insects of hidden types. Operations: move an insect into or out
 //   of a machine, or press its button, which tells the size of the largest type group inside;
 //   at most 4e4 of each, scored by the most of any kind. Return the size of the rarest type.

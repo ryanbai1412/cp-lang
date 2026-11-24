@@ -1,4 +1,5 @@
 // Source: Codeforces 2207C (Where's My Water?), https://codeforces.com/contest/2207/problem/C
+// limits: 2000 ms, 250 MB
 // Problem: n columns (n <= 2000, sum n <= 2000, multitest) under height h <= 1e9; column i has
 //   1 <= a_i <= h dirt tiles at the bottom and water above. A drain takes all water that reaches
 //   it moving down, left or right without crossing dirt. Print the most water taken by at most 2.

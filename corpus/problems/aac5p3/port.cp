@@ -1,4 +1,5 @@
 // Source: An Animal Contest 5 P3 (Ski Resort), https://dmoj.ca/problem/aac5p3
+// limits: 1000 ms, 256 MB
 // Problem: a tree of n <= 2e5 breakpoints rooted at 1, hills (edges) of difficulty d <= 1e9; each
 //   of k <= 2e5 pandas with skill s <= 1e9 starts at 1 and keeps skiing down the child hill with
 //   the least |s - d| (ties to the easier) until a leaf. Print how many pandas visit each

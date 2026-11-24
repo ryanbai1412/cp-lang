@@ -1,4 +1,5 @@
 // Source: Codeforces 2183F (Jumping Man), https://codeforces.com/contest/2183/problem/F
+// limits: 3000 ms, 1000 MB
 // Problem: a tree rooted at 1, n <= 5000 (sum over tests), a letter per node. For each i,
 //   take every chain u_1, u_2, ... in i's subtree with each node strictly inside the previous
 //   one's subtree; print the sum over strings of (number of chains spelling it)^2, mod

@@ -1,4 +1,5 @@
 // Source: NOI 2017 P1, Integer, https://dmoj.ca/problem/noi17p1
+// limits: 2000 ms, 512 MB
 // Problem: x starts at 0; n <= 1e6 operations: add a * 2^b to x (|a| <= 1e9, 0 <= b <= 30n;
 //   x stays >= 0), or print bit k of x. The first line also has t1, t2, t3 (subtask hints).
 // Solution: keep x = up - down with the positive and negative additions in separate base-2^30

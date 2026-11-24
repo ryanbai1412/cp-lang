@@ -1,4 +1,5 @@
 // Source: IOI 2013 Day 1 (Dreaming), https://dmoj.ca/problem/ioi13p1
+// limits: 600 ms, 64 MB
 // Problem: a forest of N <= 1e5 billabongs and M <= N - 1 trails of length <= 1e4. Add new
 //   trails of length L <= 1e4 until it is one tree, keeping the longest travel time between
 //   two billabongs as small as possible, and print that time.

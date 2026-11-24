@@ -1,5 +1,6 @@
 // Source: Codeforces 2053F (Earnest Matrix Complement),
 //   https://codeforces.com/contest/2053/problem/F
+// limits: 5000 ms, 500 MB
 // Problem: an n x m matrix (n, m >= 2, sum of n m <= 6e5; multitest) of values in 1..=k with
 //   blanks -1. Fill the blanks to maximise sum over u and i of c[u, i] c[u, i + 1], where
 //   c[u, i] counts u in row i; print the maximum.

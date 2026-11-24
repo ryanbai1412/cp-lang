@@ -1,4 +1,5 @@
 // Source: IATI 2021 A2 P3, https://dmoj.ca/problem/iati21a23
+// limits: 100 ms, 256 MB
 // Problem: a target hides in one of n <= 1000 cells and moves one cell each turn: for s
 //   turns it flees, then for c turns it approaches, repeating. Print a list of shots
 //   that surely hits it.

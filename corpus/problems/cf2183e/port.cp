@@ -1,5 +1,6 @@
 // Source: Codeforces 2183E (LCM is Legendary Counting Master),
 //   https://codeforces.com/contest/2183/problem/E
+// limits: 3000 ms, 500 MB
 // Problem: multitest; a_1..a_n with each a_i in 0..m (2 <= n <= m <= 3000, sum of m <= 3000).
 //   Count ways to replace every 0 by a value in 1..m so that a is strictly increasing and
 //   1/lcm(a_1, a_2) + ... + 1/lcm(a_{n-1}, a_n) + 1/lcm(a_n, a_1) >= 1, modulo 998244353.

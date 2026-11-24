@@ -1,4 +1,5 @@
 // Source: NOIP 2010 P4, Water Diversion into Cities, https://dmoj.ca/problem/noip10p4
+// limits: 1000 ms, 128 MB
 // Problem: an n x m grid of heights (n, m <= 500, heights <= 1e6). Reservoirs can be built in
 //   top-row cells; water flows to side-adjacent strictly lower cells. If every bottom-row city
 //   can get water print 1 and the fewest reservoirs, else 0 and the number of dry cities.

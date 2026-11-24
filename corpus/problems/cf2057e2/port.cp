@@ -1,5 +1,6 @@
 // Source: Codeforces 2057E2 (Another Exercise on Graphs, hard version),
 //   https://codeforces.com/contest/2057/problem/E2
+// limits: 3000 ms, 1000 MB
 // Problem: a connected weighted graph, n <= 400, no multi-edges, q <= 3e5 queries (a, b, k):
 //   over all a-b paths, the smallest k-th largest edge weight (every path has >= k edges).
 //   Multitest, sums of n <= 400 and q <= 3e5.

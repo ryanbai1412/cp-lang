@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 5 P1 (Permutations & Primes), https://dmoj.ca/problem/dmopc21c5p1
+// limits: 2000 ms, 256 MB
 // Problem: given n <= 1e6, print a permutation of 1..=n in which no two neighbours sum to a
 //   prime, or -1 if none exists.
 // Solution: two odds or two evens sum to an even number >= 4, so list the odds, then the evens;

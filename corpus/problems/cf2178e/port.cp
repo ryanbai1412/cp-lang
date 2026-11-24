@@ -1,4 +1,5 @@
 // Source: Codeforces 2178E (Flatten or Concatenate), https://codeforces.com/contest/2178/problem/E
+// limits: 3000 ms, 500 MB
 // Problem: interactive. A hidden array of n <= 1e5 elements (1..=2^30) was built from [2^k] by
 //   flattening a maximal x into x/2, x/2 and by concatenations a := a + b. With at most 300
 //   range-sum queries, find its maximum. Multitest.

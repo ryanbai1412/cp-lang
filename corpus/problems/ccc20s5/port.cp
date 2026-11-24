@@ -1,4 +1,5 @@
 // Source: CCC 2020 S5 (Josh's Double Bacon Deluxe), https://dmoj.ca/problem/ccc20s5
+// limits: 1000 ms, 512 MB
 // Problem: N <= 1e6 people queue, person i's favourite burger type is b_i <= 5e5, and the burgers
 //   are exactly their favourites. The first takes a random burger; each later one takes their
 //   favourite if left, else a random one. Print the probability the last person (Josh) gets his.

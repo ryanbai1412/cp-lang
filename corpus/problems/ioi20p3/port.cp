@@ -1,4 +1,5 @@
 // Source: IOI 2020 Day 1 (Carnival Tickets), https://dmoj.ca/problem/ioi20p3
+// limits: 2000 ms, 512 MB
 // Problem: n (even) colours of m tickets each, values sorted per colour; n, m <= 1500, k <= m
 //   rounds. Each round takes one ticket per colour and pays sum |a[i] - b| for the b minimising
 //   it. Maximise the total over k rounds and print the allocation (round per ticket, or -1).

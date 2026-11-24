@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 2 P3 (Divisions), https://dmoj.ca/problem/dmopc21c2p3
+// limits: 2000 ms, 256 MB
 // Problem: interactive. Find N <= 1000 hidden numbers 0 <= F_i < 2^60 in order with at most
 //   32000 guesses in all: guessing G for F_i answers the fewest halvings (rounding down) of
 //   F_i or G that make them equal; 0 means correct, go on to the next.

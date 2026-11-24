@@ -1,4 +1,5 @@
 // Source: NOI 2017, Queueing Worms, https://dmoj.ca/problem/noi17p2
+// limits: 2000 ms, 1024 MB
 // Problem: n <= 2e5 worms of lengths 1..=6, each its own queue; m <= 5e5 operations: join the
 //   queue ending at i to the one starting at j, split after i (at most 1e3 splits), or for a
 //   digit string s and k <= 50 print the product over the length-k substrings t of s of the

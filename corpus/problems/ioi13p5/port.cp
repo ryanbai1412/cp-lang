@@ -1,4 +1,5 @@
 // Source: IOI 2013, Robots, https://dmoj.ca/problem/ioi13p5
+// limits: 2500 ms, 64 MB
 // Problem: T <= 1e6 toys with weight and size; A weak robots carry toys of weight strictly below
 //   their limit, B small robots toys of size strictly below theirs (A, B <= 5e4, values <= 2e9).
 //   Each robot puts away one toy per minute. Print the fewest minutes for all toys, or -1.

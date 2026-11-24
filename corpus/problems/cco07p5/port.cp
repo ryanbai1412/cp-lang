@@ -1,4 +1,5 @@
 // Source: CCO '07 P5 (Particle Catcher), https://dmoj.ca/problem/cco07p5
+// limits: 2000 ms, 128 MB
 // Problem: interactive. A particle moves v steps per query round a ring of N positions
 //   (2 <= N <= 1e5). `GetSize` gives N; `Look a b` says whether it is in a..b now, then it
 //   moves; finish with `Guess v p`, its velocity and position. At most 1e5 queries.

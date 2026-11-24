@@ -1,4 +1,5 @@
 // Source: EGOI 2022 P5 (Data Centers), https://dmoj.ca/problem/egoi22p5
+// limits: 2000 ms, 256 MB
 // Problem: n <= 1e5 data centres with at most 1e9 free machines each, and s <= 5000 services
 //   in order: service i sorts the centres by free machines, descending, and takes m_i machines
 //   from each of the top c_i (always enough). Print the final counts in descending order.

@@ -1,4 +1,5 @@
 // Source: NOI 2015 P2 (Software Package Manager), https://dmoj.ca/problem/noi15p2
+// limits: 1000 ms, 512 MB
 // Problem: n <= 1e5 packages; package 0 is the root and every other package depends on one
 //   package, forming a tree. q <= 1e5 commands `install x` (installs x and everything it depends
 //   on) or `uninstall x` (removes x and everything depending on it); print how many packages each

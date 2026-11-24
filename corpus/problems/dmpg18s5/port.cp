@@ -1,4 +1,5 @@
 // Source: DMPG 2018 S5 Mimi and Division, https://dmoj.ca/problem/dmpg18s5
+// limits: 2500 ms, 512 MB
 // Problem: N, Q <= 2e5 and an array A; queries "1 l r x" print how many of A[l..=r] are divisible
 //   by x, "2 u v" sets A[u] = v; values and x are at most 2e5.
 // Solution: sqrt decomposition with blocks of 500: each block keeps, for every d, how many of

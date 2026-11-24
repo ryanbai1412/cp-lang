@@ -1,5 +1,6 @@
 // Source: NOIP 2000 Senior P4 (Square Number Picking), https://dmoj.ca/problem/noip00p4
 //   (not public on DMOJ; statement from Luogu P1004)
+// limits: 1000 ms, 512 MB
 // Problem: an N x N grid (1 <= N <= 9) with numbers 1..=30 in some cells (any of them), given
 //   as lines x y v (1 <= x, y <= N) up to a line 0 0 0. Walk twice from the
 //   top-left to the bottom-right corner moving only down or right; a cell's number is taken

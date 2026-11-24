@@ -1,5 +1,6 @@
 // Source: Codeforces 2159A (MAD Interactive Problem),
 //   https://codeforces.com/contest/2159/problem/A
+// limits: 2000 ms, 250 MB
 // Problem: interactive, multitest. A hidden sequence of length 2n holds each of 1..n twice
 //   (2 <= n <= 300, sum of n^2 <= 1e5). A query of distinct indices returns the largest
 //   value appearing twice among them, or 0. Find the sequence in at most 3n queries.

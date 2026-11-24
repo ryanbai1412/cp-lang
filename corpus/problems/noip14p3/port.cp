@@ -1,4 +1,5 @@
 // Source: NOIP 2014 P3 (Flappy Bird), https://dmoj.ca/problem/noip14p3
+// limits: 1000 ms, 125 MB
 // Problem: a bird crosses n <= 10000 columns at heights 1..=m (m <= 1000), from any height.
 //   Moving into column x, each of any number of taps lifts it up[x], capped at m; no tap drops
 //   it down[x]. Height 0 or hitting one of k pipes (a column and a gap strictly inside low..high)

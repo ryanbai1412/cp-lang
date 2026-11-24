@@ -1,5 +1,6 @@
 // Source: Codeforces 2096G (Wonderful Guessing Game),
 //   https://codeforces.com/contest/2096/problem/G
+// limits: 2000 ms, 250 MB
 // Problem: interactive, multitest, n <= 2e5 (sum n <= 2e5). Find a hidden x in 1..=n with the
 //   fewest possible q queries, all printed up front: each is an even-length list, answered L
 //   (x in first half), R (second half) or N (absent), and exactly one answer is erased to '?'.

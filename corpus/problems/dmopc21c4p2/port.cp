@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 4 P2 (Festive Groups), https://dmoj.ca/problem/dmopc21c4p2
+// limits: 2000 ms, 256 MB
 // Problem: split N <= 2e6 numbers J_i <= 5e6 into the fewest groups such that each group's
 //   minimum divides every member; print the number of groups.
 // Solution: an element needs its own group exactly when no element before it in sorted order

@@ -1,5 +1,6 @@
 // Source: Yet Another Contest 6 P3 (No More Cell Phone Messaging),
 //   https://dmoj.ca/problem/yac6p3
+// limits: 1000 ms, 256 MB
 // Problem: interactive, non-adaptive: two distinct hidden cells (A, B), (C, D) of an N x M grid
 //   (N, M <= 1e9). Query "? X Y" returns min(|X - A| + |Y - B|, |X - C| + |Y - D|); after at
 //   most 5 queries print "! A B C D" (either order).

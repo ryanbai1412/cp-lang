@@ -1,4 +1,5 @@
 // Source: Codeforces 2057F (Formation), https://codeforces.com/contest/2057/problem/F
+// limits: 3000 ms, 500 MB
 // Problem: heights a[1..n] (<= 1e9) with 2a[i] >= a[i+1]; a pizza adds 1 to one pupil. For each of
 //   q queries k (<= 1e9) print the largest max(a) reachable with at most k pizzas while keeping
 //   2a[i] >= a[i+1]. n, q <= 5e4 (sums over all tests). Multitest.

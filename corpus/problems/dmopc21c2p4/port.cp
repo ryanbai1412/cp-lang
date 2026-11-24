@@ -1,4 +1,5 @@
 // Source: DMOPC 2021 Contest 2 P4 (Water Mechanics), https://dmoj.ca/problem/dmopc21c2p4
+// limits: 2000 ms, 256 MB
 // Problem: N cells in a row with heights h_i <= 1e9 and an integer 1 <= K <= N <= 1e6. Water
 //   poured into a cell spreads at most K cells each way over equal heights, the limit resets
 //   whenever it flows down, and it never flows up. Print the fewest pours that wet every cell.

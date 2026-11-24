@@ -1,4 +1,5 @@
 // Source: CCO 2022 P3 Double Attendance, https://dmoj.ca/problem/cco22p3
+// limits: 3000 ms, 1024 MB
 // Problem: two rooms show slides during open intervals (a, b): n1, n2 <= 3e5, no overlap within a
 //   room, times <= 1e9. You start in room 1 at time 0; moving between rooms takes k <= 1e9. A
 //   slide counts if you spend positive time in its room while it shows; print the most slides.

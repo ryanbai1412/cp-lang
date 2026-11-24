@@ -1,4 +1,5 @@
 // Source: CPC '21 Contest 1 P5 (AQT and Modern Art), https://dmoj.ca/problem/cpc21c1p5
+// limits: 3000 ms, 256 MB
 // Problem: interactive. N <= 500 hidden rectangles [x1, x2] x [y1, y2], coordinates in
 //   1..1e9, duplicates possible. "? a b c d" returns how many lie fully inside
 //   [a, b] x [c, d]; at most 61000 queries; then print "!" and all N rectangles.

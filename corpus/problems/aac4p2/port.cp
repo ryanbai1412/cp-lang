@@ -1,4 +1,5 @@
 // Source: An Animal Contest 4 P2 (Lavish Lights), https://dmoj.ca/problem/aac4p2
+// limits: 1000 ms, 256 MB
 // Problem: n lights (n <= 2e5) with a_i <= 1e9; light i is on at second t iff a_i | t.
 //   For each of q <= 1e6 queries t (0 <= t <= 1e9) print the first light that is off at second
 //   t, or -1 if all are on.

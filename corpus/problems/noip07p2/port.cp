@@ -1,4 +1,5 @@
 // Source: NOIP 2007 P2 (Expanding Strings), https://dmoj.ca/problem/noip07p2
+// limits: 1000 ms, 128 MB
 // Problem: a string of <= 100 digits, lowercase letters and '-'. A '-' between two digits or two
 //   letters, left < right, becomes the characters strictly between them: lowercase (p1 = 1),
 //   uppercase (p1 = 2) or '*' (p1 = 3), each repeated p2 <= 8 times, reversed when p3 = 2.

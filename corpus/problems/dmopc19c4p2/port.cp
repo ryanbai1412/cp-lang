@@ -1,4 +1,5 @@
 // Source: DMOPC '19 Contest 4 P2 (Pleasant Present), https://dmoj.ca/problem/dmopc19c4p2
+// limits: 1000 ms, 256 MB
 // Problem: an n x n grid, n <= 15, where all but 2 cells hold magnets; a marble starts on one
 //   of the empty cells. Each second either the marble moves into the adjacent empty cell or a
 //   magnet slides into it. Print the fewest seconds to get the marble to the goal cell.

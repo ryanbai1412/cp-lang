@@ -1,5 +1,6 @@
 // Source: Codeforces 2180 F1, Control Car (Easy Version),
 //   https://codeforces.com/contest/2180/problem/F1
+// limits: 5000 ms, 500 MB
 // Problem: multitest (t <= 1e4): each of the (n+1)(m+1) corners of an n x m grid (n, m <= 5000)
 //   points up, down, left or right, drawing a unit wall. A car starts in the top-left cell and
 //   moves down if no wall blocks it, else right if it can, else stops; print how many of the

@@ -1,4 +1,5 @@
 // Source: Another Contest 7 P3 (Network Connections), https://dmoj.ca/problem/acc7p3
+// limits: 750 ms, 256 MB
 // Problem: n <= 1e5 users with distinct values f_i <= 1e9 (increasing with i) and m <= 1e5
 //   existing friendships. Making i and j friends costs |f_i - f_j|; print the least cost that
 //   connects everyone.

@@ -1,4 +1,5 @@
 // Source: AtCoder ABC479 E (Cut and Add), https://atcoder.jp/contests/abc479/tasks/abc479_e
+// limits: 2000 ms, 1024 MB
 // Problem: a tree with an odd number N <= 2e5 of vertices, edges numbered 1..N-1. For each edge
 //   i, removing it splits the tree; add i to x_v for every v in the larger part. Print x_1..x_N.
 // Solution: root at 1. The edge above c (`lower`) adds i to sub(c) when size(c) > N - size(c),

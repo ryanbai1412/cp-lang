@@ -1,4 +1,5 @@
 // Source: NOIP 2005 P2 (Crossing the River), https://dmoj.ca/problem/noip05p2
+// limits: 1000 ms, 128 MB
 // Problem: a frog starts at 0 on a bridge of length L <= 1e9 and jumps s..=t (1 <= s <= t <= 10)
 //   until it reaches or passes L. m <= 100 distinct points hold stones; print the fewest stones
 //   it must land on.

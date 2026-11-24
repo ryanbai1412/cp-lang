@@ -1,4 +1,5 @@
 // Source: DMPG '15 G6 (Yōkan), https://dmoj.ca/problem/dmpg15g6
+// limits: 1400 ms, 256 MB
 // Problem: n <= 2e5 pieces with flavours in 1..=m, q <= 2e5 queries l r: can two people each
 //   get >= L/3 pieces (L = r - l + 1) of one flavour, the same or two different? Print YES or
 //   NO per query.

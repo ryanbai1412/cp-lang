@@ -1,4 +1,5 @@
 // Source: TLE '17 Contest 5 P6 (Circuits), https://dmoj.ca/problem/tle17c5p6
+// limits: 1000 ms, 256 MB
 // Problem: n <= 1e5 inputs, all an unknown x, feed m <= 2e5 NAND gates, each reading two lower
 //   gates; gate n + m is the output. Fix as many inputs as possible to 0 or 1 so the output still
 //   matches the unfixed circuit for both x = 0 and x = 1; print a string over 0, 1 and x.

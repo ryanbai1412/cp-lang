@@ -1,5 +1,6 @@
 // Source: Codeforces 2207H3 (Bowser's Castle, Hard Version),
 //   https://codeforces.com/contest/2207/problem/H3
+// limits: 8000 ms, 250 MB
 // Problem: interactive, multitest. A hidden min-max function f of x_1..x_n (min/max calls, each
 //   variable once, in order) is a binary tree of min/max gates over the leaves. Ask f(x) with at
 //   most 1500 queries in total, then answer up to 5000 of the judge's f(x). Sum of n <= 400.

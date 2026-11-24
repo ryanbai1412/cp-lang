@@ -1,4 +1,5 @@
 // Source: Codeforces 2147D (Game on Array), https://codeforces.com/contest/2147/problem/D
+// limits: 2000 ms, 250 MB
 // Problem: n positive integers a_i <= 1e9 (multitest, sum of n <= 2e5). Alice and Bob
 //   alternate, Alice first; a move picks a value x > 0 in the array, scores its number of
 //   copies and decrements all of them. Print both scores under optimal play.

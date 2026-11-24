@@ -1,4 +1,5 @@
 // Source: CCC 2023 S1 (Trianglane), https://dmoj.ca/problem/ccc23s1
+// limits: 1000 ms, 1024 MB
 // Problem: two rows of c <= 2e5 unit triangle tiles (the first points up, neighbours alternate),
 //   each black (1) or white (0). Print the length of tape around the black area: the black
 //   tiles' sides not shared with another black tile.

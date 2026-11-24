@@ -1,4 +1,5 @@
 // Source: Codeforces 2135B (For the Champion), https://codeforces.com/contest/2135/problem/B
+// limits: 2000 ms, 250 MB
 // Problem: interactive, multitest. n <= 100 known anchors, |x|, |y| <= 1e9; the robot starts at
 //   an unknown (X, Y), |X|, |Y| <= 1e9. Each of at most 10 moves goes U/D/L/R by k <= 1e9 and
 //   answers the least Manhattan distance to an anchor. Print "! X Y".

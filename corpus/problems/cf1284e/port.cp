@@ -1,5 +1,6 @@
 // Source: Codeforces 1284E (New Year and Castle Construction),
 //   https://codeforces.com/contest/1284/problem/E
+// limits: 3000 ms, 1000 MB
 // Problem: n <= 2500 distinct points, |x|, |y| <= 1e9, no three collinear. f(p) is the number of
 //   4-subsets of the other points that form a quadrilateral strictly enclosing p. Print the sum
 //   of f(p) over all p.

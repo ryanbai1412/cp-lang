@@ -1,4 +1,5 @@
 // Source: CCO 2022 Day 2 (Bi-ing Lottery Treekets), https://dmoj.ca/problem/cco22p4
+// limits: 1000 ms, 1024 MB
 // Problem: a rooted binary tree of N <= 4000 nodes; K <= 4000 numbered balls each have a drop
 //   node. Balls are dropped in any order; a ball falls into an empty child, picks either side
 //   when both are empty on its drop, keeps its direction afterwards, and stops when no child is

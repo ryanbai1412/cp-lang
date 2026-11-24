@@ -1,4 +1,5 @@
 // Source: IOI 2021 Day 2 P1 (Mutating DNA), https://dmoj.ca/problem/ioi21p4
+// limits: 2000 ms, 512 MB
 // Problem: strings a, b of n <= 1e5 letters from A, C, T and q <= 1e5 queries x <= y (0-based):
 //   print the fewest swaps of two letters of a[x..=y] that turn it into b[x..=y], or -1.
 // Solution: only the places where they differ matter, and of those only how many have each

@@ -1,4 +1,5 @@
 // Source: IOI 2022 P2 Prisoner Challenge, https://dmoj.ca/problem/ioi22p2
+// limits: 2000 ms, 512 MB
 // Problem: bags A and B hold distinct coin counts in 1..=n (n <= 5000). Prisoners enter one at
 //   a time, read the whiteboard i in 0..=x, open one bag (chosen by i) and see its count j, then
 //   overwrite the whiteboard or name the smaller bag. Print a strategy table s[i][j] that always

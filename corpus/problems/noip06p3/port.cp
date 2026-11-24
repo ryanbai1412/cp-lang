@@ -1,4 +1,5 @@
 // Source: NOIP 2006 Senior P3 (Job Scheduling Plan), Luogu P1065 (not on DMOJ)
+// limits: 1000 ms, 512 MB
 // Problem: n < 20 jobs of m < 20 steps each; step k of job j runs on a given machine for a given
 //   time <= 20. Steps are scheduled one by one in a given order, each at the earliest time that
 //   follows the job's previous step and fits a free gap on its machine. Print the makespan.

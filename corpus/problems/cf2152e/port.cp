@@ -1,4 +1,5 @@
 // Source: Codeforces 2152 E (Monotone Subsequence), https://codeforces.com/contest/2152/problem/E
+// limits: 2000 ms, 1000 MB
 // Problem: interactive, multitest (sum of n^2 + 1 <= 10001). A hidden permutation of length
 //   n^2 + 1 (n <= 100); query "? k i_1 < .. < i_k" returns the indices of the left-to-right
 //   maxima among them. In at most n queries, print "! s_1 .. s_{n+1}", the indices of an

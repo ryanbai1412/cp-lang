@@ -1,4 +1,5 @@
 // Source: IOI 2018 P1 (Combo), https://dmoj.ca/problem/ioi18p1
+// limits: 600 ms, 256 MB
 // Problem: interactive. A hidden word S of N <= 2000 letters over A B X Y whose first letter
 //   never appears again; press(p), |p| <= 4N, returns the longest prefix of S that is a substring
 //   of p. Find S; full score needs at most N + 2 presses.

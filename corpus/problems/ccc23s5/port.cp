@@ -1,4 +1,5 @@
 // Source: CCC 2023 S5 (The Filter), https://dmoj.ca/problem/ccc23s5
+// limits: 2000 ms, 1024 MB
 // Problem: 2 <= n <= 1e9. Print, in increasing order, every x in 0..=n with x / n in the
 //   Cantor set; there are at most 1e6 of them.
 // Solution: walk the Cantor construction: a segment [k / b, (k + 1) / b] holding numerators

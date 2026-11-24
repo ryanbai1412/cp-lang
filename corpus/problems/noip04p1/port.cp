@@ -1,4 +1,5 @@
 // Source: NOIP 2004 Senior P1 (Jinjin's Savings Plan), https://dmoj.ca/problem/noip04p1
+// limits: 1000 ms, 125 MB
 // Problem: each month adds 300 to Jinjin's cash and she spends that month's budget (12 budgets,
 //   each <= 350); every whole hundred left is deposited with mom, who returns deposits +20% at
 //   year end. Print -X for the first month X whose budget exceeds her cash, else her final money.

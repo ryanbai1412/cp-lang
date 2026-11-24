@@ -1,4 +1,5 @@
 // Source: IOI 2014 Day 2 P1 (Gondola), https://dmoj.ca/problem/ioi14p4
+// limits: 1000 ms, 256 MB
 // Problem: n <= 1e5 gondolas on a circle, first numbered 1..n in cyclic order; each failure
 //   replaces a gondola by a new one numbered n+1, n+2, ... Given the final numbers (<= 250000)
 //   read from some position: task 1, is it a valid gondola sequence; task 2, print a

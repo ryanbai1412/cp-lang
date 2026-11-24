@@ -1,4 +1,5 @@
 // Source: Codeforces 2147C (Rabbits), https://codeforces.com/contest/2147/problem/C
+// limits: 2000 ms, 250 MB
 // Problem: a binary string of n <= 2e5 pots (sum n <= 2e5, multitest); each 0 gets a rabbit
 //   facing left or right. A rabbit jumps into the next pot unless that pot holds a rabbit, is
 //   past the border, or another rabbit faces it from the other side. Can no rabbit jump?

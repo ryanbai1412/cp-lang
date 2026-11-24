@@ -1,4 +1,5 @@
 // Source: IOI 2016 P1 (Detecting Molecules), https://dmoj.ca/problem/ioi16p1
+// limits: 600 ms, 256 MB
 // Problem: n <= 2e5 weights w_i < 2^31 and a range [l, u] with u - l >= max w - min w. Find any
 //   subset whose total lies in [l, u] and give its indices, or report none. Grader task, any
 //   valid subset is accepted.

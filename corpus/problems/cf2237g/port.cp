@@ -1,4 +1,5 @@
 // Source: Codeforces 2237G, Send GCDs, https://codeforces.com/contest/2237/problem/G
+// limits: 3000 ms, 250 MB
 // Problem: run-twice interactive, multitest, sum n <= 1000. Run 1 gets a (a_i <= 1e6) and
 //   prints b, k <= ceil(10n/9) + 150 values <= 1e6. Run 2 gets only n and k and may ask
 //   gcd(b_i, b_j) at most 180n + 150 times; it must print a.

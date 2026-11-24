@@ -1,5 +1,6 @@
 // Source: Codeforces 2129C1 (Interactive RBS, Easy Version),
 //   https://codeforces.com/contest/2129/problem/C1
+// limits: 2000 ms, 250 MB
 // Problem: interactive, multitest (t <= 20). A hidden bracket string s of length n (2 <= n <=
 //   1000) has at least one '(' and one ')'. A query lists k <= 1000 indices (repeats allowed)
 //   and returns the number of balanced substrings of the string they spell. Find s in at

@@ -1,4 +1,5 @@
 // Source: CCO '18 P2 (Wrong Answer), https://dmoj.ca/problem/cco18p2
+// limits: 600 ms, 1024 MB
 // Problem: output only. Print N <= 100 and costs A[i][j] in 1..100 (i < j) for a game where
 //   two characters start at level 1 and must visit every other level exactly once, moving
 //   only up; X is the given greedy's cost, Y the optimum; score ceil(min(25, X / 4Y)).

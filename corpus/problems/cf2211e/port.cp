@@ -1,4 +1,5 @@
 // Source: Codeforces 2211E (Minimum Path Cover), https://codeforces.com/contest/2211/problem/E
+// limits: 4000 ms, 250 MB
 // Problem: a tree on n <= 2e5 nodes rooted at 1, every child labelled above its parent, values
 //   2 <= a_i <= 1e18. f(T) is the fewest vertical paths, each with gcd of values > 1, covering
 //   every node once. Print f(S(n)), f(S(n-1)), ..., f(S(1)) online: node x (its value and

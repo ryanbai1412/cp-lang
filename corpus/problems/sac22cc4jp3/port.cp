@@ -1,4 +1,5 @@
 // Source: SAC '22 Code Challenge 4 Junior P3, https://dmoj.ca/problem/sac22cc4jp3
+// limits: 1000 ms, 256 MB
 // Problem: n <= 1e5 points (x, y) off the origin, |x|, |y| <= 1e9, and a whole angle A in
 //   0..=359 degrees. Print the 1-based index of the point whose direction from the origin
 //   is closest to A; the closest is at least 1e-4 closer than any other.

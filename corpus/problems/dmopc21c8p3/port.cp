@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 8 P3 (Weaker Data), https://dmoj.ca/problem/dmopc21c8p3
+// limits: 2000 ms, 256 MB
 // Problem: print the lexicographically smallest permutation of 1..N with exactly K valleys,
 //   triples i < j < k with P_i > P_j < P_k, or -1. N <= 1e6, K <= 1e18.
 // Solution: place values from the smallest up: the smallest unplaced value is the middle of

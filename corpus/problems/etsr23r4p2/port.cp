@@ -1,4 +1,5 @@
 // Source: ETSR '23 R4 P2 (SHOI 2017, Encounters Are Greetings), https://dmoj.ca/problem/etsr23r4p2
+// limits: 2000 ms, 512 MB
 // Problem: 1 <= n, q <= 5e4 numbers 0 <= a_i <= 1e8, a modulus 1 <= p <= 1e8 and a base 1 <= c <= 1e8.
 //   "0 l r" replaces each a_i in l..=r by c^(a_i); "1 l r" prints the sum of a_l..=a_r mod p.
 // Solution: by the generalized Euler theorem, c^e mod m depends on e mod phi(m) (plus phi(m)

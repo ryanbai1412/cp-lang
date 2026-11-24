@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 5 P3, https://dmoj.ca/problem/dmopc21c5p3
+// limits: 2000 ms, 256 MB
 // Problem: heights of n buildings in a row form a permutation p. A token starts on height n;
 //   players alternately move it from i to j with p_i > p_j and |i - j| prime, and who can't
 //   move loses. Print the lexicographically smallest p where the first player wins, or -1.

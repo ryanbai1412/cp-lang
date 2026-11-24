@@ -146,7 +146,7 @@
   "external_crates": 5,
   "corpus_test_files": 0,
   "corpus_no_max": 0,
-  "corpus_no_limits": 201,
+  "corpus_no_limits": 10,
   "interp_max_over_20s": 2,
   "uncited_rules": 0,
   "register_rows_by_domain": {

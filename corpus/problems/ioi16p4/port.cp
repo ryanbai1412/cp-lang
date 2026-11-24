@@ -1,4 +1,5 @@
 // Source: IOI 2016 P4 (Paint By Numbers), https://dmoj.ca/problem/ioi16p4
+// limits: 1000 ms, 1024 MB
 // Problem: a row of n <= 200000 cells, each known black 'X', known white '_' or unknown '.',
 //   and k <= 100 clues: the lengths of the black blocks from left to right. At least one
 //   painting fits. Print each cell as 'X' (black in every fitting painting), '_' (white in

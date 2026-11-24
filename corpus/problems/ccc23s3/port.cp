@@ -1,4 +1,5 @@
 // Source: CCC 2023 S3 Palindromic Poster, https://dmoj.ca/problem/ccc23s3
+// limits: 1000 ms, 1024 MB
 // Problem: N, M in 2..=2000, R in 0..=N, C in 0..=M. Print an N x M grid of lowercase letters with
 //   exactly R palindromic rows and C palindromic columns (any one), or IMPOSSIBLE.
 // Solution: cases. 0 < R < N and 0 < C < M: all 'a' but 'b' in the bottom-right block below row

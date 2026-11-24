@@ -1,4 +1,5 @@
 // Source: EGOI 2022 Day 1 (Lego Wall), https://dmoj.ca/problem/egoi22p2
+// limits: 3000 ms, 256 MB
 // Problem: count the walls of width w and height h (w * h <= 5e5) built from 1x1 and 2x1
 //   bricks with no holes that are connected (bricks touching one above the other link),
 //   mod 1e9+7.

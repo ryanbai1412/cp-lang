@@ -1,4 +1,5 @@
 // Source: SAC '22 Code Challenge 5 P4 (Querying Intervals), https://dmoj.ca/problem/sac22cc5p4
+// limits: 1000 ms, 256 MB
 // Problem: N <= 1e5 integer intervals [l_i, r_i] and Q <= 1e5 queries [L, R], endpoints in
 //   [-1e9, 1e9]; print Y if every integer of [L, R] lies in some interval, else N.
 // Solution: an IntervalSet over the coordinates merges overlapping and touching intervals into

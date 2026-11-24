@@ -1,4 +1,5 @@
 // Source: Codeforces 2129F1 (Top-K Tracker, easy), https://codeforces.com/contest/2129/problem/F1
+// limits: 3000 ms, 250 MB
 // Problem: interactive, multitest (t <= 40): find a hidden permutation p of n <= 845. A query
 //   names distinct indices and gets back the largest min(60, m) of their p values (type 1) or pos
 //   values (type 2); types 3 and 4 return min(300, m). At most 30 queries, one of type 3/4.

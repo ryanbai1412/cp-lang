@@ -1,4 +1,5 @@
 // Source: NOIP 2010 Senior P3 (Imprisoning Criminals), Luogu P1525 (no longer on DMOJ)
+// limits: 1000 ms, 125 MB
 // Problem: N <= 2e4 criminals, M <= 1e5 distinct hostile pairs (a, b) with anger c <= 1e9.
 //   Split them over two prisons to minimise the largest anger of a pair in the same prison;
 //   print that value, or 0 if no pair has to share.

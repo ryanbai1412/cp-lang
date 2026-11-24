@@ -1,5 +1,6 @@
 // Source: NOI 2015 Day 2 P2 (NOI '15 P5), Cocktail Party (Wine Tasting),
 //   https://dmoj.ca/problem/noi15p5
+// limits: 1000 ms, 512 MB
 // Problem: a string s of n lowercase labels (n <= 3e5) and scores a_i (|a_i| <= 1e9). Cups p != q
 //   are r-similar if the length-r substrings starting at p and q are equal (all pairs are
 //   0-similar). For each r = 0..n-1 print the number of r-similar pairs and the largest

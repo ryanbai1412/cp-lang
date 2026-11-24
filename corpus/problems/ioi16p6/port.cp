@@ -1,4 +1,5 @@
 // Source: IOI 2016 P6 (Aliens), https://dmoj.ca/problem/ioi16p6
+// limits: 1000 ms, 256 MB
 // Problem: n <= 1e5 points on an m x m grid, m <= 1e6. A photo is a square whose two opposite
 //   corners lie on the main diagonal; with at most k photos covering every point, print the least
 //   number of cells photographed at least once. Input as the IOI sample grader gives it.

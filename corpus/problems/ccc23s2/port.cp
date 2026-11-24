@@ -1,4 +1,5 @@
 // Source: CCC 2023 Senior S2 (Symmetric Mountains), https://dmoj.ca/problem/ccc23s2
+// limits: 1000 ms, 1024 MB
 // Problem: n <= 5000 heights 0 <= h_i <= 1e5. A crop h[l..=r] has asymmetric value the sum of
 //   |h[l + i] - h[r - i]| over the pairs from the outside in. For every length 1..=n print the
 //   least asymmetric value of a crop of that length.

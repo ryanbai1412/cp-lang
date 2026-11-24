@@ -1,4 +1,5 @@
 // Source: Codeforces 2150E1, Hidden Single (Easy), https://codeforces.com/contest/2150/problem/E1
+// limits: 5000 ms, 250 MB
 // Problem: a hidden array of length 2n - 1 (n <= 300) holds each of 1..=n twice except one
 //   value once. Ask whether x occurs at some position of a set S; find the single value in at
 //   most 4n + 2 ceil(log2 n) queries. Interactive multitest, sum n^2 <= 4e5.

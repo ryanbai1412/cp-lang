@@ -1,4 +1,5 @@
 // Source: CCC 2019 S2 (Pretty Average Primes), https://dmoj.ca/problem/ccc19s2
+// limits: 1000 ms, 1024 MB
 // Problem: t <= 1000 values 4 <= n <= 1e6: for each, print primes a and b with a + b = 2n (any
 //   such pair; one always exists).
 // Solution: sieve up to 2 max n once, then per n the first prime a with 2n - a prime (the pair

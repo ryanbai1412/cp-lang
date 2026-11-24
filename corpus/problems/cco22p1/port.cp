@@ -1,4 +1,5 @@
 // Source: CCO '22 P1 (Alternating Heights), https://dmoj.ca/problem/cco22p1
+// limits: 2000 ms, 1024 MB
 // Problem: a line A_1..A_N of students 1..K (N <= 3000, K <= N, students may repeat) and
 //   Q <= 1e6 queries x < y: can distinct heights give h[A_x] > h[A_x+1] < h[A_x+2] > ...
 //   up to A_y? Print YES or NO for each.

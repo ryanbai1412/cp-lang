@@ -1,4 +1,5 @@
 // Source: NOIP 2018 Day 2 P1 (Travel), https://dmoj.ca/problem/noip18p4
+// limits: 1000 ms, 512 MB
 // Problem: a connected graph on n <= 5000 towns with m = n - 1 or m = n roads. Walk from any
 //   start, each step entering an unvisited neighbour or backing up the edge you came in by;
 //   print the lexicographically smallest order in which all towns are first visited.

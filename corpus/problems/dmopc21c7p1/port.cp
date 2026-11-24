@@ -1,4 +1,5 @@
 // Source: DMOPC '21 Contest 7 P1 (Chika Grids), https://dmoj.ca/problem/dmopc21c7p1
+// limits: 2000 ms, 256 MB
 // Problem: an N x M grid (N, M <= 1500) of values 0..=1e9, 0 meaning blank. Fill the blanks so
 //   every row and every column is strictly increasing with all values in 1..=1e18, keeping
 //   the given cells, and print the grid; or print -1 if impossible.

@@ -1,4 +1,5 @@
 // Source: EGOI '22 P1 (SubsetMex), https://dmoj.ca/problem/egoi22p1
+// limits: 1000 ms, 512 MB
 // Problem: a multiset S given as counts f_0..f_{n-1} (n <= 50, f_i <= 1e16, t <= 200 tests),
 //   with n not in S. An operation removes a set T of distinct elements of S and inserts
 //   mex(T). Print the fewest operations that put n into S.

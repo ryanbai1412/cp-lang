@@ -1,4 +1,5 @@
 // Source: SHOI 2016 / JLOI 2016, Square, https://dmoj.ca/problem/shoi16p2
+// limits: 1000 ms, 125 MB
 // Problem: an (N+1) x (M+1) lattice of points (N, M <= 1e6) with K <= 2000 points deleted.
 //   Count the squares, axis-parallel or tilted, whose four corners are all kept points, mod
 //   100000007.

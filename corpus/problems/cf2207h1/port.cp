@@ -1,5 +1,6 @@
 // Source: Codeforces 2207H1 (Bowser's Castle, easy),
 //   https://codeforces.com/contest/2207/problem/H1
+// limits: 8000 ms, 250 MB
 // Problem: interactive. A hidden min-max function f of x_1..x_n (only min and max calls, each
 //   variable once, in order), n <= 70. Ask "? x_1 .. x_n" to get f (at most 1e4 asks in all),
 //   print "!", then answer the judge's inputs with f until a line "0". Multitest, sum n <= 70.

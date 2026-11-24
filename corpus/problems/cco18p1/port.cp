@@ -1,4 +1,5 @@
 // Source: CCO 2018 P1 (Geese vs. Hawks), https://dmoj.ca/problem/cco18p1
+// limits: 600 ms, 1024 MB
 // Problem: each team played n <= 1000 games, given in order as W/L and points (<= 1e6). Pick
 //   rivalry games: pairs (geese game i, hawks game j), in order in both lists, where one team
 //   won and scored more than the other. Print the largest total points of both teams in them.

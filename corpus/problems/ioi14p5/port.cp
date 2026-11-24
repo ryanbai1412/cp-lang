@@ -1,4 +1,5 @@
 // Source: IOI 2014 Day 2 Friend, https://dmoj.ca/problem/ioi14p5
+// limits: 1000 ms, 256 MB
 // Problem: a network of n <= 1e5 people grows from person 0: person i joins via a host h < i as
 //   a friend of the host only (protocol 0), of the host's friends only (1), or of both (2).
 //   Print the largest total confidence (each <= 1e4) of a set with no two friends.

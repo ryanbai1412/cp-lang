@@ -1,4 +1,5 @@
 // Source: NOI 2018 Day 1 P2 (Inverse), https://dmoj.ca/problem/noi18p2
+// limits: 1000 ms, 524 MB
 // Problem: p is good if bubble sort makes exactly 1/2 sum |i - p_i| swaps. Given a permutation q
 //   of 1..n, count the good permutations of length n lexicographically greater than q, mod
 //   998244353. T = 5 tests, n <= 6e5, sum n <= 2e6.

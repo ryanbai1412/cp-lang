@@ -1,4 +1,5 @@
 // Source: Codeforces 2066E (Tropical Season), https://codeforces.com/contest/2066/problem/E
+// limits: 4000 ms, 1000 MB
 // Problem: n barrels, a_i <= 1e6, one secretly poisoned. Scales compare any two barrels, and water
 //   may be poured from a barrel known to be safe. Can the poisoned barrel always be identified?
 //   Answer Yes/No before and after each of q queries "+ x" / "- x" (add/remove a barrel);
