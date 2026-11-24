@@ -1120,6 +1120,7 @@ std/math.cp: BigInt.gcd(a: BigInt, b: BigInt) -> BigInt
 std/math.cp: BigInt.to_str(self) -> Str
 std/math.cp: DirichletSum.new(n: Int, f_small: List<T>, g_sum: Int -> T, fg_sum: Int -> T) -> DirichletSum<T>
 std/math.cp: DirichletSum.sum(mut self, m: Int) -> T
+std/math.cp: Exp.of(e: Int, m: Int) -> Exp
 std/math.cp: Ratio.abs(self) -> Ratio
 std/math.cp: Ratio.ceil(self) -> Int
 std/math.cp: Ratio.floor(self) -> Int
@@ -1177,7 +1178,9 @@ std/math.cp: mod_sqrt(a: Int, p: Int) -> ?Int
 std/math.cp: mul_mod(a: Int, b: Int, m: Int) -> Int
 std/math.cp: mult_order(a: Int, m: Int) -> ?Int
 std/math.cp: phi(x: Int) -> Int
+std/math.cp: pow_exp(a: Int, x: Exp, m: Int) -> Exp
 std/math.cp: pow_mod(a: Int, e: Int, m: Int) -> Int
+std/math.cp: pow_tower(xs: List<Int>, m: Int) -> Int
 std/math.cp: prime_count(n: Int) -> Int
 std/math.cp: primes_in(lo: Int, hi: Int) -> List<Int>
 std/math.cp: primitive_root(p: Int) -> Int
@@ -1337,6 +1340,11 @@ std/persistent.cp: RangeKth.count_le(self, r: Range<D>, x: T) -> Int
 std/persistent.cp: RangeKth.count_lt(self, r: Range<D>, x: T) -> Int
 std/persistent.cp: RangeKth.kth(self, r: Range<D>, k: Int) -> T
 std/persistent.cp: RangeKth.new(a: [D]T) -> RangeKth<D, T>
+std/persistent.cp: VersionWithin.each(self) -> yields T
+std/persistent.cp: VersionWithin.is_empty(self) -> Bool
+std/persistent.cp: VersionWithin.items(self) -> yields (D, T)
+std/persistent.cp: VersionWithin.len(self) -> Int
+std/persistent.cp: Versioned.within(self, store: S) -> lends VersionWithin<S, D, T>
 std/poly.cp: Poly.at(self, i: Int) -> T
 std/poly.cp: Poly.deg(self) -> ?Int
 std/poly.cp: Poly.deriv(self) -> Poly<T>
@@ -1469,6 +1477,7 @@ std/range.cp: last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D
 std/range.cp: mid<D>(self: Range<D>) -> Cut<D>
 std/range.cp: r<D>(self: Range<D>) -> Cut<D>
 std/range.cp: shift<D>(self: D, r: Range<Int>) -> Range<D>
+std/range.cp: shift_saturating<D>(self: D, k: Int) -> D
 std/range.cp: splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)
 std/search.cp: bsearch(self: Range<F64>, ok: F64 -> Bool, steps: Int = 100) -> ?F64
 std/search.cp: dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64

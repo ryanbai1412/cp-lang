@@ -8947,7 +8947,11 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** Each trie owned its own node `List`, so `absorb` copied the smaller trie node by node. On cf2261g's max that copy and the list growth were a third of the port's time, 1.8x the accepted C++, which merges tries in one shared pool. With shared nodes, each node visited by `absorb` retires one of `other`'s nodes, so any sequence of absorbs costs O(N W) in total instead of O(N W log N), and `cap` reserves the pool once.
 - **Reverse.** Give `BitTrie<W>` its own `nodes` list again, drop `BitTrieArena` and the arena parameters, and make `absorb` walk the smaller trie's nodes into the larger.
 
-## 555. (reserved, content)
+## 555. Every version store reads a version as `v.within(t)` (content, 2026-11-24)
+
+- **Call.** `PersistentSegTree`, `PersistentLazySegTree` and `PersistentArray` implement `trait Versioned<D, T>` (`get(v, i)`), and one generic `Version<S: Versioned<D, T>>.within(store: S) -> lends VersionWithin<S, D, T>` reads any version as a container: `len`, `is_empty`, `each` and `items` in ascending `D` order, and `Show`. It is the same `value.within(store)` spelling as `PMultiset` and `PersistentDsu` (decision 519's arenas), and the trait matrix checks `VersionWithin` like any container.
+- **Why.** Each tree's `Show` prints only its base version, so a later version had no walk and no print, and adding one per tree would have given three methods for one idea. One trait means a future version store gets the view by implementing `get`. A flipped `t.within(v)` was rejected because every other lent view takes the value as receiver.
+- **Reverse.** If a store can walk a version faster than `|D|` `get`s, give `Versioned` an `each` with that default and override it there.
 
 ## 556. The conform corpus ratchet times the max cases instead of judging them (idioms, 2026-11-24)
 

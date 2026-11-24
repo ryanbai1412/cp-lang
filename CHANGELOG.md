@@ -26,6 +26,8 @@ exhaustive form, and `plan/STATUS.md` lists what is still open.
   `HashVal` implement it, so `HashVal.hash_token` reads the same.
 - `adjacency(arcs)` takes any walk of arcs with `u` and `v` fields (more fields allowed) and stays
   directed: an arc lands only in its `u`'s list.
+- A version of a persistent tree or array reads as a container through the
+  store that made it: `v.within(t)`, through `trait Versioned` (decision 555).
 - `Filtered.src`, `Mapped.src` and `Items.src` are now `pub` fields rather
   getter fns; `v.src` reads the same.
 - The library is respecified in `std/`: about 1,700 documented

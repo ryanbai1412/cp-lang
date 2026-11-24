@@ -1694,6 +1694,16 @@ print(a[1..3])
 """
 out = "6 7"
 
+[case."Show/VersionWithin/show"]
+code = """
+use std.persistent.{PersistentArray}
+domain P = 0..3
+var p = PersistentArray<P, Int>(a: [P] i => i.ord + 1)
+let v = p.set(p.base, P(2), 7)
+print("{v.within(p)} | {p.base.within(p)}")
+"""
+out = "1 2 7 | 1 2 3"
+
 [case."Show/Rev/show"]
 code = """
 print([1, 2, 3].rev)

@@ -596,7 +596,10 @@ declares, and each write returns a `Version<S>` that names the structure type
 An arena-stored value walks and prints through `x.within(ar)`, a lent view
 of it inside its arena that is a container like any other (`len`,
 `is_empty`, a walk and `Show`); copying nothing, it lives no longer than
-`x` or `ar`.
+`x` or `ar`. A version of a tree or array reads the same way through the
+structure that made it: the three implement `trait Versioned<D, T>` (`get`
+one position of a version), and `v.within(t)` is a container of the
+version's values in key order (decision 555).
 
 <!-- signatures: std/persistent.cp std/dsu.cp -->
 ```cp
@@ -619,6 +622,12 @@ struct PMultiset<D>                                                             
     // ==: O(1) by size and a 64-bit sum of fixed per-key weights
 
 struct Version<S>(root: Int)  // a version of tree or array type S; only S takes it
+
+trait Versioned<D, T>                                         // PersistentSegTree, PersistentLazySegTree, PersistentArray
+    fn get(self, v: Version<Self>, i: D) -> T                 // O(log |D|)
+
+impl<S: Versioned<D, T>, D: Domain, T> Version<S>
+    fn within(self, store: S) -> lends VersionWithin<S, D, T>  // O(1); len, is_empty, each, items (ascending D, O(|D| log |D|)), Show
 
 struct PersistentDsu<V>                                                         // one version of a union-find (std.dsu)
     fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>                      // O(n) time, 2n - 1 nodes
