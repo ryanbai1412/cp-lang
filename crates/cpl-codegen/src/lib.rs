@@ -653,6 +653,8 @@ mod forward_tests;
 #[cfg(test)]
 mod mangle_tests;
 #[cfg(test)]
+mod op_struct_tests;
+#[cfg(test)]
 mod prune_tests;
 #[cfg(test)]
 mod range_tests;

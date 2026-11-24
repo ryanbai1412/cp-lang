@@ -800,6 +800,12 @@ impl<T> Op<T> for (T, T) -> T:
     fn folds(self) -> Monoid<?T> = self.opt()
     fn lift(self, x: T) -> ?T = Some(x)
 
+impl<T, Ms> Op<T> for Each<Ms>:
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = self.monoid<T>().op(a, b)
+    fn folds(self) -> Monoid<T> = self.monoid()
+    fn lift(self, x: T) -> T = x
+
 /// The identity of an operation. Law: `op(id, a) == a == op(a, id)`.
 pub trait HasId<T>:
     @get fn id(self) -> T
