@@ -318,7 +318,11 @@ pub fn aliens<L: Add + Sub + Mul>(k: Int, solve: L -> (val: L, count: Int), lamb
         hi = r.last!
     else:
         while solve(hi).count > k: hi *= 2
-        while solve(lo).count <= k: lo *= 2
+        while true:
+            let at = solve(lo)
+            if at.count == k: return at.val - lo * k
+            if at.count > k: break
+            lo *= 2
     assert solve(hi).count <= k
     while lo < hi:
         let mid = lo + (hi - lo) / 2
