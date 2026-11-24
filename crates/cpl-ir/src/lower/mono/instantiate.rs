@@ -4,6 +4,36 @@
 use super::*;
 
 impl<'a> Lowerer<'a> {
+    /// How many of a struct's `args` its name spells: a trailing run of
+    /// params given their defaults is left out, as `S<T>` is written. The
+    /// instance id in the name keeps names apart.
+    fn past_defaults(&mut self, gid: GenStructId, args: &[GenArg]) -> usize {
+        let decl = self.gen_structs[gid].decl;
+        let saved_mod = std::mem::replace(&mut self.cur_mod, self.gen_structs[gid].mod_id);
+        let saved_offset = std::mem::replace(&mut self.offset, self.gen_structs[gid].offset);
+        let saved_env = self.gen_env.clone();
+        let mut named = args.len();
+        while let Some(Some(default_ty)) = named
+            .checked_sub(1)
+            .and_then(|i| decl.generic_defaults.get(i))
+        {
+            self.gen_env = decl
+                .generics
+                .iter()
+                .zip(&args[..named - 1])
+                .map(|(p, a)| (p.text.clone(), a.clone()))
+                .collect();
+            if self.resolve_gen_arg(default_ty) != args[named - 1] {
+                break;
+            }
+            named -= 1;
+        }
+        self.gen_env = saved_env;
+        self.cur_mod = saved_mod;
+        self.offset = saved_offset;
+        named
+    }
+
     /// Instantiates a generic struct template with concrete `args`, memoized.
     pub(in crate::lower) fn instantiate_struct(
         &mut self,
@@ -39,8 +69,9 @@ impl<'a> Lowerer<'a> {
         if let Some(&id) = self.insts.get(&key) {
             return id;
         }
+        let named = self.past_defaults(gid, &args);
         let id = self.structs.len();
-        let suffix: Vec<String> = args.iter().map(|a| self.mangle_arg(a)).collect();
+        let suffix: Vec<String> = args[..named].iter().map(|a| self.mangle_arg(a)).collect();
         let mangled = format!(
             "{}_{}_{id}",
             decl.name.text.replace('\'', "_a"),
