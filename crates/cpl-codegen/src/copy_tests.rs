@@ -328,3 +328,27 @@ fn a_top_level_let_of_a_list_element_is_a_reference() {
     assert!(cpp.contains("const std::vector<ll>& r = "), "{cpp}");
     assert!(!cpp.contains("std::vector<ll> r;"), "{cpp}");
 }
+
+#[test]
+fn an_inlined_lambda_parameter_is_a_reference() {
+    let cpp = cpp(concat!(
+        "struct W(n: Int):\n",
+        "    pub fn each(self) -> yields Str:\n",
+        "        yield \"a\"\n",
+        "        yield \"bb\"\n",
+        "let w = W(1)\n",
+        "print(max(w, by: s => s.len)!)\n",
+    ));
+    assert!(cpp.contains("const std::string& s = "), "{cpp}");
+    assert!(!cpp.contains("std::string s = "), "{cpp}");
+}
+
+#[test]
+fn a_match_arm_binding_of_a_temporary_is_a_reference() {
+    let cpp = cpp(concat!(
+        "match read<Str>():\n",
+        "    \"A\" => print(1)\n",
+        "    kind => print(kind.len)\n",
+    ));
+    assert!(cpp.contains("const std::string& kind = "), "{cpp}");
+}
