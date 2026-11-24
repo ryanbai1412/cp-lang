@@ -334,7 +334,7 @@ impl<'a> Lowerer<'a> {
                         span,
                     )
                 }
-                None => self.err_expr(span),
+                None => self.foreign_method_args(whole, base, name, args, &ty),
             },
             (Ty::List(_) | Ty::Str, "truncate") => match self.one_arg(method, args, &Ty::Int, span)
             {

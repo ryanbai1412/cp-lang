@@ -422,7 +422,8 @@ impl<'a> Lowerer<'a> {
         }
     }
 
-    /// Python's `a.pop(i)` and `m.get(k, d)`: `a.remove(i)`, `m.get(k) ?? d`.
+    /// Python's `a.pop(i)` and `m.get(k, d)`, C++'s `a.resize(n)`: `a.remove(i)`,
+    /// `m.get(k) ?? d`, `a.resize(n, 0)`.
     pub(super) fn foreign_method_args(
         &mut self,
         whole: &ast::Expr,
@@ -442,6 +443,23 @@ impl<'a> Lowerer<'a> {
                 format!("{b}.remove({i})"),
                 "removing at an index is `remove`",
             ),
+            // C++'s `a.resize(n)` fills with the element's zero.
+            ("resize", [n]) => {
+                let Ty::List(elem) = ty else {
+                    return self.err_expr(span);
+                };
+                let zero = match &**elem {
+                    Ty::Int | Ty::I128 | Ty::U64 => "0",
+                    Ty::Float => "0.0",
+                    Ty::Bool => "false",
+                    Ty::Str => "\"\"",
+                    _ => return self.err_expr(span),
+                };
+                (
+                    format!("{b}.resize({n}, {zero})"),
+                    "`resize` takes the value for new places",
+                )
+            }
             ("get", [k, d]) => {
                 let new = self.parenthesized(whole.span, format!("{b}.get({k}) ?? {d}"));
                 (new, "a default for a missing key is given with `??`")
