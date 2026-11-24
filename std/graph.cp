@@ -164,29 +164,18 @@ pub struct Graph<V: Domain, A: Target<V>>:
         E,
         R> -> B = a => a,
     ) -> Graph<V, B>:
-        let n = V.count
-        var deg: [V]Int = 0
-        for e in E:
-            deg[edges[e].u] += 1
         var start: [V.cuts]Int = 0
-        var acc = 0
-        for v in V:
-            start[v.ord] = acc
-            acc += deg[v]
-        start[n] = acc
-        var cur: [V]Int = [V] v => start[v.ord]
+        for e in E: start[edges[e].u.ord] += 1
+        // counts become each vertex's end; placing arcs back to front lowers it to its start
+        for i in 1..start.len: start[i] += start[i - 1]
         var arcs = List<B>()
-        if acc > 0:
-            let first_e = E.first!
-            let f0 = edges[first_e]
-            let dummy = keep((to: f0.v, e: first_e, ..f0 without (u, v)))
-            for _ in 0..acc:
-                arcs.push(dummy)
-            for e in E:
+        if let e0 = E.first:
+            let f0 = edges[e0]
+            arcs = List.filled(start[V.count], keep((to: f0.v, e: e0, ..f0 without (u, v))))
+            for e in E.rev:
                 let r = edges[e]
-                let pos = cur[r.u]
-                cur[r.u] = pos + 1
-                arcs[pos] = keep((to: r.v, e: e, ..r without (u, v)))
+                start[r.u.ord] -= 1
+                arcs[start[r.u.ord]] = keep((to: r.v, e: e, ..r without (u, v)))
         Graph<V, B>(start:, arcs:)
 
     /// A graph with two arcs per edge of `edges`, `u -> v` and `v -> u`, both carrying the
@@ -206,34 +195,22 @@ pub struct Graph<V: Domain, A: Target<V>>:
         E,
         R> -> B = a => a,
     ) -> Graph<V, B>:
-        let n = V.count
-        var deg: [V]Int = 0
-        for e in E:
-            let r = edges[e]
-            deg[r.u] += 1
-            deg[r.v] += 1
         var start: [V.cuts]Int = 0
-        var acc = 0
-        for v in V:
-            start[v.ord] = acc
-            acc += deg[v]
-        start[n] = acc
-        var cur: [V]Int = [V] v => start[v.ord]
+        for e in E:
+            start[edges[e].u.ord] += 1
+            start[edges[e].v.ord] += 1
+        // counts become each vertex's end; placing arcs back to front lowers it to its start
+        for i in 1..start.len: start[i] += start[i - 1]
         var arcs = List<B>()
-        if acc > 0:
-            let first_e = E.first!
-            let f0 = edges[first_e]
-            let dummy = keep((to: f0.v, e: first_e, ..f0 without (u, v)))
-            for _ in 0..acc:
-                arcs.push(dummy)
-            for e in E:
+        if let e0 = E.first:
+            let f0 = edges[e0]
+            arcs = List.filled(start[V.count], keep((to: f0.v, e: e0, ..f0 without (u, v))))
+            for e in E.rev:
                 let r = edges[e]
-                let pu = cur[r.u]
-                cur[r.u] = pu + 1
-                arcs[pu] = keep((to: r.v, e: e, ..r without (u, v)))
-                let pv = cur[r.v]
-                cur[r.v] = pv + 1
-                arcs[pv] = keep((to: r.u, e: e, ..r without (u, v)))
+                start[r.v.ord] -= 1
+                arcs[start[r.v.ord]] = keep((to: r.u, e: e, ..r without (u, v)))
+                start[r.u.ord] -= 1
+                arcs[start[r.u.ord]] = keep((to: r.v, e: e, ..r without (u, v)))
         Graph<V, B>(start:, arcs:)
 
     /// A graph from `(from, arc)` pairs: `arc` is stored as one of `from`'s arcs. The base form
@@ -245,28 +222,19 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..2; let g = Graph.of([(from: V(1), arc: V(0)), (from: V(0), arc: V(1)), (from: V(1), arc: V(1))]); g.next(1).collect() == [0, 1]`
     pub fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>:
-        let n = V.count
-        var deg: [V]Int = 0
+        var start: [V.cuts]Int = 0
         var pairs = List<(from: V, arc: A)>()
         for p in arcs:
-            deg[p.from] += 1
+            start[p.from.ord] += 1
             pairs.push(p)
-        var start: [V.cuts]Int = 0
-        var acc = 0
-        for v in V:
-            start[v.ord] = acc
-            acc += deg[v]
-        start[n] = acc
-        var cur: [V]Int = [V] v => start[v.ord]
+        for i in 1..start.len: start[i] += start[i - 1]
         var out = List<A>()
-        if acc > 0:
-            let dummy = pairs[0].arc
-            for _ in 0..acc:
-                out.push(dummy)
-            for p in pairs:
-                let pos = cur[p.from]
-                cur[p.from] = pos + 1
-                out[pos] = p.arc
+        if pairs.len > 0:
+            out = List.filled(pairs.len, pairs[0].arc)
+            for j in (0..pairs.len).rev:
+                let p = pairs[j]
+                start[p.from.ord] -= 1
+                out[start[p.from.ord]] = p.arc
         Graph<V, A>(start:, arcs: out)
 
     /// `g[u]`: the arcs out of `u` as an `Indexed` view, without copying.
@@ -473,25 +441,15 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 0, v: 2), (u: 1, v: 3), (u: 2, v: 3)]; Graph.directed(es).transpose().out(3).collect() == [(to: 1, e: 2), (to: 2, e: 3)]`
     pub fn transpose(self) -> Graph<V, A>:
-        var indeg: [V]Int = 0
-        for u in V:
-            for i in start[u.ord]..start[u.ord + 1]:
-                indeg[arcs[i].to] += 1
         var tstart: [V.cuts]Int = 0
-        var acc = 0
-        for v in V:
-            tstart[v.ord] = acc
-            acc += indeg[v]
-        tstart[V.count] = acc
-        var cur: [V]Int = [V] v => tstart[v.ord]
+        for a in arcs: tstart[a.to.ord] += 1
+        for i in 1..tstart.len: tstart[i] += tstart[i - 1]
         var tarcs = arcs.clone()
-        for u in V:
-            for i in start[u.ord]..start[u.ord + 1]:
+        for u in V.rev:
+            for i in (start[u.ord]..start[u.ord + 1]).rev:
                 let a = arcs[i]
-                let v = a.to
-                let pos = cur[v]
-                cur[v] = pos + 1
-                tarcs[pos] = reversed_arc(a, u)
+                tstart[a.to.ord] -= 1
+                tarcs[tstart[a.to.ord]] = reversed_arc(a, u)
         Graph<V, A>(start: tstart, arcs: tarcs)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
