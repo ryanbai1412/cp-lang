@@ -49,6 +49,9 @@ struct Lexer<'a> {
     layout_blocks: Vec<LayoutBlock>,
     /// Indentation of the current logical line.
     line_indent: u32,
+    /// Indentation of the line the current statement starts on: a line
+    /// inside its brackets moves `line_indent`, not this.
+    stmt_indent: u32,
     /// Lines indented with tabs, reported once per file.
     tab_lines: Vec<Span>,
     /// Inside C++'s `int main() {`: the body's indent, and where its
@@ -66,6 +69,7 @@ pub fn lex(src: &str) -> Lexed {
         openers: Vec::new(),
         layout_blocks: Vec::new(),
         line_indent: 0,
+        stmt_indent: 0,
         tab_lines: Vec::new(),
         c_main: None,
     };
@@ -185,6 +189,7 @@ impl<'a> Lexer<'a> {
                                 self.end_line(at);
                                 self.indents.push(width);
                                 self.line_indent = width;
+                                self.stmt_indent = width;
                                 self.push_empty(TokenKind::Indent, self.pos);
                             } else {
                                 self.pos = saved;
@@ -515,7 +520,7 @@ impl<'a> Lexer<'a> {
         // Blank and comment-only lines in between are skipped, as in a block.
         let continues = loop {
             if let Some(width) = self.measure_indent() {
-                break width > self.line_indent && self.line_starts_operator();
+                break width > self.stmt_indent && self.line_starts_operator();
             }
             if self.pos >= self.bytes.len() {
                 break false;
@@ -581,6 +586,7 @@ impl<'a> Lexer<'a> {
             return;
         };
         self.line_indent = width;
+        self.stmt_indent = width;
         let top = *self.indents.last().unwrap();
         if width > top {
             self.indents.push(width);
@@ -610,6 +616,7 @@ impl<'a> Lexer<'a> {
                     .with_fix(format!("indent {enclosing} spaces"), span, fix_to),
                 );
                 self.line_indent = enclosing;
+                self.stmt_indent = enclosing;
                 // Which block the line belongs to is a guess, so what it
                 // says about names in scope is not reported.
                 let line_end = self.src[self.pos..]
@@ -657,6 +664,7 @@ impl<'a> Lexer<'a> {
             }
             self.layout_blocks.pop();
             self.line_indent = width;
+            self.stmt_indent = width;
             if let Some(depth) = self.unclosed_depth(width) {
                 let close_at = self
                     .out
@@ -671,6 +679,7 @@ impl<'a> Lexer<'a> {
             return;
         }
         self.line_indent = width;
+        self.stmt_indent = width;
         let top = *self.indents.last().unwrap();
         if width > top {
             self.indents.push(width);

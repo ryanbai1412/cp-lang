@@ -1495,6 +1495,13 @@ let total = a +
     // At the same indent, a leading operator does not continue.
     let lead = "if a == 1\nand b == 2:\n    f()\n";
     assert!(!codes(lead).is_empty());
+
+    // Deeper than the line the statement starts on, though not than a line
+    // inside its brackets, still continues: one line, as `cpl fmt` joins it.
+    let wrapped = "let m = [x\n         for x in a]\n    .sorted()\nprint(m)\n";
+    let joined = "let m = [x for x in a].sorted()\nprint(m)\n";
+    let kinds = |src: &str| -> Vec<_> { crate::lex(src).tokens.iter().map(|t| t.kind).collect() };
+    assert_eq!(kinds(wrapped), kinds(joined));
 }
 
 #[test]
