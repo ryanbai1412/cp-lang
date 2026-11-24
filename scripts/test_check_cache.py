@@ -250,7 +250,7 @@ class CheckCacheTest(unittest.TestCase):
             remote, work, git = self.land_repos(tmp, env)
             hook = os.path.join(remote, "hooks", "pre-receive")
             with open(hook, "w", encoding="utf-8") as f:
-                f.write(f'#!/bin/sh\n[ -e "{tmp}/once" ] && exit 0\ntouch "{tmp}/once"; exit 1\n')
+                f.write(f'#!/bin/sh\ngrep -q " refs/heads/main$" || exit 0\n[ -e "{tmp}/once" ] && exit 0\ntouch "{tmp}/once"; exit 1\n')
             os.chmod(hook, 0o755)
             self.commit(git, work, "c.md")
             r = subprocess.run([os.path.join(root, "scripts", "land.sh")], cwd=work,

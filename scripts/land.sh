@@ -337,7 +337,11 @@ take_lock() {
             return 0
         fi
         holder=$(git ls-remote "$remote" "$lock_ref" | cut -f1)
-        [ -n "$holder" ] || continue
+        if [ -z "$holder" ]; then
+            refused=$((${refused:-0} + 1))
+            [ "$refused" -lt 5 ] || { echo "land: WARNING: $remote refuses $lock_ref; pushing without the land lock" >&2; return 0; }
+            continue
+        fi
         git fetch -q --no-write-fetch-head "$remote" "$lock_ref" 2>/dev/null || :
         at=$(git log -1 --format=%s "$holder" 2>/dev/null | cut -d' ' -f4)
         if [ $(( $(date +%s) - ${at:-0} )) -gt "$lock_stale" ]; then
