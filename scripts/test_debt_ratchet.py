@@ -426,7 +426,7 @@ class DebtRatchetTest(unittest.TestCase):
             os.environ.pop("CPL", None)
             root = Path(tmp)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
-            self._write(root, "corpus/problems/p/port.cp", "print(1)\n")
+            self._write(root, f"{PKGS}/p/port.cp", "print(1)\n")
             self._write(root, "crates/x/src/lib.rs", "\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             with self.assertRaisesRegex(dr.MeasureError, "no cpl at target/debug/cpl; build it with `cargo build -p cpl-cli`"):
