@@ -7,3 +7,4 @@ summary = "manual BIT (`p += p & -p`) or segment-tree (`2 * p` / `2 * p + 1`) lo
 no_fix = "the rewrite replaces a whole hand-written algorithm whose names and shape vary; the help names the library call"
 family = "S.range: segment trees, Fenwick, sparse tables"
 practice = "#1"
+replaces = "structure"

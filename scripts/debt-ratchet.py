@@ -1118,7 +1118,6 @@ def lsp_string_types(root: Path) -> list[str]:
 # Tables in cpl-lint that patch findings after the rules ran (owner: lint-fmt).
 LINT_POST_FILTERS = {
     "crates/cpl-lint/src/typed.rs": ("TYPED",),
-    "crates/cpl-lint/src/lib.rs": ("SUPERSEDED_BY", "LIBRARY_LOOPS", "NAME_THE_CALL"),
     "crates/cpl-lint/src/corpus_tests.rs": ("DISTINCT", "KNOWN_WORSE"),
     "crates/cpl-lint/src/std_tests.rs": ("NOT_PARSED",),
 }

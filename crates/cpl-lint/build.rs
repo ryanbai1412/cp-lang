@@ -10,13 +10,18 @@
 //! optional `family` and `practice` place it in the idiom catalog
 //! (`spec/idioms/lints.md`), for the site's lint pages. `replaces = "whole"`
 //! marks a lint whose std call replaces its span whole, so a finding inside
-//! it is not shown.
+//! it is not shown; `replaces = "structure"` also names a std structure, so it
+//! is quiet in a library module, where such structures are written.
+//! `namesake = "quiet"` marks a lint whose message names the call to write,
+//! so it is quiet inside a fn of that name.
 
 use std::fmt::Write as _;
 use std::path::PathBuf;
 
 const KEYS: [&str; 6] = ["code", "level", "title", "summary", "group", "rule"];
-const OPTIONAL: [&str; 5] = ["no_fix", "family", "practice", "removed", "replaces"];
+const OPTIONAL: [&str; 6] = [
+    "no_fix", "family", "practice", "removed", "replaces", "namesake",
+];
 const FILES: [(&str, &str); 4] = [
     ("explanation", "explain.md"),
     ("trigger", "before.cp"),
@@ -161,10 +166,17 @@ fn lint((code, name, fields, dir): &Record, texts: bool) -> String {
     .unwrap();
     let replaces = fields.get(10).map_or("", |v| v.as_str());
     assert!(
-        ["", "whole"].contains(&replaces),
-        "{name}: `replaces` is \"whole\" or absent"
+        ["", "whole", "structure"].contains(&replaces),
+        "{name}: `replaces` is \"whole\", \"structure\" or absent"
     );
-    writeln!(out, "    replaces_whole: {},", replaces == "whole").unwrap();
+    writeln!(out, "    replaces_whole: {},", !replaces.is_empty()).unwrap();
+    writeln!(out, "    std_structure: {},", replaces == "structure").unwrap();
+    let namesake = fields.get(11).map_or("", |v| v.as_str());
+    assert!(
+        ["", "quiet"].contains(&namesake),
+        "{name}: `namesake` is \"quiet\" or absent"
+    );
+    writeln!(out, "    quiet_in_namesake: {},", namesake == "quiet").unwrap();
     for (field, file) in FILES {
         let path = dir.join(file);
         println!("cargo:rerun-if-changed={}", path.display());

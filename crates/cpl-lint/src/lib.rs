@@ -146,6 +146,12 @@ pub struct Lint {
     /// The std call it names replaces its span whole, so a finding inside
     /// it is about code that goes away.
     pub replaces_whole: bool,
+    /// The std call it names is a structure, which a library module is
+    /// where one is written, so it is quiet there.
+    pub std_structure: bool,
+    /// Its message names the call to write, so it is quiet inside a fn of
+    /// that name.
+    pub quiet_in_namesake: bool,
     pub no_fix: Option<&'static str>,
     /// The checker error `trigger` shows because it uses a removed spelling;
     /// `None` when it passes `cpl check`.
@@ -578,7 +584,7 @@ fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Ve
             .regions
             .iter()
             .any(|(span, name)| *name == lint.name && span.contains(diag.span));
-        let library_only = library && LIBRARY_LOOPS.iter().any(|l| l.code == lint.code);
+        let library_only = library && lint.std_structure;
         if level == Level::Allow || allowed || library_only || fns.defines(lint, &diag, library) {
             continue;
         }
@@ -640,17 +646,6 @@ fn supersedes(src: &str, wider: &Diagnostic, inner: &Diagnostic) -> bool {
             .any(|a| evidence.iter().any(|e| e.contains(*a)))
 }
 
-/// Lints that point to a std structure: a library module is where the
-/// loops that build one are written.
-const LIBRARY_LOOPS: &[&Lint] = &[
-    &HAND_ROLLED_RANGE_TREE,
-    &HAND_ROLLED_SIEVE,
-    &HAND_ROLLED_PREFIX_SUM,
-];
-
-/// Lints whose message names the call to write instead.
-const NAME_THE_CALL: &[&Lint] = &[&FREE_FOLD, &HAND_ROLLED_ANSWER_SEARCH];
-
 /// Each fn of a file, so a finding that says "this is `first`" is not
 /// reported inside `fn first` itself. In a library module that holds for
 /// every lint whose help names the call `first(..)`: the fn is where the
@@ -700,13 +695,12 @@ impl Fns {
     }
 
     fn defines(&self, lint: &Lint, diag: &Diagnostic, library: bool) -> bool {
-        let names_call = NAME_THE_CALL.iter().any(|l| l.code == lint.code);
         let named = |f: &FnSpan| {
             // `count(..)` or the method `xs.count(..)` (decision 53).
             let name = &f.name;
             let calls =
                 |h: &str| h.contains(&format!("`{name}(")) || h.contains(&format!(".{name}("));
-            (names_call && diag.message.contains(&format!("`{name}`")))
+            (lint.quiet_in_namesake && diag.message.contains(&format!("`{name}`")))
                 || (library && diag.help.as_deref().is_some_and(calls))
         };
         if self
