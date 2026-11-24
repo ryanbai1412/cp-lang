@@ -5,11 +5,15 @@
   {"id": "5556867", "language": "CPP17", "result": "WA", "time": 0.688329104, "memory_kb": 39472.0, "file": "corpus/submissions/5556867.cpp"},
   {"id": "5556873", "language": "CPP17", "result": "TLE", "time": 48.186520998, "memory_kb": 40276.0, "file": "corpus/submissions/5556873.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noimps23p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission (the recorded ones are a WA and a TLE that re-merge multisets per query). orig.cpp was written for the corpus: leaders form a max-weight basis of the subtree-capacity matroid, kept under a segment tree over time by insertion with rollback (slack on heavy paths, weakest chosen per subtree). It matches an exhaustive assignment brute on 400 generated cases with n, k <= 8 and m <= 7."
 }
