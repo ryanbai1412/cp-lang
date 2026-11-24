@@ -33,7 +33,7 @@ failing; `conformance_failing` counts them (target 0) and the case carries no
 marker line. A mistake in a failing case itself (a wrong `// <- here` line, a
 stale API) hides until the implementation catches up, so before you commit
 one, check that the failure is the bug the case is about. Enforced by
-`scripts/conformance-gaps.py` (the case's own code at another line, or a
+`scripts/spec-gate.py case-bugs` (the case's own code at another line, or a
 printed `?T` without `!`) and by `scripts/conform_staged.py` (a staged case
 that fails blocks the commit unless HEAD's scoreboard already records it as
 failing). No case carries a `// gap:` line (the debt ratchet's marker counter,
@@ -51,7 +51,7 @@ Index types times consumers, every trait method on every type that has it,
 every std signature a chapter names, every type a prelude signature names:
 generate these cases from a table, don't write them by hand. A table shows
 the empty cells. Enforced by `scripts/conformance-matrix.py`,
-`spec-gate.py traits`, `conformance-sigs.py` and `spec-gate.py prelude`,
+`spec-gate.py traits`, `spec-gate.py sigs` and `spec-gate.py prelude`,
 each run with `--check`.
 
 ### conformance/R6. Results agree across engines, with and without sanitizers

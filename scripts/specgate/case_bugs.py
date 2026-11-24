@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Enforces conformance/R3 (handbook/guidelines/conformance-checklist.md#rules). Flag failing conformance cases whose failure looks like a bug in the case.
 
 A known-gap case is expected to fail, so a wrong header or a stale API use
@@ -11,19 +10,21 @@ the case rather than the compiler:
   optional   the run reports E0606 because a `?T` (now returned by min, max,
              pop and the searches) is printed without `!` or `??`
 
-Usage:
-    python3 scripts/conformance-gaps.py [--log FILE] [--check] [filter]
+Enforces handbook/guidelines/conformance-checklist.md#rules (conformance/R3)
 """
-import argparse
+from __future__ import annotations
+
 import re
 import subprocess
-import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+import specgate
+from specgate import Problem
+
+HELP = "no failing conformance case fails because of the case (same code as wanted, a printed ?T)"
 ANSI = re.compile(r"\x1b\[[0-9;]*m")
 LINE = re.compile(r"^\s*(\S+\.cp): fail: wanted (.*?); got: (.*)$")
-WANT_CODE = re.compile(r"^(?:trap )?([EWLR]\d{4}) at \d+")
+WANT_CODE = re.compile(r"^(?:trap )?([EWLR]\d{4})\b")
 GOT_CODE = re.compile(r"^error\[([EWLR]\d{4})\]")
 OPTIONAL = re.compile(r"E0606\]: `[^`]*` has type `\?")
 
@@ -46,25 +47,15 @@ def suspects(log: str) -> list[tuple[str, str, str]]:
     return out
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--log")
-    ap.add_argument("--check", action="store_true")
-    ap.add_argument("filter", nargs="?")
-    a = ap.parse_args()
+def args(p) -> None:
+    p.add_argument("--log")
+    p.add_argument("filter", nargs="?")
+
+
+def run(a) -> list[Problem]:
     if a.log:
         log = Path(a.log).read_text()
     else:
-        cmd = [str(ROOT / "target/debug/cpl-conform"), "conformance", "--verbose"]
-        if a.filter:
-            cmd.append(a.filter)
-        log = subprocess.run(cmd, cwd=ROOT, capture_output=True, text=True).stdout
-    found = suspects(log)
-    for path, kind, got in found:
-        print(f"{path}: {kind}: {got}")
-    print(f"{len(found)} failing cases look like case bugs")
-    return 1 if a.check and found else 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+        cmd = [str(specgate.ROOT / "target/debug/cpl-conform"), "conformance", "--verbose", *([a.filter] if a.filter else [])]
+        log = subprocess.run(cmd, cwd=specgate.ROOT, capture_output=True, text=True).stdout
+    return [Problem(path, f"{kind}: {got}") for path, kind, got in suspects(log)]

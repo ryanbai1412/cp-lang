@@ -15,7 +15,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-GATES = ["changelog", "decisions-explained", "flakes", "markers", "matrix", "ownership", "prelude", "speed", "std-signatures", "subset", "tool-rules", "traits", "vocab", "widths", "xref"]
+GATES = ["case-bugs", "changelog", "decisions-explained", "flakes", "markers", "matrix", "ownership", "prelude", "sigs", "speed", "std-signatures", "subset", "tool-rules", "traits", "vocab", "widths", "xref"]
 
 
 def load(name: str):

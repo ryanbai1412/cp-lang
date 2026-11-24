@@ -42,7 +42,7 @@ print(bag.pop_first()!)  // 1: `pop_first` gives `?Int`, `!` unwraps it
 | `spec/conformance/std-*/` | the cases both engines must pass | — |
 | this handbook | how std is designed and written | — |
 
-`scripts/conformance-sigs.py` and `scripts/spec-gate.py prelude` check that
+`scripts/spec-gate.py sigs` and `scripts/spec-gate.py prelude` check that
 the spec's names and named arguments exist in std; their gap lists only
 shrink.
 

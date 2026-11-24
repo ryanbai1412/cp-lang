@@ -1759,7 +1759,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "spec/conformance/permits.txt": ("permits", "spec", "a case per permit"),
     "spec/conformance/prelude-gaps.txt": ("prelude_gaps", "stdlib", "a case per prelude name"),
     "spec/conformance/rule-gaps.txt": ("rule_gaps", "spec", "deleted: conformance-coverage.py fails on any rule gap"),
-    "spec/conformance/sig-gaps.txt": ("sig_gaps", "spec", "deleted: conformance-sigs.py fails on any mismatch"),
+    "spec/conformance/sig-gaps.txt": ("sig_gaps", "spec", "deleted: spec-gate.py sigs fails on any mismatch"),
     "spec/conformance/trait-gaps.txt": ("trait_gaps", "spec", "deleted: spec-gate.py traits fails on any missing case"),
     "spec/idioms/lints-known.txt": ("idiom_lint_gaps", "idioms", "deleted: idioms-catalog.py fails on any finding"),
     "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "fix each example"),

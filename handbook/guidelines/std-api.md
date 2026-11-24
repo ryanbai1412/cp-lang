@@ -83,7 +83,7 @@ the next person doesn't decide it again.
 [std-api-checklist.md](std-api-checklist.md) lists every rule with an id
 (`std-api/R3`), its reason, an example and what enforces it. Today the
 vocabulary ban list (`scripts/spec-gate.py vocab`), the spec-signature check
-(`scripts/conformance-sigs.py`) and the trait-coverage check enforce some
+(`scripts/spec-gate.py sigs`) and the trait-coverage check enforce some
 of it. The weakest areas are the API-consistency lint over std signatures
 and the usage-journey suite, which don't exist yet; reviews catch the rest.
 

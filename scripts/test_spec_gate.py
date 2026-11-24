@@ -165,6 +165,24 @@ class GatesTest(unittest.TestCase):
         with Tree(files):
             self.assertEqual([p.where for p in run("std-signatures")], ["spec/lib/a.md:2"])
 
+    def test_case_bugs(self):
+        log = ("  core-09/x.cp: fail: wanted trap R0001; got: error[R0001]: ln(-1)\n"
+               "  a/b.cp: fail: wanted ok; got: error[E0606]: `xs.min()` has type `?Int`, which does not implement `Show`\n"
+               "  a/c.cp: fail: wanted ok; got: error[E0203]: a `?Range<Int>` has no member `len`\n")
+        with tempfile.NamedTemporaryFile("w", suffix=".log", delete=False) as f:
+            f.write(log)
+        try:
+            self.assertEqual([(p.where, p.what.split(":")[0]) for p in run("case-bugs", "--log", f.name)],
+                             [("core-09/x.cp", "same-code"), ("a/b.cp", "optional")])
+        finally:
+            os.unlink(f.name)
+
+    def test_sigs(self):
+        files = {"std/a.cp": "pub fn f(x: Int, by: Int = 0) -> Int = x\n",
+                 "spec/lib/a.md": "```cp\nf(1, by: 2)\nf(1, key: 2)\ng(1, key: 2)\n```\n"}
+        with Tree(files):
+            self.assertEqual([(p.where, p.what) for p in run("sigs")], [("lib/a.md", "f(key:)")])
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:

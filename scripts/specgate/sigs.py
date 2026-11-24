@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-# Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """Check that named arguments in spec/core and spec/lib code blocks exist in std.
 
 For every call `f(..., k: v)` in a fenced block where some `fn f` is declared in
@@ -7,12 +5,19 @@ std, `k` must be a parameter of at least one std `fn f`. Calls to names that
 std does not declare (user fns, records, constructors) are not checked.
 Any mismatch fails: fix std or the chapter.
 
-Usage: scripts/conformance-sigs.py [--check]
+Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """
-import glob, os, re, sys
+from __future__ import annotations
+
+import glob
+import os
+import re
 from collections import defaultdict
 
-ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+import specgate
+from specgate import Problem
+
+HELP = "every named argument in a spec/core or spec/lib call to a std fn is a parameter of it"
 
 
 def balanced(text, i):
@@ -52,7 +57,7 @@ def std_params():
     """Parameter names per std fn name: (any fn, top-level fns only). A bare call `f(...)` can
     only reach a top-level fn; a method of the same name (`Mod.read`) is not what it calls."""
     params, top = defaultdict(set), defaultdict(set)
-    for path in glob.glob(os.path.join(ROOT, "std/*.cp")):
+    for path in glob.glob(os.path.join(str(specgate.ROOT), "std/*.cp")):
         text = open(path).read()
         for m in re.finditer(r"^([ \t]*)[^\n]*?\bfn\s+(\w+)\s*(<[^(\n]*>)?\s*\(", text, re.M):
             inner = balanced(text, m.end() - 1)
@@ -88,8 +93,8 @@ def blocks(path):
 def mismatches():
     any_fn, top = std_params()
     out = set()
-    for path in sorted(glob.glob(os.path.join(ROOT, "spec/core/*.md")) + glob.glob(os.path.join(ROOT, "spec/lib/*.md"))):
-        rel = os.path.relpath(path, os.path.join(ROOT, "spec"))
+    for path in sorted(glob.glob(os.path.join(str(specgate.ROOT), "spec/core/*.md")) + glob.glob(os.path.join(str(specgate.ROOT), "spec/lib/*.md"))):
+        rel = os.path.relpath(path, os.path.join(str(specgate.ROOT), "spec"))
         for _, body in blocks(path):
             code = re.sub(r"//[^\n]*", "", body)
             for m in re.finditer(r"(\.?)\b(\w+)\s*\(", code):
@@ -107,13 +112,9 @@ def mismatches():
     return out
 
 
-def main():
-    found = mismatches()
-    print(f"sig gaps: {len(found)}")
-    for l in sorted(found):
-        print("  ", l)
-    return 1 if found else 0
+def args(p) -> None:
+    pass
 
 
-if __name__ == "__main__":
-    sys.exit(main())
+def run(a) -> list[Problem]:
+    return [Problem(*line.split(": ", 1)) if ": " in line else Problem("spec", line) for line in sorted(mismatches())]

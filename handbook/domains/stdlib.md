@@ -217,7 +217,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Same argument order across neighbours | neighbour pairs with swapped order | rule `std-api/R8`; `scripts/std-api-lint.py` (at 0) |
 | Keys and indices keep their index space (positions, cuts, vertices, edges) | fns that take or return a bare `Int` where a domain exists | rule `std-api/R9`; `scripts/std-api-lint.py` (at 0) |
 | Every container has the common traits (`Show`, `Eq`, `Seq`, `len`, `is_empty`) | (type, expected trait) pairs missing | rule `std-api/R12`; `scripts/std-trait-matrix.py` (in `scripts/check.sh`, shrink-only) |
-| Spec and std agree on names and named arguments | unmatched `f(k: v)` in spec blocks | rule `std-api/R6`; `scripts/conformance-sigs.py --check`, gap list only shrinks |
+| Spec and std agree on names and named arguments | unmatched `f(k: v)` in spec blocks | rule `std-api/R6`; `scripts/spec-gate.py sigs`, gap list only shrinks |
 | Each type's common tasks are one short call | journeys per type with a tested example (`SortedBag`: insert, erase one, erase at cursor, predecessor, successor, range) | rule `std-api/R13`; `missing` (usage-journey suite, first for `SortedBag`/`SortedSet`) |
 | Composes: views, keys and ops pass through each other | pairs of std features that fail together (`.rev` into `zip`, `Window` into `maximal`) | rule `std-api/R14`; `missing` (pairwise composition suite) |
 | Every common operation from the C++ STL, Python, Rust and the AtCoder Library has a spelling | inventory operations with no spelling and no listed gap | rule `std-api/R15`; `missing` (comparative inventory checked against `cpl doc --format json std`) |
@@ -314,7 +314,7 @@ Probes, run by a reader with only the docs (pass or fail, time, files touched):
 | doc examples | `example:` lines that fail | `target/release/cpl-conform docs <m>.cp` (the filter is a substring, keep `.cp`) |
 | `cpl-conform all --check` | any suite dropping below the scoreboard | `scripts/check.sh` |
 | `scripts/spec-gate.py traits` | trait methods with no case | `uv run --quiet python scripts/spec-gate.py traits` |
-| `scripts/conformance-sigs.py` | spec named arguments std lacks | `uv run scripts/conformance-sigs.py --check` |
+| `scripts/spec-gate.py sigs` | spec named arguments std lacks | `uv run --quiet python scripts/spec-gate.py sigs` |
 | `scripts/spec-gate.py prelude` | spec table names missing from the prelude | `uv run --quiet python scripts/spec-gate.py prelude` |
 | `scripts/spec-stub.py` | missing doc labels, `@get` members that do work | `python3 scripts/spec-stub.py --check`, `--audit` |
 | `scripts/spec-gate.py vocab` | banned spellings | `uv run scripts/spec-gate.py vocab` |

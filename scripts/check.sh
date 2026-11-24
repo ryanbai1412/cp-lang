@@ -635,7 +635,7 @@ step "conformance traits: every claimed trait method has a case or a gap line"
 uv run --quiet python scripts/spec-gate.py traits || fail "trait gate failed; see above"
 
 step "conformance sigs: named args in spec/core and spec/lib exist in std"
-uv run scripts/conformance-sigs.py --check || fail "sig gate failed; see above"
+uv run --quiet python scripts/spec-gate.py sigs || fail "sig gate failed; see above"
 
 step "conformance prelude: table fns of spec/lib chapters are prelude names (R11.3.2)"
 uv run --quiet python scripts/spec-gate.py prelude || fail "prelude gate failed; see above"

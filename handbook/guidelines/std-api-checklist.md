@@ -98,7 +98,7 @@ An option is a named argument with a default, never a `_by`, `_key` or `_with` v
 
 - **Why:** one fn to learn; adding an option is a local edit.
 - **Example:** `a.sort(by: r => -r.score)`, `bfs(g, from: s)`, `dijkstra(g, from: s, step: max)`.
-- **Enforced by:** `scripts/std-api-lint.py` (`f_by`, `f_key`, `f_with` beside `f`; shrink-only, in `scripts/check.sh`); `scripts/conformance-sigs.py --check` (spec named arguments std lacks).
+- **Enforced by:** `scripts/std-api-lint.py` (`f_by`, `f_key`, `f_with` beside `f`; shrink-only, in `scripts/check.sh`); `scripts/spec-gate.py sigs` (spec named arguments std lacks).
 
 ### R7. `by:` takes one element and returns its key
 
