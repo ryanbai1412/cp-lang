@@ -172,6 +172,10 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es, keep: a => (to: a.to)).out(0).collect() == [(to: 2), (to: 1)]`
+    @lint(manual_adjacency_list, holes: "R, n, m", from: "var adj: List<List<Int>> = [[] for _ in 0..=n]\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.directed(es, keep: arc => arc.to)")
+    @lint(manual_adjacency_list, holes: "R, d, m", from: "var adj: [d]List<Int> = []\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.directed(es, keep: arc => arc.to)")
+    @lint(manual_adjacency_list, holes: "R, W, n, m", from: "var adj: List<List<(Int, Int)>> = [[] for _ in 0..=n]\nfor _ in 0..m:\n    let (x, y, c): (R, R, W) = read()\n    adj[x].push((y, c))", to: "domain V = R\nlet es: [0..m](u: V, v: V, w: W) = read()\nlet adj = Graph.directed(es, keep: arc => (arc.to, arc.w))")
+    @lint(manual_adjacency_list, holes: "R, W, d, m", from: "var adj: [d]List<(Int, Int)> = []\nfor _ in 0..m:\n    let (x, y, c): (R, R, W) = read()\n    adj[x].push((y, c))", to: "domain V = R\nlet es: [0..m](u: V, v: V, w: W) = read()\nlet adj = Graph.directed(es, keep: arc => (arc.to, arc.w))")
     pub fn directed<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
         edges: S,
         keep: EdgeArc<V,
@@ -203,6 +207,8 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; Graph.undirected(es).out(1).collect() == [(to: 0, e: 0), (to: 2, e: 1)]`
     /// example: `domain V = 0..1; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 0)]; Graph.undirected(es).deg(0) == 2`
+    @lint(manual_adjacency_list, holes: "R, n, m", from: "var adj: List<List<Int>> = [[] for _ in 0..=n]\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)\n    adj[y].push(x)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.undirected(es, keep: arc => arc.to)")
+    @lint(manual_adjacency_list, holes: "R, d, m", from: "var adj: [d]List<Int> = []\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)\n    adj[y].push(x)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.undirected(es, keep: arc => arc.to)")
     pub fn undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
         edges: S,
         keep: EdgeArc<V,

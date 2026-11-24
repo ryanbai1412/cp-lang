@@ -657,17 +657,37 @@ fn manual_adjacency_list_reads_the_list_type_from_the_checker() {
     assert!(!fires("var adj: List<Set<Int>> = [[] for _ in 0..=n]"));
 }
 
+/// Both arcs of each edge, or a weight read with its ends, are still the
+/// list `Graph` builds: `Graph.undirected(es)`, or `keep` of the weight.
+#[test]
+fn manual_adjacency_list_takes_both_arcs_and_a_weight() {
+    let src = |read: &str, push: &str| {
+        format!("let (n, m): (1..=200000, 0..=200000) = read()\nvar adj: [1..=n]List<{read}> = []\nfor _ in 0..m:\n{push}print(adj[1].len)\n")
+    };
+    let both = src(
+        "Int",
+        "    let (u, v): (1..=n, 1..=n) = read()\n    adj[u].push(v)\n    adj[v].push(u)\n",
+    );
+    let weight = src(
+        "(Int, Int)",
+        "    let (u, v, c): (1..=n, 1..=n, 1..=9) = read()\n    adj[u].push((v, c))\n",
+    );
+    let fix = |src: &str| {
+        let found = lint(src, &all_on());
+        let found: Vec<_> = found.iter().filter(|d| d.code.0 == "L0537").collect();
+        assert_eq!(found.len(), 1, "{src}");
+        found[0].fixes[0].edits[0].1.clone()
+    };
+    assert!(fix(&both).ends_with("let adj = Graph.undirected(es, keep: arc => arc.to)"));
+    assert!(fix(&weight).ends_with("let adj = Graph.directed(es, keep: arc => (arc.to, arc.w))"));
+}
+
 /// noip09p3: a field picks each road's directions, so the roads stream into
 /// the list; reading them all first for `Graph` peaks at more memory.
 #[test]
 fn manual_adjacency_list_leaves_an_edge_with_its_own_logic() {
     let src = "let (n, m): (1..=100000, 0..=500000) = read()\nvar road: [1..=n]List<Int> = []\nfor _ in 0..m:\n    let (u, v, ways): (1..=n, 1..=n, 1..=2) = read()\n    road[u].push(v)\n    if ways == 2: road[v].push(u)\nprint(road[1].len)\n";
     assert!(!codes(src).contains(&"L0537"), "{:?}", codes(src));
-    let plain = src.replace(
-        "    if ways == 2: road[v].push(u)\n",
-        "    road[v].push(u)\n",
-    );
-    assert!(codes(&plain).contains(&"L0537"), "{:?}", codes(&plain));
 }
 
 #[test]

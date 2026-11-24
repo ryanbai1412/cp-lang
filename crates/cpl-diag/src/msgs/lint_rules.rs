@@ -41,7 +41,6 @@ super::msgs! {
     LAST_VIA_LEN = "L0542", "`{}` reads the last element by its index";
     LCA_BY_HAND = "L0555", "climbing `{}` by `{}` until `{}` matches is the LCA, by hand";
     LOOP_INVARIANT_MOD_DIV = "L0415", "loop-invariant `Mod` divisor `{}` computes an O(log P) inverse every iteration";
-    MANUAL_ADJACENCY_LIST = "L0537", "`{}` is an adjacency list built one read edge at a time";
     MANUAL_BIT_TEST = "L0540", "`{}` tests one bit by hand";
     MANUAL_DIGIT_LOOP = "L0544", "this loop takes `{}` apart digit by digit";
     MANUAL_HEAP_DRAIN = "L0588", "the top `{}` of `{}` popped one by one";
