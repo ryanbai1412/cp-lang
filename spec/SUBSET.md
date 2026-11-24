@@ -159,6 +159,7 @@ documented.
 | std-poly | library: poly | documented | stdlib: outside the Milestone 1 contest staples |
 | std-prefix | library: prefix | supported |  |
 | std-rand | library: rand | documented | stdlib: outside the Milestone 1 contest staples |
+| std-range | library: range | supported |  |
 | std-search | library: search | supported |  |
 | std-segtree | library: segtree | supported | 2 known gaps |
 | std-seq | library: seq | supported |  |
