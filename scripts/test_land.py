@@ -153,6 +153,22 @@ class LandTest(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertNotIn("gate ran", r.stderr + r.stdout)
 
+    def test_a_hook_failure_in_a_crate_main_changed_says_to_rebase(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        lib = Path("crates/cpl-x/src/lib.rs")
+        (theirs / lib).parent.mkdir(parents=True)
+        (theirs / lib).write_text("fixed\n")
+        self.commit(theirs, "fix x")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "fetch", "-q", "origin")
+        (ours / ".githooks").mkdir()
+        shutil.copy(HERE.parent / ".githooks" / "pre-commit", ours / ".githooks" / "pre-commit")
+        (ours / "scripts" / "check.sh").write_text("#!/bin/sh\necho 'error: unused  --> crates/cpl-x/src/lib.rs:1:1'\nexit 1\n")
+        (ours / "scripts" / "check.sh").chmod(0o755)
+        r = subprocess.run([str(ours / ".githooks" / "pre-commit")], cwd=ours, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("behind origin/main in crates/cpl-x", r.stderr)
+
     def test_a_ratchet_conflict_keeps_both_sides_tightening(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         (theirs / RATCHET).write_text(json.dumps({"a": 3, "b": 5, "names": ["x"]}, indent=2) + "\n")

@@ -16,6 +16,13 @@ status=${PIPESTATUS[0]}
 if [ "$status" -ne 124 ]; then
     # land.sh shows this when a failed hook left nothing to land.
     [ "$status" -eq 0 ] || tail -40 "$out" >"$(git rev-parse --git-common-dir)/cpl-commit-failed.log"
+    # A failure in a crate main has changed since this base may be fixed there already.
+    if [ "$status" -ne 0 ] && git rev-parse -q --verify origin/main >/dev/null; then
+        for c in $(grep -oE 'crates/[A-Za-z0-9_-]+/' "$out" | sort -u); do
+            git diff --quiet HEAD...origin/main -- "$c" 2>/dev/null ||
+                echo "pre-commit: your base is behind origin/main in ${c%/}; if this failure isn't yours, it may be fixed there: git pull --rebase, then commit again" >&2
+        done
+    fi
     exit "$status"
 fi
 slow=$(grep '^==> ' "$out" | tail -1 | cut -c5-)
