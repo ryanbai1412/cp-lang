@@ -263,3 +263,17 @@ print(Box(Some(Big([1, 2, 3], 4))).peek())
         "`let b = o!` only reads `o`, so it must not copy the payload:\n{out}"
     );
 }
+
+#[test]
+fn a_let_of_a_field_read_never_again_moves_it() {
+    let src = |tail: &str| {
+        format!(
+            "struct P:\n    s: Str\n    n: Int\nfn f(n: Int):\n    let p = P(s: \"ab\".repeat(n), n: n)\n    var acc = p.s\n    for i in 0..p.n: acc += \"c\"\n    print(acc{tail})\nf(read())\n"
+        )
+    };
+    let moved = cpp(&src(""));
+    assert!(moved.contains("acc = std::move(p.s)"), "{moved}");
+    // `p.s` is read again, so the `var` copies it.
+    let kept = cpp(&src(", p.s"));
+    assert!(!kept.contains("std::move(p.s)"), "{kept}");
+}

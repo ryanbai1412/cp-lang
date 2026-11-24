@@ -464,7 +464,8 @@ pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
     if let Stmt::Let(_, Some(init)) = &block.stmts[k] {
         return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
             || matches!(init.kind, ExprKind::Local(src)
-                if dead_after(program, block, k, src));
+                if dead_after(program, block, k, src))
+            || field_dies(block, k, in_place(init));
     }
     let Stmt::Assign(place, AssignOp::Set, value) = &block.stmts[k] else {
         return false;
@@ -475,6 +476,40 @@ pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
         return false;
     };
     walk::root(place) != (false, *slot) && dead_after(program, block, k, *slot)
+}
+
+/// `init` reads a field of a local this block declared, and nothing after
+/// statement `k` reads that field again or the local whole, sets the local
+/// or captures it: `var acc = m.id` when only `m.op` is read later.
+fn field_dies(block: &Block, k: usize, init: &Expr) -> bool {
+    let mut path = init;
+    let mut first = None;
+    while let ExprKind::Field(base, f) = &path.kind {
+        first = Some(*f);
+        path = base;
+    }
+    let (Some(first), ExprKind::Local(slot)) = (first, &path.kind) else {
+        return false;
+    };
+    let slot = *slot;
+    let declared = block.stmts[..k]
+        .iter()
+        .any(|stmt| matches!(stmt, Stmt::Let(s, _) if *s == slot));
+    let rest = Block {
+        stmts: block.stmts[k + 1..].to_vec(),
+    };
+    let (mut reads, mut apart, mut closure) = (0, 0, false);
+    walk::deep_exprs(block, &mut |e| {
+        closure |= matches!(e.kind, ExprKind::Closure(_))
+    });
+    walk::deep_exprs(&rest, &mut |e| match &e.kind {
+        ExprKind::Local(s) if *s == slot => reads += 1,
+        ExprKind::Field(base, f) if *f != first => {
+            apart += usize::from(matches!(base.kind, ExprKind::Local(s) if s == slot))
+        }
+        _ => {}
+    });
+    declared && !closure && reads == apart && !Stores::of_block(&rest).locals.contains(&slot)
 }
 
 /// Value parameters whose one read copies them into a local the body
