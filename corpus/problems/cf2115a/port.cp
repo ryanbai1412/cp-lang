@@ -23,7 +23,7 @@ var rng = Rng(48)
 let n: 1..=5000 = read()
 let a: [0..n]1..=V = read()
 let g = a.fold(gcd)
-let at_g = a.count(g)
+let at_g = a.count(x => x == g)
 if at_g > 0: return print(n - at_g)
 
 var mult: [1..=V]Z = 0

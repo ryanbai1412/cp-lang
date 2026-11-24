@@ -3,6 +3,7 @@
 use super::expr::{list_names, plural};
 use super::*;
 use crate::ty::{Bindings, Param};
+use cpl_diag::habits;
 use cpl_diag::msgs;
 use cpl_syntax::ast::{Arg, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind, Type};
 
@@ -1001,6 +1002,7 @@ impl<'a> Checker<'a> {
         // `a.reverse()` on a `LinkedList`: a type's own fn, not the built-in row of the name.
         let seq_elem = seq_elem.filter(|_| !self.declares_member(&base_ty, &name.text));
         if let Some(elem) = seq_elem {
+            self.removed_seq_spelling(name, args, &elem);
             match name.text.as_str() {
                 "map" => {
                     let out = if let [arg] = args {
@@ -1731,6 +1733,49 @@ fn split_top(text: &str) -> Vec<&str> {
         out.push(text[start..].trim());
     }
     out
+}
+
+impl Checker<'_> {
+    /// `xs.count(v)` and `xs.first(p)`/`xs.last(p)`, which std writes
+    /// `xs.count(x => x == v)` and `xs.find(p)`/`xs.rfind(p)`: the error
+    /// carries the rewrite, so `cpl fix` migrates the call.
+    fn removed_seq_spelling(&mut self, name: &cpl_syntax::ast::Name, args: &[Arg], elem: &Ty) {
+        let [arg] = args else { return };
+        if arg.name.is_some() {
+            return;
+        }
+        let got = match arg.value.kind {
+            ExprKind::Lambda { .. } => None,
+            _ => Some(self.quietly(|c| c.infer(&arg.value))),
+        };
+        let is_fn = got.as_ref().is_none_or(|t| matches!(t, Ty::Fn { .. }));
+        let (old, new, span, with) = match name.text.as_str() {
+            // `s.count("a")` on a `Str` is a type error, not the old spelling.
+            "count" if got.as_ref().is_some_and(|t| !is_fn && t.fits(elem)) => {
+                let v = self.text(arg.value.span);
+                let x = super::removed::fresh(v, "x", 0);
+                let with = format!("{x} => {x} == {v}");
+                let new = format!("count({with})");
+                (format!("count({v})"), new, arg.value.span, with)
+            }
+            "first" | "last" if is_fn => {
+                let to = if name.text == "first" {
+                    "find"
+                } else {
+                    "rfind"
+                };
+                (name.text.clone(), to.to_string(), name.span, to.to_string())
+            }
+            _ => return,
+        };
+        if let Some(diag) = self.report(
+            span,
+            msgs::check::REMOVED_SYNTAX_IS_SPELLED_SINCE_0,
+            &[&old, &new],
+        ) {
+            diag.fix(habits::WRITE.say(&[&new]), span, with);
+        }
+    }
 }
 
 /// Whether `e` names storage the caller keeps; a temporary may be passed to

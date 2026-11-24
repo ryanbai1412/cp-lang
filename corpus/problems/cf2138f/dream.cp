@@ -45,7 +45,7 @@ else:
     let start = if fits(t0, p2): t0 else: fallback_start
     let s = [
         Vec(F64(x), F64(y)) / 64.0 for x in -64..=64 for y in -64..=64
-    ].first(c => [p1, p2, t0, t1, start].all(e => fits(c, e)))!
+    ].find(c => [p1, p2, t0, t1, start].all(e => fits(c, e)))!
     let opening = [Step(p1, p2, s), Step(p2, s, start), Step(s, start, t1)]
     opening + ladder(s, t1, [(s + d * F64(i - 1), t0 + d * F64(i)) for i in 2..=k])
 

@@ -36,7 +36,7 @@ for r in 0..1024:
     s += xs.map(twice).len // timed: builtin.List.map
     s += xs.filter(odd).count() // timed: builtin.List.filter
     if xs.contains(n): s += 1 // timed: builtin.List.contains
-    s += xs.count(n) // timed: builtin.List.count
+    s += xs.count(x => x == n) // timed: builtin.List.count
     s += xs.sum() // timed: builtin.List.sum
     s += xs.min() ?? 0 // timed: builtin.List.min
     s += xs.max() ?? 0 // timed: builtin.List.max

@@ -31,7 +31,7 @@ for r in 0..1024:
     s += t.reversed().len // timed: builtin.Str.reversed
     s += t.map(code).len // timed: builtin.Str.map
     s += t.filter(vowel).count() // timed: builtin.Str.filter
-    s += t.count('A') // timed: builtin.Str.count
+    s += t.count(x => x == 'A') // timed: builtin.Str.count
     if let m = t.min(): s += Int(m) // timed: builtin.Str.min
     if let m = t.max(): s += Int(m) // timed: builtin.Str.max
     if t.all(low): s += 1 // timed: builtin.Str.all

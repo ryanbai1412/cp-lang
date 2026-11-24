@@ -14,7 +14,7 @@ let a = start!
 let b = goal!
 let paths = bfs(p => p.adj4.filter(q => maze[q] != '#'), from: [a], until: b)
 fn letter(p: (R, C), q: (R, C)) -> Char:
-    let d = Dir4.all().first(d => p.step(d) == Some(q))!
+    let d = Dir4.all().find(d => p.step(d) == Some(q))!
     "URDL"[d.k]
 if let Some(path) = paths.path(b):
     print("YES")

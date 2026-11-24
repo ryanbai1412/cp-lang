@@ -33,7 +33,7 @@ enum Phase:
 
 fn plan() -> ?(start: Cell, ops: List<Op>):
     if any(a[i] > b[i] for i in Cell): return None
-    let last = Cell.rev.first(i => a[i] != b[i]) ?? Cell.first!
+    let last = Cell.rev.find(i => a[i] != b[i]) ?? Cell.first!
 
     var bound = last
     var okay: [Cell]Bool = false

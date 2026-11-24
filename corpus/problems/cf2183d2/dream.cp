@@ -36,7 +36,7 @@ for (d, layer) in by_depth.items.rev:
 
     let forbiddens = [(u:, loc: fl) for u in layer if let fl = forbidden_loc[u]]
     if forbiddens.len == 1:
-        let s = Slot.first(x => last_depth[x] != Some(d + 1))!
+        let s = Slot.find(x => last_depth[x] != Some(d + 1))!
         place(forbiddens[0].u, s)
     elif forbiddens.len >= 2:
         let rotated = forbiddens.map(f => f.loc).rotated_left(1)

@@ -275,6 +275,10 @@ const DECORATORS: &[(&str, &str)] = &[
         "on a struct's static fn: a bare op passed where the struct is wanted goes through it",
     ),
     (
+        "structural",
+        "on a trait: a tuple, record, optional, array or struct has it when each part does",
+    ),
+    (
         "lint",
         "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint",
     ),
@@ -471,8 +475,14 @@ fn expected_type(cursor: &Cursor, std: &mut StdLib, at: usize) -> Option<String>
             let sig = signature_of(cursor, std, item, callee_end, name)?;
             let given = named_args(&text[paren + 1..arg_start]);
             let index = active_param(&sig, &given, text[arg_start..at].trim_start(), commas);
-            let ty = &sig.params.get(index)?.ty;
-            return Some(ty.clone()).filter(|t| !t.is_empty());
+            let ty = sig.params.get(index)?.ty.as_str();
+            // `cmp: ?((T, T) -> Bool) = None` takes the fn itself.
+            let ty = ty.strip_prefix('?').map_or(ty, |inner| {
+                (inner.strip_prefix('(').and_then(|t| t.strip_suffix(')')))
+                    .filter(|t| t.contains("->"))
+                    .unwrap_or(inner)
+            });
+            return Some(ty.to_string()).filter(|t| !t.is_empty());
         }
     }
     let lhs = before.strip_suffix('=')?;

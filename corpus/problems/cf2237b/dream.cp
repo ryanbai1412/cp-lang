@@ -17,7 +17,7 @@ var slots: List<?Int> = [(0..n).first_true(j => b[j] >= x) for x in a_in]
 
 var ans = 0
 for i in 0..n:
-    let j = (i..n).first(j => if let s = slots[j]: s <= i else: false) else:
+    let j = (i..n).find(j => if let s = slots[j]: s <= i else: false) else:
         print(-1)
         return
     slots.insert(i, slots.remove(j))

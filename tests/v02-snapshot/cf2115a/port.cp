@@ -13,7 +13,7 @@ let n: 1..=5000 = read()
 type Val = 1..=5000
 let a: [0..n]Val = read()
 let g = a.fold(gcd)
-let at_g = a.count(g)
+let at_g = a.count(x => x == g)
 if at_g > 0: return print(n - at_g)
 
 let values = a.distinct()

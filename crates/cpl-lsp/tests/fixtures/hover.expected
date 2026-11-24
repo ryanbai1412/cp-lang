@@ -26,13 +26,17 @@ total: Int
 
 == hover @ 6:17
 ```cp
-sum() -> T
+sum(of: T -> U = x => x) -> T
 cost: O(n), about 200000 (2e5) steps: xs has at most n = 200000 (2e5) items
 ```
 
-The sum of the cells; `0` when empty. O(n).
+Sum of all elements (`T.zero` when empty), on any `Seq` of a type with `+`; `of:` maps each
+element first (`xs.sum(of: x => x * x)`). O(n).
 
 cost: O(n)
+empty: `let a: List<Int> = []; a.sum() == 0`
+traps: never (overflow wraps in release, traps in debug)
+example: `[1, 2, 3].sum(of: x => x * x) == 14`
 
 == hover @ 8:2
 ```cp
@@ -447,10 +451,19 @@ example: `[r.len for r in [1, 2, 4, 5, 6].runs(link: (x, y) => y == x + 1)] == [
 
 == hover @ 153:43
 ```cp
-min(by: Char -> K = x => x) -> ?Char
+min(by: Char -> K = x => x, ties: Ties = Ties.First) -> ?Char
 cost: O(n)
 ```
 
-The smallest character (optionally keyed by `by:`), `None` when empty; first on ties. O(n).
+The least element by `by`, the first on ties (`ties: Ties.Last` for the last); `None` when empty.
+
+A method call (`s.min()`) picks this fold; a plain call with two values (`min(a, b)`) is the core binary `min`. `a.keys.min(by: i => a[i])`
+is argmin. O(n).
 
 cost: O(n)
+empty: `let a: List<Int> = []; a.min() == None`
+ties: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
+traps: never
+example: `[3, 1, 1].min() == Some(1)`
+example: `[(1, 'a'), (1, 'b')].min(by: .0) == Some((1, 'a'))`
+example: `[(1, 'a'), (1, 'b')].min(by: .0, ties: Ties.Last) == Some((1, 'b'))`

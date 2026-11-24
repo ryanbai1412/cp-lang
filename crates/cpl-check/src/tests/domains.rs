@@ -216,7 +216,7 @@ let (evens, odds) = V.partition(v => Int(v) % 2 == 0)
 let w: [V]Int = [V] v => Int(v)
 let order = V.sort(by: w)
 let groups = V.group(by: v => Int(v) % 2)
-let picked = V.first(v => Int(v) > 2)
+let picked = V.find(v => Int(v) > 2)
 let p: [Item]Cut = [Item] i => Cut(Int(i) - 1)
 let s: [Item]Cut = [Item] i => Cut(Int(i))
 let (lo, hi) = minmax(p[Item(1)], s[Item(1)])
@@ -415,7 +415,7 @@ print(xs.len(), xs.is_empty(), xs.first(), xs.last(), xs.rev(), xs.items(), s.le
     }
     let ok = "\
 let xs = [1, 2, 3]
-print(xs.len, yes(xs.is_empty), xs.first ?? 0, xs.last ?? 0, xs.rev, xs.items, xs.first(x => x > 1) ?? 0, xs.last(1) ?? 0)
+print(xs.len, yes(xs.is_empty), xs.first ?? 0, xs.last ?? 0, xs.rev, xs.items, xs.find(x => x > 1) ?? 0, xs.last(1) ?? 0)
 ";
     assert!(
         check(ok).is_empty(),

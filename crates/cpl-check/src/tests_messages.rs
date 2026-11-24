@@ -327,6 +327,25 @@ fn an_optional_print_says_how_to_give_none_a_text() {
 }
 
 #[test]
+fn a_value_count_and_a_tested_first_or_last_are_rewritten_to_std() {
+    let d = check(
+        "let xs = [3, 1, 2]\nlet x = 2\nprint(xs.count(x), xs.first(y => y > 1)!, xs.last(y => y > 1)!, \"ab\".count('a'))\n",
+    );
+    let fixed: Vec<_> = d
+        .iter()
+        .filter(|d| d.code == cpl_diag::codes::REMOVED_SYNTAX)
+        .map(|d| d.fixes[0].edits[0].1.as_str())
+        .collect();
+    assert_eq!(
+        fixed,
+        ["x2 => x2 == x", "find", "rfind", "x => x == 'a'"],
+        "{d:?}"
+    );
+    let std = "let xs = [3, 1, 2]\nprint(xs.count(y => y > 1), xs.find(y => y > 1)!, xs.rfind(y => y > 1)!, xs.first!, xs.count())\n";
+    assert!(check(std).is_empty(), "{:?}", check(std));
+}
+
+#[test]
 fn the_old_optional_spellings_are_removed_with_a_fix_and_none_stays_a_name() {
     let d = check(
         "let a: ?Int = some(3)\nlet b: ?Int = none\nif let some(y) = b: print(y)\nprint(a ?? 0)\n",

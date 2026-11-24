@@ -1033,24 +1033,6 @@ impl<'a> Taste<'a> {
         let ExprKind::Call { callee, args } = &expr.kind else {
             return;
         };
-        // `xs.first` is the first element; the element a test holds for is
-        // `xs.find(x => ..)` (decisions.md §182).
-        if let (ExprKind::Field { name: method, .. }, [test]) = (&callee.kind, &args[..]) {
-            if Calls::new(self.facts, self.base).unresolved(expr) == Some(std_fn::FIRST)
-                && test.name.is_none()
-                && matches!(test.value.kind, ExprKind::Lambda { .. })
-            {
-                let mut diag = msgs::lint::FIRST_WITH_TEST
-                    .warning(method.span, &[])
-                    .with_help("write `.find(..)`");
-                diag.fixes.push(Fix {
-                    title: "use `.find`".to_string(),
-                    edits: vec![(method.span, std_fn::FIND.to_string())],
-                });
-                self.push(&FREE_FOLD, diag);
-            }
-            return;
-        }
         if !matches!(callee.kind, ExprKind::Name(_)) {
             return;
         }

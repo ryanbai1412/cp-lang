@@ -22,8 +22,8 @@ let x: Pos = read()
 let s: [0..n]Char = read()
 
 let p = x.ord
-let left_escape = if let l = (0..p).rev.first(i => s[i] == '#'): l + 2 else: 1
-let right_escape = if let r = (p + 1..n).first(i => s[i] == '#'): n - r + 1 else: 1
+let left_escape = if let l = (0..p).rev.find(i => s[i] == '#'): l + 2 else: 1
+let right_escape = if let r = (p + 1..n).find(i => s[i] == '#'): n - r + 1 else: 1
 var ans = min(left_escape, right_escape)
 if left_escape < p + 1: ans max= min(p + 1, right_escape)
 if right_escape < n - p: ans max= min(left_escape, n - p)

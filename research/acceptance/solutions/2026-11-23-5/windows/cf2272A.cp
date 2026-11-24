@@ -10,12 +10,12 @@ let m = n - k + 1
 fn prefix_mex(b: [0..n]0..n, len: Int) -> Int:
     var seen: [0..=n]Bool = false
     for i in 0..len: seen[b[i]] = true
-    (0..=n).first(v => not seen[v])!
+    (0..=n).find(v => not seen[v])!
 
 var seen: [0..n]Bool = false
 for i in 0..m: seen[a[i]] = true
-if let x = (0..m).first(v => not seen[v]):
-    let i = (0..m).first(i => a[i] >= m)!
+if let x = (0..m).find(v => not seen[v]):
+    let i = (0..m).find(i => a[i] >= m)!
     let j = a.find(x)!
     print(i + 1, j + 1)
 else:

@@ -13,7 +13,7 @@ for t in 1..=k:
         other[u] = v
         other[v] = u
     if not found and n >= 2:
-        let leaf = (1..=n).first(v => deg[v] == 1)!
+        let leaf = (1..=n).find(v => deg[v] == 1)!
         hub = (t, other[leaf])
         found = true
 for t in 1..=k:

@@ -6,5 +6,5 @@ domain C = 0..3
 let p = (R(1), C(1))
 print(p.step(Dir4.up)!)
 let s = "a,b,ca"
-print(s.count('a'), [1, 2, 3].count(x => x > 1))
+print(s.count(x => x == 'a'), [1, 2, 3].count(x => x > 1))
 print(s.split(',').count(), [1, 0, 2, 0, 3].split(0).count())

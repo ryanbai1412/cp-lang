@@ -74,4 +74,4 @@ for (r, ch) in zip(Round, response):
     if let side = parse_side(ch):
         known += 1
         for c in rounds[r, side]: hits[c] += 1
-print(Coin.first(c => hits[c] == known)!)
+print(Coin.find(c => hits[c] == known)!)

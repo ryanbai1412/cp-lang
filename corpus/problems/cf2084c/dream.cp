@@ -30,7 +30,7 @@ var target: [I]I = [I] i => i
 for ((u, v), (l, r)) in zip(couples, zip(I, I.rev)):
     target[u] = l
     target[v] = r
-if let mid = I.first(i => inv_a[b[i]] == i):
+if let mid = I.find(i => inv_a[b[i]] == i):
     target[mid] = I(n / 2 + 1)
 
 let ops = [(cyc[0], cyc[j]) for cyc in perm_cycles(target) for j in 1..cyc.len]

@@ -17,12 +17,12 @@ type Z = Mod<998_244_353>
 let (n, m): (1..=500, 0..=500) = read()
 domain V = 1..=n
 let parent: [0..n - 1]V = read()
-let deg = [V] v => parent.count(v)
+let deg = [V] v => parent.count(x => x == v)
 let unmarked = prod(Poly<Z>([d, 1]) for d in deg if d > 0)
 
 domain Count = 0..=n + m
 var dp: [Count, Count]Z = 0
-let init_leaves = Count(deg.count(0))
+let init_leaves = Count(deg.count(x => x == 0))
 for (j, c) in unmarked.c.items: dp[init_leaves, Count(j)] = c
 // A read past either end of the table is 0.
 fn at(dp: [Count, Count]Z, i: Int, j: Int) -> Z =

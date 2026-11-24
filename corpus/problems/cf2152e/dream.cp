@@ -30,7 +30,7 @@ for i in 0..n:
         print("!", [v for v in Pos if layer[v] == i][..=n])
         return
 
-var cur = Pos.first(u => layer[u] == None)!
+var cur = Pos.find(u => layer[u] == None)!
 var ans: List<Pos> = [cur]
 for j in (0..n).rev:
     while layer[cur] != j: cur = cur.prev!

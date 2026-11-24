@@ -18,7 +18,7 @@ sort(by: Int -> K = x => x, cmp: (Int, Int) -> Bool = (a, b) => a < b)
 active: by: Int -> K = x => x
 
 == signatureHelp @ 10:17
-max(by: Int -> K = x => x) -> ?Int
+max(by: Int -> K = x => x, ties: Ties = Ties.First) -> ?Int
 active: by: Int -> K = x => x
 
 == signatureHelp @ 11:18

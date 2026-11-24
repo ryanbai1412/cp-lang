@@ -47,7 +47,7 @@ let inv_p: [Val]Pos = p.inverse()
 
 fn solve():
     // Prefix where P and Q already agree needs no changes.
-    let first_diff = if let d = Pos.first(i => p[i] != q[i]): d else:
+    let first_diff = if let d = Pos.find(i => p[i] != q[i]): d else:
         print(q)
         return
     var used: [Val]Bool = false
@@ -110,7 +110,7 @@ fn solve():
             if can_place(i, q[i], next_cap, had_inv):
                 had_inv = commit_place(i, q[i], next_cap, had_inv)
             else:
-                let v = Val.rev.first(
+                let v = Val.rev.find(
                     u => u < q[i] and not used[u] and can_place(i, u, None, had_inv)
                 )!
                 had_inv = commit_place(i, v, None, had_inv)

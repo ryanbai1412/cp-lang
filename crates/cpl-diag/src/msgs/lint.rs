@@ -10,7 +10,6 @@ super::msgs! {
     SEARCH_LOOP_FIRST = "L0501", "a search loop: only the first write to `{}` counts";
     PUSH_LOOP = "L0507", "a loop that only pushes onto `{}` is a comprehension";
     NONE_CHECK_UNWRAP = "L0508", "`{} != None` and then `{}!`: the check is said twice";
-    FIRST_WITH_TEST = "L0509", "the element a test holds for is `find`; `first` is the first element";
     FREE_FOLD = "L0509", "`{}` of one sequence reads as its method";
     TREE_ORDER = "L0511", "`{}` is the preorder array `{}`";
     DOMAIN_SORTED = "L0512", "use `{}.sort(...)` instead of `{}.sorted(...)`";

@@ -271,7 +271,7 @@ fn is_atom(e: &Expr, text: &str) -> bool {
 
 /// `base`, or `base2`, `base3`, .. : the `skip`-th (from 0) that `src` doesn't use as a word,
 /// so the rewrites of several calls in one pass take different names.
-fn fresh(src: &str, base: &str, skip: usize) -> String {
+pub(super) fn fresh(src: &str, base: &str, skip: usize) -> String {
     let used = |name: &str| {
         src.match_indices(name).any(|(i, _)| {
             let word = |c: char| c.is_alphanumeric() || c == '_';

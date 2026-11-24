@@ -15,6 +15,6 @@ fn is_good(v: Int) -> Bool:
     let signs = [Int(x >= v) + Int(y >= v) - 1 for (x, y) in zip(a0, a1)]
     let nz = [s for s in signs if s != 0]
     let neg_runs = nz.items.count(((i, s)) => s == -1 and (i == 0 or nz[i - 1] != -1))
-    nz.count(1) > neg_runs
+    nz.count(x => x == 1) > neg_runs
 
 print((1..=2 * n).last_true(is_good)!)

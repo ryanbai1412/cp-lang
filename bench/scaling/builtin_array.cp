@@ -28,7 +28,7 @@ for r in 0..1024:
     s += a.map(twice).len // timed: builtin.Array.map
     s += a.filter(odd).count() // timed: builtin.Array.filter
     if a.contains(n): s += 1 // timed: builtin.Array.contains
-    s += a.count(n) // timed: builtin.Array.count
+    s += a.count(x => x == n) // timed: builtin.Array.count
     s += a.sum() // timed: builtin.Array.sum
     s += a.min() ?? 0 // timed: builtin.Array.min
     s += a.max() ?? 0 // timed: builtin.Array.max

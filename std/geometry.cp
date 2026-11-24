@@ -4552,7 +4552,7 @@ fn planar_faces_cover_each_side_once_and_satisfy_euler():
         for (u, v) in edges:
             used[u] = true
             used[v] = true
-        let verts = used.count(true)
+        let verts = used.count(x => x)
         let comps = [i for i in 0..k * k if used[i] and root(parent, i) == i].len
         assert faces.len == edges.len - verts + 2 * comps
 

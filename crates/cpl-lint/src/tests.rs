@@ -994,11 +994,6 @@ fn free_fold_becomes_a_method() {
         fix(src, &Config::default()).0,
         "let xs = [3, 1, 4]\nvar ys = [2, 7]\nys.sort(by: y => y % 5)\nprint(xs.sum(), xs.count(x => x > 2), xs[1..].max()!, (xs + ys).sorted())\n"
     );
-    let first = "let xs = [3, 1, 4]\nprint(xs.first(x => x > 3), xs.first)\n";
-    assert_eq!(
-        fixed(first),
-        "let xs = [3, 1, 4]\nprint(xs.find(x => x > 3), xs.first)\n"
-    );
     let find = "let xs = [3, 1, 4]\nprint(xs.find(x => x > 3))\n";
     assert_eq!(taste_codes(find), Vec::<&str>::new());
     // Generators, two values, a domain, a list of values and a fn of the file stay free.
