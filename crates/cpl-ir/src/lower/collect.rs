@@ -107,8 +107,7 @@ impl<'a> Lowerer<'a> {
                                 ty,
                                 init: Some(init),
                                 ..
-                            } if mono::let_const_name(pat).is_some() => {
-                                let cname = mono::let_const_name(pat).expect("guarded");
+                            } if let Some(cname) = mono::let_const_name(pat) => {
                                 self.structs[id].consts.insert(
                                     cname.to_string(),
                                     StructConst {
