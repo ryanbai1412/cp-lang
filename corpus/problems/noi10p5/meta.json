@@ -16,11 +16,15 @@
   {"id": "5671363", "language": "CPP17", "result": "TLE", "time": 28.459659413, "memory_kb": 3344.0, "file": "corpus/submissions/5671363.cpp"},
   {"id": "5671954", "language": "CPP17", "result": "TLE", "time": 17.471557207, "memory_kb": 3468.0, "file": "corpus/submissions/5671954.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi10p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The C++ submissions are WA or TLE, so there is no accepted reference. orig.cpp is a corpus-written broken-profile DP whose plugs carry the path index of their far cell, checked against the statement sample and an exhaustive DFS brute on 600 random grids of up to 3 x 5 (L read along a random Hamiltonian path, sometimes with one entry flipped)."
 }
