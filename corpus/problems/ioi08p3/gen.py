@@ -1,7 +1,7 @@
-"""ioi08p3 (Fish) inputs: `gen.py SEED SIZE`, or `gen.py --max` (F = 5e5).
+"""ioi08p3 (Fish) inputs: `gen.py SEED SIZE`, or `gen.py --max [--k K]` (F = 5e5).
 
-F, K, M, then F lines "L G" (1 <= L <= 1e9, every kind 1..=K on some fish). --max: K = 1e5
-kinds over 5e5 fish, lengths over many doublings so each kind's window takes many fish,
+F, K, M, then F lines "L G" (1 <= L <= 1e9, every kind 1..=K on some fish). --max: K = F = 5e5,
+one fish a kind; --max --k K: K kinds over 5e5 fish, lengths over many doublings so each kind's window takes many fish,
 M = 30000.
 """
 import random
@@ -11,7 +11,7 @@ MAX = sys.argv[1] == "--max"
 rng = random.Random(1 if MAX else int(sys.argv[1]))
 size = 5 * 10**5 if MAX else max(1, int(sys.argv[2]))
 f = size if MAX else rng.randint(1, size)
-k = 10**5 if MAX else rng.randint(1, f)
+k = (int(sys.argv[3]) if sys.argv[2:3] == ["--k"] else f) if MAX else rng.randint(1, f)
 m = 30000 if MAX else rng.randint(2, 30000)
 hi = 10**9 if MAX else rng.choice([4, 30, 10**9])
 gems = list(range(1, k + 1)) + [rng.randint(1, k) for _ in range(f - k)]
