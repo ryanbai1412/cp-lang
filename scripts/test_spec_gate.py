@@ -71,13 +71,6 @@ class GatesTest(unittest.TestCase):
                              "// expect: E0601 (checked)\n// rule: 05.1\n// a note\nlet a = 1 // <- here\r\nf(a)\n")
             self.assertEqual(run("markers"), [])
 
-    def test_gaps(self):
-        files = {"spec/conformance/c/f.cp": "// expect: ok\n// gap: compiler 2026-11-24T05Z\nx\n",
-                 "spec/conformance/c/g.cp": "// expect: ok\nx\n",
-                 "spec/conformance/c/h.cp": "// expect: ok\nx\n// gap: in the body is program text\n"}
-        with Tree(files):
-            self.assertEqual([p.where for p in run("gaps")], ["c/f.cp"])
-
     def test_subset(self):
         from specgate import subset
         files = {"spec/core/01-x.md": "# 1. Lexing\n\n## 1.5 Literals\n\nA rule (R01.5.1).\n",

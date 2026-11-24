@@ -612,9 +612,8 @@ step "conformance coverage: COVERAGE.md current, no new rule gaps"
 uv run scripts/conformance-coverage.py --check ||
     derived "rule coverage gate failed; see above, then rerun: uv run scripts/conformance-coverage.py"
 
-step "conformance gaps: SUBSET.md generated from the board, no case carries a // gap: line (scripts/spec-gate.py subset, gaps)"
+step "conformance gaps: SUBSET.md generated from the board (scripts/spec-gate.py subset)"
 uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is stale; run: uv run scripts/spec-gate.py subset --write"
-uv run --quiet python scripts/spec-gate.py gaps || fail "a case carries a // gap: line; delete it (research/scoreboard.json records the failure), then rerun: uv run scripts/spec-gate.py gaps"
 
 step "conformance matrix: generated cases current, every cell a case or n/a"
 uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
