@@ -1360,7 +1360,7 @@ fn bounded_flow<V, E>(
 /// every later vertex with parent `p` on `u`'s side (what `u` reaches in the residual) takes
 /// parent `u`.
 ///
-/// cost: \(O(V^3 E)\): `V.count - 1` max flows on one reused network, each \(O(V^2 E)\)
+/// cost: \(O(V \cdot \mathit{flow})\) for flow the cost of one max flow on the network: `V.count - 1` of them, each \(O(V^2 E)\), so \(O(V^3 E)\) worst case
 /// empty: `[]` when `V` has at most one position
 /// order: one edge per vertex but `V.first`, by increasing `u`; `v` is its parent
 /// traps: when some `w` is negative

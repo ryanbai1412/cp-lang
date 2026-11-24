@@ -1,4 +1,4 @@
-// let: V = \sqrt n; L = \sqrt n; R = \sqrt n; F = \sqrt n; P = \sqrt n
+// let: V = \sqrt n; L = \sqrt n; R = \sqrt n; F = \sqrt n; P = \sqrt n; flow = n
 // fixed: c
 use std.flow.{CostFlow, Matching, best_matching, stable_matching, edge_coloring, min_cost_circulation}
 // Graphs on V = sqrt n vertices and E = n arcs. The flow families need V augmenting phases: a
@@ -66,6 +66,8 @@ s += (circulation(bounds) ?? []).len // timed: flow.circulation
 s += (max_bounded_flow(bounds, V(1), V(0)))!.value // timed: flow.max_bounded_flow
 s += (min_bounded_flow(bounds, V(1), V(0)))!.value // timed: flow.min_bounded_flow
 s += (min_cost_circulation(priced))!.cost // timed: flow.min_cost_circulation
+// A complete graph with random weights: each of gomory_hu's max flows ends in O(1) phases of
+// O(E) each, so one flow is O(n).
 let weighted: [E](u: V, v: V, w: Int) = [E] e => (u: V(e.ord / k), v: V(e.ord % k), w: (e.ord * 7919) % 97 + 1)
 s += gomory_hu(weighted).len // timed: flow.gomory_hu
 s += global_min_cut(weighted).w // timed: flow.global_min_cut
