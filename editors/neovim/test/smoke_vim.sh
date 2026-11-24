@@ -10,6 +10,8 @@ root="$(cd "$nvim_dir/../.." && pwd)"
 cpl="${1:-${CPL:-$root/target/debug/cpl}}"
 vim_bin="${VIM_BIN:-vim}"
 [ -x "$cpl" ] || { echo "vim smoke: build cpl first: cargo build -p cpl-cli" >&2; exit 1; }
+# Absolute, as Vim runs it from the test's own folder.
+cpl="$(cd "$(dirname "$cpl")" && pwd)/$(basename "$cpl")"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
