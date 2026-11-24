@@ -9290,6 +9290,23 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
   deletion.
 
 ## 625. A fn's `var` bound to a top-level heap value is E0608, migrated by `cpl fix` (compiler, 2026-11-24)
+## 625. Own Ord without own Eq gives `==` (compiler, 2026-11-24)
+
+- **Decision.** A struct that writes its own `Ord` and no own `Eq` gets
+  `==` and `!=` from that `Ord`: `a == b` when neither is before the
+  other (R08.1.6). Both engines read the same fact (`StructDef.ord` with
+  no `eq_fn`). Such a struct derives no `Hash` (E0606), so a table of it
+  stays ordered.
+- **Why.** One equality per type: `==`, `Set`/`Map` keys and
+  sort/dedup/runs agree. Before, tables merged keys by `Ord` while `==`
+  compared fields, so an unreduced `Frac(2, 4)` was a duplicate key of
+  `Frac(1, 2)` yet not `==` to it.
+- **Lowering and cost.** The C++ emits `operator==` as `!(a < b) &&
+  !(b < a)`, two calls of the type's own order; the interpreter calls the
+  `Ord` hook once.
+- **Reverse.** Drop the `ord` arm in the interpreter's `eq_ty_val` and
+  the emitted `operator==`; `==` is field by field again.
+- **Status.** Accepted (Core).
 
 - **Call.** Inside a fn, `var b = g` where `g` is a top-level heap value (List, Map, Str, a struct holding one, ...) is E0608 with the fix `var b = g.clone()`; `let b = g` stays a lend. A fn reads top-level state lent, as it does a parameter (R05.2.2, R05.4.1), so the binding can neither move `g` out of the file body nor copy it silently. The frozen `tests/v02-snapshot` copies change only through `cpl fix` output, the codemod path every breaking rule uses. Core ruling of 2026-11-24.
 - **Why.** The binding used to compile to a silent deep copy, a cost the source never spelled. Making it E0608 keeps costs visible: `.clone()` is the one O(n) copy.

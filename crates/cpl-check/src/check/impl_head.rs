@@ -265,6 +265,29 @@ impl Checker<'_> {
         self.param_bounds.truncate(outer);
     }
 
+    /// What a type's own `Eq` or `Ord` decides about `trait_name` before its fields do: its own
+    /// `Ord` gives its `==`, and its own `Eq` or `Ord` would disagree with a field-by-field `Ord`
+    /// or `Hash` (R08.1.6).
+    pub(super) fn own_impl_decides(
+        &mut self,
+        name: &str,
+        ty: &Ty,
+        trait_name: &str,
+        seen: &mut Vec<String>,
+    ) -> Option<bool> {
+        match trait_name {
+            "Eq" if self.impl_holds(name, ty, "Ord", seen) => Some(true),
+            "Ord" if self.impl_holds(name, ty, "Eq", seen) => Some(false),
+            "Hash"
+                if self.impl_holds(name, ty, "Eq", seen)
+                    || self.impl_holds(name, ty, "Ord", seen) =>
+            {
+                Some(false)
+            }
+            _ => None,
+        }
+    }
+
     /// Whether an impl of `trait_name` for `name` covers `ty`: its target's generics, bound to
     /// `ty`'s arguments, meet the bounds the impl head writes (`impl Sized for Rev<S: Sized>`).
     pub(super) fn impl_holds(

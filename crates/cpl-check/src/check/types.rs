@@ -1770,9 +1770,8 @@ impl<'a> Checker<'a> {
                 if matches!(name.as_str(), "Cut" | "Range") {
                     return true;
                 }
-                // Its own `Eq` would disagree with a field-by-field `Ord` or `Hash` (R08.1.6).
-                if matches!(trait_name, "Ord" | "Hash") && self.impl_holds(name, ty, "Eq", seen) {
-                    return false;
+                if let Some(holds) = self.own_impl_decides(name, ty, trait_name, seen) {
+                    return holds;
                 }
                 match self.type_def(name).as_deref().cloned() {
                     Some(Def::Struct {

@@ -1725,9 +1725,17 @@ impl<'p> Emitter<'p> {
             ));
         }
         // A struct with its own `Eq` or `Hash` is compared and hashed by it everywhere: as a
-        // table's key and inside a tuple, a list or another struct (R08.1.6).
+        // table's key and inside a tuple, a list or another struct (R08.1.6). With its own
+        // `Ord` and no own `Eq`, equal is neither before the other.
         for (id, s) in program.structs.iter().enumerate() {
             let ty = self.ty(&Ty::Struct(id));
+            let ordered = s.ord.is_some_and(|h| reachable.contains(&h.id()));
+            if s.eq_fn.is_none() && ordered {
+                out.push_str(&format!(
+                    "inline bool operator==(const {ty}& a, const {ty}& b) {{ return !(a < b) && !(b < a); }}\n\
+                     inline bool operator!=(const {ty}& a, const {ty}& b) {{ return a < b || b < a; }}\n"
+                ));
+            }
             if let Some(eq) = s.eq_fn.filter(|f| reachable.contains(f)) {
                 let eq = fn_name(&program.fns[eq].name);
                 out.push_str(&format!(
