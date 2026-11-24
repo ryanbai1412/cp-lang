@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3667 (3599 passing). Rules: 617.
+Cases: 3673 (3599 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -19,7 +19,7 @@ Cases: 3667 (3599 passing). Rules: 617.
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R07 (07-sequences.md): 97 rules, 255 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R07 (07-sequences.md): 97 rules, 258 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 111 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -54,7 +54,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | R04b | 28 | 28 (100%) | 7 | 7 (100%) | 28 (100%) |
 | R05 | 50 | 50 (100%) | 26 | 26 (100%) | 50 (100%) |
 | R06 | 26 | 26 (100%) | 18 | 18 (100%) | 26 (100%) |
-| R07 | 97 | 97 (100%) | 32 | 32 (100%) | 97 (100%) |
+| R07 | 97 | 97 (100%) | 33 | 33 (100%) | 97 (100%) |
 | R08 | 31 | 31 (100%) | 12 | 12 (100%) | 31 (100%) |
 | R09 | 28 | 28 (100%) | 17 | 17 (100%) | 28 (100%) |
 | R10 | 20 | 20 (100%) | 10 | 10 (100%) | 20 (100%) |
@@ -69,7 +69,7 @@ negative case. Complete: rules with both they need; the gate fails on any other.
 | Rlsp | 9 | 9 (100%) | 2 | 2 (100%) | 9 (100%) |
 | Rstress | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rtrace | 6 | 6 (100%) | 4 | 4 (100%) | 6 (100%) |
-| all | 617 | 617 (100%) | 256 | 256 (100%) | 617 (100%) |
+| all | 617 | 617 (100%) | 257 | 257 (100%) | 617 (100%) |
 
 ## Rules
 
@@ -528,7 +528,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R07.7.11 [4+ 1-]: | `s.step(k)` | every k-th element, a `Stepped` view | ranges and indexed
 - R07.8.1 [2+ 2-]: `.collect()` and the constructors are one operation, \(O(n)\) and allocating; the postfix ...
 - R07.9.1 [3+ 0-]: | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\)
-- R07.9.2 [5+ 1-]: | `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else...
+- R07.9.2 [8+ 1-]: | `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bo...
 - R07.9.3 [5+ 1-]: | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty...
 - R07.9.4 [2+ 2-]: | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Boo...
 - R07.9.5 [3+ 0-]: | `s.find(p)`, `s.rfind(p)` | `?T`, linear scan (binary search is `r.first_true`) | \(O(n)...
@@ -1062,8 +1062,8 @@ prepends it.
   - line 216: `a[l..=r]`
   - line 261: `fn divisors(n: Int) -> yields Int:`
   - line 330: `[f(x) for x in s if p(x)]`
-  - line 394: `a.keys.min(by: i => a[i])!`
-  - line 411: `let pre = a.scan(+)`
+  - line 395: `a.keys.min(by: i => a[i])!`
+  - line 412: `let pre = a.scan(+)`
 - 08-traits-generics.md: 5 blocks, 0 with a case, 0 spec-only, 5 neither
   - line 20: `trait Next<V>:`
   - line 29: `trait Rank(Eq):`
@@ -1127,7 +1127,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **range** (19/19 named by a case)
 - **search** (11/11 named by a case)
 - **segtree** (66/66 named by a case)
-- **seq** (232/235 named by a case)
+- **seq** (233/236 named by a case)
   - uncovered: `Filtered`, `Mapped`, `Rebased`
 - **slope** (39/39 named by a case)
 - **sparse** (23/23 named by a case)
@@ -1140,7 +1140,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Rooted.reroot`, `Rooted.chains`, `VirtualTree`, `PermNode`
 - **window** (24/24 named by a case)
 
-2399 of 2462 std items are named by a case.
+2400 of 2463 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

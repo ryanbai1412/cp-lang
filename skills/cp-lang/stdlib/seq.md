@@ -284,7 +284,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step; traps: when `a.len != b.len`
 - `fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>` — \(O(k)\) per chunk; \(O(n)\).; traps: when `k < 1`
 - `fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T` — \(O(n)\) calls of `f`; \(O(n)\).
-- `fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc` — \(O(n)\) calls of `f`; \(O(n)\).
+- `fn fold<S: Seq<T>, T, M>(self: S, op: M) -> T` — \(O(n)\) calls of `op`; \(O(n)\).; traps: never (an `op` without a known identity is a compile-time error)
+- `fn fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> Acc` — \(O(n)\) calls of `f`; \(O(n)\).
 - `fn max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)` — at most \(\lfloor 3n/2 \rfloor\) calls of `eq`; \(O(n)\) memory; The value held by more than half the elements, with its count, or `None`.
