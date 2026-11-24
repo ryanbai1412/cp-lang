@@ -1177,7 +1177,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
             || !self.fed_ok[fn_id]
             || self.program.judge_fns.contains(&fn_id)
             || args.len() != f.params.len()
-            || self.inline_ret.is_some()
             || (self.feed_acc.is_some() && Self::block_has_outer_loop_jump(body, id))
         {
             return false;
@@ -1212,6 +1211,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         self.feed_calls[spec_idx as usize].body_pc = body_pc;
         let first_jump = self.jumps.len();
         let first_give = self.give_targets.last_mut().map(|t| t.exits_mut().len());
+        let first_ret = self.inline_ret.as_ref().map(|(_, j)| j.len());
         let lt = self.loop_body(id, None, &body.stmts);
         let next_pc = self.ops.len() as u32;
         for c in lt.continues {
@@ -1223,14 +1223,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
             self.patch(b, break_pc);
         }
         self.emit(Op::FeedBodyBreak, Span::default());
-        // A jump out of the loop, to a loop further out or a `do`'s end,
+        // A jump out of the loop, to a loop further out, a `do`'s end or an
+        // inlined fn's end,
         // ends the fed fn as a `break` does, then goes on after the call.
         let jumps: Vec<LoopJump> = self.jumps.drain(first_jump..).collect();
         let gives = match (first_give, self.give_targets.last_mut()) {
             (Some(n), Some(t)) => t.exits_mut().split_off(n),
             _ => Vec::new(),
         };
-        let escapes = (jumps.iter().map(|j| j.pc)).chain(gives.iter().copied());
+        let rets = match (first_ret, &mut self.inline_ret) {
+            (Some(n), Some((_, j))) => j.split_off(n),
+            _ => Vec::new(),
+        };
+        let escapes = (jumps.iter().map(|j| j.pc)).chain(gives.iter().chain(&rets).copied());
         for (k, pc) in (1..).zip(escapes.collect::<Vec<_>>()) {
             let stub = self.ops.len() as u32;
             self.patch(pc, stub);
@@ -1268,6 +1273,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
             let pc = dispatch(self);
             if let Some(t) = self.give_targets.last_mut() {
                 t.exits_mut().push(pc);
+            }
+        }
+        for _ in rets {
+            let pc = dispatch(self);
+            if let Some((_, j)) = &mut self.inline_ret {
+                j.push(pc);
             }
         }
         true
