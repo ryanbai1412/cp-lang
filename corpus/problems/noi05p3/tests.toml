@@ -1,0 +1,37 @@
+# Cases for scripts/corpus.py make (problem-packages/R9).
+
+[[case]]
+input = ".\n..\n...\n....\n.....\n.....C\n...CCC.\nEEEHH...\nE.HHH....\nE.........\n"
+
+[[case]]
+input = "A\nAA\nEEE\nEIFK\nEIFKK\nIIFFKK\nIJFBBBB\nJJJDDCCC\nGJGDDC...\nGGG.......\n"
+
+[[case]]
+input = ".\n..\nAA.\nA...\n.....\n......\n.......\n........\n.........\n..........\n"
+
+[[case]]
+seed = 1
+size = 1
+
+[[case]]
+seed = 2
+size = 2
+
+[[case]]
+seed = 3
+size = 4
+
+[[case]]
+seed = 4
+size = 6
+
+[[case]]
+seed = 5
+size = 10
+
+[[case]]
+seed = 6
+size = 10
+
+[[case]]
+args = ["--max"]

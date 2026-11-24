@@ -24,7 +24,7 @@
   {"id": "5030050", "language": "CPP17", "result": "TLE", "time": 4.048370562, "memory_kb": 28460.0, "file": "corpus/submissions/5030050.cpp"},
   {"id": "5030051", "language": "CPP17", "result": "TLE", "time": 2.84409701, "memory_kb": 29028.0, "file": "corpus/submissions/5030051.cpp"},
   {"id": "5030052", "language": "CPP17", "result": "TLE", "time": 3.073960483, "memory_kb": 28460.0, "file": "corpus/submissions/5030052.cpp"},
-  {"id": "5030054", "language": "CPP17", "result": "AC", "time": 2.016208969, "memory_kb": 28464.0, "file": "corpus/submissions/5030054.cpp"},
+  {"id": "5030054", "language": "CPP17", "result": "AC", "time": 2.016208969, "memory_kb": 28464.0, "file": null},
   {"id": "5030057", "language": "CPP17", "result": "TLE", "time": 2.969813552, "memory_kb": 28460.0, "file": "corpus/submissions/5030057.cpp"},
   {"id": "5030078", "language": "CPP17", "result": "WA", "time": 1.317469038, "memory_kb": 26864.0, "file": "corpus/submissions/5030078.cpp"},
   {"id": "5030079", "language": "CPP17", "result": "WA", "time": 1.605995383, "memory_kb": 26864.0, "file": "corpus/submissions/5030079.cpp"},
@@ -33,13 +33,13 @@
   {"id": "5030088", "language": "CPP17", "result": "TLE", "time": 1.74876548, "memory_kb": 28516.0, "file": "corpus/submissions/5030088.cpp"},
   {"id": "5030090", "language": "CPP17", "result": "TLE", "time": 4.558244571, "memory_kb": 29004.0, "file": "corpus/submissions/5030090.cpp"},
   {"id": "5030092", "language": "CPP17", "result": "TLE", "time": 2.758143797, "memory_kb": 28992.0, "file": "corpus/submissions/5030092.cpp"},
-  {"id": "5030130", "language": "CPP17", "result": "AC", "time": 1.857815282, "memory_kb": 28472.0, "file": "corpus/submissions/5030130.cpp"},
+  {"id": "5030130", "language": "CPP17", "result": "AC", "time": 1.857815282, "memory_kb": 28472.0, "file": null},
   {"id": "5030132", "language": "CPP17", "result": "TLE", "time": 23.630390403, "memory_kb": 35860.0, "file": "corpus/submissions/5030132.cpp"},
-  {"id": "5030133", "language": "CPP17", "result": "AC", "time": 1.493506941, "memory_kb": 28464.0, "file": "corpus/submissions/5030133.cpp"},
-  {"id": "5030136", "language": "CPP17", "result": "AC", "time": 1.297925604, "memory_kb": 29064.0, "file": "corpus/submissions/5030136.cpp"},
+  {"id": "5030133", "language": "CPP17", "result": "AC", "time": 1.493506941, "memory_kb": 28464.0, "file": null},
+  {"id": "5030136", "language": "CPP17", "result": "AC", "time": 1.297925604, "memory_kb": 29064.0, "file": null},
   {"id": "5030139", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/5030139.cpp"},
-  {"id": "5030142", "language": "CPP17", "result": "AC", "time": 1.112601672, "memory_kb": 29088.0, "file": "corpus/submissions/5030142.cpp"},
-  {"id": "5030143", "language": "CPP17", "result": "AC", "time": 1.135802227, "memory_kb": 29088.0, "file": "corpus/submissions/5030143.cpp"},
+  {"id": "5030142", "language": "CPP17", "result": "AC", "time": 1.112601672, "memory_kb": 29088.0, "file": null},
+  {"id": "5030143", "language": "CPP17", "result": "AC", "time": 1.135802227, "memory_kb": 29088.0, "file": null},
   {"id": "5030146", "language": "CPP17", "result": "WA", "time": 0.834443732, "memory_kb": 28164.0, "file": "corpus/submissions/5030146.cpp"},
   {"id": "5030147", "language": "CPP17", "result": "WA", "time": 1.12069025, "memory_kb": 28164.0, "file": "corpus/submissions/5030147.cpp"},
   {"id": "5030149", "language": "CPP17", "result": "WA", "time": 1.508127129, "memory_kb": 28192.0, "file": "corpus/submissions/5030149.cpp"},
@@ -47,11 +47,15 @@
   {"id": "5030151", "language": "CPP17", "result": "TLE", "time": 2.900362588, "memory_kb": 28192.0, "file": "corpus/submissions/5030151.cpp"},
   {"id": "5030155", "language": "CPP17", "result": "TLE", "time": 2.870027884, "memory_kb": 3384.0, "file": "corpus/submissions/5030155.cpp"}
  ],
- "cpp_ac": 6,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi05p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "All six accepted C++ (5030054, 5030130, 5030133, 5030136, 5030142, 5030143, one author) passed the judge's data but print No solution on valid boards: a piece goes on the first empty cell at offsets -2..1 only, so an orientation whose first cell sits three columns into its box (the L with its foot up at the right end) never covers that cell; the second inline case, with only L left, is one such board. They are no reference and their files are gone. orig.cpp is an exact-cover backtracking reference, checked against the statement sample and an independent Python exact-cover solver on 300 generated boards (53 without a solution)."
 }
