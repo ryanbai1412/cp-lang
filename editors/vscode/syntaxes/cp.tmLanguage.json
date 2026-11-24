@@ -281,7 +281,7 @@
         { "name": "storage.modifier.$1.cp", "match": "\\b(pub|const)\\b" },
         { "name": "variable.language.self.cp", "match": "\\bself\\b" },
         { "name": "constant.language.boolean.$1.cp", "match": "\\b(false|true)\\b" },
-        { "name": "constant.language.none.cp", "match": "\\b(None|none)\\b" }
+        { "name": "constant.language.none.cp", "match": "\\b(None)\\b" }
       ]
     },
     "lambda-params": {

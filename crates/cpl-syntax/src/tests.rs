@@ -1234,7 +1234,7 @@ fn map_literals_counts_and_chained_let_else() {
 }
 
 #[test]
-fn there_are_thirty_four_keywords_and_no_others() {
+fn there_are_thirty_three_keywords_and_no_others() {
     for word in crate::KEYWORDS {
         let lexed = crate::lex(&format!("{word}\n"));
         assert_ne!(
@@ -1244,7 +1244,7 @@ fn there_are_thirty_four_keywords_and_no_others() {
         );
     }
     for word in [
-        "defer", "assume", "where", "inline", "lend", "law", "with", "by",
+        "defer", "assume", "where", "inline", "lend", "law", "with", "by", "none",
     ] {
         let lexed = crate::lex(&format!("{word}\n"));
         assert_eq!(lexed.tokens[0].kind, TokenKind::Ident, "`{word}` is a name");
@@ -1994,4 +1994,5 @@ fn every_literal_word_parses_as_a_literal() {
             "`{word}` parses as {kind:?}"
         );
     }
+    assert!(matches!(expr("none").kind, ExprKind::Name(n) if n == "none"));
 }

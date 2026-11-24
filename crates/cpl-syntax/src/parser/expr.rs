@@ -966,9 +966,9 @@ impl<'a> Parser<'a> {
         expr
     }
 
-    /// Keywords that are also ordinary member names: `xs.min`, `V.none`.
+    /// Keywords that are also ordinary member names: `xs.in`, `V.type`.
     fn field_keyword(&self) -> bool {
-        matches!(self.peek(), T::None | T::In | T::Type | T::Domain | T::Use) && !self.at_line_end()
+        matches!(self.peek(), T::In | T::Type | T::Domain | T::Use) && !self.at_line_end()
     }
 
     /// At `@cpp(`: an expression even at a line's start, not a decorator.
@@ -1053,11 +1053,6 @@ impl<'a> Parser<'a> {
                 let value = self.at(T::True);
                 self.bump();
                 ExprKind::Bool(value)
-            }
-            // Lowercase `none` is a name (a user's, or the old spelling of `None`).
-            T::None => {
-                self.bump();
-                ExprKind::Name("none".into())
             }
             T::SelfKw => {
                 self.bump();
@@ -1478,15 +1473,7 @@ impl<'a> Parser<'a> {
             && items.len() == 1
             && (matches!(
                 self.peek(),
-                T::Int
-                    | T::Float
-                    | T::Str
-                    | T::Char
-                    | T::True
-                    | T::False
-                    | T::None
-                    | T::Minus
-                    | T::LParen
+                T::Int | T::Float | T::Str | T::Char | T::True | T::False | T::Minus | T::LParen
             ) || (self.at(T::Ident) && !self.at_ident("where")))
         {
             let value = self.expr();
@@ -1986,7 +1973,6 @@ pub(super) fn begins_expr(kind: TokenKind) -> bool {
             | T::Char
             | T::True
             | T::False
-            | T::None
             | T::SelfKw
             | T::LParen
             | T::LBracket

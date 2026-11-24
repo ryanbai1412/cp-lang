@@ -21,7 +21,7 @@
     "if" "elif" "else" "for" "while" "in" "match" "return" "break" "continue"
     "and" "or" "not" "assert" "mut" "self" "lends" "yield" "unchecked"))
 
-(defconst cp-constants '("true" "false" "none"))
+(defconst cp-constants '("true" "false" "None"))
 
 (defconst cp-font-lock-keywords
   `((,(regexp-opt cp-keywords 'symbols) . font-lock-keyword-face)

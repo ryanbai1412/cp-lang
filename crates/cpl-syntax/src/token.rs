@@ -46,7 +46,6 @@ pub enum TokenKind {
     SelfKw,
     True,
     False,
-    None,
     Lends,
     Yield,
     Unchecked,
@@ -108,10 +107,10 @@ pub enum TokenKind {
     Error,
 }
 
-/// The 34 reserved words of CP Lang v2.2: 30 for contestants (three of
-/// them the literals `true`, `false` and `none`) and 4 for library authors
-/// (`trait`, `impl`, `lends`, `yield`).
-pub const KEYWORDS: [&str; 34] = [
+/// The 33 reserved words (R01.3): 29 for contestants (two of them the
+/// literals `true` and `false`) and 4 for library authors (`trait`, `impl`,
+/// `lends`, `yield`).
+pub const KEYWORDS: [&str; 33] = [
     "let",
     "var",
     "const",
@@ -141,7 +140,6 @@ pub const KEYWORDS: [&str; 34] = [
     "unchecked",
     "true",
     "false",
-    "none",
     "trait",
     "impl",
     "lends",
@@ -149,9 +147,9 @@ pub const KEYWORDS: [&str; 34] = [
 ];
 
 /// The words that are literal values, as editors highlight them: the
-/// booleans and `None` (a name the parser reads as the empty optional), and
-/// `none`, its 0.2 spelling, which still parses so the checker can name the fix.
-pub const LITERAL_WORDS: &[&str] = &["true", "false", "None", "none"];
+/// booleans and `None` (a name the parser reads as the empty optional).
+/// Lowercase `none` is an ordinary name.
+pub const LITERAL_WORDS: &[&str] = &["true", "false", "None"];
 
 /// What to write instead of a word that v2.1 reserved and v2.2 does not.
 /// The word itself is an ordinary name now.
@@ -201,7 +199,6 @@ impl TokenKind {
             "self" => SelfKw,
             "true" => True,
             "false" => False,
-            "none" => None,
             "lends" => Lends,
             "yield" => Yield,
             "unchecked" => Unchecked,
@@ -311,7 +308,6 @@ impl TokenKind {
             SelfKw => "`self`",
             True => "`true`",
             False => "`false`",
-            None => "`none`",
             Yield => "`yield`",
             Lends => "`lends`",
             Unchecked => "`unchecked`",

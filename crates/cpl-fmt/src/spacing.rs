@@ -50,8 +50,7 @@ fn ends_value(kind: K, role: Role) -> bool {
         | K::RBrace
         | K::SelfKw
         | K::True
-        | K::False
-        | K::None => true,
+        | K::False => true,
         K::Bang => role != Role::Prefix,
         K::Gt | K::Shr => role == Role::GenericClose,
         K::Question => role == Role::Postfix,
@@ -338,7 +337,6 @@ fn starts_value(kind: K) -> bool {
             | K::SelfKw
             | K::True
             | K::False
-            | K::None
             | K::Question
             | K::Minus
     )
