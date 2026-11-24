@@ -13,11 +13,11 @@
 let n: 1..=5e4 = read()
 let k: 1..=10 = read()
 domain P = 0..n
-let lists: [P]List<P> = read()
+var lists: [P]List<P> = read()
+for p in P: lists[p].sort()
 
 // each list sorted, so a pair is a binary search
-let foes = [P] p => lists[p].sorted()
-fn foes_of(p: P, q: P) -> Bool = foes[p].first_ge(q).map(i => foes[p][i] == q) ?? false
+fn foes_of(p: P, q: P) -> Bool = lists[p].first_ge(q).map(i => lists[p][i] == q) ?? false
 var deg: [P]Int = [P] p => lists[p].len
 var gone: [P]Bool = false
 var heap = MinHeap<(Int, P)>()
