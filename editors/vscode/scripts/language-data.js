@@ -83,6 +83,7 @@ function tsArray(names) {
 const TABLE_DOCS = {
     PRELUDE_TYPES: "/**\n * Types the compiler itself knows (`crates/cpl-check/src/prelude.rs`). `Opt` (spelled `?T`)\n * and `Counter` (what `counts` returns) are left out: neither is written by name.\n */",
     STDLIB_TYPES: "/** Every public type and trait declared in `std/*.cp`, whether `std/prelude.cp` imports it or not. */",
+    BUILTIN_VALUES: "/** Functions the compiler itself knows (`crates/cpl-check/src/prelude.rs`), scoped built in. */",
     PRELUDE_VALUES: "/**\n * Functions a program can call without a `use`: the compiler's own (`prelude.rs`) and the\n * ones `std/prelude.cp` imports.\n */",
     STDLIB_VALUES: "/** Public `std/*.cp` functions that need a `use` (`use std.strings.{z_function}`). */",
     PRELUDE_CONSTANTS: "/** Public `std/*.cp` constants the prelude imports (no INF sentinel; use ?Int / None). */",
