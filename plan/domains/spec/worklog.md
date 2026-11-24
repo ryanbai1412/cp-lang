@@ -2,6 +2,10 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-24
+- Handoff audit: the 8 old-checkout patches not on main by patch-id (0004, 0007-0010, 0013, 0014, 0016) are superseded. Their cases, `traits.toml` rows and `conformance-traits.py` public-type filter are on main, their rulings are decisions 220-221, and the rest is worklog text. The 11 cases from 0004 and the 143 `traits/` cases pass; `conformance-traits.py --check` reports 0 gaps.
+- Landed: decision numbers are reserved on main (505, `next-decision.py --reserve`, `--check-landing` in `land.sh`), the 28 duplicates renumbered 473-504, `spec/RATIONALE.md` folded into the handbook, one authority sentence. New hard-zero counters: `decision_dup_numbers`, `why_written_twice`, `authority_drift`.
+
 ## 2026-11-23
 - Request from idioms (2026-11-23, ioi18p1): R10.1.3's generated stub can't answer a judge-supplied `extern fn` in an interactive grader task (ioi18p1 `press` depends on the hidden word), and no spec form lets a file give the judge half of an `extern fn` (`@interactor` speaks stdin/stdout only). Repro: `extern fn press(p: Str) -> Int` / `print(press("A"))` checks clean, `cpl run` traps R0001 "this fn has no body". Ask: say how a local run binds an `extern fn` to a judge (e.g. an `@interactor` that implements it), so the grader-shaped spec.cp runs in `cpl-conform corpus` (research/frictions/ioi18p1.md).
 - Request from idioms (2026-11-23, cco18p4): `cpl-conform corpus` never runs `corpus/problems/<id>/interactor.py`, so interactive problems (cco18p4, ioi18p1, yac6p3 have `spec.cp`) can only be gated on transcripts that pin the port's probe order. Repro: cco18p4 `tests/NN.in` are replies to `spec.cp`'s own questions; the AC passes `interactor.py tests/NN.case` but reads `wrong` on the transcripts. Ask: when `interactor.py` exists, run `interactor.py tests/NN.case -- <interp>` per case and pass on exit 0 (research/frictions/cco18p4.md).
