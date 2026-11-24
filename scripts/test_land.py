@@ -733,6 +733,15 @@ class LandTest(unittest.TestCase):
         r = warm("--parent", "origin/main", "cpl-x")
         self.assertEqual((r.returncode, r.stdout.strip()), (0, str(out / "sizes" / f"{main_tree}.json")))
         self.assertEqual(warm("--parent", "HEAD", "cpl-x").stdout.strip(), str(out / "sizes" / f'{git(ours, "rev-parse", "HEAD^{tree}").strip()}.json'))
+        (ours / "crates" / "cpl-y").mkdir(parents=True)
+        (ours / "crates" / "cpl-y" / "lib.rs").write_text("other crate\n")
+        self.commit(ours, "other crate")
+        newer = out / "sizes" / f'{git(ours, "rev-parse", "HEAD^{tree}").strip()}.json'
+        newer.write_text("{}")
+        os.utime(newer, (time.time() + 60, time.time() + 60))
+        for touched in ("cpl-x", "cpl_x"):
+            r = warm("--parent", "origin/main", touched)
+            self.assertEqual(r.stdout.strip(), str(out / "sizes" / f"{main_tree}.json"), touched)
 
 
 if __name__ == "__main__":

@@ -30,12 +30,12 @@ case "${1:-}" in
             git diff --quiet "$built" 'HEAD^{tree}' -- "${dirs[@]}" 2>/dev/null || exit 1
         echo "$out/cpl.wasm" ;;
     --parent)
+        # Every crate is held to the parent, touched or not, so only a build whose
+        # wasm inputs all equal the parent's stands for it.
         base=$(git rev-parse "$2^{tree}" 2>/dev/null) || exit 1
-        shift 2
-        dirs=(); for c in "$@"; do dirs+=("crates/$c"); done
         for f in $(ls -t "$out"/sizes/*.json 2>/dev/null); do
             t=$(basename "$f" .json)
-            if [ "$t" = "$base" ] || git diff --quiet "$t" "$base" -- "${dirs[@]}" 2>/dev/null; then
+            if [ "$t" = "$base" ] || git diff --quiet "$t" "$base" -- "${inputs[@]}" 2>/dev/null; then
                 echo "$f"
                 exit 0
             fi
