@@ -196,6 +196,8 @@ pub(crate) struct Emitter<'p> {
     pub sites: Option<Vec<cpl_diag::Span>>,
     /// The statements that count, from `cpl_ir::sites::user_stmts`.
     pub counted: std::collections::HashSet<*const Stmt>,
+    /// The counted statements that open a fn body, from `user_entries`.
+    pub entries: std::collections::HashSet<*const Stmt>,
     pub target: crate::Target,
     /// What each part of the file is, by its text: for the size report.
     pub chunks: Vec<(crate::Part, String, String)>,
@@ -282,6 +284,7 @@ impl<'p> Emitter<'p> {
             indent: 0,
             sites: None,
             counted: Default::default(),
+            entries: Default::default(),
             target: target.clone(),
             chunks: Vec::new(),
         };

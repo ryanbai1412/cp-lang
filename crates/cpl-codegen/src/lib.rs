@@ -288,6 +288,7 @@ pub fn emit_profiled(
     emitter.sites = Some(Vec::new());
     emitter.devirt = devirt::Devirt::collect_unmerged(&program);
     emitter.counted = cpl_ir::sites::user_stmts(&program);
+    emitter.entries = cpl_ir::sites::user_entries(&program);
     let (cpp, sites) = emitter.file_with_sites(name, None);
     let tally = PROFILE_TALLY.replace("SITES", &sites.len().max(1).to_string());
     // Before the first namespace, after every include and `#if` block, so
@@ -306,6 +307,11 @@ inline void charge(std::chrono::steady_clock::time_point now) {
     since = now;
 }
 inline void mark(long long site) { charge(std::chrono::steady_clock::now()); last = site; ++hits[site]; }
+// Opened by a user fn body: on return the time is the calling statement's again.
+struct Frame {
+    long long saved = last;
+    ~Frame() { charge(std::chrono::steady_clock::now()); last = saved; }
+};
 struct Tally {
     ~Tally() {
         charge(std::chrono::steady_clock::now());

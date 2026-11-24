@@ -189,7 +189,7 @@ def per_hit(cpl, case, n, groups, tmp, within=None):
         by_line = {l["line"]: l for l in json.loads(run.stdout)["lines"]}
         for fn, timed in groups.items():
             lines = [by_line[i] for i in timed if i in by_line]
-            ns, hits = sum(l["time_ns"] for l in lines), sum(l["hit_count"] for l in lines)
+            ns, hits = sum(l["time_ns"] for l in lines), sum(l["start_count"] for l in lines)
             ns += sum(by_line[i]["time_ns"] for i in within.get(fn, ()) if i in by_line)
             if not hits:
                 raise RuntimeError(f"no line timing {fn} ran")

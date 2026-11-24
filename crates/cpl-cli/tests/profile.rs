@@ -51,6 +51,22 @@ fn hits(json: &str) -> Vec<(u64, u64)> {
         .collect()
 }
 
+/// `(line, value)` of `key` in each line that ran, from `--format json`.
+fn field(json: &str, key: &str) -> Vec<(u64, u64)> {
+    let key = format!("\"{key}\":");
+    let lines = &json[json.find("\"lines\":[").expect("lines") + 9..];
+    lines
+        .split("{\"line\":")
+        .skip(1)
+        .map(|row| {
+            let line = row[..row.find(',').unwrap()].parse().unwrap();
+            let value = &row[row.find(&key).unwrap() + key.len()..];
+            let end = value.find([',', '}']).unwrap();
+            (line, value[..end].parse().unwrap())
+        })
+        .collect()
+}
+
 fn has_gxx() -> bool {
     Command::new("g++").arg("--version").output().is_ok()
 }
@@ -112,6 +128,63 @@ fn profile_runs_on_the_vm_and_counts_bodies_it_would_inline() {
     assert_eq!(hits(&out), [(1, 3), (2, 1), (3, 1), (4, 1)]);
     assert!(err.contains("\"total_fallbacks\":0,"), "{err}");
     assert!(err.contains("\"walked\":0,"), "{err}");
+}
+
+#[test]
+fn a_lines_starts_count_its_entries_and_made_closures_add_no_hits() {
+    // Line 4 passes a fn as a value and line 6 takes a library default
+    // closure: neither is code written on the line. Line 7 loops on one line.
+    let file = scratch(
+        "starts.cp",
+        "use std.sparse.{LinearRmq}\nfn mod5(x: Int) -> Int: x % 5\nvar ys = [9, 3, 7]\n\
+         ys.sort(by: mod5)\ndomain V = 0..3\nlet r = LinearRmq<V, Int>([V] v => ys[v.ord])\n\
+         for v in V: print(r.best(V(0)..=v))\n",
+    );
+    let path = file.to_str().unwrap();
+    for engine in [&[][..], &["--native"][..]] {
+        if !engine.is_empty() && !has_gxx() {
+            continue;
+        }
+        let args = [&["profile", path, "-", "--format", "json"][..], engine].concat();
+        let (out, err, code) = cpl(&args);
+        assert_eq!(code, 0, "{err}");
+        let (hits, starts) = (field(&out, "hit_count"), field(&out, "start_count"));
+        assert_eq!(
+            hits,
+            [(2, 3), (3, 1), (4, 1), (5, 1), (6, 1), (7, 3)],
+            "{engine:?}"
+        );
+        assert_eq!(
+            starts,
+            [(2, 3), (3, 1), (4, 1), (5, 1), (6, 1), (7, 1)],
+            "{engine:?}"
+        );
+    }
+}
+
+#[test]
+fn native_profile_charges_the_caller_again_after_a_user_fn_returns() {
+    if !has_gxx() {
+        return;
+    }
+    let file = scratch(
+        "frame.cp",
+        "fn one() -> Int = 1\nlet xs = [i for i in 0..2000000]\nprint(one() + xs.sum())\n",
+    );
+    let path = file.to_str().unwrap();
+    let (out, err, code) = cpl(&["profile", "--native", path, "-", "--format", "json"]);
+    assert_eq!(code, 0, "{err}");
+    let nanos = field(&out, "time_ns");
+    let at = |line| {
+        nanos
+            .iter()
+            .find(|(l, _)| *l == line)
+            .map_or(0, |(_, ns)| *ns)
+    };
+    assert!(
+        at(3) > 10 * at(1),
+        "the sum after `one()` returns is line 3's: {out}"
+    );
 }
 
 #[test]

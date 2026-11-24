@@ -18,6 +18,23 @@ pub fn user_stmts(program: &Program) -> HashSet<*const Stmt> {
     stmts
 }
 
+/// The first written statement of each user fn and closure body: where a
+/// profiled build opens a frame, so the time after the call returns is the
+/// caller's again (library code calling back into user code).
+pub fn user_entries(program: &Program) -> HashSet<*const Stmt> {
+    let library = library_closures(program);
+    let fns = (program.fns.iter().enumerate())
+        .filter(|(id, _)| !program.library_fns.get(*id).copied().unwrap_or(false))
+        .map(|(_, f)| &f.body);
+    let closures = (program.closures.iter().enumerate())
+        .filter(|(id, _)| !library.contains(id))
+        .map(|(_, c)| &c.body);
+    (fns.chain(closures))
+        .filter_map(|body| body.stmts.iter().find(|stmt| stmt.span().is_some()))
+        .map(|stmt| stmt as *const Stmt)
+        .collect()
+}
+
 /// The spans of [`user_stmts`].
 pub fn user_spans(program: &Program) -> Vec<Span> {
     let mut spans = Vec::new();
@@ -72,13 +89,30 @@ fn arms<'p>(stmt: &'p Stmt, f: &mut dyn FnMut(&'p Stmt)) {
     }
 }
 
-/// The closures an imported module's fn makes, and the ones those make.
+/// The closures an imported module's fn makes, the ones the compiler
+/// writes for the user (a fn passed as a value, a library parameter's
+/// default: every statement spanned as the expression that makes it), and
+/// the ones those make.
 fn library_closures(program: &Program) -> HashSet<usize> {
     let mut found = HashSet::new();
     let mut work: Vec<&Block> = (program.fns.iter().enumerate())
         .filter(|(id, _)| program.library_fns.get(*id).copied().unwrap_or(false))
         .map(|(_, f)| &f.body)
         .collect();
+    let mut user: Vec<&Block> = vec![&program.setup, &program.main];
+    user.extend(program.fns.iter().map(|f| &f.body));
+    user.extend(program.closures.iter().map(|c| &c.body));
+    for block in user {
+        walk::deep_exprs(block, &mut |e| {
+            if let ExprKind::Closure(id) = e.kind {
+                let body = &program.closures[id].body;
+                let made = |stmt: &Stmt| stmt.span().is_none_or(|span| span == e.span);
+                if body.stmts.iter().all(made) && found.insert(id) {
+                    work.push(body);
+                }
+            }
+        });
+    }
     while let Some(block) = work.pop() {
         walk::deep_exprs(block, &mut |e| {
             if let ExprKind::Closure(id) = e.kind {

@@ -24,7 +24,8 @@ options:
                    each statement (with the flags of the file's judge, on its
                    stack); the counts are the interpreter's, the times are
                    the judge's
-  --format json    one JSON object: the lines with their hits and nanoseconds
+  --format json    one JSON object: the lines with their hits, nanoseconds
+                   and starts (runs of the line's first statement)
 ";
 
 pub const COVER_USAGE: &str = "\
@@ -180,11 +181,15 @@ fn run_native(file: &str, compiled: &Compiled, input: &[u8]) -> Result<Run, Stri
     Ok(Run { sites, failure })
 }
 
-/// A line's tally: the most any of its statements ran, and their time.
+/// A line's tally: the most any of its statements ran, and their time;
+/// `starts`, how often its first statement ran, is how often the line was
+/// entered even when a closure written on it ran more.
 #[derive(Clone, Copy, Default)]
 struct Line {
     hits: u64,
     nanos: u64,
+    starts: u64,
+    first: Option<Span>,
 }
 
 fn by_line(index: &LineIndex, sites: &HashMap<Span, Site>) -> BTreeMap<u32, Line> {
@@ -193,6 +198,13 @@ fn by_line(index: &LineIndex, sites: &HashMap<Span, Site>) -> BTreeMap<u32, Line
         let line = lines.entry(index.line_of(span.start) + 1).or_default();
         line.hits = line.hits.max(site.hits);
         line.nanos += site.nanos;
+        if line
+            .first
+            .is_none_or(|f| (span.start, !span.end) < (f.start, !f.end))
+        {
+            line.first = Some(*span);
+            line.starts = site.hits;
+        }
     }
     lines
 }
@@ -268,8 +280,8 @@ pub fn profile(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8
             .iter()
             .map(|(line, tally)| {
                 format!(
-                    "{{\"line\":{line},\"hit_count\":{},\"time_ns\":{}}}",
-                    tally.hits, tally.nanos
+                    "{{\"line\":{line},\"hit_count\":{},\"time_ns\":{},\"start_count\":{}}}",
+                    tally.hits, tally.nanos, tally.starts
                 )
             })
             .collect();

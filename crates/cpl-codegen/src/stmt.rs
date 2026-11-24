@@ -1216,6 +1216,9 @@ impl<'p> Emitter<'p> {
             if self.counted.contains(&(stmt as *const Stmt)) {
                 sites.push(span);
                 let id = sites.len() - 1;
+                if self.entries.contains(&(stmt as *const Stmt)) {
+                    self.line(out, "cpl_prof::Frame cpl_prof_frame;");
+                }
                 self.line(out, &format!("cpl_prof::mark({id});"));
             }
         }

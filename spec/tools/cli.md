@@ -132,7 +132,8 @@ what it `tried` when it found no counterexample, or the `counterexample`.
 "memory_limit_kb", "runs": [{"shape", "number_count", "status", "time_ms", "peak_kb",
 "error"}]}`.
 `cpl profile --format json` prints `{"path", "engine", "time_ns", "failure",
-"lines": [{"line", "hit_count", "time_ns"}]}`.
+"lines": [{"line", "hit_count", "time_ns", "start_count"}]}`: `hit_count` is the most any
+statement on the line ran, `start_count` how often its first statement ran.
 `cpl cover --format json` prints `{"path", "input_count", "line_count", "covered_count",
 "uncovered", "one_way": [{"line", "always"}]}`: `uncovered` holds the
 numbers of the lines no input ran.
