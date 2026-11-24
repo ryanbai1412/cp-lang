@@ -1,4 +1,5 @@
-//! Which files `cpl stress` has a judge for.
+//! What a file's parsed top-level fns ask of a run: a judge for
+//! `cpl stress`, or a C++ body only the C++ build runs.
 
 use cpl_syntax::ast;
 
@@ -16,5 +17,16 @@ pub fn has_stress_target(source: &str) -> bool {
     stmts.any(|stmt| {
         matches!(stmt.kind, ast::StmtKind::Fn(_))
             && (stmt.decorators.iter()).any(|d| STRESS_DECORATORS.contains(&d.name.text.as_str()))
+    })
+}
+
+/// Whether `source` has a top-level `fn f(..) = @cpp("...")`, which only
+/// the C++ build runs (Rbundle.5).
+pub fn has_cpp_body(source: &str) -> bool {
+    let parsed = cpl_syntax::parse_file(source);
+    let mut stmts = parsed.items.iter().flat_map(|(_, item)| &item.stmts);
+    stmts.any(|stmt| match &stmt.kind {
+        ast::StmtKind::Fn(f) => matches!(&f.body, ast::FnBody::Expr(e) if crate::lower::is_cpp(e)),
+        _ => false,
     })
 }

@@ -453,7 +453,7 @@ pub(super) fn is_projection(f: &ast::FnDecl) -> bool {
 }
 
 /// `fn f(..) = @cpp("...")`: a body written in C++ (Rbundle.5).
-pub(super) fn is_cpp(e: &ast::Expr) -> bool {
+pub(crate) fn is_cpp(e: &ast::Expr) -> bool {
     matches!(e.kind, ast::ExprKind::Cpp(_))
 }
 

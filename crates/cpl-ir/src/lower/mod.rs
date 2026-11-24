@@ -51,6 +51,7 @@ mod unify_ast;
 mod views;
 mod yields;
 pub use call::lower_sampling_laws;
+pub(crate) use collect::is_cpp;
 
 use crate::*;
 use calls::*;

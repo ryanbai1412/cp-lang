@@ -107,7 +107,7 @@ pub use lower::{
     lower_test,
 };
 pub use show::{sep_of, Sep};
-pub use stress_target::{has_stress_target, STRESS_DECORATORS};
+pub use stress_target::{has_cpp_body, has_stress_target, STRESS_DECORATORS};
 
 use cpl_diag::Span;
 
