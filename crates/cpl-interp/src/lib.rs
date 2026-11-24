@@ -418,7 +418,7 @@ fn run_from<O: Observer>(
         vm_pool_v: Vec::new(),
         view_locals: Vec::new(),
         trace_shown: trace::ShowTexts::new(),
-        trace_show_tys: HashMap::new(),
+        trace_show_tys: show_hook::ShowTys::default(),
         trap_frame: None,
         trace_indices: Vec::new(),
         trace_path: Vec::new(),
@@ -685,8 +685,8 @@ struct Interp<'p, 'o, O: Observer> {
     view_locals: Vec<(&'static str, &'static Ty, &'static Value)>,
     /// The text of each value a trace shows through its `impl Show`.
     trace_shown: trace::ShowTexts,
-    /// Whether a type holds a value with an `impl Show`, per type seen.
-    trace_show_tys: HashMap<Ty, bool>,
+    /// Which types, globals and frames hold a value with an `impl Show`.
+    trace_show_tys: show_hook::ShowTys,
     /// The innermost call's locals when a traced run trapped, and its depth.
     trap_frame: Option<unwind::TrapFrame<'p>>,
     /// The indices of the place a trace point writes, kept between steps.

@@ -166,14 +166,34 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             return;
         }
         let mut wanted = Vec::new();
-        for (id, global) in program.globals.iter().enumerate() {
-            if self.holds_show(&global.ty) {
-                wanted_shows(program, &self.globals[id], &global.ty, &mut wanted);
-            }
+        let globals = match self.trace_show_tys.globals.take() {
+            Some(ids) => ids,
+            None => (0..program.globals.len())
+                .filter(|&id| self.holds_show(&program.globals[id].ty))
+                .collect(),
+        };
+        for &id in &globals {
+            wanted_shows(
+                program,
+                &self.globals[id],
+                &program.globals[id].ty,
+                &mut wanted,
+            );
         }
-        let tys: Vec<&Ty> = self.named_locals().map(|(_, ty, _)| ty).collect();
-        let holds: Vec<bool> = tys.iter().map(|ty| self.holds_show(ty)).collect();
-        if holds.contains(&true) {
+        self.trace_show_tys.globals = Some(globals);
+        let locals = self.locals();
+        let frame = (locals.as_ptr(), locals.len());
+        let frame_holds = match self.trace_show_tys.frame {
+            Some((at, holds)) if at == frame => holds,
+            _ => {
+                let holds = locals.iter().any(|l| self.holds_show(&l.ty));
+                self.trace_show_tys.frame = Some((frame, holds));
+                holds
+            }
+        };
+        if frame_holds {
+            let tys: Vec<&Ty> = self.named_locals().map(|(_, ty, _)| ty).collect();
+            let holds: Vec<bool> = tys.iter().map(|ty| self.holds_show(ty)).collect();
             for ((_, ty, value), _) in self.named_locals().zip(&holds).filter(|(_, h)| **h) {
                 wanted_shows(program, value, ty, &mut wanted);
             }
@@ -213,13 +233,24 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     fn holds_show(&mut self, ty: &Ty) -> bool {
-        if let Some(&holds) = self.trace_show_tys.get(ty) {
+        if let Some(&holds) = self.trace_show_tys.tys.get(ty) {
             return holds;
         }
         let holds = holds_show(self.program, ty, &mut Vec::new());
-        self.trace_show_tys.insert(ty.clone(), holds);
+        self.trace_show_tys.tys.insert(ty.clone(), holds);
         holds
     }
+}
+
+/// What a trace step asks of `impl Show` before it shows its values, kept
+/// so a step does not walk every global's type again: whether each type
+/// seen holds a shown value, the globals that do, and whether the frame
+/// last asked about has a local that does.
+#[derive(Default)]
+pub(crate) struct ShowTys {
+    tys: HashMap<Ty, bool>,
+    globals: Option<Vec<usize>>,
+    frame: Option<((*const cpl_ir::Local, usize), bool)>,
 }
 
 /// Whether a value of `ty` can hold one whose type has a `show` fn.
