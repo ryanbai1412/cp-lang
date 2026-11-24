@@ -5,7 +5,6 @@ mod adjacency;
 mod assign;
 mod bag;
 mod bounds;
-mod counter;
 mod domain_first;
 mod empty_range;
 mod euclid;
@@ -67,7 +66,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(fermat::check(file));
     findings.extend(letters::check(file));
     findings.extend(pop_end::check(file));
-    findings.extend(counter::check(file));
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));

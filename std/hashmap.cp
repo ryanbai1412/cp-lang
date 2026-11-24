@@ -494,6 +494,8 @@ pub struct Counter<K, V: Add = Int>:
 /// cost: \(O(1)\) expected
 /// traps: never
 /// example: `var c = Counter.of([2, 1, 2]); c.push(1); c[1] == 2`
+@lint(counter_by_map, from: "var m: Map<K, Int> = Map()\nfor y in xs:\n    m[x] = (m.get(x) ?? 0) + 1", to: "var m = Counter<K>()\nfor y in xs:\n    m.push(x)", holes: "K, xs")
+@lint(counter_by_map, from: "var m: HashMap<K, Int> = HashMap()\nfor y in xs:\n    m[x] = (m.get(x) ?? 0) + 1", to: "var m = Counter<K>()\nfor y in xs:\n    m.push(x)", holes: "K, xs")
 pub fn push<K>(mut self: Counter<K, Int>, x: K):
     self.add(x, 1)
 
@@ -576,6 +578,8 @@ fn flat_map_shows_by_key():
 /// traps: never
 /// example: `"abca".tally()['a'] == 2`
 /// example: `[1, 1, 2].tally()[7] == 0`
+@lint(counter_by_map, from: "var m: Map<K, Int> = Map()\nfor x in self:\n    m[x] += 1", to: "let m = self.tally()", holes: "K")
+@lint(counter_by_map, from: "var m: HashMap<K, Int> = HashMap()\nfor x in self:\n    m[x] += 1", to: "let m = self.tally()", holes: "K")
 pub fn tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>:
     var out = Counter<K, Int>()
     for x in self:
