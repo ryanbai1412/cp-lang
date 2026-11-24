@@ -85,7 +85,7 @@ fn check(value: &Value, shape: &Shape, at: &str, errors: &mut Vec<String>) {
 /// memory quantity ends in its unit, a count is `<noun>_count` rather than a
 /// plural, and the source and the pass flag are `path` and `ok`.
 fn misnamed(name: &str, value: &Value) -> Option<&'static str> {
-    let units = ["_ms", "_ns", "_kb", "_mb"];
+    let units = ["_ms", "_ns", "_kb"];
     if matches!(name, "file" | "passed" | "total" | "ms" | "kb" | "nanos") {
         return Some("spelt as cli.md's naming rule forbids");
     }
@@ -94,8 +94,8 @@ fn misnamed(name: &str, value: &Value) -> Option<&'static str> {
     {
         return Some("a time or memory key without its unit");
     }
-    if ["memory", "peak"].iter().any(|q| name.contains(q)) && name.ends_with("_mb") {
-        return Some("memory in MB; write `_kb` so it compares with `peak_kb`");
+    if name.ends_with("_mb") {
+        return Some("a size in MB; every JSON byte size is `_kb`");
     }
     if matches!(value, Value::Int(_))
         && name.ends_with('s')

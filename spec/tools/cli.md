@@ -86,7 +86,7 @@ any `error` that stopped the round (`null` when none).
 (`"--json"` or `"--format json"`; both work) or `null` when it has none.
 
 Keys follow one rule: a key names its quantity with the unit as a suffix
-(`time_ms`, `time_ns`, `peak_kb`, `time_limit_ms`); a plural noun is a list
+(`time_ms`, `time_ns`, `peak_kb`, `time_limit_ms`; every byte size is in KB, `_kb`); a plural noun is a list
 (`files`, `cases`); a count is `<noun>_count` (`case_count`); and one
 meaning has one key in every command, so the source is always `path` and a
 pass flag always `ok`.
@@ -103,7 +103,7 @@ was there already), the `tests` folder and its `sample_count`.
 top-level `values` it ended with; with `--trace` it prints the trace
 instead (`tools/trace/trace-schema.json`).
 `cpl judges --json` prints `{"judges": [{"name", "title", "chosen",
-"command", "os", "stack", "thread_stack_mb", "time_limit_ms", "memory_limit_kb",
+"command", "os", "stack", "thread_stack_kb", "time_limit_ms", "memory_limit_kb",
 "source_limit_kb", "evidence"}]}`, `chosen` on the profile the file builds for.
 `cpl explain --json` prints `[{"code", "title", "summary", "explanation",
 "trigger", "fix", "mode", "lint_name", "input"?, "rule"?}]`, one entry

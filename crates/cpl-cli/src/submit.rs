@@ -256,8 +256,8 @@ pub(crate) fn list_judges(
                 ),
                 ("stack", text(&profile.stack_text())),
                 (
-                    "thread_stack_mb",
-                    profile.thread_stack.map_or(Value::Null, |b| int(b >> 20)),
+                    "thread_stack_kb",
+                    profile.thread_stack.map_or(Value::Null, |b| int(b >> 10)),
                 ),
                 ("source_limit_kb", int(profile.limit() as u64 / 1024)),
                 ("time_limit_ms", int(profile.time_ms)),

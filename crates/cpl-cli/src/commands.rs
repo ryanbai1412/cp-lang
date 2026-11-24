@@ -423,8 +423,8 @@ file, marks the one its build uses (the `// judge:` line, else the nearest
 cp.toml, else `generic`).
 
   --json    print `{\"judges\": [...]}`, each profile with its name, title,
-            chosen, command, os, stack, thread_stack_mb, source_limit_kb,
-            time_ms, memory_mb and evidence
+            chosen, command, os, stack, thread_stack_kb, source_limit_kb,
+            time_limit_ms, memory_limit_kb and evidence
 ";
 
 pub(crate) const EXPLAIN_USAGE: &str = "\

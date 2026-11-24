@@ -38,10 +38,12 @@ lists what is still open.
 - `--json` keys follow one naming rule (`spec/tools/cli.md`): elapsed
   time is `time_ms` (`time_ns` in `cpl profile`), peak memory `peak_kb`,
   limits `time_limit_ms` and `memory_limit_kb` (`cpl judges` and `cpl bench`),
+  and `cpl judges`' thread stack `thread_stack_kb`,
   the source `path`, a pass flag `ok`, and a count `<noun>_count`. Scripts
   that read `ms`, `kb`, `nanos`, `file`, `passed`, `total`, `samples`,
   `inputs`, `lines`, `covered`, `saved_passed`, `cpl stress`'s `cases` or
-  `cpl judges`' `time_ms` and `memory_mb` must read the new names.
+  `cpl judges`' `time_ms`, `memory_mb` and `thread_stack_mb` must read the
+  new names.
 - `none` becomes `None` and `some` becomes `Some`. The 0.2.2 compiler
   already accepts both spellings.
 - `D.bounds` is now `D.cuts`, `(+, max)` is `each(+, max)`,

@@ -20,7 +20,7 @@ const judges = JSON.parse(run('judges', '--json')).judges.map((j) => ({
   details: [
     j.command,
     `${j.os === 'windows' ? 'Windows' : 'Linux'}, ${j.stack}, ${
-      j.thread_stack_mb === null ? 'no threads' : `the program on a thread with ${j.thread_stack_mb} MB`
+      j.thread_stack_kb === null ? 'no threads' : `the program on a thread with ${j.thread_stack_kb / 1024} MB`
     }, source up to ${j.source_limit_kb} KB`,
     `usual limits ${j.time_limit_ms} ms, ${j.memory_limit_kb / 1024} MB`,
     `from: ${j.evidence}`,
