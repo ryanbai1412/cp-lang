@@ -328,7 +328,7 @@ The sum over the positions of `r`: `prefix(r.r) - prefix(r.l)`. Accepts every ra
 (`l..r`, `l..=r`, `..i`, `i..`).
 
 cost: O(log |D|)
-empty: zero
+empty: `Fenwick([1, 2, 3]).fold(2..2) == 0`
 traps: when a non-empty `r` reaches outside `D`
 example: `Fenwick([1, 2, 3]).fold(1..3) == 5`
 example: `Fenwick([1, 2, 3]).fold(2..2) == 0`
@@ -439,7 +439,7 @@ pair `(x, y)` satisfies `link(x, y)`, and `by:` is ignored: `runs(by: key)` is
 `runs(link: (x, y) => key(x) == key(y))`. O(1) to make, O(n) to walk.
 
 cost: O(1) to make, O(n) to walk
-empty: yields nothing
+empty: `let a: List<Int> = []; a.runs().count() == 0`
 order: left to right; each run is a slice keeping the keys of `self`
 traps: never
 example: `[r.len for r in "aabccc".runs()] == [2, 1, 3]`
