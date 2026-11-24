@@ -1731,9 +1731,8 @@ impl<'a> Checker<'a> {
                 .and_then(|t| self.type_def(t))
                 .as_deref()
             {
-                for method in methods {
-                    out.members.push((method.name.clone(), method.ty.clone()));
-                }
+                let members = self.trait_members(methods, &def);
+                out.members.extend(members);
             }
             if let Def::Impl {
                 methods,
@@ -2523,7 +2522,9 @@ impl<'a> Checker<'a> {
                     if let Some(Def::Trait { methods, .. }) = self.type_def(&trait_name).as_deref()
                     {
                         if let Some(m) = methods.iter().find(|m| m.name == name.text) {
-                            return match &m.ty {
+                            let mut on = crate::ty::Bindings::default();
+                            on.insert("Self".into(), Ty::Param(param.clone()));
+                            return match &m.ty.subst(&on) {
                                 Ty::Fn { params, ret }
                                     if !self.in_call_callee && params.is_empty() =>
                                 {
@@ -2753,6 +2754,10 @@ impl<'a> Checker<'a> {
                 // `Graph.read()`, `Rooted.Pre`: what the type has without a value.
                 self.members_of(type_name)
                     .map(|members| (None, Vec::new(), members.members))
+            }
+            Ty::Fn { .. } => {
+                let methods = self.fn_impl_members(&base_ty);
+                (!methods.is_empty()).then(|| (None, Vec::new(), methods))
             }
             _ => None,
         };

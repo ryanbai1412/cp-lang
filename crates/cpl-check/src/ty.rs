@@ -49,6 +49,12 @@ pub enum Ty {
     /// of `struct Fenwick<D, T>`. Each use of the generic thing replaces it
     /// with the type given there.
     Param(String),
+    /// `M.Fold`: the associated type `M`'s impl chooses (R08.1.1). Settled
+    /// to that type once `of` is known (decision 456).
+    Assoc {
+        of: Box<Ty>,
+        name: String,
+    },
     /// A literal value argument: the `7` of `Mod<7>` (R03.5.1).
     Const(i128),
     /// Not known to this checker. Compatible with everything, so missing
@@ -231,6 +237,16 @@ impl Ty {
     /// True when nothing can be said about this type.
     pub fn is_vague(&self) -> bool {
         matches!(self, Ty::Unknown | Ty::Error)
+    }
+
+    /// True when an associated type such as `M.Fold` appears in it.
+    pub fn has_assoc(&self) -> bool {
+        let mut found = false;
+        self.map(&mut |t| {
+            found |= matches!(t, Ty::Assoc { .. });
+            found.then(|| t.clone())
+        });
+        found
     }
 
     /// True when the type, or any part of it, is not known.
@@ -458,7 +474,7 @@ impl Ty {
     }
 
     /// Rebuilds the type with `leaf` applied to every type inside it.
-    fn map(&self, leaf: &mut dyn FnMut(&Ty) -> Option<Ty>) -> Ty {
+    pub(crate) fn map(&self, leaf: &mut dyn FnMut(&Ty) -> Option<Ty>) -> Ty {
         if let Some(replaced) = leaf(self) {
             return replaced;
         }
@@ -504,6 +520,10 @@ impl Ty {
                     })
                     .collect(),
                 ret: Box::new(ret.map(leaf)),
+            },
+            Ty::Assoc { of, name } => Ty::Assoc {
+                of: Box::new(of.map(leaf)),
+                name: name.clone(),
             },
             other => other.clone(),
         }
@@ -647,7 +667,7 @@ impl Ty {
     /// The type as code outside the generic sees it when nothing says what
     /// a parameter is: every parameter left is unknown.
     pub fn erase(&self) -> Ty {
-        self.map(&mut |ty| matches!(ty, Ty::Param(_)).then_some(Ty::Unknown))
+        self.map(&mut |ty| matches!(ty, Ty::Param(_) | Ty::Assoc { .. }).then_some(Ty::Unknown))
     }
 
     /// Like [`Ty::erase`], but the parameters in `keep` stay: they belong
@@ -655,6 +675,9 @@ impl Ty {
     pub fn settle(&self, keep: &[String]) -> Ty {
         self.map(&mut |ty| match ty {
             Ty::Param(name) if !keep.contains(name) => Some(Ty::Unknown),
+            Ty::Assoc { of, .. } if !matches!(&**of, Ty::Param(p) if keep.contains(p)) => {
+                Some(Ty::Unknown)
+            }
             _ => None,
         })
     }
@@ -664,7 +687,7 @@ impl Ty {
     /// for a parameter stays.
     pub fn unify(&self, got: &Ty, bindings: &mut Bindings) {
         match (self, got) {
-            (_, Ty::Unknown | Ty::Error) => {}
+            (_, Ty::Unknown | Ty::Error) | (Ty::Assoc { .. }, _) => {}
             (Ty::Param(name), got) => {
                 bindings.entry(name.clone()).or_insert_with(|| got.widen());
             }
@@ -800,6 +823,7 @@ impl fmt::Display for Ty {
             Ty::Unit => f.write_str("()"),
             Ty::Range { text, .. } => f.write_str(text),
             Ty::Pos(name) | Ty::TypeName(name) | Ty::Param(name) => f.write_str(name),
+            Ty::Assoc { of, name } => write!(f, "{of}.{name}"),
             Ty::Domain(name) => write!(f, "domain {name}"),
             Ty::Array { index, elem } => {
                 f.write_str("[")?;

@@ -545,6 +545,23 @@ print(known[if flag: true else: false][0])
 ",
             "6 2\n5\n",
         ),
+        (
+            // A closure passed for `M: Op<Int>` keeps its fn type, so the
+            // generic fn-type impl's methods and `Fold` apply (decision 456).
+            "assoc_type_of_a_fn_type_impl",
+            "\
+trait Op<T>:
+    type Fold
+    fn fold2(self, a: T, b: T) -> Self.Fold
+impl<T> Op<T> for (T, T) -> T:
+    type Fold = ?T
+    fn fold2(self, a: T, b: T) -> ?T = Some(self(a, b))
+fn go<M: Op<Int>>(m: M) -> M.Fold = m.fold2(2, 3)
+let y: ?Int = go((a: Int, b: Int) => a * b)
+print(y ?? 0)
+",
+            "6\n",
+        ),
     ];
 
     let tmp = std::env::temp_dir().join(format!("cpl_lowering_gaps_{}", std::process::id()));

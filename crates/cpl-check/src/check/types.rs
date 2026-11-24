@@ -283,6 +283,11 @@ impl<'a> Checker<'a> {
         if name == "Self" {
             return self.self_ty.clone().unwrap_or(Ty::Unknown);
         }
+        if let Some(member) = name.strip_prefix("Self.") {
+            if let Some((_, chosen)) = self.self_assoc.iter().find(|(n, _)| n == member) {
+                return chosen.clone();
+            }
+        }
         if self.generics.iter().any(|g| g == name) {
             return Ty::Param(name.to_string());
         }
@@ -306,7 +311,17 @@ impl<'a> Checker<'a> {
             if head.starts_with(|c: char| c.is_ascii_lowercase()) {
                 return Ty::Unknown;
             }
-            return match self.named_type(head, head_span, Vec::new()) {
+            let head_ty = self.named_type(head, head_span, Vec::new());
+            if !matches!(head_ty, Ty::Pos(_) | Ty::Param(_) | Ty::Error | Ty::Unknown) {
+                if let Some(chosen) = self.project(&head_ty, member) {
+                    return chosen;
+                }
+            }
+            return match head_ty {
+                Ty::Param(p) => Ty::Assoc {
+                    of: Box::new(Ty::Param(p)),
+                    name: member.to_string(),
+                },
                 Ty::Pos(_) if member == "Cut" => {
                     let member_span = Span::new(head_span.end + 1, span.end);
                     self.planned(member_span, &cpl_syntax::planned::CUT_DOMAIN);
@@ -821,63 +836,6 @@ impl<'a> Checker<'a> {
         (sigs, getters, mutators)
     }
 
-    /// The type an impl is for, with the type parameters its header names:
-    /// `impl Add for Mod<P>` is generic over `P`, and `impl<T: Add> Add for ?T`
-    /// is generic over `T`.
-    pub(crate) fn impl_generics(
-        &mut self,
-        target: &ast::Type,
-        bounds: &[ast::Bound],
-    ) -> Vec<String> {
-        let mut out = Vec::new();
-        for b in bounds {
-            if !out.contains(&b.name.text) {
-                out.push(b.name.text.clone());
-            }
-        }
-        self.collect_impl_generics(target, &mut out);
-        out
-    }
-
-    fn collect_impl_generics(&mut self, ty: &ast::Type, out: &mut Vec<String>) {
-        match &ty.kind {
-            TypeKind::Named { name, args } => {
-                if args.is_empty()
-                    && self.local(&name.text).is_none()
-                    && self.global(&name.text).is_none()
-                    && prelude::ty(&name.text).is_none()
-                    && !out.contains(&name.text)
-                {
-                    out.push(name.text.clone());
-                }
-                for arg in args {
-                    self.collect_impl_generics(arg, out);
-                }
-            }
-            TypeKind::Optional(inner) | TypeKind::Mut(inner) => {
-                self.collect_impl_generics(inner, out)
-            }
-            TypeKind::Tuple(items) => {
-                for item in items {
-                    self.collect_impl_generics(item, out);
-                }
-            }
-            TypeKind::Array { index, elem } => {
-                for i in index {
-                    self.collect_impl_generics(i, out);
-                }
-                self.collect_impl_generics(elem, out);
-            }
-            TypeKind::Fn { params, ret } => {
-                for p in params {
-                    self.collect_impl_generics(p, out);
-                }
-                self.collect_impl_generics(ret, out);
-            }
-            _ => {}
-        }
-    }
-
     /// The definitions a top-level statement gives to the names it declares.
     pub(crate) fn defs_of(&mut self, stmt: &ast::Stmt) -> Vec<(String, Def)> {
         use ast::StmtKind as S;
@@ -1235,6 +1193,14 @@ impl<'a> Checker<'a> {
                     })
                     .collect();
                 self.leave_body(scope);
+                let assoc = body
+                    .stmts
+                    .iter()
+                    .filter_map(|s| match &s.kind {
+                        S::TypeAlias { name, .. } => Some(name.text.clone()),
+                        _ => None,
+                    })
+                    .collect();
                 vec![(
                     name.text.clone(),
                     Def::Trait {
@@ -1242,6 +1208,7 @@ impl<'a> Checker<'a> {
                         methods,
                         fields,
                         alias: *alias,
+                        assoc,
                     },
                 )]
             }
@@ -1251,7 +1218,7 @@ impl<'a> Checker<'a> {
                 bounds,
                 body,
             } => {
-                let Some(target_name) = type_head(target) else {
+                let Some(target_name) = impl_target_head(target) else {
                     return Vec::new();
                 };
                 let generics = self.impl_generics(target, bounds);
@@ -1271,8 +1238,22 @@ impl<'a> Checker<'a> {
                     }
                     _ => None,
                 });
+                let assoc: Vec<(String, Ty)> = body
+                    .stmts
+                    .iter()
+                    .filter_map(|s| match &s.kind {
+                        S::TypeAlias {
+                            name, generics, ty, ..
+                        } if generics.is_empty() => {
+                            Some((name.text.clone(), self.quietly(|c| c.resolve_type(ty))))
+                        }
+                        _ => None,
+                    })
+                    .collect();
+                let outer_assoc = std::mem::replace(&mut self.self_assoc, assoc.clone());
                 let owned = self.owned(&target_name, &body.stmts);
                 let (methods, getters, mutators) = self.method_sigs(&body.stmts, &self_ty);
+                self.self_assoc = outer_assoc;
                 self.leave_body(scope);
                 let trait_head = trait_name.as_ref().and_then(trait_impl_key);
                 vec![(
@@ -1285,6 +1266,8 @@ impl<'a> Checker<'a> {
                         mutators,
                         owned,
                         projections: self.projections(&body.stmts),
+                        target: self_ty,
+                        assoc,
                     },
                 )]
             }
@@ -1665,6 +1648,7 @@ impl<'a> Checker<'a> {
             Ty::Bool => Some("Bool"),
             Ty::Char => Some("Char"),
             Ty::Str => Some("Str"),
+            Ty::Fn { .. } => Some("fn"),
             _ => None,
         };
         if impl_key.is_some_and(|name| self.has_impl(name, trait_name)) {
@@ -1775,6 +1759,8 @@ impl<'a> Checker<'a> {
         match ty {
             Ty::Error | Ty::Unknown | Ty::Const(_) => true,
             Ty::Param(p) => self.param_has_bound(p, trait_name),
+            // Its trait's `type X: Bound` is not tracked yet, so it is taken as met.
+            Ty::Assoc { .. } => true,
             Ty::Int
             | Ty::I128
             | Ty::U64
@@ -1882,6 +1868,8 @@ impl<'a> Checker<'a> {
         match ty {
             Ty::Error | Ty::Unknown | Ty::Const(_) => true,
             Ty::Param(p) => self.param_has_bound(p, "Show"),
+            // Its trait's `type X: Bound` is not tracked yet, so it is taken as met.
+            Ty::Assoc { .. } => true,
             Ty::Int
             | Ty::I128
             | Ty::U64

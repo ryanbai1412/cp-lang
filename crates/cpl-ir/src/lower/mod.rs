@@ -16,6 +16,7 @@ mod declare;
 mod declared_keys;
 mod expr;
 mod float_fn;
+mod fn_impl;
 mod fn_value;
 mod fresh;
 mod hoist;
@@ -1793,7 +1794,9 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].target,
                 self.impls[idx].body,
             );
-            if !matches!(&target.kind, ast::TypeKind::Named { args, .. } if args.is_empty()) {
+            if !matches!(&target.kind, ast::TypeKind::Named { args, .. } if args.is_empty())
+                && !matches!(&target.kind, ast::TypeKind::Fn { .. })
+            {
                 continue;
             }
             let alias = body.stmts.iter().find_map(|s| match &s.kind {
@@ -1803,9 +1806,16 @@ impl<'a> Lowerer<'a> {
                 _ => None,
             });
             let Some(alias) = alias else { continue };
+            let Some(env) = self.fn_impl_env(m, target, t) else {
+                continue;
+            };
             let saved_mod = std::mem::replace(&mut self.cur_mod, m);
             let saved_offset = std::mem::replace(&mut self.offset, offset);
+            let saved_env = env.map(|env| std::mem::replace(&mut self.gen_env, env));
             let found = (self.resolve_ty(target) == *t).then(|| self.resolve_ty(alias));
+            if let Some(env) = saved_env {
+                self.gen_env = env;
+            }
             self.cur_mod = saved_mod;
             self.offset = saved_offset;
             if found.is_some() {
@@ -1897,13 +1907,19 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].target,
                 self.impls[idx].body,
             );
-            let ast::TypeKind::Named { name, args } = &target.kind else {
-                continue;
+            // `impl Pick for Int -> Bool`: fn values of that type get its methods.
+            let head = match &target.kind {
+                ast::TypeKind::Named { name, args } => {
+                    if !args.is_empty() || self.names_struct_like(m, &name.text) {
+                        continue;
+                    }
+                    name.text.clone()
+                }
+                ast::TypeKind::Fn { .. } if self.impl_params(m, target).is_empty() => {
+                    format!("fn{idx}")
+                }
+                _ => continue,
             };
-            let user_ty = self.names_struct_like(m, &name.text);
-            if !args.is_empty() || user_ty {
-                continue;
-            }
             let trait_name = self.impls[idx].trait_name.clone();
             let saved = (
                 std::mem::replace(&mut self.cur_mod, m),
@@ -1920,7 +1936,7 @@ impl<'a> Lowerer<'a> {
                         self.sigs[fn_id].name = format!(
                             "{}_{}_{}",
                             trait_name.as_deref().unwrap_or("impl"),
-                            name.text,
+                            head,
                             f.name.text
                         );
                         self.prim_self.insert(fn_id, ty.clone());
@@ -1937,57 +1953,6 @@ impl<'a> Lowerer<'a> {
             }
             (self.cur_mod, self.offset) = saved;
         }
-    }
-
-    /// `impl<T: Tr> Tr for ?T`: the method for one `?T`, made the first
-    /// time a value of that type calls it.
-    pub(super) fn optional_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
-        let Ty::Opt(inner) = ty else {
-            return None;
-        };
-        for idx in 0..self.impls.len() {
-            let (m, offset, target, body) = (
-                self.impls[idx].mod_id,
-                self.impls[idx].offset,
-                self.impls[idx].target,
-                self.impls[idx].body,
-            );
-            let ast::TypeKind::Optional(param) = &target.kind else {
-                continue;
-            };
-            let ast::TypeKind::Named { name, args } = &param.kind else {
-                continue;
-            };
-            if !args.is_empty() || self.mod_syms[m].contains_key(&name.text) {
-                continue;
-            }
-            let Some(f) = body.stmts.iter().find_map(|item| match &item.kind {
-                ast::StmtKind::Fn(f) if f.name.text == method && f.generics.is_empty() => Some(f),
-                _ => None,
-            }) else {
-                continue;
-            };
-            let trait_name = self.impls[idx].trait_name.clone();
-            let env = GenEnv::from([(name.text.clone(), GenArg::Ty((**inner).clone()))]);
-            let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-            );
-            let fn_id = self.declare_fn_in(f, m, offset, None, env);
-            let suffix = self.prim_methods.len();
-            self.sigs[fn_id].name = format!(
-                "{}_opt_{}_{suffix}",
-                trait_name.as_deref().unwrap_or("impl"),
-                f.name.text
-            );
-            self.prim_self.insert(fn_id, ty.clone());
-            self.prim_methods
-                .push((ty.clone(), method.to_string(), fn_id));
-            self.resolve_fn_sig(fn_id, trait_name.as_deref());
-            (self.cur_mod, self.offset) = saved;
-            return Some(fn_id);
-        }
-        None
     }
 
     pub(super) fn declare_fn_in(

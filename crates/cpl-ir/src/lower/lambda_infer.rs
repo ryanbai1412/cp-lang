@@ -118,12 +118,19 @@ impl<'a> Lowerer<'a> {
 
     /// True for a fn `(U) -> …` given where `G: Tr<V, …>` is wanted and the
     /// trait's method takes a `V` after `self`, as `Next<V>`'s `out(self, u: V)`:
-    /// the fn is that method, so `V` is `U`.
-    pub(super) fn fn_meets_trait_over(&self, name: &str, tpl_mod: ModId, ps: &[Ty]) -> bool {
+    /// the fn is that method, so `V` is `U`. A bound naming no `V` is false.
+    pub(super) fn fn_meets_trait_over(
+        &self,
+        name: &str,
+        args: &[ast::Type],
+        tpl_mod: ModId,
+        ps: &[Ty],
+    ) -> bool {
         let Some(Sym::Trait(tid)) = self.mod_syms[tpl_mod].get(name) else {
             return false;
         };
         ps.len() == 1
+            && !args.is_empty()
             && self.traits[*tid]
                 .methods
                 .iter()
@@ -155,7 +162,7 @@ impl<'a> Lowerer<'a> {
                 else {
                     continue;
                 };
-                if !vargs.is_empty() || !self.fn_meets_trait_over(&name.text, tpl_mod, &ps) {
+                if !vargs.is_empty() || !self.fn_meets_trait_over(&name.text, args, tpl_mod, &ps) {
                     continue;
                 }
                 if !matches!(inferred.get(&v.text), None | Some(GenArg::Ty(Ty::Tuple(_)))) {

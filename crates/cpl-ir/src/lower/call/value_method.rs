@@ -1837,7 +1837,10 @@ impl<'a> Lowerer<'a> {
                     .iter()
                     .find(|(t, m, _)| *t == ty && m == method)
                     .map(|p| p.2);
-                if let Some(fid) = prim.or_else(|| self.optional_impl_method(&ty, method)) {
+                if let Some(fid) = prim
+                    .or_else(|| self.optional_impl_method(&ty, method))
+                    .or_else(|| self.fn_impl_method(&ty, method))
+                {
                     let mut all_args = vec![ast::Arg {
                         name: None,
                         mutable: false,

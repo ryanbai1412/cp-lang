@@ -1,6 +1,7 @@
 use crate::{Database, DeclKind, Stats};
 use cpl_diag::{Diagnostic, Span};
 
+mod assoc;
 mod checks;
 mod cost;
 mod domains;

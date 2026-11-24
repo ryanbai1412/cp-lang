@@ -7,8 +7,10 @@
 
 pub(crate) mod advice;
 mod arms;
+mod assoc;
 mod bounded_str;
 mod built_from_param;
+mod impl_head;
 pub(crate) use advice::rename_values;
 mod call;
 mod cuts;
@@ -37,6 +39,7 @@ pub(crate) use stmt::runs;
 use views::{binding_kw, Keep};
 mod types;
 
+pub(crate) use impl_head::impl_target_head;
 pub(crate) use pattern::domain_binding;
 pub(crate) use types::{memo_table, own_domains, trait_impl_key, type_head};
 
@@ -216,6 +219,8 @@ pub(crate) struct Checker<'a> {
     rhs_extent: Option<Span>,
     /// What `Self` is: the struct, enum or impl target whose body this is.
     self_ty: Option<Ty>,
+    /// The associated types the impl being read chooses, for `Self.Found`.
+    self_assoc: Vec<(String, Ty)>,
     /// What is lent and what is known, for the exclusivity of lends.
     lends: lends::Lends,
     /// True when the enclosing context expects a `Range<D.cuts>` so ranges
@@ -301,6 +306,7 @@ impl<'a> Checker<'a> {
             plain_if: None,
             rhs_extent: None,
             self_ty: None,
+            self_assoc: Vec::new(),
             lends: lends::Lends::default(),
             expected_bounds_range: false,
             expected_piece: false,
@@ -531,8 +537,8 @@ impl<'a> Checker<'a> {
     /// A type that came out of a generic, as the code here sees it: type
     /// parameters that nothing bound, and that are not this code's own,
     /// are unknown.
-    fn settle(&self, ty: &Ty) -> Ty {
-        ty.settle(&self.generics)
+    fn settle(&mut self, ty: &Ty) -> Ty {
+        self.resolve_assoc(ty).settle(&self.generics)
     }
 
     fn push_scope(&mut self) {

@@ -81,6 +81,8 @@ pub enum Def {
         fields: Vec<(String, Ty)>,
         /// `trait Both = Sh + Nm` (R08.2.6).
         alias: bool,
+        /// The associated types it declares, `type Found` (R08.1.9).
+        assoc: Vec<String>,
     },
     /// `impl Add for Pt` or `impl Pt`, under the name [`impl_name`] gives it.
     Impl {
@@ -91,6 +93,10 @@ pub enum Def {
         mutators: Vec<String>,
         owned: Vec<(String, Ty)>,
         projections: Vec<Projection>,
+        /// The type it is for, with the impl's generics as params.
+        target: Ty,
+        /// The associated types it chooses, `type Found = ?Int` (R08.1.9).
+        assoc: Vec<(String, Ty)>,
     },
 }
 

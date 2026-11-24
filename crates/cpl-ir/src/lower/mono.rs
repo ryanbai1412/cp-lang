@@ -1743,7 +1743,7 @@ impl<'a> Lowerer<'a> {
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)
                 {
-                    if let Some(op) = self.detect_bare_op(&arg.value) {
+                    if let Some(op) = self.bare_op_for(&decl.bounds, &name.text, &arg.value) {
                         inferred.insert(name.text.clone(), GenArg::Op(op));
                         continue;
                     }
@@ -3149,7 +3149,7 @@ impl<'a> Lowerer<'a> {
                         self.unify_ast_ty(&args[0], fty, tpl_mod, gen_names, env);
                     }
                 }
-                (_, Ty::Fn(ps, _)) if self.fn_meets_trait_over(&name.text, tpl_mod, ps) => {
+                (_, Ty::Fn(ps, _)) if self.fn_meets_trait_over(&name.text, args, tpl_mod, ps) => {
                     self.unify_ast_ty(&args[0], &ps[0], tpl_mod, gen_names, env);
                 }
                 (_, concrete_seq)

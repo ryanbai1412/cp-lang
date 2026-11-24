@@ -100,35 +100,6 @@ impl<'a> Checker<'a> {
         );
     }
 
-    /// R08.1.3, R08.5.2: inherent methods live with their type, so
-    /// `impl m.P:` and `impl Range<Int>:` (a type declared elsewhere)
-    /// are errors, not blocks no call reaches.
-    fn impl_home(
-        &mut self,
-        trait_name: Option<&cpl_syntax::ast::Type>,
-        target: &cpl_syntax::ast::Type,
-        self_ty: &Ty,
-    ) {
-        if trait_name.is_some() || matches!(self_ty, Ty::Param(_) | Ty::Unknown | Ty::Error) {
-            return;
-        }
-        let shown = self.quote(target.span);
-        let message = match type_head(target) {
-            _ if shown.contains('.') => {
-                format!("`impl {shown}:` adds inherent methods outside `{shown}`'s module")
-            }
-            Some(head) if !self.env.declared().contains(&head) => format!(
-                "`impl {shown}:` adds inherent methods to `{head}`, which is declared outside this module"
-            ),
-            _ => return,
-        };
-        if let Some(diag) = self.error(codes::UNSUPPORTED, target.span, message) {
-            diag.help = Some(format!(
-                "move the methods into the type's module, or declare a trait and `impl` it for `{shown}`"
-            ));
-        }
-    }
-
     /// R03.1.4: storing a value proven outside `lo..=hi` is an error.
     fn range_store(&mut self, value: &Expr, target: &Ty) {
         let Ty::Range { lo, hi, text } = target else {
@@ -2145,6 +2116,7 @@ impl<'a> Checker<'a> {
                 ));
             }
         }
+        self.impl_chooses_assoc_types(trait_ty, target, body);
     }
 
     /// Reports a `@memo` that would not remember anything. Both back ends keep one table of
