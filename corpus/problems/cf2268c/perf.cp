@@ -33,7 +33,7 @@ struct Ends(even: ?Span, odd: ?Span):
     fn reaches(self, right: Ends) -> Bool = wide(even, right.odd) or wide(odd, right.even)
 
 let a: [I]Int = read()
-let peak = SparseTable<I, Int>(max, a)
+let peak = SegTree<I, Int>(max, a)
 
 fn feasible(v: Int) -> Bool:
     let pre = prefix_fold((x, y) => x ^ y, [I] i => a[i] & v)
