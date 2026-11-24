@@ -1308,7 +1308,7 @@ pub struct Filtered<S, T>(
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `let a = [1, 2]; a.filter(x => x > 1).src == a`
+    /// example: `let a = [1, 2]; filter(a, x => x > 1).src == a`
     pub src: S,
     p: T -> Bool,
 )
@@ -1334,7 +1334,7 @@ pub struct Mapped<S, T, U>(
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `let a = [1, 2]; a.map(x => x * 2).src == a`
+    /// example: `let a = [1, 2]; map(a, x => x * 2).src == a`
     pub src: S,
     f: T -> U,
 )
@@ -1420,7 +1420,7 @@ pub struct Items<S>(
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `let a = [1, 2]; a.items.src == a`
+    /// example: `let r = 0..3; r.items.src == r`
     pub src: S,
 )
 
