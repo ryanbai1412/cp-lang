@@ -105,12 +105,17 @@ class FullSuite(unittest.TestCase):
     def test_all_failing_names_each_failing_case(self):
         self.assertEqual(sorted(conform_staged.all_failing(OUT)), ["a/wrong.cp", "ab/wrong.cp"])
 
-    def _run_all(self, at_base, alone, red=RED, base_now=""):
+    def test_a_malformed_or_panicking_case_is_failing(self):
+        out = "  a/head.cp: bad: first line is not `// expect: ...`\n  b/boom.cp: panic: interpreter/checker panicked\n"
+        self.assertEqual(sorted(conform_staged.all_failing(out)), ["a/head.cp", "b/boom.cp"])
+
+    def _run_all(self, at_base, alone, red=RED, base_now="", exit=0, base_crashes=False):
         def run(argv, **_):
             out = red if argv[-1] == "--verbose" or alone == "fail" else "conformance 1/1 pass\n"
-            return subprocess.CompletedProcess(argv, 0, out, "")
+            return subprocess.CompletedProcess(argv, exit if argv[-1] == "--verbose" else 0, out, "")
         with mock.patch.object(conform_staged, "base_verdicts", lambda cases, rev, run: {c: at_base for c in cases}), \
                 mock.patch.object(conform_staged, "base_alone", lambda c, rev, run: base_now), \
+                mock.patch.object(conform_staged, "base_suite_crashes", lambda rev, run: base_crashes), \
                 mock.patch.object(conform_staged, "owner", lambda c, rev: "compiler"), \
                 mock.patch("builtins.open", mock.mock_open()), \
                 mock.patch("sys.stderr") as err, mock.patch("sys.stdout"):
@@ -126,6 +131,15 @@ class FullSuite(unittest.TestCase):
         code, said = self._run_all("pass", "fail")
         self.assertEqual(code, 1)
         self.assertIn("NEW red", said)
+
+    def test_a_suite_that_stops_short_refuses_if_the_base_runs_to_the_end(self):
+        # 9a5881edd: core-09/deep-recursion-trap grew past the memory limit and the suite exited 3 with no verdicts.
+        code, _ = self._run_all("fail", "fail", exit=3)
+        self.assertEqual(code, 1)
+
+    def test_a_suite_that_stops_short_at_the_base_too_is_mains(self):
+        code, _ = self._run_all("fail", "fail", exit=134, base_crashes=True)
+        self.assertEqual(code, 0)
 
     def test_a_case_that_passes_alone_is_a_race_not_refused(self):
         code, said = self._run_all("pass", "pass")
@@ -143,9 +157,6 @@ class FullSuite(unittest.TestCase):
         code, said = self._run_all("pass", "fail", red=slow, base_now="conformance 1/1 pass\n")
         self.assertEqual(code, 1)
         self.assertIn("NEW red", said)
-
-if __name__ == "__main__":
-    unittest.main()
 
 
 class Check(unittest.TestCase):
@@ -174,3 +185,7 @@ class Check(unittest.TestCase):
             code, _, said = self._main(at)
             self.assertEqual(code, 1, at)
             self.assertIn("NEW red", said)
+
+
+if __name__ == "__main__":
+    unittest.main()

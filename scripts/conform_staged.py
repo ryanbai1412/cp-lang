@@ -35,7 +35,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PREFIX = "spec/conformance/"
 BOARD = "research/scoreboard.json"
-FAIL = re.compile(r"^  (\S+\.cp): fail")
+FAIL = re.compile(r"^  (\S+\.cp): (?:fail|bad|panic|infra)")
 COMPILER = tuple(f"crates/{c}/" for c in (
     "cpl-syntax", "cpl-diag", "cpl-check", "cpl-ir", "cpl-interp", "cpl-codegen", "cpl-rt")) + (
     "crates/cpl-cli/src/", "crates/cpl-conform/src/")
@@ -82,12 +82,41 @@ def flake(case, first, second):
     return [] if a == b else [f"  {case}: fail: flaky, {a} then {b} on the same build"]
 
 
-def base_verdicts(cases, base, run=subprocess.run):
-    """{case: 'fail' | 'pass' | 'absent' | 'unbuilt'} for `cases` at `base`."""
+def base_cache(base):
+    """The cpl-base-tests cache file for `base`'s tree, and what it holds."""
     import new_reds
     common = Path(new_reds.git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=ROOT))
     cache_file = common / "cpl-base-tests" / f"{new_reds.git('rev-parse', base + '^{tree}', cwd=ROOT)}.json"
-    cache = json.loads(cache_file.read_text()) if cache_file.is_file() else {}
+    return cache_file, json.loads(cache_file.read_text()) if cache_file.is_file() else {}
+
+
+def base_suite_crashes(base, run=subprocess.run):
+    """Whether the whole suite stops short at `base` (a stack overflow, the memory
+    limit), cached with the base's verdicts so it runs once per base."""
+    import new_reds
+    cache_file, cache = base_cache(base)
+    if "suite:crash" not in cache:
+        common = cache_file.parent.parent
+        wt = new_reds.base_checkout(common, base)
+        target = Path(os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target")))
+        env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
+        print(f"conform_staged: the suite stopped short at the tip; running it at the base {base[:9]}",
+              file=sys.stderr)
+        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=wt, env=env).returncode:
+            return False
+        r = run([str(target / "debug" / "cpl-conform"), "conformance"], cwd=wt, env=env,
+                capture_output=True, text=True)
+        cache["suite:crash"] = r.returncode not in (0, 1)
+        cache_file.parent.mkdir(exist_ok=True)
+        cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+    return cache["suite:crash"]
+
+
+def base_verdicts(cases, base, run=subprocess.run):
+    """{case: 'fail' | 'pass' | 'absent' | 'unbuilt'} for `cases` at `base`."""
+    import new_reds
+    cache_file, cache = base_cache(base)
+    common = cache_file.parent.parent
     todo = [c for c in cases if f"conform:{c}" not in cache]
     if todo:
         with new_reds.base_slot(common, base) as (wt, target):
@@ -109,9 +138,8 @@ def base_verdicts(cases, base, run=subprocess.run):
 def base_checks(programs, base, run=subprocess.run):
     """{program: 'fail' | 'pass' | 'absent' | 'unbuilt'} for `cpl check` of `programs` at `base`."""
     import new_reds
-    common = Path(new_reds.git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=ROOT))
-    cache_file = common / "cpl-base-tests" / f"{new_reds.git('rev-parse', base + '^{tree}', cwd=ROOT)}.json"
-    cache = json.loads(cache_file.read_text()) if cache_file.is_file() else {}
+    cache_file, cache = base_cache(base)
+    common = cache_file.parent.parent
     todo = [p for p in programs if f"check:{p}" not in cache]
     if todo:
         with new_reds.base_slot(common, base) as (wt, target):
@@ -215,6 +243,11 @@ def run_all(conform, base, run=subprocess.run):
     t0 = time.monotonic()
     r = run([conform, "conformance", "--verbose"], cwd=ROOT, capture_output=True, text=True)
     failing = all_failing(r.stdout + r.stderr)
+    if r.returncode not in (0, 1) and not base_suite_crashes(rev, run):
+        print("\n".join((r.stdout + r.stderr).splitlines()[-5:]))
+        print(f"conform_staged: the full suite stopped short (exit {r.returncode}), and it runs to the end at the base "
+              f"{rev[:9]}; find the case with `cpl-conform conformance --verbose <dir>` per directory and fix it")
+        return 1
     at = base_verdicts(sorted(failing), rev, run) if failing else {}
     common = Path(subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT,
                                  capture_output=True, text=True).stdout.strip() or ROOT / ".git")
