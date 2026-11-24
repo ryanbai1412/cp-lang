@@ -3,13 +3,14 @@
 //   the number of games so far with a strictly higher score. Print the average rank (abs error
 //   1e-2; printed to two decimals). Scores may repeat.
 // Solution: keep the earlier scores in an ordered multiset; the number above s is
-//   len - (count below s) - (count equal to s). Add 1 + that, insert s. O(t log t).
+//   len - (count below s + 1). Sum 1 + that and print the exact average with `fixed`
+//   (no floats). O(t log t).
 let t: 1..=1e5 = read()
 let scores: [t]0..=1e9 = read()
 
-var seen = SortedBag<Int>()  // WISH F13: a bag with rank queries
+var seen = SortedBag<Int>()
 var ranks = 0
 for s in scores:
-    ranks += 1 + (seen.len - seen.rank(s) - seen.count(s))
+    ranks += 1 + seen.len - seen.rank(s + 1)
     seen.add(s)
-print(ranks / F64(t), digits: 2)  // WISH F15: floats are still undecided
+print(fixed(ranks, t, 2))

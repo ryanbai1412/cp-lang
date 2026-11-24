@@ -5,15 +5,13 @@
 //   1 to min(i + 1, m), and repeating the note `take` back gives exactly take. Each note in
 //   turn takes the most it can (a fresh pitch of the cycle when it takes all) while leaving 1
 //   for every later note; print -1 unless that uses up exactly k. O(n).
+// original: corpus/submissions/4371344.cpp
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
 let k: 1..=1e18 = read()
 domain Note = 0..n
 domain Pitch = 1..=m
 
-// The good runs ending at a note number as many as the distinct notes just
-// before it, plus one: anything from 1 to min(position, m). Let each note
-// take all it can while leaving one run for every later note.
 var tune: [Note]Pitch = Pitch.first!
 var left = k
 for i in Note:

@@ -3,25 +3,17 @@
 //   |h[l + i] - h[r - i]| over the pairs from the outside in. For every length 1..=n print the
 //   least asymmetric value of a crop of that length.
 // Solution: grow every crop from its centre: odd (i) and even (i, i + 1) centres extend one pair
-//   at a time, adding |h[i - j] - h[i + j + off]|, and the length 2j + 1 + off keeps the minimum.
+//   at a time, adding |h[i - j] - h[i + j + off]|, and length 2j + 1 + off keeps the least.
 //   O(n^2).
 // original: corpus/submissions/5350805.cpp
-
-fn main_solve():
-    let n: Int = read()
-    domain I = 0..n
-    let h: [I]Int = read()
-    domain L = 0..n
-    var ans: [L]?Int = None
-    for i in 0..n:
-        for off in 0..=1:
-            var cur = 0
-            var j = 0
-            while i - j >= 0 and i + j + off < n:
-                cur += abs(h[I(i - j)] - h[I(i + j + off)])
-                ans[L(2 * j + off)] min= cur
-                j += 1
-    var out: List<Int> = [ans[k]! for k in L]
-    print(out)
-
-main_solve()
+let n: 1..=5000 = read()
+let h: [n]0..=1e5 = read()
+domain Len = 1..=n
+var least: [Len]?Int = None
+for centre in 0..n:
+    for off in 0..=1:
+        var cost = 0
+        for j in 0..=min(centre, n - 1 - centre - off):
+            cost += abs(h[centre - j] - h[centre + j + off])
+            least[Len(2 * j + 1 + off)] min= cost
+print([least[l]! for l in Len])
