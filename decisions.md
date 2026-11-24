@@ -8762,15 +8762,14 @@ from `just next-decision`.
 - **Why.** The old `MeldHeap.meld` copied the other heap's whole node list and claimed \(O(\log n)\). An owning heap cannot relink across two node lists, and owned recursive nodes are not coming (persistent and linked structures take a value-owned arena, decision 438's pool is that arena). Leftist ranks cost a cache miss per level for no gain over skew merging. Refines decision 438.
 - **Reverse.** Go back to leftist ranks in `MeldNode` and the recursive `merge`.
 
-## 515. (reserved, content)
+## 515. A known gap is a `// gap: <owner> <time>` line in its case, never a shared list (spec, 2026-11-24)
+
+- **Decision.** A conformance case that fails today carries one header line `// gap: <owner> <YYYY-MM-DDTHHZ>`: the owning lane (`compiler`, `stdlib`, `diagnostics`, `tools`, `lint-fmt`, `perf`, `debugger`, `site`, `infra`, `idioms`) and the UTC hour it opened, with no reason text. `spec/SUBSET.md` is generated from those lines (`scripts/spec-gate.py subset --write`). `spec-gate.py gaps` fails a failing case with no gap line and a gap case that passes; `spec-gate.py gap-age` fails a gap past 48 h and, on a commit, one whose time moved later; the staged-case check (`conform_staged.py`) applies both rules to each touched case.
+- **Why.** The hand-kept list in `SUBSET.md` was edited by every lane, drifted from the suite (six failing cases were not on it) and grew reasons that kept entries alive. A line in the case travels with the case, is deleted in the commit that fixes it, and a raw count with an age cap leaves no room for a gap to settle in. Supersedes the known-gap list of decision 314.
+- **Reverse.** Put the list back in `SUBSET.md` and drop the `gap` gates.
 
 ## 516. Polymorphic recursion is E0319 (compiler, 2026-11-24)
 
 - **Call.** A generic fn that calls itself, directly or through other generic fns, at a type that grows on every call (`wrap([x], n - 1)` or `wrap(Box(v: x), n - 1)` inside `wrap<T>`) is E0319 at the call. Recursion at the same type is unaffected (R08.2.10). Ryan's call.
 - **Why.** Everything monomorphizes (R08.2.3): `wrap<Int>` needs `wrap<List<Int>>`, which needs `wrap<List<List<Int>>>`, without end, so `cpl check`, `run` and `build` all hung. Lowering stops once a fn's instance chain reaches 24 copies of itself, each at a new type, and names the first two. A contest program never needs this; boxing at runtime (`dyn`) would add the hidden cost R08.2.3 rules out.
 - **Reverse.** Give generic fns a boxed fallback (one shared copy behind a vtable) for a growing instantiation, and drop E0319.
-## 515. A known gap is a `// gap: <owner> <time>` line in its case, never a shared list (spec, 2026-11-24)
-
-- **Decision.** A conformance case that fails today carries one header line `// gap: <owner> <YYYY-MM-DDTHHZ>`: the owning lane (`compiler`, `stdlib`, `diagnostics`, `tools`, `lint-fmt`, `perf`, `debugger`, `site`, `infra`, `idioms`) and the UTC hour it opened, with no reason text. `spec/SUBSET.md` is generated from those lines (`scripts/spec-gate.py subset --write`). `spec-gate.py gaps` fails a failing case with no gap line and a gap case that passes; `spec-gate.py gap-age` fails a gap past 48 h and, on a commit, one whose time moved later; the staged-case check (`conform_staged.py`) applies both rules to each touched case.
-- **Why.** The hand-kept list in `SUBSET.md` was edited by every lane, drifted from the suite (six failing cases were not on it) and grew reasons that kept entries alive. A line in the case travels with the case, is deleted in the commit that fixes it, and a raw count with an age cap leaves no room for a gap to settle in. Supersedes the known-gap list of decision 314.
-- **Reverse.** Put the list back in `SUBSET.md` and drop the `gap` gates.
