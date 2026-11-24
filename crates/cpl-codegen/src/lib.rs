@@ -164,13 +164,24 @@ pub fn sizes(
     let mut sizes: Vec<Size> = chunks
         .iter()
         .filter(|(_, _, text)| !text.is_empty())
-        .map(|(part, name, text)| Size {
-            part: *part,
-            name: unmangled(name),
-            bytes: match fitted.folded.get(&names::fn_name(name)) {
-                Some(Some(template)) => fit(*part, template),
-                Some(None) => 0,
-                None => fit(*part, text),
+        .map(|(part, name, text)| match part {
+            // A folded instance's declaration ahead is not in the file.
+            Part::Glue => Size {
+                part: *part,
+                name: "declarations ahead".into(),
+                bytes: match fitted.folded.contains_key(&names::fn_name(name)) {
+                    true => 0,
+                    false => fit(*part, &fold::called(text, &fitted.calls)),
+                },
+            },
+            _ => Size {
+                part: *part,
+                name: unmangled(name),
+                bytes: match fitted.folded.get(&names::fn_name(name)) {
+                    Some(Some(template)) => fit(*part, template),
+                    Some(None) => 0,
+                    None => fit(*part, &fold::called(text, &fitted.calls)),
+                },
             },
         })
         .filter(|size| size.bytes > 0)
@@ -413,6 +424,8 @@ pub struct Fitted {
     /// The instances of one generic fn made one C++ template, before the
     /// spaces go; for the one it stands in place of, the template.
     pub folded: std::collections::BTreeMap<String, Option<String>>,
+    /// What a call to each folded instance is written as.
+    pub calls: std::collections::BTreeMap<String, String>,
 }
 
 impl Fitted {
@@ -495,7 +508,8 @@ pub fn emit_aiming(
     let full = cpp.len();
     let none = std::collections::BTreeMap::new;
     let nofold = std::collections::BTreeMap::new;
-    let fitted = |cpp, comments, header, narrow, compact, names, folded| Fitted {
+    let unfolded = || (nofold(), none());
+    let fitted = |cpp, comments, header, narrow, compact, names, (folded, calls)| Fitted {
         cpp,
         full,
         comments,
@@ -504,21 +518,35 @@ pub fn emit_aiming(
         compact,
         names,
         folded,
+        calls,
     };
     if full <= aim {
-        return Ok(fitted(cpp, true, true, false, false, none(), nofold()));
+        return Ok(fitted(cpp, true, true, false, false, none(), unfolded()));
     }
     let cpp = uncommented(&cpp, true);
     if cpp.len() <= aim {
-        return Ok(fitted(cpp, false, true, false, false, none(), nofold()));
+        return Ok(fitted(cpp, false, true, false, false, none(), unfolded()));
     }
     let narrowed = narrow(&cpp);
     if narrowed.len() <= aim {
-        return Ok(fitted(narrowed, false, true, true, false, none(), nofold()));
+        return Ok(fitted(
+            narrowed,
+            false,
+            true,
+            true,
+            false,
+            none(),
+            unfolded(),
+        ));
     }
     let origins = instance_origins(program, target);
-    let fold::Folded { cpp, members } = fold::fold(&cpp, &origins);
-    if !members.is_empty() {
+    let fold::Folded {
+        cpp,
+        members,
+        calls,
+    } = fold::fold(&cpp, &origins);
+    let members = (members, calls);
+    if !members.0.is_empty() {
         let narrowed = narrow(&cpp);
         if narrowed.len() <= aim {
             return Ok(fitted(narrowed, false, true, true, false, none(), members));
@@ -542,7 +570,7 @@ pub fn emit_aiming(
         true,
         true,
         names,
-        bare.members,
+        (bare.members, bare.calls),
     );
     if shortest.cpp.len() > aim && renamed.len() <= limit {
         return Ok(fitted(renamed, false, true, true, true, headed, members));

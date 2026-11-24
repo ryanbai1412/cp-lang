@@ -1553,11 +1553,8 @@ impl<'p> Emitter<'p> {
                 .any(|text| names(text, &proto.name));
             if proto.always || named {
                 out.push_str(&proto.line);
-                self.chunks.push((
-                    crate::Part::Glue,
-                    "declarations ahead".into(),
-                    proto.line.clone(),
-                ));
+                self.chunks
+                    .push((crate::Part::Glue, proto.name.clone(), proto.line.clone()));
             }
         }
         out.push_str(&direct);

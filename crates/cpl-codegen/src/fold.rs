@@ -93,6 +93,8 @@ pub(crate) struct Folded {
     /// Each folded instance, and for the one the template stands in place
     /// of, the template's text.
     pub members: BTreeMap<String, Option<String>>,
+    /// Each folded instance, and what a call to it is written as.
+    pub calls: BTreeMap<String, String>,
 }
 
 /// `cpp` with the instances `origins` (a fn's C++ name to the generic fn it
@@ -112,6 +114,7 @@ fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded
     let unchanged = || Folded {
         cpp: cpp.to_string(),
         members: BTreeMap::new(),
+        calls: BTreeMap::new(),
     };
     let lines: Vec<&str> = cpp.split_inclusive('\n').collect();
     let Some(items) = items(&lines) else {
@@ -481,7 +484,47 @@ fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded
             text.push_str(&body);
         }
     }
-    Folded { cpp: out, members }
+    let calls = args
+        .into_iter()
+        .map(|(instance, (name, a))| match a.is_empty() {
+            true => (instance, name),
+            false => (instance, format!("{name}<{}>", a.join(","))),
+        })
+        .collect();
+    Folded {
+        cpp: out,
+        members,
+        calls,
+    }
+}
+
+/// `text` with each call of a folded instance written as [`Folded::calls`]
+/// says, as the folded file writes it.
+pub(crate) fn called(text: &str, calls: &BTreeMap<String, String>) -> String {
+    if calls.is_empty() {
+        return text.to_string();
+    }
+    let word = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find(word) {
+        let end = rest[start..]
+            .find(|c| !word(c))
+            .map_or(rest.len(), |n| start + n);
+        out.push_str(&rest[..start]);
+        match calls.get(&rest[start..end]) {
+            Some(call) => {
+                out.push_str(call);
+                if call.ends_with('>') && rest[end..].starts_with(['>', '=']) {
+                    out.push(' ');
+                }
+            }
+            None => out.push_str(&rest[start..end]),
+        }
+        rest = &rest[end..];
+    }
+    out.push_str(rest);
+    out
 }
 
 /// The whole types `toks` names, each by the token it starts at: where it

@@ -1266,3 +1266,43 @@ fn a_cold_branch_keeps_the_instances_of_a_generic_fn_one_template() {
     assert!(!fitted.folded.is_empty(), "{}", fitted.cpp);
     assert_eq!(fitted.cpp.matches("noinline").count(), 1, "{}", fitted.cpp);
 }
+
+#[test]
+fn the_sizes_of_a_file_with_folded_instances_add_up_to_it() {
+    let source = concat!(
+        "fn count_below<T: Ord>(xs: List<T>, cap: T) -> Int:\n",
+        "    var n = 0\n",
+        "    for x in xs:\n",
+        "        if x < cap: n += 1\n",
+        "    n\n",
+        "fn both_counts_of_the_lists() -> Int:\n",
+        "    count_below([3, 1, 2], 2) + count_below([(1, 2), (0, 5)], (1, 0))\n",
+        "print(both_counts_of_the_lists())\n",
+    );
+    let program = lower(source);
+    let target = crate::Target::default();
+    let fitted =
+        crate::emit_aiming(&program, "t.cp", source, (1, 1 << 20), &target).unwrap_or_else(|f| f);
+    assert!(!fitted.folded.is_empty(), "{}", fitted.cpp);
+    let sizes = crate::sizes(
+        &program,
+        "t.cp",
+        fitted.header.then_some(source),
+        &target,
+        &fitted,
+    );
+    let total: usize = sizes.iter().map(|size| size.bytes).sum();
+    assert_eq!(total, fitted.cpp.len(), "{sizes:?}\n{}", fitted.cpp);
+    // The caller's calls are to the template, `Q0<const std::vector<ll>&,ll>(..)`.
+    let caller = &fitted.names["both_counts_of_the_lists"];
+    let at = fitted.cpp.find(&format!("inline ll {caller}(")).unwrap();
+    let def = &fitted.cpp[at..at + fitted.cpp[at..].find("\n}\n").unwrap() + 3];
+    let measured = sizes
+        .iter()
+        .find(|size| size.name == "both_counts_of_the_lists");
+    assert_eq!(
+        measured.map(|size| size.bytes),
+        Some(def.len()),
+        "{sizes:?}\n{def}"
+    );
+}
