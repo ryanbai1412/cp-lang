@@ -194,21 +194,231 @@ fn os_path(path: String, windows: bool) -> String {
 }
 
 pub fn bundled_std(module: &[String]) -> Option<&'static str> {
-    let name = module.join("/");
+    have(&module.join("/"))
+}
+
+/// Whether this build can be given std modules: a wasm build without
+/// `lazy-std` carries them all, and leaves the code that takes them out.
+const GIVEN: bool = cfg!(any(not(target_arch = "wasm32"), feature = "lazy-std"));
+
+fn built_in(name: &str) -> Option<&'static str> {
+    if ONLY_EMBEDDED.load(std::sync::atomic::Ordering::Relaxed)
+        && !crate::std_files::EMBEDDED.contains(&name)
+    {
+        return None;
+    }
     modules()
-        .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
+        .binary_search_by(|(known, _)| (*known).cmp(name))
         .ok()
         .map(|at| modules()[at].1)
 }
 
-/// Every module of the standard library, by name (`"segtree"`), with its text.
-pub fn std_modules() -> &'static [(&'static str, &'static str)] {
+/// Every module of the standard library the compiler carries, by name
+/// (`"segtree"`), with its text: all of them, except in a browser build,
+/// which carries `std_files::EMBEDDED` and is given the rest.
+#[cfg(test)]
+pub(crate) fn std_modules() -> &'static [(&'static str, &'static str)] {
     modules()
+}
+
+/// Every module of the standard library, by name, with its
+/// `std_files::outline`: what the scans of std's declarations read, so
+/// they need no module's whole text.
+pub fn std_index() -> &'static [(&'static str, &'static str)] {
+    static FROM_DISK: std::sync::OnceLock<Vec<(&'static str, &'static str)>> =
+        std::sync::OnceLock::new();
+    if cfg!(target_arch = "wasm32") || !std_from_disk() {
+        return BUILT_INDEX;
+    }
+    FROM_DISK.get_or_init(|| outlines(modules()))
+}
+
+pub(crate) const BUILT_INDEX: &[(&str, &str)] = include!(concat!(env!("OUT_DIR"), "/std_index.rs"));
+
+fn outlines(modules: &[(&'static str, &str)]) -> Vec<(&'static str, &'static str)> {
+    let leak = |s: String| &*Box::leak(s.into_boxed_str());
+    modules
+        .iter()
+        .map(|(name, text)| (*name, leak(crate::std_files::outline(text))))
+        .collect()
+}
+
+fn in_index(name: &str) -> bool {
+    std_index()
+        .binary_search_by(|(known, _)| (*known).cmp(name))
+        .is_ok()
+}
+
+static ONLY_EMBEDDED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Makes this native compiler carry only what a browser build does
+/// (`std_files::EMBEDDED`), so a test can drive `provide_std` natively.
+#[doc(hidden)]
+pub fn carry_only_embedded_std() {
+    ONLY_EMBEDDED.store(true, std::sync::atomic::Ordering::Relaxed);
+}
+
+/// The text of the std module `name` the compiler has, carried or given.
+fn have(name: &str) -> Option<&'static str> {
+    built_in(name).or_else(|| {
+        let provided = provided();
+        provided
+            .iter()
+            .find(|(known, _)| known == name)
+            .map(|(_, text)| *text)
+    })
+}
+
+/// The std modules a check of `source`, the file `name`, loads that the
+/// compiler has not been given yet (`provide_std`), by name (`"sparse"`):
+/// those its `use` lines and prelude names and `.method` calls bring in,
+/// and those they use in turn. It reads the outlines of the modules it
+/// lacks, so a module only their bodies use comes up once they are given:
+/// ask again after giving them, until it names none.
+pub fn std_needed(name: &str, source: &str) -> Vec<String> {
+    std_needed_with(name, source, have)
+}
+
+/// `std_needed`, with `have` for the modules the compiler has.
+#[doc(hidden)]
+pub fn std_needed_with(
+    name: &str,
+    source: &str,
+    have: impl Fn(&str) -> Option<&'static str> + Send + 'static,
+) -> Vec<String> {
+    if !GIVEN {
+        return Vec::new();
+    }
+    let needed = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let loader = Outlining {
+        have: Box::new(have),
+        needed: needed.clone(),
+    };
+    let mut db = crate::Database::with_loader(Box::new(loader));
+    db.set_file(name, source);
+    db.analyze(name);
+    let mut needed = needed.lock().unwrap_or_else(|e| e.into_inner()).clone();
+    needed.sort();
+    needed
+}
+
+/// The std text a compiler has of a module, by name.
+type Has = dyn Fn(&str) -> Option<&'static str> + Send;
+
+/// Loads what the compiler has of std, and the outline of what it lacks,
+/// writing those down.
+struct Outlining {
+    have: Box<Has>,
+    needed: std::sync::Arc<std::sync::Mutex<Vec<String>>>,
+}
+
+impl Loader for Outlining {
+    fn load(&self, from: &str, module: &[String]) -> Option<(String, String)> {
+        let Some(("std", rest)) = module.split_first().map(|(s, r)| (s.as_str(), r)) else {
+            return FsLoader.load(from, module);
+        };
+        let name = rest.join("/");
+        let path = format!("std/{name}.cp");
+        if let Some(text) = (self.have)(&name) {
+            return Some((path, text.to_string()));
+        }
+        let at = std_index()
+            .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
+            .ok()?;
+        add(
+            &mut self.needed.lock().unwrap_or_else(|e| e.into_inner()),
+            name,
+        );
+        Some((path, std_index()[at].1.to_string()))
+    }
+}
+
+/// The std modules a host gave with `provide_std`, by name. A list, not a
+/// map: the browser build has no other map from `String`.
+type Provided = Vec<(String, &'static str)>;
+
+static PROVIDED: std::sync::RwLock<Provided> = std::sync::RwLock::new(Vec::new());
+
+/// The std modules a host gave with `provide_std`.
+fn provided() -> std::sync::RwLockReadGuard<'static, Provided> {
+    PROVIDED.read().unwrap_or_else(|e| e.into_inner())
+}
+
+/// Gives the compiler the text of the std module `module` (`"sparse"`,
+/// `"geo/hull"`), the file as it is in `std/`: how a browser build, which
+/// carries only `std_files::EMBEDDED`, gets the others. True when that
+/// changed what the compiler has; giving a module again is no change.
+pub fn provide_std(module: &str, text: &str) -> Result<bool, String> {
+    if !in_index(module) {
+        return Err(format!(
+            "no module `std.{}` in the stdlib",
+            module.replace('/', ".")
+        ));
+    }
+    if !GIVEN || built_in(module).is_some() {
+        return Ok(false);
+    }
+    let text = crate::std_files::without_tests(text);
+    let mut provided = PROVIDED.write().unwrap_or_else(|e| e.into_inner());
+    let known = provided.iter().position(|(known, _)| known == module);
+    if known.is_some_and(|at| provided[at].1 == text) {
+        return Ok(false);
+    }
+    let text: &'static str = Box::leak(text.into_boxed_str());
+    match known {
+        Some(at) => provided[at].1 = text,
+        None => provided.push((module.to_string(), text)),
+    }
+    Ok(true)
+}
+
+/// The std modules a check asked for and did not have since the last
+/// `take_std_needs`, by name (`"sparse"`).
+static NEEDS: std::sync::Mutex<Vec<String>> = std::sync::Mutex::new(Vec::new());
+
+/// The std modules checks needed and did not have since the last call.
+pub fn take_std_needs() -> Vec<String> {
+    if !GIVEN {
+        return Vec::new();
+    }
+    let mut needs = std::mem::take(&mut *NEEDS.lock().unwrap_or_else(|e| e.into_inner()));
+    needs.sort();
+    needs
+}
+
+/// Adds `name` to the set `names`.
+fn add(names: &mut Vec<String>, name: String) {
+    if !names.contains(&name) {
+        names.push(name);
+    }
+}
+
+/// The std module `parts` names when the compiler knows it but does not
+/// have its text yet.
+fn unprovided(parts: &[String]) -> Option<String> {
+    if !GIVEN {
+        return None;
+    }
+    let (_, rest) = parts.split_first().filter(|(std, _)| *std == "std")?;
+    // `use std.math.gcd` names `gcd` in `std.math`.
+    [rest, &rest[..rest.len().saturating_sub(1)]]
+        .into_iter()
+        .find(|module| in_index(&module.join("/")) && bundled_std(module).is_none())
+        .map(|module| module.join("/"))
 }
 
 /// The error for `use` of a module that isn't there, at `whole`.
 pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
     let dotted = parts.join(".");
+    if let Some(name) = unprovided(parts) {
+        add(&mut NEEDS.lock().unwrap_or_else(|e| e.into_inner()), name);
+        return Diagnostic::error(
+            codes::UNRESOLVED_MODULE,
+            whole,
+            format!("std module `{dotted}` is not loaded yet"),
+        )
+        .with_help("the host gives it with `provide_std`; `std_needed` lists what a check needs");
+    }
     let near = nearest_std(parts);
     let help = match (parts[0].as_str(), &near) {
         (_, Some(m)) => format!("did you mean `{m}`?"),
@@ -231,7 +441,7 @@ pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
 /// `std.segtre` as `std.segtree`: the closest stdlib module to a missing one.
 fn nearest_std(module: &[String]) -> Option<String> {
     let [std, name] = module else { return None };
-    let names = modules().iter().map(|(known, _)| *known);
+    let names = std_index().iter().map(|(known, _)| *known);
     (std == "std")
         .then(|| crate::check::closest(name, names))
         .flatten()
@@ -346,6 +556,70 @@ fn library_name(manifest: &str) -> Option<&str> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Asking `std_needed` until it names nothing gives the std modules a
+    /// check with all of std loads: for a `use` of each module, and for the
+    /// test programs, which also reach std through prelude names and
+    /// `.method` calls.
+    #[test]
+    fn std_needed_asked_until_empty_names_what_a_check_loads() {
+        type Seen = std::sync::Arc<std::sync::Mutex<std::collections::BTreeSet<String>>>;
+        struct Recording(Seen);
+        impl Loader for Recording {
+            fn load(&self, from: &str, module: &[String]) -> Option<(String, String)> {
+                if let Some(("std", rest)) = module.split_first().map(|(s, r)| (s.as_str(), r)) {
+                    // `use std.rand.Rng` asks for a module `rand/Rng` first.
+                    if in_index(&rest.join("/")) {
+                        self.0.lock().unwrap().insert(rest.join("/"));
+                    }
+                }
+                FsLoader.load(from, module)
+            }
+        }
+        let programs = Path::new(env!("CARGO_MANIFEST_DIR")).join("../cpl-cli/tests/programs");
+        let mut sources: Vec<(String, String)> = std_index()
+            .iter()
+            .map(|(m, _)| {
+                (
+                    format!("use_{m}.cp"),
+                    format!("use std.{}\n", m.replace('/', ".")),
+                )
+            })
+            .collect();
+        for entry in std::fs::read_dir(programs).unwrap() {
+            let path = entry.unwrap().path();
+            if path.extension().is_some_and(|ext| ext == "cp") {
+                let text = std::fs::read_to_string(&path).unwrap();
+                sources.push((path.to_string_lossy().into_owned(), text));
+            }
+        }
+        let embedded = || crate::std_files::EMBEDDED.iter().map(|m| m.to_string());
+        let mut most = 0;
+        for (name, source) in &sources {
+            let seen = Seen::default();
+            let mut db = crate::Database::with_loader(Box::new(Recording(seen.clone())));
+            db.set_file(name, source.as_str());
+            db.diagnostics(name);
+            let mut loaded = seen.lock().unwrap().clone();
+            loaded.extend(embedded());
+            let mut have: std::collections::BTreeSet<String> = embedded().collect();
+            let mut asked = 0;
+            loop {
+                let given = have.clone();
+                let needed = std_needed_with(name, source, move |m| {
+                    given.contains(m).then(|| built_in(m)).flatten()
+                });
+                if needed.is_empty() {
+                    break;
+                }
+                have.extend(needed);
+                asked += 1;
+            }
+            most = most.max(asked);
+            assert_eq!(have, loaded, "{name}");
+        }
+        eprintln!("std_needed: at most {most} rounds");
+    }
 
     #[test]
     fn std_dir_modules_are_read_from_disk_without_tests() {

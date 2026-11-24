@@ -88,6 +88,35 @@ impl Playground {
         obj([("version", VERSION.into()), ("maxStack", MAX_STACK.into())])
     }
 
+    #[cfg(any(not(target_family = "wasm"), feature = "lazy-std"))]
+    /// The std modules a check of `source` loads that this compiler has
+    /// not been given yet, by name (`["sparse"]`): give each with
+    /// `provide_std`, then ask again until it is empty.
+    pub fn std_needed(&mut self, name: &str, source: &str) -> Value {
+        Value::Array(
+            cpl_check::std_needed(name, source)
+                .into_iter()
+                .map(Value::from)
+                .collect(),
+        )
+    }
+
+    #[cfg(any(not(target_family = "wasm"), feature = "lazy-std"))]
+    /// Gives the compiler `text`, the file `std/<module>.cp`, for every
+    /// command after: `{"changed": false}` when it had it already.
+    pub fn provide_std(&mut self, module: &str, text: &str) -> Value {
+        match cpl_check::provide_std(module, text) {
+            Ok(changed) => {
+                if changed {
+                    self.db.reload_modules();
+                    self.lsp.std_changed();
+                }
+                obj([("changed", Value::Bool(changed))])
+            }
+            Err(error) => obj([("error", error.into())]),
+        }
+    }
+
     /// `cpl check`: every diagnostic in `source`.
     pub fn check(&mut self, name: &str, source: &str) -> Value {
         self.db.set_file(name, source);
@@ -665,6 +694,11 @@ fn outcome<const N: usize>(
         more.into_iter()
             .map(|(key, value)| (key.to_string(), value)),
     );
+    let needs = cpl_check::take_std_needs();
+    if cfg!(any(not(target_family = "wasm"), feature = "lazy-std")) && !needs.is_empty() {
+        let needs = needs.into_iter().map(Value::from).collect();
+        members.insert("needs".to_string(), Value::Array(needs));
+    }
     Value::Object(members)
 }
 

@@ -76,6 +76,8 @@ export class Cpl {
   #module;
   #exports;
   #maxStack;
+  // The std modules given with `provideStd`, given again to a new instance.
+  #provided = new Map();
 
   constructor(module, instance) {
     this.#module = module;
@@ -83,6 +85,28 @@ export class Cpl {
     const { version, maxStack } = this.#call("cpl_version", {});
     this.version = version;
     this.#maxStack = maxStack;
+  }
+
+  /**
+   * The std modules a check of `source` loads that this compiler has not
+   * been given yet (`["sparse"]`). Give each with `provideStd`, then ask
+   * again until it is empty; `prelude` and `mod` are built in.
+   */
+  stdNeeded(source, options = {}) {
+    // A module built without `lazy-std` carries all of std.
+    if (!this.#exports.cpl_std_needed) return [];
+    return this.#call("cpl_std_needed", { ...options, source });
+  }
+
+  /**
+   * Gives the compiler `text`, the file `std/<module>.cp`, for every call
+   * after: `{ changed: false }` when it had it already.
+   */
+  provideStd(module, text) {
+    if (!this.#exports.cpl_provide_std) return { changed: false };
+    const result = this.#call("cpl_provide_std", { name: module, source: text });
+    if (result.changed) this.#provided.set(module, text);
+    return result;
   }
 
   /** `cpl check`: every diagnostic in `source`. */
@@ -257,6 +281,15 @@ export class Cpl {
       // The module is too far gone to say; the error below stands alone.
     }
     this.#exports = new WebAssembly.Instance(this.#module, {}).exports;
+    try {
+      for (const [module, text] of this.#exports.cpl_provide_std ? this.#provided : []) {
+        this.#write(NAME, encoder.encode(module));
+        this.#write(TEXT, encoder.encode(text));
+        this.#exports.cpl_provide_std();
+      }
+    } catch {
+      // The next call says what is wrong with the new instance.
+    }
     if (panic) {
       return new CplError("bug", `cpl: internal error, this is a bug in cpl: ${panic}`);
     }
@@ -273,7 +306,7 @@ export class Cpl {
   }
 }
 
-const METHODS = ["check", "lint", "run", "trace", "replay", "stress", "sample", "build", "explain", "hover", "definition", "symbols", "lsp"];
+const METHODS = ["stdNeeded", "provideStd", "check", "lint", "run", "trace", "replay", "stress", "sample", "build", "explain", "hover", "definition", "symbols", "lsp"];
 
 /**
  * The compiler in a Web Worker: the same methods as `Cpl`, each returning a

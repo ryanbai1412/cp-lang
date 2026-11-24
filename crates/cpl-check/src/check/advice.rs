@@ -1127,7 +1127,11 @@ pub(super) fn in_place_twin(name: &str, recv: &str) -> Option<String> {
 /// A std method `fn stem<S: IndexedMut>(mut self, mut a: S)` that changes the sequence it is
 /// given, as `Rng.shuffle`: its type's name and module, read from the std source.
 fn std_in_place_method(stem: &str) -> Option<(String, String)> {
-    for (module, text) in crate::modules::std_modules() {
+    std_in_place_method_in(crate::modules::std_index(), stem)
+}
+
+fn std_in_place_method_in(std: crate::prelude::Std, stem: &str) -> Option<(String, String)> {
+    for (module, text) in std {
         let mut owner = None;
         for line in text.lines() {
             if let Some(rest) = line
@@ -1827,6 +1831,20 @@ impl Checker<'_> {
                 e.name.text,
                 each.join(" | ")
             ));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    /// The in-place hint reads std's outlines and finds what the files say.
+    #[test]
+    fn the_in_place_hint_reads_the_same_off_the_outlines() {
+        let (files, index) = (crate::modules::std_modules(), crate::modules::std_index());
+        let found = |std, stem| super::std_in_place_method_in(std, stem);
+        assert_eq!(found(index, "shuffle"), Some(("Rng".into(), "rand".into())));
+        for name in crate::prelude::spec_member_names() {
+            assert_eq!(found(files, name), found(index, name), "{name}");
         }
     }
 }

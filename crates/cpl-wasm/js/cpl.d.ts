@@ -32,6 +32,8 @@ export interface Outcome {
   diagnostics: Diagnostic[];
   /** What `cpl` prints on standard error. */
   stderr: string;
+  /** Std modules it lacked, when it lacked any; `stdNeeded` names them all. */
+  needs?: string[];
 }
 
 export interface RunOutcome extends Outcome {
@@ -196,10 +198,14 @@ export class Cpl {
   definition(source: string, offset: number, options?: Options): Located | null;
   symbols(source: string, options?: Options): Symbol[];
   lsp(message: object): object[];
+  /** The std modules `source` needs that this compiler lacks; ask again after giving them. */
+  stdNeeded(source: string, options?: Options): string[];
+  /** Gives the compiler `std/<module>.cp`; giving it again is no change. */
+  provideStd(module: string, text: string): { changed: boolean } | { error: string };
 }
 
 export type Worker = {
-  [Method in "check" | "lint" | "run" | "trace" | "replay" | "stress" | "sample" | "build" | "explain" | "hover" | "definition" | "symbols" | "lsp"]: (
+  [Method in "stdNeeded" | "provideStd" | "check" | "lint" | "run" | "trace" | "replay" | "stress" | "sample" | "build" | "explain" | "hover" | "definition" | "symbols" | "lsp"]: (
     ...args: Parameters<Cpl[Method]>
   ) => Promise<ReturnType<Cpl[Method]>>;
 } & { terminate(): void };

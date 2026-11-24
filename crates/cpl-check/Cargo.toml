@@ -6,6 +6,11 @@ edition.workspace = true
 publish.workspace = true
 license.workspace = true
 
+[features]
+# A browser build that carries `prelude` and `mod` and is given the other
+# std modules (`provide_std`); build.rs reads it.
+lazy-std = []
+
 [dependencies]
 cpl-diag.workspace = true
 cpl-syntax.workspace = true

@@ -28,6 +28,8 @@ cpl-stress = { workspace = true, optional = true }
 # site loads first) and cpl-build.wasm with it (loaded on first use).
 default = ["build"]
 build = ["dep:cpl-codegen", "dep:cpl-stress"]
+# Carry only std's prelude and mod; the page gives the rest (`provideStd`).
+lazy-std = ["cpl-check/lazy-std"]
 
 [dev-dependencies]
 cpl-cli = { path = "../cpl-cli" }

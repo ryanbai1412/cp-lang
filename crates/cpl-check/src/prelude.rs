@@ -12,6 +12,10 @@
 
 use std::sync::OnceLock;
 
+/// The std modules a scan reads, by name with their text: the
+/// `modules::std_index` outlines, or in a test the whole files.
+pub(crate) type Std<'a> = &'a [(&'static str, &'static str)];
+
 use cpl_diag::Span;
 use cpl_syntax::ast;
 
@@ -77,26 +81,28 @@ pub fn shared_method(name: &str) -> bool {
 /// type that the checker can't type and no module declares is a spec gap.
 pub fn spec_member_names() -> &'static std::collections::HashSet<String> {
     static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| {
-        let ident = |s: &str| -> String {
-            s.chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '_')
-                .collect()
-        };
-        let mut names = std::collections::HashSet::new();
-        for (_, text) in crate::modules::std_modules() {
-            for line in text.lines() {
-                let code = line.split('#').next().unwrap_or("").trim_start();
-                if code.starts_with("///") {
-                    continue;
-                }
-                if let Some(at) = code.find("fn ") {
-                    names.insert(ident(&code[at + 3..]));
-                }
+    NAMES.get_or_init(|| member_names(crate::modules::std_index()))
+}
+
+fn member_names(std: Std) -> std::collections::HashSet<String> {
+    let ident = |s: &str| -> String {
+        s.chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect()
+    };
+    let mut names = std::collections::HashSet::new();
+    for (_, text) in std {
+        for line in text.lines() {
+            let code = line.split('#').next().unwrap_or("").trim_start();
+            if code.starts_with("///") {
+                continue;
+            }
+            if let Some(at) = code.find("fn ") {
+                names.insert(ident(&code[at + 3..]));
             }
         }
-        names
-    })
+    }
+    names
 }
 
 /// The member names std declares only inside `struct` bodies: a view's
@@ -104,53 +110,56 @@ pub fn spec_member_names() -> &'static std::collections::HashSet<String> {
 /// them, though the name is on `spec_member_names`.
 pub fn spec_struct_only_member_names() -> &'static std::collections::HashSet<String> {
     static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| {
-        let ident = |s: &str| -> String {
-            s.chars()
-                .take_while(|c| c.is_alphanumeric() || *c == '_')
-                .collect()
-        };
-        let mut in_struct = std::collections::HashSet::new();
-        let mut elsewhere = std::collections::HashSet::new();
-        for (_, text) in crate::modules::std_modules() {
-            let mut struct_body = false;
-            for line in text.lines() {
-                let code = line.split('#').next().unwrap_or("");
-                let trimmed = code.trim_start();
-                if trimmed.is_empty() || trimmed.starts_with("//") {
-                    continue;
-                }
-                let top = trimmed.len() == code.len();
-                if top {
-                    let item = trimmed.strip_prefix("pub ").unwrap_or(trimmed);
-                    struct_body = item.starts_with("struct ");
-                }
-                if let Some(at) = trimmed.find("fn ") {
-                    let name = ident(&trimmed[at + 3..]);
-                    if struct_body && !top {
-                        in_struct.insert(name);
-                    } else {
-                        elsewhere.insert(name);
-                    }
+    NAMES.get_or_init(|| struct_only_member_names(crate::modules::std_index()))
+}
+
+fn struct_only_member_names(std: Std) -> std::collections::HashSet<String> {
+    let ident = |s: &str| -> String {
+        s.chars()
+            .take_while(|c| c.is_alphanumeric() || *c == '_')
+            .collect()
+    };
+    let mut in_struct = std::collections::HashSet::new();
+    let mut elsewhere = std::collections::HashSet::new();
+    for (_, text) in std {
+        let mut struct_body = false;
+        for line in text.lines() {
+            let code = line.split('#').next().unwrap_or("");
+            let trimmed = code.trim_start();
+            if trimmed.is_empty() || trimmed.starts_with("//") {
+                continue;
+            }
+            let top = trimmed.len() == code.len();
+            if top {
+                let item = trimmed.strip_prefix("pub ").unwrap_or(trimmed);
+                struct_body = item.starts_with("struct ");
+            }
+            if let Some(at) = trimmed.find("fn ") {
+                let name = ident(&trimmed[at + 3..]);
+                if struct_body && !top {
+                    in_struct.insert(name);
+                } else {
+                    elsewhere.insert(name);
                 }
             }
         }
-        in_struct.retain(|n| !elsewhere.contains(n));
-        in_struct
-    })
+    }
+    in_struct.retain(|n| !elsewhere.contains(n));
+    in_struct
 }
 
 /// The names of the top-level `fn name(self: S, ..)` methods: all a value
 /// of no declared struct, such as a generator, can be given.
 pub fn spec_receiver_method_names() -> &'static std::collections::HashSet<String> {
     static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| {
-        crate::modules::std_modules()
-            .iter()
-            .flat_map(|(_, text)| scan_top_level_methods(text))
-            .map(|(n, _)| n.to_string())
-            .collect()
-    })
+    NAMES.get_or_init(|| receiver_method_names(crate::modules::std_index()))
+}
+
+fn receiver_method_names(std: Std) -> std::collections::HashSet<String> {
+    std.iter()
+        .flat_map(|(_, text)| scan_top_level_methods(text))
+        .map(|(n, _)| n.to_string())
+        .collect()
 }
 
 /// The `self` each top-level std `fn name(self: T, ..)` takes, by name:
@@ -159,62 +168,64 @@ pub fn spec_receiver_method_names() -> &'static std::collections::HashSet<String
 pub fn std_self_heads() -> &'static std::collections::HashMap<String, Vec<Option<String>>> {
     static HEADS: OnceLock<std::collections::HashMap<String, Vec<Option<String>>>> =
         OnceLock::new();
-    HEADS.get_or_init(|| {
-        let mut heads: std::collections::HashMap<String, Vec<Option<String>>> = Default::default();
-        for (_, text) in crate::modules::std_modules() {
-            for line in text.lines() {
-                let line = line.strip_prefix("@get ").unwrap_or(line);
-                let Some(rest) = line.strip_prefix("pub fn ") else {
-                    continue;
-                };
-                let name: String = rest
-                    .chars()
-                    .take_while(|c| c.is_alphanumeric() || *c == '_')
-                    .collect();
-                let rest = &rest[name.len()..];
-                let (generics, rest) = match rest.strip_prefix('<') {
-                    Some(g) => g.split_once(">(").unwrap_or(("", "")),
-                    None => ("", rest.strip_prefix('(').unwrap_or("")),
-                };
-                let rest = rest.strip_prefix("mut ").unwrap_or(rest);
-                let Some(ty) = rest.strip_prefix("self: ") else {
-                    continue;
-                };
-                let own_param = |t: &str| {
-                    let t = t.trim();
-                    generics
-                        .split(',')
-                        .any(|g| g.split(':').next().unwrap_or("").trim() == t)
-                };
-                // `[I]E`: `[` takes any list; `[=` has an index or element
-                // of a set type (`[P]Range<D>`, `[Pair<V>]T`), which a list
-                // of anything may not be.
-                let head: String = match ty.strip_prefix('[') {
-                    Some(arr) => {
-                        let (index, rest) = arr.split_once(']').unwrap_or((arr, ""));
-                        let elem: String = rest
-                            .chars()
-                            .take_while(|c| c.is_alphanumeric() || *c == '_')
-                            .collect();
-                        if own_param(index) && own_param(&elem) {
-                            "[".into()
-                        } else {
-                            "[=".into()
-                        }
-                    }
-                    None => ty
+    HEADS.get_or_init(|| self_heads(crate::modules::std_index()))
+}
+
+fn self_heads(std: Std) -> std::collections::HashMap<String, Vec<Option<String>>> {
+    let mut heads: std::collections::HashMap<String, Vec<Option<String>>> = Default::default();
+    for (_, text) in std {
+        for line in text.lines() {
+            let line = line.strip_prefix("@get ").unwrap_or(line);
+            let Some(rest) = line.strip_prefix("pub fn ") else {
+                continue;
+            };
+            let name: String = rest
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            let rest = &rest[name.len()..];
+            let (generics, rest) = match rest.strip_prefix('<') {
+                Some(g) => g.split_once(">(").unwrap_or(("", "")),
+                None => ("", rest.strip_prefix('(').unwrap_or("")),
+            };
+            let rest = rest.strip_prefix("mut ").unwrap_or(rest);
+            let Some(ty) = rest.strip_prefix("self: ") else {
+                continue;
+            };
+            let own_param = |t: &str| {
+                let t = t.trim();
+                generics
+                    .split(',')
+                    .any(|g| g.split(':').next().unwrap_or("").trim() == t)
+            };
+            // `[I]E`: `[` takes any list; `[=` has an index or element
+            // of a set type (`[P]Range<D>`, `[Pair<V>]T`), which a list
+            // of anything may not be.
+            let head: String = match ty.strip_prefix('[') {
+                Some(arr) => {
+                    let (index, rest) = arr.split_once(']').unwrap_or((arr, ""));
+                    let elem: String = rest
                         .chars()
                         .take_while(|c| c.is_alphanumeric() || *c == '_')
-                        .collect(),
-                };
-                let own = generics
-                    .split(',')
-                    .any(|g| g.split(':').next().unwrap_or("").trim() == head);
-                heads.entry(name).or_default().push((!own).then_some(head));
-            }
+                        .collect();
+                    if own_param(index) && own_param(&elem) {
+                        "[".into()
+                    } else {
+                        "[=".into()
+                    }
+                }
+                None => ty
+                    .chars()
+                    .take_while(|c| c.is_alphanumeric() || *c == '_')
+                    .collect(),
+            };
+            let own = generics
+                .split(',')
+                .any(|g| g.split(':').next().unwrap_or("").trim() == head);
+            heads.entry(name).or_default().push((!own).then_some(head));
         }
-        heads
-    })
+    }
+    heads
 }
 
 /// The top-level std methods that do work and need nothing but `self`:
@@ -222,32 +233,34 @@ pub fn std_self_heads() -> &'static std::collections::HashMap<String, Vec<Option
 /// is not `@get`, so reading one without `()` hides work (R07.1.7).
 pub fn work_methods() -> &'static std::collections::HashSet<String> {
     static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
-    NAMES.get_or_init(|| {
-        let mut work = std::collections::HashSet::new();
-        let mut other = std::collections::HashSet::new();
-        for (_, text) in crate::modules::std_modules() {
-            if !text.contains("self:") {
-                continue;
-            }
-            for (_, item) in cpl_syntax::parse_file(text).items {
-                for stmt in &item.stmts {
-                    let ast::StmtKind::Fn(f) = &stmt.kind else {
-                        continue;
-                    };
-                    if !stmt.public || !f.params.first().is_some_and(|p| p.name.text == "self") {
-                        continue;
-                    }
-                    let getter = stmt.decorators.iter().any(|d| d.name.text == "get");
-                    match !getter && f.params[1..].iter().all(|p| p.default.is_some()) {
-                        true => work.insert(f.name.text.clone()),
-                        false => other.insert(f.name.text.clone()),
-                    };
+    NAMES.get_or_init(|| work_methods_in(crate::modules::std_index()))
+}
+
+fn work_methods_in(std: Std) -> std::collections::HashSet<String> {
+    let mut work = std::collections::HashSet::new();
+    let mut other = std::collections::HashSet::new();
+    for (_, text) in std {
+        if !text.contains("self:") {
+            continue;
+        }
+        for (_, item) in cpl_syntax::parse_file(text).items {
+            for stmt in &item.stmts {
+                let ast::StmtKind::Fn(f) = &stmt.kind else {
+                    continue;
+                };
+                if !stmt.public || !f.params.first().is_some_and(|p| p.name.text == "self") {
+                    continue;
                 }
+                let getter = stmt.decorators.iter().any(|d| d.name.text == "get");
+                match !getter && f.params[1..].iter().all(|p| p.default.is_some()) {
+                    true => work.insert(f.name.text.clone()),
+                    false => other.insert(f.name.text.clone()),
+                };
             }
         }
-        work.retain(|n| !other.contains(n));
-        work
-    })
+    }
+    work.retain(|n| !other.contains(n));
+    work
 }
 
 /// The methods the standard library adds to the types of the language:
@@ -258,32 +271,34 @@ pub fn work_methods() -> &'static std::collections::HashSet<String> {
 /// the prelude's list. A name two modules give is there once for each.
 pub fn methods() -> &'static [(Vec<ast::Name>, ast::Name)] {
     static METHODS: OnceLock<Vec<(Vec<ast::Name>, ast::Name)>> = OnceLock::new();
-    METHODS.get_or_init(|| {
-        let bare = |text: &str| ast::Name {
-            text: text.to_string(),
-            span: cpl_diag::Span::new(0, 0),
-        };
-        let mut found: Vec<(Vec<ast::Name>, ast::Name, bool)> = Vec::new();
-        for (module, text) in crate::modules::std_modules() {
-            if *module == "prelude" || !text.contains("self:") {
-                continue;
-            }
-            let path: Vec<ast::Name> = std::iter::once("std")
-                .chain(module.split('/'))
-                .map(bare)
-                .collect();
-            for (name, is_todo) in scan_top_level_methods(text) {
-                found.push((path.clone(), bare(name), is_todo));
-            }
+    METHODS.get_or_init(|| methods_in(crate::modules::std_index()))
+}
+
+fn methods_in(std: Std) -> Vec<(Vec<ast::Name>, ast::Name)> {
+    let bare = |text: &str| ast::Name {
+        text: text.to_string(),
+        span: cpl_diag::Span::new(0, 0),
+    };
+    let mut found: Vec<(Vec<ast::Name>, ast::Name, bool)> = Vec::new();
+    for (module, text) in std {
+        if *module == "prelude" || !text.contains("self:") {
+            continue;
         }
-        // A `todo` body gives way to a module that has the method.
-        let done = |name: &str| found.iter().any(|(_, n, t)| n.text == name && !t);
-        found
-            .iter()
-            .filter(|(_, name, is_todo)| !is_todo || !done(&name.text))
-            .map(|(path, name, _)| (path.clone(), name.clone()))
-            .collect()
-    })
+        let path: Vec<ast::Name> = std::iter::once("std")
+            .chain(module.split('/'))
+            .map(bare)
+            .collect();
+        for (name, is_todo) in scan_top_level_methods(text) {
+            found.push((path.clone(), bare(name), is_todo));
+        }
+    }
+    // A `todo` body gives way to a module that has the method.
+    let done = |name: &str| found.iter().any(|(_, n, t)| n.text == name && !t);
+    found
+        .iter()
+        .filter(|(_, name, is_todo)| !is_todo || !done(&name.text))
+        .map(|(path, name, _)| (path.clone(), name.clone()))
+        .collect()
 }
 
 /// Scans top-level `[@dec ...] pub [@dec ...] fn <name>[<...>]([mut] self: ...)`
@@ -653,8 +668,12 @@ pub const VALUE_NAMES: &[&str] = &[
 /// that is (`on_str`) or isn't a `Str`, for `.name` written without its
 /// `use`: `split` on a list is `std.seq`'s, on a string `std.strings`'.
 pub fn method_module(name: &str, on_str: bool) -> Option<String> {
+    method_module_in(crate::modules::std_index(), name, on_str)
+}
+
+fn method_module_in(std: Std, name: &str, on_str: bool) -> Option<String> {
     let mut generic = None;
-    for (module, text) in crate::modules::std_modules() {
+    for (module, text) in std {
         for line in text.lines() {
             let Some(rest) = line
                 .strip_prefix("pub fn ")
@@ -689,13 +708,17 @@ pub fn method_module(name: &str, on_str: bool) -> Option<String> {
 
 /// How many type arguments a built-in or std type takes, as in `Map<K, V>`.
 pub fn type_arity(name: &str) -> Option<usize> {
+    type_arity_in(crate::modules::std_index(), name)
+}
+
+fn type_arity_in(std: Std, name: &str) -> Option<usize> {
     match name {
         "Map" | "HashMap" => return Some(2),
         "List" | "Set" | "HashSet" => return Some(1),
         _ if TYPE_NAMES.contains(&name) => return Some(0),
         _ => {}
     }
-    crate::modules::std_modules().iter().find_map(|(_, text)| {
+    std.iter().find_map(|(_, text)| {
         text.lines().find_map(|line| {
             let rest = ["pub struct ", "pub enum ", "pub trait "]
                 .iter()
@@ -779,6 +802,76 @@ pub fn std_names() -> &'static [(&'static str, &'static str)] {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every scan of std's declarations reads the outlines a browser build
+    /// carries; on every std name it answers as it does from the files.
+    #[test]
+    fn each_std_scan_reads_the_same_off_the_outlines_as_off_the_files() {
+        let (files, index) = (crate::modules::std_modules(), crate::modules::std_index());
+        let names: Vec<&str> = files.iter().map(|(name, _)| *name).collect();
+        assert_eq!(
+            names,
+            index.iter().map(|(name, _)| *name).collect::<Vec<_>>()
+        );
+        assert!(
+            index.iter().map(|(_, t)| t.len()).sum::<usize>() * 4
+                < files.iter().map(|(_, t)| t.len()).sum()
+        );
+        assert_eq!(member_names(files), member_names(index));
+        assert_eq!(
+            struct_only_member_names(files),
+            struct_only_member_names(index)
+        );
+        assert_eq!(receiver_method_names(files), receiver_method_names(index));
+        assert_eq!(self_heads(files), self_heads(index));
+        assert_eq!(work_methods_in(files), work_methods_in(index));
+        assert_eq!(methods_in(files), methods_in(index));
+        assert!(!work_methods_in(index).is_empty());
+        let types = files
+            .iter()
+            .flat_map(|(_, t)| t.lines())
+            .filter_map(|line| {
+                let rest = ["pub struct ", "pub enum ", "pub trait "]
+                    .iter()
+                    .find_map(|k| line.strip_prefix(k))?;
+                rest.split(|c: char| !c.is_alphanumeric() && c != '_')
+                    .next()
+            });
+        let names = member_names(files);
+        for word in names
+            .iter()
+            .map(String::as_str)
+            .chain(types)
+            .chain(["List", "no_such"])
+        {
+            for on_str in [false, true] {
+                assert_eq!(
+                    method_module_in(files, word, on_str),
+                    method_module_in(index, word, on_str),
+                    "{word}"
+                );
+            }
+            assert_eq!(
+                type_arity_in(files, word),
+                type_arity_in(index, word),
+                "{word}"
+            );
+        }
+    }
+
+    /// The outlines `build.rs` writes are the ones read off std/ itself.
+    #[test]
+    fn the_built_outlines_are_the_outlines_of_std() {
+        let read: Vec<(&str, String)> = crate::modules::std_modules()
+            .iter()
+            .map(|(name, text)| (*name, crate::std_files::outline(text)))
+            .collect();
+        let built: Vec<(&str, String)> = crate::modules::BUILT_INDEX
+            .iter()
+            .map(|(n, t)| (*n, t.to_string()))
+            .collect();
+        assert_eq!(read, built);
+    }
 
     #[test]
     fn fast_method_scan_matches_full_parse_on_bundled_stdlib() {

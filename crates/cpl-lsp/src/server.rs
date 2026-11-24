@@ -80,6 +80,14 @@ impl Server {
         }
     }
 
+    /// After the std modules the compiler has changed (`provide_std`):
+    /// every answer is worked out again.
+    pub fn std_changed(&mut self) {
+        self.db.reload_modules();
+        self.std = StdLib::default();
+        self.proven.clear();
+    }
+
     /// The process exit code, once the client has sent `exit`.
     pub fn exit_code(&self) -> Option<i32> {
         self.exit

@@ -18,6 +18,15 @@ impl Database {
         }
         self.loader.load(from, parts)
     }
+
+    /// Forgets every analysis, for when what the loader finds changed
+    /// (`provide_std`): the next one loads its modules again.
+    pub fn reload_modules(&mut self) {
+        for file in self.files.values_mut() {
+            file.analysis = None;
+            file.analysis_checked = false;
+        }
+    }
 }
 
 /// True when item `k` declares a domain whose bounds are not compile-time

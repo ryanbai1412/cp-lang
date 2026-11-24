@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 
 #[path = "src/std_files.rs"]
 mod std_files;
-use std_files::{collect, public_names, without_tests};
+use std_files::{collect, outline, public_names, without_tests, EMBEDDED};
 
 fn main() {
     let manifest = PathBuf::from(std::env::var_os("CARGO_MANIFEST_DIR").expect("set by cargo"));
@@ -36,7 +36,12 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
     let mut modules = Vec::new();
     collect(root, root, &mut modules);
     modules.sort();
+    let wasm = std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32");
+    // `lazy-std`: a browser build carries `EMBEDDED` whole and is given the
+    // other modules (`modules::provide_std`).
+    let lazy = std::env::var_os("CARGO_FEATURE_LAZY_STD").is_some();
     let mut table = String::from("&[\n");
+    let mut index = String::from("&[\n");
     for (name, path) in &modules {
         if track {
             println!("cargo:rerun-if-changed={}", path.display());
@@ -45,20 +50,54 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
         let bundled = out.join(folder).join(format!("{name}.cp"));
         std::fs::create_dir_all(bundled.parent().expect("under OUT_DIR"))
             .expect("a writable OUT_DIR");
-        let mut text = without_tests(&text);
-        if std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32") {
-            text = without_comments(&text);
+        let text = without_tests(&text);
+        if wasm {
+            if !lazy || EMBEDDED.contains(&name.as_str()) {
+                std::fs::write(&bundled, without_comments(&text)).expect("a writable OUT_DIR");
+                writeln!(
+                    table,
+                    "    ({name:?}, include_str!({:?})),",
+                    bundled.display().to_string()
+                )
+                .expect("writing to a string");
+            }
+            if !lazy {
+                // It carries every text already, and the scans read the
+                // same off it as off the outline.
+                writeln!(
+                    index,
+                    "    ({name:?}, include_str!({:?})),",
+                    bundled.display().to_string()
+                )
+                .expect("writing to a string");
+                continue;
+            }
+        } else {
+            std::fs::write(&bundled, &text).expect("a writable OUT_DIR");
+            writeln!(
+                table,
+                "    ({name:?}, include_str!({:?})),",
+                bundled.display().to_string()
+            )
+            .expect("writing to a string");
         }
-        std::fs::write(&bundled, text).expect("a writable OUT_DIR");
+        let outlined = out
+            .join(format!("{folder}_index"))
+            .join(format!("{name}.cp"));
+        std::fs::create_dir_all(outlined.parent().expect("under OUT_DIR"))
+            .expect("a writable OUT_DIR");
+        std::fs::write(&outlined, outline(&text)).expect("a writable OUT_DIR");
         writeln!(
-            table,
+            index,
             "    ({name:?}, include_str!({:?})),",
-            bundled.display().to_string()
+            outlined.display().to_string()
         )
         .expect("writing to a string");
     }
     table.push_str("]\n");
+    index.push_str("]\n");
     std::fs::write(out.join(format!("{prefix}_modules.rs")), table).expect("a writable OUT_DIR");
+    std::fs::write(out.join(format!("{prefix}_index.rs")), index).expect("a writable OUT_DIR");
     std::fs::write(out.join(format!("{prefix}_names.rs")), std_names(&modules))
         .expect("a writable OUT_DIR");
 }

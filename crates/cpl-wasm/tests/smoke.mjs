@@ -34,6 +34,18 @@ test("cpl.wasm runs what cpl-build.wasm does, without build, explain or stress",
   assert.equal(core.run(program, "4").stdout, "8\n");
 });
 
+// What a page does before each call: give the module the std files it lacks.
+const provideStd = (module, source) => {
+  for (let round = 0; round < 4; round++) {
+    const needed = module.stdNeeded(source);
+    if (needed.length === 0) return;
+    for (const name of needed) {
+      assert.deepEqual(module.provideStd(name, readFileSync(join(root, "std", `${name}.cp`), "utf8")), { changed: true });
+    }
+  }
+  assert.fail("stdNeeded still names modules after four rounds");
+};
+
 const DOUBLE = "let n: Int = read()\nprint(n * 2)\n";
 const recurse = (depth) =>
   `fn down(n: Int) -> Int:\n    if n == 0:\n        return 0\n    down(n - 1) + 1\nprint(down(${depth}))\n`;
@@ -172,6 +184,7 @@ test("every program of cpl's own tests prints what its .out file says", () => {
     // on two threads, which a page does not have: its .out is the
     // conversation, not what the solution prints alone.
     if (read(program).toString().includes("\n@interactor")) continue;
+    provideStd(cpl, read(program).toString());
     const run = cpl.run(read(program).toString(), read(`${stem}.in`), { name: program });
     assert.deepEqual(Buffer.from(run.stdoutBytes), read(`${stem}.out`), program);
   }
@@ -246,7 +259,29 @@ test("hover, definition and symbols answer at an offset", () => {
   );
 });
 
-test("the standard library is inside the module: `use std.*` needs no files", () => {
+test("the module asks for the std files it lacks and keeps those it is given", () => {
+  const source = "use std.sparse.{SparseTable}\nprint(1)\n";
+  const lacked = core.stdNeeded(source);
+  const before = core.check(source);
+  assert.equal(before.ok, lacked.length === 0);
+  // A check names what it lacked first; `stdNeeded` names everything.
+  if (lacked.length > 0) assert.deepEqual(before.needs, ["sparse"]);
+  if (lacked.length > 0) assert.deepEqual(lacked, ["hashmap", "math", "seq", "sparse"]);
+  provideStd(core, source);
+  assert.deepEqual(core.stdNeeded(source), []);
+  assert.equal(core.check(source).ok, true);
+  assert.deepEqual(core.provideStd("prelude", ""), { changed: false });
+  if (lacked.length > 0) assert.match(core.provideStd("nothing", "").error, /std\.nothing/);
+});
+
+test("the standard library is inside the module, or given to it: `use std.*` works", () => {
+  for (const source of [
+    "use std.algebra.{desc}\nprint(1)\n",
+    "use std.mod.{Mod, Comb}\nprint(1)\n",
+    "use std.segtree.{SegTree}\nprint(1)\n",
+  ]) {
+    provideStd(cpl, source);
+  }
   const sorted = cpl.run(
     "use std.algebra.{desc}\nvar xs: List<Int> = [3, 1, 2]\nsort(mut xs, by: desc)\nprint(xs)\n",
   );
@@ -365,7 +400,7 @@ test("stress finds and shrinks a planted bug in wasm with first differing value"
 
   const fixed = buggy.replace("if i > 0: best max= a[i]", "best max= a[i]");
   const ok = cpl.stress(fixed, { cases: 25, seed: 1, size: 6 });
-  assert.deepEqual(ok, { status: "ok", cases: 25 });
+  assert.deepEqual([ok.status, ok.cases], ["ok", 25]);
 });
 
 

@@ -64,6 +64,8 @@ fn command(run: impl FnOnce(&mut Playground, &str, &str, &[u8], &mut Vec<u8>) ->
             }));
         });
     }
+    #[cfg(feature = "lazy-std")]
+    cpl_check::take_std_needs();
     STATE.with(|state| {
         let state = &mut *state.borrow_mut();
         let name = String::from_utf8_lossy(&state.inputs[NAME as usize]);
@@ -123,6 +125,21 @@ pub extern "C" fn cpl_output_len(slot: u32) -> u32 {
 #[no_mangle]
 pub extern "C" fn cpl_version() {
     command(|_, _, _, _, _| Playground::version().to_string());
+}
+
+/// The std modules `TEXT` needs and this module lacks, as a JSON array.
+/// Only in a `lazy-std` build: cpl.js reads its absence as "carries all".
+#[cfg(feature = "lazy-std")]
+#[no_mangle]
+pub extern "C" fn cpl_std_needed() {
+    command(|playground, name, text, _, _| playground.std_needed(name, text).to_string());
+}
+
+/// Gives this module `TEXT` as the std module `NAME` (`"sparse"`).
+#[cfg(feature = "lazy-std")]
+#[no_mangle]
+pub extern "C" fn cpl_provide_std() {
+    command(|playground, name, text, _, _| playground.provide_std(name, text).to_string());
 }
 
 /// Checks `TEXT`.

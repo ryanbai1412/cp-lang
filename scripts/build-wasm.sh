@@ -8,6 +8,8 @@
 #   scripts/build-wasm.sh --out DIR  build into DIR
 #   scripts/build-wasm.sh --names DIR  cpl.wasm only, keeping function names
 #                                    (for web/scripts/wasm-size.mjs --why)
+#   scripts/build-wasm.sh --lazy-std   carry only std's prelude and mod; the
+#                                    page gives the rest (provideStd)
 #
 # Needs the wasm32 target once: rustup target add wasm32-unknown-unknown
 set -euo pipefail
@@ -17,12 +19,14 @@ out="$root/dist/wasm"
 smoke=false
 names=false
 strip=true
+features=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --smoke) smoke=true ;;
+        --lazy-std) features=(--features lazy-std) ;;
         --out) out="$(realpath -m "${2:?--out needs a directory}")"; shift ;;
         --names) names=true; out="$(realpath -m "${2:?--names needs a directory}")"; shift ;;
-        -h | --help) sed -n '2,11s/^# \{0,1\}//p' "$0"; exit 0 ;;
+        -h | --help) sed -n '2,13s/^# \{0,1\}//p' "$0"; exit 0 ;;
         *) echo "build-wasm: unknown argument \`$1\`" >&2; exit 2 ;;
     esac
     shift
@@ -57,7 +61,7 @@ build() {
         --config 'profile.wasm.lto=true' \
         --config 'profile.wasm.codegen-units=1' \
         --config 'profile.wasm.panic="abort"' \
-        --config "profile.wasm.strip=$strip" "$@"
+        --config "profile.wasm.strip=$strip" ${features[@]+"${features[@]}"} "$@"
 }
 if $names; then
     # Its own target dir, so the shipped build is not relinked.
