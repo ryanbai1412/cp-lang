@@ -63,11 +63,19 @@ export class CpClient implements vscode.Disposable {
         };
         const clientOptions: LanguageClientOptions = {
             documentSelector: SELECTOR,
-            // The server's Run, Trace, Test and Stress lenses; `cpl.exec` runs them.
-            initializationOptions: { codeLens: vscode.workspace.getConfiguration('cp').get('codeLens.enabled', true) },
+            // The server's Run, Trace, Test, Stress and Replay lenses; `cpl.exec` runs them.
+            initializationOptions: {
+                codeLens: vscode.workspace.getConfiguration('cp').get('codeLens.enabled', true),
+                replayLenses: true,
+            },
             outputChannel: this.output,
             revealOutputChannelOn: RevealOutputChannelOn.Never,
             middleware: {
+                // Replay lenses only while a CP Lang debug session runs.
+                provideCodeLenses: async (document, token, next) =>
+                    vscode.debug.activeDebugSession?.type === 'cp'
+                        ? next(document, token)
+                        : ((await next(document, token)) ?? []).filter(lens => lens.command?.command !== 'cp.replayCall'),
                 // `cp.inlayHints.enabled` turns off the server's hints too.
                 provideInlayHints: (document, range, token, next) =>
                     vscode.workspace.getConfiguration('cp').get<boolean>('inlayHints.enabled', true)
@@ -134,6 +142,14 @@ export class CpClient implements vscode.Disposable {
         await this.stop();
         this.warnedMissing = false;
         await this.start();
+    }
+
+    /** Asks for the lenses again: debugging turns the Replay lenses on and off. */
+    refreshLenses(): void {
+        const feature = this.client?.getFeature('textDocument/codeLens');
+        for (const editor of vscode.window.visibleTextEditors) {
+            feature?.getProvider(editor.document)?.onDidChangeCodeLensEmitter.fire();
+        }
     }
 
     dispose(): void {

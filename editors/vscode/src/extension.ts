@@ -1,8 +1,7 @@
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { CpClient, SELECTOR, serverBinary } from './client';
+import { CpClient, serverBinary } from './client';
 import { missingCpl } from './cpl';
-import { LensProvider } from './lenses';
 import { Overlays } from './overlays';
 import { Runner } from './runner';
 import { TraceView } from './traceView';
@@ -16,7 +15,6 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
     const output = vscode.window.createOutputChannel('CP Lang');
     const client = new CpClient(output);
     const overlays = new Overlays();
-    const lenses = new LensProvider();
     const traces = new TraceView();
     const runner = new Runner(output, overlays, traces);
     const command = (id: string, run: (...args: never[]) => unknown) =>
@@ -27,8 +25,8 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
         client,
         overlays,
         traces,
-        lenses,
-        vscode.languages.registerCodeLensProvider(SELECTOR, lenses),
+        vscode.debug.onDidStartDebugSession(() => client.refreshLenses()),
+        vscode.debug.onDidTerminateDebugSession(() => client.refreshLenses()),
         command('cp.runSample', (uri?: vscode.Uri, name?: string) => runner.runSample(uri, name)),
         command('cp.runAllSamples', (uri?: vscode.Uri) => runner.runAllSamples(uri)),
         command('cp.stress', (uri?: vscode.Uri) => runner.stress(uri)),
@@ -44,7 +42,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
             }
             runner.listen(target);
         }),
-        command('cp.trace', (uri?: vscode.Uri, input?: string, part?: string) => runner.trace(uri, input, part)),
+        command('cp.trace', (uri?: vscode.Uri) => runner.trace(uri)),
         command('cp.debug', async (uri?: vscode.Uri) => {
             const target = uri ?? vscode.window.activeTextEditor?.document.uri;
             if (!target) {

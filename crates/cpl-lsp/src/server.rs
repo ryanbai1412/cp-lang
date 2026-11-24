@@ -49,8 +49,11 @@ pub struct Server {
     /// The document whose lints and proofs are still to be published.
     owed: Option<String>,
     /// The client asked for run, stress and trace lenses
-    /// (`initializationOptions.codeLens`); VS Code draws its own.
+    /// (`initializationOptions.codeLens`).
     lenses: bool,
+    /// The client asked for a Replay lens above each solution fn
+    /// (`initializationOptions.replayLenses`), shown while debugging.
+    replay: bool,
     /// The semantic tokens last sent for each document, newest last, with
     /// their result ids: a client may hold any of the last few (VS Code asks
     /// again for a visible editor while another request is in flight).
@@ -76,6 +79,7 @@ impl Server {
             initialized: false,
             owed: None,
             lenses: false,
+            replay: false,
             tokens: HashMap::new(),
             token_ids: 0,
             shutdown: false,
@@ -182,6 +186,8 @@ impl Server {
                 self.initialized = true;
                 self.lenses =
                     params.at(&["initializationOptions", "codeLens"]) == &Value::Bool(true);
+                self.replay =
+                    params.at(&["initializationOptions", "replayLenses"]) == &Value::Bool(true);
                 Ok(Reply::result(capabilities()))
             }
             "initialized"
@@ -639,7 +645,6 @@ impl Server {
             "textDocument/codeLens" => {
                 let uri = uri_of(params)?;
                 let text = self.docs.get(uri).map(String::as_str).unwrap_or("");
-                // VS Code draws its own Run lenses but not the memory one.
                 let lenses = match (self.lenses, path_of_uri(uri)) {
                     (lenses, Some(path)) => {
                         let path = crate::uri::native_path(&path);
@@ -655,26 +660,20 @@ impl Server {
                     }
                     _ => Vec::new(),
                 };
-                let items = lenses
+                let mut items: Vec<Value> = lenses
                     .into_iter()
                     .map(|(line, title, args)| {
-                        let at = position_json(LineCol { line, col: 0 });
-                        obj([
-                            ("range", obj([("start", at.clone()), ("end", at)])),
-                            (
-                                "command",
-                                obj([
-                                    ("title", title.into()),
-                                    ("command", "cpl.exec".into()),
-                                    (
-                                        "arguments",
-                                        Value::Array(args.into_iter().map(Value::from).collect()),
-                                    ),
-                                ]),
-                            ),
-                        ])
+                        let args = args.into_iter().map(Value::from).collect();
+                        lens_json(line, title, "cpl.exec", args)
                     })
                     .collect();
+                if self.replay {
+                    for (line, name) in replay_lenses(text) {
+                        let args = vec![uri.into(), obj([("fn", name.into())])];
+                        let title = "$(debug-restart) Replay this call".to_string();
+                        items.push(lens_json(line, title, "cp.replayCall", args));
+                    }
+                }
                 Ok(Reply::result(Value::Array(items)))
             }
             "workspace/symbol" => {
@@ -1502,6 +1501,47 @@ pub(crate) fn path_of_uri(uri: &str) -> Option<String> {
 /// the `cpl` arguments it runs: the same samples VS Code finds (`i1` beside
 /// the file, `<stem>.tests/*.in`, `<stem>.samples/*.in`), the first of them
 /// run and traced, and stress when the file has a brute, checker or interactor.
+fn lens_json(line: u32, title: String, command: &str, args: Vec<Value>) -> Value {
+    let at = position_json(LineCol { line, col: 0 });
+    obj([
+        ("range", obj([("start", at.clone()), ("end", at)])),
+        (
+            "command",
+            obj([
+                ("title", title.into()),
+                ("command", command.into()),
+                ("arguments", Value::Array(args)),
+            ]),
+        ),
+    ])
+}
+
+/// The 0-based line and name of each top-level fn of the solution: not
+/// its `@alt`, `@check`, `@interactor` or `@grader` tools.
+fn replay_lenses(text: &str) -> Vec<(u32, String)> {
+    const TOOLS: [&str; 6] = ["alt", "brute", "check", "checker", "interactor", "grader"];
+    let parsed = cpl_syntax::parse_file(text);
+    let mut out = Vec::new();
+    for (base, item) in &parsed.items {
+        for stmt in &item.stmts {
+            let cpl_syntax::ast::StmtKind::Fn(f) = &stmt.kind else {
+                continue;
+            };
+            if stmt
+                .decorators
+                .iter()
+                .any(|d| TOOLS.contains(&d.name.text.as_str()))
+            {
+                continue;
+            }
+            let start = *base as usize + f.name.span.start as usize;
+            let line = text.get(..start).unwrap_or(text).matches('\n').count() as u32;
+            out.push((line, f.name.text.clone()));
+        }
+    }
+    out
+}
+
 /// Each lens's 0-based line, title and `cpl` arguments: Run, Run on all,
 /// Trace, Test and Stress above the file, and a Stress lens above each fn
 /// `cpl stress` judges by.
