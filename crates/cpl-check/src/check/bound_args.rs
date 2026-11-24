@@ -169,44 +169,44 @@ impl Checker<'_> {
             if let Some(ty) = ty {
                 return Some(ty.subst(&outer));
             }
-            if let Some(ty) = self.super_method(&trait_name, &outer, name, 0) {
+            if let Some(ty) = self.super_method(&trait_name, &outer, name) {
                 return Some(ty);
             }
         }
         None
     }
 
-    /// `name` in a trait alias's supers: `WeightedNext<V, W> = Next<V> ..`
-    /// answers `out` with `Next`'s, at the alias's arguments.
-    fn super_method(
+    /// `trait_name`, then each trait it names (`WeightedNext<V, W> = Next<V>
+    /// ..`) at the alias's arguments, until `find` answers.
+    fn in_supers(
         &mut self,
         trait_name: &str,
-        outer: &crate::ty::Bindings,
-        name: &str,
+        on: &crate::ty::Bindings,
         depth: u8,
+        find: &mut dyn FnMut(&mut Self, &Def, &crate::ty::Bindings) -> Option<Ty>,
     ) -> Option<Ty> {
-        let Some(Def::Trait { super_args, .. }) = self.type_def(trait_name).as_deref().cloned()
-        else {
+        let def = self.type_def(trait_name)?;
+        let Def::Trait { super_args, .. } = &*def else {
             return None;
         };
-        for (sup, args) in super_args.into_iter().filter(|_| depth < 8) {
-            let Some(Def::Trait {
-                generics, methods, ..
-            }) = self.type_def(&sup).as_deref().cloned()
-            else {
+        if let Some(ty) = find(self, &def, on) {
+            return Some(ty);
+        }
+        for (sup, args) in super_args.iter().filter(|_| depth < 8) {
+            let Some(sdef) = self.type_def(sup) else {
                 continue;
             };
-            let mut on = crate::ty::Bindings::default();
-            if let Some(this) = outer.get("Self") {
-                on.insert("Self".into(), this.clone());
+            let Def::Trait { generics, .. } = &*sdef else {
+                continue;
+            };
+            let mut next = crate::ty::Bindings::default();
+            if let Some(this) = on.get("Self") {
+                next.insert("Self".into(), this.clone());
             }
             for (g, a) in generics.iter().zip(args) {
-                on.insert(g.clone(), a.subst(outer));
+                next.insert(g.clone(), a.subst(on));
             }
-            if let Some(m) = methods.iter().find(|m| m.name == name) {
-                return Some(m.ty.subst(&on));
-            }
-            if let Some(ty) = self.super_method(&sup, &on, name, depth + 1) {
+            if let Some(ty) = self.in_supers(sup, &next, depth + 1, find) {
                 return Some(ty);
             }
         }
@@ -231,11 +231,30 @@ impl Checker<'_> {
         };
         for trait_name in traits {
             let outer = self.bound_bindings(param, &trait_name);
-            if let Some(ty) = self.assoc_member_in(&trait_name, &outer, (assoc, name, &of), 0) {
+            if let Some(ty) = self.assoc_member_in(&trait_name, &outer, (assoc, name, &of)) {
                 return Some(ty);
             }
         }
         None
+    }
+
+    /// `name` in a trait alias's supers: `WeightedNext<V, W> = Next<V> ..`
+    /// answers `out` with `Next`'s, at the alias's arguments.
+    fn super_method(
+        &mut self,
+        trait_name: &str,
+        outer: &crate::ty::Bindings,
+        name: &str,
+    ) -> Option<Ty> {
+        self.in_supers(trait_name, outer, 0, &mut |_, def, on| {
+            let Def::Trait { methods, .. } = def else {
+                return None;
+            };
+            methods
+                .iter()
+                .find(|m| m.name == name)
+                .map(|m| m.ty.subst(on))
+        })
     }
 
     /// `name` through `assoc`'s bound in `trait_name` or, for a trait alias
@@ -245,49 +264,32 @@ impl Checker<'_> {
         trait_name: &str,
         outer: &crate::ty::Bindings,
         (assoc, name, of): (&str, &str, &Ty),
-        depth: u8,
     ) -> Option<Ty> {
-        let Some(Def::Trait {
-            assoc: declared,
-            super_args,
-            ..
-        }) = self.type_def(trait_name).as_deref().cloned()
-        else {
-            return None;
-        };
-        if let Some((_, bounds, _)) = declared.into_iter().find(|(n, ..)| n == assoc) {
-            for (bound, args) in bounds {
-                let Some(Def::Trait {
+        self.in_supers(trait_name, outer, 0, &mut |c, def, outer| {
+            let Def::Trait {
+                assoc: declared, ..
+            } = def
+            else {
+                return None;
+            };
+            let (_, bounds, _) = declared.iter().find(|(n, ..)| n == assoc)?;
+            bounds.iter().find_map(|(bound, args)| {
+                let bdef = c.type_def(bound)?;
+                let Def::Trait {
                     generics, methods, ..
-                }) = self.type_def(&bound).as_deref().cloned()
+                } = &*bdef
                 else {
-                    continue;
+                    return None;
                 };
-                let Some(m) = methods.iter().find(|m| m.name == name) else {
-                    continue;
-                };
+                let m = methods.iter().find(|m| m.name == name)?;
                 let mut on = crate::ty::Bindings::default();
                 on.insert("Self".into(), of.clone());
                 for (g, a) in generics.iter().zip(args) {
                     on.insert(g.clone(), a.subst(outer));
                 }
-                return Some(m.ty.subst(&on));
-            }
-            return None;
-        }
-        for (sup, args) in super_args.into_iter().filter(|_| depth < 8) {
-            let Some(Def::Trait { generics, .. }) = self.type_def(&sup).as_deref().cloned() else {
-                continue;
-            };
-            let mut on = crate::ty::Bindings::default();
-            for (g, a) in generics.iter().zip(args) {
-                on.insert(g.clone(), a.subst(outer));
-            }
-            if let Some(ty) = self.assoc_member_in(&sup, &on, (assoc, name, of), depth + 1) {
-                return Some(ty);
-            }
-        }
-        None
+                Some(m.ty.subst(&on))
+            })
+        })
     }
 
     /// A bare op (`+`, `max`) passed for `M: Op<E>` is the `Monoid<E>` the
@@ -300,16 +302,7 @@ impl Checker<'_> {
         args: &[ast::Arg],
         bindings: &mut crate::ty::Bindings,
     ) {
-        let positional: Vec<&crate::ty::Param> = params.iter().filter(|p| !p.named_only).collect();
-        let mut next = 0;
-        for arg in args {
-            let param = match &arg.name {
-                Some(n) => params.iter().find(|p| p.name == n.text),
-                None => {
-                    next += 1;
-                    positional.get(next - 1).copied()
-                }
-            };
+        for (arg, param) in args.iter().zip(arg_params(params, args)) {
             let Some(Ty::Param(m)) = param.map(|p| &p.ty) else {
                 continue;
             };
@@ -344,16 +337,7 @@ impl Checker<'_> {
         let Def::Fn { bounds, .. } = def else {
             return;
         };
-        let positional: Vec<&crate::ty::Param> = params.iter().filter(|p| !p.named_only).collect();
-        let mut next = 0;
-        for arg in args {
-            let param = match &arg.name {
-                Some(n) => params.iter().find(|p| p.name == n.text),
-                None => {
-                    next += 1;
-                    positional.get(next - 1).copied()
-                }
-            };
+        for (arg, param) in args.iter().zip(arg_params(params, args)) {
             let Some(Ty::Param(m)) = param.map(|p| &p.ty) else {
                 continue;
             };
@@ -623,4 +607,19 @@ pub(crate) fn identity_defaults(f: &ast::FnDecl, ty: &Ty) -> Vec<(String, Ty)> {
         }
     }
     out
+}
+
+/// The param each of a call's `args` lands on: by name, else the next
+/// positional one.
+pub(crate) fn arg_params<'p>(
+    params: &'p [crate::ty::Param],
+    args: &[ast::Arg],
+) -> Vec<Option<&'p crate::ty::Param>> {
+    let mut positional = params.iter().filter(|p| !p.named_only);
+    (args.iter())
+        .map(|arg| match &arg.name {
+            Some(n) => params.iter().find(|p| p.name == n.text),
+            None => positional.next(),
+        })
+        .collect()
 }
