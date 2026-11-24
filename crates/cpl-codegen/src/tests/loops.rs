@@ -463,3 +463,32 @@ fn the_items_of_a_built_list_are_built_once() {
         "a is read in place:\n{solve}"
     );
 }
+
+#[test]
+fn a_map_read_by_first_builds_no_list() {
+    let body = body(concat!(
+        "let xs: List<Int> = read()\n",
+        "let s = \"abc\"\n",
+        "print(xs.map(x => x * 3).first ?? 0, xs.filter(x => x > 2).last ?? 0)\n",
+        "print(xs.items.len, s.items.len, xs.map(x => x + 1).len)\n",
+    ));
+    // The one `push_back` is `read()`'s.
+    assert_eq!(body.matches("push_back").count(), 1, "{body}");
+    assert_eq!(
+        body.matches("goto ").count(),
+        1,
+        "only `first` stops early:\n{body}"
+    );
+}
+
+#[test]
+fn a_first_of_a_map_that_writes_runs_the_whole_loop() {
+    let body = body(concat!(
+        "let xs: List<Int> = read()\n",
+        "var calls = 0\n",
+        "fn tap(x: Int) -> Int:\n    calls += 1\n    x\n",
+        "print(xs.map(x => tap(x)).first ?? 0, calls)\n",
+    ));
+    assert_eq!(body.matches("push_back").count(), 1, "{body}");
+    assert!(!body.contains("goto "), "{body}");
+}

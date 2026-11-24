@@ -156,7 +156,8 @@ fn a_comprehension_reserves_its_source_size() {
         "let sq = [i * i for i in 0..n]\n",
         "domain D = 0..n\n",
         "let ds = [n for _ in D]\n",
-        "print(flip(sq).len, [x for x in sq if x > 1].len, ds.len)\n",
+        "let big = [x for x in sq if x > 1]\n",
+        "print(flip(sq).len, big.len, ds.len)\n",
     ));
     assert!(cpp.contains("(size_t)std::max<ll>(0, D_len - 0)"), "{cpp}");
     assert!(cpp.contains(".reserve(xs.size());"), "{cpp}");

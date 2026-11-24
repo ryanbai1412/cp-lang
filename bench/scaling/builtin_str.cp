@@ -27,12 +27,14 @@ let up = (c: Char) => c < 'a' // within: builtin.Str.any
 let code = (c: Char) => Int(c) // within: builtin.Str.map
 let vowel = (c: Char) => c == 'a' or c == 'e' // within: builtin.Str.filter
 let rise = (p: Char, q: Char) => p == q // within: builtin.Str.reach
+// A read of a view runs in the reader's loop: `first` stops at the first element.
+for i in 0..64 * n:
+    if let c = t.map(code).first: s += c // timed: builtin.Str.map
+    if let c = t.filter(vowel).first: s += Int(c) // timed: builtin.Str.filter
 for r in 0..1024:
     var c = t.clone()
     c.reverse() // timed: builtin.Str.reverse
     s += t.reversed().len // timed: builtin.Str.reversed
-    s += t.map(code).len // timed: builtin.Str.map
-    s += t.filter(vowel).count() // timed: builtin.Str.filter
     s += t.count(x => x == 'A') // timed: builtin.Str.count
     if let m = t.min(): s += Int(m) // timed: builtin.Str.min
     if let m = t.max(): s += Int(m) // timed: builtin.Str.max

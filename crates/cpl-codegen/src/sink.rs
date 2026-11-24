@@ -281,6 +281,7 @@ impl Emitter<'_> {
                     body: Default::default(),
                     slot: None,
                     sink: Some(put.clone()),
+                    stop: None,
                 };
                 self.fused_pushes.push((*p.vec, consumer));
                 let inside = walk::inside_list(*p.slot, p.iter, p.body, self.locals());

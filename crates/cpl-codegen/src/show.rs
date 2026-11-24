@@ -403,6 +403,7 @@ impl<'p> Emitter<'p> {
                     body: std::rc::Rc::new(cpl_ir::Block { stmts: Vec::new() }),
                     slot: None,
                     sink: Some(put),
+                    stop: None,
                 },
             ));
             self.for_stmt(*p.id, *p.slot, p.iter, p.body, &mut out);

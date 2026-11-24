@@ -305,7 +305,7 @@ impl<'p> Emitter<'p> {
     /// What a runtime helper for any element type gave, as the type the
     /// program holds it in: the helper's `std::optional` is packed when
     /// `ty` is.
-    pub(super) fn packed_result(&mut self, ty: &Ty, code: Code) -> Code {
+    pub(crate) fn packed_result(&mut self, ty: &Ty, code: Code) -> Code {
         let cpp = self.ty(ty);
         match ty {
             Ty::Opt(_) if cpp.starts_with("cpl::Opt") => {

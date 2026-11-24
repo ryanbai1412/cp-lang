@@ -50,6 +50,7 @@ mod table;
 mod unordered;
 mod unpack;
 mod uses;
+mod view;
 mod walk;
 mod width;
 

@@ -22,13 +22,15 @@ let big = (x: Int) => x >= n // within: builtin.Array.any
 let twice = (x: Int) => 2 * x // within: builtin.Array.map
 let odd = (x: Int) => x % 2 == 1 // within: builtin.Array.filter
 let up = (p: Int, q: Int) => q - p < 64 // within: builtin.Array.reach
+// A read of a view runs in the reader's loop: `first` stops at the first element.
+for i in 0..64 * n:
+    s += a.map(twice).first ?? 0 // timed: builtin.Array.map
+    s += a.filter(odd).first ?? 0 // timed: builtin.Array.filter
 for r in 0..1024:
     var c = a.clone() // timed: builtin.Array.clone
     c.fill(r) // timed: builtin.Array.fill
     c.reverse() // timed: builtin.Array.reverse
     s += a.reversed().len // timed: builtin.Array.reversed
-    s += a.map(twice).len // timed: builtin.Array.map
-    s += a.filter(odd).count() // timed: builtin.Array.filter
     if a.contains(n): s += 1 // timed: builtin.Array.contains
     s += a.count(x => x == n) // timed: builtin.Array.count
     s += a.sum() // timed: builtin.Array.sum

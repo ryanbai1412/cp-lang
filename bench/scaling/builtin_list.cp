@@ -26,6 +26,10 @@ let big = (x: Int) => x >= n // within: builtin.List.any
 let twice = (x: Int) => 2 * x // within: builtin.List.map
 let odd = (x: Int) => x % 2 == 1 // within: builtin.List.filter
 let up = (p: Int, q: Int) => q - p < 64 // within: builtin.List.reach
+// A read of a view runs in the reader's loop: `first` stops at the first element.
+for i in 0..64 * n:
+    s += xs.map(twice).first ?? 0 // timed: builtin.List.map
+    s += xs.filter(odd).first ?? 0 // timed: builtin.List.filter
 for r in 0..4096:
     xs.insert(0, r) // timed: builtin.List.insert
     s += xs.remove(0) // timed: builtin.List.remove
@@ -35,8 +39,6 @@ for r in 0..1024:
     s += c.to_list().len // timed: builtin.List.to_list
     c.reverse() // timed: builtin.List.reverse
     s += xs.reversed().len // timed: builtin.List.reversed
-    s += xs.map(twice).len // timed: builtin.List.map
-    s += xs.filter(odd).count() // timed: builtin.List.filter
     if xs.contains(n): s += 1 // timed: builtin.List.contains
     s += xs.count(x => x == n) // timed: builtin.List.count
     s += xs.sum() // timed: builtin.List.sum

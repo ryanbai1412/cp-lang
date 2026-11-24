@@ -23,6 +23,8 @@ pub(crate) struct FusedPush {
     pub slot: Option<usize>,
     /// Hands each element to this callback instead (`crate::sink`).
     pub sink: Option<String>,
+    /// After the callback, jumps to this label: the read needs no more.
+    pub stop: Option<String>,
 }
 
 impl<'p> Emitter<'p> {
@@ -61,6 +63,9 @@ impl<'p> Emitter<'p> {
         let elem = self.expr(elem).text;
         if let Some(put) = &consumer.sink {
             self.line(out, &format!("{put}({elem});"));
+            if let Some(stop) = &consumer.stop {
+                self.line(out, &format!("goto {stop};"));
+            }
             return true;
         }
         self.line(out, "{");
@@ -178,16 +183,17 @@ impl<'p> Emitter<'p> {
         // other sees, and one of them can neither trap nor stop early. A
         // producer that can do neither and writes only its own locals runs
         // unseen, so the consumer may print or trap.
-        let traps = self.target.checks != crate::Checks::None;
-        let unseen = !inner_touch.io
-            && trap_free_block(inner_body, *vec_slot, traps)
-            && writes_own(inner_body);
+        // A build that checks overflow (`Checks::All`) counts any body as
+        // one that may trap: `x * 4` there traps where the interpreter does.
+        let checks = self.target.checks;
+        let traps = checks != crate::Checks::None;
+        let free =
+            |b: &Block, v: usize| checks != crate::Checks::All && trap_free_block(b, v, traps);
+        let unseen = !inner_touch.io && free(inner_body, *vec_slot) && writes_own(inner_body);
         if inner_touch.io || (outer_touch.io && !unseen) || inner_touch.conflicts(&outer_touch) {
             return false;
         }
-        if !trap_free_block(inner_body, *vec_slot, traps)
-            && !trap_free_block(outer_body, usize::MAX, traps)
-        {
+        if !free(inner_body, *vec_slot) && !free(outer_body, usize::MAX) {
             return false;
         }
         // A `break` of the consumer skips the rest of the producer: fine when
@@ -195,9 +201,7 @@ impl<'p> Emitter<'p> {
         // A consumer fused onto this loop's pushes may break out of it, and
         // fused, this loop's end is the producer's.
         let fed = self.fed_breaks_to(outer_body, outer_id);
-        if (stops || fed)
-            && !(trap_free_block(inner_body, *vec_slot, traps) && writes_own(inner_body))
-        {
+        if (stops || fed) && !(free(inner_body, *vec_slot) && writes_own(inner_body)) {
             return false;
         }
         if stops {
@@ -219,6 +223,7 @@ impl<'p> Emitter<'p> {
                 body: std::rc::Rc::new(outer_body.clone()),
                 slot: Some(outer_slot),
                 sink: None,
+                stop: None,
             },
         ));
         if let (Some(_), Some((_, fused))) = (&self.sites, self.fused_pushes.last()) {
@@ -303,11 +308,26 @@ pub(crate) fn block_producer(do_block: &Block) -> Option<Producer<'_>> {
 
 /// [`block_producer`] for a `do` block's statements.
 pub(crate) fn stmts_producer(stmts: &[Stmt]) -> Option<Producer<'_>> {
-    let [Stmt::Let(vec, Some(init)), Stmt::For(id, slot, iter, body), Stmt::Give(given)] = stmts
-    else {
-        return None;
+    held_producer(stmts).and_then(|(held, p)| held.is_empty().then_some(p))
+}
+
+/// [`stmts_producer`] with `let`s before its loop, which a reader that
+/// takes the loop runs first: `a.map(f)` holds `f`, `a.items` holds `a`.
+pub(crate) fn held_producer(stmts: &[Stmt]) -> Option<(&[Stmt], Producer<'_>)> {
+    let (vec, init, held, id, slot, iter, body, given) = match stmts {
+        [Stmt::Let(vec, Some(init)), held @ .., Stmt::For(id, slot, iter, body), Stmt::Give(given)]
+            if matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty()) =>
+        {
+            (vec, init, held, id, slot, iter, body, given)
+        }
+        [held @ .., Stmt::Let(vec, Some(init)), Stmt::For(id, slot, iter, body), Stmt::Give(given)] => {
+            (vec, init, held, id, slot, iter, body, given)
+        }
+        _ => return None,
     };
-    if !matches!(init.ty, Ty::List(_))
+    let holds = |s: &Stmt| matches!(s, Stmt::Let(_, Some(e)) if !expr_mentions_local(e, *vec));
+    if !held.iter().all(holds)
+        || !matches!(init.ty, Ty::List(_))
         || !matches!(&init.kind, ExprKind::Tuple(items) if items.is_empty())
         || !matches!(given.kind, ExprKind::Local(g) if g == *vec)
     {
@@ -315,13 +335,14 @@ pub(crate) fn stmts_producer(stmts: &[Stmt]) -> Option<Producer<'_>> {
     }
     let mut iter_uses_vec = false;
     iter_exprs(iter, &mut |e| iter_uses_vec |= expr_mentions_local(e, *vec));
-    (!iter_uses_vec && only_pushed_in_block(*vec, body)).then_some(Producer {
+    let p = Producer {
         vec,
         id,
         slot,
         iter,
         body,
-    })
+    };
+    (!iter_uses_vec && only_pushed_in_block(*vec, body)).then_some((held, p))
 }
 
 pub(crate) fn iter_exprs<'p>(iter: &'p Iter, f: &mut dyn FnMut(&'p Expr)) {
@@ -348,7 +369,7 @@ pub(crate) fn iter_exprs<'p>(iter: &'p Iter, f: &mut dyn FnMut(&'p Expr)) {
     }
 }
 
-fn expr_mentions_local(e: &Expr, target: usize) -> bool {
+pub(crate) fn expr_mentions_local(e: &Expr, target: usize) -> bool {
     let mut found = false;
     each_part(e, &mut |sub| {
         if matches!(sub.kind, ExprKind::Local(s) if s == target) {
@@ -371,7 +392,7 @@ fn place_mentions_local(p: &Place, target: usize) -> bool {
     found
 }
 
-fn only_pushed_in_block(vec_slot: usize, block: &Block) -> bool {
+pub(crate) fn only_pushed_in_block(vec_slot: usize, block: &Block) -> bool {
     for stmt in &block.stmts {
         match stmt {
             Stmt::Expr(e) => {

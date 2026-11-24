@@ -1205,6 +1205,7 @@ impl<'p> Emitter<'p> {
             {
                 code
             }
+            ExprKind::Builtin(..) if let Some(code) = self.fused_view(e) => code,
             ExprKind::Builtin(Builtin::Len, args) if matches!(&args[0].kind, ExprKind::Call(f, _) if self.pushers.contains_key(f)) => {
                 self.count_pushed(&args[0])
             }

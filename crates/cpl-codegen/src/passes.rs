@@ -209,6 +209,18 @@ pub(crate) const PASSES: &[Pass] = &[
         "filter_map_sum_fuses_without_intermediate_vectors",
     ),
     pass(
+        "fused-views",
+        "view.rs",
+        Uses(&[
+            "trap_free_stmts",
+            "pure_call",
+            "pure_fns",
+            "writes_own",
+            "each_value",
+        ]),
+        "a_map_read_by_first_builds_no_list",
+    ),
+    pass(
         "main-globals",
         "globals.rs",
         Uses(&["Touch::of_block"]),

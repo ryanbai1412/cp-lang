@@ -1788,7 +1788,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.all",
-   "measured": 4.01,
+   "measured": 4.12,
    "n": 16384,
    "ok": true
   },
@@ -1796,7 +1796,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.any",
-   "measured": 3.93,
+   "measured": 4.09,
    "n": 16384,
    "ok": true
   },
@@ -1804,7 +1804,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.clone",
-   "measured": 6.83,
+   "measured": 7.25,
    "n": 16384,
    "ok": true
   },
@@ -1812,7 +1812,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.contains",
-   "measured": 4.17,
+   "measured": 4.04,
    "n": 16384,
    "ok": true
   },
@@ -1820,7 +1820,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.count",
-   "measured": 3.9,
+   "measured": 3.88,
    "n": 16384,
    "ok": true
   },
@@ -1828,7 +1828,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Array.cut_after",
-   "measured": 0.99,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1836,7 +1836,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Array.cut_before",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -1844,15 +1844,15 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.fill",
-   "measured": 3.94,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/builtin_array.cp::builtin.Array.filter": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "builtin.Array.filter",
-   "measured": 3.99,
+   "measured": 0.96,
    "n": 16384,
    "ok": true
   },
@@ -1860,7 +1860,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Array.first",
-   "measured": 0.99,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -1868,7 +1868,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Array.first_ge",
-   "measured": 0.97,
+   "measured": 0.92,
    "n": 16384,
    "ok": true
   },
@@ -1876,7 +1876,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Array.first_gt",
-   "measured": 1.01,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -1884,7 +1884,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Array.get",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -1908,15 +1908,15 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Array.last_lt",
-   "measured": 1.01,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/builtin_array.cp::builtin.Array.map": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "builtin.Array.map",
-   "measured": 4.0,
+   "measured": 0.94,
    "n": 16384,
    "ok": true
   },
@@ -1924,7 +1924,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.max",
-   "measured": 3.93,
+   "measured": 3.95,
    "n": 16384,
    "ok": true
   },
@@ -1932,7 +1932,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.min",
-   "measured": 3.94,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -1940,7 +1940,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.reach",
-   "measured": 4.03,
+   "measured": 4.02,
    "n": 16384,
    "ok": true
   },
@@ -1948,7 +1948,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.reverse",
-   "measured": 4.06,
+   "measured": 4.01,
    "n": 16384,
    "ok": true
   },
@@ -1956,7 +1956,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.reversed",
-   "measured": 3.68,
+   "measured": 4.13,
    "n": 16384,
    "ok": true
   },
@@ -1964,7 +1964,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.Array.sort",
-   "measured": 4.51,
+   "measured": 4.6,
    "n": 16384,
    "ok": true
   },
@@ -1972,7 +1972,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.Array.sorted",
-   "measured": 4.58,
+   "measured": 4.53,
    "n": 16384,
    "ok": true
   },
@@ -1980,7 +1980,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Array.sum",
-   "measured": 4.07,
+   "measured": 4.19,
    "n": 16384,
    "ok": true
   },
@@ -1988,7 +1988,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Array.swap",
-   "measured": 0.98,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2177,26 +2177,26 @@
    "ok": true
   },
   "bench/scaling/builtin_items.cp::builtin.Array.items": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "builtin.Array.items",
-   "measured": 4.02,
+   "measured": 1.0,
    "n": 2048,
    "ok": true
   },
   "bench/scaling/builtin_items.cp::builtin.List.items": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "builtin.List.items",
-   "measured": 4.0,
+   "measured": 0.96,
    "n": 2048,
    "ok": true
   },
   "bench/scaling/builtin_items.cp::builtin.Str.items": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "builtin.Str.items",
-   "measured": 3.95,
+   "measured": 0.99,
    "n": 2048,
    "ok": true
   },
@@ -2204,7 +2204,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.all",
-   "measured": 4.07,
+   "measured": 4.33,
    "n": 16384,
    "ok": true
   },
@@ -2212,7 +2212,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.any",
-   "measured": 3.92,
+   "measured": 4.28,
    "n": 16384,
    "ok": true
   },
@@ -2220,7 +2220,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.contains",
-   "measured": 4.7,
+   "measured": 4.33,
    "n": 16384,
    "ok": true
   },
@@ -2228,7 +2228,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.count",
-   "measured": 4.92,
+   "measured": 4.4,
    "n": 16384,
    "ok": true
   },
@@ -2236,7 +2236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.cut_after",
-   "measured": 1.2,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -2244,7 +2244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.cut_before",
-   "measured": 1.19,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -2252,15 +2252,15 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.fill",
-   "measured": 5.33,
+   "measured": 4.22,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/builtin_list.cp::builtin.List.filter": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "builtin.List.filter",
-   "measured": 3.94,
+   "measured": 0.95,
    "n": 16384,
    "ok": true
   },
@@ -2268,7 +2268,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.find",
-   "measured": 5.42,
+   "measured": 4.01,
    "n": 16384,
    "ok": true
   },
@@ -2276,7 +2276,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.first",
-   "measured": 1.19,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -2284,7 +2284,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.first_ge",
-   "measured": 1.23,
+   "measured": 0.92,
    "n": 16384,
    "ok": true
   },
@@ -2292,7 +2292,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.first_gt",
-   "measured": 1.22,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -2300,7 +2300,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.get",
-   "measured": 1.25,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2308,7 +2308,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.insert",
-   "measured": 4.94,
+   "measured": 4.65,
    "n": 16384,
    "ok": true
   },
@@ -2316,7 +2316,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.last",
-   "measured": 1.23,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -2324,7 +2324,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.last_le",
-   "measured": 1.17,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -2332,15 +2332,15 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.List.last_lt",
-   "measured": 1.14,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/builtin_list.cp::builtin.List.map": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "builtin.List.map",
-   "measured": 3.9,
+   "measured": 0.95,
    "n": 16384,
    "ok": true
   },
@@ -2348,7 +2348,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.max",
-   "measured": 4.04,
+   "measured": 4.15,
    "n": 16384,
    "ok": true
   },
@@ -2356,7 +2356,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.min",
-   "measured": 4.04,
+   "measured": 4.16,
    "n": 16384,
    "ok": true
   },
@@ -2364,7 +2364,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.pop",
-   "measured": 1.26,
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
@@ -2372,7 +2372,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.push",
-   "measured": 1.2,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2380,7 +2380,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.push_id",
-   "measured": 1.2,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
@@ -2388,7 +2388,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reach",
-   "measured": 3.95,
+   "measured": 4.33,
    "n": 16384,
    "ok": true
   },
@@ -2396,7 +2396,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.remove",
-   "measured": 4.14,
+   "measured": 3.88,
    "n": 16384,
    "ok": true
   },
@@ -2404,7 +2404,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reverse",
-   "measured": 5.49,
+   "measured": 4.4,
    "n": 16384,
    "ok": true
   },
@@ -2412,7 +2412,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.reversed",
-   "measured": 4.29,
+   "measured": 4.33,
    "n": 16384,
    "ok": true
   },
@@ -2420,7 +2420,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.List.sort",
-   "measured": 4.27,
+   "measured": 4.62,
    "n": 16384,
    "ok": true
   },
@@ -2428,7 +2428,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.List.sorted",
-   "measured": 4.3,
+   "measured": 4.61,
    "n": 16384,
    "ok": true
   },
@@ -2436,7 +2436,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.sum",
-   "measured": 4.5,
+   "measured": 4.29,
    "n": 16384,
    "ok": true
   },
@@ -2444,7 +2444,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.List.swap",
-   "measured": 1.25,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -2452,7 +2452,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.List.to_list",
-   "measured": 4.61,
+   "measured": 4.82,
    "n": 16384,
    "ok": true
   },
@@ -2748,7 +2748,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.all",
-   "measured": 4.16,
+   "measured": 3.46,
    "n": 16384,
    "ok": true
   },
@@ -2756,7 +2756,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.any",
-   "measured": 4.12,
+   "measured": 3.44,
    "n": 16384,
    "ok": true
   },
@@ -2764,7 +2764,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.count",
-   "measured": 3.9,
+   "measured": 4.23,
    "n": 16384,
    "ok": true
   },
@@ -2772,7 +2772,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.cut_after",
-   "measured": 1.2,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2780,15 +2780,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.cut_before",
-   "measured": 1.21,
+   "measured": 1.08,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/builtin_str.cp::builtin.Str.filter": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "builtin.Str.filter",
-   "measured": 4.15,
+   "measured": 0.89,
    "n": 16384,
    "ok": true
   },
@@ -2796,7 +2796,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.first",
-   "measured": 1.21,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2804,7 +2804,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Str.first_ge",
-   "measured": 1.32,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2812,7 +2812,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Str.first_gt",
-   "measured": 1.3,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -2820,7 +2820,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.get",
-   "measured": 1.21,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2828,7 +2828,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.last",
-   "measured": 1.2,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
@@ -2836,7 +2836,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Str.last_le",
-   "measured": 1.29,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
@@ -2844,15 +2844,15 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "builtin.Str.last_lt",
-   "measured": 1.29,
+   "measured": 1.07,
    "n": 16384,
    "ok": true
   },
   "bench/scaling/builtin_str.cp::builtin.Str.map": {
-   "cost": "n",
-   "documented": 4.0,
+   "cost": "1",
+   "documented": 1.0,
    "fn": "builtin.Str.map",
-   "measured": 4.13,
+   "measured": 1.12,
    "n": 16384,
    "ok": true
   },
@@ -2860,7 +2860,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.max",
-   "measured": 4.08,
+   "measured": 3.48,
    "n": 16384,
    "ok": true
   },
@@ -2868,7 +2868,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.min",
-   "measured": 4.07,
+   "measured": 4.17,
    "n": 16384,
    "ok": true
   },
@@ -2876,7 +2876,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.pop",
-   "measured": 1.2,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -2884,7 +2884,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.push",
-   "measured": 1.19,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -2892,7 +2892,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.reach",
-   "measured": 4.16,
+   "measured": 3.45,
    "n": 16384,
    "ok": true
   },
@@ -2900,7 +2900,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.reverse",
-   "measured": 4.11,
+   "measured": 4.41,
    "n": 16384,
    "ok": true
   },
@@ -2908,7 +2908,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "builtin.Str.reversed",
-   "measured": 4.0,
+   "measured": 3.83,
    "n": 16384,
    "ok": true
   },
@@ -2916,7 +2916,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.Str.sort",
-   "measured": 4.13,
+   "measured": 4.67,
    "n": 16384,
    "ok": true
   },
@@ -2924,7 +2924,7 @@
    "cost": "n \\log n",
    "documented": 4.57,
    "fn": "builtin.Str.sorted",
-   "measured": 4.11,
+   "measured": 4.72,
    "n": 16384,
    "ok": true
   },
@@ -2932,7 +2932,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "builtin.Str.swap",
-   "measured": 1.16,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -19545,5 +19545,10 @@
    "ok": true
   }
  },
- "unscaled": []
+ "unscaled": [
+  "derive.gen_fields",
+  "range.ahead",
+  "range.back",
+  "range.offset"
+ ]
 }

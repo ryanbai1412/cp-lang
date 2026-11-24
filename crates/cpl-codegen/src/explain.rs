@@ -6,6 +6,8 @@ use std::fmt::Write;
 
 const DROPPED: &str = "never read; it and its stores are left out";
 const SUNK: &str = "the list passed here is never built; its loop runs at each push";
+const FUSED_STOPS: &str = "the list is never built; the loop stops at the first element";
+const FUSED: &str = "the list is never built; the read runs at each push";
 const HASHED: &str = "a hash table: nothing reads its order";
 
 /// The report for `program`, lowered from `text`, naming the file `path`.
@@ -42,6 +44,7 @@ pub fn report_with(
     } = crate::explain_lowered(program);
     let view_ops = explain_views(text, program);
     let sunk = explain_sunk(text, program);
+    let fused = explain_fused(text, program);
     let hashed = explain_hashed(program);
     if !copies.is_empty() {
         let _ = writeln!(
@@ -104,6 +107,13 @@ pub fn report_with(
             let _ = writeln!(stdout, "  [sunk] {line}:{col}  {call}(..) -> {SUNK}");
         }
     }
+    if !fused.is_empty() {
+        let _ = writeln!(stdout, "Fused views for {path} (judge build):");
+        for (line, col, read, stops) in &fused {
+            let why = if *stops { FUSED_STOPS } else { FUSED };
+            let _ = writeln!(stdout, "  [fused] {line}:{col}  .{read} -> {why}");
+        }
+    }
     if !dropped.is_empty() {
         let _ = writeln!(stdout, "Dropped fields for {path}:");
         for site in &dropped {
@@ -113,6 +123,7 @@ pub fn report_with(
     if entries.is_empty() && view_ops.is_empty() {
         if dropped.is_empty()
             && sunk.is_empty()
+            && fused.is_empty()
             && hashed.is_empty()
             && copies.is_empty()
             && program.written_back.is_empty()
@@ -383,6 +394,23 @@ fn explain_sunk(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, Str
     sunk.sort();
     sunk.dedup();
     sunk
+}
+
+/// Each read of a fused view (`crate::view`) in the judge build: its line,
+/// column, what it reads and whether it stops at the first element.
+fn explain_fused(text: &str, program: &cpl_ir::Program) -> Vec<(usize, usize, &'static str, bool)> {
+    let target = crate::Target::default();
+    let program = crate::prepared(program, &target);
+    let mut fused: Vec<_> = crate::view::fused_reads(&program, target.checks)
+        .into_iter()
+        .map(|(span, read, stops)| {
+            let (line, col) = line_col(text, span);
+            (line, col, read.name(), stops)
+        })
+        .collect();
+    fused.sort();
+    fused.dedup();
+    fused
 }
 
 /// The 1-based line and column of `span` in `text`.
