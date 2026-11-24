@@ -9290,23 +9290,6 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
   deletion.
 
 ## 625. A fn's `var` bound to a top-level heap value is E0608, migrated by `cpl fix` (compiler, 2026-11-24)
-## 625. Own Ord without own Eq gives `==` (compiler, 2026-11-24)
-
-- **Decision.** A struct that writes its own `Ord` and no own `Eq` gets
-  `==` and `!=` from that `Ord`: `a == b` when neither is before the
-  other (R08.1.6). Both engines read the same fact (`StructDef.ord` with
-  no `eq_fn`). Such a struct derives no `Hash` (E0606), so a table of it
-  stays ordered.
-- **Why.** One equality per type: `==`, `Set`/`Map` keys and
-  sort/dedup/runs agree. Before, tables merged keys by `Ord` while `==`
-  compared fields, so an unreduced `Frac(2, 4)` was a duplicate key of
-  `Frac(1, 2)` yet not `==` to it.
-- **Lowering and cost.** The C++ emits `operator==` as `!(a < b) &&
-  !(b < a)`, two calls of the type's own order; the interpreter calls the
-  `Ord` hook once.
-- **Reverse.** Drop the `ord` arm in the interpreter's `eq_ty_val` and
-  the emitted `operator==`; `==` is field by field again.
-- **Status.** Accepted (Core).
 
 - **Call.** Inside a fn, `var b = g` where `g` is a top-level heap value (List, Map, Str, a struct holding one, ...) is E0608 with the fix `var b = g.clone()`; `let b = g` stays a lend. A fn reads top-level state lent, as it does a parameter (R05.2.2, R05.4.1), so the binding can neither move `g` out of the file body nor copy it silently. The frozen `tests/v02-snapshot` copies change only through `cpl fix` output, the codemod path every breaking rule uses. Core ruling of 2026-11-24.
 - **Why.** The binding used to compile to a silent deep copy, a cost the source never spelled. Making it E0608 keeps costs visible: `.clone()` is the one O(n) copy.
@@ -9373,14 +9356,28 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Status.** Accepted (Factory and Core); the instantiating-crate question stays open.
 
 ## 640. (reserved, unknown)
-## 637. std declares `HashMap<K: Hash, V>` and `HashSet<K: Hash>` as `struct T = @intrinsic("id")` type rows (compiler, 2026-11-24)
+## 641. Own Ord without own Eq gives `==` (compiler, 2026-11-24)
+
+- **Decision.** A struct that writes its own `Ord` and no own `Eq` gets
+  `==` and `!=` from that `Ord`: `a == b` when neither is before the
+  other (R08.1.6). Both engines read the same fact (`StructDef.ord` with
+  no `eq_fn`). Such a struct derives no `Hash` (E0606), so a table of it
+  stays ordered.
+- **Why.** One equality per type: `==`, `Set`/`Map` keys and
+  sort/dedup/runs agree. Before, tables merged keys by `Ord` while `==`
+  compared fields, so an unreduced `Frac(2, 4)` was a duplicate key of
+  `Frac(1, 2)` yet not `==` to it.
+- **Lowering and cost.** The C++ emits `operator==` as `!(a < b) &&
+  !(b < a)`, two calls of the type's own order; the interpreter calls the
+  `Ord` hook once.
+- **Reverse.** Drop the `ord` arm in the interpreter's `eq_ty_val` and
+  the emitted `operator==`; `==` is field by field again.
+- **Status.** Accepted (Core).
+
+## 642. std declares `HashMap<K: Hash, V>` and `HashSet<K: Hash>` as `struct T = @intrinsic("id")` type rows (compiler, 2026-11-24)
 
 - **Call.** `struct T<params> = @intrinsic("id")` declares a type whose storage is the intrinsics table's type entry `id` (`cpl_rt::Store`, ids `hash_map`, `hash_set`); an id the table lacks is E0210, as for a fn body (R12.14.6). std/derive.cp declares `pub struct HashMap<K: Hash, V>` and `pub struct HashSet<K: Hash>` this way, beside `trait Hash`. The bound on the key is the declaration's own fact: the compiler reads which trait keys a hashed store off it, never the trait's name.
 - **Why.** Core's ruling for the Eq/Hash hooks: declarations in std, storage in cpl-rt, so a struct's own `impl Hash` is found through what std declares (no `"Hash"` literal, `std_shadowed` stays at 17). The table owner and L1 use this one shape; L1 adds `Set<T: Ord>`/`Map<K: Ord, V>` on it.
 - **Hash(Eq).** std declares `trait Hash(Eq)`, so "own `Eq` or `Ord` derives no `Hash`" is the general supertrait rule read off `Def::Trait.supers` (a derived impl can't sit on a supertrait the type decides itself, R08.1.6), and the IR records a struct's `hash_fn` from its impl of whichever trait std bounds a store's key by (`Lowerer::store_keys`, collected off std's `= @intrinsic` declarations). Reverse: drop `(Eq)` and restore the `"Hash"` arms in `own_impl_decides` and `instantiate`.
-- **Floor.** `HashMap` and `HashSet` stay on the builtin floor for now: their members, constructors and typing are still the checker's `Receiver::HashMap`/`HashSet` arms. They leave the floor when those members become `Kind::Host` rows declared in std.
+- **Floor.** The type names leave the checker's `TYPE_NAMES` table: the prelude knows them from std's declaration, and a written `HashSet<F>` meets the declared `K: Hash` there (E0606 for a key that isn't `Hash`). Their members, constructors and typing are still the checker's `Receiver::HashMap`/`HashSet` arms. They leave the floor when those members become `Kind::Host` rows declared in std.
 - **Reverse.** Delete the two std declarations, `Store` and the parser's `= @intrinsic` arm in `struct_decl`; the types are the floor's again.
-
-## 641. (reserved, compiler)
-
-## 642. (reserved, compiler)

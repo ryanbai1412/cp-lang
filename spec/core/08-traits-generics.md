@@ -93,7 +93,7 @@ impl Ord for Frac:
   general rule, since std declares `trait Hash(Eq)`: a derived impl
   can't sit on a supertrait the type decides itself. A struct with its own
   `Ord` and no own `Eq` gets `==` from that order (`a == b` when neither
-  is before the other, decision 625) and derives no `Hash`; its tables
+  is before the other, decision 641) and derives no `Hash`; its tables
   keep its order. Tuples and records (not
   structs, whose fields may be private) also get `+`, `-` and `Zero`
   fieldwise when every field has them, so a rerooting DP over
