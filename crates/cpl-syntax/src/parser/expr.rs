@@ -1085,6 +1085,9 @@ impl<'a> Parser<'a> {
             }
             T::Ident if self.f_string_prefix() => self.primary().kind,
             T::Ident => {
+                if let Some(none) = self.cpp_npos() {
+                    return none;
+                }
                 let mut name = self.name();
                 if name.text == "Some" {
                     name.text = "some".into();

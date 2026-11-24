@@ -664,6 +664,37 @@ impl<'a> Parser<'a> {
                 .is_some_and(|t| t.kind == T::Ident && t.span.text(self.src) == "None")
     }
 
+    /// C++'s `string::npos`: CP Lang's `find` gives `None` where C++ gives `npos`.
+    pub(super) fn cpp_npos(&mut self) -> Option<Expr> {
+        let text = |k: usize| self.tokens.get(self.pos + k).map(|t| t.span.text(self.src));
+        let len = match [0, 1, 2, 3, 4].map(text) {
+            [Some("string"), Some("::"), Some("npos"), ..] => 3,
+            [Some("std"), Some("::"), Some("string"), Some("::"), Some("npos")] => 5,
+            _ => return None,
+        };
+        let (first, last) = (
+            self.tokens[self.pos].span,
+            self.tokens[self.pos + len - 1].span,
+        );
+        let at = self.rel(Span::new(first.start, last.end));
+        self.recovered(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                at,
+                "CP Lang has no `npos`: `find` gives `None` when there is no match",
+            )
+            .with_help("compare with `None`: `s.find(t) != None`, or write `t in s`")
+            .with_fix("write `None`", at, "None"),
+        );
+        for _ in 0..len {
+            self.bump();
+        }
+        Some(Expr {
+            kind: ExprKind::Name("None".into()),
+            span: at,
+        })
+    }
+
     /// `xs[::-1]`: Python's reversed copy. One error with the `xs.rev` fix.
     fn reversed_slice(&mut self) -> Option<Expr> {
         let t = |k: usize| self.tokens.get(self.pos + k);

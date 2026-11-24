@@ -432,6 +432,42 @@ impl Checker<'_> {
                 .drop_where(|d| d.code == codes::UNRESOLVED_NAME && d.span == at);
         }
         if let ExprKind::Field { base, name: f } = &callee.kind {
+            // Python's `heapq.heappush(h, x)`: a heap is std's `Heap`, and a
+            // list pushed to is no heap, so the fix needs `h` to be one.
+            if matches!(&base.kind, ExprKind::Name(m) if m == "heapq") {
+                let heap = |c: &mut Self, a: &Arg| {
+                    let ty = c.quietly(|c| c.infer(&a.value));
+                    matches!(&ty, Ty::Named { name, .. } if name == "Heap")
+                };
+                let ours = match (f.text.as_str(), args) {
+                    ("heappush", [h, x]) if heap(self, h) => Some(format!(
+                        "{}.push({})",
+                        self.text(h.value.span),
+                        self.text(x.value.span)
+                    )),
+                    ("heappop", [h]) if heap(self, h) => {
+                        Some(format!("{}.pop()!", self.text(h.value.span)))
+                    }
+                    _ => None,
+                };
+                let member = f.span;
+                self.sink
+                    .drop_where(|d| d.code == codes::UNKNOWN_FIELD && d.span == member);
+                let unresolved = |d: &&mut cpl_diag::Diagnostic| {
+                    d.code == codes::UNRESOLVED_NAME && d.span == base.span
+                };
+                if let Some(diag) = self.sink.last_mut().filter(unresolved) {
+                    diag.fixes.clear();
+                    diag.help = Some(match &ours {
+                        Some(new) => format!("a heap is std's `Heap`, with methods: `{new}`"),
+                        None => "a heap is std's `Heap`, not a list: `var h: Heap<Int> = Heap()` (`use std.heap.{Heap}`), then `h.push(x)` and `h.pop()!`".to_string(),
+                    });
+                    if let Some(new) = ours {
+                        diag.fix(format!("write `{new}`"), call.span, new);
+                    }
+                }
+                return;
+            }
             if matches!(&base.kind, ExprKind::Name(m) if m == "math" || m == "Math") {
                 // `math.ceil(a / b)` on Ints: `/` already rounds down.
                 let div = match (f.text.as_str(), args) {
