@@ -78,6 +78,20 @@ vscode-integration:
 debugger-loop:
     cargo nextest run --no-fail-fast -p cpl-stress -p cpl-cli --test debugger --test runtime_errors --test stress_bench
 
+# Neovim's stress loop and nvim-dap time travel against debug cpl (CI: debugger-loop.yml `loop`).
+neovim-stress-loop tmp="target/tmp":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    root=$PWD cpl=$PWD/target/debug/cpl dap="{{tmp}}/nvim-dap"
+    if command -v cygpath >/dev/null; then root=$(cygpath -m "$PWD"); cpl="$root/target/debug/cpl.exe"; fi
+    nvim --headless --clean -l editors/neovim/test/stress_loop.lua "$cpl" "$root"
+    [ -d "$dap" ] || git clone -q --depth 1 --branch 0.9.0 https://github.com/mfussenegger/nvim-dap "$dap"
+    if command -v cygpath >/dev/null; then dap=$(cygpath -m "$dap"); fi
+    nvim --headless --clean -l editors/neovim/test/dap_loop.lua "$cpl" "$root" "$dap"
+
+vim-stress-loop cpl="target/debug/cpl":
+    editors/neovim/test/stress_loop_vim.sh "$(realpath {{cpl}})"
+
 # The acceptance regression suite, e.g. `just acceptance target/ci/cpl --shard 1/3`.
 acceptance *args:
     uv run --quiet python research/acceptance/regress.py {{args}}
@@ -109,6 +123,25 @@ bench-corpus *args:
 # Build the Next.js web app (web/).
 web-build:
     pnpm --dir web build
+
+# Typecheck and unit-test the web app (CI: ci.yml `site`).
+web-typecheck:
+    pnpm --dir web typecheck
+
+web-test:
+    pnpm --dir web test
+
+# cpl, the browser build and its named copy for wasm-size, in parallel (CI: ci.yml `site`).
+site-binaries out="target/site-binaries":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p "{{out}}"
+    scripts/build-wasm.sh >"{{out}}/wasm.log" 2>&1 & wasm=$!
+    scripts/build-wasm.sh --names "{{out}}/wasm-names" >"{{out}}/wasm-names.log" 2>&1 & names=$!
+    cargo build --profile ci --bin cpl
+    wait "$wasm" || { cat "{{out}}/wasm.log"; exit 1; }
+    wait "$names" || { cat "{{out}}/wasm-names.log"; exit 1; }
+    cat "{{out}}/wasm.log"
 
 # Run the browser smoke suite against the built site (web/out), on a port of its own.
 web-smoke:
