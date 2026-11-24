@@ -65,7 +65,7 @@ bytes, never slower), and `cpl explain` prints every layout.
   `Int`. When the range proof shows an expression and its operands fit in
   32 bits (`a[i] + b[i]` with both `0..=1e9` is at most `2e9`, a u32), the
   C++ computes it in 32 bits. Same answer, never slower, and twice the
-  lanes when the loop vectorizes, so it majorizes; `cpl explain` marks it. (R03.1.6)
+  lanes when the loop vectorizes, so it majorizes; `cpl explain` marks it. (R03.1.6, permits)
 
 Why this split: in registers, 64-bit `+ - * < &` cost the same as 32-bit
 on every judge CPU; only division by a runtime value is slower on older
@@ -135,7 +135,7 @@ type is an `Int` wherever it is read: `max(lo - k, s.l)` with `s.l:
 
 Every type has a fixed set of **spare values**: bit patterns of its
 storage that no valid value uses. The set is a property of the type, never
-of a use, so two `?Edge`s always agree on layout. (R03.2.1)
+of a use, so two `?Edge`s always agree on layout. (R03.2.1, permits)
 
 | Type | Spare values | `None` is |
 |---|---|---|
@@ -188,7 +188,7 @@ byte:
   another spare of `r` and is also 8. (R03.2.5)
 - **Otherwise a tag byte** beside the largest payload, rounded up to
   alignment: when no field has enough spares (every bit pattern is a valid
-  value) or a smaller variant can't fit around the field holding them. (R03.2.6)
+  value) or a smaller variant can't fit around the field holding them. (R03.2.6, permits)
 - The rule is Rust's niche filling, restricted to "first field with enough
   spares", so it is predictable without reading the compiler; `cpl explain`
   prints the encoding.
@@ -210,7 +210,7 @@ then declaration order); visible order (constructors, patterns, `print`,
 derives, `..R` rows) stays declaration order. Nothing in the language
 observes addresses, so reordering never changes behaviour, and it only
 removes padding. A struct passed to `@cpp` code keeps declaration order,
-since C++ would see the storage. `cpl explain` shows the storage order. (R03.2.8)
+since C++ would see the storage. `cpl explain` shows the storage order. (R03.2.8, permits)
 
 ### Cache layout
 

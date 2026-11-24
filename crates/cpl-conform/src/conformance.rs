@@ -788,7 +788,7 @@ pub struct RuleCoverage {
     pub unknown: Vec<String>,
 }
 
-/// Checks rule coverage: `(R\d\d[a-z]?(?:\.\d+)+)` in `spec/core/*.md` vs `// rule:` in `spec/conformance/**/*.cp`.
+/// Checks rule coverage: `(R\d\d[a-z]?(?:\.\d+)+)`, optionally `, permits)`, in `spec/core/*.md` vs `// rule:` in `spec/conformance/**/*.cp`.
 pub fn check_rules(root: &Path) -> RuleCoverage {
     let mut defined: BTreeMap<String, String> = BTreeMap::new();
     let core_dir = root.join("spec").join("core");
@@ -873,9 +873,14 @@ fn extract_rule_defs(line: &str) -> Vec<String> {
                         break;
                     }
                 }
-                if dot_groups > 0 && j < bytes.len() && bytes[j] == b')' {
+                let close = if line[j..].starts_with(", permits)") {
+                    j + 9
+                } else {
+                    j
+                };
+                if dot_groups > 0 && close < bytes.len() && bytes[close] == b')' {
                     out.push(line[start..j].to_string());
-                    i = j + 1;
+                    i = close + 1;
                     continue;
                 }
             }
@@ -888,6 +893,16 @@ fn extract_rule_defs(line: &str) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_permits_rule_is_still_a_definition() {
+        assert_eq!(
+            extract_rule_defs("defines it. (R02.4.3, permits)"),
+            vec!["02.4.3"]
+        );
+        assert_eq!(extract_rule_defs("rejects it. (R02.4.4)"), vec!["02.4.4"]);
+        assert!(extract_rule_defs("see (R02.4.4, forbids)").is_empty());
+    }
 
     #[test]
     fn input_header_is_stdin_and_not_a_source_line() {

@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-RULE = re.compile(r"\(R(?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+\)")
+RULE = re.compile(r"\(R(?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+(?:, permits)?\)")
 
 
 def features(path):

@@ -29,7 +29,7 @@ lowering adds no undefined behaviour to valid programs.
   programs, and avoids it wherever that is free: signed arithmetic that
   may overflow is done in unsigned and cast back, shifts are masked, and
   every array is filled at construction. Unchecked indexes and `x!` on an
-  invalid program are as unsafe as the same C++ (§9.2). (R13.1.4)
+  invalid program are as unsafe as the same C++ (§9.2). (R13.1.4, permits)
 
 ## 13.2 Values
 
@@ -68,7 +68,7 @@ the heap. Locals of plain types live in registers or the stack.
   addressing table keyed by the parameters' storage. (R13.3.4)
 - Views are ordinary structs holding a pointer (lent) or the value
   (owned) plus their closures; walking them is a loop with no
-  allocation. (R13.3.5)
+  allocation. (R13.3.5, permits)
 
 ## 13.4 Ownership
 

@@ -53,7 +53,7 @@ read(base: 0)                     // a call argument beats every context
   further `uses` callees. `uses` is inferred only for nested fns and
   lambdas; top-level fns (public or not), trait methods and modules
   declare it, and one that calls a `uses` fn without declaring it passes
-  its own lexical value. (R09.1.3)
+  its own lexical value. (R09.1.3, permits)
 - Cost: one specialized copy of each `uses` function per distinct value;
   `cpl explain` lists them and the bundle-size warning counts them. (R09.1.4)
 - Standard contexts: `io` (chapter 10), `checks` (below), `lint` (one
@@ -154,15 +154,15 @@ unchecked:                                           // every check off, every b
 Every fact the compiler relies on is in one tier (`05-ownership.md`):
 
 1. **proved**: the type checker, range analysis or borrow rules
-   establish it; no runtime cost. (R09.5.1)
+   establish it; no runtime cost. (R09.5.1, permits)
 2. **trapped**: not proved; checked builds trap, release assumes it. (R09.5.2)
 3. **promised**: the author states it and tooling samples it: `law`
    declarations, `@cache` correctness. Codegen never optimizes on a
    promise alone beyond the documented specialization it selects; a
-   false promise gives a wrong answer, never undefined behaviour. (R09.5.3)
+   false promise gives a wrong answer, never undefined behaviour. (R09.5.3, permits)
 4. **unsafe**: `@trusted:` blocks and `@cpp` inline C++. These are the
    only places a contestant can write undefined behaviour, and
-   `cpl explain` lists every site. (R09.5.4)
+   `cpl explain` lists every site. (R09.5.4, permits)
 
 ## 9.6 Recursion and the stack
 

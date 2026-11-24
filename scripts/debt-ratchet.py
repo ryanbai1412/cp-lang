@@ -1336,6 +1336,7 @@ HARD_ZERO = frozenset({
     "stress_hand_json", "lint_dup_helpers",
     "measure_broken", "mono_unguarded",
     "unrun_script_tests",
+    "permits",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.

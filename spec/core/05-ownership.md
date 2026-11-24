@@ -91,7 +91,7 @@ let n2 = walk2().count()
 **R1. Plain values copy.** A value is plain when no part of it lives on the
 heap: `Int`, `Bool`, `Char`, `F64`, `Mod<P>`, positions, cuts, ranges,
 optionals, tuples, records and enums of plain values, fn values that
-capture only plain values. Using a plain value never affects the original. (R05.2.1)
+capture only plain values. Using a plain value never affects the original. (R05.2.1, permits)
 
 **R2. Heap values move.** `List`, `Map`, `Set`, `Str`, `[D]T`, `Graph`,
 `SegTree` and any struct, tuple or enum holding one move when bound,
@@ -520,7 +520,7 @@ Promised by the author (this makes it correct):
 - **P1. Cache writes change no answer.** Every sequence of public calls
   gives the same results as if each cache write through a read `self` were
   undone at method exit. Equivalently, the abstract value (the partition,
-  the factorials) never changes. (R05.10.14)
+  the factorials) never changes. (R05.10.14, permits)
 
 Stress runs check P1 with a cold mode that undoes those writes at method
 exit and compares output with a normal run; P1 is exactly what makes the

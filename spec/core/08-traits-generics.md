@@ -140,10 +140,10 @@ trait Commutative<T>(Op<T>):
   trait promises its laws (trust tier "promised", chapter 9). (R08.3.1)
 - Laws are never assumed by the type checker. They select documented,
   answer-preserving specializations (a segment tree without push-down
-  when tags commute), and `cpl explain` names each selection. (R08.3.2)
+  when tags commute), and `cpl explain` names each selection. (R08.3.2, permits)
 - `cpl stress` samples laws on the values a program actually builds;
   `laws_hold(op, samples)` checks them directly; `--laws=off` skips. (R08.3.3)
-- A false law gives wrong answers, never undefined behaviour. (R08.3.4)
+- A false law gives wrong answers, never undefined behaviour. (R08.3.4, permits)
 
 ## 8.4 Record row types (trial)
 

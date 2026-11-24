@@ -36,7 +36,7 @@ Cases: 3318 (1093 passing). Rules: 610.
 - Rtrace (trace-debug.md): 6 rules, 5 cases; 2 uncovered, 2 happy-path only, 0 negative only
 
 26 rules match a forbidding word but only permit or define something;
-`permits.txt` lists them with the reason, so they need no reject case.
+the spec marks each `(Rnn.n, permits)`, so they need no reject case.
 
 ## Accept and reject coverage per chapter
 

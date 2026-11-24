@@ -15,7 +15,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SPEC = ROOT / "spec"
 CONF = SPEC / "conformance"
-RULE_DEF = re.compile(r"\(R((?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+)\)")
+RULE_DEF = re.compile(r"\(R((?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+)(, permits)?\)")
 CODE = re.compile(r"\b([ELRW]\d{4})\b")
 UNTESTABLE = {
     "E9998": "internal: a construct the compiler cannot lower",
@@ -31,6 +31,11 @@ NEGATIVE_WORDS = re.compile(
 def rule_key(rid):
     return [(int(p), "") if p.isdigit() else (int(p[:2]), p[2:]) if p[:2].isdigit() else (100, p)
             for p in rid.split(".")]
+
+
+# Rules marked `(Rnn.n, permits)` in the spec: their text matches a forbidding
+# word but permits, defines or promises something, so they need no reject case.
+PERMITS = set()
 
 
 def rule_texts():
@@ -53,6 +58,8 @@ def rule_texts():
                     chunk = chunk[prev[-1].end() :]
                 chunk = re.sub(r"^[-#\s]+|^\d+\.\s*", "", chunk).strip()
                 rules[rid] = (path.name, i + 1, chunk)
+                if m.group(2):
+                    PERMITS.add(rid)
     return rules
 
 
@@ -224,19 +231,12 @@ def main():
     home = {ch: max({rules[r][0] for r in rids}, key=lambda f: sum(rules[r][0] == f for r in rids))
             for ch, rids in by_chapter.items()}
 
-    permits_file = CONF / "permits.txt"
-    permits = {}
-    if permits_file.exists():
-        for l in permits_file.read_text().split("\n"):
-            if l and not l.startswith("#"):
-                rid, _, why = l.partition(" ")
-                permits[rid.removeprefix("R")] = why
-    stale = [f"R{r}: not a rule" for r in permits if r not in rules]
-    stale += [f"R{r}: has a reject case" for r in permits if r in rules and neg[r]]
-    stale += [f"R{r}: text no longer forbids" for r in permits
-              if r in rules and not NEGATIVE_WORDS.search(rules[r][2])]
+    permits = PERMITS
+    stale = [f"R{r}: marked permits but has a reject case" for r in permits if neg[r]]
+    stale += [f"R{r}: marked permits but its text no longer forbids" for r in permits
+              if not NEGATIVE_WORDS.search(rules[r][2])]
     if stale:
-        print("spec/conformance/permits.txt is stale; drop these lines:")
+        print("drop `, permits` from these spec rules:")
         for s in stale:
             print(f"  {s}")
         return 1
@@ -283,7 +283,7 @@ def main():
         )
     w("")
     w(f"{len(permits)} rules match a forbidding word but only permit or define something;")
-    w("`permits.txt` lists them with the reason, so they need no reject case.")
+    w("the spec marks each `(Rnn.n, permits)`, so they need no reject case.")
     w("")
     w("## Accept and reject coverage per chapter")
     w("")

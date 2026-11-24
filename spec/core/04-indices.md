@@ -147,7 +147,7 @@ the same text after `:` is a range type (chapter 2).
 **The rule: a range's elements are the kind of its ends.** Cuts in, cuts out:
 `for k in a..=b` walks cuts a through b, `for j in ..i` walks the cuts before i.
 A range whose start is past its end is empty, never a trap: `5..=3` and
-`(5..=3).rev` walk nothing, so `for c in (p..=x).rev` needs no `p <= x` guard. (R04.4.29)
+`(5..=3).rev` walk nothing, so `for c in (p..=x).rev` needs no `p <= x` guard. (R04.4.29, permits)
 
 ### One exception, in how a literal is typed: the piece
 

@@ -36,7 +36,7 @@ Most slice uses never look at a key, so the choice doesn't affect them.
 | A6 in-place verbs | `a[l..=r].sort()`, `.reverse()` | ✓ | ✓ | ✓ (R04a.2.6) |
 | A7 consume from the front | `rest.first`, `rest = rest.drop(1)` | ✓ | ✓ | ✓ (R04a.2.7) |
 | A8 copy out | `List(w)`, `Str(s[l..r])` | ✓ | ✓ | ✓ (R04a.2.8) |
-| A9 length-only results | `period(t[start..start + delta])` | ✓ | ✓ | ✓ (R04a.2.9) |
+| A9 length-only results | `period(t[start..start + delta])` | ✓ | ✓ | ✓ (R04a.2.9, permits) |
 
 This group only works under every option because of one rule: **any
 operation that combines two sequences pairs them by walk order, never by

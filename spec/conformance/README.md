@@ -20,7 +20,8 @@ case names the line its diagnostic is on; `scripts/spec-gate.py markers
 --fix` rewrites an old `at N` case. A second header line `// rule: 05.4.2 05.4.3`
 names the numbered rules (`(R05.4.2)` in `spec/core`) the case tests,
 without the `R`; `cpl-conform --rules` lists the rules no case cites.
-A rule is defined where `(Rnn.n.n)` ends its sentence; a reference to a
+A rule is defined where `(Rnn.n.n)` ends its sentence, or `(Rnn.n.n, permits)` when its text
+matches a forbidding word but only permits or defines something, so it needs no reject case; a reference to a
 rule from elsewhere is written `(see Rnn.n.n)` so it is not read as a
 second definition. `COVERAGE.md` (from `scripts/conformance-coverage.py`)
 lists per chapter the rules, codes and std items each case covers. An `R` code

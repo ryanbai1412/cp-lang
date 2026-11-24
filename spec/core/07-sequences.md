@@ -238,7 +238,7 @@ for d in divisors(n):
 - **Push, not pull.** The generator runs and the `for` body runs at each
   `yield`, so a non-recursive generator inlines to a plain loop. Recursive
   generators (DFS, subset enumeration) work the same way, including `break`
-  and `return` out of the body (§126). (R07.6.1)
+  and `return` out of the body (§126). (R07.6.1, permits)
 - **A generator value is a closure you walk instead of call.** `let g =
   divisors(n)` stores the fn and its arguments and runs nothing; each walk
   runs the body from the top, with fresh locals and the arguments as they

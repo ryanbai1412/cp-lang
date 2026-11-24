@@ -29,7 +29,7 @@ text. (R01.1.1)
   Markdown; the first sentence is the summary shown by hover and
   `cpl doc`. Labelled lines after the prose (`cost:`, `traps:`,
   `example:`, `empty:`, `ties:`, `order:`) state the facts every public
-  library function documents (`std/README.md`). (R01.1.3)
+  library function documents (`std/README.md`). (R01.1.3, permits)
 - A source line may end in `\n` or `\r\n` on every platform. The `\r` is
   part of the line end, never of a token, comment or string, so a file
   saved on Windows means the same program; `cpl fmt` keeps the file's line
@@ -115,7 +115,7 @@ grammar expects it and an ordinary name elsewhere.
 
 `Some` and `None` are not reserved: they are the variants of `?T`, in
 the prelude like any other name, so a user enum may also have a `None`
-variant (`Side.None`). (R01.3.6)
+variant (`Side.None`). (R01.3.6, permits)
 
 Contextual words are keywords only in the position shown and ordinary
 names elsewhere:
@@ -220,7 +220,7 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
   either reading is a common slip. (R01.5.6)
 - `and` and `or` short-circuit: they evaluate their right side only when the left side does
   not decide the result, like `??`: `j < m and a[j] > 0` never reads
-  `a[j]` when `j == m`. (R01.5.7)
+  `a[j]` when `j == m`. (R01.5.7, permits)
 
 ## 1.6 Statements
 

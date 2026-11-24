@@ -37,7 +37,7 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   needed. Vim 8.2 or later gets highlighting, filetype, indent and `gq`
   through `cpl fmt` from `cpl setup vim`, and the server through the
   vim-lsp it installs beside them (or the vim-lsp or yegappan/lsp already
-  installed); any other LSP client runs `cpl lsp`. (Rlsp.5)
+  installed); any other LSP client runs `cpl lsp`. (Rlsp.5, permits)
 
 Evidence: `spec/conformance/tools-lsp/` drives `cpl lsp --stdio` for each
 rule, and the LSP's own suites go deeper: `crates/cpl-lsp/tests/fixtures/` (diagnostics, completion,

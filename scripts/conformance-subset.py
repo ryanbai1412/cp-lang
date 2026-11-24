@@ -34,7 +34,7 @@ ROOT = Path(__file__).resolve().parent.parent
 SPEC = ROOT / "spec"
 CONF = SPEC / "conformance"
 SUBSET = SPEC / "SUBSET.md"
-RULE_DEF = re.compile(r"\(R((?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+)\)")
+RULE_DEF = re.compile(r"\(R((?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+)(, permits)?\)")
 STATUSES = ("supported", "documented", "gap")
 OWNERS = re.compile(r"\b(compiler|stdlib|diagnostics|tools|lint-fmt|perf|debugger|site|infra|idioms)\b")
 

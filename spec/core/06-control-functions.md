@@ -117,7 +117,7 @@ let s = divisors(n).filter(d => d % 2 == 0).sum()
 - The loop body may `break`, `continue`, `return`, use labels and loop
   `else`, even when the generator is recursive (decision 126). A
   non-recursive generator inlines into the loop; a recursive one gets a
-  hidden stop path only in specializations whose body can exit. (R06.3.3)
+  hidden stop path only in specializations whose body can exit. (R06.3.3, permits)
 - A body steers its generator through the yielded item, read after
   `yield` returns: `step.prune()` skips a DFS subtree. Enter/exit walks
   yield events (`Enter(v, via:)`, `Exit(v, via:)`, `Again(from, via)`). (R06.3.4)

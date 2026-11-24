@@ -25,7 +25,7 @@ Every value is one of:
 - a **plain value**: numbers, `Bool`, `Char`, positions and cuts of a
   domain, `?T` of a plain `T`, and tuples, records, structs and enums
   built only from plain values. Plain values copy on assignment and fit
-  in registers or a few words. (R02.1.1)
+  in registers or a few words. (R02.1.1, permits)
 - a **heap value**: `List<T>`, `Str`, `[D]T` arrays, `Map`, `Set`, every
   library container, and any struct holding one. Heap values move on
   assignment and are copied only by `.clone()` (decision 128). (R02.1.2)
@@ -95,7 +95,7 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   `while let`, `let ... else`, `match`. (R02.4.2)
 - When `T` has a spare value (a niche), `?T` takes no more bytes than `T`
   (chapter 3). Otherwise it adds a flag byte, rounded to alignment.
-  `?(?T)` is legal and adds a flag around `?T`. (R02.4.3)
+  `?(?T)` is legal and adds a flag around `?T`. (R02.4.3, permits)
 - **Arithmetic and bitwise operators lift**: `?Int + Int` is `?Int`,
   `None` if either side is. Lifting is three ordinary impls, not a
   language rule (`impl<T: Add> Add for ?T`). (R02.4.4)
@@ -221,7 +221,7 @@ enum Ev:
   record expression `(total:, take:)` builds one. It works wherever a pattern
   does: `let`, `for`, `match` (decision 230). (R02.7.6)
 - Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V`
-  positions are 4 bytes (chapter 3). (R02.7.5)
+  positions are 4 bytes (chapter 3). (R02.7.5, permits)
 
 ## 2.8 Arrays and lists
 
