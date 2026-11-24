@@ -864,8 +864,8 @@ fn apply(program: &mut Program, tracked: &BTreeSet<StructId>, plan: Plan) {
         program.narrow_elems.extend(copied);
     }
     let global_tys: Vec<Ty> = program.globals.iter().map(|g| g.ty.clone()).collect();
+    let structs = std::mem::take(&mut program.structs);
     for (target, body) in plan.bodies {
-        let structs = program.structs.clone();
         let (locals, blocks, ret): (&mut Vec<cpl_ir::Local>, Vec<&mut Block>, Option<&mut Ty>) =
             match target {
                 Target::Main => (
@@ -932,6 +932,7 @@ fn apply(program: &mut Program, tracked: &BTreeSet<StructId>, plan: Plan) {
             fit_nones(block, &local_tys, ret_ty.as_ref());
         }
     }
+    program.structs = structs;
 }
 
 /// A `none` has no key of its own, so it keeps the old struct type; give
