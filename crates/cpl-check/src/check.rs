@@ -6,6 +6,8 @@
 //! poisoned.
 
 pub(crate) mod advice;
+mod foreign;
+pub(crate) use foreign::declare_on_first_assignment;
 mod alias;
 mod arms;
 mod assoc;
@@ -1584,93 +1586,6 @@ pub(crate) fn declare_with_var(
             edits: vec![(at, "var".into())],
         });
     }
-}
-
-/// Python's `best = 0` with no `let`: every later `best = ..` and read of
-/// `best` is the same root cause, so only the first assignment keeps its
-/// error, and its fix declares `var` when `best` is assigned again
-/// (errors/R1). Runs on the whole file, as each top-level statement is
-/// checked as its own item.
-/// A name another error's fix declares (`n, m = ...` as `let (n, m) =
-/// ...`) is unknown below only as that error's echo.
-fn drop_fix_declared(diags: &mut Vec<Diagnostic>) {
-    let declared: Vec<String> = (diags.iter())
-        .filter(|d| d.code != codes::UNRESOLVED_NAME)
-        .flat_map(|d| d.fixes.iter().flat_map(|f| f.edits.iter()))
-        .filter_map(|(_, text)| {
-            ["let ", "var ", "const "]
-                .iter()
-                .find_map(|k| text.strip_prefix(k))
-        })
-        .flat_map(|rest| {
-            let names = rest.split([':', '=']).next().unwrap_or_default().trim();
-            let names = names.trim_start_matches('(').trim_end_matches(')');
-            names
-                .split(',')
-                .map(|n| format!("no `{}` in scope", n.trim()))
-        })
-        .collect();
-    let echo = |d: &Diagnostic| {
-        (declared.iter()).any(|m| d.message == *m || d.message.starts_with(&format!("{m},")))
-    };
-    diags.retain(|d| d.code != codes::UNRESOLVED_NAME || !echo(d));
-}
-
-pub(crate) fn declare_on_first_assignment(
-    mut diags: Vec<Diagnostic>,
-    src: &str,
-) -> Vec<Diagnostic> {
-    const ASSIGNED: &str = "` is assigned before it is declared";
-    let assigned = |d: &Diagnostic| {
-        let name = d.message.strip_prefix('`')?.strip_suffix(ASSIGNED)?;
-        (d.code == codes::UNRESOLVED_NAME).then(|| name.to_string())
-    };
-    let named = |d: &Diagnostic| {
-        let (name, rest) = d.message.strip_prefix("no `")?.split_once('`')?;
-        (d.code == codes::UNRESOLVED_NAME && rest.starts_with(" in scope"))
-            .then(|| name.to_string())
-    };
-    drop_fix_declared(&mut diags);
-    let mut first: crate::names::NameMap<Span> = Default::default();
-    for d in &diags {
-        if let Some(name) = assigned(d) {
-            let at = first.entry(name).or_insert(d.span);
-            if d.span.start < at.start {
-                *at = d.span;
-            }
-        }
-    }
-    diags.retain(
-        |d| match assigned(d).or_else(|| named(d)).and_then(|n| first.get(&n)) {
-            Some(at) => d.span == *at || d.span.start < at.start,
-            None => true,
-        },
-    );
-    for d in &mut diags {
-        let Some(name) = assigned(d) else { continue };
-        let later = src.get(d.span.end as usize..).unwrap_or_default();
-        if !later
-            .lines()
-            .skip(1)
-            .any(|l| assigns(l.trim_start(), &name))
-        {
-            continue;
-        }
-        let let_ = format!("`let {name}");
-        d.help = d
-            .help
-            .take()
-            .map(|h| h.replace(&let_, &format!("`var {name}")));
-        for fix in &mut d.fixes {
-            fix.title = fix.title.replace("`let`", "`var`");
-            for (_, text) in &mut fix.edits {
-                if text == "let " {
-                    *text = "var ".to_string();
-                }
-            }
-        }
-    }
-    diags
 }
 
 /// Drops "`f` doesn't change `a`, so `mut` doesn't belong here" at a call
