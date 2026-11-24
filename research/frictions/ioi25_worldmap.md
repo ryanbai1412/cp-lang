@@ -30,6 +30,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   routes `max_by` to it.
 - **General fix (stdlib/diag):** none needed beyond the current help. Keep the help on every
   `_by` twin (`min_by`, `sort_by`, `max_by_key`).
+- **Owner:** stdlib.
 - **Severity:** low.
 
 ## `Bitset.insert` is spelled `add`
@@ -48,6 +49,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   (`insert` -> `add`), name it in the help with its signature
   (`add(i) -> Bool: true if i was absent`), not only in the method list. This helps every set
   type (`Set`, `Bitset`, `DynBitset`).
+- **Owner:** Consumers/Tools.
 - **Severity:** low.
 
 ## No way to orient a non-tree edge toward its ancestor
@@ -68,6 +70,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   pair, which it can check with `is_anc`, or have `dfs_tree` also give its back edges already
   oriented. This helps every lowpoint, cycle-space and cactus port that walks back edges
   (bridges, 2-edge-connected parts, ear decompositions).
+- **Owner:** stdlib.
 - **Severity:** medium.
 
 ## `List.pad_to` is missing; `resized` copies
@@ -83,6 +86,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
 - **General fix (stdlib):** a mutating `List.resize(n, fill)` next to `resized`, matching the
   `sort`/`sorted` pair. Give `pad`/`pad_to` misses a help line naming it. This helps any
   port that grows a table to a known length (DP rows, layered output).
+- **Owner:** stdlib.
 - **Severity:** low.
 
 ## A `@grader fn` can't return a fixed-size grid
@@ -103,6 +107,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
 - **General fix (compiler):** let `[n]T` and nested `[n][m]T` cross to the grader as
   `std::vector` (and nested vectors), with ranged ints crossing as `int`. Also accept `[a][b] (x, y) => e` as the 2-D table form. This helps
   every IOI task that returns a grid or matrix.
+- **Owner:** Core.
 - **Severity:** medium.
 
 ## A root `grader.cpp` is linked into the stdin port
@@ -120,6 +125,7 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
 - **General fix (tools):** link a found `grader.cpp` only when the program has a `@grader fn`,
   or have `corpus.py` pass `--grader` for the dream only. This helps every IOI package that
   pairs a `@grader` dream with a stdin port.
+- **Owner:** Consumers/Tools.
 - **Severity:** medium.
 
 ## Measurements

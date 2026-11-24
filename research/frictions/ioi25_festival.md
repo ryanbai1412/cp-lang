@@ -45,6 +45,7 @@ fourth are `cpl::sort_by`. With the fix the port is at 10.3 MB against 9.8 MB (1
   two can't disagree.
 - **Port fix:** the annotated `let`. 11.9 MB to 10.3 MB; the `--max` output is unchanged and
   `scripts/corpus.py verify ioi25_festival` stays clean.
+- **Owner:** Core.
 - **Severity:** high (a silent 2x on the main input table, and the cost report is wrong).
 
 ## `sorted(by:)` allocates three n-sized buffers beside the list
@@ -70,4 +71,5 @@ fourth are `cpl::sort_by`. With the fix the port is at 10.3 MB against 9.8 MB (1
   here), sort the list in place with a comparator that recomputes the key; keep the cached
   keys for expensive keys, and then sort (key, element) pairs in one buffer, not keys plus
   an index permutation plus a copy.
+- **Owner:** Core.
 - **Severity:** medium (1.5x peak RSS on an n log n sort; 2.4 + 1.2 + 1.2 MB in festival).
