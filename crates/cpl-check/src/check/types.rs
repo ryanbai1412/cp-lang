@@ -1742,7 +1742,7 @@ impl<'a> Checker<'a> {
                 Ty::Array { .. } | Ty::Fn { .. } => true,
                 Ty::Named { name, .. } => matches!(
                     name.as_str(),
-                    "Graph" | "Reweighted" | "RevGraph" | "FilteredGraph" | "Adj"
+                    "Graph" | "RevGraph" | "FilteredGraph" | "Adj"
                 ),
                 _ => false,
             },

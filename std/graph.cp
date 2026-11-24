@@ -102,14 +102,18 @@ pub type EdgeArc<V, E, R> = (to: V, e: E, ..R without (u, v))
 
 /// \(O(1)\) per arc read: `g.weighted(f)`, the arcs of `g` with `.w` read as
 /// `f(a)` (or `f(u, a)`), `.to` and `.e` passed through. Nothing is stored.
-pub struct Reweighted<V, E, A, W>(g: Graph<V, A>, f: A -> W):
+pub struct Reweighted<V, E, A, W>(g: Graph<V, A>, f: A -> W)
+
+impl Next<V> for Reweighted<V, E, A, W>:
+    type Arc = (to: V, e: E, w: W)
+
     /// The arcs out of `u` as `(to:, e:, w: f(a))`.
     ///
     /// cost: \(O(1)\) per arc plus one call of `f`
     /// order: the graph's arc order
     /// traps: never
     /// example: `domain V = 0..2; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 1)]; Graph.directed(es).weighted(a => 5).out(0).collect() == [(to: V(1), e: E(0), w: 5)]`
-    pub fn out(self, u: V) -> yields (to: V, e: E, w: W):
+    fn out(self, u: V) -> yields (to: V, e: E, w: W):
         for a in g.out(u):
             yield (to: a.to, e: a.e, w: f(a))
 
