@@ -202,7 +202,7 @@ pub struct Mat<T>:
         let g = ring!
         var out = List.filled(rows, g.zero)
         for i in 0..rows:
-            for j in 0..cols: out[i] = g.add(out[i], g.mul(data[i * cols + j], v[j]))
+            for j in 0..cols: out[i] = g.plus(out[i], g.times(data[i * cols + j], v[j]))
         out
 
     /// The matrix-multiplication monoid for `n x n` matrices under `over` (usable in `SegTree`):
@@ -626,13 +626,12 @@ impl Mul for Mat<T>:
                                 for j in 0..c: out[oi + j] = out[oi + j] + f * b.data[bk + j]
                     return Mat(r, c, out)
         let g = a.ring!
-        let (add, mul) = (g.add, g.mul)
         var acc = List.filled(r * c, g.zero)
         for i in 0..r:
             for k in 0..m:
                 let f = a.data[i * m + k]
                 if f == g.zero: continue
-                for j in 0..c: acc[i * c + j] = add(acc[i * c + j], mul(f, b.data[k * c + j]))
+                for j in 0..c: acc[i * c + j] = g.plus(acc[i * c + j], g.times(f, b.data[k * c + j]))
         Mat(r, c, acc, a.ring)
 
 impl Pow for Mat<T>:
@@ -649,7 +648,7 @@ impl Pow for Mat<T>:
 
 /// The `(zero, one, add, mul)` a non-default `Mat(over:)` multiplies under. On `?W` entries the
 /// semiring over `W` is lifted so `None` is the zero, absorbing under `mul`.
-struct Ring<T>(zero: T, one: T, add: (T, T) -> T, mul: (T, T) -> T)
+struct Ring<T>(zero: T, one: T, plus: (T, T) -> T, times: (T, T) -> T)
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
 
