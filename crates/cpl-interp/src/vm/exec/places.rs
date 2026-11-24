@@ -269,6 +269,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 regs_v[dst as usize] = Value::Float(x.sqrt());
             }
+            Op::MakeRangeV { dst, lo, hi, float } => {
+                let (lo, hi) = (&regs_v[lo as usize], &regs_v[hi as usize]);
+                regs_v[dst as usize] = if float {
+                    Value::RangeF(lo.float(), hi.float())
+                } else {
+                    Value::Range128(lo.i128(), hi.i128())
+                };
+            }
             Op::ContainsV { dst, src_v, key_v } => {
                 let needle = &regs_v[key_v as usize];
                 let found = match &regs_v[src_v as usize] {

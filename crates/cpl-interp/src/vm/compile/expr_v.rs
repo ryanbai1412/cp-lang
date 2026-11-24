@@ -718,6 +718,28 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::MakeRange { dst, r_lo, r_hi }, span);
                 dst
             }
+            ExprKind::Range { lo, hi } if matches!(&expr.ty, Ty::Range(inner) if matches!(**inner, Ty::Float | Ty::I128)) =>
+            {
+                let float = matches!(&expr.ty, Ty::Range(inner) if **inner == Ty::Float);
+                let lo_v = self.compile_expr_v(lo);
+                let hi_v = self.compile_expr_v(hi);
+                let dst = self.alloc_v();
+                self.emit(
+                    Op::MakeRangeV {
+                        dst,
+                        lo: lo_v,
+                        hi: hi_v,
+                        float,
+                    },
+                    span,
+                );
+                for reg in [lo_v, hi_v] {
+                    if reg >= self.num_local_v {
+                        self.emit(Op::ClearV { reg }, span);
+                    }
+                }
+                dst
+            }
             ExprKind::Do(block) => {
                 let dst = self.alloc_v();
                 let prev_pinned = self.pinned_v;

@@ -1,0 +1,6 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"a":{"name":"a","type":"I128","kind":"json"},"b":{"name":"b","type":"I128","kind":"json"},"r":{"name":"r","type":"Range\u003cI128>","kind":"json"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":2,"label":"let a: I128 = 5","stage":"main","values":{"stdout":[],"a":"5"},"locals":{},"frames":[{"fn":"main","line":2}]},
+{"id":1,"line":3,"label":"let b: I128 = 9","stage":"main","values":{"stdout":[],"a":"5","b":"9"},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":2,"line":4,"label":"let r = a..b","stage":"main","values":{"stdout":[],"a":"5","b":"9","r":"5..9"},"locals":{},"frames":[{"fn":"main","line":4}]},
+{"id":3,"line":5,"label":"print → 5 9","stage":"main","values":{"stdout":["5 9"],"a":"5","b":"9","r":"5..9"},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":5}]},
+{"id":4,"line":5,"label":"the program ended","stage":"main","values":{"stdout":["5 9"],"a":"5","b":"9","r":"5..9"},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":5}]}]}}}
+stderr:
