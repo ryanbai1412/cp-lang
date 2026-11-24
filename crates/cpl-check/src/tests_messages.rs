@@ -168,14 +168,16 @@ fn in_on_a_list_offers_the_scan() {
 
 #[test]
 fn enumerate_and_reversed_become_members() {
-    let src = "let xs = [1, 2]\nfor (i, x) in enumerate(xs):\n    print(i, x)\nfor x in reversed(xs):\n    print(x)\nprint(pow(2, xs.len + 1))\nprint(\"ab\".charAt(1))\n";
+    let src = "let xs = [1, 2]\nfor (i, x) in enumerate(xs):\n    print(i, x)\nfor x in reversed(xs):\n    print(x)\nprint(\"ab\".charAt(1))\n";
     let d = check(src);
     let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
-    assert_eq!(
-        fixes,
-        ["xs.items", "xs.rev", "2 ** (xs.len + 1)", "\"ab\"[1]"],
-        "{d:?}"
-    );
+    assert_eq!(fixes, ["xs.items", "xs.rev", "\"ab\"[1]"], "{d:?}");
+}
+
+#[test]
+fn pow_is_std_fast_power_not_advice() {
+    let d = check("let xs = [1, 2]\nprint(pow(2, xs.len + 1), pow(3, 4, op: *))\n");
+    assert!(d.is_empty(), "{d:?}");
 }
 
 #[test]
