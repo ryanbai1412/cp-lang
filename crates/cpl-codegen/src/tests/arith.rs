@@ -410,7 +410,7 @@ print((a * a).get(0, 0))
         "{accumulate}"
     );
     assert_eq!(
-        product.matches("cpl::emod").count(),
+        product.matches("cpl::emod").count() + product.matches("cpl::modp").count(),
         1,
         "one reduction per run:\n{product}"
     );
@@ -536,4 +536,15 @@ fn a_field_typed_by_an_imported_range_alias_is_bounded_by_it() {
     assert!(alias.contains("put_int(s.n + 63,"), "{alias}");
     let open = field("Int");
     assert!(open.contains("cpl::iadd(s.n, 63)"), "{open}");
+}
+
+#[test]
+fn a_call_is_bounded_by_what_its_fn_returns() {
+    let src = "fn f(x: Int) -> Int:\n    if x < 0: return 0\n    x % 7\nfn g(x: Int) -> Int = x\nlet a: Int = read()\nprint(f(a) * 1000, g(a) + 1)\n";
+    let out = body(src);
+    assert!(out.contains("f(a) * 1000"), "{out}");
+    assert!(out.contains("cpl::iadd(g(a), 1)"), "{out}");
+    // A recursive fn's result is bounded through its returns to a depth, with no fixpoint.
+    let rec = body("fn h(n: Int) -> Int:\n    if n <= 0: return 1\n    h(n - 1) + h(n - 2)\nprint(h(read()) * 2)\n");
+    assert!(rec.contains("cpl::imul(h("), "{rec}");
 }

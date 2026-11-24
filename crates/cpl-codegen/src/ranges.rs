@@ -18,6 +18,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 /// The most elements a list or string holds: memory runs out first.
 const LEN_MAX: i64 = 1 << 31;
+/// The most returns a fn's call result is bounded through.
+const RETURNS_MAX: usize = 4;
 
 /// A variable: a global, or a local of one fn (`None` is the top level).
 pub(crate) type Var = (Option<usize>, bool, usize);
@@ -200,6 +202,9 @@ pub(crate) struct Facts<'p> {
     /// What the conditions in force say about a read of a local, by where
     /// the read is (R09.3.4). One walk finds them; no loop is iterated.
     guarded: BTreeMap<usize, Vec<(Var, Fact<'p>)>>,
+    /// Each fn's returned values; a call's result is one of them, read
+    /// with the facts of the fn's own body.
+    returns: BTreeMap<usize, Vec<&'p Expr>>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -472,7 +477,13 @@ impl<'p> Facts<'p> {
                     }
                     self.kill_place(fn_id, place);
                 }
-                Stmt::Expr(e) | Stmt::Give(e) | Stmt::Return(Some(e)) => self.expr(fn_id, e),
+                Stmt::Return(Some(e)) => {
+                    if let Some(id) = fn_id.filter(|&id| id < self.fns) {
+                        self.returns.entry(id).or_default().push(e);
+                    }
+                    self.expr(fn_id, e);
+                }
+                Stmt::Expr(e) | Stmt::Give(e) => self.expr(fn_id, e),
                 Stmt::If(cond, then, otherwise) => {
                     self.expr(fn_id, cond);
                     let (mark, stored) = (self.active.len(), self.store_log.len());
@@ -1030,8 +1041,21 @@ impl<'p> Facts<'p> {
                 Some(i64::from(u32::MAX))
             }
             ExprKind::Cast(_, inner) => self.upper_bound(fn_id, inner, depth + 1),
+            ExprKind::Call(id, _) => (self.returned(*id)?.iter())
+                .map(|r| self.upper_bound(Some(*id), r, depth + 2))
+                .try_fold(i64::MIN, |hi, r| Some(hi.max(r?))),
             _ => None,
         }
+    }
+
+    /// The values fn `id` returns, when it has a few: a call's result is
+    /// one of them. Each is read in `id`'s own body, so a cycle of calls
+    /// ends at the depth limit, never in a fixpoint.
+    pub(crate) fn returned(&self, id: usize) -> Option<&[&'p Expr]> {
+        self.returns
+            .get(&id)
+            .map(Vec::as_slice)
+            .filter(|r| (1..=RETURNS_MAX).contains(&r.len()))
     }
 
     fn local_hi(&self, v: Var, depth: u8) -> Option<i64> {
@@ -1442,6 +1466,13 @@ impl<'p> Facts<'p> {
             ExprKind::If(_, a, b) => match both(of(a), of(b)) {
                 Unknown => Unknown,
                 sign => sign,
+            },
+            ExprKind::Call(id, _) => match self.returned(*id) {
+                Some(rets) => (rets.iter())
+                    .map(|r| self.sign_at(Some(*id), r, depth + 4))
+                    .reduce(both)
+                    .unwrap_or(Unknown),
+                None => Unknown,
             },
             _ => Unknown,
         }
