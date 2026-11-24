@@ -489,24 +489,24 @@ impl ListViewVal {
 pub(crate) struct Array {
     /// Length of each dimension.
     pub dims: Vec<i64>,
-    /// Cells in row-major order.
-    pub data: Cells,
+    /// Cells in row-major order, shared with the lists and views made from it until one writes.
+    pub data: Rc<Cells>,
 }
 
 impl Array {
     pub fn filled(dims: Vec<i64>, fill: Value) -> Array {
         let cells = dims.iter().product::<i64>() as usize;
-        let data = Cells::filled(cells, fill);
+        let data = Rc::new(Cells::filled(cells, fill));
         Array { dims, data }
     }
 
     pub fn empty(dims: Vec<i64>) -> Array {
-        let data = Cells::Values(Vec::new());
+        let data = Rc::new(Cells::Values(Vec::new()));
         Array { dims, data }
     }
 
     pub fn from_values(dims: Vec<i64>, values: Vec<Value>) -> Array {
-        let data = Cells::from_values(values);
+        let data = Rc::new(Cells::from_values(values));
         Array { dims, data }
     }
 }
@@ -519,12 +519,31 @@ impl std::ops::Deref for Array {
 }
 
 impl std::ops::DerefMut for Array {
+    #[inline(never)]
     fn deref_mut(&mut self) -> &mut Cells {
-        &mut self.data
+        Rc::make_mut(&mut self.data)
     }
 }
 
 impl Value {
+    /// The cells of a list or an array, which share one storage.
+    pub(crate) fn cells(&self) -> Option<&Rc<Cells>> {
+        match self {
+            Value::List(cells) => Some(cells),
+            Value::Array(a) => Some(&a.data),
+            _ => None,
+        }
+    }
+
+    /// The cells of a list or an array to write, unshared first.
+    pub(crate) fn cells_mut(&mut self) -> Option<&mut Cells> {
+        match self {
+            Value::List(cells) => Some(Rc::make_mut(cells)),
+            Value::Array(a) => Some(&mut **Rc::make_mut(a)),
+            _ => None,
+        }
+    }
+
     pub fn int(&self) -> i64 {
         match self {
             Value::Int(v) => *v,

@@ -151,7 +151,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         data.reserve(cells - 1);
                     }
                 }
-                Value::Array(Rc::new(Array { dims, data }))
+                Value::Array(Rc::new(Array {
+                    dims,
+                    data: Rc::new(data),
+                }))
             }
             Spec::Opt(inner, Some(absent)) => {
                 let absent = self.given(absent, given)?.int();

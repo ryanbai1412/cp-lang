@@ -1426,9 +1426,8 @@ fn loop_top(op: &crate::vm::Op) -> Option<usize> {
 /// How many rounds a `for` over `seq` walks.
 fn seq_len(seq: &Value) -> i64 {
     match seq {
-        Value::List(items) => items.len() as i64,
+        _ if let Some(cells) = seq.cells() => cells.len() as i64,
         Value::ListView(view) => view.len as i64,
-        Value::Array(arr) => arr.len() as i64,
         Value::Str(bytes) => bytes.len() as i64,
         Value::StrView(view) => view.len as i64,
         _ => 0,

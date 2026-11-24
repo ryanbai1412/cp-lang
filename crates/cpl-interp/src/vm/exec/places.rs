@@ -414,10 +414,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
                 match target {
-                    Value::List(items) => Rc::make_mut(items).reverse(),
-                    Value::Array(arr) => Rc::make_mut(arr).reverse(),
                     Value::Str(bytes) => Rc::make_mut(bytes).reverse(),
-                    _ => return bug(spans[cur_pc], "cannot reverse this value"),
+                    _ => match target.cells_mut() {
+                        Some(cells) => cells.reverse(),
+                        None => return bug(spans[cur_pc], "cannot reverse this value"),
+                    },
                 }
             }
             Op::BitWidthI { dst, src } => {
@@ -457,10 +458,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     Value::Map(entries) => {
                         entries.contains_key(needle, &mut tree_only(spans[cur_pc]))?
                     }
-                    Value::List(items) => items.contains(needle),
                     Value::ListView(view) => view.contains(needle),
-                    Value::Array(arr) => arr.contains(needle),
-                    _ => false,
+                    other => other.cells().is_some_and(|cells| cells.contains(needle)),
                 };
                 regs_i[dst as usize] = i64::from(found);
             }
@@ -732,7 +731,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let i1 = regs_i[r_j as usize];
                         let arr_mut = Rc::make_mut(arr);
-                        let Cells::Values(rows) = &mut arr_mut.data else {
+                        let Cells::Values(rows) = &mut **arr_mut else {
                             return bug(spans[cur_pc], "expected nested array");
                         };
                         let Value::Array(row_arr) = &mut rows[i0 as usize] else {
@@ -746,7 +745,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         let row_mut = Rc::make_mut(row_arr);
-                        match &mut row_mut.data {
+                        match &mut **row_mut {
                             Cells::OptInt(v) => {
                                 let slot = &mut v[i1 as usize];
                                 let replace = match *slot {
@@ -808,7 +807,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         i0 as usize
                     };
                     let arr_mut = Rc::make_mut(arr);
-                    match &mut arr_mut.data {
+                    match &mut **arr_mut {
                         Cells::OptInt(v) => {
                             let slot = &mut v[flat];
                             let replace = match *slot {
@@ -871,7 +870,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
-                        match &arr.data {
+                        match &*arr.data {
                             Cells::Values(v) => &v[i as usize],
                             _ => return bug(spans[cur_pc], "expected struct element"),
                         }
@@ -937,7 +936,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
-                        match &arr.data {
+                        match &*arr.data {
                             Cells::Values(v) => &v[i as usize],
                             _ => return bug(spans[cur_pc], "expected nested array"),
                         }
@@ -1001,7 +1000,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 cpl_diag::msgs::interp::INDEX_OUTSIDE_ARRAY_LENGTH.at(&[&i, &len]),
                             );
                         }
-                        match &arr.data {
+                        match &*arr.data {
                             Cells::Values(v) => &v[i as usize],
                             _ => return bug(spans[cur_pc], "expected sequence element"),
                         }

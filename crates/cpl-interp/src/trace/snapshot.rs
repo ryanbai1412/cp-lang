@@ -186,7 +186,7 @@ pub(super) fn classify(ty: &Ty, view: &View) -> (Kind, Extra) {
 /// How many values `value` holds, to keep huge ones out of a trace.
 pub(super) fn cells(value: &Value) -> usize {
     match value {
-        Value::Array(array) => match &array.data {
+        Value::Array(array) => match &*array.data {
             crate::value::Cells::Values(v) => all_cells(v.iter()),
             _ => array.len(),
         },

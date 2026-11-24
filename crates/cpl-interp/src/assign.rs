@@ -400,14 +400,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             }
                         }
                     }
-                    (Mutation::Extend, Some(Value::List(items))) => {
-                        for item in items.iter() {
-                            self.feed(item.clone(), span)?;
-                        }
-                    }
-                    (Mutation::Extend, Some(Value::Array(array))) => {
-                        for i in 0..array.len() {
-                            self.feed(array.get_unchecked_val(i), span)?;
+                    (Mutation::Extend, Some(ref items)) if let Some(cells) = items.cells() => {
+                        for item in cells.iter() {
+                            self.feed(item, span)?;
                         }
                     }
                     _ => return bug(span, "a `yields` fn did something else to its list"),

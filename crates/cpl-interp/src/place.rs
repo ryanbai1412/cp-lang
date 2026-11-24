@@ -177,7 +177,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 (Step::Some, Value::Opt(OptVal::Boxed(inner))) => inner,
                 (Step::Index(indices), Value::Array(array)) => {
                     let at = array_offset(&array.dims, indices.iter(), Span::new(0, 0)).ok()?;
-                    match &array.data {
+                    match &*array.data {
                         value::Cells::Values(v) => v.get(at)?,
                         _ => return None,
                     }

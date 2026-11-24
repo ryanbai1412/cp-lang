@@ -135,7 +135,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let Some((stride, data)) = a.data.flat_rows_mut() {
+                    if let Some((stride, data)) = (**a).flat_rows_mut() {
                         let off = idx as usize * stride;
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
@@ -188,7 +188,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let Some((stride, data)) = a.data.flat_rows_mut() {
+                    if let Some((stride, data)) = (**a).flat_rows_mut() {
                         let off = idx as usize * stride;
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
@@ -982,10 +982,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         let a = Rc::make_mut(arr);
-                        if let Some((stride, data)) = a.data.flat_rows_mut() {
+                        if let Some((stride, data)) = (**a).flat_rows_mut() {
                             data[idx as usize * stride + field as usize] = raw;
                         } else {
-                            match &mut a.data.as_mut_values()[idx as usize] {
+                            match &mut (**a).as_mut_values()[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     crate::value::Shared::make_mut(fs)[field as usize] =
                                         kind.box_val(raw);
@@ -1083,10 +1083,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         let a = Rc::make_mut(arr);
-                        if let Some((stride, data)) = a.data.flat_rows_mut() {
+                        if let Some((stride, data)) = (**a).flat_rows_mut() {
                             data[idx as usize * stride + field as usize] = raw;
                         } else {
-                            match &mut a.data.as_mut_values()[idx as usize] {
+                            match &mut (**a).as_mut_values()[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     crate::value::Shared::make_mut(fs)[field as usize] =
                                         kind.box_val(raw);

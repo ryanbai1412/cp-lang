@@ -202,7 +202,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::ToList { dst, src_v } => {
                 regs_v[dst as usize] = match &regs_v[src_v as usize] {
-                    Value::Array(arr) => Value::List(Rc::new(arr.data.clone())),
+                    Value::Array(arr) => Value::List(Rc::clone(&arr.data)),
                     Value::List(items) => Value::List(Rc::new((**items).clone())),
                     Value::ListView(view) => {
                         Value::List(Rc::new(crate::value::Cells::from(view.to_vec())))
@@ -330,7 +330,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         );
                     }
                     let a = Rc::make_mut(arr);
-                    match &mut a.data {
+                    match &mut **a {
                         Cells::Values(vs) => std::mem::replace(&mut vs[idx as usize], Value::Unit),
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }
@@ -351,7 +351,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         );
                     }
                     let a = Rc::make_mut(arr);
-                    match &mut a.data {
+                    match &mut **a {
                         Cells::Values(vs) => std::mem::replace(&mut vs[idx as usize], Value::Unit),
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }

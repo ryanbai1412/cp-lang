@@ -1324,7 +1324,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::Array(arr) => {
                         let a = Rc::try_unwrap(arr).unwrap_or_else(|r| (*r).clone());
                         let dims = a.dims.clone();
-                        (a.data.into_values(), SortKind::Array(dims))
+                        (value::Cells::unwrap_values(a.data), SortKind::Array(dims))
                     }
                     Value::Str(bytes) => {
                         let v = bytes.iter().copied().map(Value::Char).collect();
