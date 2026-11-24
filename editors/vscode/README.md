@@ -165,7 +165,7 @@ Every setting the extension reads; `crates/cpl-cli/tests/vscode_sync.rs` checks 
 
 ## Layout and tests
 
-- `syntaxes/cp.tmLanguage.json`, `language-configuration.json`, `snippets/cp.json` — grammar, indentation/bracket config, and contest snippets.
+- `syntaxes/cp.tmLanguage.in.json` (the grammar; `scripts/language-data.js` fills in the std names as `syntaxes/cp.tmLanguage.json` at compile time, not committed), `language-configuration.json`, `snippets/cp.json` — grammar, indentation/bracket config, and contest snippets.
 - `src/languageData.ts`, `src/inlayHintsCore.ts`, `src/samples.ts`, `src/results.ts`, `src/cpl.ts` — pure Node-testable modules (no `vscode` import).
 - `src/extension.ts`, `src/client.ts`, `src/completion.ts`, `src/inlayHints.ts`, `src/lenses.ts`, `src/overlays.ts`, `src/runner.ts` — VS Code wiring.
 - `test/grammar/*.cp` — `vscode-tmgrammar-test` scope assertions (including `test/grammar/v2_2.cp`).

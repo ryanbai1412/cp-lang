@@ -3,12 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --port 3000",
+    "dev": "node ../editors/vscode/scripts/language-data.js && next dev --port 3000",
     "build": "next build",
     "start": "npx serve out",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "postinstall": "fumadocs-mdx",
+    "postinstall": "node ../editors/vscode/scripts/language-data.js && fumadocs-mdx",
     "gate": "node scripts/gate.mjs",
     "links": "node scripts/links.mjs",
     "wasm": "node scripts/wasm.mjs",
@@ -16,7 +16,7 @@
     "page-weight": "node tests/run.mjs page-weight.mjs",
     "phone": "node tests/run.mjs phone.mjs",
     "wasm-size": "node scripts/wasm-size.mjs",
-    "prebuild": "node scripts/prebuild.mjs",
+    "prebuild": "node ../editors/vscode/scripts/language-data.js && node scripts/prebuild.mjs",
     "postbuild": "node scripts/links.mjs && node scripts/budgets.mjs && node scripts/llms-complete.mjs && node scripts/social.mjs",
     "site:test": "node scripts/site-test.mjs"
   },

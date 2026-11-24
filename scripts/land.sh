@@ -26,7 +26,7 @@ done
 domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
 # A conflict only in generated files is resolved by taking main's copy; CI's
 # regen job regenerates it on the pushed tip. Any other conflict stops here.
-generated='^(spec/conformance/|skills/|pnpm-lock\.yaml$|editors/vscode/src/languageData\.ts$|editors/vscode/syntaxes/)'
+generated='^(spec/conformance/|skills/|pnpm-lock\.yaml$)'
 ratchet=scripts/debt-ratchet.json index=corpus/index.json
 rebasing() { [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; }
 pull() {

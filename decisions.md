@@ -9018,4 +9018,8 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 
 ## 571. (reserved, content)
 
-## 572. (reserved, infra)
+## 572. The VS Code name tables and grammar are generated at compile time, not committed (infra, 2026-11-24)
+
+- **Call.** `editors/vscode/scripts/language-data.js` writes `src/languageTables.ts` (the six prelude and stdlib name tables) and `syntaxes/cp.tmLanguage.json` (the committed `syntaxes/cp.tmLanguage.in.json` with those names and the literal words filled in). Both are gitignored. The extension's `compile` and `bundle` run it, and so do the site's `postinstall`, `dev` and `prebuild`. The name-table half of `crates/cpl-cli/tests/vscode_sync.rs` is gone, since generated tables can't drift; `test/unit/languageData.test.ts` still checks the generator against `std/` and the prelude.
+- **Why.** Every new std name rewrote both files, so each made a regen commit (53 a day on 2026-11-23/24) and a rebase conflict for any lane editing the grammar.
+- **Reverse.** Commit them again only if a consumer must read them without Node.
