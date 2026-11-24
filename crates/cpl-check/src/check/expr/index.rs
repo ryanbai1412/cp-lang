@@ -48,6 +48,14 @@ impl<'a> Checker<'a> {
                 args[0].clone()
             }
             Ty::Named { name, args } => {
+                // A struct with `impl Seq<T>` walks its `T`, bound through the impl's head
+                // (`impl Seq<(D, T)> for Items<S: Keyed<D, T>>`).
+                let walked = self.impl_trait_args(ty, "Seq", 1);
+                if let Some(elem) = walked.and_then(|a| a.into_iter().next()) {
+                    if !matches!(elem, Ty::Unknown | Ty::Error) {
+                        return self.settle(&elem);
+                    }
+                }
                 if let Some(members) = self.members_of(name) {
                     let bindings = members.bindings(args);
                     if let Some((_, each_ty)) = members.members.iter().find(|(m, _)| m == "each") {
@@ -62,14 +70,6 @@ impl<'a> Checker<'a> {
                                 }
                             }
                         }
-                    }
-                }
-                // A struct with `impl Seq<T>` walks its `T`, bound through the impl's head
-                // (`impl Seq<(D, T)> for Items<S: Keyed<D, T>>`).
-                let args = self.impl_trait_args(ty, "Seq", 1);
-                if let Some(elem) = args.and_then(|a| a.into_iter().next()) {
-                    if !matches!(elem, Ty::Unknown | Ty::Error) {
-                        return self.settle(&elem);
                     }
                 }
                 ty.seq_elem().unwrap_or(Ty::Unknown)

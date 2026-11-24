@@ -249,7 +249,7 @@ impl<'a> Lowerer<'a> {
         let (l, r) = if op == Add
             && (seq_concat_elem(&l.ty).is_some() || seq_concat_elem(&r.ty).is_some())
         {
-            let mut walk = |lw: &mut Self, e: Expr| match e.ty {
+            let walk = |lw: &mut Self, e: Expr| match e.ty {
                 Ty::Struct(sid) if lw.struct_op_fn(sid, "add").is_none() => lw.walked_struct(e),
                 _ => e,
             };

@@ -375,12 +375,37 @@ impl<'a> Lowerer<'a> {
 
         // Pass 2 (up to 4 rounds for chained lambdas like `dijkstra(adj, from, w)`):
         // unify from lambda arguments whose parameter types are now known.
+        // A lambda argument returns a generic (`U` of `f: T -> U`): once its params are known,
+        // that lambda binds it.
+        let lambda_rets: Vec<(&str, &[ast::Type])> = ast_params
+            .iter()
+            .zip(&matched)
+            .filter(|(_, a)| {
+                a.as_ref()
+                    .is_some_and(|a| matches!(a.value.kind, ast::ExprKind::Lambda { .. }))
+            })
+            .filter_map(|(p, _)| match &p.ty.as_ref()?.kind {
+                ast::TypeKind::Fn { params, ret } => match &ret.kind {
+                    ast::TypeKind::Named { name, .. } => {
+                        Some((name.text.as_str(), params.as_slice()))
+                    }
+                    _ => None,
+                },
+                _ => None,
+            })
+            .collect();
         for _ in 0..4 {
             let before = inferred.len();
-            // If an unbound generic (e.g. `T` in `fold_path<S, T>(..., ds: S)`) is present in a bound
-            // struct argument's generic environment (e.g. `SegTree<Pre, Word>` has `T -> Word`), inherit it.
+            // An unbound generic named like one of a bound struct argument's own
+            // (`SegTree<Pre, Word>` has `T -> Word`) takes that, unless a ready lambda binds it.
             for g in &gen_names {
-                if !inferred.contains_key(g) {
+                let lambda_binds = lambda_rets.iter().any(|(r, ps)| {
+                    r == g
+                        && ps
+                            .iter()
+                            .all(|p| !self.ast_ty_has_unbound(p, &gen_names, &inferred))
+                });
+                if !inferred.contains_key(g) && !lambda_binds {
                     let from_struct = inferred.values().find_map(|ga| match ga {
                         GenArg::Ty(Ty::Struct(sid)) => self.structs[*sid].env.get(g).cloned(),
                         _ => None,
