@@ -906,7 +906,7 @@ def interacted(pkg, ctx):
     cases = generated(pkg)
     if not cases:
         return []
-    judge = ("--tests", str(cases[0].parent), "--interactor", str(pkg.interactor))
+    judge = ("--tests", str(cases[0].parent), "--interactor", str(pkg.interactor), *package_limits(pkg))
     ours = cpl_cases(ctx.cpl, pkg.port, *judge)
     if isinstance(ours, str):
         return [f"{ours} {pkg.id} -"]

@@ -439,7 +439,9 @@ class InteractedTest(Corpus):
         (port, a), (cxx, b) = calls
         self.assertTrue(port.endswith("port.cp") and cxx.endswith("p.cpp"))
         self.assertEqual(a, b)
-        self.assertEqual(a, ("--tests", str(cases), "--interactor", str(d / "interactor.py")))
+        limits = tuple(corpus.package_limits(corpus.Package.at(d)))
+        self.assertEqual(a, ("--tests", str(cases), "--interactor", str(d / "interactor.py"), *limits))
+        self.assertEqual(limits[0], "--time-limit")
 
     def test_verdicts_that_disagree_are_a_differ(self):
         found, *_ = self.judge(["ok", "ok"], ["ok", "WA"])
