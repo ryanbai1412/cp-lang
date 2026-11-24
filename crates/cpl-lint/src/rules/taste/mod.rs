@@ -10,8 +10,7 @@ use crate::walk::{self, Visitor};
 use crate::Calls;
 use crate::{
     File, Finding, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
-    HAND_ROLLED_ANSWER_SEARCH, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP,
-    SYMMETRIC_WRITE, TREE_ORDER,
+    HAND_ROLLED_ANSWER_SEARCH, LOOP_REDUCTION, PUSH_LOOP, SEARCH_LOOP,
 };
 use cpl_diag::msgs;
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -110,9 +109,7 @@ impl Visitor for Blocks<'_, '_> {
         }
     }
     fn expr(&mut self, expr: &Expr) {
-        self.taste.none_check_unwrap(expr);
         self.taste.free_fold(expr);
-        self.taste.tree_order(expr);
         self.taste.domain_spelling(expr);
         match &expr.kind {
             ExprKind::Block(body) => self.taste.block(&body.stmts),
@@ -229,7 +226,6 @@ impl<'a> Taste<'a> {
             self.copy_mutate_writeback(stmts, i);
             if let Some((next_base, next)) = stmts.get(i + 1) {
                 self.next_base = *next_base;
-                self.symmetric(stmt, next);
                 let Some(acc) = AccLoop::of(stmt, next, Calls::new(self.facts, self.next_base))
                 else {
                     continue;
@@ -603,98 +599,6 @@ impl<'a> Taste<'a> {
         self.push(&DISCARDED_RESULT, diag);
     }
 
-    /// `a[u, v] = e` then `a[v, u] = e`; `g[u].push(v)` then `g[v].push(u)`.
-    fn symmetric(&mut self, a: &Stmt, b: &Stmt) {
-        let cells = matches!(a.kind, StmtKind::Assign { .. });
-        let mirrored = match (&a.kind, &b.kind) {
-            (
-                StmtKind::Assign {
-                    target: ta,
-                    op: oa,
-                    value: va,
-                },
-                StmtKind::Assign {
-                    target: tb,
-                    op: ob,
-                    value: vb,
-                },
-            ) => {
-                oa == ob
-                    && self.text(va.span) == self.ntext(vb.span)
-                    && match (&ta.kind, &tb.kind) {
-                        (
-                            ExprKind::Index {
-                                base: ba,
-                                indices: ia,
-                            },
-                            ExprKind::Index {
-                                base: bb,
-                                indices: ib,
-                            },
-                        ) => {
-                            ia.len() == 2
-                                && ib.len() == 2
-                                && self.text(ba.span) == self.ntext(bb.span)
-                                && self.text(ia[0].span) != self.text(ia[1].span)
-                                && self.text(ia[0].span) == self.ntext(ib[1].span)
-                                && self.text(ia[1].span) == self.ntext(ib[0].span)
-                        }
-                        _ => false,
-                    }
-            }
-            (StmtKind::Expr(ea), StmtKind::Expr(eb)) => match (
-                self.push_call(ea, self.base),
-                self.push_call(eb, self.next_base),
-            ) {
-                (Some((la, ua, va, ra)), Some((lb, ub, vb, rb))) => {
-                    la == lb && ua == vb && va == ub && ua != va && ra == rb
-                }
-                _ => false,
-            },
-            _ => false,
-        };
-        if !mirrored {
-            return;
-        }
-        let diag = msgs::lint::SYMMETRIC_WRITE.warning(self.pair_span(a.span, b.span), &[])
-        .with_help(if cells {
-            "keep it in one place: key it by `Pair<V>` and build the matrix with `.symmetric(diag: ..)`"
-        } else {
-            "keep it in one place: build the graph with `Graph.undirected(..)`, or loop over both orders"
-        });
-        self.push(&SYMMETRIC_WRITE, diag);
-    }
-
-    /// `g[u].push(v)` or `g[u].push((v, w..))` as (list, u, v, rest).
-    fn push_call(&self, e: &Expr, base: u32) -> Option<(&'a str, &'a str, &'a str, Vec<&'a str>)> {
-        let text = |span: Span| span.shift(base).text(self.src);
-        let calls = Calls::new(self.facts, base);
-        let ExprKind::Call { callee, args } = &e.kind else {
-            return None;
-        };
-        let ExprKind::Field { base, .. } = &callee.kind else {
-            return None;
-        };
-        let ExprKind::Index {
-            base: list,
-            indices,
-        } = &base.kind
-        else {
-            return None;
-        };
-        if !calls.is(e, std_fn::PUSH) || indices.len() != 1 || args.len() != 1 {
-            return None;
-        }
-        let (v, rest) = match &walk::unparen(&args[0].value).kind {
-            ExprKind::Tuple(parts) if !parts.is_empty() => (
-                text(parts[0].span),
-                parts[1..].iter().map(|p| text(p.span)).collect(),
-            ),
-            _ => (text(args[0].value.span), Vec::new()),
-        };
-        Some((text(list.span), text(indices[0].span), v, rest))
-    }
-
     /// `var x = None` then a `for` that sets `x` and breaks: `first(..)`;
     /// with `false`/`true` and `x = true`/`false`: `any(..)`/`all(..)`.
     fn search(&mut self, acc: &AccLoop, decl: &Stmt, next: &Stmt) {
@@ -874,53 +778,6 @@ impl<'a> Taste<'a> {
         self.push(&PUSH_LOOP, diag);
     }
 
-    /// `x != none and .. x! ..`: the test and the unwrap say one thing twice.
-    fn none_check_unwrap(&mut self, expr: &Expr) {
-        let ExprKind::Binary {
-            op: BinOp::And,
-            lhs,
-            rhs,
-            ..
-        } = &expr.kind
-        else {
-            return;
-        };
-        let ExprKind::Compare { first, rest } = &lhs.kind else {
-            return;
-        };
-        let (
-            ExprKind::Name(x),
-            [(
-                CmpOp::Ne,
-                Expr {
-                    kind: ExprKind::None,
-                    ..
-                },
-            )],
-        ) = (&first.kind, &rest[..])
-        else {
-            return;
-        };
-        struct Unwraps<'n>(&'n str, bool);
-        impl Visitor for Unwraps<'_> {
-            fn expr(&mut self, expr: &Expr) {
-                if let ExprKind::Unwrap(inner) = &expr.kind {
-                    self.1 |= matches!(&inner.kind, ExprKind::Name(n) if n == self.0);
-                }
-            }
-        }
-        let mut unwraps = Unwraps(x, false);
-        walk::walk_expr(&mut unwraps, rhs);
-        if !unwraps.1 {
-            return;
-        }
-        let diag = msgs::lint::NONE_CHECK_UNWRAP.warning(expr.span, &[&x, &x])
-        .with_help(format!(
-            "bind it once: `if let v = {x} and ..:`, or compare the option itself (`{x} == Some(..)`, `{x} ?? d`)"
-        ));
-        self.push(&NONE_CHECK_UNWRAP, diag);
-    }
-
     /// `sum(xs)`, `count(xs, p)`, `sorted(xs, by: k)`, `sort(mut xs)`:
     /// a fold or sort of one sequence, which reads as its method.
     fn free_fold(&mut self, expr: &Expr) {
@@ -1000,38 +857,6 @@ impl<'a> Taste<'a> {
             edits: vec![(expr.span, call)],
         });
         self.push(&FREE_FOLD, diag);
-    }
-
-    /// `t.preorder` / `t.postorder` of a `Rooted` tree: the preorder array `t.at`,
-    /// reversed for children first.
-    fn tree_order(&mut self, expr: &Expr) {
-        let ExprKind::Field { name, .. } = &expr.kind else {
-            return;
-        };
-        // `t.preorder(v)` is the subtree walk from `v`, not the array.
-        let end = (expr.span.end + self.base) as usize;
-        if self
-            .src
-            .get(end..)
-            .is_some_and(|after| after.starts_with('('))
-        {
-            return;
-        }
-        let written = (self.facts)
-            .and_then(|f| f.unresolved(expr.span.shift(self.base)))
-            .and_then(|path| path.last());
-        let to = match written.map(String::as_str) {
-            Some(std_fn::PREORDER) => std_fn::AT,
-            Some("postorder" | "post_order") => "at.rev",
-            _ => return,
-        };
-        let mut diag = msgs::lint::TREE_ORDER.warning(name.span, &[&name.text, &to])
-        .with_help(format!("write `.{to}`; the tree already keeps that order, so there is no array to build or keep in step"));
-        diag.fixes.push(Fix {
-            title: format!("use `.{to}`"),
-            edits: vec![(name.span, to.to_string())],
-        });
-        self.push(&TREE_ORDER, diag);
     }
 
     /// Canonical domain/sequence spellings:

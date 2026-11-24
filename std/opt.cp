@@ -34,6 +34,13 @@
 @lint(coalesce_test_then_unwrap, from: "if (self ?? c) <= y:\n    let w = self!\n    b", to: "if let w = self, w <= y:\n    b", holes: "c, y, b")
 @lint(coalesce_test_then_unwrap, from: "if (self ?? c) == y:\n    let w = self!\n    b", to: "if let w = self, w == y:\n    b", holes: "c, y, b")
 @lint(coalesce_test_then_unwrap, from: "if (self ?? c) != y:\n    let w = self!\n    b", to: "if let w = self, w != y:\n    b", holes: "c, y, b")
+@lint(none_check_unwrap, from: "self != None and e == self!", to: "self.is_some_and(it => e == it)", holes: "e")
+@lint(none_check_unwrap, from: "self != None and self! == e", to: "self.is_some_and(it => it == e)", holes: "e")
+@lint(none_check_unwrap, from: "self != None and self! != e", to: "self.is_some_and(it => it != e)", holes: "e")
+@lint(none_check_unwrap, from: "self != None and self! < e", to: "self.is_some_and(it => it < e)", holes: "e")
+@lint(none_check_unwrap, from: "self != None and self! <= e", to: "self.is_some_and(it => it <= e)", holes: "e")
+@lint(none_check_unwrap, from: "self != None and self! > e", to: "self.is_some_and(it => it > e)", holes: "e")
+@lint(none_check_unwrap, from: "self != None and self! >= e", to: "self.is_some_and(it => it >= e)", holes: "e")
 pub fn is_some_and<T>(self: ?T, p: T -> Bool) -> Bool = if let Some(v) = self: p(v) else: false
 
 /// The optional `f` gives for the value; `None` on `None`, without calling `f`.

@@ -287,6 +287,9 @@ pub struct Rooted<V, Pre, A>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.at[t.pos(3)] == 3 and t.pos(1) < t.pos(3) and t.pos(4) < t.pos(2)`
+    @lint(tree_order, from: "self.preorder", to: "self.at", builtin: "at")
+    @lint(tree_order, from: "self.postorder", to: "self.at.rev", builtin: "at")
+    @lint(tree_order, from: "self.post_order", to: "self.at.rev", builtin: "at")
     pub fn pos(self, v: V) -> Pre = tin[v]
 
     /// The parent of `v`; `None` at a root.

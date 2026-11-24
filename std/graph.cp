@@ -236,6 +236,8 @@ pub struct Graph<V: Domain, A: Target<V> = V>:
     /// example: `domain V = 0..1; domain E = 0..1; let es: [E](u: V, v: V) = [(u: 0, v: 0)]; Graph.undirected(es).deg(0) == 2`
     @lint(manual_adjacency_list, holes: "R, n, m", from: "var adj: List<List<Int>> = [[] for _ in 0..=n]\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)\n    adj[y].push(x)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.undirected(es, keep: arc => arc.to)")
     @lint(manual_adjacency_list, holes: "R, d, m", from: "var adj: [d]List<Int> = []\nfor _ in 0..m:\n    let (x, y): (R, R) = read()\n    adj[x].push(y)\n    adj[y].push(x)", to: "domain V = R\nlet es: [0..m](u: V, v: V) = read()\nlet adj = Graph.undirected(es, keep: arc => arc.to)")
+    @lint(symmetric_write, from: "g[u].push(v)\ng[v].push(u)", to: "Graph.undirected(es)", holes: "g, u, v")
+    @lint(symmetric_write, from: "g[u].push((v, w))\ng[v].push((u, w))", to: "Graph.undirected(es)", holes: "g, u, v, w")
     pub fn undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(
         edges: S,
         keep: EdgeArc<V,

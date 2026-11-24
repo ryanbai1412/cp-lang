@@ -622,7 +622,12 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 continue;
             };
             let span = Span::new(site[0].start, toks[stop - 1].span.end);
-            if (d.module.is_empty() && d.decl.item.contains(span))
+            // A `from` ending in a name (`t.order`) is not the callee of a
+            // call (`t.order(v)`), which names another thing.
+            let callee = d.from.last().is_some_and(|(k, _)| *k == K::Ident)
+                && toks.get(stop).is_some_and(|t| t.kind == K::LParen);
+            if callee
+                || (d.module.is_empty() && d.decl.item.contains(span))
                 || taken.iter().any(|t| t.contains(span))
                 || (fixes
                     && d.decl.receiver.is_none()
@@ -703,6 +708,16 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 })
             });
             if reads_own {
+                continue;
+            }
+            // Lines `from` writes differently never match one line twice
+            // (`g[u].push(v)` then `g[v].push(u)` is no self-loop's pair).
+            let code: Vec<&str> = (file.src[span.start as usize..span.end as usize].lines())
+                .map(str::trim)
+                .collect();
+            let pat: Vec<&str> = d.decl.from.lines().map(str::trim).collect();
+            let twice = |l: &[&str]| (1..l.len()).any(|i| l[..i].contains(&l[i]));
+            if code.len() == pat.len() && twice(&code) && !twice(&pat) {
                 continue;
             }
             let got_of = |holes: &[Option<(usize, usize)>]| -> HashMap<&str, &str> {

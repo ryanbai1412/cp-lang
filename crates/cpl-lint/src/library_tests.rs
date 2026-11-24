@@ -926,3 +926,39 @@ fn a_multi_line_fix_shows_its_first_line_in_the_message() {
         .collect();
     assert_eq!(messages, ["write `for x in xs: ...`"]);
 }
+
+/// A `from` ending in a name does not match the callee of a call: `t.order`
+/// and `t.order(v)` name different things.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_from_ending_in_a_name_skips_a_callee() {
+    let decl = "pub struct R:\n    pub at: List<Int>\n\n    @lint(by_at, from: \"self.order\", to: \"self.at\", builtin: \"at\")\n    pub fn pos(self, v: Int) -> Int = v\n";
+    let src = format!(
+        "{decl}let t = R(at: [1])\nfor v in t.order: print(v)\nprint(t.order(1), t.order[0])\n"
+    );
+    let fixes: Vec<String> = crate::lint(&src, &crate::Config::default())
+        .into_iter()
+        .filter(|d| d.code.0 == "by_at")
+        .map(|d| d.fixes[0].edits[0].1.clone())
+        .collect();
+    assert_eq!(fixes, ["t.at", "t.at"]);
+}
+
+/// Lines `from` writes differently match different code: a mirrored pair
+/// of pushes matches, a self-loop's same push twice does not.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn lines_from_writes_differently_match_different_code() {
+    let decl = "@lint(mirror, from: \"g[u].push(v)\\ng[v].push(u)\", to: \"both(g, u, v)\", holes: \"g, u, v\")\npub fn both(x: Int) -> Int = x\n";
+    let found = |body: &str| {
+        crate::lint(
+            &format!("{decl}var g: [0..3]List<Int> = []\n{body}print(g[0].len)\n"),
+            &crate::Config::default(),
+        )
+        .into_iter()
+        .filter(|d| d.code.0 == "mirror")
+        .count()
+    };
+    assert_eq!(found("g[0].push(2)\ng[2].push(0)\n"), 1);
+    assert_eq!(found("g[1].push(1)\ng[1].push(1)\n"), 0);
+}

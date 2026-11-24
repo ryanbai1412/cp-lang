@@ -215,7 +215,9 @@ library or by this spec:
   `holes: "a, b"` names more holes than the fn's parameters (a domain or a
   bound the call no longer needs); `to` may drop one of those only when it
   matched an expression that calls nothing, or when the lint has no fix.
-  A hole after `.` matches a field or method name (`t[v].kid[c]`). `when: "b >= 1"` keeps a
+  A hole after `.` matches a field or method name (`t[v].kid[c]`). Lines `from` writes
+  differently do not match one line of code twice (a mirrored write's
+  `g[u].push(v)` then `g[v].push(u)`, not a self-loop's `g[u].push(u)` twice). `when: "b >= 1"` keeps a
   finding only where each listed hole (compared with `>=`, `>`, `<=` or `<`
   and an integer, comma-separated) is proven in bounds: it matched an
   integer literal, a constant expression (`10**18`) whose value does, or
@@ -238,9 +240,9 @@ library or by this spec:
   `(self / d, self % d)`; `while let w = e, w > y` on `is_some_and`, whose
   body is `if let`), or, on a sequence's `iter`, walks `self` with `for`,
   which runs `iter` (`for x in self`, R07.3.1). On a fn that documents a
-  compiler built-in,
-  `builtin: "filled"` lets `to` call that built-in in its place
-  (`[n, m].filled(c)` on a grid fn), since std cannot declare it. Or `from` calls the fn and `to` does not:
+  compiler built-in or a field, `builtin: "filled"` lets `to` call that
+  built-in or name that field in its place (`[n, m].filled(c)` on a grid
+  fn, `t.at` on `Rooted.pos`), since std cannot decorate either. Or `from` calls the fn and `to` does not:
   the lint drops a needless call (`let x = s.last!` then `s.pop()` is
   `let x = s.pop()!`, declared on `last`), its fix titled "drop `f`". A hole
   that `from` evaluates once per item of a comprehension (anywhere in its
@@ -262,7 +264,8 @@ library or by this spec:
   library fn's lint with a fix does not match inside the program's own fn
   of its name (a hand-written `fn starts_with`), whose fix would call
   itself; a method's lint, or one with no fix, does (a hand-written `fn
-  find` is `Dsu.find`). The
+  find` is `Dsu.find`). A `from` ending in a name (`t.order`) does not
+  match the callee of a call (`t.order(v)`). The
   finding spans the matched
   tokens (with no fix, those before a statement hole: the statements it
   matched stay, so the findings in them stand) and labels what `to`'s first hole matched, or with none, the first
