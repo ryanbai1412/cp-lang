@@ -7,7 +7,7 @@
 @grader
 fn create_map(n: 1..=40, m: Int, a: [m]1..=n, b: [m]1..=n) -> [2 * n, 2 * n]1..=n:
     domain V = 1..=n
-    let g = Graph<V>.undirected([a.keys] e => (u: a[e], v: b[e]))
+    let g = Graph<V>.undirected([a.keys] e => (u: V(a[e]), v: V(b[e])))
     let (tree, tree_edge) = g.dfs_tree(root: V.first!)
     let deep = Bitset<V>.of(tree.path(V.first!, V.range.max(by: v => tree.depth(v))!))
     let back = g.edges().filter(e => not tree_edge[e.e])
