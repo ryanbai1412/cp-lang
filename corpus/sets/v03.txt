@@ -622,6 +622,8 @@ ioi14p2
 ioi14p3
 ioi14p4
 ioi14p5
+ioi14p6
+ioi14p6io
 ioi15p1
 ioi15p4
 ioi15p5

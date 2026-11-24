@@ -39,6 +39,6 @@ fn best(first: List<Int>, second: List<Int>) -> Int:
             (1, fun[home]),
         ] for t in 0..=days - spent].max()!
 
-let left = [fun[c] for c in City if c < home].rev
-let right = [fun[c] for c in City if c > home]
+let left = fun[..home].rev.collect()
+let right = fun[home..].drop(1).collect()
 print(max(best(right, left), best(left, right)))
