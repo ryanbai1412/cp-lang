@@ -73,6 +73,24 @@ fn a_program_checks_and_runs_once_the_host_gives_the_std_it_needs() {
     );
     assert_eq!(before.at(&["needs"]).to_string(), r#"["math"]"#);
 
+    let hover = playground.lsp(r#"{"jsonrpc":"2.0","id":2,"method":"textDocument/hover","params":{"textDocument":{"uri":"file:///main.cp"},"position":{"line":5,"character":10}}}"#);
+    assert!(has(&hover, "SplitMix64: mixes the 64 bits"), "{hover}");
+
+    for (text, line, character, method) in [
+        ("let m: ?Int = None\nprint(m.)\n", 1, 8, "is_some_and"),
+        ("let xs = [3, 1]\nprint(xs.sorted().sc)\n", 1, 20, "scan"),
+    ] {
+        playground.lsp(&open_or_change("file:///dot.cp", 1, text));
+        let asked = format!(
+            r#"{{"jsonrpc":"2.0","id":3,"method":"textDocument/completion","params":{{"textDocument":{{"uri":"file:///dot.cp"}},"position":{{"line":{line},"character":{character}}}}}}}"#
+        );
+        let offered = playground.lsp(&asked);
+        assert!(
+            has(&offered, &format!(r#""label":"{method}""#)),
+            "{offered}"
+        );
+    }
+
     let needed = playground.std_needed("main.cp", &source);
     assert!(has(&needed, r#""math""#), "{needed}");
     let mut given = Vec::new();

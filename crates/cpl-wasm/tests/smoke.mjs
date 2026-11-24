@@ -264,8 +264,8 @@ test("the module asks for the std files it lacks and keeps those it is given", (
   const lacked = core.stdNeeded(source);
   const before = core.check(source);
   assert.equal(before.ok, lacked.length === 0);
-  // A check names what it lacked first; `stdNeeded` names everything.
-  if (lacked.length > 0) assert.deepEqual(before.needs, ["sparse"]);
+  // A check reads the outlines of what it lacks, so it names what they use too.
+  if (lacked.length > 0) assert.deepEqual(before.needs, lacked);
   if (lacked.length > 0) assert.deepEqual(lacked, ["hashmap", "math", "seq", "sparse"]);
   provideStd(core, source);
   assert.deepEqual(core.stdNeeded(source), []);

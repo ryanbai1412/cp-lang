@@ -1234,17 +1234,9 @@ impl Database {
         };
         let whole = first.span.to(last.span);
         let parts: Vec<String> = module.iter().map(|n| n.text.clone()).collect();
-        let mut single = None;
-        let mut found = self.load_module(from, &parts, whole, diags);
-        // `use std.math.gcd`: the last name is a name in the module before it.
-        if found.is_none() && diags.is_empty() && names.is_empty() && !glob && parts.len() > 1 {
-            found = self.load_module(from, &parts[..parts.len() - 1], whole, diags);
-            single = found.as_ref().map(|_| last);
-        }
+        let lone = (names.is_empty() && !glob).then_some(last);
+        let (found, single) = self.import_module(from, &parts, whole, lone, diags);
         let Some(loaded) = found else {
-            if diags.is_empty() {
-                diags.push(crate::modules::missing(&parts, whole));
-            }
             scope.has_imports = true;
             return;
         };

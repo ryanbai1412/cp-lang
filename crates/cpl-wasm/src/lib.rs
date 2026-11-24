@@ -545,7 +545,12 @@ impl Playground {
     /// that already speaks the protocol.
     pub fn lsp(&mut self, message: &str) -> Value {
         match json::parse(message) {
-            Ok(message) => Value::Array(self.lsp.handle(&message)),
+            Ok(message) => {
+                let replies = self.lsp.handle(&message);
+                // Its diagnostics say what it needs; a later check's are its own.
+                cpl_check::take_std_needs();
+                Value::Array(replies)
+            }
             Err(error) => Value::Array(vec![obj([
                 ("jsonrpc", "2.0".into()),
                 ("id", Value::Null),

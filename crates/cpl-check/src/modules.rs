@@ -407,6 +407,19 @@ fn unprovided(parts: &[String]) -> Option<String> {
         .map(|module| module.join("/"))
 }
 
+/// What a check reads of a std module the compiler knows and has not been
+/// given, `parts` or the one before its last name: its outline, path and
+/// how many of `parts` name it. Its signatures and doc lines answer hover
+/// and completion until the host gives the text.
+pub fn std_outline(parts: &[String]) -> Option<(usize, String, &'static str)> {
+    let name = unprovided(parts)?;
+    let at = std_index()
+        .binary_search_by(|(known, _)| (*known).cmp(name.as_str()))
+        .ok()?;
+    let len = name.split('/').count() + 1;
+    Some((len, format!("std/{name}.cp"), std_index()[at].1))
+}
+
 /// The error for `use` of a module that isn't there, at `whole`.
 pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
     let dotted = parts.join(".");

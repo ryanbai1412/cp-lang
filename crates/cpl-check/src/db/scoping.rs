@@ -19,6 +19,52 @@ impl Database {
         self.loader.load(from, parts)
     }
 
+    /// The module a `use` of `parts` loads, and the name in it when `lone`
+    /// (`use std.math.gcd`: the last name is a name in the module before
+    /// it). A std module not given yet loads as its outline meanwhile.
+    pub(super) fn import_module<'a>(
+        &mut self,
+        from: &str,
+        parts: &[String],
+        whole: Span,
+        lone: Option<&'a ast::Name>,
+        diags: &mut Vec<Diagnostic>,
+    ) -> (Option<Module>, Option<&'a ast::Name>) {
+        let found = self.load_module(from, parts, whole, diags);
+        if found.is_some() || !diags.is_empty() {
+            return (found, None);
+        }
+        if let (Some(_), [module @ .., _]) = (lone, parts) {
+            if let Some(found) = (!module.is_empty())
+                .then(|| self.load_module(from, module, whole, diags))
+                .flatten()
+            {
+                return (Some(found), lone);
+            }
+            if !diags.is_empty() {
+                return (None, None);
+            }
+        }
+        diags.push(crate::modules::missing(parts, whole));
+        let Some((len, path, text)) = crate::modules::std_outline(parts) else {
+            return (None, None);
+        };
+        if len < parts.len() && lone.is_none() {
+            return (None, None);
+        }
+        self.store(&path, text.into(), true);
+        let Some(analysis) = self.analyze(&path) else {
+            return (None, None);
+        };
+        let name = parts[..len].join(".");
+        let module = Module {
+            name,
+            path,
+            analysis,
+        };
+        (Some(module), lone.filter(|_| len < parts.len()))
+    }
+
     /// Forgets every analysis, for when what the loader finds changed
     /// (`provide_std`): the next one loads its modules again.
     pub fn reload_modules(&mut self) {

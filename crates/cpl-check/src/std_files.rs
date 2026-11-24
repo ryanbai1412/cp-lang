@@ -36,16 +36,24 @@ pub const EMBEDDED: &[&str] = &["mod", "prelude"];
 /// What every scan of std's declarations reads, line for line with `text`:
 /// each top-level line of code, each line that declares a `fn` (a `///`
 /// doc aside), and the rest of a header still open on its next line. A fn
-/// whose body is on the lines below gets `todo` for it; the other lines
+/// whose body is on the lines below gets `todo` for it, and a kept line
+/// its `///` doc's first line, just above it, for hover; the other lines
 /// are blank, so a line number in the outline is the file's.
 pub fn outline(text: &str) -> String {
     let mut out = String::with_capacity(text.len() / 4);
     let mut open = 0i32;
     let mut header: Option<usize> = None;
     let mut body: Option<usize> = None;
+    // A `///` block's first line and how many lines the block has.
+    let mut doc: Option<(&str, usize)> = None;
     for line in text.split_inclusive('\n') {
         let code = line.trim_end_matches(['\n', '\r']);
         let trimmed = code.trim_start();
+        if open == 0 && trimmed.starts_with("///") {
+            doc.get_or_insert((code, 0)).1 += 1;
+            continue;
+        }
+        let above = doc.take();
         let comment = trimmed.starts_with("//");
         let top = !trimmed.is_empty() && trimmed.len() == code.len() && !comment;
         let declares = code.contains("fn ") && !trimmed.starts_with("///");
@@ -53,6 +61,11 @@ pub fn outline(text: &str) -> String {
             open = 0;
         }
         if open > 0 || top || declares {
+            if let Some((first, lines)) = above {
+                out.push_str(&"\n".repeat(lines - 1));
+                out.push_str(first);
+                out.push('\n');
+            }
             out.push_str(line);
             if !comment {
                 if declares && open == 0 {
@@ -65,6 +78,9 @@ pub fn outline(text: &str) -> String {
                 }
             }
             continue;
+        }
+        if let Some((_, lines)) = above {
+            out.push_str(&"\n".repeat(lines));
         }
         if !trimmed.is_empty() && !comment {
             if let Some(indent) = body.take() {

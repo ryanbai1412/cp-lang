@@ -79,7 +79,13 @@ impl StdLib {
                     .chain(name.split('.'))
                     .map(str::to_string)
                     .collect();
-                let (_, text) = FsLoader.load(from, &path)?;
+                let text = match FsLoader.load(from, &path) {
+                    Some((_, text)) => text,
+                    None => match cpl_check::std_outline(&path)? {
+                        (len, _, outline) if len == path.len() => outline.to_string(),
+                        _ => return None,
+                    },
+                };
                 Some(Arc::new(Outline::of_source(&text)))
             })
             .clone()
