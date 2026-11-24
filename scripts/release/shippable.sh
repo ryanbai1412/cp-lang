@@ -6,6 +6,7 @@
 # on every OS and the acceptance solutions; ratchets, editors and unit-test
 # shards don't hold edge. With no edge yet every shipping job must pass. A
 # run still going counts once its shipping jobs have all finished. The
+# dreams (dreams.yml) must not be red at the commit either. The
 # release run then builds every target and smoke-tests the archives and
 # installers before publishing. Stable still needs a fully green run.
 set -euo pipefail
@@ -23,6 +24,20 @@ jobs_of() {
     printf '%s\n' "$j"
 }
 green() { grep -P '^success\t' <<<"$1" | cut -f2 || [ $? = 1 ]; }
+# dreams.yml queues apart from ci.yml (ci/R41): a commit is held when the
+# newest finished dreams run at or before it failed.
+dreams=$(gh run list -R "$repo" --workflow dreams.yml --branch main --event push -L 40 \
+    --json headSha,status,conclusion \
+    --jq '.[] | select(.status == "completed" and (.conclusion == "success" or .conclusion == "failure")) | "\(.conclusion) \(.headSha)"')
+dream_red() {
+    local c d
+    while read -r c d; do
+        [ -n "$d" ] || continue
+        rel=$(retry gh api "repos/$repo/compare/$d...$1" --jq .status)
+        if [ "$rel" = identical ] || [ "$rel" = ahead ]; then [ "$c" = failure ]; return; fi
+    done <<<"$dreams"
+    return 1
+}
 edge=$(fetch_optional "https://github.com/$repo/releases/download/edge/latest.json" | jq -r '.commit // empty')
 must="" base_id=""
 if [ -n "$edge" ]; then
@@ -45,6 +60,10 @@ while read -r id sha; do
         worse=$(grep -vxFf <(green "$jobs") <<<"$must" || [ $? = 1 ])
     else
         worse=$(grep -vP '^success\t' <<<"$jobs" | cut -f2 || [ $? = 1 ])
+    fi
+    if [ -z "$worse" ] && dream_red "$sha"; then
+        echo "shippable: not ${sha:0:9} (run $id): the dreams run at or before it failed" >&2
+        continue
     fi
     if [ -z "$worse" ]; then
         red=$(grep -vP '^success\t' <<<"$jobs" | cut -f2 | paste -sd, - || [ $? = 1 ])

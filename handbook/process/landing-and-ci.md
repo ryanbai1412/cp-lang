@@ -135,7 +135,8 @@ unlisted hosts (`scripts/public-hosts.txt`): the history is public.
 | `edge` | the published edge release is installable (not blocking) |
 
 `ci-slow.yml` runs reports that never block main: wall-clock budgets and
-LSP latency.
+LSP latency. `dreams.yml` runs every dream against its accepted C++ on each
+main tip, in its own queue; a red there holds edge (ci/R41).
 
 Run what CI runs with `scripts/check.sh --fast` (or `just check`);
 `--full` adds fuzzing, judge flags and wasm and editor smoke.

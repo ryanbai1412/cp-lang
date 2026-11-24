@@ -40,7 +40,7 @@ the end.
 | `justfile` | Every task: `setup`, `check`, `test`, `conform`, `gen`, `bench`, `status`, `land`, `site`, `release`. |
 | `gen.toml` | Registry of every generated file: generator, inputs, where it is checked. |
 | `decisions.md` | Every design call, its reason and how to reverse it (moving: see Moves). |
-| `.github/` | Workflows: `ci.yml` (every main tip), `ci-slow.yml` (non-blocking reports), `culprit.yml` (after a red run), `release.yml`, `site.yml`, `os.yml`, `acceptance.yml`, `jetbrains.yml`, `debugger-loop.yml`, `writable-from-docs.yml`; issue templates. |
+| `.github/` | Workflows: `ci.yml` (every main tip), `ci-slow.yml` (non-blocking reports), `dreams.yml` (every dream on each tip, holds edge), `culprit.yml` (after a red run), `release.yml`, `site.yml`, `os.yml`, `acceptance.yml`, `jetbrains.yml`, `debugger-loop.yml`, `writable-from-docs.yml`; issue templates. |
 | `.githooks/` | `pre-commit` (commit tier), `commit-msg`, `pre-push`; `scripts/install-hooks.sh` turns them on. |
 | `.cargo/`, `.config/` | Cargo settings and the nextest profiles. |
 | `.gitignore`, `.gitattributes` | Ignored build output; line endings and diff drivers. |
