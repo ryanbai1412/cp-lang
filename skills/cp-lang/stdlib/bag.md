@@ -185,7 +185,7 @@ Fields: `bag: AugSortedBag<K, T>`.
 
 Counts over an integer value range `r`, with \(O(1)\) point add and \(O(\sqrt{N})\) k-th order statistic: the value-range frequency table for Mo's algorithm.
 
-Fields: `lo: Int`, `hi: Int`, `bs: Int`, `total: Int`, `cnt: List<Int>`, `blk: List<Int>`.
+Fields: `lo: Int`, `hi: Int`, `sh: Int`, `total: Int`, `cnt: List<Int>`, `blk: List<Int>`.
 
 - `fn new(r: Range<Int>) -> BucketCount` — \(O(r.\mathit{len})\)
 - `fn add(mut self, x: Int, delta: Int = 1)` — \(O(1)\); traps: when `x` is not in `r`; when the count of `x` would become negative
