@@ -69,8 +69,7 @@ export class Runner {
             return;
         }
         this.output.append(view.panel);
-        this.overlays.setView(document.uri, 'live', undefined);
-        this.overlays.setView(document.uri, 'status', view);
+        this.overlays.show(document.uri, view);
     }
 
     async stress(uri?: vscode.Uri, part?: string): Promise<void> {
@@ -119,9 +118,7 @@ export class Runner {
             return;
         }
         this.output.append(view.panel);
-        this.overlays.setView(document.uri, 'error', undefined);
-        this.overlays.setView(document.uri, 'status', undefined);
-        this.overlays.setView(document.uri, 'stress', view);
+        this.overlays.show(document.uri, view);
     }
 
     /**
@@ -211,7 +208,7 @@ export class Runner {
             return;
         }
         this.output.append(view.panel);
-        this.overlays.setView(document.uri, 'status', view);
+        this.overlays.show(document.uri, view);
         if (view.status.ok) {
             void vscode.window.showInformationMessage(view.status.label);
         } else {
@@ -268,8 +265,7 @@ export class Runner {
         }
         const report = parseRunReport(result.stdout);
         if (report) {
-            this.overlays.setView(document.uri, 'error', undefined);
-            this.overlays.setView(document.uri, 'live', report.view);
+            this.overlays.show(document.uri, report.view);
         }
     }
 

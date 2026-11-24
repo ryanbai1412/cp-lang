@@ -112,7 +112,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
         command('cp.clearOverlays', () => {
             const uri = vscode.window.activeTextEditor?.document.uri;
             if (uri) {
-                overlays.clear(uri);
+                overlays.show(uri, undefined);
             }
         }),
         command('cp.toggleLiveValues', async () => {
@@ -126,7 +126,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<CpApi>
             if (enabled) {
                 await runner.refreshLiveValues(document);
             } else {
-                overlays.clear(document.uri);
+                overlays.show(document.uri, undefined);
             }
         }),
         vscode.workspace.onDidSaveTextDocument(document => {

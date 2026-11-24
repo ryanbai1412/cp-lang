@@ -1,13 +1,12 @@
 // What `cpl run` and `cpl stress` report, and how it is shown. No `vscode`
 // import so every parser and formatter can be unit-tested directly.
 
-/** What an editor draws for a report (`view` in spec/tools/cli.md), strongest kind first. */
-export const VIEW_KINDS = ['error', 'differs', 'agrees', 'input', 'live'] as const;
+/** What an editor draws for a report (`view` in spec/tools/cli.md). */
 
 export interface View {
     panel: string;
     status?: { line: number; ok: boolean; label: string; detail?: string };
-    lines?: { line: number; kind: (typeof VIEW_KINDS)[number]; label: string; hover?: string }[];
+    lines?: { line: number; kind: 'error' | 'differs' | 'agrees' | 'input' | 'live'; label: string; hover?: string }[];
     diagnostic?: { line: number; col?: number; code?: string; message: string; help?: string; source?: string };
 }
 

@@ -1,155 +1,76 @@
-// Inline overlays: the `view` each `cpl ... --format json` report carries,
-// drawn as is. Each report fills a slot (`live`, `error`, `stress`, ...); on
-// a line the strongest mark wins, and the latest status and diagnostic.
-// All decorations; none edits the document.
+// Draws the `view` a `cpl ... --format json` report carries, as is: one per
+// document, until the next report or an edit. Decorations only.
 
 import * as vscode from 'vscode';
-import {
-    clip,
-    View,
-    VIEW_KINDS,
-} from './results';
+import { clip, View } from './results';
 
-const KINDS = VIEW_KINDS;
-type ViewKind = (typeof KINDS)[number];
-
-const AFTER_MARGIN = '0 0 0 3ch';
-
-function after(color: string, wholeLine = false): vscode.TextEditorDecorationType {
+function after(color: string, background?: string, fontStyle?: string): vscode.TextEditorDecorationType {
     return vscode.window.createTextEditorDecorationType({
-        isWholeLine: wholeLine,
-        backgroundColor: wholeLine ? new vscode.ThemeColor(color.replace('Foreground', 'Background')) : undefined,
-        overviewRulerColor: wholeLine ? new vscode.ThemeColor(color) : undefined,
-        overviewRulerLane: wholeLine ? vscode.OverviewRulerLane.Right : undefined,
-        after: { color: new vscode.ThemeColor(color), margin: AFTER_MARGIN },
+        isWholeLine: background !== undefined,
+        backgroundColor: background && new vscode.ThemeColor(background),
+        overviewRulerColor: background && new vscode.ThemeColor(color),
+        overviewRulerLane: vscode.OverviewRulerLane.Right,
+        after: { color: new vscode.ThemeColor(color), margin: '0 0 0 3ch', fontStyle },
     });
 }
 
 export class Overlays implements vscode.Disposable {
-    /** Per document, its views by slot, the latest set last. */
-    private readonly byDocument = new Map<string, Map<string, View>>();
-    private readonly diagnostics = vscode.languages.createDiagnosticCollection('cp-runtime');
-    private readonly types: Record<ViewKind, vscode.TextEditorDecorationType> = {
-        error: after('cp.runtimeErrorForeground', true),
-        differs: after('cp.counterexampleForeground', true),
+    private readonly views = new Map<string, View>();
+    private readonly problems = vscode.languages.createDiagnosticCollection('cp-runtime');
+    /** By `view.lines[].kind`, and `ok`/`failed` for `view.status`. */
+    private readonly types: Record<string, vscode.TextEditorDecorationType> = {
+        error: after('cp.runtimeErrorForeground', 'cp.runtimeErrorBackground'),
+        differs: after('cp.counterexampleForeground', 'cp.counterexampleBackground'),
         agrees: after('cp.counterexampleAgreeForeground'),
         input: after('cp.counterexampleForeground'),
-        live: vscode.window.createTextEditorDecorationType({
-            after: { color: new vscode.ThemeColor('cp.liveValueForeground'), margin: AFTER_MARGIN, fontStyle: 'italic' },
-            rangeBehavior: vscode.DecorationRangeBehavior.ClosedOpen,
-        }),
+        live: after('cp.liveValueForeground', undefined, 'italic'),
+        ok: after('cp.counterexampleAgreeForeground'),
+        failed: after('cp.runtimeErrorForeground'),
     };
-    private readonly passType = after('cp.counterexampleAgreeForeground');
-    private readonly failType = after('cp.runtimeErrorForeground');
-    private readonly subscriptions: vscode.Disposable[];
+    private readonly subscriptions = [
+        vscode.window.onDidChangeVisibleTextEditors(() => this.renderAll()),
+        // Marks belong to the text that was run, so an edit takes them away.
+        vscode.workspace.onDidChangeTextDocument(e => e.contentChanges.length > 0 && this.views.has(e.document.uri.toString()) && this.show(e.document.uri, undefined)),
+        vscode.workspace.onDidCloseTextDocument(document => this.show(document.uri, undefined)),
+        vscode.workspace.onDidChangeConfiguration(e => e.affectsConfiguration('cp.liveValues') && this.renderAll()),
+    ];
 
-    constructor() {
-        this.subscriptions = [
-            vscode.window.onDidChangeVisibleTextEditors(() => this.renderAll()),
-            // Marks belong to the text that was run. Once it changes they
-            // may sit on the wrong lines, so they go until the next run.
-            vscode.workspace.onDidChangeTextDocument(event => {
-                if (event.contentChanges.length > 0 && this.byDocument.has(event.document.uri.toString())) {
-                    this.clear(event.document.uri);
-                }
-            }),
-            vscode.workspace.onDidCloseTextDocument(document => this.clear(document.uri)),
-            vscode.workspace.onDidChangeConfiguration(event => {
-                if (event.affectsConfiguration('cp.liveValues')) {
-                    this.renderAll();
-                }
-            }),
-        ];
-    }
-
-    /** Shows `view` in `slot` of the document, replacing what the slot showed; undefined empties it. */
-    setView(uri: vscode.Uri, slot: string, view: View | undefined): void {
+    /** Shows `view` on the document in place of what it showed; undefined clears it. */
+    show(uri: vscode.Uri, view: View | undefined): void {
         const key = uri.toString();
-        const views = this.byDocument.get(key) ?? new Map<string, View>();
-        views.delete(slot);
-        if (view) {
-            views.set(slot, view);
-        }
-        this.byDocument.set(key, views);
-        this.syncDiagnostic(uri);
-        this.renderAll();
-    }
-
-    /** Until `cpl run`'s sample verdicts come back as a view. */
-    clear(uri: vscode.Uri): void {
-        this.byDocument.delete(uri.toString());
-        this.diagnostics.delete(uri);
+        view ? this.views.set(key, view) : this.views.delete(key);
+        const d = view?.diagnostic;
+        const problem = d && new vscode.Diagnostic(new vscode.Range(d.line, d.col ?? 0, d.line, 1e6), d.help ? `${d.message} (${d.help})` : d.message);
+        this.problems.set(uri, problem ? [Object.assign(problem, { source: d.source, code: d.code })] : []);
         this.renderAll();
     }
 
     dispose(): void {
-        for (const item of [this.diagnostics, ...Object.values(this.types), this.passType, this.failType, ...this.subscriptions]) {
+        for (const item of [this.problems, ...Object.values(this.types), ...this.subscriptions]) {
             item.dispose();
         }
     }
 
-    private views(uri: vscode.Uri): View[] {
-        return [...(this.byDocument.get(uri.toString())?.values() ?? [])];
-    }
-
-    private syncDiagnostic(uri: vscode.Uri): void {
-        const d = this.views(uri).reverse().find(view => view.diagnostic)?.diagnostic;
-        const doc = vscode.workspace.textDocuments.find(doc => doc.uri.toString() === uri.toString());
-        if (!d) {
-            this.diagnostics.delete(uri);
-            return;
-        }
-        let range = new vscode.Range(d.line, d.col ?? 0, d.line, (d.col ?? 0) + 1);
-        if (doc && d.line < doc.lineCount) {
-            const text = doc.lineAt(d.line);
-            const start = Math.min(d.col ?? text.firstNonWhitespaceCharacterIndex, text.text.length);
-            range = new vscode.Range(d.line, start, d.line, Math.max(start + 1, text.text.length));
-        }
-        const diag = new vscode.Diagnostic(range, d.help ? `${d.message} (${d.help})` : d.message, vscode.DiagnosticSeverity.Error);
-        diag.source = d.source;
-        diag.code = d.code;
-        this.diagnostics.set(uri, [diag]);
-    }
-
     private renderAll(): void {
-        for (const editor of vscode.window.visibleTextEditors) {
-            if (editor.document.languageId === 'cp') {
-                this.render(editor);
-            }
-        }
-    }
-
-    private render(editor: vscode.TextEditor): void {
-        const views = this.views(editor.document.uri);
         const max = vscode.workspace.getConfiguration('cp').get<number>('liveValues.maxLength', 60);
-        const lineCount = editor.document.lineCount;
-        const decoration = (line: number, text: string, hover: vscode.MarkdownString): vscode.DecorationOptions => {
-            const end = editor.document.lineAt(line).range.end;
-            // The editor collapses runs of spaces in decoration text; non-breaking ones keep the columns.
-            return { range: new vscode.Range(end, end), renderOptions: { after: { contentText: text.replace(/ /g, '\u00a0') } }, hoverMessage: hover };
-        };
-        const marks = new Map<number, NonNullable<View['lines']>[number]>();
-        for (const mark of views.flatMap(view => view.lines ?? [])) {
-            const held = marks.get(mark.line);
-            if (mark.line < lineCount && (!held || KINDS.indexOf(mark.kind) <= KINDS.indexOf(held.kind))) {
-                marks.set(mark.line, mark);
+        for (const editor of vscode.window.visibleTextEditors.filter(e => e.document.languageId === 'cp')) {
+            const view = this.views.get(editor.document.uri.toString());
+            const marks: { line: number; kind: string; label: string; hover?: string }[] = [...(view?.lines ?? [])];
+            const s = view?.status;
+            // A status draws only on a line with no mark.
+            if (s && !marks.some(mark => mark.line === s.line)) {
+                const hover = s.detail ? `${s.label}\n\n\`\`\`text\n${s.detail}\n\`\`\`` : s.label;
+                marks.push({ line: s.line, kind: s.ok ? 'ok' : 'failed', label: `${s.ok ? '\u2713' : '\u2717'} ${s.label}`, hover });
+            }
+            for (const [kind, type] of Object.entries(this.types)) {
+                const shown = marks.filter(mark => mark.kind === kind && mark.line < editor.document.lineCount);
+                editor.setDecorations(type, shown.map(mark => {
+                    const end = editor.document.lineAt(mark.line).range.end;
+                    // The editor collapses runs of spaces in decoration text; non-breaking ones keep the columns.
+                    const contentText = clip(mark.label, max).replace(/ /g, '\u00a0');
+                    return { range: new vscode.Range(end, end), hoverMessage: new vscode.MarkdownString(mark.hover), renderOptions: { after: { contentText } } };
+                }));
             }
         }
-        for (const kind of KINDS) {
-            const shown = [...marks.values()].filter(mark => mark.kind === kind);
-            editor.setDecorations(
-                this.types[kind],
-                shown.map(mark => decoration(mark.line, clip(mark.label, max), new vscode.MarkdownString(mark.hover ?? ''))),
-            );
-        }
-        const status = views.reverse().find(view => view.status)?.status;
-        const badge = status && status.line < lineCount && !marks.has(status.line) ? status : undefined;
-        const hover = new vscode.MarkdownString(badge?.label);
-        if (badge?.detail) {
-            hover.appendCodeblock(badge.detail, 'text');
-        }
-        const badges = badge ? [decoration(badge.line, `${badge.ok ? '\u2713' : '\u2717'} ${clip(badge.label, max)}`, hover)] : [];
-        editor.setDecorations(this.passType, badge?.ok ? badges : []);
-        editor.setDecorations(this.failType, badge?.ok ? [] : badges);
     }
 }
