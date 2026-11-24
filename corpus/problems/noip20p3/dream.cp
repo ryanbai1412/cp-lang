@@ -12,7 +12,7 @@ fn mv(from: Tube, to: Tube, count: Int = 1):
         tube[to].push(tube[from].pop()!)
         moves.push((from, to))
 
-fn split(given: List<Tube>, lo: Int, hi: Int):
+fn split(mut given: List<Tube>, lo: Int, hi: Int):
     if lo == hi:
         return
     let mid = (lo + hi) / 2
@@ -26,8 +26,8 @@ fn split(given: List<Tube>, lo: Int, hi: Int):
         let helper = Tube.find(t => t != a and t != spare)!
         let lows = low(a)
         mv(helper, spare, lows)
-        for c in tube[a].rev.clone():
-            mv(a, if c > mid: spare else: helper)
+        for _ in 0..m:
+            mv(a, if tube[a].last! > mid: spare else: helper)
         if lows > m - lows:
             mv(helper, a, lows); mv(spare, a, m - lows)
         else:
@@ -35,8 +35,7 @@ fn split(given: List<Tube>, lo: Int, hi: Int):
         mv(spare, helper, lows)
 
     // two mixed tubes with the same bottom half pour the tops off and fill one with bottoms
-    var cols = given
-    while let (a, b) = cols.pairs().find(p => mixed(p.0) and mixed(p.1) and high_bottom(p.0) == high_bottom(p.1)):
+    while let (a, b) = given.pairs().find(p => mixed(p.0) and mixed(p.1) and high_bottom(p.0) == high_bottom(p.1)):
         let (a0, b0) = (bottoms(a), bottoms(b))
         mv(a, spare, m - a0); mv(b, spare, m - b0)
         mv(b, a, m - a0)
@@ -45,20 +44,22 @@ fn split(given: List<Tube>, lo: Int, hi: Int):
             mv(spare, b, poured)
         else:
             mv(b, spare, left)
-            cols = [if t == b: spare else: t for t in cols]
+            given = [if t == b: spare else: t for t in given]
             spare = b
 
     // at most one mixed pair is left, with different bottoms: trade their tops
-    let rest = [t for t in cols if mixed(t)]
+    let rest = [t for t in given if mixed(t)]
     if rest.len > 0:
         let (a, b) = if high_bottom(rest[0]): (rest[1], rest[0]) else: (rest[0], rest[1])
         let highs = m - low(a)
         mv(a, spare, highs); mv(b, a, low(b)); mv(spare, b, highs)
-    let (lows, highs) = cols.partition(t => not high_bottom(t))
-    split(lows, lo, mid)
-    split(highs, mid + 1, hi)
+    var lows = [t for t in given if not high_bottom(t)]
+    var highs = [t for t in given if high_bottom(t)]
+    split(mut lows, lo, mid)
+    split(mut highs, mid + 1, hi)
 
-split(Tube.take(n).collect(), 1, n)
+var tubes = Tube.take(n).collect()
+split(mut tubes, 1, n)
 print(moves.len)
 for (a, b) in moves:
     print(a, b)
