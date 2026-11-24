@@ -794,9 +794,12 @@ class LandTest(unittest.TestCase):
         git(repo, "fetch", "-q", "origin", "refs/land/lock")
         self.assertEqual(git(repo, "log", "-1", "--format=%s", parked).strip(),
                          "land-lock retired-use-lock-v2 0 4102444800 factory")
-        # c457bd860's parent is the last copy without the heartbeat.
+        # c457bd860's parent is the last copy without the heartbeat; CI's shallow clone fetches it.
+        pre_beat = "524026262e6d18249bbdb447c2674f27d32fe0a9"
+        if subprocess.run(["git", "cat-file", "-e", f"{pre_beat}^{{commit}}"], cwd=HERE).returncode:
+            subprocess.run(["git", "fetch", "-q", "--depth=1", "origin", pre_beat], cwd=HERE, check=True)
         (old_lane / "scripts" / "land.sh").write_bytes(subprocess.run(
-            ["git", "show", "c457bd860^:scripts/land.sh"], cwd=HERE, capture_output=True, check=True).stdout)
+            ["git", "show", f"{pre_beat}:scripts/land.sh"], cwd=HERE, capture_output=True, check=True).stdout)
         (old_lane / "pkg2.txt").write_text("y\n")
         self.commit(old_lane, "old copy's land")
         main = git(repo, "ls-remote", "origin", "main").split()[0]
