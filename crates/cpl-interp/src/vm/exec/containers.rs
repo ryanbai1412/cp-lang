@@ -1,5 +1,5 @@
 use crate::observe::Observer;
-use crate::value::{ArrayData, OptVal, TupleVal, Value};
+use crate::value::{Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{trap, Interp, Res};
@@ -131,7 +131,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let ArrayData::SmallIntTuple { stride, data, .. } = &mut a.data {
+                    if let Cells::SmallIntTuple { stride, data, .. } = &mut a.data {
                         let off = idx as usize * (*stride as usize);
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
@@ -183,7 +183,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     let n = len as usize;
-                    if let ArrayData::SmallIntTuple { stride, data, .. } = &mut a.data {
+                    if let Cells::SmallIntTuple { stride, data, .. } = &mut a.data {
                         let off = idx as usize * (*stride as usize);
                         let cur = &mut data[off..off + n];
                         let better = if is_max { cand > cur } else { cand < cur };
@@ -891,10 +891,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::SmallIntTuple { stride, data, .. } => {
+                            Cells::SmallIntTuple { stride, data, .. } => {
                                 data[idx as usize * (*stride as usize) + field as usize]
                             }
-                            ArrayData::Values(vs) => match &vs[idx as usize] {
+                            Cells::Values(vs) => match &vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     ScalarKind::unbox_val(&fs[field as usize])
                                 }
@@ -946,10 +946,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let a = Rc::make_mut(arr);
                         match &mut a.data {
-                            ArrayData::SmallIntTuple { stride, data, .. } => {
+                            Cells::SmallIntTuple { stride, data, .. } => {
                                 data[idx as usize * (*stride as usize) + field as usize] = raw;
                             }
-                            ArrayData::Values(vs) => match &mut vs[idx as usize] {
+                            Cells::Values(vs) => match &mut vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
                                 }
@@ -997,10 +997,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::SmallIntTuple { stride, data, .. } => {
+                            Cells::SmallIntTuple { stride, data, .. } => {
                                 data[idx as usize * (*stride as usize) + field as usize]
                             }
-                            ArrayData::Values(vs) => match &vs[idx as usize] {
+                            Cells::Values(vs) => match &vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     ScalarKind::unbox_val(&fs[field as usize])
                                 }
@@ -1052,10 +1052,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let a = Rc::make_mut(arr);
                         match &mut a.data {
-                            ArrayData::SmallIntTuple { stride, data, .. } => {
+                            Cells::SmallIntTuple { stride, data, .. } => {
                                 data[idx as usize * (*stride as usize) + field as usize] = raw;
                             }
-                            ArrayData::Values(vs) => match &mut vs[idx as usize] {
+                            Cells::Values(vs) => match &mut vs[idx as usize] {
                                 Value::Tuple(TupleVal::Boxed(fs)) => {
                                     Rc::make_mut(fs)[field as usize] = kind.box_val(raw);
                                 }

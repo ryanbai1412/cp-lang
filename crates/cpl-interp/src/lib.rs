@@ -1470,7 +1470,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 (Step::Index(indices), Value::Array(array)) => {
                     let at = array_offset(&array.dims, indices.iter(), Span::new(0, 0)).ok()?;
                     match &array.data {
-                        value::ArrayData::Values(v) => v.get(at)?,
+                        value::Cells::Values(v) => v.get(at)?,
                         _ => return None,
                     }
                 }
@@ -2084,7 +2084,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::Array(arr) => {
                         let a = Rc::try_unwrap(arr).unwrap_or_else(|r| (*r).clone());
                         let dims = a.dims.clone();
-                        (a.into_values(), SortKind::Array(dims))
+                        (a.data.into_values(), SortKind::Array(dims))
                     }
                     Value::Str(bytes) => {
                         let v = bytes.iter().copied().map(Value::Char).collect();

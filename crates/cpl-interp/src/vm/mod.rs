@@ -7,7 +7,7 @@
 //!   (`regs_i`) with zero `Value` tagging, cloning, or dropping.
 //! - Optional scalars (`?Int`, `?Pos`, `?Bound`, `?Bool`, `?Char`, `?Mod<P>`)
 //!   live unboxed as a `(val, is_some)` pair of `i64` registers, backed by
-//!   `ArrayData::OptInt` for `@memo` and DP tables.
+//!   `Cells::OptInt` for `@memo` and DP tables.
 //! - Compound values (`Array`, `List`, `Str`, `Map`, `Set`, multi-field
 //!   tuples/structs/enums, closures) live in `regs_v: Vec<Value>`.
 //! - Small pure leaf functions (e.g. `Mod<P>` arithmetic) are inlined into the

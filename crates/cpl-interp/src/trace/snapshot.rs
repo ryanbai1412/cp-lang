@@ -182,7 +182,7 @@ pub(super) fn classify(ty: &Ty, view: &View) -> (Kind, Extra) {
 pub(super) fn cells(value: &Value) -> usize {
     match value {
         Value::Array(array) => match &array.data {
-            crate::value::ArrayData::Values(v) => all_cells(v.iter()),
+            crate::value::Cells::Values(v) => all_cells(v.iter()),
             _ => array.len(),
         },
         Value::List(items) => 1 + all_cells(items.iter()),

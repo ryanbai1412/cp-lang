@@ -1,6 +1,6 @@
 use crate::checkpoint::Body;
 use crate::observe::Observer;
-use crate::value::{ArrayData, CaptureVal, OptVal, TupleVal, Value};
+use crate::value::{CaptureVal, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{trap, Flow, Interp, Res};
@@ -648,7 +648,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let i1 = regs_i[r_j as usize];
                         let arr_mut = Rc::make_mut(arr);
-                        let ArrayData::Values(rows) = &mut arr_mut.data else {
+                        let Cells::Values(rows) = &mut arr_mut.data else {
                             return trap(spans[cur_pc], "internal: expected nested array");
                         };
                         let Value::Array(row_arr) = &mut rows[i0 as usize] else {
@@ -663,7 +663,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         }
                         let row_mut = Rc::make_mut(row_arr);
                         match &mut row_mut.data {
-                            ArrayData::OptInt(v) => {
+                            Cells::OptInt(v) => {
                                 let slot = unsafe { v.get_unchecked_mut(i1 as usize) };
                                 let replace = match *slot {
                                     None => true,
@@ -723,7 +723,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     };
                     let arr_mut = Rc::make_mut(arr);
                     match &mut arr_mut.data {
-                        ArrayData::OptInt(v) => {
+                        Cells::OptInt(v) => {
                             let slot = unsafe { v.get_unchecked_mut(flat) };
                             let replace = match *slot {
                                 None => true,
@@ -786,7 +786,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::Values(v) => &v[i as usize],
+                            Cells::Values(v) => &v[i as usize],
                             _ => return trap(spans[cur_pc], "internal: expected struct element"),
                         }
                     }
@@ -852,7 +852,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::Values(v) => &v[i as usize],
+                            Cells::Values(v) => &v[i as usize],
                             _ => return trap(spans[cur_pc], "internal: expected nested array"),
                         }
                     }
@@ -908,7 +908,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::Values(v) => &v[i as usize],
+                            Cells::Values(v) => &v[i as usize],
                             _ => return trap(spans[cur_pc], "internal: expected nested array"),
                         }
                     }
@@ -962,7 +962,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             );
                         }
                         match &arr.data {
-                            ArrayData::Values(v) => &v[i as usize],
+                            Cells::Values(v) => &v[i as usize],
                             _ => return trap(spans[cur_pc], "internal: expected sequence element"),
                         }
                     }

@@ -1055,3 +1055,4 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   `Log::frame` now walks the stack as an iterator and returns the top frame when nothing
   changed, and the per-step path and int buffers are filled without generic `extend`.
   Recording is about 10x an untraced run in debug (from 14x), 6.5x in release.
+- VM-memory: `ArrayData` becomes `value::Cells` in its own module, the typed cell store an `Array` derefs to, so lists can share it instead of a second packed store.

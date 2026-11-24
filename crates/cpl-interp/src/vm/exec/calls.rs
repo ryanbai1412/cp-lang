@@ -1,6 +1,6 @@
 use crate::checkpoint::Body;
 use crate::observe::Observer;
-use crate::value::{Array, ArrayData, OptVal, TupleVal, Value};
+use crate::value::{Array, Cells, OptVal, TupleVal, Value};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use crate::{trap, Interp, Res};
@@ -333,9 +333,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
-                        ArrayData::Values(vs) => {
-                            std::mem::replace(&mut vs[idx as usize], Value::Unit)
-                        }
+                        Cells::Values(vs) => std::mem::replace(&mut vs[idx as usize], Value::Unit),
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }
                 } else {
@@ -355,9 +353,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
-                        ArrayData::Values(vs) => {
-                            std::mem::replace(&mut vs[idx as usize], Value::Unit)
-                        }
+                        Cells::Values(vs) => std::mem::replace(&mut vs[idx as usize], Value::Unit),
                         _ => a.get(idx as usize).unwrap_or(Value::Unit),
                     }
                 } else {

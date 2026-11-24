@@ -1,5 +1,5 @@
 use super::ir::*;
-use crate::value::{Array, ArrayData, TupleVal, Value};
+use crate::value::{Array, Cells, TupleVal, Value};
 use crate::{trap, Res, LENT};
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
@@ -216,11 +216,11 @@ fn slot_from_stack(
 pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
     unsafe {
         match &arr.data {
-            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => *v.get_unchecked(at),
-            ArrayData::Bool(v) | ArrayData::Char(v) => i64::from(*v.get_unchecked(at)),
-            ArrayData::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
-            ArrayData::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
-            ArrayData::Float(_) | ArrayData::SmallIntTuple { .. } => 0,
+            Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked(at),
+            Cells::Bool(v) | Cells::Char(v) => i64::from(*v.get_unchecked(at)),
+            Cells::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
+            Cells::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
+            Cells::Float(_) | Cells::SmallIntTuple { .. } => 0,
         }
     }
 }
@@ -229,10 +229,10 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
 pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
     unsafe {
         match &mut arr.data {
-            ArrayData::Int(v) | ArrayData::OneIntStruct(v) => *v.get_unchecked_mut(at) = val,
-            ArrayData::Bool(v) => *v.get_unchecked_mut(at) = u8::from(val != 0),
-            ArrayData::Char(v) => *v.get_unchecked_mut(at) = val as u8,
-            ArrayData::Values(v) => {
+            Cells::Int(v) | Cells::OneIntStruct(v) => *v.get_unchecked_mut(at) = val,
+            Cells::Bool(v) => *v.get_unchecked_mut(at) = u8::from(val != 0),
+            Cells::Char(v) => *v.get_unchecked_mut(at) = val as u8,
+            Cells::Values(v) => {
                 // Keeps the element's shape: a `[D]Mod<M>` built boxed holds structs.
                 match v.get_unchecked_mut(at) {
                     Value::Tuple(TupleVal::OneInt(x)) => *x = val,
@@ -242,8 +242,8 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
                     slot => *slot = Value::Int(val),
                 }
             }
-            ArrayData::OptInt(v) => *v.get_unchecked_mut(at) = Some(val),
-            ArrayData::Float(_) | ArrayData::SmallIntTuple { .. } => {}
+            Cells::OptInt(v) => *v.get_unchecked_mut(at) = Some(val),
+            Cells::Float(_) | Cells::SmallIntTuple { .. } => {}
         }
     }
 }
@@ -252,11 +252,11 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
 pub(super) fn read_array_opt_i(arr: &Array, at: usize) -> (i64, i64) {
     unsafe {
         match &arr.data {
-            ArrayData::OptInt(v) => match *v.get_unchecked(at) {
+            Cells::OptInt(v) => match *v.get_unchecked(at) {
                 Some(x) => (x, 1),
                 None => (0, 0),
             },
-            ArrayData::Values(v) => ScalarKind::unbox_opt(v.get_unchecked(at)),
+            Cells::Values(v) => ScalarKind::unbox_opt(v.get_unchecked(at)),
             _ => (0, 0),
         }
     }
@@ -265,10 +265,10 @@ pub(super) fn read_array_opt_i(arr: &Array, at: usize) -> (i64, i64) {
 #[inline(always)]
 pub(super) fn write_array_opt_i(arr: &mut Array, at: usize, val: i64, some: i64, kind: ScalarKind) {
     match &mut arr.data {
-        ArrayData::OptInt(v) if kind == ScalarKind::Int => unsafe {
+        Cells::OptInt(v) if kind == ScalarKind::Int => unsafe {
             *v.get_unchecked_mut(at) = if some != 0 { Some(val) } else { None };
         },
-        ArrayData::Values(v) => unsafe {
+        Cells::Values(v) => unsafe {
             *v.get_unchecked_mut(at) = kind.box_opt(val, some);
         },
         _ => {
@@ -493,18 +493,18 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
         Value::Array(arr) => {
             let a = Rc::make_mut(arr);
             match &mut a.data {
-                ArrayData::Int(v) | ArrayData::OneIntStruct(v) => sort_ord(v, desc),
-                ArrayData::OptInt(v) => sort_ord(v, desc),
-                ArrayData::Bool(v) => sort_ord(v, desc),
-                ArrayData::Char(v) => sort_ord(v, desc),
-                ArrayData::Values(v) => sort_ord(v, desc),
-                ArrayData::Float(v) => {
+                Cells::Int(v) | Cells::OneIntStruct(v) => sort_ord(v, desc),
+                Cells::OptInt(v) => sort_ord(v, desc),
+                Cells::Bool(v) => sort_ord(v, desc),
+                Cells::Char(v) => sort_ord(v, desc),
+                Cells::Values(v) => sort_ord(v, desc),
+                Cells::Float(v) => {
                     v.sort_unstable_by(f64::total_cmp);
                     if desc {
                         v.reverse();
                     }
                 }
-                ArrayData::SmallIntTuple { .. } => {
+                Cells::SmallIntTuple { .. } => {
                     let mut boxed: Vec<Value> =
                         (0..a.len()).map(|i| a.get_unchecked_val(i)).collect();
                     sort_ord(&mut boxed, desc);
@@ -722,7 +722,7 @@ pub(super) fn with_place_cell<R>(
     {
         let container = walk_place_mut(root, prefix, regs_i, keys, span)?;
         if let Value::Array(arr) = container {
-            if !matches!(arr.data, ArrayData::Values(_)) {
+            if !matches!(arr.data, Cells::Values(_)) {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 let mut cell = a.get(flat).expect("index checked");
@@ -778,7 +778,7 @@ pub(super) fn walk_place_mut<'a>(
                     let flat = array_flat_index(arr, step, regs_i, span)?;
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
-                        ArrayData::Values(vs) => cur = &mut vs[flat],
+                        Cells::Values(vs) => cur = &mut vs[flat],
                         _ => return trap(span, "internal: expected boxed array element"),
                     }
                 }
@@ -789,7 +789,7 @@ pub(super) fn walk_place_mut<'a>(
                     let flat = array_flat_index(arr, step, regs_i, span)?;
                     let a = Rc::make_mut(arr);
                     match &mut a.data {
-                        ArrayData::Values(vs) => cur = &mut vs[flat],
+                        Cells::Values(vs) => cur = &mut vs[flat],
                         _ => return trap(span, "internal: expected boxed array element"),
                     }
                 }
@@ -829,10 +829,10 @@ pub(super) fn store_place_leaf_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v[flat] = raw,
-                    ArrayData::Bool(v) => v[flat] = u8::from(raw != 0),
-                    ArrayData::Char(v) => v[flat] = raw as u8,
-                    ArrayData::Values(v) => v[flat] = kind.box_val(raw),
+                    Cells::Int(v) | Cells::OneIntStruct(v) => v[flat] = raw,
+                    Cells::Bool(v) => v[flat] = u8::from(raw != 0),
+                    Cells::Char(v) => v[flat] = raw as u8,
+                    Cells::Values(v) => v[flat] = kind.box_val(raw),
                     _ => a.set(flat, kind.box_val(raw)),
                 }
                 Ok(())
@@ -856,10 +856,10 @@ pub(super) fn store_place_leaf_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => v[flat] = raw,
-                    ArrayData::Bool(v) => v[flat] = u8::from(raw != 0),
-                    ArrayData::Char(v) => v[flat] = raw as u8,
-                    ArrayData::Values(v) => v[flat] = kind.box_val(raw),
+                    Cells::Int(v) | Cells::OneIntStruct(v) => v[flat] = raw,
+                    Cells::Bool(v) => v[flat] = u8::from(raw != 0),
+                    Cells::Char(v) => v[flat] = raw as u8,
+                    Cells::Values(v) => v[flat] = kind.box_val(raw),
                     _ => a.set(flat, kind.box_val(raw)),
                 }
                 Ok(())
@@ -895,8 +895,8 @@ pub(super) fn store_place_leaf_opt_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
-                    ArrayData::Values(v) => v[flat] = kind.box_opt(raw, some),
+                    Cells::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
+                    Cells::Values(v) => v[flat] = kind.box_opt(raw, some),
                     _ => a.set(flat, kind.box_opt(raw, some)),
                 }
                 Ok(())
@@ -920,8 +920,8 @@ pub(super) fn store_place_leaf_opt_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
-                    ArrayData::Values(v) => v[flat] = kind.box_opt(raw, some),
+                    Cells::OptInt(v) => v[flat] = if some != 0 { Some(raw) } else { None },
+                    Cells::Values(v) => v[flat] = kind.box_opt(raw, some),
                     _ => a.set(flat, kind.box_opt(raw, some)),
                 }
                 Ok(())
@@ -1144,10 +1144,10 @@ pub(super) fn assign_place_leaf_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => {
+                    Cells::Int(v) | Cells::OneIntStruct(v) => {
                         v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
                     }
-                    ArrayData::Values(v) => {
+                    Cells::Values(v) => {
                         let cur = ScalarKind::unbox_val(&v[flat]);
                         let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                         v[flat] = kind.box_val(next);
@@ -1178,10 +1178,10 @@ pub(super) fn assign_place_leaf_scalar(
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
                 match &mut a.data {
-                    ArrayData::Int(v) | ArrayData::OneIntStruct(v) => {
+                    Cells::Int(v) | Cells::OneIntStruct(v) => {
                         v[flat] = apply_scalar_assign_op(v[flat], rhs, op, kind, span)?;
                     }
-                    ArrayData::Values(v) => {
+                    Cells::Values(v) => {
                         let cur = ScalarKind::unbox_val(&v[flat]);
                         let next = apply_scalar_assign_op(cur, rhs, op, kind, span)?;
                         v[flat] = kind.box_val(next);
