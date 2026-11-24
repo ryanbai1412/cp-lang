@@ -747,9 +747,12 @@ pub struct SortedBag<K>:
         if let f = free.pop():
             u = f
         else:
-            for _ in 0..BAG_B:
-                keys.push(x)
-                ws.push(0)
+            // The first node grows slot by slot, so a small bag holds only its keys; any
+            // later node gets all its slots, after the last one is filled out.
+            if u > 0:
+                while keys.len < u * BAG_B + BAG_B:
+                    keys.push(x)
+                    ws.push(0)
             fill.push(0)
             nxt.push(-1)
             prv.push(-1)
@@ -790,6 +793,9 @@ pub struct SortedBag<K>:
     fn room(mut self, n: Int, inner: Bool, p: Int, x: K) -> (Int, Int):
         let f = fill[n]
         if f < BAG_B:
+            if keys.len == n * BAG_B + f:
+                keys.push(x)
+                ws.push(0)
             var i = f
             while i > p:
                 self.mv(n, i - 1, n, i, inner)
