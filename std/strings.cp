@@ -12,7 +12,7 @@ type Slot = -1..=CAP
 /// `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert \cdot n)\)
-/// empty: an empty `self`, or `n == 0`, gives `""`
+/// empty: `("".repeat(3), "ab".repeat(0)) == ("", "")`
 /// traps: when `n < 0`
 /// example: `"ab".repeat(3) == "ababab"`
 /// example: `"x".repeat(0) == ""`
@@ -28,7 +28,7 @@ pub fn repeat(self: Str, n: Int) -> Str:
 /// only the values are compared, never the keys.
 ///
 /// cost: \(O(\min(\lvert \mathit{self} \rvert - \mathit{at}, \lvert \mathit{pat} \rvert))\)
-/// empty: an empty `pat` matches at every `at` in `0..=self.len`; an empty `self` starts only with an empty `pat`
+/// empty: `("ab".starts_with("", at: 2), "".starts_with(""), "".starts_with("a")) == (true, true, false)`
 /// traps: when `at` is outside `0..=self.len`
 /// example: `"banana".starts_with("ban") == true`
 /// example: `"banana".starts_with("nan", at: 2) == true`
@@ -45,7 +45,7 @@ pub fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
 /// values are compared, never the keys.
 ///
 /// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{pat} \rvert))\)
-/// empty: an empty `pat` is a suffix of everything; an empty `self` ends only with an empty `pat`
+/// empty: `("ab".ends_with(""), "".ends_with(""), "".ends_with("a")) == (true, true, false)`
 /// traps: never
 /// example: `[1, 2, 3].ends_with([2, 3]) == true`
 /// example: `"banana".ends_with("nab") == false`
@@ -63,8 +63,8 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
 /// empty): a match starts at an element.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\)
-/// empty: an empty `p` gives the first key, `None` on an empty `self`; an empty `self` gives `None`
-/// ties: the leftmost occurrence
+/// empty: `("ab".search(""), "".search(""), "".search("a")) == (Some(0), None, None)`
+/// ties: `"abab".search("ab") == Some(0)`
 /// traps: never
 /// example: `"banana".search("nan") == Some(2)`
 /// example: `"banana".search('n') == Some(2)`
@@ -80,8 +80,8 @@ pub fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
 /// starts at an element, never at the end.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\)
-/// empty: an empty `p` gives the last key, `None` on an empty `self`; an empty `self` gives `None`
-/// ties: the rightmost occurrence
+/// empty: `("ab".rsearch(""), "".rsearch(""), "".rsearch("a")) == (Some(1), None, None)`
+/// ties: `"abab".rsearch("ab") == Some(2)`
 /// traps: never
 /// example: `"banana".rsearch("an") == Some(3)`
 /// example: `"banana".rsearch('a') == Some(5)`
@@ -93,8 +93,10 @@ pub fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
 
 /// The lowercase letter of an ASCII capital; any other character is returned as it is.
 ///
+/// One character in, one out.
+///
 /// cost: \(O(1)\)
-/// ties: None; one character in, one out
+/// ties: `'Z'.lower == 'z'`
 /// traps: never
 /// example: `'A'.lower == 'a'`
 /// example: `'7'.lower == '7'`
@@ -102,8 +104,10 @@ pub fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
 
 /// The capital of an ASCII lowercase letter; any other character is returned as it is.
 ///
+/// One character in, one out.
+///
 /// cost: \(O(1)\)
-/// ties: None; one character in, one out
+/// ties: `'z'.upper == 'Z'`
 /// traps: never
 /// example: `'a'.upper == 'A'`
 /// example: `'?'.upper == '?'`
@@ -170,7 +174,7 @@ pub fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
 /// A copy of `self` with every ASCII capital replaced by its lowercase letter (`Char.lower`).
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `""`
+/// empty: `"".to_lower() == ""`
 /// traps: never
 /// example: `"AbC1".to_lower() == "abc1"`
 pub fn to_lower(self: Str) -> Str = Str([c.lower for c in self])
@@ -178,7 +182,7 @@ pub fn to_lower(self: Str) -> Str = Str([c.lower for c in self])
 /// A copy of `self` with every ASCII lowercase letter replaced by its capital (`Char.upper`).
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `""`
+/// empty: `"".to_upper() == ""`
 /// traps: never
 /// example: `"AbC1".to_upper() == "ABC1"`
 pub fn to_upper(self: Str) -> Str = Str([c.upper for c in self])
@@ -187,7 +191,7 @@ pub fn to_upper(self: Str) -> Str = Str([c.upper for c in self])
 /// whitespace is kept.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `""`; so is a string of only whitespace
+/// empty: `("".trim(), " \t\n".trim()) == ("", "")`
 /// traps: never
 /// example: `"  a b \n".trim() == "a b"`
 /// example: `" \t ".trim() == ""`
@@ -196,7 +200,7 @@ pub fn trim(self: Str) -> Str = self.trim_start().trim_end()
 /// A copy of `self` with leading whitespace (`Char.is_space`) removed.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `""`; so is a string of only whitespace
+/// empty: `("".trim_start(), " \t\n".trim_start()) == ("", "")`
 /// traps: never
 /// example: `"  a b \n".trim_start() == "a b \n"`
 pub fn trim_start(self: Str) -> Str:
@@ -207,7 +211,7 @@ pub fn trim_start(self: Str) -> Str:
 /// A copy of `self` with trailing whitespace (`Char.is_space`) removed.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `""`; so is a string of only whitespace
+/// empty: `("".trim_end(), " \t\n".trim_end()) == ("", "")`
 /// traps: never
 /// example: `"  a b \n".trim_end() == "  a b"`
 pub fn trim_end(self: Str) -> Str:
@@ -219,7 +223,7 @@ pub fn trim_end(self: Str) -> Str:
 /// when `sep` does not occur. Later separators stay in `after`.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `None`
+/// empty: `"".split_once('=') == None`
 /// traps: never
 /// example: `"key=val=x".split_once('=') == Some(("key", "val=x"))`
 /// example: `"abc".split_once('=') == None`
@@ -233,7 +237,7 @@ pub fn split_once(self: Str, sep: Char) -> ?(Str, Str):
 /// new strings. No piece is empty.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `[]`; so is a string of only whitespace
+/// empty: `("".split_whitespace(), " \t ".split_whitespace()) == ([], [])`
 /// order: left to right; a new `List`, keyed from 0
 /// traps: never
 /// example: `" a  b\tc ".split_whitespace() == ["a", "b", "c"]`
@@ -257,7 +261,7 @@ pub fn split_whitespace(self: Str) -> List<Str>:
 /// numbers all join without a `map`.
 ///
 /// cost: \(O(\text{total output length})\)
-/// empty: `""`
+/// empty: `", ".join(List<Str>()) == ""`
 /// traps: never
 /// example: `", ".join(["a", "b", "c"]) == "a, b, c"`
 /// example: `" ".join([1, 2, 3]) == "1 2 3"`
@@ -277,7 +281,7 @@ pub fn join<S: Seq>(self: Str, parts: S) -> Str:
 /// inserts is not scanned again.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{output} \rvert)\)
-/// empty: an empty `self` gives `""`
+/// empty: `"".replace("a", "b") == ""`
 /// traps: when `from` is empty
 /// example: `"aaaa".replace("aa", "b") == "bb"`
 /// example: `"aaa".replace("aa", "b") == "ba"`
@@ -305,7 +309,7 @@ pub fn replace(self: Str, from: Str, to: Str) -> Str:
 /// other character makes it malformed.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `None`
+/// empty: `"".parse_int() == None`
 /// traps: when `base` is outside `2..=36`
 /// example: `"-12".parse_int() == Some(-12)`
 /// example: `"ff".parse_int(base: 16) == Some(255)`
@@ -327,11 +331,13 @@ pub fn parse_int(self: Str, base: Int = 10) -> ?Int:
 /// `self` read as a `T` by the same rules as `read<T>()` (core 10.2), or `None` if a token is
 /// malformed, out of `T`'s range, missing, or left over.
 ///
+/// An empty string gives `None` unless `T` reads zero tokens.
+///
 /// Tokens are separated by whitespace exactly as on standard input, so a tuple or list type
 /// reads several tokens.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
-/// empty: `None` unless `T` reads zero tokens
+/// empty: `"".parse<Int>() == None`
 /// traps: never
 /// example: `"-12".parse<Mod<7>>() == Some(2)`
 /// example: `"3 4".parse<(Int, Int)>() == Some((3, 4))`
@@ -345,7 +351,7 @@ pub fn parse<T: Read>(self: Str) -> ?T = todo
 /// `Indexed` sequence (`Str`, `List<T>`, `[D]T`, `Range<I>`, views) without conversion.
 ///
 /// cost: \(O(n)\)
-/// empty: an empty array
+/// empty: `z_function("").len == 0`
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `z_function("aabxaab") == [7, 1, 0, 0, 3, 1, 0]`
@@ -370,7 +376,7 @@ pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
 /// Keyed by `s.keys`. Works on any `Indexed` sequence without conversion.
 ///
 /// cost: \(O(n)\)
-/// empty: an empty array
+/// empty: `prefix_function("").len == 0`
 /// order: keyed by the keys of `s`
 /// traps: never
 /// example: `prefix_function("aabaaab") == [0, 1, 0, 1, 2, 2, 3]`
@@ -393,8 +399,8 @@ fn failure_lengths<S: Indexed>(s: S) -> List<Int>:
 /// are those of `self`. An empty pattern occurs at every key, never at the end: a match starts at an element.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{pat} \rvert)\)
-/// empty: an empty `pat` yields every key of `self`; an empty `self` yields nothing
-/// ties: every occurrence is yielded; None is preferred
+/// empty: `("ab".find_all("").collect(), "".find_all("a").collect()) == ([0, 1], [])`
+/// ties: `"aaa".find_all("aa").collect() == [0, 1]`
 /// order: increasing start key
 /// traps: never
 /// example: `"aaaa".find_all("aa").collect() == [0, 1, 2]`
@@ -417,7 +423,7 @@ pub fn find_all<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P
 /// generator); `self` is `Indexed`.
 ///
 /// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\)
-/// empty: `0` when either is empty
+/// empty: `("".common_prefix_len("ab"), "ab".common_prefix_len("")) == (0, 0)`
 /// traps: never
 /// example: `"abcd".common_prefix_len("abxd") == 2`
 /// example: `"abcx".common_prefix_len("xcba".rev) == 4`
@@ -432,7 +438,7 @@ pub fn common_prefix_len<A: Indexed, B: Seq>(self: A, other: B) -> Int:
 /// from the last key of each. Works on any `Indexed` pair.
 ///
 /// cost: \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{other} \rvert))\)
-/// empty: `0` when either is empty
+/// empty: `("".common_suffix_len("ab"), "ab".common_suffix_len("")) == (0, 0)`
 /// traps: never
 /// example: `"xbcd".common_suffix_len("abcd") == 3`
 pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
@@ -446,7 +452,7 @@ pub fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int:
 /// sides exist. It is `s.len` when nothing shorter works.
 ///
 /// cost: \(O(n)\)
-/// empty: `0`
+/// empty: `period("") == 0`
 /// traps: never
 /// example: `period("abcabca") == 3`
 /// example: `period("aaaa") == 1`
@@ -456,7 +462,7 @@ pub fn period<S: Indexed>(s: S) -> Int = if s.is_empty: 0 else: s.len - failure_
 /// True when `s` reads the same forwards and backwards. Works on any `Indexed` sequence.
 ///
 /// cost: \(O(n)\)
-/// empty: `true`
+/// empty: `is_palindrome("") == true`
 /// traps: never
 /// example: `is_palindrome("abba") == true`
 /// example: `is_palindrome([1, 2]) == false`
@@ -470,7 +476,7 @@ pub fn is_palindrome<S: Indexed>(s: S) -> Bool:
 /// shorter than `s`). Works on any `Indexed` sequence.
 ///
 /// cost: \(O(n)\)
-/// empty: yields nothing; so does a single element
+/// empty: `(borders("").collect(), borders("a").collect()) == ([], [])`
 /// order: longest first
 /// traps: never
 /// example: `borders("abacaba").collect() == [3, 1]`
@@ -490,7 +496,7 @@ pub fn borders<S: Indexed>(s: S) -> yields Int:
 /// `pat`, so `res[i] == pat.len` exactly where an occurrence ends. Keyed by `self.keys`.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert + \lvert \mathit{pat} \rvert)\)
-/// empty: an empty `self` gives an empty array; an empty `pat` gives all zeros
+/// empty: `let z = "ab".prefix_matches(""); ("".prefix_matches("ab").len, z.len, z.all(x => x == 0)) == (0, 2, true)`
 /// order: keyed by the keys of `self`
 /// traps: never
 /// example: `"abab".prefix_matches("ab") == [1, 2, 1, 2]`
@@ -510,7 +516,7 @@ pub fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, 
 /// `min(|a|, |b|)`; how far `b` can slide onto the end of `a`.
 ///
 /// cost: \(O(\lvert a \rvert + \lvert b \rvert)\)
-/// empty: `0` when either is empty
+/// empty: `(overlap("", "ab"), overlap("ab", "")) == (0, 0)`
 /// traps: never
 /// example: `overlap("abcab", "abd") == 2`
 /// example: `overlap("abc", "abc") == 3`
@@ -528,7 +534,7 @@ pub fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int:
 /// to cut `s` into Lyndon words `w1 >= w2 >= ...` in lexicographic order.
 ///
 /// cost: \(O(n)\)
-/// empty: `[]`
+/// empty: `lyndon_factorization("") == []`
 /// order: increasing keys; the first is the first key of `s`
 /// traps: never
 /// example: `lyndon_factorization("banana") == [0, 1, 3, 5]`
@@ -552,8 +558,8 @@ pub fn lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>:
 /// The key at which the lexicographically smallest cyclic rotation of `s` starts (Booth).
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
-/// ties: the smallest key, when `s` is periodic
+/// empty: `min_rotation("") == None`
+/// ties: `min_rotation("aaa") == Some(0)`
 /// traps: never
 /// example: `min_rotation("baca") == Some(3)`
 /// example: `min_rotation("abab") == Some(0)`
@@ -579,8 +585,8 @@ pub fn min_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K:
 /// The key at which the lexicographically greatest cyclic rotation of `s` starts.
 ///
 /// cost: \(O(n)\)
-/// empty: `None`
-/// ties: the smallest key, when `s` is periodic
+/// empty: `max_rotation("") == None`
+/// ties: `max_rotation("baba") == Some(0)`
 /// traps: never
 /// example: `max_rotation("baca") == Some(2)`
 /// example: `max_rotation("abab") == Some(1)`
@@ -615,7 +621,7 @@ pub struct KmpAutomaton<A>:
     /// length `0..=pat.len`, with a full transition table. Call it as `KmpAutomaton<A>(pat)`.
     ///
     /// cost: \(O(\lvert \mathit{pat} \rvert \cdot \lvert A \rvert)\)
-    /// empty: an empty `pat` gives one state, `0`, which matches everywhere
+    /// empty: `let k = KmpAutomaton<Char>(""); (k.len, k.find_all("ab").collect()) == (1, [0, 1, 2])`
     /// traps: when an element of `pat` is not in `A`
     /// example: `KmpAutomaton<Char>("aba").len == 4`
     pub fn new<S: Seq>(pat: S) -> KmpAutomaton<A>:
@@ -676,8 +682,8 @@ pub struct KmpAutomaton<A>:
     /// `pat` in `text`, overlapping ones included.
     ///
     /// cost: \(O(\lvert \mathit{text} \rvert)\)
-    /// empty: an empty `text` yields nothing unless `pat` is empty; an empty `pat` yields `0..=|text|`
-    /// ties: every occurrence is yielded; None is preferred
+    /// empty: `(KmpAutomaton<Char>("a").find_all("").collect(), KmpAutomaton<Char>("").find_all("").collect(), KmpAutomaton<Char>("").find_all("ab").collect()) == ([], [0], [0, 1, 2])`
+    /// ties: `KmpAutomaton<Char>("aa").find_all("aaa").collect() == [0, 1]`
     /// order: increasing start
     /// traps: when an element of `text` is not in `A`
     /// example: `KmpAutomaton<Char>("aba").find_all("ababa").collect() == [0, 2]`
@@ -707,7 +713,7 @@ pub struct KmpAutomaton<A>:
 /// The starts are keys of `self`, as for `find_all`.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert \cdot \mathit{ceil}(\lvert \mathit{pat} \rvert / 64))\)
-/// empty: an empty `pat` yields every key of `self`; an empty `self` yields nothing
+/// empty: `("ab".shift_and("").collect(), "".shift_and("a").collect()) == ([0, 1], [])`
 /// order: increasing start
 /// traps: never
 /// example: `"abab".shift_and("ab").collect() == [0, 2]`
@@ -720,8 +726,8 @@ pub fn shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: 
 /// Keys are those of `self`, as for `find_all`; an empty pattern matches at every key, never at the end.
 ///
 /// cost: \(O(\lvert \mathit{self} \rvert \cdot \lvert \mathit{pat} \rvert)\) worst case, comparing directly
-/// empty: an empty `pat` yields every key of `self`; an empty `self` yields nothing
-/// ties: every match is yielded; None is preferred
+/// empty: `("ab".find_all_wildcard("").collect(), "".find_all_wildcard("a").collect()) == ([0, 1], [])`
+/// ties: `"aaa".find_all_wildcard("a?").collect() == [0, 1]`
 /// order: increasing start key
 /// traps: never
 /// example: `"abcab".find_all_wildcard("a?").collect() == [0, 3]`
@@ -808,7 +814,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0):
     /// The half-open range `(l, r)` of a longest palindromic substring.
     ///
     /// cost: \(O(n)\)
-    /// ties: the leftmost (smallest `l`)
+    /// ties: `manacher("abc").longest() == (0, 1)`
     /// traps: never
     /// example: `manacher("abacdc").longest() == (0, 3)`
     /// example: `manacher("").longest() == (0, 0)`
@@ -831,7 +837,7 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0):
 /// one. Works on any `Indexed` sequence; positions count from 0.
 ///
 /// cost: \(O(n)\)
-/// empty: both lists empty
+/// empty: `let p = manacher(""); (p.len, p.odd) == (0, [])`
 /// traps: never
 /// example: `manacher("abba").count() == 6`
 /// example: `manacher("aba").odd == [1, 2, 1]`
@@ -1049,7 +1055,7 @@ pub struct SuffixArray<T: Ord>:
     /// ranks first.
     ///
     /// cost: \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise
-    /// empty: `sa`, `rank` and `lcp` all empty
+    /// empty: `let s = SuffixArray(""); (s.len, s.sa, s.lcp) == (0, [], [])`
     /// traps: never
     /// example: `SuffixArray("banana").sa == [5, 3, 1, 0, 4, 2]`
     /// example: `SuffixArray("banana").lcp == [1, 3, 0, 0, 2]`
@@ -1107,7 +1113,7 @@ pub struct SuffixArray<T: Ord>:
     /// empty range at the rank where `pat` would sort.
     ///
     /// cost: \(O(\lvert \mathit{pat} \rvert \log n)\)
-    /// empty: an empty `pat` gives `0..n`
+    /// empty: `SuffixArray("ab").rank_range("") == 0..2`
     /// order: a range of ranks, increasing
     /// traps: never
     /// example: `SuffixArray("banana").rank_range("ana") == 1..3`
@@ -1145,8 +1151,8 @@ pub struct SuffixArray<T: Ord>:
     /// The start of every occurrence of `pat`, read off `sa` over `rank_range(pat)`.
     ///
     /// cost: \(O(\lvert \mathit{pat} \rvert \log n + \mathit{occurrences})\)
-    /// empty: an empty `pat` yields every start `0..n` (not the end position `n`)
-    /// ties: every occurrence is yielded; None is preferred
+    /// empty: `SuffixArray("ba").find_all("").collect() == [1, 0]`
+    /// ties: `SuffixArray("aaa").find_all("aa").collect() == [1, 0]`
     /// order: suffix-array order (by rank), not by position
     /// traps: never
     /// example: `SuffixArray("banana").find_all("ana").collect() == [3, 1]`
@@ -1156,7 +1162,7 @@ pub struct SuffixArray<T: Ord>:
     /// The number of occurrences of `pat`, overlapping ones included: `rank_range(pat).len`.
     ///
     /// cost: \(O(\lvert \mathit{pat} \rvert \log n)\)
-    /// empty: an empty `pat` gives `n`
+    /// empty: `SuffixArray("ab").count("") == 2`
     /// traps: never
     /// example: `SuffixArray("banana").count("an") == 2`
     pub fn count<P: Indexed<J, T>, J>(self, pat: P) -> Int = self.rank_range(pat).len
@@ -1210,7 +1216,7 @@ pub struct SuffixArray<T: Ord>:
     /// `j in r.start..r.end - 1`, or the suffix's own length when `r` holds one rank.
     ///
     /// cost: \(O(1)\)
-    /// empty: an empty `r` traps
+    /// empty: `SuffixArray("ab").lcp_of_ranks(1..1) == 0` (traps R0401)
     /// traps: when `r` is empty or reaches outside `0..n`
     /// example: `SuffixArray("banana").lcp_of_ranks(1..3) == 3`
     /// example: `SuffixArray("banana").lcp_of_ranks(3..4) == 6`
@@ -1223,8 +1229,8 @@ pub struct SuffixArray<T: Ord>:
     /// the first child and the rest.
     ///
     /// cost: \(O(1)\)
-    /// empty: an `r` with fewer than two ranks traps
-    /// ties: the smallest such `k`
+    /// empty: `SuffixArray("ab").split(0..1) == 0` (traps R0401)
+    /// ties: `SuffixArray("abac").split(0..4) == 2`
     /// traps: when `r.len < 2` or `r` reaches outside `0..n`
     /// example: `SuffixArray("banana").split(0..3) == 1`
     /// example: `SuffixArray("banana").split(0..6) == 3`
@@ -1236,7 +1242,7 @@ pub struct SuffixArray<T: Ord>:
     /// positions `l..r` of one occurrence, or `None` when `k >= distinct()`.
     ///
     /// cost: \(O(\log n)\)
-    /// ties: the occurrence in the suffix of smallest rank that holds it
+    /// ties: `SuffixArray("abab").kth_distinct(0) == Some(2..3)`
     /// order: `k` counts in increasing lexicographic order; the range is increasing positions
     /// traps: when `k < 0`
     /// example: `SuffixArray("banana").kth_distinct(1) == Some(3..5)`
@@ -1252,7 +1258,7 @@ pub struct SuffixArray<T: Ord>:
 /// The suffix array of `s`; the same as `SuffixArray(s)`.
 ///
 /// cost: \(O(n)\) for `Str` and small integer alphabets, \(O(n \log n)\) otherwise
-/// empty: an empty suffix array
+/// empty: `suffix_array("").sa == []`
 /// traps: never
 /// example: `suffix_array([3, 1, 2]).sa == [1, 2, 0]`
 pub fn suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T> = SuffixArray.new(s)
@@ -1276,7 +1282,7 @@ pub struct SuffixTreeEdge(
 /// edge's `edge_len`. Summing `edge_len` gives `SuffixArray(s).distinct()`.
 ///
 /// cost: \(O(n)\)
-/// empty: `[]`
+/// empty: `suffix_tree_edges("") == []`
 /// order: bottom-up: each edge comes after every edge below it, subtrees in rank order
 /// traps: never
 /// example: `suffix_tree_edges("aa") == [SuffixTreeEdge(0, 1, 1, 1, 1..2), SuffixTreeEdge(1, 2, 0, 1, 0..2)]`
@@ -1310,7 +1316,7 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
 /// Positions count from 0.
 ///
 /// cost: \(O(n \log n)\) time and memory
-/// empty: `[]`
+/// empty: `lyndon_runs("") == []`
 /// order: by `(l, r)`; a new `List`, keyed from 0
 /// traps: never
 /// example: `lyndon_runs("aabaab") == [(0, 2, 1), (0, 6, 3), (3, 5, 1)]`
@@ -1394,7 +1400,7 @@ pub struct RollingHash:
     /// `bases:` gives them; hashes only compare under the same bases.
     ///
     /// cost: \(O(n)\)
-    /// empty: an empty hash; `push` can grow it
+    /// empty: `var h = RollingHash(""); let n = h.len; h.push('a'); (n, h.all) == (0, RollingHash("a", bases: h.bases).all)`
     /// traps: when a given base is outside `2..M`
     /// example: `let h = RollingHash("abab"); h.get(0..2) == h.get(2..4)`
     pub fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash:
@@ -1435,7 +1441,7 @@ pub struct RollingHash:
     /// compare it with any slice of `self`.
     ///
     /// cost: \(O(\lvert \mathit{seq} \rvert)\)
-    /// empty: `HashVal(0, 0)`
+    /// empty: `RollingHash("ab").hash_of("") == HashVal(0, 0)`
     /// traps: never
     /// example: `let h = RollingHash("xab"); h.hash_of("ab") == h.get(1..3)`
     pub fn hash_of<S: Seq>(self, seq: S) -> HashVal:
@@ -1453,7 +1459,7 @@ pub struct RollingHash:
     /// `self`'s bases; `combine` folded left to right.
     ///
     /// cost: \(O(\lvert \mathit{parts} \rvert)\) amortized
-    /// empty: `HashVal(0, 0)`
+    /// empty: `RollingHash("ab").concat([]) == HashVal(0, 0)`
     /// traps: when a `len` is negative
     /// example: `let h = RollingHash("abcd"); h.concat([(h.get(0..2), 2), (h.get(2..4), 2)]) == h.all`
     pub fn concat(self, parts: List<(hash: HashVal, len: Int)>) -> HashVal:
@@ -1587,7 +1593,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     /// unless `bases:` gives them. A token enters as `token % M + 1`, as in `RollingHash`.
     ///
     /// cost: \(O(\lvert R \rvert \cdot \lvert C \rvert)\)
-    /// empty: an empty `R` or `C` gives a hash whose only rectangle is empty
+    /// empty: `domain R = 0..0; domain C = 0..2; Hash2D<R, C>((r, c) => 1).rect(R.all, C.all) == HashVal(0, 0)`
     /// traps: when a given base is outside `2..M`
     /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => c.ord % 2); h.rect(R(0)..=R(1), C(0)..=C(1)) == h.rect(R(0)..=R(1), C(2)..=C(3))`
     pub fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>:
@@ -1635,7 +1641,7 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
     /// A rectangle with no rows or no columns hashes to `HashVal(0, 0)`.
     ///
     /// cost: \(O(1)\)
-    /// empty: an empty `rows` or `cols` gives `HashVal(0, 0)`
+    /// empty: `domain R = 0..2; domain C = 0..2; let h = Hash2D<R, C>((r, c) => 1); (h.rect(R(0)..R(0), C.all), h.rect(R.all, C(1)..C(1))) == (HashVal(0, 0), HashVal(0, 0))`
     /// traps: never (the ranges are typed by `R` and `C`)
     /// example: `domain R = 0..2; domain C = 0..4; let h = Hash2D<R, C>((r, c) => r.ord); h.rect(R(0)..=R(0), C(0)..=C(1)) != h.rect(R(1)..=R(1), C(0)..=C(1))`
     pub fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal:
@@ -1697,7 +1703,7 @@ pub struct RollingHash61:
     /// base is drawn at random unless `base:` gives it.
     ///
     /// cost: \(O(n)\)
-    /// empty: an empty hash; `push` can grow it
+    /// empty: `var h = RollingHash61(""); let n = h.len; h.push('a'); (n, h.all) == (0, RollingHash61("a", base: h.base).all)`
     /// traps: when a given base is outside `2..2^61 - 1`
     /// example: `let h = RollingHash61("abab"); h.get(0..2) == h.get(2..4)`
     pub fn new<S: Seq>(seq: S, base: ?U64 = None) -> RollingHash61:
@@ -1843,7 +1849,7 @@ pub struct DynamicHash<D>:
     /// (domain `D`); hashes follow the `RollingHash` scheme and bases.
     ///
     /// cost: \(O(n)\)
-    /// empty: an empty hash
+    /// empty: `DynamicHash("").len == 0`
     /// traps: when a given base is outside `2..M`
     /// example: `let h = DynamicHash("abab"); h.get(0..2) == h.get(2..4)`
     pub fn new<S: Indexed>(seq: S, bases: ?(Int, Int) = None) -> DynamicHash<D>:
@@ -1911,7 +1917,7 @@ pub struct DynamicHash<D>:
     /// The hash of the elements over `r` in order (a cut range `j..i` works too, decision 124).
     ///
     /// cost: \(O(\log n)\)
-    /// empty: an empty `r` gives `HashVal(0, 0)`
+    /// empty: `DynamicHash("ab").get(1..1) == HashVal(0, 0)`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("xyxy"); h.get(0..2) == h.get(2..4)`
     pub fn get(self, r: Range<D>) -> HashVal:
@@ -1921,7 +1927,7 @@ pub struct DynamicHash<D>:
     /// The hash of the elements over `r` read backwards, comparable with `get`.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: an empty `r` gives `HashVal(0, 0)`
+    /// empty: `DynamicHash("ab").rev_get(1..1) == HashVal(0, 0)`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("abba"); h.rev_get(0..2) == h.get(2..4)`
     pub fn rev_get(self, r: Range<D>) -> HashVal:
@@ -1934,7 +1940,7 @@ pub struct DynamicHash<D>:
     /// True when the elements over `r` read the same both ways: `get(r) == rev_get(r)`.
     ///
     /// cost: \(O(\log n)\)
-    /// empty: `true` for an empty `r`
+    /// empty: `DynamicHash("ab").is_palindrome(1..1) == true`
     /// traps: never (`r` is a `Range<D>`)
     /// example: `let h = DynamicHash("abca"); h.is_palindrome(1..2) and not h.is_palindrome(0..4)`
     pub fn is_palindrome(self, r: Range<D>) -> Bool = self.get(r) == self.rev_get(r)
@@ -2005,7 +2011,7 @@ pub struct SuffixAutomaton<A>:
     /// `3` (`abb`, `bb`) and `4` (`b`, the clone).
     ///
     /// cost: \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time
-    /// empty: only the root
+    /// empty: `SuffixAutomaton<Char>.of("").len == 1`
     /// traps: when an element of `s` is not in `A`
     /// example: `SuffixAutomaton<Char>.of("abb").len == 5`
     pub fn of<S: Seq>(s: S) -> SuffixAutomaton<A>:
@@ -2116,7 +2122,7 @@ pub struct SuffixAutomaton<A>:
     /// from.
     ///
     /// cost: \(O(1)\)
-    /// ties: the earliest occurrence; later ones are not tracked
+    /// ties: `let m = SuffixAutomaton<Char>.of("abab"); m.first_pos(m.find("ab")!) == Some(1)`
     /// traps: when `state` is outside `0..self.len`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.first_pos(4) == Some(1) and m.first_pos(0) == None`
     pub fn first_pos(self, state: Int) -> ?Int:
@@ -2126,9 +2132,11 @@ pub struct SuffixAutomaton<A>:
     /// The state holding `word`, or `None` when `word` is not a substring; the root for an empty
     /// `word`.
     ///
+    /// A substring lies in exactly one state.
+    ///
     /// cost: \(O(\lvert \mathit{word} \rvert)\)
-    /// empty: an empty `word` gives `Some(0)`
-    /// ties: None; a substring lies in exactly one state
+    /// empty: `SuffixAutomaton<Char>.of("ab").find("") == Some(0)`
+    /// ties: `let m = SuffixAutomaton<Char>.of("abab"); m.find("ab") == m.find("b")`
     /// traps: when an element of `word` is not in `A`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.find("bb") == Some(3) and m.find("ba") == None`
     pub fn find<S: Seq>(self, word: S) -> ?Int:
@@ -2142,7 +2150,7 @@ pub struct SuffixAutomaton<A>:
     /// True when `word` is a substring of the automaton's string: `find(word) != None`.
     ///
     /// cost: \(O(\lvert \mathit{word} \rvert)\)
-    /// empty: `true` for an empty `word`
+    /// empty: `SuffixAutomaton<Char>.of("ab").contains("") == true`
     /// traps: when an element of `word` is not in `A`
     /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.contains("ab") and not m.contains("ba")`
     pub fn contains<S: Seq>(self, word: S) -> Bool = self.find(word) != None
@@ -2163,8 +2171,8 @@ pub struct SuffixAutomaton<A>:
     /// suffix link; iterate it backwards to push values up the links.
     ///
     /// cost: \(O(\mathit{states})\)
-    /// empty: `[0]` for an empty automaton
-    /// ties: smaller state number first
+    /// empty: `SuffixAutomaton<Char>().topo_order() == [0]`
+    /// ties: `SuffixAutomaton<Char>.of("abb").topo_order() == [0, 1, 4, 2, 3]`
     /// order: non-decreasing `longest`; a new `List`, keyed from 0
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").topo_order() == [0, 1, 4, 2, 3]`
@@ -2185,7 +2193,7 @@ pub struct SuffixAutomaton<A>:
     /// string; the root counts every position, `n`.
     ///
     /// cost: \(O(\mathit{states})\)
-    /// empty: `[0]` for an empty automaton
+    /// empty: `SuffixAutomaton<Char>().occ_counts() == [0]`
     /// order: keyed by state
     /// traps: never
     /// example: `SuffixAutomaton<Char>.of("abb").occ_counts() == [3, 1, 1, 1, 2]`
@@ -2202,8 +2210,8 @@ pub struct SuffixAutomaton<A>:
     /// `other[end - len..end]` the substring (positions in `other`, from 0).
     ///
     /// cost: \(O(\lvert \mathit{other} \rvert)\)
-    /// empty: `(0, 0)` for an empty `other`; also when nothing is shared
-    /// ties: the smallest `end`
+    /// empty: `let m = SuffixAutomaton<Char>.of("ab"); (m.lcs(""), m.lcs("x")) == ((0, 0), (0, 0))`
+    /// ties: `SuffixAutomaton<Char>.of("ab").lcs("ba") == (1, 1)`
     /// traps: when an element of `other` is not in `A`
     /// example: `SuffixAutomaton<Char>.of("abb").lcs("xbbx") == (2, 3)`
     pub fn lcs<S: Seq>(self, other: S) -> (len: Int, end: Int):
@@ -2236,7 +2244,7 @@ pub struct SuffixAutomaton<A>:
     /// letter. Afterwards the automaton holds the substrings of every word added.
     ///
     /// cost: \(O(\lvert \mathit{word} \rvert)\) amortized
-    /// empty: an empty `word` only resets
+    /// empty: `var m = SuffixAutomaton<Char>.of("ab"); m.add_word(""); m.push('c'); (m.contains("c"), m.contains("bc")) == (true, false)`
     /// traps: when an element of `word` is not in `A`
     /// example: `var m = SuffixAutomaton<Char>(); m.add_word("ab"); m.add_word("b"); m.distinct() == 3`
     pub fn add_word<S: Seq>(mut self, word: S):
@@ -2270,7 +2278,7 @@ pub struct SuffixAutomaton<A>:
     /// per occurrence. A proper prefix comes before its extensions.
     ///
     /// cost: \(O(\mathit{states} \cdot \lvert A \rvert)\)
-    /// ties: with `distinct: false`, copies of one substring are adjacent and interchangeable
+    /// ties: `let m = SuffixAutomaton<Char>.of("aa"); (m.kth_substring(0, distinct: false), m.kth_substring(1, distinct: false)) == (Some(['a']), Some(['a']))`
     /// order: the letters of the substring, first to last
     /// traps: when `k < 0`
     /// example: `SuffixAutomaton<Char>.of("abb").kth_substring(3) == Some(['b'])`
@@ -2319,7 +2327,7 @@ pub struct SuffixAutomaton<A>:
 /// The length of the longest sequence that is a substring of every word in `words`.
 ///
 /// cost: \(O(\mathit{sum} \lvert w \rvert \cdot \lvert A \rvert)\)
-/// empty: `0` for no words; one word gives its length
+/// empty: `(lcs_all(List<Str>()), lcs_all(["abc"])) == (0, 3)`
 /// traps: never
 /// example: `lcs_all(["abcd", "xbcy", "bcz"]) == 2`
 pub fn lcs_all<A, S: Seq>(words: List<S>) -> Int:
@@ -2403,7 +2411,7 @@ pub struct PalindromicTree<A>:
     /// New states are numbered from `2` in creation order.
     ///
     /// cost: \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time
-    /// empty: just the two roots
+    /// empty: `PalindromicTree<Char>.of("").len == 2`
     /// traps: when an element of `s` is not in `A`
     /// example: `PalindromicTree<Char>.of("aba").distinct == 3`
     pub fn of<S: Seq>(s: S) -> PalindromicTree<A>:
@@ -2606,8 +2614,10 @@ pub struct PalindromicTree<A>:
     /// The state of the longest palindromic suffix of the current string; the even root `1`
     /// when the string is empty.
     ///
+    /// The longest palindromic suffix is unique.
+    ///
     /// cost: \(O(1)\)
-    /// ties: None; the longest suffix is unique
+    /// ties: `PalindromicTree<Char>.of("aaa").last_state == 4`
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aba").last_state == 4`
     @get pub fn last_state(self) -> Int = last
@@ -2616,7 +2626,7 @@ pub struct PalindromicTree<A>:
     /// tree.
     ///
     /// cost: \(O(\lvert \mathit{word} \rvert)\)
-    /// empty: `true` (the even root)
+    /// empty: `PalindromicTree<Char>.of("ab").contains("") == true`
     /// traps: never
     /// example: `let t = PalindromicTree<Char>.of("aba"); t.contains("aba") and not t.contains("ab")`
     pub fn contains<S: Seq>(self, word: S) -> Bool:
@@ -2638,8 +2648,10 @@ pub struct PalindromicTree<A>:
     /// `dp[i]` is the least number of palindromes the first `i` pushed letters split into, for
     /// `i in 0..=n`, by the series-link DP.
     ///
+    /// Only the count is returned, not a partition.
+    ///
     /// cost: \(O(n \log n)\)
-    /// ties: None; only the count is returned
+    /// ties: `PalindromicTree<Char>.of("aba").min_palindrome_partition() == [0, 1, 2, 1]`
     /// order: keyed by prefix length `0..=n`
     /// traps: never
     /// example: `PalindromicTree<Char>.of("aab").min_palindrome_partition() == [0, 1, 1, 2]`
@@ -2710,9 +2722,11 @@ pub struct Trie<A>:
     /// The node of `word`, or `None` when no stored word starts with `word`
     /// (`count_prefix(word) == 0`).
     ///
+    /// A word has one node.
+    ///
     /// cost: \(O(\lvert \mathit{word} \rvert)\)
-    /// empty: `Some(0)` unless the trie is empty
-    /// ties: None; a word has one node
+    /// empty: `var t = Trie<Char>(); let e = t.find(""); t.add("a"); (e, t.find("")) == (None, Some(0))`
+    /// ties: `var t = Trie<Char>(); t.add("ab"); t.add("ab"); t.find("ab") == Some(2)`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.find("a") == Some(1) and t.find("b") == None`
     pub fn find<S: Seq>(self, word: S) -> ?Int:
@@ -2721,13 +2735,13 @@ pub struct Trie<A>:
             let t = next[at * alpha + a.ord]
             if t == -1: return None
             at = t
-        at
+        if pass[at] == 0: None else: at
 
     /// Inserts one copy of `word` and returns its terminal node; `count(word)` and
     /// `count_prefix(p)` for every prefix `p` of `word` grow by one.
     ///
     /// cost: \(O(\lvert \mathit{word} \rvert)\)
-    /// empty: an empty `word` is stored at the root
+    /// empty: `var t = Trie<Char>(); t.add("") == 0`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab") == 2`
     pub fn add<S: Seq>(mut self, word: S) -> Int:
@@ -2750,7 +2764,7 @@ pub struct Trie<A>:
     /// changes nothing when `count(word) == 0`.
     ///
     /// cost: \(O(\lvert \mathit{word} \rvert)\)
-    /// empty: removes a copy of the empty word, if stored
+    /// empty: `var t = Trie<Char>(); t.add(""); (t.remove(""), t.remove("")) == (true, false)`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.remove("ab") and not t.remove("ab")`
     pub fn remove<S: Seq>(mut self, word: S) -> Bool:
@@ -2767,7 +2781,7 @@ pub struct Trie<A>:
     /// The number of copies of exactly `word` stored.
     ///
     /// cost: \(O(\lvert \mathit{word} \rvert)\)
-    /// empty: copies of the empty word
+    /// empty: `var t = Trie<Char>(); t.add(""); t.add(""); t.count("") == 2`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ab"); t.count("ab") == 2 and t.count("a") == 0`
     pub fn count<S: Seq>(self, word: S) -> Int:
@@ -2777,7 +2791,7 @@ pub struct Trie<A>:
     /// The number of stored words (with multiplicity) that start with `prefix`.
     ///
     /// cost: \(O(\lvert \mathit{prefix} \rvert)\)
-    /// empty: every stored word
+    /// empty: `var t = Trie<Char>(); t.add("a"); t.add("b"); t.count_prefix("") == 2`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.count_prefix("a") == 2`
     pub fn count_prefix<S: Seq>(self, prefix: S) -> Int:
@@ -2803,7 +2817,7 @@ pub struct Trie<A>:
     /// True when at least one copy of exactly `word` is stored: `count(word) > 0`.
     ///
     /// cost: \(O(\lvert \mathit{word} \rvert)\)
-    /// empty: whether the empty word is stored
+    /// empty: `var t = Trie<Char>(); t.add("a"); let before = t.contains(""); t.add(""); (before, t.contains("")) == (false, true)`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("ab"); t.contains("ab") and not t.contains("a")`
     pub fn contains<S: Seq>(self, word: S) -> Bool:
@@ -2823,7 +2837,7 @@ pub struct Trie<A>:
     /// `None` when fewer than `k + 1` words are stored. A word comes before its extensions.
     ///
     /// cost: \(O(\mathit{depth} \cdot \lvert A \rvert)\)
-    /// ties: copies of one word are adjacent and interchangeable
+    /// ties: `var t = Trie<Char>(); t.add("a"); t.add("a"); (t.kth(0), t.kth(1)) == (Some(['a']), Some(['a']))`
     /// order: the letters of the word, first to last
     /// traps: when `k < 0`
     /// example: `var t = Trie<Char>(); t.add("b"); t.add("ab"); t.add("a"); t.kth(1) == Some(['a', 'b']) and t.kth(3) == None`
@@ -2848,7 +2862,7 @@ pub struct Trie<A>:
     /// The number of stored words (with multiplicity) lexicographically smaller than `word`.
     ///
     /// cost: \(O(\lvert \mathit{word} \rvert \cdot \lvert A \rvert)\)
-    /// empty: `0` for an empty `word`
+    /// empty: `var t = Trie<Char>(); t.add("a"); t.count_less("") == 0`
     /// traps: never
     /// example: `var t = Trie<Char>(); t.add("b"); t.add("ab"); t.add("a"); t.count_less("b") == 2`
     pub fn count_less<S: Seq>(self, word: S) -> Int:
@@ -2884,7 +2898,7 @@ pub struct AhoCorasick<A>:
     /// order with the root `0`; equal patterns share a state.
     ///
     /// cost: \(O(\mathit{sum} \lvert p \rvert \cdot \lvert A \rvert)\)
-    /// empty: no patterns gives just the root; an empty pattern ends at the root and matches at every `at` in `0..=|text|`
+    /// empty: `(AhoCorasick<Char>(List<Str>()).len, AhoCorasick<Char>([""]).find_all("ab").collect()) == (1, [(0, 0), (1, 0), (2, 0)])`
     /// traps: when an element of a pattern is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).len == 4`
     pub fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>:
@@ -2990,12 +3004,13 @@ pub struct AhoCorasick<A>:
     /// start: exactly the pairs with `text[at..at + patterns[pattern].len] == patterns[pattern]`.
     ///
     /// cost: \(O(\lvert \mathit{text} \rvert + \mathit{output})\)
-    /// empty: an empty `text` yields only matches of an empty pattern
-    /// ties: at one end position, longest pattern first, then increasing index (`words_at`)
+    /// empty: `AhoCorasick<Char>(["", "a"]).find_all("").collect() == [(0, 0)]`
+    /// ties: `AhoCorasick<Char>(["b", "ab", "b"]).find_all("ab").collect() == [(0, 1), (1, 0), (1, 2)]`
     /// order: by end position
     /// traps: when an element of `text` is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).find_all("ab").collect() == [(0, 0), (0, 1), (1, 2)]`
     pub fn find_all<S: Seq>(self, text: S) -> yields (at: Int, pattern: Int):
+        for w in ends[0]: yield (at: 0, pattern: w)
         var state = 0
         var i = 0
         for a in text:
@@ -3010,12 +3025,13 @@ pub struct AhoCorasick<A>:
     /// `find_all` pairs with that index.
     ///
     /// cost: \(O(\lvert \mathit{text} \rvert + \mathit{states})\)
-    /// empty: all zeros for an empty `text` (an empty pattern still counts once)
+    /// empty: `AhoCorasick<Char>(["a", ""]).counts("") == [0, 1]`
     /// order: keyed by pattern index
     /// traps: when an element of `text` is not in `A`
     /// example: `AhoCorasick<Char>(["a", "ab", "b"]).counts("abb") == [1, 1, 2]`
     pub fn counts<S: Seq>(self, text: S) -> List<Int>:
         var visits = List.filled(fail.len, 0)
+        visits[0] = 1
         var state = 0
         for a in text:
             state = goto[state * alpha + a.ord]
@@ -3096,7 +3112,7 @@ pub struct DynamicAhoCorasick<A>:
     /// Stores one more copy of `pattern`.
     ///
     /// cost: \(O(\lvert \mathit{pattern} \rvert \cdot \lvert A \rvert \cdot \log n)\) amortized
-    /// empty: an empty pattern matches at every `at` in `0..=|text|`
+    /// empty: `var d = DynamicAhoCorasick<Char>(); d.add(""); d.count_matches("ab") == 3`
     /// traps: when an element of `pattern` is not in `A`
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.len == 1`
     pub fn add<S: Seq>(mut self, pattern: S):
@@ -3108,7 +3124,7 @@ pub struct DynamicAhoCorasick<A>:
     /// Removes one stored copy of `pattern`.
     ///
     /// cost: \(O(\lvert \mathit{pattern} \rvert \cdot \lvert A \rvert \cdot \log n)\) amortized
-    /// empty: removes a copy of the empty pattern
+    /// empty: `var d = DynamicAhoCorasick<Char>(); d.add(""); d.add(""); d.remove(""); d.count_matches("a") == 2`
     /// traps: when no copy of `pattern` is stored
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.remove("ab"); d.count_matches("ab") == 0`
     pub fn remove<S: Seq>(mut self, pattern: S):
@@ -3121,7 +3137,7 @@ pub struct DynamicAhoCorasick<A>:
     /// counted.
     ///
     /// cost: \(O(\lvert \mathit{text} \rvert \cdot \log n)\)
-    /// empty: `0` for an empty `text` unless an empty pattern is stored
+    /// empty: `var d = DynamicAhoCorasick<Char>(); d.add("a"); let n = d.count_matches(""); d.add(""); (n, d.count_matches("")) == (0, 1)`
     /// traps: when an element of `text` is not in `A`
     /// example: `var d = DynamicAhoCorasick<Char>(); d.add("ab"); d.add("b"); d.count_matches("abb") == 3`
     pub fn count_matches<S: Seq>(self, text: S) -> Int = added.count(text) - removed.count(text)
