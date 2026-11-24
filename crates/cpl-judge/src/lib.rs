@@ -284,15 +284,24 @@ fn accepts(compiler: &str, flag: Option<&str>) -> bool {
     accepts_all(compiler, &flags)
 }
 
+type ProbeKey = (String, Vec<String>);
+
+/// Each compiler and flags asked about this run, with its answer. A probe
+/// that panicked leaves the answers already kept still true, so a poisoned
+/// lock is taken as it is.
+fn probes() -> std::sync::MutexGuard<'static, std::collections::HashMap<ProbeKey, bool>> {
+    use std::sync::{Mutex, OnceLock, PoisonError};
+    static SEEN: OnceLock<Mutex<std::collections::HashMap<ProbeKey, bool>>> = OnceLock::new();
+    SEEN.get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+}
+
 /// Whether `compiler` builds and links an empty program with `flags`.
 /// Asked once per compiler and flags.
 fn accepts_all(compiler: &str, flags: &[String]) -> bool {
-    use std::collections::HashMap;
-    use std::sync::{Mutex, OnceLock};
-    type Seen = Mutex<HashMap<(String, Vec<String>), bool>>;
-    static SEEN: OnceLock<Seen> = OnceLock::new();
     let key = (compiler.to_string(), flags.to_vec());
-    if let Some(&seen) = SEEN.get_or_init(Default::default).lock().unwrap().get(&key) {
+    if let Some(&seen) = probes().get(&key) {
         return seen;
     }
     // A yes is kept across runs, so `cpl test` and `cpl stress` don't build two
@@ -303,10 +312,7 @@ fn accepts_all(compiler: &str, flags: &[String]) -> bool {
         None => Some(std::env::temp_dir().join("cpl-cache").join("judge-probes")),
     };
     let ok = probe(compiler, flags, memo.as_deref());
-    SEEN.get_or_init(Default::default)
-        .lock()
-        .unwrap()
-        .insert(key, ok);
+    probes().insert(key, ok);
     ok
 }
 
@@ -596,8 +602,13 @@ pub enum Value {
 impl Config {
     /// Reads `[judge]` and `[judge.<name>]`; other tables are not ours.
     pub fn parse(text: &str) -> Result<Config, String> {
+        enum Table {
+            Other,
+            Judge,
+            Profile(String, Vec<(String, Value)>),
+        }
         let mut config = Config::default();
-        let mut table: Option<Option<String>> = None;
+        let mut table = Table::Other;
         for (at, line) in text.lines().enumerate() {
             let line = cpl_config::strip_comment(line).trim();
             if line.is_empty() {
@@ -609,38 +620,45 @@ impl Config {
                     .strip_suffix(']')
                     .ok_or_else(|| err("a table header ends with `]`".into()))?;
                 let head = head.trim();
-                table = if head == "judge" {
-                    Some(None)
+                let next = if head == "judge" {
+                    Table::Judge
                 } else if let Some(name) = head.strip_prefix("judge.") {
-                    let name = name.trim().trim_matches('"').to_string();
-                    config.tables.push((name.clone(), Vec::new()));
-                    Some(Some(name))
+                    Table::Profile(name.trim().trim_matches('"').to_string(), Vec::new())
                 } else {
-                    None
+                    Table::Other
                 };
+                if let Table::Profile(name, keys) = std::mem::replace(&mut table, next) {
+                    config.tables.push((name, keys));
+                }
                 continue;
             }
-            let Some(table) = &table else { continue };
+            if let Table::Other = table {
+                continue;
+            }
             let (key, value) = line
                 .split_once('=')
                 .ok_or_else(|| err(format!("`{line}` is not `key = value`")))?;
             let key = key.trim().to_string();
             let value = parse_value(value.trim()).map_err(&err)?;
-            match table {
-                None if key == "judge" => match value {
+            match &mut table {
+                Table::Other => {}
+                Table::Judge if key == "judge" => match value {
                     Value::Str(name) => config.default = Some(name),
                     _ => return Err(err("`judge` is a profile's name in quotes".into())),
                 },
-                None => {
+                Table::Judge => {
                     return Err(err(format!(
                         "`[judge]` has `judge = \"<name>\"`, not `{key}`"
                     )))
                 }
-                Some(_) => {
+                Table::Profile(_, keys) => {
                     check_key(&key, &value).map_err(&err)?;
-                    config.tables.last_mut().unwrap().1.push((key, value));
+                    keys.push((key, value));
                 }
             }
+        }
+        if let Table::Profile(name, keys) = table {
+            config.tables.push((name, keys));
         }
         for (name, keys) in &config.tables {
             if builtin(name).is_none() && !keys.iter().any(|(k, _)| k == "extends") {

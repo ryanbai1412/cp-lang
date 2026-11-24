@@ -389,3 +389,42 @@ fn gxx_version_is_one_line_or_none() {
         );
     }
 }
+
+#[test]
+fn each_profile_table_keeps_its_own_keys() {
+    let config = Config::parse(
+        "[judge.cses]\nstack_mb = 64\n[other]\nstack_mb = 1\n[judge]\njudge = \"mine\"\n[judge.mine]\nextends = \"cses\"\n",
+    )
+    .unwrap();
+    assert_eq!(config.default.as_deref(), Some("mine"));
+    assert_eq!(
+        config.tables,
+        [
+            (
+                "cses".to_string(),
+                vec![("stack_mb".to_string(), Value::Int(64))]
+            ),
+            (
+                "mine".to_string(),
+                vec![("extends".to_string(), Value::Str("cses".into()))]
+            ),
+        ]
+    );
+    assert_eq!(
+        Config::parse("[judge.cses]\n").unwrap().tables,
+        [("cses".to_string(), vec![])]
+    );
+}
+
+#[test]
+fn a_probe_that_panicked_leaves_the_kept_answers_usable() {
+    let flags = vec!["-cpl-poison-test".to_string()];
+    probes().insert(("cpl-no-such-cc".into(), flags.clone()), true);
+    let poisoned = std::thread::spawn(|| {
+        let _held = probes();
+        panic!("a probe panicked while holding the answers");
+    })
+    .join();
+    assert!(poisoned.is_err());
+    assert!(accepts_all("cpl-no-such-cc", &flags));
+}
