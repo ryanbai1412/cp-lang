@@ -807,10 +807,10 @@ fn explain_a_file_shows_each_values_storage() {
     assert!(
         text(&out.stdout).starts_with(
             "Storage for s.cp (at the input bounds):\n\
-             \x20 n   Int              8 bytes\n\
-             \x20 a   [V](Int, 0..=9)  16 bytes per element x 1000 = 16 KB, fields @0 @8, 7 bytes padding\n\
-             \x20 o   ?V               2 bytes, None is a spare value (no flag)\n\
-             \x20 xs  [n]Int           8 bytes per element, no bound on the count\n\
+             \x20 n   Int              8 B\n\
+             \x20 a   [V](Int, 0..=9)  16 B per element x 1000 = 16 KB, fields @0 @8, 7 B padding\n\
+             \x20 o   ?V               2 B, None is a spare value (no flag)\n\
+             \x20 xs  [n]Int           8 B per element, no bound on the count\n\
              \x20 peak 16 KB of 256 MB on generic, not counting xs\n"
         ),
         "{}",
@@ -825,7 +825,7 @@ fn explain_a_file_shows_each_values_storage() {
     assert_eq!(o.at(&["lowering"]).as_str(), Some("storage"));
     assert_eq!(
         o.at(&["detail"]).as_str(),
-        Some("?V: 2 bytes, None is a spare value (no flag)")
+        Some("?V: 2 B, None is a spare value (no flag)")
     );
 }
 

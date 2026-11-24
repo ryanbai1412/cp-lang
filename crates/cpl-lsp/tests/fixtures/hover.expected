@@ -43,19 +43,19 @@ for: runs at most n = 200000 (2e5) times
 ```cp
 v: V
   domain V = 1..=n, n <= 2e5
-  storage: 4 bytes
+  storage: 4 B
 ```
 
 == hover @ 9:11
 ```cp
 half: 0..=100000
-  storage: 4 bytes
+  storage: 4 B
 ```
 
 == hover @ 10:25
 ```cp
 k: 1..=7
-  storage: 1 byte
+  storage: 1 B
 ```
 
 == hover @ 10:31
@@ -180,7 +180,7 @@ xs[v]: in bounds, v: V, the index space of xs
 ```cp
 domain Col = 0..4
   at most 4 positions
-  storage: 1 byte per position
+  storage: 1 B per position
   in bounds of grid[Row.first!, Col.last!]: Row.first!: Row, Col.last!: Col, the index spaces of grid
 ```
 
@@ -358,40 +358,40 @@ Writes its arguments and a newline, lists space-separated and grids by row, in t
 == hover @ 138:10
 ```cp
 struct Edge
-  to: V  // at 0, 4 bytes
-  // 4 bytes padding
-  w: Int  // at 8, 8 bytes
-  used: Bool  // at 16, 1 byte
-  // 7 bytes padding
-  storage: 24 bytes, aligned to 8
+  to: V  // at 0, 4 B
+  // 4 B padding
+  w: Int  // at 8, 8 B
+  used: Bool  // at 16, 1 B
+  // 7 B padding
+  storage: 24 B, aligned to 8
 ```
 
 == hover @ 142:6
 ```cp
 es: [V]Edge
   domain V = 1..=n, n <= 2e5
-  storage: 24 bytes per element, 4.8 MB max (fields at 0, 8, 16; 11 bytes padding)
+  storage: 24 B per element, 4.8 MB max (fields at 0, 8, 16; 11 B padding)
 ```
 
 == hover @ 143:7
 ```cp
 flag: [V]?Bool
   domain V = 1..=n, n <= 2e5
-  storage: 2 bytes per element, 400 KB max (1 byte + 1 byte flag for None)
+  storage: 2 B per element, 400 KB max (1 B + 1 B flag for None)
 ```
 
 == hover @ 144:7
 ```cp
 pairs: [V](V, Int)
   domain V = 1..=n, n <= 2e5
-  storage: 16 bytes per element, 3.2 MB max (fields at 0, 8; 4 bytes padding)
+  storage: 16 B per element, 3.2 MB max (fields at 0, 8; 4 B padding)
 ```
 
 == hover @ 145:7
 ```cp
 adj: [V]List<V>
   domain V = 1..=n, n <= 2e5
-  storage: grows on the heap; V: 4 bytes each
+  storage: grows on the heap; V: 4 B each
 ```
 
 == hover @ 146:10
@@ -399,21 +399,21 @@ adj: [V]List<V>
 struct Runs
   first: [V]Int
   seen: List<V>
-  storage: first: 8 bytes per element, seen: grows on the heap; V: 4 bytes each
+  storage: first: 8 B per element, seen: grows on the heap; V: 4 B each
 ```
 
 == hover @ 149:7
 ```cp
 names: [V](name: Str, t: 1..=1000)
   domain V = 1..=n, n <= 2e5
-  storage: per element, name: grows on the heap, t: 2 bytes
+  storage: per element, name: grows on the heap, t: 2 B
 ```
 
 == hover @ 150:7
 ```cp
 dists: [V][V]?Int
   domain V = 1..=n, n <= 2e5
-  storage: each row 8 bytes per element
+  storage: each row 8 B per element
 ```
 
 == hover @ 153:17

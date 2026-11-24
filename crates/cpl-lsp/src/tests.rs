@@ -255,7 +255,7 @@ fn hover_shows_type_and_cost_with_its_range() {
     assert_eq!(hover.at(&["contents", "kind"]).as_str(), Some("markdown"));
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
-        Some("```cp\ndist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 bytes per element, 1.6 MB max (None is a spare value: no flag)\n```")
+        Some("```cp\ndist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 B per element, 1.6 MB max (None is a spare value: no flag)\n```")
     );
     assert_eq!(hover.at(&["range", "start"]), &pos(6, 13));
     assert_eq!(hover.at(&["range", "end"]), &pos(6, 17));
@@ -556,7 +556,7 @@ fn a_whole_session_over_the_wire() {
     );
     assert_eq!(
         replies[3].at(&["result", "contents", "value"]).as_str(),
-        Some("```cp\ndomain V = 1..=n\n  at most 2e5 positions (n <= 2e5)\n  storage: 4 bytes per position\n```")
+        Some("```cp\ndomain V = 1..=n\n  at most 2e5 positions (n <= 2e5)\n  storage: 4 B per position\n```")
     );
     assert_eq!(replies[4].at(&["id"]).as_u32(), Some(3));
 }
@@ -741,7 +741,7 @@ fn v22_optionals_hover_as_optionals_and_check_clean() {
     let hover = hover_at(&mut server, 7, 4);
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
-        Some("```cp\nbest: ?Int\n  storage: 8 bytes (None is a spare value: no flag)\n```")
+        Some("```cp\nbest: ?Int\n  storage: 8 B (None is a spare value: no flag)\n```")
     );
     assert_eq!(hover.at(&["range", "start"]), &pos(7, 4));
     assert_eq!(hover.at(&["range", "end"]), &pos(7, 8));
@@ -749,7 +749,7 @@ fn v22_optionals_hover_as_optionals_and_check_clean() {
     assert_eq!(
         hover.at(&["contents", "value"]).as_str(),
         Some(
-            "```cp\ndp: [0..=x]?Int\n  storage: 8 bytes per element, 8 MB max (None is a spare value: no flag)\n```"
+            "```cp\ndp: [0..=x]?Int\n  storage: 8 B per element, 8 MB max (None is a spare value: no flag)\n```"
         )
     );
 }
@@ -1531,7 +1531,7 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
     assert!(fold.contains("-> T\ncost: O(n)\n```"), "{fold}");
     assert_eq!(
         shown(&mut server, 2, 4),
-        "```cp\nm: 2..=10001\n  storage: 2 bytes\n```"
+        "```cp\nm: 2..=10001\n  storage: 2 B\n```"
     );
 }
 

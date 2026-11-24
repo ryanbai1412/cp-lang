@@ -35,10 +35,8 @@ fn min_and_max_of_scalars_have_their_type() {
 #[test]
 fn a_name_bound_to_read_of_a_type_has_that_type() {
     let src = "let n = read<1..=100>()\nlet xs = read<[n](a: Int, b: Bool)>()\nprint(n, xs.len)\n";
-    assert_eq!(hover(src, "n ="), "n: 1..=100\n  storage: 1 byte");
-    assert!(
-        hover(src, "xs =").starts_with("xs: [n](a: Int, b: Bool)\n  storage: 16 bytes per element")
-    );
+    assert_eq!(hover(src, "n ="), "n: 1..=100\n  storage: 1 B");
+    assert!(hover(src, "xs =").starts_with("xs: [n](a: Int, b: Bool)\n  storage: 16 B per element"));
 }
 
 #[test]

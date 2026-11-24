@@ -334,7 +334,7 @@ fn lsp_latency(lines: usize) {
         let (replies, took, _) = round_trip(&mut server, &request);
         assert!(replies[0].contains("roads: [E]Road"), "{}", replies[0]);
         assert!(
-            replies[0].contains("storage: 16 bytes per element, 3.2 MB max"),
+            replies[0].contains("storage: 16 B per element, 3.2 MB max"),
             "{}",
             replies[0]
         );

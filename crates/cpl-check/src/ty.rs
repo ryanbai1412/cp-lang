@@ -1003,7 +1003,7 @@ fn int_width(lo: i128, hi: i128) -> u64 {
     }
 }
 
-/// `1.6 MB`, `400 KB`, `12 bytes`.
+/// `1.6 MB`, `400 KB`, `12 B`: sizes as spec/tools spells them.
 pub fn human_bytes(bytes: u128) -> String {
     let unit = |n: u128, div: u128, name: &str| {
         let tenths = n * 10 / div;
@@ -1017,8 +1017,7 @@ pub fn human_bytes(bytes: u128) -> String {
         b if b >= 1_000_000_000 => unit(b, 1_000_000_000, "GB"),
         b if b >= 1_000_000 => unit(b, 1_000_000, "MB"),
         b if b >= 1_000 => unit(b, 1_000, "KB"),
-        1 => "1 byte".into(),
-        b => format!("{b} bytes"),
+        b => format!("{b} B"),
     }
 }
 
@@ -1218,7 +1217,7 @@ mod tests {
         assert_eq!(human_int(123_456), "123456");
         assert_eq!(human_bytes(1_600_000), "1.6 MB");
         assert_eq!(human_bytes(800_000), "800 KB");
-        assert_eq!(human_bytes(12), "12 bytes");
+        assert_eq!(human_bytes(12), "12 B");
     }
 
     #[test]
