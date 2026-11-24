@@ -793,7 +793,8 @@ impl<'a> Lowerer<'a> {
             );
             self.error(codes::TYPE_MISMATCH, span, message);
             let (new, at) = (format!("List({})", self.source(span)), self.span(span));
-            if let (Ty::Str, Some(last)) = (&items.ty, self.diags.last_mut()) {
+            let text = self.show(&items.ty) == "Str";
+            if let (true, Some(last)) = (text, self.diags.last_mut()) {
                 last.help = Some(format!("a string's characters are the list `{new}`"));
                 last.fix(format!("write `{new}`"), at, new);
             }

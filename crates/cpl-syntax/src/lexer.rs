@@ -262,6 +262,32 @@ impl<'a> Lexer<'a> {
                 !n.trim().is_empty() && n.trim().chars().all(|c| c.is_alphanumeric() || c == '_')
             })
         };
+        let fast_io = [
+            "ios::sync_with_stdio",
+            "ios_base::sync_with_stdio",
+            "std::ios",
+            "cin.tie(",
+            "cout.tie(",
+            "std::cin.tie(",
+        ];
+        let io_line = line.ends_with(';')
+            && (line.split(';').map(str::trim).filter(|s| !s.is_empty()))
+                .all(|s| fast_io.iter().any(|p| s.starts_with(p)));
+        if io_line && begin == self.pos {
+            let span = Span::new(begin as u32, line.len() as u32 + begin as u32);
+            let whole = Span::new(begin as u32, (end + 1).min(self.src.len()) as u32);
+            self.out.diagnostics.push(
+                Diagnostic::error(
+                    codes::REMOVED_SYNTAX,
+                    span,
+                    "C++'s fast-I/O setup: CP Lang's `read()` and `print` are already fast",
+                )
+                .with_help("remove the line")
+                .with_fix("remove the line", whole, ""),
+            );
+            self.pos = end;
+            return true;
+        }
         let word = if line.starts_with("#include") {
             "#include"
         } else if line.starts_with("using namespace ") && line.ends_with(';') {
@@ -1174,6 +1200,36 @@ impl<'a> Lexer<'a> {
         }
         let text = &self.src[start..self.pos];
         if self.pos > digits_end || (radix_prefix && digits_end == start + 2) {
+            // C's `1LL` or `10u`: every integer is an `Int`.
+            let digits = &self.src[start..digits_end];
+            let suffix = self.src[digits_end..self.pos].to_ascii_lowercase();
+            let c_suffix = !radix_prefix
+                && !float
+                && matches!(
+                    suffix.as_str(),
+                    "l" | "ll" | "u" | "ul" | "ull" | "lu" | "llu"
+                );
+            let at = Span::new(start as u32, self.pos as u32);
+            if c_suffix {
+                self.out.diagnostics.push(
+                    Diagnostic::error(
+                        codes::BAD_NUMBER,
+                        at,
+                        format!(
+                            "`{text}` isn't a number: CP Lang has no `{}` suffix",
+                            &text[digits.len()..]
+                        ),
+                    )
+                    .with_help(format!("every integer is an `Int`: write `{digits}`"))
+                    .with_fix(
+                        format!("write `{digits}`"),
+                        at,
+                        digits.to_string(),
+                    ),
+                );
+                self.push(TokenKind::Int, start);
+                return;
+            }
             self.out.diagnostics.push(
                 Diagnostic::error(
                     codes::BAD_NUMBER,

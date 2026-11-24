@@ -433,15 +433,41 @@ impl Checker<'_> {
         }
         if let ExprKind::Field { base, name: f } = &callee.kind {
             if matches!(&base.kind, ExprKind::Name(m) if m == "math" || m == "Math") {
-                let ours = match (f.text.as_str(), args) {
-                    ("sqrt" | "abs" | "floor" | "ceil" | "round" | "trunc" | "isqrt", [x]) => {
+                // `math.ceil(a / b)` on Ints: `/` already rounds down.
+                let div = match (f.text.as_str(), args) {
+                    ("ceil" | "floor", [x]) => match &x.value.kind {
+                        ExprKind::Binary {
+                            op: BinOp::Div,
+                            lhs,
+                            rhs,
+                            ..
+                        } => {
+                            let l = self.quietly(|c| c.infer(lhs));
+                            let r = self.quietly(|c| c.infer(rhs));
+                            let (a, b) = (self.text(lhs.span), self.text(rhs.span));
+                            let bare = !a.contains(' ') || a.starts_with('(') && a.ends_with(')');
+                            let a = if bare {
+                                a.to_string()
+                            } else {
+                                format!("({a})")
+                            };
+                            (l.is_int() && r.is_int()).then(|| (a, b.to_string()))
+                        }
+                        _ => None,
+                    },
+                    _ => None,
+                };
+                let ours = match (f.text.as_str(), args, div) {
+                    ("ceil", [_], Some((a, b))) => format!("{a}.ceil_div({b})"),
+                    ("floor", [_], Some((a, b))) => format!("{a} / {b}"),
+                    ("sqrt" | "abs" | "floor" | "ceil" | "round" | "trunc" | "isqrt", [x], _) => {
                         format!("{}.{}", operand(self, x), f.text)
                     }
-                    ("gcd" | "lcm", [a, b]) => {
+                    ("gcd" | "lcm", [a, b], _) => {
                         let (a, b) = (self.text(a.value.span), self.text(b.value.span));
                         format!("{}({a}, {b})", f.text)
                     }
-                    ("pow", [a, b]) => format!("{} ** {}", operand(self, a), operand(self, b)),
+                    ("pow", [a, b], _) => format!("{} ** {}", operand(self, a), operand(self, b)),
                     _ => return,
                 };
                 let member = f.span;
