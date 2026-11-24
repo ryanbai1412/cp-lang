@@ -377,6 +377,7 @@ pub struct ParityDsu<V>:
     /// or (with `false`) the root of a set where it found a contradiction.
     pub log: List<(V, Bool)>
     conflicts: 0..=2_000_000_000
+    parts: 0..=2_000_000_000
 
     /// A parity union-find over `V` with every position alone and nothing known.
     ///
@@ -384,7 +385,7 @@ pub struct ParityDsu<V>:
     /// traps: never
     /// example: `let d = ParityDsu<0..3>(); d.consistent and d.diff(0, 1) == None`
     pub fn new() -> ParityDsu<V>:
-        ParityDsu([V] v => v, [V] v => 1, [V] v => false, [], 0)
+        ParityDsu([V] v => v, [V] v => 1, [V] v => false, [], 0, V.count)
 
     /// The representative of `v`'s set and whether `v` is on the other side from it.
     ///
@@ -424,6 +425,7 @@ pub struct ParityDsu<V>:
         up[small] = big
         flip[small] = (sa != sb) != differ
         sz[big] += sz[small]
+        parts -= 1
         log.push((small, true))
         true
 
@@ -451,6 +453,31 @@ pub struct ParityDsu<V>:
     /// traps: never
     /// example: `var d = ParityDsu<0..3>(); d.unite(0, 1); d.unite(1, 2); d.size(2) == 3`
     pub fn size(self, v: V) -> Int = sz[self.find(v).root]
+
+    /// The number of sets: `V.count` minus the merging `unite`s still in effect.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var d = ParityDsu<0..4>(); d.unite(0, 1); d.unite(1, 0, differ: false); d.components == 3`
+    @get pub fn components(self) -> Int = parts
+
+    /// Every set as a list of its positions, each position in exactly one list.
+    ///
+    /// cost: \(O(n \log n)\); allocates the lists
+    /// empty: `[]` when `V` is empty
+    /// order: lists by their least position, positions increasing within each
+    /// traps: never
+    /// example: `var d = ParityDsu<0..4>(); d.unite(3, 1); d.groups() == [[0], [1, 3], [2]]`
+    pub fn groups(self) -> List<List<V>>:
+        var gid: [V]Int = -1
+        var out: List<List<V>> = []
+        for v in V:
+            let r = self.find(v).root
+            if gid[r] < 0:
+                gid[r] = out.len
+                out.push([])
+            out[gid[r]].push(v)
+        out
 
     /// Whether no contradiction is in effect: every `unite` since the last undone one agreed with
     /// those before it. For a graph: is it two-colourable?
@@ -481,6 +508,7 @@ pub struct ParityDsu<V>:
                 conflicts -= 1
             else:
                 sz[up[y]] -= sz[y]
+                parts += 1
                 up[y] = y
                 flip[y] = false
 
@@ -1050,3 +1078,19 @@ impl Show for DsuOf<V, T>:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+@test
+fn parity_dsu_components_and_groups_track_merges_and_undo():
+    domain V = 0..5
+    var d = ParityDsu<V>()
+    assert d.components == 5
+    d.unite(V(4), V(1))
+    d.unite(V(1), V(2), differ: false)
+    d.unite(V(2), V(4), differ: false)
+    assert d.components == 3 and not d.consistent
+    assert d.groups() == [[V(0)], [V(1), V(2), V(4)], [V(3)]]
+    let m = d.mark()
+    d.unite(V(0), V(3))
+    assert d.components == 2
+    d.undo_to(m)
+    assert d.components == 3 and d.groups().len == 3

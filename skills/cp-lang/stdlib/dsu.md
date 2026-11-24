@@ -61,6 +61,8 @@ Fields: `up: [V]V`.
 - `fn diff(self, a: V, b: V) -> ?Bool` — \(O(\log n)\); Whether `a` and `b` are on opposite sides; `None` when nothing relates them yet.
 - `fn same(self, a: V, b: V) -> Bool` — \(O(\log n)\); Whether `a` and `b` are in the same set, so that their relative side is known.
 - `fn size(self, v: V) -> Int` — \(O(\log n)\); The number of positions in `v`'s set, `v` included.
+- `@get fn components(self) -> Int` — \(O(1)\); The number of sets: `V.count` minus the merging `unite`s still in effect.
+- `fn groups(self) -> List<List<V>>` — \(O(n \log n)\); allocates the lists; Every set as a list of its positions, each position in exactly one list.
 - `@get fn consistent(self) -> Bool` — \(O(1)\); Whether no contradiction is in effect: every `unite` since the last undone one agreed with those before it.
 - `fn mark(self) -> Mark` — \(O(1)\); The present, to return to with [`undo_to`](ParityDsu.undo_to).
 - `fn undo_to(mut self, snap: Mark)` — \(O(1)\) per undone `unite`; Takes back every `unite` since `snap = mark()`, contradictions included, newest first.; traps: when `snap` lies after the present (its changes were already undone)

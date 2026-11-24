@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3450 (3427 passing). Rules: 616.
+Cases: 3451 (3427 passing). Rules: 616.
 
 ## Summary per chapter
 
@@ -1100,7 +1100,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **derive** (5/6 named by a case)
   - uncovered: `read_fields`
 - **dp** (39/39 named by a case)
-- **dsu** (62/62 named by a case)
+- **dsu** (64/64 named by a case)
 - **fenwick** (42/42 named by a case)
 - **flow** (57/65 named by a case)
   - uncovered: `max_weight_matching`, `min_weight_matching`, `general_matching`, `max_weight_general_matching`, `max_bounded_flow`, `min_bounded_flow`, `global_min_cut`, `Matroid`
@@ -1150,7 +1150,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/21 named by a case)
   - uncovered: `Undo`
 
-2281 of 2393 std items are named by a case.
+2283 of 2395 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
