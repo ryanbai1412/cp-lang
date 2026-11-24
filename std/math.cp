@@ -1491,11 +1491,11 @@ pub fn linear_diophantine(a: Int, b: Int, c: Int) -> ?(x0: Int, y0: Int, step_x:
 pub fn linear_congruence(a: Int, b: Int, m: Int) -> ?(r: Int, step: Int):
     assert m >= 1
     let (a2, b2) = (a % m, b % m)
-    let g = gcd(a2, m)
+    let (g, x) = ext_gcd_x(a2, m)
     if b2 % g != 0: return None
     let step = m / g
     if step == 1: return Some((r: 0, step:))
-    Some((r: mul_mod(b2 / g, inv_mod(a2 / g, step)!, step), step:))
+    Some((r: mul_mod(b2 / g, x % step, step), step:))
 
 /// The least `x` in `0..p` with `x^k = a (mod p)` for prime `p` and `k >= 1`, or `None`.
 ///
@@ -1944,6 +1944,17 @@ fn gcd_lcm_and_bezout():
         let e = ext_gcd(a, b)
         assert e.g == g and a * e.x + b * e.y == g
     assert gcd(0, 0) == 0 and lcm(4, 6) == 12 and lcm(0, 5) == 0 and lcm(-4, 6) == 12
+
+@test
+fn linear_congruence_is_the_least_solution():
+    for m in 1..=16:
+        for a in -20..=20:
+            for b in -20..=20:
+                let want = [x for x in 0..m if (a * x - b) % m == 0].first.map(r => (r:, step: m / gcd(a, m)))
+                assert linear_congruence(a, b, m) == want
+    let big = 1_000_000_000_000_000_003
+    let s = linear_congruence(-123_456_789_012_345, 987_654_321_987, big)!
+    assert s.step == big and mul_mod(-123_456_789_012_345, s.r, big) == 987_654_321_987
 
 @test
 fn choose_is_pascals_triangle():
