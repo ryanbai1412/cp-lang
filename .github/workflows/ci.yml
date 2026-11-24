@@ -519,7 +519,10 @@ jobs:
           restore-keys: corpus-audit-cxx-
       - name: Audit every problem package
         timeout-minutes: 12
-        run: uv run --quiet python scripts/corpus.py verify --only package -j "$(nproc)"
+        # The step's own timeout leaves g++ running into the save below, whose
+        # tar then fails ("file changed as we read it") and the cache never
+        # warms; `timeout` ends the whole process group first.
+        run: timeout 660 uv run --quiet python scripts/corpus.py verify --only package -j "$(nproc)"
       - uses: actions/cache/save@v4
         if: always()
         with:
