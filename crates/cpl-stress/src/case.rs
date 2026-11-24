@@ -309,7 +309,7 @@ mod tests {
                 .check
                 .map(|ruling| Runner::Canned(Runs::Rules(ruling))),
             interactor: (canned.talked)
-                .map(|talked| (Runner::Canned(Runs::Talks(talked)), Launch::Stdio)),
+                .map(|talked| (Runner::Canned(Runs::Talks(Box::new(talked))), Launch::Stdio)),
             cold: None,
             limit: Duration::from_secs(1),
         }

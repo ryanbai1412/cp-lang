@@ -26,7 +26,7 @@ pub struct Vm {
 
 /// How each program of a case runs.
 pub enum Runner {
-    InProcess(Vm),
+    InProcess(Box<Vm>),
     Process(Program),
     /// A run made already: what it printed, such as a test's answer.
     Answer(String),
@@ -35,12 +35,16 @@ pub enum Runner {
     Canned(Canned),
 }
 
+/// A test's stand-in for running a program.
+#[cfg(test)]
+pub type RunFn = dyn Fn(&str, Duration) -> Ran + Sync;
+
 /// What a test's runner gives back.
 #[cfg(test)]
 pub enum Canned {
-    Runs(Box<dyn Fn(&str, Duration) -> Ran + Sync>),
+    Runs(Box<RunFn>),
     Rules(Ruling),
-    Talks(Talked),
+    Talks(Box<Talked>),
 }
 
 /// How many programs' preludes are kept at once.
@@ -307,7 +311,7 @@ impl Runner {
                     .map_err(unrunnable(&interactor.name))
             }
             #[cfg(test)]
-            (Runner::Canned(Canned::Talks(talked)), _) => Ok(talked.clone()),
+            (Runner::Canned(Canned::Talks(talked)), _) => Ok((**talked).clone()),
             _ => Err(StressError(format!(
                 "{} and {} run in different places, so they can't talk",
                 self.name(),

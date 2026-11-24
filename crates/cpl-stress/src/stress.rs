@@ -168,7 +168,7 @@ impl Stress {
         let analyzed =
             || analysis.ok_or_else(|| Unbuilt::Said(format!("could not analyze {name}")));
         let vm = |program: cpl_ir::Program| {
-            Runner::InProcess(Vm::new(program, name, source, stack_limit))
+            Runner::InProcess(Box::new(Vm::new(program, name, source, stack_limit)))
         };
         // The file's own `@alt(program)`, unless `--brute` names another.
         let own_brute = match given_brute {
@@ -321,12 +321,12 @@ impl Stress {
                 None => Inputs::Gen(Drawing {
                     gen: Runner::Process(Program::resolve_gen(path, fn_name, size).map_err(said)?),
                     traps: Program::lowered_gen(path, size).ok().map(|program| {
-                        Runner::InProcess(Vm::new(
+                        Runner::InProcess(Box::new(Vm::new(
                             program,
                             &format!("{name} (`{fn_name}`)"),
                             source,
                             None,
-                        ))
+                        )))
                     }),
                     limit: options.limit,
                 }),
