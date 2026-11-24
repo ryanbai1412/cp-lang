@@ -12,6 +12,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
+#[path = "support/corpus_cases.rs"]
+mod corpus_cases;
+
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
@@ -27,6 +30,20 @@ fn json_string_field(json: &str, key: &str) -> Option<String> {
         .or_else(|| root.get("counterexample")?.get(key))
         .and_then(cpl_json::Value::as_str)
         .map(str::to_string)
+}
+
+/// Whether `cpl test` printed `n/n passed` for some n > 0: tests.toml decides how many cases there are.
+fn all_passed(stdout: &str) -> bool {
+    stdout.lines().any(|line| {
+        let Some((passed, total)) = line
+            .trim()
+            .strip_suffix(" passed")
+            .and_then(|c| c.split_once('/'))
+        else {
+            return false;
+        };
+        passed == total && total.parse::<u32>().is_ok_and(|n| n > 0)
+    })
 }
 
 #[test]
@@ -45,6 +62,8 @@ fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
         ("noip14p6", "corpus/problems/noip14p6/spec.cp"),
         ("shoi16p3", "corpus/problems/shoi16p3/spec.cp"),
     ];
+    let ids: Vec<&str> = problems.iter().map(|(id, _)| *id).collect();
+    corpus_cases::make(&root, &ids);
     for (id, rel_port) in problems {
         let port = root.join(rel_port);
         let tests_dir = cpl_contest::problem::find_tests_dir(&port);
@@ -66,8 +85,8 @@ fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
             "cpl test failed on {id}:\n{stdout}\n{stderr}"
         );
         assert!(
-            stdout.contains("8/8 passed"),
-            "expected 8/8 passed on {id}:\n{stdout}\n{stderr}"
+            all_passed(&stdout),
+            "expected every case to pass on {id}:\n{stdout}\n{stderr}"
         );
     }
 
@@ -91,7 +110,7 @@ fn cpl_test_passes_on_corpus_in_and_ans_including_multitest() {
     let stdout = String::from_utf8_lossy(&out.stdout);
     let stderr = String::from_utf8_lossy(&out.stderr);
     assert!(out.status.success(), "{stdout}\n{stderr}");
-    assert!(stdout.contains("8/8 passed"), "{stdout}\n{stderr}");
+    assert!(all_passed(&stdout), "{stdout}\n{stderr}");
 }
 
 struct StressCase {
