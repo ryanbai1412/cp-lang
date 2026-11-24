@@ -36,12 +36,6 @@ std/seq.cp L0532 1
 std/seq.cp L0536 2
 std/seq.cp L0543 1
 std/seq.cp L0549 1
-std/strings.cp L0501 2
-std/strings.cp L0506 1
-std/strings.cp L0516 2
-std/strings.cp L0520 7
-std/strings.cp L0545 1
-std/strings.cp L0549 3
 std/tree.cp L0503 4
 std/tree.cp L0567 2
 std/window.cp L0549 2

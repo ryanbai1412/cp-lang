@@ -1,9 +1,13 @@
 //! String algorithms. They only compare elements, so they work on a `Str`
 //! (ASCII bytes) and on any `List<T>` alike. Positions are 0-based.
 
-use std.math.{pow_mod}
-use std.seq.{collect, nth}
-use std.range.{last_true}
+use std.math.{pow_mod, inv_mod}
+use std.seq.{collect, nth, find}
+use std.range.{first_true, last_true}
+
+const CAP = 2_000_000_000
+type Count = 0..=CAP
+type Slot = -1..=CAP
 
 /// `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.
 ///
@@ -285,12 +289,7 @@ pub fn join<S: Seq>(self: Str, parts: S) -> Str:
 pub fn replace(self: Str, from: Str, to: Str) -> Str:
     let m = from.len
     assert m > 0, "`replace` needs a non-empty `from`"
-    var pi = List.filled(m, 0)
-    for i in 1..m:
-        var k = pi[i - 1]
-        while k > 0 and from[i] != from[k]: k = pi[k - 1]
-        if from[i] == from[k]: k += 1
-        pi[i] = k
+    let pi = prefix_function(from)
     var out: List<Char> = []
     var k = 0
     for c in self:
@@ -624,9 +623,9 @@ pub fn max_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K:
 ///
 /// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct KmpAutomaton<A>:
-    alpha: 0..=2_000_000_000
-    goto: List<0..=2_000_000_000>
-    pi: List<0..=2_000_000_000>
+    alpha: Count
+    goto: List<Count>
+    pi: List<Count>
 
     /// The KMP automaton of `pat` over the alphabet domain `A`: one state per matched prefix
     /// length `0..=pat.len`, with a full transition table. Call it as `KmpAutomaton<A>(pat)`.
@@ -644,8 +643,8 @@ pub struct KmpAutomaton<A>:
             assert 0 <= c < k, "KmpAutomaton: character outside alphabet"
             p.push(c)
         let m = p.len
-        var pi: List<0..=2_000_000_000> = List.filled(m + 1, 0)
-        var goto: List<0..=2_000_000_000> = List.filled((m + 1) * k, 0)
+        var pi: List<Count> = List.filled(m + 1, 0)
+        var goto: List<Count> = List.filled((m + 1) * k, 0)
         unchecked:
             for i in 1..m:
                 var j = pi[i]
@@ -757,13 +756,8 @@ pub fn find_all_wildcard<S: Indexed<K, Char>, P: Indexed<L, Char>, K, L>(
         for k in self.keys: yield k
         return
     for i in 0..=n - m:
-        var ok = true
-        for j in 0..m:
-            let c = pat.nth(j)
-            if c != wildcard and c != self.nth(i + j):
-                ok = false
-                break
-        if ok: yield self.keys.nth(i)
+        if (0..m).all(j => pat.nth(j) == wildcard or pat.nth(j) == self.nth(i + j)):
+            yield self.keys.nth(i)
 
 /// \(O(n)\) space, \(O(1)\) queries. Manacher palindrome radii. `odd[i]` is the number of palindromes centred on `s[i]`;
 /// `even[i]` is the number centred between `s[i - 1]` and `s[i]`.
@@ -1025,7 +1019,7 @@ fn sa_order<S: Indexed>(s: S) -> List<Int>:
             for r in 0..alpha: remap[ids[r]] = r + 1
             for i in 0..n: vec[i] = remap[vec[i]]
     else:
-        var order = [i for i in 0..n]
+        var order = (0..n).collect()
         order.sort(by: i => s.nth(i))
         alpha = 1
         unchecked:
@@ -1209,16 +1203,9 @@ pub struct SuffixArray:
         let n = sa.len
         assert 0 <= i and i < n and 0 <= len and len <= n - i, "`lcp_range(i, len)` needs `0 <= i < n` and `0 <= len <= n - i`"
         let p = rank[i]
-        var (lo, hi) = (0, p)
-        while lo < hi:
-            let mid = (lo + hi) / 2
-            if lcp[self.arg_min(mid, p)] >= len: hi = mid else: lo = mid + 1
-        let left = lo
-        (lo, hi) = (p, n - 1)
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if lcp[self.arg_min(p, mid)] >= len: lo = mid else: hi = mid - 1
-        left..lo + 1
+        let left = (0..p).first_true(mid => lcp[self.arg_min(mid, p)] >= len) ?? p
+        let right = (p + 1..n).last_true(mid => lcp[self.arg_min(p, mid)] >= len) ?? p
+        left..right + 1
 
     /// The lexicographic comparison of `s[l1..r1]` and `s[l2..r2]`: `-1`, `0` or `1`. A proper
     /// prefix compares less.
@@ -1445,30 +1432,10 @@ pub struct RollingHash:
     /// traps: when a given base is outside `2..M`
     /// example: `let h = RollingHash("abab"); h.get(0..2) == h.get(2..4)`
     pub fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash:
-        with lint(unproven_list_index: allow)
-        let (b1, b2) = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
-        let n = seq.len
-        var p1 = List.filled(n + 1, 0)
-        var p2 = List.filled(n + 1, 0)
-        var pow1 = List.filled(n + 1, 1)
-        var pow2 = List.filled(n + 1, 1)
-        var (h1, h2, w1, w2) = (0, 0, 1, 1)
-        var idx = 0
-        for x in seq:
-            idx += 1
-            let t = x.hash_token
-            let x1 = if 0 <= t and t < 1_000_000_006: t + 1 else: t % 1_000_000_006 + 1
-            let x2 = if 0 <= t and t < 1_000_000_008: t + 1 else: t % 1_000_000_008 + 1
-            h1 = (h1 * b1 + x1) % 1_000_000_007
-            h2 = (h2 * b2 + x2) % 1_000_000_009
-            w1 = w1 * b1 % 1_000_000_007
-            w2 = w2 * b2 % 1_000_000_009
-            unchecked:
-                p1[idx] = h1
-                p2[idx] = h2
-                pow1[idx] = w1
-                pow2[idx] = w2
-        RollingHash((b1, b2), p1, p2, pow1, pow2)
+        let bs = bases ?? (rand(1 << 20, 1 << 29), rand(1 << 20, 1 << 29))
+        var h = RollingHash(bs, [0], [0], [1], [1])
+        for x in seq: h.push(x)
+        h
 
     /// Appends `x` to the end of the hashed sequence.
     ///
@@ -1479,12 +1446,12 @@ pub struct RollingHash:
         let (b1, b2) = bases
         let n = p1.len - 1
         let t = x.hash_token
-        let x1 = if 0 <= t < 1_000_000_006: t + 1 else: t % 1_000_000_006 + 1
-        let x2 = if 0 <= t < 1_000_000_008: t + 1 else: t % 1_000_000_008 + 1
-        p1.push((p1[n] * b1 + x1) % 1_000_000_007)
-        p2.push((p2[n] * b2 + x2) % 1_000_000_009)
-        pow1.push(pow1[n] * b1 % 1_000_000_007)
-        pow2.push(pow2[n] * b2 % 1_000_000_009)
+        let x1 = if 0 <= t < RH_M1 - 1: t + 1 else: t % RH_M1 - 1 + 1
+        let x2 = if 0 <= t < RH_M2 - 1: t + 1 else: t % RH_M2 - 1 + 1
+        p1.push((p1[n] * b1 + x1) % RH_M1)
+        p2.push((p2[n] * b2 + x2) % RH_M2)
+        pow1.push(pow1[n] * b1 % RH_M1)
+        pow2.push(pow2[n] * b2 % RH_M2)
 
     /// Removes the last element of the hashed sequence.
     ///
@@ -1510,10 +1477,10 @@ pub struct RollingHash:
         var (h1, h2) = (0, 0)
         for x in seq:
             let t = x.hash_token
-            let x1 = if 0 <= t < 1_000_000_006: t + 1 else: t % 1_000_000_006 + 1
-            let x2 = if 0 <= t < 1_000_000_008: t + 1 else: t % 1_000_000_008 + 1
-            h1 = (h1 * b1 + x1) % 1_000_000_007
-            h2 = (h2 * b2 + x2) % 1_000_000_009
+            let x1 = if 0 <= t < RH_M1 - 1: t + 1 else: t % RH_M1 - 1 + 1
+            let x2 = if 0 <= t < RH_M2 - 1: t + 1 else: t % RH_M2 - 1 + 1
+            h1 = (h1 * b1 + x1) % RH_M1
+            h2 = (h2 * b2 + x2) % RH_M2
         HashVal(h1, h2)
 
     /// The hash of the concatenation of `parts`, each given as its hash and length, under
@@ -1554,17 +1521,17 @@ pub struct RollingHash:
         let d = r - l
         unchecked:
             return HashVal(
-                (p1[r] - p1[l] * pow1[d]) % 1_000_000_007,
-                (p2[r] - p2[l] * pow2[d]) % 1_000_000_009,
+                (p1[r] - p1[l] * pow1[d]) % RH_M1,
+                (p2[r] - p2[l] * pow2[d]) % RH_M2,
             )
         HashVal(0, 0)
 
     fn eq_sub(self, a: Int, b: Int, len: Int) -> Bool:
         with lint(unproven_list_index: allow)
         unchecked:
-            if ((p1[a + len] - p1[b + len]) - (p1[a] - p1[b]) * pow1[len]) % 1_000_000_007 != 0:
+            if ((p1[a + len] - p1[b + len]) - (p1[a] - p1[b]) * pow1[len]) % RH_M1 != 0:
                 return false
-            return ((p2[a + len] - p2[b + len]) - (p2[a] - p2[b]) * pow2[len]) % 1_000_000_009 == 0
+            return ((p2[a + len] - p2[b + len]) - (p2[a] - p2[b]) * pow2[len]) % RH_M2 == 0
         false
 
     /// The hash of the half-open slice `l..r` (0-based); `HashVal(0, 0)` when `l == r`.
@@ -1597,9 +1564,9 @@ pub struct RollingHash:
         with lint(unproven_list_index: allow)
         assert b_len >= 0, "RollingHash.combine: negative length"
         let fits = b_len < pow1.len
-        let q1 = if fits: pow1[b_len] else: pow_mod(bases.0, b_len, 1_000_000_007)
-        let q2 = if fits: pow2[b_len] else: pow_mod(bases.1, b_len, 1_000_000_009)
-        HashVal((a.h1 * q1 + b.h1) % 1_000_000_007, (a.h2 * q2 + b.h2) % 1_000_000_009)
+        let q1 = if fits: pow1[b_len] else: pow_mod(bases.0, b_len, RH_M1)
+        let q2 = if fits: pow2[b_len] else: pow_mod(bases.1, b_len, RH_M2)
+        HashVal((a.h1 * q1 + b.h1) % RH_M1, (a.h2 * q2 + b.h2) % RH_M2)
 
     /// The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on
     /// hashes (so it can be wrong on a collision); `of: other` puts `b` in `other`, built with
@@ -1614,13 +1581,7 @@ pub struct RollingHash:
         if let o = of: return self.lcp_of(a, o, b)
         let n = p1.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "`lcp` needs both starts in `0..=len`"
-        var lo = 0
-        var hi = min(n - a, n - b)
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if self.eq_sub(a, b, mid): lo = mid
-            else: hi = mid - 1
-        lo
+        (1..=min(n - a, n - b)).last_true(mid => self.eq_sub(a, b, mid)) ?? 0
 
     /// The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary
     /// search on hashes.
@@ -1631,13 +1592,7 @@ pub struct RollingHash:
     pub fn lcs(self, a: Int, b: Int) -> Int:
         let n = p1.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "`lcs` needs both ends in `0..=len`"
-        var lo = 0
-        var hi = min(a, b)
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if self.eq_sub(a - mid, b - mid, mid): lo = mid
-            else: hi = mid - 1
-        lo
+        (1..=min(a, b)).last_true(mid => self.eq_sub(a - mid, b - mid, mid)) ?? 0
 
     fn lcp_of(self, a: Int, other: RollingHash, b: Int) -> Int:
         assert 0 <= a and a <= self.len and 0 <= b and b <= other.len, "`lcp(a, b, of:)` needs both starts in range"
@@ -1647,7 +1602,7 @@ pub struct RollingHash:
             let mid = (lo + hi + 1) / 2
             let x = self.raw_slice(a, a + mid)
             let y = other.raw_slice(b, b + mid)
-            if (x.h1 - y.h1) % 1_000_000_007 == 0 and (x.h2 - y.h2) % 1_000_000_009 == 0: lo = mid
+            if (x.h1 - y.h1) % RH_M1 == 0 and (x.h2 - y.h2) % RH_M2 == 0: lo = mid
             else: hi = mid - 1
         lo
 
@@ -1680,8 +1635,8 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
         let rows = R.count
         let cols = C.count
         let stride = cols + 1
-        var pre1: List<0..=1_000_000_009> = List.filled((rows + 1) * stride, 0)
-        var pre2: List<0..=1_000_000_009> = List.filled((rows + 1) * stride, 0)
+        var pre1: List<0..=RH_M2> = List.filled((rows + 1) * stride, 0)
+        var pre2: List<0..=RH_M2> = List.filled((rows + 1) * stride, 0)
         let brc1 = br1 * bc1 % RH_M1
         let brc2 = br2 * bc2 % RH_M2
         for r in R:
@@ -1700,14 +1655,14 @@ pub struct Hash2D<R, C>(bases: (Int, Int)):
                     pre2[row1 + j + 1] = (
                         pre2[row0 + j + 1] * br2 + pre2[row1 + j] * bc2 - pre2[row0 + j] * brc2 + v2
                     ) % RH_M2
-        var pow_r1: List<0..=1_000_000_009> = List.filled(rows + 1, 1)
-        var pow_r2: List<0..=1_000_000_009> = List.filled(rows + 1, 1)
+        var pow_r1: List<0..=RH_M2> = List.filled(rows + 1, 1)
+        var pow_r2: List<0..=RH_M2> = List.filled(rows + 1, 1)
         unchecked:
             for i in 0..rows:
                 pow_r1[i + 1] = pow_r1[i] * br1 % RH_M1
                 pow_r2[i + 1] = pow_r2[i] * br2 % RH_M2
-        var pow_c1: List<0..=1_000_000_009> = List.filled(cols + 1, 1)
-        var pow_c2: List<0..=1_000_000_009> = List.filled(cols + 1, 1)
+        var pow_c1: List<0..=RH_M2> = List.filled(cols + 1, 1)
+        var pow_c2: List<0..=RH_M2> = List.filled(cols + 1, 1)
         unchecked:
             for j in 0..cols:
                 pow_c1[j + 1] = pow_c1[j] * bc1 % RH_M1
@@ -1888,12 +1843,7 @@ pub struct RollingHash61:
         if let o = of: return self.lcp_of(a, o, b)
         let n = pre.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "RollingHash61.lcp: index out of range"
-        var lo = 0
-        var hi = n - max(a, b)
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if self.slice61(a, a + mid) == self.slice61(b, b + mid): lo = mid else: hi = mid - 1
-        lo
+        (1..=n - max(a, b)).last_true(mid => self.slice61(a, a + mid) == self.slice61(b, b + mid)) ?? 0
 
     /// The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary
     /// search on hashes.
@@ -1904,24 +1854,14 @@ pub struct RollingHash61:
     pub fn lcs(self, a: Int, b: Int) -> Int:
         let n = pre.len - 1
         assert 0 <= a and a <= n and 0 <= b and b <= n, "RollingHash61.lcs: index out of range"
-        var lo = 0
-        var hi = min(a, b)
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if self.slice61(a - mid, a) == self.slice61(b - mid, b): lo = mid else: hi = mid - 1
-        lo
+        (1..=min(a, b)).last_true(mid => self.slice61(a - mid, a) == self.slice61(b - mid, b)) ?? 0
 
     fn lcp_of(self, a: Int, other: RollingHash61, b: Int) -> Int:
         assert base == other.base, "RollingHash61.lcp: hashes must use the same base"
         let na = pre.len - 1
         let nb = other.pre.len - 1
         assert 0 <= a and a <= na and 0 <= b and b <= nb, "RollingHash61.lcp: index out of range"
-        var lo = 0
-        var hi = min(na - a, nb - b)
-        while lo < hi:
-            let mid = (lo + hi + 1) / 2
-            if self.slice61(a, a + mid) == other.slice61(b, b + mid): lo = mid else: hi = mid - 1
-        lo
+        (1..=min(na - a, nb - b)).last_true(mid => self.slice61(a, a + mid) == other.slice61(b, b + mid)) ?? 0
 
 /// \(O(n)\) build, \(O(\log n)\) point update and range hash. Mutable double-mod rolling hash over domain `D`.
 /// Supports `h[i] = x` via W8 `IndexSet`.
@@ -1957,8 +1897,8 @@ pub struct DynamicHash<D>:
         var pow2 = List.filled(n + 1, 1)
         var inv1 = List.filled(n + 1, 1)
         var inv2 = List.filled(n + 1, 1)
-        let ib1 = dh_pow(b1, RH_M1 - 2, RH_M1)
-        let ib2 = dh_pow(b2, RH_M2 - 2, RH_M2)
+        let ib1 = inv_mod(b1, RH_M1)!
+        let ib2 = inv_mod(b2, RH_M2)!
         for i in 1..=n:
             pow1[i] = pow1[i - 1] * b1 % RH_M1
             pow2[i] = pow2[i - 1] * b2 % RH_M2
@@ -2064,14 +2004,6 @@ pub struct DynamicHash<D>:
         dh_add(mut bwd1, i, d1 * pow1[n - 1 - i] % RH_M1, RH_M1)
         dh_add(mut bwd2, i, d2 * pow2[n - 1 - i] % RH_M2, RH_M2)
 
-fn dh_pow(b: Int, e: Int, m: Int) -> Int:
-    var (r, x, k) = (1, b % m, e)
-    while k > 0:
-        if k % 2 == 1: r = r * x % m
-        x = x * x % m
-        k /= 2
-    r
-
 fn dh_add(mut tree: List<Int>, i: Int, d: Int, m: Int):
     with lint(unproven_list_index: allow)
     var j = i + 1
@@ -2094,13 +2026,13 @@ fn dh_sum(tree: List<Int>, e: Int, m: Int) -> Int:
 ///
 /// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct SuffixAutomaton<A>:
-    alpha: 0..=2_000_000_000
-    next: List<-1..=2_000_000_000>
-    links: List<-1..=2_000_000_000>
-    max_len: List<0..=2_000_000_000>
-    first_end: List<-1..=2_000_000_000>
+    alpha: Count
+    next: List<Slot>
+    links: List<Slot>
+    max_len: List<Count>
+    first_end: List<Slot>
     prefix: List<Bool>
-    pub last: 0..=2_000_000_000
+    pub last: Count
     letters: List<?A>
 
     /// An empty suffix automaton over the alphabet domain `A`: only the root state `0`. Call it
@@ -2487,20 +2419,20 @@ pub fn lcs_all<A, S: Seq>(words: List<S>) -> Int:
 ///
 /// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct PalindromicTree<A>:
-    alpha: 0..=2_000_000_000
-    next: List<-1..=2_000_000_000>
-    slink: List<0..=2_000_000_000>
-    plen: List<-1..=2_000_000_000>
-    diff_val: List<0..=2_000_000_000>
-    ser_link: List<0..=2_000_000_000>
-    cnt: List<0..=2_000_000_000>
+    alpha: Count
+    next: List<Slot>
+    slink: List<Count>
+    plen: List<Slot>
+    diff_val: List<Count>
+    ser_link: List<Count>
+    cnt: List<Count>
     chars: List<A>
-    last: 0..=2_000_000_000
+    last: Count
     front: List<A>
-    first: 0..=2_000_000_000
-    undo: List<0..=2_000_000_000>
-    made: List<0..=2_000_000_000>
-    firsts: List<0..=2_000_000_000>
+    first: Count
+    undo: List<Count>
+    made: List<Count>
+    firsts: List<Count>
     barrier: Int
 
     /// An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the
@@ -2800,10 +2732,10 @@ pub struct PalindromicTree<A>:
 
 /// Dynamic trie over alphabet domain `A`. \(O(\lvert \mathit{word} \rvert)\) per operation; flat `|A|`-stride table.
 pub struct Trie<A>:
-    alpha: 0..=2_000_000_000
-    next: List<-1..=2_000_000_000>
-    ends: List<0..=2_000_000_000>
-    pass: List<0..=2_000_000_000>
+    alpha: Count
+    next: List<Slot>
+    ends: List<Count>
+    pass: List<Count>
 
     /// An empty trie over the alphabet domain `A`: one root node `0`, no words. Call it as
     /// `Trie<A>()`. Nodes are numbered in creation order.
@@ -3017,14 +2949,14 @@ pub struct Trie<A>:
 ///
 /// not a container: an automaton; `len` counts states, which are walked by `step`.
 pub struct AhoCorasick<A>:
-    alpha: 0..=2_000_000_000
-    goto: List<-1..=2_000_000_000>
-    fail: List<0..=2_000_000_000>
-    ends: List<List<0..=2_000_000_000>>
-    exit: List<-1..=2_000_000_000>
-    order: List<0..=2_000_000_000>
-    lens: List<0..=2_000_000_000>
-    pat_state: List<0..=2_000_000_000>
+    alpha: Count
+    goto: List<Slot>
+    fail: List<Count>
+    ends: List<List<Count>>
+    exit: List<Slot>
+    order: List<Count>
+    lens: List<Count>
+    pat_state: List<Count>
 
     /// The Aho-Corasick automaton of `patterns`; call it as `AhoCorasick<A>(patterns)`. Pattern
     /// `p` is `patterns[p]`. States are the trie nodes of the patterns, numbered in creation
@@ -3037,10 +2969,10 @@ pub struct AhoCorasick<A>:
     pub fn new<S: Seq>(patterns: List<S>) -> AhoCorasick<A>:
         with lint(unproven_list_index: allow)
         let k = A.count
-        var goto: List<-1..=2_000_000_000> = List.filled(k, -1)
-        var ends: List<List<0..=2_000_000_000>> = [[]]
-        var lens: List<0..=2_000_000_000> = List.filled(patterns.len, 0)
-        var pat_state: List<0..=2_000_000_000> = List.filled(patterns.len, 0)
+        var goto: List<Slot> = List.filled(k, -1)
+        var ends: List<List<Count>> = [[]]
+        var lens: List<Count> = List.filled(patterns.len, 0)
+        var pat_state: List<Count> = List.filled(patterns.len, 0)
         for i in 0..patterns.len:
             var at = 0
             var plen = 0
@@ -3057,9 +2989,9 @@ pub struct AhoCorasick<A>:
             pat_state[i] = at
             ends[at].push(i)
         let n = ends.len
-        var fail: List<0..=2_000_000_000> = List.filled(n, 0)
-        var exit: List<-1..=2_000_000_000> = List.filled(n, -1)
-        var order: List<0..=2_000_000_000> = List.filled(n, 0)
+        var fail: List<Count> = List.filled(n, 0)
+        var exit: List<Slot> = List.filled(n, -1)
+        var order: List<Count> = List.filled(n, 0)
         var head = 0
         var tail = 1
         while head < tail:
@@ -3213,7 +3145,7 @@ pub struct AhoCorasick<A>:
 ///
 /// not a container: an automaton; `len` counts patterns, which are walked by `step`.
 pub struct DynamicAhoCorasick<A>:
-    alpha: 0..=2_000_000_000
+    alpha: Count
     pub n: Int
     stored: Trie<A>
     added: AcBuckets<A>
@@ -3368,7 +3300,7 @@ fn suffix_array_and_lcp_match_sorting_the_suffixes():
     for _ in 0..40:
         let s = random_word(rand(1, 18), rand(1, 3))
         let sa = SuffixArray(s).sa
-        var want = [i for i in 0..s.len]
+        var want = (0..s.len).collect()
         want.sort(by: i => [s[j] for j in i..s.len])
         assert sa == want
         let lcp = SuffixArray(s).lcp
@@ -3566,7 +3498,7 @@ fn suffix_array_struct_queries_match_brute():
         for _ in 0..10:
             let pat = random_word(rand(0, 4), 3)
             let r = sa.rank_range(pat)
-            let want = if pat.is_empty: [i for i in 0..n] else: [
+            let want = if pat.is_empty: (0..n).collect() else: [
                 i for i in 0..=n - pat.len if s.starts_with(pat, at: i)
             ]
             assert sa.count(pat) == want.len
@@ -3658,12 +3590,8 @@ fn suffix_automaton_matches_brute_and_linear_occurrences():
                 if let v = sam.find(w):
                     assert occ[v] == times
                     if len == sam.longest(v):
-                        var first = -1
-                        for i in 0..=n - len:
-                            if (0..len).all(j => s[i + j] == w[j]):
-                                first = i + len - 1
-                                break
-                        assert sam.first_pos(v) == Some(first)
+                        let start = (0..=n - len).find(i => (0..len).all(j => s[i + j] == w[j]))
+                        assert sam.first_pos(v) == Some(start! + len - 1)
         var seen = Set<List<A>>()
         for l in 0..n:
             for r in l + 1..=n: seen.add([s[j] for j in l..r])
