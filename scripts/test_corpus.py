@@ -1437,6 +1437,9 @@ class AtBaseTest(unittest.TestCase):
                 mock.patch("builtins.open", mock.mock_open()), mock.patch("sys.stderr", new_callable=io.StringIO):
             corpus.base_findings(self.FOUND, ["run"], "HEAD", "target/release/cpl", run=run)
         self.assertEqual(envs[1]["CPL_INTERP_TIMEOUT"], str(corpus.INTERP_TIMEOUT // 2))
+        # The base target is under the main checkout's .git: without its own std the dev cpl's
+        # guard sees that checkout and gives no verdict (idioms' four interp timeouts).
+        self.assertEqual(envs[1]["CPL_STD_DIR"], str(Path("/base") / "std"))
 
     def test_a_base_with_no_verdict_admits_nothing(self):
         self.assertEqual(self._base("interp-timeout yac6p6 08.in\n", build=101)[0], set())

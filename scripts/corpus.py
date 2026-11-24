@@ -1667,7 +1667,10 @@ def base_findings(found, modes, base, cpl, run=subprocess.run):
     target = os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target"))
     # The base gets half the timeout: a case near it (btoi06p5 08.in, 56 s either side of 60) times
     # out or not with the box's load, so only a base well inside it makes a candidate timeout new.
-    env = {**os.environ, "CARGO_TARGET_DIR": target, "CPL_INTERP_TIMEOUT": str(INTERP_TIMEOUT // 2)}
+    # The base target sits under the main checkout's .git, so its dev cpl's std guard would
+    # see that checkout, not `wt`, and give no verdict (idioms' four interp timeouts).
+    env = {**os.environ, "CARGO_TARGET_DIR": target, "CPL_INTERP_TIMEOUT": str(INTERP_TIMEOUT // 2),
+           "CPL_STD_DIR": str(wt / "std")}
     print(f"corpus: rerunning {len(ids)} package(s) with findings at the base {rev[:9]}", file=sys.stderr)
     profile = "debug" if "debug" in Path(cpl).parts else "release"  # the timeouts are the candidate's build's
     build = ["cargo", "build", "-q", "-p", "cpl-cli", *(["--release"] if profile == "release" else [])]
