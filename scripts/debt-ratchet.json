@@ -247,5 +247,6 @@
   "corpus_fmt_dirty": 0,
   "trap_text_outside_registry": 0,
   "reviews_pending": 121,
-  "std_gaps": 6
+  "std_gaps": 6,
+  "reviews_orphan": 0
 }

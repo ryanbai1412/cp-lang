@@ -968,6 +968,19 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertIn("must stay at 0", errs[0])
 
+    def test_a_review_without_a_port_or_dream_is_an_orphan(self) -> None:
+        self.assertIn("reviews_orphan", dr.HARD_ZERO)
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            for f in ["corpus/problems/a/port.cp", "corpus/problems/b/dream.cp", "corpus/problems/c/meta.json",
+                      "research/reviews/README.md", "research/reviews/a.md", "research/reviews/b.md",
+                      "research/reviews/c.md", "research/reviews/gone.md"]:
+                (root / f).parent.mkdir(parents=True, exist_ok=True)
+                (root / f).write_text("x\n")
+            subprocess.run(["git", "init", "-q", d], check=True)
+            subprocess.run(["git", "-C", d, "add", "."], check=True)
+            self.assertEqual(dr.reviews_orphan(root), ["research/reviews/c.md", "research/reviews/gone.md"])
+
     def test_a_package_without_tests_toml_fails_the_ratchet(self) -> None:
         self.assertIn("corpus_no_tests", dr.HARD_ZERO)
         errs, _, _ = dr.evaluate({"corpus_no_tests": 1}, {"corpus_no_tests": 0})

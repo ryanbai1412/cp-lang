@@ -735,6 +735,13 @@ def reviews_pending(root: Path) -> list[str]:
     return [f for f in _git(root, "ls-files", "research/reviews/*.md")
             if any(l.strip() == "Score: pending" for l in _lines(root / f))]
 
+def reviews_orphan(root: Path) -> list[str]:
+    """Taste reviews with nothing to review: no `corpus/problems/<id>/port.cp` and no `dream.cp`
+    (a dream-judged package's dream is its port). A deleted package takes its review with it."""
+    judged = {p.split("/")[2] for p in _git(root, "ls-files", "corpus/problems/*/port.cp", "corpus/problems/*/dream.cp")}
+    return [f for f in _git(root, "ls-files", "research/reviews/*.md")
+            if f != "research/reviews/README.md" and Path(f).stem not in judged]
+
 def spec_std_refs(root: Path) -> list[str]:
     """`spec/std` mentions outside history (the stdlib moved to `std/`; decision 307)."""
     return _git(root, "grep", "-n", "spec/std", "--", ".", ":!research", ":!decisions.md",
@@ -2751,7 +2758,7 @@ HARD_ZERO = frozenset({
     "measure_broken", "mono_unguarded", "ts_ignore", "ports_unreported",
     "site_rederived", "browser_lsp_gaps",
     "unrun_script_tests", "trap_text_outside_registry", "diag_text_outside_registry",
-    "permits", "written_twice",
+    "permits", "written_twice", "reviews_orphan",
     "plan_delta_lines", "idioms_evidenced_unlinted", "v02_port_files", "judge_tables",
     "trait_gaps",
     "std_trait_matrix",
@@ -2821,6 +2828,7 @@ COUNTERS = {
     "v02_port_files": ("corpus ports not yet re-ported in v0.3 style", v02_port_files, True),
     "ports_unreported": ("corpus ports without a friction report or review (idioms)", ports_unreported, True),
     "reviews_pending": ("taste reviews still at Score: pending (idioms)", reviews_pending, True),
+    "reviews_orphan": ("taste reviews whose package has no port or dream (idioms)", reviews_orphan, True),
     "direct_python": ("direct python3 calls in gate/justfile", direct_python, True),
     "unrun_script_tests": ("script tests the gate never runs", unrun_script_tests, True),
     "decision_dup_numbers": ("decision numbers headed twice in decisions.md", decision_dup_numbers, True),
