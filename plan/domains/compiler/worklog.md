@@ -1069,3 +1069,15 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   `stmt:Expr(CallExpr)` and `stmt:Let(CallExpr)` kinds are gone: vm_fallbacks 12 -> 10.
 - Regression: tests/programs/vm_traced_closure_mut_args.cp (an element and a field lent),
   and batch12_mut_fn, which used to fall back.
+
+### Compiler (d) (2026-11-24): a call through a fn-typed field changes nothing
+
+- `g.add(1, 2)` on `struct R(add: (Int, Int) -> Int)` called the field, but the checker
+  decided "mutating" from the name `add` alone: E0403 when `g`'s type was not yet known
+  (a trait impl's untyped `a, b`), and E0401 for a field named like a `mut self` method
+  (`q.push(1)`). check/known.rs `row_mutator` now asks the receiver's type first: a field
+  it declares (`declares_field`) answers, and an untyped receiver calls no built-in row;
+  `mutates_view`, `change_in`, `assign_alias` and call.rs `mutates_self` share it. The
+  syntactic may-write scans (`Written`, `Touched`) still over-approximate by name, which
+  only drops a narrowing or a lint, never adds a diagnostic.
+- Regression: spec/conformance/core-05/fn-field-call-changes-nothing.cp (both engines).

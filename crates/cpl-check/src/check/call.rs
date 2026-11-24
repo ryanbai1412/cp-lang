@@ -593,6 +593,9 @@ impl<'a> Checker<'a> {
             return;
         };
         let base_ty = self.quietly(|c| c.infer(base));
+        if self.declares_field(&base_ty, &name.text) {
+            return;
+        }
         if matches!(name.text.as_str(), "set_at" | "swap_idx") && base_ty.is_indexed_mut() {
             self.require_mutable(base, &format!("changed by `{}`", name.text));
             return;
