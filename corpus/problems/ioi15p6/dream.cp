@@ -18,9 +18,12 @@ for _ in 0..cases:
         assert asked <= limit, "query {asked} is past the limit {limit}"
         dist[i, j]
 
-    @memo(map)
-    fn known(i: T, j: T) -> Int = getDistance(i, j)
-    fn d(u: T, v: T) -> Int = if u == v: 0 else: known(min(u, v), max(u, v))
+    var known: [T, T]?Int = None
+    fn d(u: T, v: T) -> Int:
+        if u == v: return 0
+        let (i, j) = (min(u, v), max(u, v))
+        if known[i, j] == None: known[i, j] = getDistance(i, j)
+        known[i, j]!
 
     fn hub_distance() -> Int:
         let o = T.first!
@@ -50,8 +53,7 @@ for _ in 0..cases:
                     hubs.push(h)
             before += c
         let h = hubs.first ?? return -r
-        let same = (u: T, v: T) => d(u, v) != at[u].down + at[v].down
         let branch = T.filter(i => at[i].along == h)
-        if branch.majority(eq: same).is_some_and(m => m.count > n / 2): -r else: r
+        if branch.majority(eq: (u, v) => d(u, v) != at[u].down + at[v].down).is_some_and(m => m.count > n / 2): -r else: r
 
     print(hub_distance())

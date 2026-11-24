@@ -12,4 +12,4 @@ for (u, v, res) in read<[(m - 1) * n / 2](P, P, Char)>():
             points[v] += 1
         _ => points[v] += 3
 let k: Int = read()
-print(groups.map(g => g.sorted(by: p => (desc(points[p]), p))[k - 1]))
+print(groups.map(g => List(g).sorted(by: p => (desc(points[p]), p))[k - 1]))

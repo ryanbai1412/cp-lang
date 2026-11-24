@@ -23,3 +23,7 @@
   supplies it"), so the spec reads the sample grader's input and answers
   `getDistance` from the distance matrix, counting queries against the limit.
 - **Routed:** already in the tools worklog (from apio23p1).
+
+## Dream copies
+
+- `@memo(map) fn known` and a `let`-bound `same` lambda each made `dist` count as kept, so the C++ copied it once; the dream caches in a `[T, T]?Int` table and passes the lambda inline. Repro sent to Core.
