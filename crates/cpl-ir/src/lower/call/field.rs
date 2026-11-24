@@ -725,9 +725,15 @@ impl<'a> Lowerer<'a> {
                 // The bounds are ends, not positions: `hi` is one past the last key
                 // and `lo` is no key at all when the domain is empty.
                 Dim::Pos(d) => self.domain_keys(d, span),
-                _ => {
-                    let lo = self.int_lit(0, span);
-                    let hi = self.len_of(value, span);
+                dim => {
+                    let first = if let Dim::IntFrom(first) = dim {
+                        first
+                    } else {
+                        0
+                    };
+                    let lo = self.int_lit(first, span);
+                    let len = self.len_of(value, span);
+                    let hi = self.int_add(len, first);
                     self.mk(
                         ExprKind::Range {
                             lo: Box::new(lo),
