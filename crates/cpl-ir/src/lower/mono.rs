@@ -126,6 +126,8 @@ pub(super) struct TraitInfo<'a> {
     /// `trait HasW: w: Int`: the fields a record meets it with, which may name its `generics`.
     pub fields: Vec<(&'a str, &'a ast::Type)>,
     pub generics: Vec<&'a str>,
+    /// `trait Selective<T>: Idempotent<T>` lists `Idempotent`.
+    pub supers: Vec<String>,
     /// The associated types it gives a default: `type Out = ?T`.
     pub assoc_defaults: Vec<(&'a str, &'a ast::Type)>,
     /// `@on_unimplemented("{T} can't ...")`: the trait's own words for a

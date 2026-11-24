@@ -34,6 +34,49 @@ impl Lowerer<'_> {
         prim.map(|p| p.2)
             .or_else(|| self.optional_impl_method(ty, method))
             .or_else(|| self.fn_impl_method(ty, method))
+            .or_else(|| self.shape_default_method(ty, method))
+    }
+
+    /// R08.1.7: a tuple or record meets a trait by its shape, so a method the
+    /// trait gives a body is made for it as for a type with an empty impl:
+    /// `(3, 4).rev()` is `Reversible`'s.
+    fn shape_default_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
+        if !matches!(ty, Ty::Tuple(_) | Ty::Record(_)) {
+            return None;
+        }
+        for tid in 0..self.traits.len() {
+            let t = &self.traits[tid];
+            if t.alias_of.is_some() || !t.generics.is_empty() {
+                continue;
+            }
+            let Some(f) = t.methods.iter().copied().find(|m| {
+                m.name.text == method
+                    && m.generics.is_empty()
+                    && !matches!(m.body, ast::FnBody::None)
+            }) else {
+                continue;
+            };
+            if !self.meets_by_shape(ty, tid) {
+                continue;
+            }
+            let t = &self.traits[tid];
+            let (m, offset, trait_name) = (t.mod_id, t.offset, t.name.clone());
+            let env = GenEnv::from([("Self".to_string(), GenArg::Ty(ty.clone()))]);
+            let saved = (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, offset),
+            );
+            let fn_id = self.declare_fn_in(f, m, offset, None, env);
+            let suffix = self.prim_methods.len();
+            self.sigs[fn_id].name = format!("{trait_name}_shape_{method}_{suffix}");
+            self.prim_self.insert(fn_id, ty.clone());
+            self.prim_methods
+                .push((ty.clone(), method.to_string(), fn_id));
+            self.resolve_fn_sig(fn_id, Some(trait_name.as_str()));
+            (self.cur_mod, self.offset) = saved;
+            return Some(fn_id);
+        }
+        None
     }
 
     /// `D.m(..)` with `D` a domain, or the cuts `V.cuts` of one: the method

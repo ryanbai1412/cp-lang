@@ -233,14 +233,21 @@ impl<'a> Lowerer<'a> {
     }
 
     fn has_bound_by_shape(&mut self, param: &str, trait_name: &str) -> bool {
-        let Some(GenArg::Ty(ty @ (Ty::Record(_) | Ty::Tuple(_)))) =
-            self.gen_env.get(param).cloned()
-        else {
+        let Some(GenArg::Ty(ty)) = self.gen_env.get(param).cloned() else {
             return false;
         };
         let Some(Sym::Trait(tid)) = self.get_sym(trait_name) else {
             return false;
         };
+        self.meets_by_shape(&ty, tid)
+    }
+
+    /// R08.1.7: a record or tuple meets a trait when a field meets each member the trait and its
+    /// supertraits leave without a body, as the checker's `meets_by_shape` decides.
+    pub(super) fn meets_by_shape(&mut self, ty: &Ty, tid: usize) -> bool {
+        if !matches!(ty, Ty::Record(_) | Ty::Tuple(_)) {
+            return false;
+        }
         let needed: Vec<String> = self.traits[tid]
             .methods
             .iter()
@@ -248,14 +255,15 @@ impl<'a> Lowerer<'a> {
             .map(|m| m.name.text.clone())
             .collect();
         let info = &self.traits[tid];
-        let (m, offset, generic, fields) = (
+        let (m, offset, generic, fields, supers) = (
             info.mod_id,
             info.offset,
             !info.generics.is_empty(),
             info.fields.clone(),
+            info.supers.clone(),
         );
         let fields_met = fields.iter().all(|&(name, want)| {
-            let Some((_, got)) = self.field_of(&ty, name) else {
+            let Some((_, got)) = self.field_of(ty, name) else {
                 return false;
             };
             if generic {
@@ -269,9 +277,17 @@ impl<'a> Lowerer<'a> {
             (self.cur_mod, self.offset) = saved;
             got == want
         });
-        !(needed.is_empty() && fields.is_empty())
-            && fields_met
-            && needed.iter().all(|m| self.field_of(&ty, m).is_some())
+        fields_met
+            && needed.iter().all(|m| self.field_of(ty, m).is_some())
+            && supers.iter().all(|s| {
+                let saved = std::mem::replace(&mut self.cur_mod, m);
+                let sup = self.get_sym(s);
+                self.cur_mod = saved;
+                match sup {
+                    Some(Sym::Trait(sid)) => self.meets_by_shape(ty, sid),
+                    _ => false,
+                }
+            })
     }
 }
 

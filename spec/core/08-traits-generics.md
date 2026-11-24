@@ -77,10 +77,12 @@ impl Ord for Frac:
 - **Field traits**: a trait may require fields (`trait Target<V>: to:
   V`); a bodiless `@get fn` member is the same requirement, met by a
   field of that name. A record or tuple satisfies a trait structurally
-  when a field meets each member the trait leaves without a body; a named
-  struct satisfies it only through an `impl`, bodiless when its fields
-  meet those members. One relation decides a bound, a parameter typed by
-  the trait and `if T: Trait` (decision 361). (R08.1.7)
+  when a field meets each member the trait and its supertraits leave
+  without a body, and then has the trait's default methods as its own:
+  `(3, 4).rev()` is `Reversible`'s identity. A named struct satisfies it
+  only through an `impl`, bodiless when its fields meet those members.
+  One relation decides a bound, a parameter typed by the trait, `if T:
+  Trait` and a default method's receiver (decision 361). (R08.1.7)
 - Library-authored diagnostics: a trait may attach a message to "not
   implemented" and to each law, so `SegTree(f, a)` with a non-associative
   `f` says what to write. (R08.1.8)

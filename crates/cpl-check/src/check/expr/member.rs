@@ -761,13 +761,20 @@ impl<'a> Checker<'a> {
         }
         let found = match &base_ty {
             Ty::Record(fields) => {
+                if !fields.iter().any(|(n, _)| *n == name.text) {
+                    if let Some(ty) = self.shape_default_member(&base_ty, &name.text) {
+                        return ty;
+                    }
+                }
                 let names: Vec<String> = fields.iter().map(|(n, _)| n.clone()).collect();
                 Some((self.field_of(&base_ty, name), names, Vec::new()))
             }
             Ty::Tuple(items) => {
                 return match name.text.parse::<usize>() {
                     Ok(i) if i < items.len() => items[i].clone(),
-                    _ => match self.own_method_at(&base_ty, name) {
+                    _ => match (self.own_method_at(&base_ty, name))
+                        .or_else(|| self.shape_default_member(&base_ty, &name.text))
+                    {
                         Some(ty) => ty,
                         // A product, `(W, W).all(..)`, or a fn of the name
                         // the call picks once it sees the arguments.
