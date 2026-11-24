@@ -8,11 +8,15 @@
   {"id": "3692241", "language": "CPP17", "result": "WA", "time": 1.070604815, "memory_kb": 10852.0, "file": "corpus/submissions/3692241.cpp"},
   {"id": "3692246", "language": "CPP17", "result": "WA", "time": 1.081921081, "memory_kb": 18732.0, "file": "corpus/submissions/3692246.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc20c7p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus. orig.cpp follows the official editorial's queue sweep, with strokes longer than R costing two; it matches a memoised exhaustive search over stroke placements on all small gen.py cases."
 }

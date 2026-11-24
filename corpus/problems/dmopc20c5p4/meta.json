@@ -5,11 +5,15 @@
   {"id": "3591183", "language": "CPP17", "result": "TLE", "time": 4.074211814, "memory_kb": 9764.0, "file": "corpus/submissions/3591183.cpp"},
   {"id": "3591201", "language": "CPP17", "result": "TLE", "time": 3.663481033, "memory_kb": 9768.0, "file": "corpus/submissions/3591201.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc20c5p4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus. orig.cpp follows the official editorial: transpose so N <= M, and for each row pair count equal column hashes within each chunk of agreeing columns, O(NM sqrt(NM) log); it matches a direct enumeration of every sub-rectangle on all small gen.py cases."
 }
