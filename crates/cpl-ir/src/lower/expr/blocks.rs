@@ -460,6 +460,7 @@ impl Lowerer<'_> {
                 lo,
                 hi,
                 text,
+                arg,
             } => {
                 let has_lo = lo.is_some();
                 let has_hi = hi.is_some();
@@ -479,6 +480,7 @@ impl Lowerer<'_> {
                         lo,
                         hi,
                         text,
+                        arg,
                     }
                 })
             }

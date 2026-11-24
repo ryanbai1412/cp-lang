@@ -167,6 +167,18 @@ inline ll check_range(ll v, ll lo, ll hi, const char* text) {
 ",
     },
     Piece {
+        name: "check_arg",
+        needs: &["out"],
+        code: "\
+// An argument outside its fn's range param: the fn's precondition, kept
+// wherever traps are.
+inline ll check_arg(ll v, ll lo, ll hi, const char* text) {
+    if (__builtin_expect(v < lo || v > hi, 0)) { cpl::flush(); fprintf(stderr, \"%lld is outside `%s`\\n\", v, text); exit(3); }
+    return v;
+}
+",
+    },
+    Piece {
         name: "fit",
         needs: &["out"],
         code: "\

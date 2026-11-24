@@ -1513,7 +1513,7 @@ impl<'a> Lowerer<'a> {
                             .and_then(|p| p.ty.as_ref());
                         let value = self.expect_declared(&arg.value, &param.ty, declared);
                         let value = match declared.and_then(|t| self.const_param_range(id, t)) {
-                            Some(b) => self.check_range(value, &b, arg.value.span),
+                            Some(b) => self.check_arg(value, &b, arg.value.span),
                             None => value,
                         };
                         let value = match declared.and_then(|t| self.const_param_cells(id, t)) {

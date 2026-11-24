@@ -681,6 +681,9 @@ pub enum ExprKind {
         lo: Option<Box<Expr>>,
         hi: Option<Box<Expr>>,
         text: String,
+        /// An argument checked against its fn's range param: the fn's
+        /// precondition, so a judge build that keeps traps keeps it too.
+        arg: bool,
     },
     If(Box<Expr>, Box<Expr>, Box<Expr>),
     /// A block with a value: runs until a [`Stmt::Give`].

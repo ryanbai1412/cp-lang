@@ -93,6 +93,36 @@ mod tests {
     }
 
     #[test]
+    fn an_argument_outside_its_range_param_traps_wherever_traps_are_kept() {
+        let source = concat!(
+            "fn twice(n: 0..10) -> Int:\n",
+            "    2 * n\n",
+            "let z: Int = read()\n",
+            "var k: 0..5 = 0\n",
+            "k = z\n",
+            "print(twice(z - 2) + k)\n",
+        );
+        let mut db = cpl_check::Session::new();
+        db.set_file("t.cp", source);
+        let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+        let cpp = |checks| {
+            let target = crate::Target {
+                checks,
+                ..crate::Target::default()
+            };
+            crate::emit_for(&program, "t.cp", None, &target)
+        };
+        let kept = cpp(Checks::Traps);
+        assert!(
+            kept.contains("cpl::check_arg(cpl::isub(z, 2), 0, 9"),
+            "{kept}"
+        );
+        assert!(kept.contains("cpl::check_range(z, 0, 4"), "{kept}");
+        let none = cpp(Checks::None);
+        assert!(!none.contains("check_arg"), "{none}");
+    }
+
+    #[test]
     fn an_assert_under_checks_asserts_on_stays_at_every_level() {
         let source = concat!(
             "let a = [1, 2]\n",

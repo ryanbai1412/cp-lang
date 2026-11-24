@@ -1381,10 +1381,21 @@ impl<'a> Lowerer<'a> {
                 lo: bounds.lo.clone().map(Box::new),
                 hi: bounds.hi.clone().map(Box::new),
                 text: bounds.text.clone(),
+                arg: false,
             },
             Ty::Int,
             span,
         )
+    }
+
+    /// [`Self::check_range`] for an argument of a fn's range param, a check
+    /// every build that keeps traps keeps.
+    pub(super) fn check_arg(&mut self, value: Expr, bounds: &RangeBounds, span: Span) -> Expr {
+        let mut checked = self.check_range(value, bounds, span);
+        if let ExprKind::RangeCheck { arg, .. } = &mut checked.kind {
+            *arg = true;
+        }
+        checked
     }
 
     /// Emits `Stmt::Assign(place, op, value)`, validating range bounds when `place`

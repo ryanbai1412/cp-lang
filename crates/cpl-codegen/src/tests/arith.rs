@@ -198,7 +198,7 @@ fn a_ranged_param_divides_with_cpps_own_operator() {
     );
     assert!(!cpp.contains("cpl::emod("), "{cpp}");
     // Every call checks its argument into the range the body relies on.
-    assert!(cpp.contains("step(cpl::check_range(n, 0, 1000,"), "{cpp}");
+    assert!(cpp.contains("step(cpl::check_arg(n, 0, 1000,"), "{cpp}");
 }
 
 /// A domain position's ord is never negative, so `/ 64` and `% 64` on it

@@ -929,6 +929,7 @@ impl<'p> Emitter<'p> {
                 lo,
                 hi,
                 text,
+                arg,
             } => {
                 let bound = |b: &Option<Box<Expr>>, open: i64| match b.as_deref().map(|b| &b.kind) {
                     Some(ExprKind::Int(v)) => Some(*v),
@@ -944,7 +945,12 @@ impl<'p> Emitter<'p> {
                         return self.expr(value);
                     }
                 }
-                self.need("check_range");
+                let piece = if *arg && self.target.checks != crate::Checks::None {
+                    "check_arg"
+                } else {
+                    "check_range"
+                };
+                self.need(piece);
                 let v = self.expr(value);
                 let lo_code = match lo {
                     Some(lo) => self.expr(lo).text,
@@ -956,7 +962,7 @@ impl<'p> Emitter<'p> {
                 };
                 let text_lit = string_literal(text.as_bytes());
                 Code::primary(format!(
-                    "cpl::check_range({}, {}, {}, {})",
+                    "cpl::{piece}({}, {}, {}, {})",
                     v.text, lo_code, hi_code, text_lit
                 ))
             }

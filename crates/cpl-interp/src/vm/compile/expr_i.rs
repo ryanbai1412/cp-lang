@@ -184,6 +184,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 lo,
                 hi,
                 text,
+                ..
             } => {
                 let val = self.compile_expr_i(value);
                 let imm = |b: &Option<Box<Expr>>| match b.as_deref().map(|e| &e.kind) {

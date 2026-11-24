@@ -1149,6 +1149,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 lo,
                 hi,
                 text,
+                ..
             } => {
                 let v = self.eval(value)?.int();
                 let lo = match lo {
