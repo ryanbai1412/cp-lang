@@ -3,6 +3,7 @@
 //   order ignored.
 // Solution: either some part is 1 (drop it: ways(n - 1, k - 1)) or every part is >= 2 (take 1
 //   off each: ways(n - k, k)). Memoised over (total, parts): O(nk).
+// original: corpus/submissions/5086680.cpp
 let n: 1..=200 = read()
 let k: 1..=6 = read()
 

@@ -3,11 +3,11 @@
 //   weight; print the minimum total cost to merge everything into one pile.
 // Solution: Huffman: always merging the two lightest piles is optimal. A MinHeap pops two,
 //   adds their sum to the cost and pushes it back, n - 1 times: O(n log n).
+// original: corpus/submissions/5117099.cpp
 let n: 1..=10000 = read()
 let piles: [0..n]1..=20000 = read()
 
-var heap = MinHeap<Int>()
-for p in piles: heap.push(p)
+var heap = Heap.of(piles.collect())
 var effort = 0
 while heap.len > 1:
     let merged = heap.pop()! + heap.pop()!
