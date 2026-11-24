@@ -5,10 +5,12 @@
 // least one kind count is 0). Give the z-th peeled vertex magnitude n - z,
 // positive if its remaining edges are kind 1 (cnt[v, 2] == 0) and negative if
 // they are kind 2 (cnt[v, 1] == 0). Since later vertices have strictly smaller
-// magnitude, each vertex's sign decides every edge incident to it at peel time.
+// magnitude, each vertex's sign decides every edge incident to it at peel time,
+// so the sign is read when the vertex is removed, before its edges are dropped.
 // If peeling stalls before all n vertices are removed, no assignment exists.
 @!multitest
-let (n, m): (1..=2e5, 0..=2e5) = read()
+let n: 1..=2e5 = read()
+let m: 0..=min(1e6, n * (n + 1) / 2) = read()
 domain V = 1..=n
 domain E = 0..m
 domain Kind = 1..=2
@@ -21,7 +23,9 @@ fn solve() -> ?[V]Int:
         cnt[raw[e].u, raw[e].kind] += 1
         cnt[raw[e].v, raw[e].kind] += 1
 
+    var negative: [V]?Bool = None
     fn drop_edge(v: V, a: (to: V, e: E)):
+        negative[v] = negative[v] ?? (cnt[v, Kind(1)] == 0)
         cnt[a.to, raw[a.e].kind] -= 1
 
     var ans: [V]Int = 0
@@ -32,7 +36,7 @@ fn solve() -> ?[V]Int:
     if order.len < n: return None
     for (z, v) in order.items:
         let mag = n - z
-        ans[v] = if cnt[v, Kind(1)] == 0: -mag else: mag
+        ans[v] = if negative[v] ?? true: -mag else: mag
     ans
 
 if let ans = solve():
