@@ -42,8 +42,8 @@ fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
     if k > 2:
         var x1 = l + fib[k - 2]
         var x2 = l + fib[k - 1]
-        var v1: ?K = if x1 < n: Some(f(r[x1])) else: None
-        var v2: ?K = if x2 < n: Some(f(r[x2])) else: None
+        var v1: ?K = if x1 < n: Some(f(r.nth(x1))) else: None
+        var v2: ?K = if x2 < n: Some(f(r.nth(x2))) else: None
         while k > 2:
             var right = false
             if let a = v1:
@@ -55,20 +55,20 @@ fn golden_pick<I, K>(r: Range<I>, f: I -> K, larger: Bool) -> ?I:
                 x1 = x2
                 v1 = v2
                 x2 = l + fib[k - 1]
-                v2 = if x2 < n: Some(f(r[x2])) else: None
+                v2 = if x2 < n: Some(f(r.nth(x2))) else: None
             else:
                 x2 = x1
                 v2 = v1
                 x1 = l + fib[k - 2]
-                v1 = if x1 < n: Some(f(r[x1])) else: None
+                v1 = if x1 < n: Some(f(r.nth(x1))) else: None
     var best = max(l + 1, 0)
-    var bv = f(r[best])
+    var bv = f(r.nth(best))
     for x in best + 1..min(l + fib[k], n):
-        let v = f(r[x])
+        let v = f(r.nth(x))
         if (larger and bv < v) or (not larger and v < bv):
             best = x
             bv = v
-    Some(r[best])
+    Some(r.nth(best))
 
 fn golden_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int, larger: Bool) -> F64:
     assert lo <= hi and steps >= 0
@@ -213,7 +213,7 @@ pub fn parallel_bsearch<I>(
         reset()
         var p = 0
         for t in 0..n:
-            apply(r[t])
+            apply(r.nth(t))
             while p < placed and (lo[order[p]] + hi[order[p]]) / 2 == t:
                 let q = order[p]
                 if ok(q): hi[q] = t
@@ -221,7 +221,7 @@ pub fn parallel_bsearch<I>(
                 p += 1
     var out = List<?I>()
     for q in 0..queries:
-        if lo[q] < n: out.push(Some(r[lo[q]]))
+        if lo[q] < n: out.push(Some(r.nth(lo[q])))
         else: out.push(None)
     out
 
