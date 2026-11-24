@@ -42,6 +42,15 @@ pub struct Facts {
     pub order: Option<String>,
 }
 
+/// What a `cost:` fact's `O(..)` holds: `n log n` for `O(n log n)
+/// amortized`; `None` for a cost written another way.
+pub fn big_o(cost: &str) -> Option<&str> {
+    cost.trim()
+        .trim_end_matches(" amortized")
+        .strip_prefix("O(")?
+        .strip_suffix(')')
+}
+
 impl Facts {
     /// The labels, in the order std/README.md lists them.
     pub const LABELS: [&'static str; 5] = ["cost", "traps", "empty", "ties", "order"];
@@ -434,5 +443,12 @@ mod tests {
         assert_eq!(doc_above(src, src.find("fn").unwrap()), "One.\nTwo.");
         assert_eq!(doc_line("  /// x"), Some("x"));
         assert_eq!(doc_line("//// x"), None);
+    }
+
+    #[test]
+    fn big_o_reads_what_a_cost_holds() {
+        assert_eq!(big_o("O(n log n) amortized"), Some("n log n"));
+        assert_eq!(big_o("O(1)"), Some("1"));
+        assert_eq!(big_o("linear"), None);
     }
 }

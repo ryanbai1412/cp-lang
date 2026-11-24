@@ -26,6 +26,10 @@ pub struct Hover {
     /// The cost the doc states, its whole `cost:` fact in the receiver's
     /// domains: `O(log |V|) amortized`.
     pub cost: Option<String>,
+    /// The type of what is hovered, when the checker typed it.
+    pub ty: Option<Ty>,
+    /// The text is a fn's signature, `fn name(..) -> ..`.
+    pub signature: bool,
 }
 
 /// Where a symbol is declared, possibly in an imported module.
@@ -181,6 +185,7 @@ impl Database {
             Some(member) if entry.ty == Ty::Unknown => member.signature(),
             _ => render(entry, &mut lookup),
         };
+        let signature = builtin.is_none() && shows_signature(entry, &mut lookup);
         let doc = self.definition_location(path, offset).and_then(|def| {
             let source = if def.path == path {
                 analysis.text.clone()
@@ -242,6 +247,8 @@ impl Database {
             text,
             doc,
             cost,
+            ty: Some(entry.ty.clone()),
+            signature,
         })
     }
 
@@ -563,6 +570,8 @@ fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover>
         text,
         doc: Some(doc.to_string()),
         cost,
+        ty: None,
+        signature: false,
     })
 }
 
@@ -584,6 +593,15 @@ pub(crate) fn render(entry: &HoverEntry, lookup: &mut Lookup) -> String {
         },
         "fn" => fn_text(name, &entry.ty),
         _ => render_value(name, &entry.ty, lookup),
+    }
+}
+
+/// Whether [`render`] shows `entry` as a fn's signature.
+fn shows_signature(entry: &HoverEntry, lookup: &mut Lookup) -> bool {
+    match entry.keyword {
+        "global" | "type" => matches!(lookup(&entry.name).as_deref(), Some(Def::Fn { .. })),
+        "fn" => matches!(entry.ty, Ty::Fn { .. }),
+        _ => false,
     }
 }
 

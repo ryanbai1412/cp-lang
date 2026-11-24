@@ -250,7 +250,7 @@ impl Server {
                 // `s.runs` names a library `fn runs(self: S, ..)`: the checker's
                 // fact is the free form, so show the declaration as written,
                 // as completion and signature help do.
-                let hover = if checked.as_ref().is_none_or(|h| h.text.starts_with("fn ")) {
+                let hover = if checked.as_ref().is_none_or(|h| h.signature) {
                     let analysis = self.db.analyze(&uri).expect("hover implies an analysis");
                     let cursor = Cursor {
                         uri: &uri,
@@ -297,13 +297,7 @@ impl Server {
                     .iter()
                     .copied()
                     .find(|&(at, lo, hi)| at == declared && lo != hi)
-                    .filter(|_| {
-                        hover
-                            .text
-                            .lines()
-                            .next()
-                            .is_some_and(|l| l.ends_with(": Int"))
-                    });
+                    .filter(|_| hover.ty == Some(cpl_check::Ty::Int));
                 if let Some((_, lo, hi)) = proven {
                     let (first, rest) = hover.text.split_once('\n').unwrap_or((&hover.text, ""));
                     let rest = if rest.is_empty() {
@@ -344,7 +338,7 @@ impl Server {
                 let proven = facts
                     .fns()
                     .iter()
-                    .find(|f| f.name.0 == declared && hover.text.starts_with("fn "));
+                    .find(|f| f.name.0 == declared && hover.signature);
                 if let Some(f) = proven {
                     let (calls, total) = fn_call_costs(&mut self.db, &uri, f, &facts);
                     let named = |count: Option<&str>| {
@@ -931,6 +925,8 @@ impl Server {
             _ => {}
         }
         Some(cpl_check::Hover {
+            ty: None,
+            signature: false,
             span: Span::new(proven.head.0, proven.head.1),
             text,
             doc: None,
@@ -975,6 +971,8 @@ impl Server {
             false => format!("{access}: in bounds, {}", proven.proof),
         };
         Some(cpl_check::Hover {
+            ty: None,
+            signature: false,
             span: Span { start, end },
             text,
             doc: None,
@@ -1005,6 +1003,8 @@ impl Server {
             (lo, hi) => format!("in {lo}..={hi}"),
         };
         Some(cpl_check::Hover {
+            ty: None,
+            signature: false,
             span: Span { start, end },
             text: format!("{source}: Int {value}{fits}"),
             doc: None,
@@ -1472,10 +1472,7 @@ fn receiver_before(text: &str, at: usize) -> Option<&str> {
 /// A documented cost's value when its size `n` is `n`, logs base 2: `O(n
 /// log n)`, `O(n^2)`, `O(log^2 n)`; `None` for any other name in it.
 fn steps_of(cost: &str, n: f64) -> Option<f64> {
-    let body = cost
-        .trim_end_matches(" amortized")
-        .strip_prefix("O(")?
-        .strip_suffix(')')?;
+    let body = cpl_syntax::doc::big_o(cost)?;
     let mut tokens = Vec::new();
     let mut chars = body.chars().peekable();
     while let Some(&c) = chars.peek() {
@@ -1721,7 +1718,7 @@ fn fn_documented(
             Some(_) => "an unknown number of times".to_string(),
         };
         if let (Some(s), Some(r)) = (steps, run.map_or(Some(1), |r| r.times)) {
-            let inner = cost.strip_prefix("O(").and_then(|c| c.strip_suffix(')'));
+            let inner = cpl_syntax::doc::big_o(&cost);
             let term = match (run.and_then(|r| r.count.as_deref()), inner) {
                 (_, None) => None,
                 (None, Some(i)) => Some(i.to_string()),
@@ -1774,8 +1771,10 @@ fn fn_extra(
             continue;
         }
         let hover = db.hover(uri, start)?;
-        let cost = hover.text.lines().find_map(|l| l.strip_prefix("cost: "))?;
-        if (hover.span.start, hover.span.end) != (start, end) || !cost.starts_with("O(1)") {
+        let cost = hover.cost.as_deref()?;
+        if (hover.span.start, hover.span.end) != (start, end)
+            || cpl_syntax::doc::big_o(cost) != Some("1")
+        {
             return None;
         }
         let inside = |r: &&cpl_lint::Run| r.span.0 <= start && end <= r.span.1;

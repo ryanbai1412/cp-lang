@@ -165,7 +165,7 @@
   "bench_lists": 0,
   "unwrap_input": 714,
   "unsupported_sites": 41,
-  "lsp_string_types": 13,
+  "lsp_string_types": 5,
   "lint_post_filters": 0,
   "known_lists": 8,
   "prelude_gaps": 0,
