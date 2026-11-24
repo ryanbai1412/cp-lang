@@ -83,6 +83,17 @@ impl<'p> Emitter<'p> {
                 return;
             }
         }
+        for (_, ptr, own, at) in self
+            .rebinds
+            .get(&(place as *const Place))
+            .cloned()
+            .unwrap_or_default()
+        {
+            self.line(
+                out,
+                &format!("if ({ptr} != &{own}) {{ {own} = std::move({at}); {ptr} = &{own}; }}"),
+            );
+        }
         self.mark_moved_entry(place, op, value);
         let marks = self.one_walk_entry(place, op, value, out);
         self.store(place, op, value, out);
