@@ -1188,6 +1188,41 @@ fn launch_reads_a_named_input_file() {
 }
 
 #[test]
+fn watches_read_fields_and_the_inner_name() {
+    let (mut dap, _) = launched_at(
+        "watch_fields",
+        "struct P: a: Int, b: Int\nlet x = P(a: 4, b: 5)\nif x.a > 0:\n    let y = 1\n    print(y)\nif x.b > 0:\n    let y = 7\n    print(y)\n",
+        "\"stopOnEntry\":false",
+        &[8],
+    );
+    for (expr, want) in [("y", "7"), ("x.a + x.b", "9"), ("x.b * 2", "10")] {
+        let reply = eval(&mut dap, expr);
+        assert!(
+            reply.contains(&format!("\"result\":\"{want}\"")),
+            "{expr}: {reply}"
+        );
+    }
+    dap.finish();
+}
+
+#[test]
+fn continue_with_no_breakpoints_ends_on_the_run_s_last_step() {
+    let (mut dap, _) = launched(
+        "continue_to_end",
+        "let n: Int = read()\nvar i = 0\nwhile i < n:\n    i += 1\nprint(i)\n",
+        "\"stopOnEntry\":true,\"recordSteps\":1000,\"inputText\":\"3000\\n\"",
+    );
+    dap.send("continue", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"terminated\"");
+    dap.send("stackTrace", Some("{\"threadId\":1}"));
+    let frame = dap.recv_until("\"command\":\"stackTrace\"");
+    assert!(frame.contains("\"line\":5"), "{frame}");
+    let i = eval(&mut dap, "i");
+    assert!(i.contains("\"result\":\"3000\""), "{i}");
+    dap.finish();
+}
+
+#[test]
 fn random_dap_requests_stop_where_a_straight_run_says() {
     let path = write_temp(
         "random_dap",
