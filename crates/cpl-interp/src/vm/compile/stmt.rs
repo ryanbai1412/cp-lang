@@ -248,16 +248,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 let j_end = self.emit(Op::Jmp { target: 0 }, seq.span);
                 self.patch(eager, self.ops.len() as u32);
-                self.compile_eager_for(stmt, *id, *slot, seq, body);
+                self.compile_eager_for(*id, *slot, seq, body);
                 self.patch(j_end, self.ops.len() as u32);
                 self.compile_fed_body(*id, body);
                 return true;
             }
         }
         match stmt {
-            Stmt::Let(slot, Some(init))
-                if self.feed_acc != Some(*slot) && self.traced_quiet(init) =>
-            {
+            Stmt::Let(slot, Some(init)) => {
                 self.compile_reporting_stmt(stmt, init);
                 if !self.fell_back(stmt) {
                     self.emit_trace(TracePoint::Let(*slot, init), init.span);
@@ -269,21 +267,26 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_trace(TracePoint::Declared(*slot), stmt.span().unwrap_or_default());
                 }
             }
-            // A trap ends the run: the tracer takes it from the failure.
-            Stmt::Break(_) | Stmt::Continue(_) | Stmt::Return(None) | Stmt::Trap(..) => {
-                return false
-            }
-            // A domain's bounds are no value the trace shows.
-            Stmt::DefDomain { lo, len, .. } if self.traced_quiet(lo) && self.traced_quiet(len) => {
-                return false
-            }
-            Stmt::DefDomainFromVal { val, .. } if self.traced_quiet(val) => return false,
-            Stmt::Assign(place, _, value)
-                if quiet_place(place, cpl_ir::walk::root(place)) && self.traced_quiet(value) =>
-            {
+            // A trap ends the run: the tracer takes it from the failure. A
+            // domain's bounds are no value the trace shows. Each call, write
+            // and print in a value reports itself as it runs.
+            Stmt::Break(_)
+            | Stmt::Continue(_)
+            | Stmt::Return(_)
+            | Stmt::Give(_)
+            | Stmt::Trap(..)
+            | Stmt::Assert { .. }
+            | Stmt::DefDomain { .. }
+            | Stmt::DefDomainFromVal { .. } => return false,
+            Stmt::Assign(place, _, value) => {
                 self.compile_reporting_stmt(stmt, value);
                 if !self.fell_back(stmt) {
-                    let point = self.cell_point(place).unwrap_or(TracePoint::Assign(place));
+                    // Indices the write ran once are not run again for the
+                    // step: it shows the root changed.
+                    let point = match quiet_place(place, cpl_ir::walk::root(place)) {
+                        true => self.cell_point(place).unwrap_or(TracePoint::Assign(place)),
+                        false => TracePoint::Mutated(place, place.span),
+                    };
                     self.emit_trace(point, place.span);
                 }
             }
@@ -308,35 +311,25 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 let end = self.ops.len() as u32;
                 self.patch(j_end, end);
             }
-            Stmt::Assert { cond, message, .. }
-                if self.traced_quiet(cond)
-                    && message.as_ref().is_none_or(|m| self.traced_quiet(m)) =>
-            {
-                return false
-            }
-            Stmt::Return(Some(value)) | Stmt::Give(value) if self.traced_quiet(value) => {
-                return false
-            }
+            Stmt::If(..) | Stmt::While(..) => return false,
             Stmt::Expr(e) if self.traced_call(e).is_some() => {
                 let dst = self.compile_expr_v(e);
                 if dst >= self.num_local_v {
                     self.emit(Op::ClearV { reg: dst }, e.span);
                 }
             }
-            Stmt::For(_, slot, iter, _) if self.feed_acc.is_none() => {
-                match self.traced_quiet_iter(iter) {
-                    Some(span) => {
-                        self.traced_loop_var = Some((*slot, span));
-                        self.compile_untraced_stmt(stmt);
-                        self.traced_loop_var = None;
-                        self.emit_trace(TracePoint::LoopEnd(*slot), span);
-                    }
-                    None => {
-                        self.emit_fallback_stmt(stmt);
-                        self.emit_escapes();
-                    }
+            Stmt::For(_, slot, iter, _) => match self.traced_quiet_iter(iter) {
+                Some(span) => {
+                    self.traced_loop_var = Some((*slot, span));
+                    self.compile_untraced_stmt(stmt);
+                    self.traced_loop_var = None;
+                    self.emit_trace(TracePoint::LoopEnd(*slot), span);
                 }
-            }
+                None => {
+                    self.emit_fallback_stmt(stmt);
+                    self.emit_escapes();
+                }
+            },
             Stmt::Expr(e) if self.traced_yield(e).is_some() => {
                 let Some((acc, list_v, place, arg, each)) = self.traced_yield(e) else {
                     return false;
@@ -382,20 +375,14 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit(Op::ClearV { reg: src }, e.span);
                 }
             }
-            Stmt::Expr(
-                e @ Expr {
-                    kind: ExprKind::Sort(place, ..),
-                    ..
-                },
-            ) if self.traced_quiet(e) => {
+            Stmt::Expr(Expr {
+                kind: ExprKind::Sort(place, ..),
+                ..
+            }) => {
                 self.compile_untraced_stmt(stmt);
                 self.trace_sorted(stmt, place);
             }
-            Stmt::Expr(e) if self.traced_quiet(e) => self.compile_reporting_stmt(stmt, e),
-            _ => {
-                self.emit_fallback_stmt(stmt);
-                self.emit_escapes();
-            }
+            Stmt::Expr(e) => self.compile_reporting_stmt(stmt, e),
         }
         true
     }
@@ -629,21 +616,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         ))
     }
 
-    /// The fed loop `id` as the tree-walker runs it where it feeds no
-    /// loop: in a closure, or in a generator a loop is being fed from.
-    fn compile_eager_for(
-        &mut self,
-        stmt: &'p Stmt,
-        id: LoopId,
-        slot: Slot,
-        seq: &'p Expr,
-        body: &'p Block,
-    ) {
-        if !self.traced_quiet(seq) {
-            self.emit_fallback_stmt(stmt);
-            self.emit_escapes();
-            return;
-        }
+    /// The fed loop `id` run eagerly where it feeds no loop: in a
+    /// closure, or in a generator a loop is being fed from.
+    fn compile_eager_for(&mut self, id: LoopId, slot: Slot, seq: &'p Expr, body: &'p Block) {
         self.traced_loop_var = Some((slot, seq.span));
         self.in_dom.clear();
         self.compile_for_seq(id, slot, seq, None, false, body);
