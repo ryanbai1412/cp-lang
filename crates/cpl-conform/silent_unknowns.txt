@@ -871,7 +871,6 @@
 4 corpus/problems/ucup5s06a/dream.cp
 4 corpus/problems/ucup5s06g/dream.cp
 4 corpus/problems/ucup5s06g/port.cp
-7 corpus/problems/utso15p5/perf.cp
 5 corpus/problems/utso15p5/port.cp
 1 corpus/problems/wac6p6/port.cp
 9 corpus/problems/wossoly21s3/port.cp

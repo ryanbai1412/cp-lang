@@ -37,4 +37,8 @@ if let out = (if path.hi < Some(cost): path.hi else: path.lo): best min= base + 
 - **Runtime and memory on gen.py --max:** port 0.05 s / 12 MB, accepted C++ 0.04 s / 18 MB, with the same output.
 - **Emitted C++:** 30470 bytes.
 - **Agreement:** `cpl stress` against the accepted C++ agrees on 30 gen.py cases at size 30.
-- **Speed gap:** 0.05 s vs 0.04 s at `gen.py --max` is over 1.1x. The repro (this package's `--max` case) is sent to perf via Factory 7bd146f2. Owner: Perf B (33c55557).
+- **Speed gap:** 0.05 s vs 0.04 s at `gen.py --max` is over 1.1x. The repro (this package's `--max` case) is sent to perf via Factory 7bd146f2. Owner: Perf B (33c55557). **Status:** fixed: now 1.08x time, 0.60x memory (below).
+
+## Tuned twin retired (2026-11-24)
+
+The plain port is within 1.1x of the accepted C++ on `gen.py --max` on both counts (best of 9, CPU time and peak RSS, `scripts/corpus.py`'s judge builds): 0.059 s / 10.2 MB against 0.055 s / 17.1 MB (1.08x time, 0.6x memory), with the same output, so `perf.cp` is deleted (performance/R6 keeps a twin only over 1.1x).
