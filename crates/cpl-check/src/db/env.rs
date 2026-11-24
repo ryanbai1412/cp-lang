@@ -41,6 +41,25 @@ impl Env for FileCtx<'_> {
         def
     }
 
+    fn imported_def(&mut self, name: &str) -> Option<Arc<Def>> {
+        self.record(DEP_IMPORTS, self.scope.imports_fp);
+        let scope = self.scope.clone();
+        for module in &scope.modules {
+            if !module.analysis.public_names().iter().any(|n| n == name) {
+                continue;
+            }
+            let (def, fingerprint) = self.module_def(module, name);
+            if def
+                .as_deref()
+                .is_some_and(|d| matches!(d, Def::Trait { .. }))
+            {
+                self.record(name, fingerprint);
+                return def;
+            }
+        }
+        None
+    }
+
     fn effects(&mut self, name: &str) -> Arc<Effects> {
         let (effects, fingerprint) = self.effects(name);
         self.record(&format!("{DEP_EFFECTS}{name}"), fingerprint);

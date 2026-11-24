@@ -93,7 +93,7 @@ impl<'a> Checker<'a> {
         for arg in args {
             self.resolve_type(arg);
         }
-        match self.global(&name.text).as_deref() {
+        match self.trait_global(&name.text).as_deref() {
             Some(Def::Trait { methods, .. }) => {
                 self.refs.push(GlobalRef {
                     span: name.span,
