@@ -837,7 +837,6 @@
 5 corpus/problems/shoi16p4/port.cp
 1 corpus/problems/shoi16p5/port.cp
 1 corpus/problems/tsoc15c2p6/port.cp
-5 corpus/problems/ucrpc21f/perf.cp
 4 corpus/problems/ucrpc21f/port.cp
 3 corpus/problems/ucrpc21g/port.cp
 34 corpus/problems/ucrpc21h/dream.cp
