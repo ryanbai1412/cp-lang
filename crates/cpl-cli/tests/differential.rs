@@ -39,7 +39,7 @@ const GXX_FLAGS: [&str; 7] = [
 /// and when `sort(by:)` works out a key, `print` arguments that print,
 /// stepped ranges at their edges, arrays of two lengths given for one
 /// `D`, `argmin` on arrays that do not start at 0, `?` inside a larger
-/// expression, how a `Float` prints, `sort(by:)` with a `()` key, and optional fn parameters every call fills alike, structs that point to a lent value, and `sort(by:)` permuting a list in place. They are a test of their own,
+/// expression, how a `Float` prints, `sort(by:)` with a `()` key, and optional fn parameters every call fills alike, structs that point to a lent value, views over temporaries kept by a `let`, a `for`, a return, a capture or a store (`lent_temp_*`), and `sort(by:)` permuting a list in place. They are a test of their own,
 /// so a break in either is named as that.
 fn parity_programs() -> Vec<PathBuf> {
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/parity");

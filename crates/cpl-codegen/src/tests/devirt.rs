@@ -543,9 +543,10 @@ fn each_sink_reports_every_let_loop_binding_store_and_return() {
     each_sink(&f.body, &mut |s| {
         kinds.push(match s {
             Sink::Let(..) => "let",
-            Sink::For(_) => "for",
+            Sink::For(..) => "for",
             Sink::Store(..) => "store",
             Sink::Return(_) => "return",
+            Sink::Give(_) => "give",
         })
     });
     assert_eq!(kinds, ["let", "for", "store", "return"]);

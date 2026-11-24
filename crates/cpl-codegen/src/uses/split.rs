@@ -3,7 +3,7 @@
 //! binding, store and return.
 
 use crate::walk;
-use cpl_ir::{AssignOp, Block, Expr, ExprKind, Place, Slot, Stmt};
+use cpl_ir::{AssignOp, Block, Expr, ExprKind, Iter, Place, Slot, Stmt};
 
 /// Every expression in `block`, at any depth (a `do` block's too), each
 /// after the expressions inside it: the order code computes them.
@@ -43,22 +43,32 @@ pub(crate) fn gives(block: &Block) -> Vec<&Expr> {
 pub(crate) enum Sink<'a> {
     /// `let slot = init`, or a `var` with no initializer.
     Let(Slot, Option<&'a Expr>),
-    /// The binding of a `for` loop, one item per pass.
-    For(Slot),
+    /// The binding of a `for` loop, one item per pass, and the sequence it
+    /// walks (none for a range).
+    For(Slot, Option<&'a Expr>),
     /// `place = v` or `place op= v`: the place, how it combines, the value.
     Store(&'a Place, &'a AssignOp, &'a Expr),
     /// `return v`.
     Return(&'a Expr),
+    /// `give v`: the value of the `do` block it ends.
+    Give(&'a Expr),
 }
 
-/// Every `let`, loop binding, store and return in `block`, at any depth (a
+/// Every `let`, loop binding, store, return and give in `block`, at any depth (a
 /// `do` block's too), in statement order.
 pub(crate) fn each_sink<'a>(block: &'a Block, f: &mut dyn FnMut(Sink<'a>)) {
     walk::deep_stmts(block, &mut |stmt| match stmt {
         Stmt::Let(slot, init) => f(Sink::Let(*slot, init.as_ref())),
-        Stmt::For(_, slot, ..) => f(Sink::For(*slot)),
+        Stmt::For(_, slot, iter, _) => f(Sink::For(
+            *slot,
+            match iter {
+                Iter::Seq(seq, _) => Some(seq),
+                _ => None,
+            },
+        )),
         Stmt::Assign(place, op, value) => f(Sink::Store(place, op, value)),
         Stmt::Return(Some(e)) => f(Sink::Return(e)),
+        Stmt::Give(e) => f(Sink::Give(e)),
         _ => {}
     });
 }

@@ -14,10 +14,21 @@ use crate::uses::places::{
 use crate::uses::split::{each_sink, each_value, Sink};
 use crate::walk;
 use cpl_ir::{
-    Arg, Block, Expr, ExprKind, FnId, Function, Place, PlaceKind, Program, ScopeId, Stmt, StructId,
-    Ty,
+    Arg, AssignOp, Block, Expr, ExprKind, FnId, Function, Place, PlaceKind, Program, ScopeId, Stmt,
+    StructId, Ty,
 };
 use std::collections::{BTreeMap, BTreeSet};
+
+/// How long a value lives past the statement that makes it.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Keep {
+    /// It dies with the statement.
+    Gone,
+    /// A `let` or `for` holds it, with the owners it lends from pinned.
+    Pinned,
+    /// A store, return or `give` holds it, with nothing pinned.
+    Kept,
+}
 
 #[derive(Default)]
 pub(crate) struct LentFields {
@@ -49,6 +60,11 @@ impl crate::emit::Emitter<'_> {
 impl LentFields {
     pub(crate) fn is_lent(&self, s: StructId, field: usize) -> bool {
         self.fields.contains(&(s, field))
+    }
+
+    /// Whether `ty` is a struct with a field that points to a lent value.
+    pub(crate) fn holds_lent(&self, ty: &Ty) -> bool {
+        matches!(ty, Ty::Struct(s) if self.fields.range((*s, 0)..=(*s, usize::MAX)).next().is_some())
     }
 }
 
@@ -335,7 +351,10 @@ impl Scan<'_> {
                     })
                 }
                 ExprKind::Call(g, args) => self.sources[*g].iter().all(|&k| {
-                    matches!(args.get(k), Some(Arg::Value(v)) if matches!(walk::path_root(v), Some((true, _))))
+                    matches!(args.get(k), Some(Arg::Value(v)) if match walk::path_root(v) {
+                        Some((global, _)) => global,
+                        None => self.pinnable(v),
+                    })
                 }),
                 ExprKind::If(_, a, b) => self.global_only(a, lets) && self.global_only(b, lets),
                 ExprKind::Do(block) => match block.stmts.split_last() {
@@ -422,6 +441,10 @@ impl Scan<'_> {
                 }
             });
         }
+        let mut kept = BTreeSet::new();
+        for (_, body) in bodies(program) {
+            self.kept_in(body, &mut kept);
+        }
         inside.into_iter().for_each(|s| self.drop_struct(s));
         writes.into_iter().for_each(|p| self.written(p));
         for (scope, s, e) in made {
@@ -452,7 +475,11 @@ impl Scan<'_> {
                     let temporary = self.sources[*g].iter().any(|&k| {
                         !matches!(args.get(k), Some(Arg::Value(v)) if walk::path_root(v).is_some())
                     });
-                    if temporary {
+                    // A source past the args is a local of the callee's own.
+                    let unbound = self.sources[*g]
+                        .iter()
+                        .any(|&k| !matches!(args.get(k), Some(Arg::Value(_))));
+                    if unbound || temporary && kept.contains(&(e as *const Expr)) {
                         self.drop_struct(s);
                     }
                 }
@@ -469,6 +496,86 @@ impl Scan<'_> {
             }
         }
         self.fields.len() != before
+    }
+
+    /// The lent-struct calls in `block` whose value may outlive its statement
+    /// other than through what [`crate::emit::Emitter::pin_owners`] holds: a
+    /// temporary they point into would die first. A `let` or `for` keeps the
+    /// view and pins its owners; a store, return or `give` keeps it unpinned.
+    fn kept_in(&self, block: &Block, out: &mut BTreeSet<*const Expr>) {
+        each_sink(block, &mut |sink| match sink {
+            Sink::Let(_, Some(init)) => self.kept_expr(init, Keep::Pinned, out),
+            Sink::For(_, Some(seq)) => self.kept_expr(seq, Keep::Pinned, out),
+            Sink::Store(place, op, value) => {
+                let global = matches!(place.kind, PlaceKind::Global(_));
+                let keep = if global && *op == AssignOp::Set {
+                    Keep::Pinned
+                } else {
+                    Keep::Kept
+                };
+                self.kept_expr(value, keep, out);
+            }
+            Sink::Return(e) | Sink::Give(e) => self.kept_expr(e, Keep::Kept, out),
+            _ => {}
+        });
+        each_value(block, &mut |e| {
+            if let ExprKind::Mutate(_, _, args) = &e.kind {
+                args.iter().for_each(|a| self.kept_expr(a, Keep::Kept, out));
+            }
+        });
+    }
+
+    fn kept_expr(&self, e: &Expr, keep: Keep, out: &mut BTreeSet<*const Expr>) {
+        let kept = if keep == Keep::Gone {
+            Keep::Gone
+        } else {
+            Keep::Kept
+        };
+        match &e.kind {
+            ExprKind::Call(g, args) => {
+                let unpinned = self.sources[*g]
+                    .iter()
+                    .any(|&k| matches!(args.get(k), Some(Arg::Value(v)) if !self.pinnable(v)));
+                let lent = self.has_lent(&e.ty).is_some();
+                if lent && (keep == Keep::Kept || keep == Keep::Pinned && unpinned) {
+                    out.insert(e as *const Expr);
+                }
+                for (k, arg) in args.iter().enumerate() {
+                    if let Arg::Value(v) = arg {
+                        let source = self.sources[*g].contains(&k);
+                        self.kept_expr(v, if source { keep } else { Keep::Gone }, out);
+                    }
+                }
+            }
+            ExprKind::Tuple(parts) | ExprKind::Variant(_, parts) => {
+                parts.iter().for_each(|p| self.kept_expr(p, keep, out))
+            }
+            ExprKind::Some(inner) => self.kept_expr(inner, keep, out),
+            ExprKind::If(cond, then, otherwise) => {
+                self.kept_expr(cond, Keep::Gone, out);
+                self.kept_expr(then, kept, out);
+                self.kept_expr(otherwise, kept, out);
+            }
+            ExprKind::Do(_) | ExprKind::Closure(_) => {}
+            ExprKind::Field(base, _)
+            | ExprKind::Index(base, _)
+            | ExprKind::Unwrap(base, _)
+            | ExprKind::Payload(base, ..) => {
+                self.kept_expr(base, kept, out);
+                if let ExprKind::Index(_, keys) = &e.kind {
+                    keys.iter().for_each(|k| self.kept_expr(k, Keep::Gone, out));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    /// Whether a source `v` outlives what is made from it: a variable, or a
+    /// temporary that [`crate::emit::Emitter::pin_owners`] binds to a name.
+    fn pinnable(&self, v: &Expr) -> bool {
+        walk::path_root(v).is_some()
+            || matches!(v.ty, Ty::List(_) | Ty::Array { .. } | Ty::Str)
+            || matches!(v.kind, ExprKind::Call(..)) && self.has_lent(&v.ty).is_some()
     }
 
     /// Grows `sources` to a fixed point; true when it dropped a field.

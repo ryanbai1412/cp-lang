@@ -537,7 +537,7 @@ fn each_sink_reports_a_for_binding_and_a_return() {
     ));
     let (mut fors, mut returns) = (0, 0);
     each_sink(&program.fns[0].body, &mut |sink| match sink {
-        Sink::For(_) => fors += 1,
+        Sink::For(..) => fors += 1,
         Sink::Return(_) => returns += 1,
         _ => {}
     });

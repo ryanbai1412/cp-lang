@@ -120,7 +120,7 @@ impl<'p> Emitter<'p> {
         let mut declared = vec![slot];
         let mut stores: Vec<&'b Place> = Vec::new();
         each_sink(body, &mut |sink| {
-            if let Sink::Let(at, _) | Sink::For(at) = sink {
+            if let Sink::Let(at, _) | Sink::For(at, _) = sink {
                 declared.push(at);
             }
         });

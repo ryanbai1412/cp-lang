@@ -504,7 +504,7 @@ impl<'p> Flow<'p> {
                     self.set_local(ctx, slot, k);
                 }
             }
-            Sink::For(slot) if self.is_tracked(self.local_ty(ctx, slot)) => {
+            Sink::For(slot, _) if self.is_tracked(self.local_ty(ctx, slot)) => {
                 self.set_local(ctx, slot, Key::Top);
             }
             Sink::Return(e) => {

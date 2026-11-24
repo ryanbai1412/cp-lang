@@ -594,11 +594,11 @@ impl<'p> Emitter<'p> {
     /// Bind each temporary container a view-typed call lends from, at any
     /// depth of view-typed calls, to a named local.
     pub(crate) fn pin_owners(&mut self, e: &Expr, hold: Hold, out: &mut String) {
-        if !e.ty.holds_view() {
+        if !(e.ty.holds_view() || self.lent_fields.holds_lent(&e.ty)) {
             return;
         }
-        let args = match &e.kind {
-            ExprKind::Call(_, args) => args,
+        let (callee, args) = match &e.kind {
+            ExprKind::Call(g, args) => (Some(*g), args),
             ExprKind::Tuple(parts) | ExprKind::Variant(_, parts) => {
                 for part in parts {
                     self.pin_owners(part, hold, out);
@@ -608,13 +608,20 @@ impl<'p> Emitter<'p> {
             ExprKind::Some(inner) => return self.pin_owners(inner, hold, out),
             _ => return,
         };
-        for arg in args {
+        for (k, arg) in args.iter().enumerate() {
             let Arg::Value(v) = arg else {
                 continue;
             };
-            if !temporary_owner(v) {
+            // A lent struct a lent field points to is an owner too, after its own.
+            let lent_owner = walk::path_root(v).is_none()
+                && self.lent_fields.holds_lent(&v.ty)
+                && callee.is_some_and(|g| self.lent_fields.sources[g].contains(&k));
+            if !temporary_owner(v) && !lent_owner {
                 self.pin_owners(v, hold, out);
                 continue;
+            }
+            if lent_owner {
+                self.pin_owners(v, hold, out);
             }
             let owner = self.temp();
             let owner_ty = self.ty(&v.ty);

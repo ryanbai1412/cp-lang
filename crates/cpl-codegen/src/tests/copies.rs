@@ -795,19 +795,30 @@ fn a_local_dead_after_a_let_of_a_call_moves_into_its_param() {
 
 #[test]
 fn a_top_level_list_moves_into_a_call_inside_print_at_its_last_read() {
-    let last = cpp("let a = [1, 2].step(5)\nlet z = [1, 2, 3]\nprint(a.len, z.step(2).len)\n");
+    let lent = cpp("let a = [1, 2].step(5)\nlet z = [1, 2, 3]\nprint(a.len, z.step(2).len)\n");
+    assert!(
+        lent.contains("(z, 2)") && !lent.contains("std::move(z)"),
+        "a `let` pins the temporary `a` steps over, so the step over z points at it:\n{lent}"
+    );
+    // A step returned over a temporary owns its list, so one over z takes z.
+    let owned = "fn mk(n: Int) -> Stepped<List<Int>, Int> = [n, n].step(5)\nlet a = mk(1)\n";
+    let last = cpp(&format!(
+        "{owned}let z = [1, 2, 3]\nprint(a.len, z.step(2).len)\n"
+    ));
     assert!(
         last.contains("(std::move(z), 2)"),
         "the last read should move z:\n{last}"
     );
-    let again = cpp(
-        "let a = [1, 2].step(5)\nlet z = [1, 2, 3]\nprint(a.len, z.step(2).len)\nprint(z.len)\n",
-    );
+    let again = cpp(&format!(
+        "{owned}let z = [1, 2, 3]\nprint(a.len, z.step(2).len)\nprint(z.len)\n"
+    ));
     assert!(
         !again.contains("std::move(z)"),
         "z is read again, so it is not moved:\n{again}"
     );
-    let in_fn = cpp("let a = [1, 2].step(5)\nlet z = [1, 2, 3]\nfn later() -> Int = z.len\nprint(a.len, z.step(2).len)\nprint(later())\n");
+    let in_fn = cpp(&format!(
+        "{owned}let z = [1, 2, 3]\nfn later() -> Int = z.len\nprint(a.len, z.step(2).len)\nprint(later())\n"
+    ));
     assert!(
         !in_fn.contains("std::move(z)"),
         "a fn reads z later, so it is not moved:\n{in_fn}"
