@@ -6,6 +6,8 @@ var acc = 0
 for i in 0..8 * n:
     let m = Monoid<Int>.of(+) // timed: algebra.Monoid.of
     acc += m.monoid().op(i, 1) // timed: algebra.Monoid.monoid
+    let cm = m.commutative() // timed: algebra.Monoid.commutative
+    acc += cm.monoid().op(i, 1) // timed: algebra.Comm.monoid
     let act = Action<Int, Int>(apply: (d, x, span) => x + d * span) // timed: algebra.Action.new
     acc += act.apply(1, i, 2)
     acc += Action<Int, Int>.of(add, +).apply(2, i, 3) // timed: algebra.Action.of

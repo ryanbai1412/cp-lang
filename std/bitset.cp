@@ -1232,10 +1232,14 @@ pub struct XorTrie:
     /// example: `var t = XorTrie(3); t.add(5); t.clear(); t.is_empty and not t.contains(5)`
     pub fn clear(mut self):
         _mask = 0
-        _c0 = [-1]
-        _c1 = [-1]
-        _cnt = [0]
-        _dist = [0]
+        _c0.truncate(1)
+        _c1.truncate(1)
+        _cnt.truncate(1)
+        _dist.truncate(1)
+        _c0[0] = -1
+        _c1[0] = -1
+        _cnt[0] = 0
+        _dist[0] = 0
 
 struct BitTrieNode:
     var cnt: Int
