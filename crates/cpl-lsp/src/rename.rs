@@ -146,6 +146,83 @@ pub fn shorthand_args(db: &mut Session, path: &str) -> Vec<(Span, Span)> {
     out
 }
 
+/// Whether `target` is a variant the input spells: a variant without a
+/// `tag` of an enum `read` parses (`read<[t]Cmd>()`, through structs and
+/// aliases), whose name is the token the input writes for it.
+pub fn spelled_by_input(db: &mut Session, target: &Definition, files: &[&str]) -> bool {
+    use cpl_syntax::ast::{Expr, ExprKind, StmtKind, Type, TypeKind};
+    struct Reads(Vec<Type>);
+    impl cpl_syntax::visit::Visitor for Reads {
+        fn expr(&mut self, expr: &Expr) {
+            if let ExprKind::Generic { base, args } = &expr.kind {
+                if matches!(&base.kind, ExprKind::Name(n) if n == "read") {
+                    self.0.extend(args.iter().cloned());
+                }
+            }
+        }
+    }
+    let mut owner = None;
+    let mut inside: std::collections::HashMap<String, Vec<Type>> = Default::default();
+    let mut reads = Reads(Vec::new());
+    let paths = std::iter::once(target.path.as_str()).chain(files.iter().copied());
+    for path in paths {
+        let Some(analysis) = db.analyze(path) else {
+            continue;
+        };
+        let here = same_file(path, &target.path);
+        for item in &analysis.items {
+            for stmt in &item.syntax.parsed.stmts {
+                cpl_syntax::visit::walk_stmt(stmt, &mut reads);
+                let (name, tys): (_, Vec<Type>) = match &stmt.kind {
+                    StmtKind::Enum(decl) => {
+                        let spelled = decl.variants.iter().any(|v| {
+                            v.tag.is_none() && v.name.span.shift(item.offset) == target.span
+                        });
+                        if here && spelled {
+                            owner = Some(decl.name.text.clone());
+                        }
+                        let fields = decl.variants.iter().flat_map(|v| &v.fields);
+                        (&decl.name, fields.map(|(_, t)| t.clone()).collect())
+                    }
+                    StmtKind::Struct(decl) => (
+                        &decl.name,
+                        decl.fields.iter().map(|f| f.ty.clone()).collect(),
+                    ),
+                    StmtKind::TypeAlias { name, ty, .. } => (name, vec![ty.clone()]),
+                    _ => continue,
+                };
+                inside.entry(name.text.clone()).or_insert(tys);
+            }
+        }
+    }
+    let Some(owner) = owner else {
+        return false;
+    };
+    let (mut todo, mut seen) = (reads.0, std::collections::HashSet::new());
+    while let Some(ty) = todo.pop() {
+        match ty.kind {
+            TypeKind::Named { name, args } => {
+                if name.text == owner {
+                    return true;
+                }
+                if seen.insert(name.text.clone()) {
+                    todo.extend(inside.get(&name.text).cloned().unwrap_or_default());
+                }
+                todo.extend(args);
+            }
+            TypeKind::Array { index, elem } => {
+                todo.extend(index);
+                todo.push(*elem);
+            }
+            TypeKind::OwnDomain { elem: t, .. } | TypeKind::Optional(t) => todo.push(*t),
+            TypeKind::Tuple(tys) => todo.extend(tys),
+            TypeKind::Record(fields) => todo.extend(fields.into_iter().map(|(_, t)| t)),
+            _ => {}
+        }
+    }
+    false
+}
+
 /// The edit renaming `old` to `new` at `span`.
 pub fn edit_at(span: Span, labels: &[(Span, Span)], old: &str, new: &str) -> (Span, String) {
     match labels.iter().find(|(name, _)| *name == span) {

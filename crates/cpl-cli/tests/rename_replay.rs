@@ -29,8 +29,6 @@ const KNOWN: &[&str] = &[
     "noi17p2 len",
     "sdoi17r2p4 dist",
     // A variant's `match` arms are not renamed with it.
-    "cco04p4 X",
-    "cco04p4 Y",
     "noi17p2 Join",
     "noi17p2 Split",
     "noi17p2 Ask",

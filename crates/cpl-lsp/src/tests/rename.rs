@@ -218,3 +218,14 @@ fn rename_keeps_shorthand_argument_labels() {
     let src = "fn f(best: Int) -> Int = best + 1\nlet best| = 2\nprint(f(best:))\n";
     assert_eq!(renamed_texts(src, "top"), ["top", "best: top"]);
 }
+
+/// A variant `read` parses by its name keeps the name: the input spells it.
+#[test]
+fn rename_refuses_a_variant_the_input_spells() {
+    let read = "enum Axis = |X | Y\nlet a = read<(d: Int, axis: Axis)>()\nprint(a.d)\n";
+    let reply = ask_at_with("textDocument/prepareRename", read, obj([]));
+    let why = reply.at(&["message"]).as_str().unwrap_or("");
+    assert!(why.contains("how the input spells"), "{reply:?}");
+    let unread = "enum Axis = |X | Y\nfn f(a: Axis) -> Int = 1\nprint(f(X))\n";
+    assert_eq!(renamed_texts(unread, "Z"), ["Z", "Z"]);
+}

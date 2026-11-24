@@ -505,6 +505,9 @@ impl Server {
                 }
                 let name = name.to_string();
                 match self.db.definition_location(&uri, offset) {
+                    Some(def) if rename::spelled_by_input(&mut self.db, &def, &[&uri]) => {
+                        Err((INVALID_PARAMS, Self::spelled_by_input(&name)))
+                    }
                     Some(def) if self.renamable(&uri, &def) => Ok(Reply::result(obj([
                         ("range", range_json(span, &analysis.text, &analysis.lines)),
                         ("placeholder", name.into()),
@@ -542,6 +545,16 @@ impl Server {
                     return Err((
                         INVALID_PARAMS,
                         "the name belongs to the standard library".to_string(),
+                    ));
+                }
+                if rename::spelled_by_input(&mut self.db, &target, &[&uri]) {
+                    let name = self
+                        .db
+                        .analyze(&uri)
+                        .and_then(|a| rename::word_at(&a.text, offset).map(|(_, w)| w.to_string()));
+                    return Err((
+                        INVALID_PARAMS,
+                        Self::spelled_by_input(&name.unwrap_or_default()),
                     ));
                 }
                 let analysis = self.db.analyze(&uri).expect("references imply an analysis");
@@ -851,6 +864,11 @@ impl Server {
                 .or_else(|| self.tokens(method, params))
                 .unwrap_or_else(|| Err((METHOD_NOT_FOUND, format!("`{method}` is not supported")))),
         }
+    }
+
+    /// Why a variant the input spells keeps its name.
+    fn spelled_by_input(name: &str) -> String {
+        format!("`{name}` is how the input spells this variant: renaming it changes what `read` accepts")
     }
 
     /// The document and byte offset a position request refers to.
