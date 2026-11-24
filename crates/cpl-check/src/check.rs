@@ -9,6 +9,7 @@ pub(crate) mod advice;
 mod alias;
 mod arms;
 mod assoc;
+mod bound_args;
 mod bounded_str;
 mod built_from_param;
 mod def_type;
@@ -207,6 +208,9 @@ pub(crate) struct Checker<'a> {
     defining_aliases: Vec<String>,
     /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
     pub(crate) param_bounds: Vec<(String, Vec<String>)>,
+    /// The arguments a bound gives its trait, `(param, trait, args)`:
+    /// `S: Indexed<E, R>` is `("S", "Indexed", [E, R])`.
+    pub(crate) param_bound_args: Vec<(String, String, Vec<Ty>)>,
     hovers: Vec<HoverEntry>,
     /// The optionals a test has shown to hold a value here, by name.
     present: Vec<String>,
@@ -315,6 +319,7 @@ impl<'a> Checker<'a> {
             generics: Vec::new(),
             defining_aliases: Vec::new(),
             param_bounds: Vec::new(),
+            param_bound_args: Vec::new(),
             hovers: Vec::new(),
             present: Vec::new(),
             as_written: false,

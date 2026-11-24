@@ -80,6 +80,8 @@ pub enum Def {
         generics: Vec<String>,
     },
     Trait {
+        /// `trait Indexed<D, T>` lists `D` and `T`.
+        generics: Vec<String>,
         /// `trait Seq: Index + Ord` lists `Index` and `Ord`.
         supers: Vec<String>,
         methods: Vec<TraitMethod>,

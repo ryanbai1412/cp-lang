@@ -1216,6 +1216,7 @@ impl<'a> Checker<'a> {
                 vec![(
                     name.text.clone(),
                     Def::Trait {
+                        generics: generics.clone(),
                         supers: supers.iter().filter_map(type_head).collect(),
                         methods,
                         fields,

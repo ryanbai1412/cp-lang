@@ -38,6 +38,92 @@ pub(super) enum Reduce {
 
 impl<'a> Lowerer<'a> {
     /// `base.name(args)`.
+    /// `G.m(..)` or `G<V>.m(..)` on a generic struct: the arguments not written
+    /// (all of them, or the last ones) come from the hint, the call's
+    /// arguments and the method's bounds.
+    fn gen_struct_static(
+        &mut self,
+        gid: GenStructId,
+        mut inferred: GenEnv,
+        name: &ast::Name,
+        args: &[ast::Arg],
+        hint: Option<&Ty>,
+        span: Span,
+    ) -> Expr {
+        let decl = self.gen_structs[gid].decl;
+        let tpl_mod = self.gen_structs[gid].mod_id;
+        let gen_names: Vec<String> = decl.generics.iter().map(|g| g.text.clone()).collect();
+        if let Some(call) = self.list_form_call(gid, name, &[], args, span) {
+            return call;
+        }
+        if let Some(Ty::Struct(hsid)) = hint {
+            if let Some((hgid, hargs)) = &self.structs[*hsid].origin_gen {
+                if *hgid == gid {
+                    for (g, a) in gen_names.iter().zip(hargs) {
+                        inferred.entry(g.clone()).or_insert_with(|| a.clone());
+                    }
+                }
+            }
+        }
+        if inferred.len() < gen_names.len() {
+            if let Some(mdecl) = decl.methods.iter().find_map(|m| match &m.kind {
+                ast::StmtKind::Fn(f) if f.name.text == name.text => Some(f),
+                _ => None,
+            }) {
+                let mut all_gen_names = gen_names.clone();
+                for g in &mdecl.generics {
+                    if !all_gen_names.contains(&g.text) {
+                        all_gen_names.push(g.text.clone());
+                    }
+                }
+                for (p, arg) in mdecl.params.iter().zip(args) {
+                    if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
+                        if let Some(pty) = &p.ty {
+                            self.bind_range_domain(
+                                pty,
+                                &arg.value,
+                                &all_gen_names,
+                                &mut inferred,
+                                span,
+                                None,
+                            );
+                            let probed = self.probe_expr(&arg.value, None);
+                            if probed.ty != Ty::Error {
+                                self.unify_ast_ty(
+                                    pty,
+                                    &probed.ty,
+                                    tpl_mod,
+                                    &all_gen_names,
+                                    &mut inferred,
+                                );
+                            }
+                        }
+                    }
+                }
+                self.unify_bounds(&mdecl.bounds, tpl_mod, &all_gen_names, &mut inferred);
+                self.unify_bounds(&decl.bounds, tpl_mod, &all_gen_names, &mut inferred);
+                self.bind_impl_bounds(&mdecl.bounds, tpl_mod, &mut inferred);
+            }
+        }
+        let final_args: Vec<GenArg> = gen_names
+            .iter()
+            .map(|g| inferred.get(g).cloned().unwrap_or(GenArg::Ty(Ty::Int)))
+            .collect();
+        let sid = self.instantiate_struct(gid, final_args);
+        if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
+            return self.method_call(fn_id, None, args, span);
+        }
+        if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
+            return self.call_gen_fn(gfid, Vec::new(), None, args, span);
+        }
+        self.error(
+            codes::UNKNOWN_FIELD,
+            name.span,
+            format!("`{}` has no fn `{}`", decl.name.text, name.text),
+        );
+        self.err_expr(span)
+    }
+
     fn method(
         &mut self,
         whole: &ast::Expr,
@@ -388,6 +474,16 @@ impl<'a> Lowerer<'a> {
                         return call;
                     }
                     let gargs = self.resolve_gen_args_for_struct(gid, gtypes);
+                    let decl = self.gen_structs[gid].decl;
+                    if gargs.len() < decl.generics.len() {
+                        let seed = decl
+                            .generics
+                            .iter()
+                            .map(|g| g.text.clone())
+                            .zip(gargs)
+                            .collect();
+                        return self.gen_struct_static(gid, seed, name, args, hint, span);
+                    }
                     let sid = self.instantiate_struct(gid, gargs);
                     if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
                         return self.method_call(fn_id, None, args, span);
@@ -465,80 +561,7 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
             Some(Sym::GenStruct(gid)) => {
-                // Static method on a generic struct without explicit type args (`Order.by(...)`, `Rooted.weighted(...)`, `Monoid.new(...)`)
-                let decl = self.gen_structs[gid].decl;
-                let tpl_mod = self.gen_structs[gid].mod_id;
-                let gen_names: Vec<String> = decl.generics.iter().map(|g| g.text.clone()).collect();
-                if let Some(call) = self.list_form_call(gid, name, &[], args, span) {
-                    return call;
-                }
-                let mut inferred: GenEnv = HashMap::new();
-                if let Some(Ty::Struct(hsid)) = hint {
-                    if let Some((hgid, hargs)) = &self.structs[*hsid].origin_gen {
-                        if *hgid == gid {
-                            for (g, a) in gen_names.iter().zip(hargs) {
-                                inferred.insert(g.clone(), a.clone());
-                            }
-                        }
-                    }
-                }
-                if inferred.len() < gen_names.len() {
-                    if let Some(mdecl) = decl.methods.iter().find_map(|m| match &m.kind {
-                        ast::StmtKind::Fn(f) if f.name.text == name.text => Some(f),
-                        _ => None,
-                    }) {
-                        let mut all_gen_names = gen_names.clone();
-                        for g in &mdecl.generics {
-                            if !all_gen_names.contains(&g.text) {
-                                all_gen_names.push(g.text.clone());
-                            }
-                        }
-                        for (p, arg) in mdecl.params.iter().zip(args) {
-                            if !matches!(arg.value.kind, ast::ExprKind::Lambda { .. }) {
-                                if let Some(pty) = &p.ty {
-                                    self.bind_range_domain(
-                                        pty,
-                                        &arg.value,
-                                        &all_gen_names,
-                                        &mut inferred,
-                                        span,
-                                        None,
-                                    );
-                                    let probed = self.probe_expr(&arg.value, None);
-                                    if probed.ty != Ty::Error {
-                                        self.unify_ast_ty(
-                                            pty,
-                                            &probed.ty,
-                                            tpl_mod,
-                                            &all_gen_names,
-                                            &mut inferred,
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                        self.unify_bounds(&mdecl.bounds, tpl_mod, &all_gen_names, &mut inferred);
-                        self.unify_bounds(&decl.bounds, tpl_mod, &all_gen_names, &mut inferred);
-                        self.bind_impl_bounds(&mdecl.bounds, tpl_mod, &mut inferred);
-                    }
-                }
-                let final_args: Vec<GenArg> = gen_names
-                    .iter()
-                    .map(|g| inferred.get(g).cloned().unwrap_or(GenArg::Ty(Ty::Int)))
-                    .collect();
-                let sid = self.instantiate_struct(gid, final_args);
-                if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
-                    return self.method_call(fn_id, None, args, span);
-                }
-                if let Some(&gfid) = self.structs[sid].gen_methods.get(&name.text) {
-                    return self.call_gen_fn(gfid, Vec::new(), None, args, span);
-                }
-                self.error(
-                    codes::UNKNOWN_FIELD,
-                    name.span,
-                    format!("`{}` has no fn `{}`", decl.name.text, name.text),
-                );
-                return self.err_expr(span);
+                return self.gen_struct_static(gid, HashMap::new(), name, args, hint, span);
             }
             Some(Sym::Alias(aid)) => {
                 let resolved = self.in_alias(aid, |lw, ty| lw.resolve_ty(ty));

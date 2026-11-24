@@ -2436,30 +2436,12 @@ impl<'a> Checker<'a> {
                 })
             }
             Ty::Param(param) => {
-                let bounds: Vec<String> = self
-                    .param_bounds
-                    .iter()
-                    .filter(|(p, _)| p == param)
-                    .flat_map(|(_, ts)| ts.iter().cloned())
-                    .collect();
-                for trait_name in bounds {
-                    if let Some(Def::Trait { methods, .. }) = self.type_def(&trait_name).as_deref()
-                    {
-                        if let Some(m) = methods.iter().find(|m| m.name == name.text) {
-                            let mut on = crate::ty::Bindings::default();
-                            on.insert("Self".into(), Ty::Param(param.clone()));
-                            return match &m.ty.subst(&on) {
-                                Ty::Fn { params, ret }
-                                    if !self.in_call_callee && params.is_empty() =>
-                                {
-                                    (**ret).clone()
-                                }
-                                other => other.clone(),
-                            };
-                        }
+                return match self.bound_method(param, &name.text) {
+                    Some(Ty::Fn { params, ret }) if !self.in_call_callee && params.is_empty() => {
+                        *ret
                     }
-                }
-                return Ty::Unknown;
+                    other => other.unwrap_or(Ty::Unknown),
+                };
             }
             // The members of a domain that give positions or ranges back.
             Ty::Domain(domain) => {
@@ -2814,6 +2796,11 @@ impl<'a> Checker<'a> {
         let prev_piece = std::mem::replace(&mut self.expected_piece, true);
         let index_tys: Vec<Ty> = indices.iter().map(|i| self.infer(i)).collect();
         self.expected_piece = prev_piece;
+        if let (Ty::Param(param), [_]) = (&base_ty, indices) {
+            if let Some(Ty::Fn { ret, .. }) = self.bound_method(param, "at") {
+                return *ret;
+            }
+        }
         if let (ExprKind::Name(base_name), Some(idx_expr)) = (&base.kind, indices.first()) {
             let idx_owner = match &idx_expr.kind {
                 ExprKind::Call { callee, .. } => match &callee.kind {

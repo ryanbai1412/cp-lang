@@ -2369,11 +2369,9 @@ impl<'a> Checker<'a> {
             }
         }
         let outer = self.generics.len();
-        let outer_bounds = self.param_bounds.len();
         self.generics
             .extend(f.generics.iter().map(|g| g.text.clone()));
-        self.param_bounds.extend(super::domain_use::body_bounds(f));
-        self.bounds_exist(&f.bounds);
+        let outer_bounds = self.enter_fn_bounds(f);
         self.in_fn += 1;
         // A move is a fact about one body: a later fn may name a field or global again.
         let outer_moved = std::mem::take(&mut self.moved);
@@ -2555,7 +2553,7 @@ impl<'a> Checker<'a> {
         self.in_fn -= 1;
         self.moved = outer_moved;
         self.generics.truncate(outer);
-        self.param_bounds.truncate(outer_bounds);
+        self.leave_bounds(outer_bounds);
         self.row_bounds = saved_row_bounds;
     }
 }
