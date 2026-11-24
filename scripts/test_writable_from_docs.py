@@ -73,7 +73,7 @@ Output
         probs = manifest["problems"]
         self.assertGreaterEqual(len(probs), 50)
         self.assertEqual(len(probs), len(set(probs)))
-        ported = wfd.ported_ids(ROOT)
+        ported = wfd.ported_ids()
         overlap = set(probs) & ported
         self.assertEqual(overlap, set(), f"manifest overlaps ported problems: {overlap}")
 
@@ -95,7 +95,7 @@ Output
         self.assertFalse(wfd.outputs_match("YES", "NO"))
 
     def test_ported_ids_excludes_dream(self):
-        ids = wfd.ported_ids(ROOT)
+        ids = wfd.ported_ids()
         self.assertGreater(len(ids), 200)
 
     def test_format_markdown_report(self):

@@ -385,6 +385,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "plan/domains/tools/measure.py", "")
             self._write(root, "scripts/test_stdlib_measure.py", "")
             self._write(root, "scripts/walk.py", "for p in glob.glob('corpus/problems/*'):\n    pass\n")
+            self._write(root, "scripts/changed.sh", "git diff --cached --name-only -- 'corpus/problems/*/tests/*'\n")
+            self._write(root, "scripts/one.py", "paths = glob.glob('docs/*') + ['!corpus/problems/cf1a/dream.cp']\n")
             self._write(root, "scripts/corpus.py", "os.listdir('corpus/problems')\n")
             self._write(root, "tools/new-allow.txt", "x\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())

@@ -1669,6 +1669,18 @@ def std_fns_unscaled(root: Path) -> list[str]:
     return list(board.get("unscaled", []))
 
 
+ONE_PROBLEM_RE = re.compile(r"corpus/problems/[\w.-]+")
+GIT_CHANGED_RE = re.compile(r"\bgit\b[^|;]*\b(?:diff|status)\b")
+
+
+def _names_corpus_set(line: str) -> bool:
+    """A line naming the problem set, not one named problem or a pathspec over
+    the files git says changed."""
+    if GIT_CHANGED_RE.search(line):
+        return False
+    return bool(re.search(r"[\"']problems[\"']", line)) or "corpus/problems" in ONE_PROBLEM_RE.sub("", line)
+
+
 def corpus_walkers(root: Path) -> list[str]:
     """Files besides scripts/corpus.py that list corpus/problems themselves: a second corpus walker."""
     found = []
@@ -1678,8 +1690,8 @@ def corpus_walkers(root: Path) -> list[str]:
             continue
         lines = _lines(root / rel)
         for i, line in enumerate(lines):
-            if "corpus/problems" in line or re.search(r"[\"']problems[\"']", line):
-                if any(WALK_RE.search(l) for l in lines[max(0, i - 3):i + 4]):
+            if _names_corpus_set(line):
+                if any(WALK_RE.search(l) and not GIT_CHANGED_RE.search(l) for l in lines[max(0, i - 3):i + 4]):
                     found.append(rel)
                     break
     return found

@@ -17,7 +17,6 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import datetime
-import glob
 import http.client
 import json
 import os
@@ -31,7 +30,9 @@ import urllib.error
 import urllib.request
 
 sys.path.insert(0, str(Path(__file__).parent))
+import corpus
 from retry import retry  # noqa: E402
+
 
 ROOT = Path(__file__).resolve().parent.parent
 STATEMENTS_DIR = ROOT / "corpus/statements"
@@ -62,16 +63,13 @@ def load_docs_bundle(root: Path = ROOT) -> str:
     return "\n".join(parts)
 
 
-def ported_ids(root: Path = ROOT) -> set[str]:
-    return {
-        Path(f).parent.name
-        for pat in ("corpus/problems/*/spec.cp", "corpus/problems/*/port.cp")
-        for f in glob.glob(str(root / pat))
-    }
+def ported_ids() -> set[str]:
+    return {pkg.id for pkg in corpus.problems()
+            if (pkg.dir / "spec.cp").is_file() or (pkg.dir / "port.cp").is_file()}
 
 
 def discover_unported_statements(root: Path = ROOT) -> list[Path]:
-    ported = ported_ids(root)
+    ported = ported_ids()
     st_dir = root / "corpus/statements"
     if not st_dir.is_dir():
         return []
@@ -393,7 +391,7 @@ def format_markdown_report(results: list[dict], model_used: str) -> str:
     lines = [
         "# Writable-from-docs audit",
         "",
-        f"Model: `{model_used}` · Problems: **{total}** unseen statements from `corpus/statements/` (no existing port in `corpus/problems/`).",
+        f"Model: `{model_used}` · Problems: **{total}** unseen statements from `corpus/statements/` (no existing port in the corpus).",
         "",
         f"- **`cpl check` pass rate:** {compiled}/{total} ({100 * compiled / total:.1f}%)" if total else "- **No problems run**",
         f"- **`cpl build` pass rate:** {built}/{total} ({100 * built / total:.1f}%)" if total else "",

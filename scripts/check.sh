@@ -163,7 +163,7 @@ $untraced"
 # the files still in the tree.
 if [ "$mode" = commit ]; then
     added=$(git diff --cached --name-only --diff-filter=A -- 'corpus/problems/*/tests/*')
-    [ -z "$added" ] || fail "new files under corpus/problems/*/tests/; list the case in the problem's tests.toml and let gen.py make it (problem-packages/R9):
+    [ -z "$added" ] || fail "new files in a problem's tests/ folder; list the case in the problem's tests.toml and let gen.py make it (problem-packages/R9):
 $added"
 fi
 need() { command -v "$1" >/dev/null || fail "\`$1\` is not installed; $2"; }

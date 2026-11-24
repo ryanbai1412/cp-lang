@@ -165,7 +165,7 @@
   "measure_broken": 0,
   "mono_unguarded": 0,
   "std_shadowed": 62,
-  "corpus_walkers": 37,
+  "corpus_walkers": 32,
   "unregistered_lists": 0,
   "json_outside_cpl_json": 13,
   "config_schemas": 7,
