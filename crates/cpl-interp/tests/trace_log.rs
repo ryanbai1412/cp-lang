@@ -187,6 +187,43 @@ for i in 0..2000:
 print(a[0])
 ";
 
+const WIDE_CELLS: &str = "\
+var a: [0..4]Int = 0
+a[0] = 8388607
+a[1] = -8388608
+a[2] = 8388608
+a[3] = -8388609
+a[0] = 1099511627776
+a[1] = -1
+print(a[0])
+";
+
+#[test]
+fn array_cells_past_a_small_value_read_back_as_written() {
+    let rec = record(WIDE_CELLS, "", TraceConfig::default());
+    let a = rec.vars.iter().position(|v| v.id == "a").unwrap();
+    let mut seen: Vec<String> = Vec::new();
+    for k in 0..rec.len() {
+        let step = rec.step(k).unwrap();
+        if let Some((_, got)) = step.values.iter().find(|(var, _)| *var == a) {
+            let got = got.to_string();
+            if seen.last() != Some(&got) {
+                seen.push(got);
+            }
+        }
+    }
+    let want = [
+        "[0,0,0,0]",
+        "[8388607,0,0,0]",
+        "[8388607,-8388608,0,0]",
+        "[8388607,-8388608,8388608,0]",
+        "[8388607,-8388608,8388608,-8388609]",
+        "[1099511627776,-8388608,8388608,-8388609]",
+        "[1099511627776,-1,8388608,-8388609]",
+    ];
+    assert_eq!(seen, want);
+}
+
 #[test]
 fn array_cells_rebuilt_from_single_changes_hold_every_write() {
     let rec = record(CELLS, "", TraceConfig::default());

@@ -45,11 +45,12 @@ pub(super) enum Delta {
     /// An `Int` variable holds [`Log::ints`] at this index now.
     Int(Var, u32),
     /// An item of an array of `Int`s holds a new value: [`Log::ints`] at
-    /// this index holds the item's index in its high half and the value
-    /// in its low half.
-    SmallIntItem(Var, u32),
-    /// As [`Delta::SmallIntItem`], with the index and the value in two.
+    /// this index holds the item's index, and the value after it.
     IntItem(Var, u32),
+    /// As [`Delta::IntItem`] for an index that fits 16 bits and a value
+    /// that fits 24, kept in the change itself: the value's high byte,
+    /// the variable, the index and the value's low half.
+    TinyIntItem(i8, Var, u16, u16),
     /// A variable went out of scope.
     Unset(Var),
     /// The tree form of a `[V]?V` variable.
@@ -78,8 +79,8 @@ impl Delta {
             | Delta::Item(var, _)
             | Delta::SmallInt(var, _)
             | Delta::Int(var, _)
-            | Delta::SmallIntItem(var, _)
             | Delta::IntItem(var, _)
+            | Delta::TinyIntItem(_, var, _, _)
             | Delta::Unset(var)
             | Delta::Tree(var, _) => Some(var as u32),
             _ => None,
@@ -350,11 +351,8 @@ impl Log {
             Some(&now) if now == value => true,
             Some(_) => {
                 let pos = self.ints.len() as u32;
-                let delta = match (u32::try_from(at), i32::try_from(value)) {
-                    (Ok(index), Ok(v)) => {
-                        self.ints.push(((index as i64) << 32) | (v as u32 as i64));
-                        Delta::SmallIntItem(small, pos)
-                    }
+                let delta = match (u16::try_from(at), i8::try_from(value >> 16)) {
+                    (Ok(index), Ok(hi)) => Delta::TinyIntItem(hi, small, index, value as u16),
                     _ => {
                         self.ints.extend([at, value]);
                         Delta::IntItem(small, pos)
@@ -698,7 +696,7 @@ impl Log {
                 Delta::Item(var, text) => {
                     Some((var as usize, item_of(&self.text, text).0 as usize))
                 }
-                Delta::SmallIntItem(var, _) | Delta::IntItem(var, _) => {
+                Delta::IntItem(var, _) | Delta::TinyIntItem(_, var, _, _) => {
                     int_item(*delta, &self.ints).map(|(index, _)| (var as usize, index))
                 }
                 _ => None,
@@ -824,10 +822,6 @@ impl Log {
                 Delta::Int(var, at) => {
                     log.ints.push(self.ints[at as usize]);
                     Delta::Int(var, log.ints.len() as u32 - 1)
-                }
-                Delta::SmallIntItem(var, at) => {
-                    log.ints.push(self.ints[at as usize]);
-                    Delta::SmallIntItem(var, log.ints.len() as u32 - 1)
                 }
                 Delta::IntItem(var, at) => {
                     let at = at as usize;
@@ -1180,14 +1174,13 @@ fn ints_of(bytes: &[u8], whole: Piece) -> Option<Vec<i64>> {
         .collect()
 }
 
-/// The index and the value a [`Delta::SmallIntItem`] or [`Delta::IntItem`] writes.
+/// The index and the value a [`Delta::IntItem`] or [`Delta::TinyIntItem`] writes.
 fn int_item(delta: Delta, ints: &[i64]) -> Option<(usize, i64)> {
     match delta {
-        Delta::SmallIntItem(_, at) => {
-            let packed = ints[at as usize];
-            Some(((packed >> 32) as usize, packed as i32 as i64))
-        }
         Delta::IntItem(_, at) => Some((ints[at as usize] as usize, ints[at as usize + 1])),
+        Delta::TinyIntItem(hi, _, index, lo) => {
+            Some((index as usize, (i64::from(hi) << 16) | i64::from(lo)))
+        }
         _ => None,
     }
 }
@@ -1229,7 +1222,7 @@ fn apply(state: &mut State, delta: Delta, bytes: &[u8], ints: &[i64]) {
             }
             state.values[var as usize] = Some(Slot::Int(value.into()));
         }
-        Delta::SmallIntItem(var, _) | Delta::IntItem(var, _) => {
+        Delta::IntItem(var, _) | Delta::TinyIntItem(_, var, _, _) => {
             let slot = &mut state.values[var as usize];
             if let Some(Slot::Whole(whole)) = slot {
                 if let Some(items) = ints_of(bytes, piece_of(bytes, *whole)) {
