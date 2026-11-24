@@ -10,7 +10,7 @@
 //   of free cells within distance 2 (3 on a 1-wide grid) of a cricket touches a cricket or the
 //   border 8-way; with no crickets, iff n or m is 1. Otherwise 2. O(c log c) per test.
 // original: corpus/submissions/4798070.cpp
-// Bounds: t: 1..=20; n, m: 1..=1e9; c: 0..=100_000; x: 1..=n; y: 1..=m
+// Bounds: t: 1..=20; n, m: 1..=1e9; c: 0..=100_000; crickets.x: 1..=n; crickets.y: 1..=m
 
 use std.graph.{cut_vertices}
 

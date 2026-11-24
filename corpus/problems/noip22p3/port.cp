@@ -9,7 +9,7 @@
 //   rooted block tree counts held sets below each bridge and adds the sets whose highest
 //   block is b, minus those held through one child alone. O(n + m).
 // original: corpus/submissions/5445683.cpp
-// Bounds: n: 1..=5e5; m: n - 1..=1e6
+// Bounds: n: 1..=5e5; m: n - 1..=1e6; land.u, land.v: 1..=n
 const P = 1000000007
 type Z = Mod<P>
 let n: 1..=5e5 = read()
