@@ -59,7 +59,7 @@ let sums = Monoid<[Slot]Z>(id: [Slot] _ => Z(0), op: (x, y) => [Slot] s => x[s] 
 let raise = Action<[Slot]Z, Int>(
     id: 0,
     compose: (+),
-    apply: (k, x, _) => [Slot] s => x[Slot.at(Int(s) + k) ?? Slot.last!],
+    apply: (k, x, _) => [Slot] s => x[s.shift_saturating(k)],
     over: sums,
     commutes: true,
 )
