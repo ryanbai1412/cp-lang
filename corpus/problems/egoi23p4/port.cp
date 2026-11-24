@@ -6,9 +6,9 @@
 //   (min, max) one, so both must be closed under their path algebra. A street u-v may carry only
 //   b between the two, so offer both ends where that range is non-empty; if the offers close
 //   back to both matrices, a minimum and a maximum spanning forest of them keep every
+//   bottleneck in at most 2(n - 1) streets. O(n^3).
 // original: corpus/submissions/5678052.cpp
 // Bounds: n: 2..=500; k: 1..=1_000_000; width: 0..=k
-//   bottleneck in at most 2(n - 1) streets. O(n^3).
 let (n, k) = read<(2..=500, 1..=1_000_000)>()
 domain V = [n]
 // the matrices come as lower triangles, row by row; read them in bike-lane terms
