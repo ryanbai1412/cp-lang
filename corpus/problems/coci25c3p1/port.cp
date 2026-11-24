@@ -9,28 +9,28 @@
 //   O(|word| n^2), about 1e5 steps.
 // original: corpus/submissions/7730233.cpp
 // Bounds: n, k: 1..=50
+
 let n: 1..=50 = read()
 let k: 1..=50 = read()
-let moves: Str = read()
+let word: Str = read()
 domain Row = 0..n
 domain Col = 0..n
-var g: [Row, Col]Char = '.'
-var r = Row(n / 2)
-var c = Col(n / 2)
-for ch in moves:
-    if ch == 'L':
-        if let x = Col.at(c - 1): c = x
-    elif ch == 'R':
-        if let x = Col.at(c + 1): c = x
-    elif ch == 'U':
-        if let x = Row.at(r - 1): r = x
-    elif ch == 'D':
-        if let x = Row.at(r + 1): r = x
+type Cell = (Row, Col)
+
+// the cell one step from p, None when the letter is no move or the step leaves the grid
+fn step(p: Cell, letter: Char) -> ?Cell =
+    if letter == 'L': Col.at(p.1 - 1).map(c => (p.0, c))
+    elif letter == 'R': Col.at(p.1 + 1).map(c => (p.0, c))
+    elif letter == 'U': Row.at(p.0 - 1).map(r => (r, p.1))
+    else: Row.at(p.0 + 1).map(r => (r, p.1))
+
+var grid: [Row, Col]Char = '.'
+var at: Cell = (Row.nth(n / 2), Col.nth(n / 2))
+for letter in word:
+    if "LRUD".contains(letter):
+        if let next = step(at, letter): at = next
     else:
-        for i in Row:
-            for j in Col:
-                if abs(i.ord - r.ord) + abs(j.ord - c.ord) < k: g[i, j] = ch
-for i in Row:
-    var line = ""
-    for j in Col: line.push(g[i, j])
-    print(line)
+        for r in Row:
+            for c in Col:
+                if abs(r - at.0) + abs(c - at.1) < k: grid[r, c] = letter
+for r in Row: print("".join(["{grid[r, c]}" for c in Col]))
