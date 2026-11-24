@@ -436,7 +436,7 @@ impl<'a> Lowerer<'a> {
             lo, hi, inclusive, ..
         } = &range.kind
         else {
-            unreachable!("an axis is taken whole or in part by a range")
+            crate::invariant::broken_invariant("an axis is taken whole or in part by a range")
         };
         if lo.is_none() && hi.is_none() {
             return (self.int_lit(0, span), len);
