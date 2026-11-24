@@ -88,7 +88,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         tys: &[&'p Ty],
         args: &'p [Arg],
         callee: Option<&'p cpl_ir::Function>,
-    ) -> Option<(Vec<Option<(&'p Place, MutTake<'p>)>>, usize, usize)> {
+    ) -> Option<MixPlan<'p>> {
         // Several `mut` args must be places that never overlap: each is
         // taken in turn and written back after the call.
         let muts: Vec<&Place> = (args.iter())
@@ -125,9 +125,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         && ScalarKind::of_opt_ty(tys[i], self.program).is_none()
                         && self.elem_1d_v(base).is_some() =>
                 {
-                    let Some((root, is_arr)) = self.elem_1d_v(base) else {
-                        return None;
-                    };
+                    let (root, is_arr) = self.elem_1d_v(base)?;
                     MutTake::Elem {
                         root,
                         is_arr,
@@ -677,6 +675,10 @@ enum WriteBack {
         arg_off: u16,
     },
 }
+
+/// Per arg, the `mut` place and how it is taken (`None` for a value arg),
+/// and the int and value arg slots the call needs.
+pub(super) type MixPlan<'p> = (Vec<Option<(&'p Place, MutTake<'p>)>>, usize, usize);
 
 /// How [`Compiler::compile_mix_args`] moves one `mut` arg out of its place.
 #[derive(Clone, Copy)]
