@@ -158,7 +158,7 @@ documented.
 | std-rand | library: rand | documented | stdlib: outside the Milestone 1 contest staples |
 | std-search | library: search | supported | 1 known gap |
 | std-segtree | library: segtree | supported | 2 known gaps |
-| std-seq | library: seq | supported | 3 known gaps |
+| std-seq | library: seq | supported | 2 known gaps |
 | std-slope | library: slope | documented | stdlib: outside the Milestone 1 contest staples |
 | std-sparse | library: sparse | supported |  |
 | std-spec | library: spec | documented | stdlib: outside the Milestone 1 contest staples |
@@ -205,7 +205,6 @@ documented.
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: compiler 2026-11-24T05Z
 - std-segtree/closure-op-picks-index.cp: stdlib 2026-11-24T05Z
 - std-seq/keyed-by-answers-with-the-key.cp: compiler 2026-11-24T05Z
-- std-seq/rekey-length-mismatch-traps.cp: stdlib 2026-11-24T05Z
 - std-seq/seq-u37-suffix-folds.cp: stdlib 2026-11-24T05Z
 - std-window/track-infers-element-from-sequence.cp: compiler 2026-11-24T05Z
 - tools-bundle/vendor-copies-pinned-libraries.cp: tools 2026-11-24T05Z

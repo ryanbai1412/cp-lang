@@ -18,7 +18,7 @@ from specgate.gaps import all_gaps
 HELP = "spec/SUBSET.md is what the spec sections and the cases' `// gap:` lines generate"
 SUBSET = specgate.ROOT / "spec" / "SUBSET.md"
 SPEC = specgate.ROOT / "spec"
-RULE_DEF = re.compile(r"\(R((?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+)\)")
+RULE_DEF = re.compile(r"\(R((?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+)(, permits)?\)")
 STATUSES = ("supported", "documented", "gap")
 PREAMBLE = """# The Milestone 1 subset
 
