@@ -797,6 +797,15 @@ impl<'p> Emitter<'p> {
                         b.text
                     ));
                 }
+                // Each closure is its own C++ type, so a join of fns meets at the
+                // fn's one erased representation, as a `var` of that type does.
+                let (a, b) = if matches!(e.ty, Ty::Fn(..)) {
+                    let erased = self.ty(&e.ty);
+                    let join = |x: Code| Code::primary(format!("{erased}({})", x.text));
+                    (join(a), join(b))
+                } else {
+                    (a, b)
+                };
                 Code {
                     text: format!("{} ? {} : {}", c.at(COND + 1), a.at(COND + 1), b.at(COND)),
                     prec: COND,

@@ -516,3 +516,20 @@ fn a_yields_fn_whose_own_closures_write_its_locals_feeds_a_loop() {
     let solve = &cpp[cpp.find("void solve()").unwrap()..];
     assert!(solve.contains("cpl_each_halves(n, "), "{solve}");
 }
+
+#[test]
+fn a_value_if_of_different_closures_joins_at_the_erased_fn() {
+    let out = cpp(concat!(
+        "let m = read<Int>()\n",
+        "fn go(flip: Bool) -> Int:\n",
+        "    fn low(t: Int) -> Int = t + m\n",
+        "    let side = if flip: (t: Int) => m - low(t) else: low\n",
+        "    side(3)\n",
+        "print(go(true), go(false))\n",
+    ));
+    assert!(
+        out.contains("side = flip ? std::function<ll(ll)>("),
+        "{out}"
+    );
+    assert!(out.contains(" : std::function<ll(ll)>(low)"), "{out}");
+}
