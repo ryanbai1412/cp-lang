@@ -1,4 +1,5 @@
 // Source: Codeforces 2129A (Double Perspective), https://codeforces.com/contest/2129/problem/A
+// limits: 2000 ms, 256 MB
 // Problem: n <= 3000 distinct pairs a < b <= 2n. For a subset, f is the length of the union of the
 //   segments [a, b], g the number of nodes on a simple cycle (>= 3 edges) of the graph with the
 //   pairs as edges. Print a subset maximising f - g: its size and its indices. Multitest.

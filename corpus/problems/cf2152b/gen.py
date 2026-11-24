@@ -3,7 +3,9 @@ import random, sys
 # gen.py seed size: t tests on grids with n <= 10^min(size, 9), 0 <= coordinates <= n,
 # Krug and Doran on different cells. No arguments, or size >= 9, gives t = 1e4 tests with
 # n up to 1e9 (half of them n = 1e9 with both on the border or corners).
-seed = int(sys.argv[1]) if len(sys.argv) > 1 else 0
+# --max is the no-argument full mode.
+max_mode = sys.argv[1:] == ["--max"]
+seed = int(sys.argv[1]) if len(sys.argv) > 1 and not max_mode else 0
 size = int(sys.argv[2]) if len(sys.argv) > 2 else 9
 rng = random.Random(seed)
 full = size >= 9

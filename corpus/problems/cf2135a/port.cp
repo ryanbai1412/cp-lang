@@ -1,4 +1,5 @@
 // Source: Codeforces 2135A (Against the Difference), https://codeforces.com/contest/2135/problem/A
+// limits: 2000 ms, 256 MB
 // Problem: a block is x copies of x, and an array is neat if it is blocks concatenated. Given
 //   n <= 2e5 values a_i in 1..=n, print the length of the longest neat subsequence. Multitest,
 //   sum n <= 2e5.

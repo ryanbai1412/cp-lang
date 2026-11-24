@@ -1,5 +1,6 @@
 // Source: Codeforces 2127B (Hamiiid, Haaamid... Hamid?),
 //   https://codeforces.com/contest/2127/problem/B
+// limits: 1000 ms, 256 MB
 // Problem: a 1 x n grid (n <= 2e5; multitest) of walls '#' and empty '.', Hamid on empty cell x.
 //   Each day Mani walls an empty cell other than Hamid's, then Hamid picks a side: no wall there
 //   and he escapes, else he moves onto the nearest wall and destroys it. Hamid minimises the days

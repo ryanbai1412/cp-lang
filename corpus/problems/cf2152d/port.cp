@@ -1,5 +1,6 @@
 // Source: Codeforces 2152D (Division Versus Addition),
 //   https://codeforces.com/contest/2152/problem/D
+// limits: 2000 ms, 1024 MB
 // Problem: a game on b (b_i >= 2): Poby halves (floor) some b_i >= 2, Rekkles adds 1 to some
 //   b_i >= 2, alternating, Poby first, until all are 1; Poby minimises his own move count,
 //   Rekkles maximises it. For q <= 250000 ranges of a (n <= 250000, 2 <= a_i <= 1e9), print

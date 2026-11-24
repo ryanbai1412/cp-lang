@@ -1,4 +1,5 @@
 // Source: Codeforces 2157D (Billion Players Game), https://codeforces.com/contest/2157/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: an unknown p lies in [l, r], r <= 1e9. Each of n <= 2e5 offers a_i <= 1e9 is ignored
 //   or accepted as "p <= a_i" or "p >= a_i", earning |p - a_i| if right and losing it if wrong.
 //   Print the most robocoins you can guarantee (minimum over p). Multitest, sum n <= 2e5.

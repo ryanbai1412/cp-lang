@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 import random, sys
+
+if sys.argv[1:] == ["--max"]:
+    # One test with n = 2e5, Hamid in the middle of an almost empty row.
+    r = random.Random(2127)
+    n = 200_000
+    s = ["#" if r.random() < 0.01 else "." for _ in range(n)]
+    s[n // 2 - 1] = "."
+    print(1)
+    print(n, n // 2)
+    print("".join(s))
+    sys.exit()
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 T = r.randint(1, 5)

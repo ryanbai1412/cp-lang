@@ -1,4 +1,5 @@
 // Source: Codeforces 2127C (Trip Shopping), https://codeforces.com/contest/2127/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: arrays a, b of n <= 2e5 values in 1..=1e9 and k <= n rounds; each round Ali picks
 //   i < j, then Bahamin rearranges a_i, a_j, b_i, b_j at will. Ali minimises and Bahamin maximises
 //   v = sum |a_i - b_i|; print the final v. Multitest, sum of n <= 2e5.

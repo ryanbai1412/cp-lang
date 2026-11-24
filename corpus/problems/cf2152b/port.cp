@@ -1,4 +1,5 @@
 // Source: Codeforces 2152B (Catching the Krug), https://codeforces.com/contest/2152/problem/B
+// limits: 1000 ms, 1024 MB
 // Problem: on the (n+1) x (n+1) grid of cells 0..=n, n <= 1e9, the Krug (moves to a side
 //   neighbour or stays) starts at (rK, cK) and Doran (king moves or stays) at (rD, cD); the Krug
 //   moves first. Print the number of Doran's turns until he catches her under optimal play,
