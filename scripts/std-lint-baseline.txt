@@ -5,9 +5,6 @@ std/beats.cp L0501 1
 std/dp.cp L0504 1
 std/dp.cp L0506 1
 std/dp.cp L0532 1
-std/flow.cp L0504 6
-std/flow.cp L0506 1
-std/flow.cp L0536 2
 std/graph.cp L0501 1
 std/graph.cp L0503 3
 std/graph.cp L0530 12

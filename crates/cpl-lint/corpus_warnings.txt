@@ -3,14 +3,14 @@ spec L0506 1
 std L0301 1
 std L0501 2
 std L0503 7
-std L0504 13
+std L0504 7
 std L0505 1
-std L0506 10
+std L0506 9
 std L0508 5
 std L0520 2
 std L0530 12
 std L0532 2
-std L0536 9
+std L0536 7
 std L0543 2
 std L0545 2
 std L0549 4

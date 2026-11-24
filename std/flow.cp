@@ -236,8 +236,7 @@ pub struct FlowGraph<V>:
                 let v = to[a.id]
                 path.push(a)
                 if let k = on[v]:
-                    var least = Int.MAX
-                    for i in k..path.len: least = min(least, spare[path[i].id])
+                    let least = (k..path.len).map(i => spare[path[i].id]).min() ?? Int.MAX
                     for i in k..path.len: spare[path[i].id] -= least
                     while path.len > k:
                         on[to[path.last!.id]] = None
@@ -250,8 +249,7 @@ pub struct FlowGraph<V>:
             for a in path: on[to[a.id]] = None
             on[s] = None
             if u != t: return
-            var least = Int.MAX
-            for a in path: least = min(least, spare[a.id])
+            let least = path.map(a => spare[a.id]).min() ?? Int.MAX
             for a in path: spare[a.id] -= least
             yield (arcs: path, amount: least)
 
@@ -751,8 +749,10 @@ pub fn min_vertex_cover<L, R>(adj: [L]List<R>) -> (left: [L]Bool, right: [R]Bool
 
 /// Breadth-first layers of the left side by alternating paths: free vertices are layer 0,
 /// and a matched vertex is one deeper than a left vertex adjacent to its partner.
-fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?(0..2_147_483_648):
-    var level: [L]?(0..2_147_483_648) = None
+type Layer = 0..2_147_483_648
+
+fn alternating_layers<L, R>(adj: [L]List<R>, mate: [L]?R, back: [R]?L) -> [L]?Layer:
+    var level: [L]?Layer = None
     var queue = [u for u in L if mate[u] == None]
     for u in queue: level[u] = 0
     var at = 0
@@ -908,8 +908,8 @@ pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
             inq[root] = true
             var queue = [root]
             var at = 0
-            var end = -1
-            while at < queue.len and end == -1:
+            var end: ?Int = None
+            while at < queue.len and end == None:
                 let x = queue[at]
                 at += 1
                 for y in nb[x]:
@@ -952,7 +952,7 @@ pub fn general_matching<V>(adj: [V]List<V>) -> (size: Int, mate: [V]?V):
                             break
                         inq[mate[y]] = true
                         queue.push(mate[y])
-            var y = end
+            var y = end ?? -1
             if y != -1: size += 1
             while y != -1:
                 let x = parent[y]
@@ -1157,9 +1157,7 @@ struct Blossom:
                         if self.delta(k) == 0:
                             if self.on_found(k): return true
                         else: self.update_slack(u, st[v])
-            var d = Int.MAX
-            for b in n + 1..=nx:
-                if st[b] == b and side[b] == 1: d min= lab[b] / 2
+            var d = (n + 1..=nx).filter(b => st[b] == b and side[b] == 1).map(b => lab[b] / 2).min() ?? Int.MAX
             for x in 1..=nx:
                 if st[x] == x and slack[x] != 0:
                     if side[x] == -1: d min= self.delta(slack[x] * m + x)
@@ -1851,12 +1849,10 @@ fn gomory_hu_tree_gives_every_pairwise_min_cut():
                             stack.push(q)
             for b in V:
                 if a == b: continue
-                var cut = Int.MAX
-                for m in 0..64:
-                    if m.bit(a.ord) and not m.bit(b.ord):
-                        cut min= sum(
-                            e.w for e in es if ((m >> e.u.ord) & 1) != ((m >> e.v.ord) & 1)
-                        )
+                let cut = (0..64)
+                    .filter(m => m.bit(a.ord) and not m.bit(b.ord))
+                    .map(m => sum(e.w for e in es if ((m >> e.u.ord) & 1) != ((m >> e.v.ord) & 1)))
+                    .min() ?? Int.MAX
                 assert seen[b] and light[b] == cut
 
 @test
@@ -1867,9 +1863,9 @@ fn global_min_cut_matches_brute_force():
             (u: V.nth(rand(0, 5)), v: V.nth(rand(0, 5)), w: rand(0, 7)) for _ in 0..rand(0, 10)
         ]
         let got = global_min_cut(es)
-        var best = Int.MAX
-        for m in 1..63:
-            best min= sum(e.w for e in es if ((m >> e.u.ord) & 1) != ((m >> e.v.ord) & 1))
+        let best = (1..63)
+            .map(m => sum(e.w for e in es if ((m >> e.u.ord) & 1) != ((m >> e.v.ord) & 1)))
+            .min() ?? Int.MAX
         assert got.w == best
         assert V.any(v => got.side[v]) and V.any(v => not got.side[v])
         assert sum(e.w for e in es if got.side[e.u] != got.side[e.v]) == best
@@ -2263,9 +2259,10 @@ fn edge_colorings_use_max_degree_proper_colours():
             r: R.nth(rand(0, R.count - 1)),
         )
         let (colors, color) = edge_coloring(es)
-        var deg = 0
-        for l in L: deg = max(deg, [e for e in E if es[e].l == l].len)
-        for r in R: deg max= [e for e in E if es[e].r == r].len
+        let deg = max(
+            L.map(l => [e for e in E if es[e].l == l].len).max() ?? 0,
+            R.map(r => [e for e in E if es[e].r == r].len).max() ?? 0,
+        )
         assert colors == deg
         for e in E:
             assert 0 <= color[e] and color[e] < colors
@@ -2501,7 +2498,7 @@ fn matroid_intersections_match_brute_force():
         let col: [E]C = [E] _ => C.nth(rand(0, 2))
         let lim: [C]Int = [C] _ => rand(0, 2)
         let wt: [E]Int = [E] _ => rand(-3, 5)
-        var best_n = -1
+        var best_n = 0
         var best_w = 0
         for mask in 0..1 << E.count:
             let s: [E]Bool = [E] e => mask.bit(e.ord)
