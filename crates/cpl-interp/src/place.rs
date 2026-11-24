@@ -86,8 +86,36 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     };
                     return self.mut_view_cell(&mv, i, span);
                 }
+                let program = self.program;
+                let (Ty::Map(kt, _) | Ty::HashMap(kt, _)) = &base.ty else {
+                    let holder = self.resolve(base, indices)?;
+                    return cell_mut(holder, indices, exprs.len(), span);
+                };
+                if !value::keys::user_ordered(kt, program) {
+                    let holder = self.resolve(base, indices)?;
+                    return cell_mut(holder, indices, exprs.len(), span);
+                }
+                // The key's `Ord` runs user code, so the map is out of its place meanwhile.
+                let mut again = indices.clone();
                 let holder = self.resolve(base, indices)?;
-                cell_mut(holder, indices, exprs.len(), span)
+                let held = std::mem::replace(holder, Value::Moved);
+                let key = indices.next().cloned().unwrap_or_default();
+                let key = value::strip_cached(&key, kt, program);
+                let found = match &held {
+                    Value::Map(m) => {
+                        m.sorted_pos(&key, &mut |t, a, b| self.less_ty_val(t, a, b, span))
+                    }
+                    _ => Ok(None),
+                };
+                let holder = self.resolve(base, &mut again)?;
+                *holder = held;
+                let Value::Map(entries) = holder else {
+                    return cell_mut(holder, &mut std::slice::from_ref(&key).iter(), 1, span);
+                };
+                match found?.and_then(|at| Rc::make_mut(entries).sorted_at_mut(at)) {
+                    Some(value) => Ok(value),
+                    None => trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[])),
+                }
             }
         }
     }
@@ -122,8 +150,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             PlaceKind::Some(base) => (base, Step::Some),
             PlaceKind::Index(base, exprs) => {
                 let mut part = self.part_of(base, indices);
-                part.steps
-                    .push(Step::Index(indices.by_ref().take(exprs.len()).collect()));
+                let step = match &base.ty {
+                    Ty::Map(kt, _) | Ty::HashMap(kt, _)
+                        if value::keys::user_ordered(kt, self.program) =>
+                    {
+                        let key = indices.next().unwrap_or_default();
+                        Step::Key(value::strip_cached(&key, kt, self.program))
+                    }
+                    _ => Step::Index(indices.by_ref().take(exprs.len()).collect()),
+                };
+                part.steps.push(step);
                 return part;
             }
         };
@@ -139,16 +175,56 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     pub(super) fn part_mut(&mut self, part: &Part, span: Span) -> Res<&mut Value> {
+        if !part.steps.iter().any(|s| matches!(s, Step::Key(_))) {
+            return self.walk_part(part, part.steps.len(), &[], span);
+        }
+        // A key's `Ord` runs user code, so each such map is out of its place while it searches.
+        let mut found = vec![(0, 0); part.steps.len()];
+        for (i, step) in part.steps.iter().enumerate() {
+            let Step::Key(key) = step else { continue };
+            let held = std::mem::replace(self.walk_part(part, i, &found, span)?, Value::Moved);
+            let at = match &held {
+                Value::Map(m) => m.sorted_pos(key, &mut |t, a, b| self.less_ty_val(t, a, b, span)),
+                _ => Ok(None),
+            };
+            *self.walk_part(part, i, &found, span)? = held;
+            match at? {
+                Some(at) => found[i] = at,
+                None => return trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[])),
+            }
+        }
+        self.walk_part(part, part.steps.len(), &found, span)
+    }
+
+    /// The storage of the first `upto` steps of `part`, with `found` the entry each `Key`
+    /// step names.
+    fn walk_part(
+        &mut self,
+        part: &Part,
+        upto: usize,
+        found: &[value::keys::Pos],
+        span: Span,
+    ) -> Res<&mut Value> {
         let mut value = if part.global {
             &mut self.globals[part.at]
         } else {
             &mut self.stack[part.at]
         };
-        for step in &part.steps {
+        for (i, step) in part.steps[..upto].iter().enumerate() {
             value = match step {
                 Step::Field(index) => field_mut(value, *index, span)?,
                 Step::Some => inside_mut(value, span)?,
                 Step::Index(indices) => cell_mut(value, &mut indices.iter(), indices.len(), span)?,
+                Step::Key(key) if !matches!(value, Value::Map(m) if m.is_sorted_by_user()) => {
+                    cell_mut(value, &mut std::slice::from_ref(key).iter(), 1, span)?
+                }
+                Step::Key(_) => match value {
+                    Value::Map(m) => match Rc::make_mut(m).sorted_at_mut(found[i]) {
+                        Some(v) => v,
+                        None => return bug(span, "a sorted entry moved while lent"),
+                    },
+                    _ => return bug(span, "index of a value that has no elements"),
+                },
             };
         }
         Ok(value)

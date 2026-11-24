@@ -32,6 +32,8 @@ pub(crate) enum Step {
     Some,
     /// A cell, by the indices it was reached with.
     Index(Vec<Value>),
+    /// The entry of a map whose key type orders by a user `Ord`, by its key.
+    Key(Value),
 }
 
 /// A part of a variable: the variable, on the stack or (`global`) among
