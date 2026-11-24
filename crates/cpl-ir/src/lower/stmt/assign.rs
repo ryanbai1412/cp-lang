@@ -183,6 +183,13 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        let mut post = Vec::new();
+        if let Some((through, alias)) = self.through_lend(target, out, &mut post) {
+            self.assign(&through, op, value, out);
+            out.append(&mut post);
+            self.cx.mut_aliases.remove(&alias);
+            return;
+        }
         let place = self.place(target);
         // Every index of the target is worked out before the right side,
         // and the place is only reached for after both: `trie[grow()].ends

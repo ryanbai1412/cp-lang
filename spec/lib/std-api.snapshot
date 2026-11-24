@@ -1069,6 +1069,7 @@ std/lazy.cp: SeqFold.split_at(mut self, k: Int) -> SeqFold<T, F, E>
 std/lazy.cp: SeqFold.total(self) -> T
 std/lazy.cp: flip_action<T, M>(m: M) -> Action<Flip<T>, Bool>
 std/marks.cp: Arena.alloc(mut self, x: T) -> Id<T>
+std/marks.cp: Arena.at(mut self, id: Id<T>) -> lends mut T
 std/marks.cp: Arena.clear(mut self)
 std/marks.cp: Arena.free(mut self, id: Id<T>)
 std/marks.cp: Arena.get(self, id: Id<T>) -> T

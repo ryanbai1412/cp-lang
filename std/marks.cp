@@ -461,6 +461,15 @@ pub struct Arena<T>:
     pub fn get(self, id: Id<T>) -> T:
         _xs[id.raw]
 
+    /// The node behind `id`, lent in place: `arena.at(id).v = 9`, `arena[id].v += 1` and
+    /// `arena[id].kids[0] = 7` write into the slot with no copy of the node (R05.6.3).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `id` is not below `len` (stale handles as in `get`)
+    /// example: `var a = Arena<Int>(); let i = a.alloc(5); a.at(i) += 1; a[i] == 6`
+    pub fn at(mut self, id: Id<T>) -> lends mut T:
+        lend mut _xs[id.raw]
+
     /// Overwrite the node behind `id` with `x`; also `arena[id] = x`.
     ///
     /// cost: \(O(1)\)

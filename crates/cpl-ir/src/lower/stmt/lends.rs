@@ -104,6 +104,79 @@ impl<'a> Lowerer<'a> {
         })
     }
 
+    /// `a.at(i).v += 1`, `a[i].kids[0] = 7`: a place under a `lends mut` call, or under `s[k]`
+    /// on a struct whose `at` lends mut, is reached in the lent slot, with no copy of it
+    /// (R05.6.3). The call is inlined into `out` (its tail into `post`) and the target is
+    /// rewritten to start from an alias of the slot.
+    pub(in crate::lower) fn through_lend(
+        &mut self,
+        e: &ast::Expr,
+        out: &mut Vec<Stmt>,
+        post: &mut Vec<Stmt>,
+    ) -> Option<(ast::Expr, String)> {
+        let (base, rebuild): (&ast::Expr, &dyn Fn(ast::Expr) -> ast::ExprKind) = match &e.kind {
+            ast::ExprKind::Field { base, name } => (base, &|b| ast::ExprKind::Field {
+                base: Box::new(b),
+                name: name.clone(),
+            }),
+            ast::ExprKind::Index { base, indices } => (base, &|b| ast::ExprKind::Index {
+                base: Box::new(b),
+                indices: indices.clone(),
+            }),
+            _ => return None,
+        };
+        let (inner, alias) = match self.lent_slot(base, out, post) {
+            Some(alias) => (
+                ast::Expr {
+                    kind: ast::ExprKind::Name(alias.clone()),
+                    span: base.span,
+                },
+                alias,
+            ),
+            None => self.through_lend(base, out, post)?,
+        };
+        Some((
+            ast::Expr {
+                kind: rebuild(inner),
+                span: e.span,
+            },
+            alias,
+        ))
+    }
+
+    /// Inlines `e` when it is a `lends mut` call (or `s[k]` through such an `at`) and names
+    /// its slot with a fresh alias.
+    fn lent_slot(
+        &mut self,
+        e: &ast::Expr,
+        out: &mut Vec<Stmt>,
+        post: &mut Vec<Stmt>,
+    ) -> Option<String> {
+        let at;
+        let call = match &e.kind {
+            ast::ExprKind::Index { base, indices } => {
+                let Some(Ty::Struct(sid)) = self.probe_ty_silent(base) else {
+                    return None;
+                };
+                self.structs[sid].projections.get("at")?;
+                at = self.struct_at(sid, base, indices)?;
+                &at
+            }
+            _ => e,
+        };
+        let ast::ExprKind::Call { callee, args } = &call.kind else {
+            return None;
+        };
+        let ast::ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        let proj = self.find_projection_on(base, &name.text)?;
+        let slot = self.lower_projection_mut_call(proj, base, args, call.span, out, post);
+        let alias = format!("lent#{}", e.span.start);
+        self.cx.mut_aliases.insert(alias.clone(), slot);
+        Some(alias)
+    }
+
     pub(super) fn free_lends_mut_fn(&self, name: &str) -> Option<(u32, &'a ast::FnDecl)> {
         self.mod_items(self.cur_mod)
             .find_map(|(offset, stmt)| match &stmt.kind {
