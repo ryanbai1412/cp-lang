@@ -6,30 +6,12 @@
 
 use std::path::{Path, PathBuf};
 
-#[path = "support/v02_snapshot.rs"]
-mod v02_snapshot;
+#[path = "support/corpus_programs.rs"]
+mod corpus_programs;
 
 /// The `.cp` files one directory down from the corpus and conformance roots.
 fn sources() -> Vec<PathBuf> {
-    let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let mut found = Vec::new();
-    for root in ["corpus/problems", "spec/conformance"] {
-        for dir in std::fs::read_dir(repo.join(root)).expect("source root exists") {
-            let dir = dir.unwrap().path();
-            if !dir.is_dir() {
-                continue;
-            }
-            for file in std::fs::read_dir(dir).unwrap() {
-                let path = file.unwrap().path();
-                if path.extension().is_some_and(|ext| ext == "cp") {
-                    found.push(path);
-                }
-            }
-        }
-    }
-    found.extend(v02_snapshot::v02_snapshot_ports(&repo));
-    found.sort();
-    found
+    corpus_programs::corpus_and_conformance(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
 }
 
 fn build(src: &Path, out: &Path) -> Option<Vec<u8>> {

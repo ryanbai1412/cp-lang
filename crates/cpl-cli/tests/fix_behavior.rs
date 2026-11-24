@@ -11,8 +11,8 @@
 
 use std::path::{Path, PathBuf};
 
-#[path = "support/v02_snapshot.rs"]
-mod v02_snapshot;
+#[path = "support/corpus_programs.rs"]
+mod corpus_programs;
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant};
 
@@ -63,8 +63,8 @@ fn programs() -> Vec<String> {
             paths.push(dir.join("port.cp"));
         }
     }
-    for port in v02_snapshot::v02_snapshot_ports(&r) {
-        if !port_inputs(&v02_snapshot::problem_dir(&port)).is_empty() {
+    for port in corpus_programs::v02_snapshot_ports(&r) {
+        if !port_inputs(&corpus_programs::problem_dir(&port)).is_empty() {
             paths.push(port);
         }
     }
@@ -108,7 +108,7 @@ fn port_inputs(dir: &Path) -> Vec<PathBuf> {
 fn inputs(src: &Path) -> Vec<Vec<u8>> {
     let read = |p: &Path| std::fs::read(p).unwrap();
     if src.file_name().is_some_and(|n| n == "port.cp") {
-        return port_inputs(&v02_snapshot::problem_dir(src))
+        return port_inputs(&corpus_programs::problem_dir(src))
             .iter()
             .map(|p| read(p))
             .collect();

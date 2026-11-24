@@ -24,8 +24,8 @@
 
 use cpl_check::Database;
 
-#[path = "../../cpl-cli/tests/support/v02_snapshot.rs"]
-mod v02_snapshot;
+#[path = "../../cpl-cli/tests/support/corpus_programs.rs"]
+mod corpus_programs;
 use cpl_json::{obj, Value};
 use cpl_lsp::Server;
 use std::time::{Duration, Instant};
@@ -596,7 +596,7 @@ fn keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95() 
             }
         }
     }
-    for path in v02_snapshot::v02_snapshot_ports(&ports.join("../..")) {
+    for path in corpus_programs::v02_snapshot_ports(&ports.join("../..")) {
         let src = std::fs::read_to_string(&path).unwrap();
         files.push((src.lines().count(), path, src));
     }
@@ -694,7 +694,7 @@ fn largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms() {
             }
         }
     }
-    for path in v02_snapshot::v02_snapshot_ports(&ports.join("../..")) {
+    for path in corpus_programs::v02_snapshot_ports(&ports.join("../..")) {
         let src = std::fs::read_to_string(&path).unwrap();
         files.push((src.lines().count(), src.len(), path, src));
     }
