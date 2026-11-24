@@ -646,6 +646,9 @@ struct Lowerer<'a> {
     io_base: Option<i64>,
     counted_domains: HashSet<DomainId>,
     range_keyed: HashSet<DomainId>,
+    /// The domain each `[0..r]` over a `Range<Int>` value names, by `r`'s source: one per key
+    /// set, however often its type is probed.
+    key_domains: HashMap<(ModId, u32, Span), DomainId>,
     view_fns: HashMap<(FnId, Vec<(usize, Ty)>), FnId>,
     io_global: Option<GlobalId>,
     lexical_call_at: Option<Span>,
@@ -920,6 +923,7 @@ impl<'a> Lowerer<'a> {
             io_base: None,
             counted_domains: HashSet::new(),
             range_keyed: HashSet::new(),
+            key_domains: HashMap::new(),
             view_fns: HashMap::new(),
             io_global: None,
             lexical_call_at: None,

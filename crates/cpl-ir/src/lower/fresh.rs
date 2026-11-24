@@ -138,9 +138,17 @@ impl<'a> Lowerer<'a> {
         if probed.ty != Ty::range(Ty::Int) {
             return None;
         }
-        let id = self.domains.len();
-        self.domains.push(format!("keys_{id}"));
-        self.range_keyed.insert(id);
+        let source = (self.cur_mod, self.offset, e.span);
+        let id = match self.key_domains.get(&source) {
+            Some(&id) => id,
+            None => {
+                let id = self.domains.len();
+                self.domains.push(format!("keys_{id}"));
+                self.range_keyed.insert(id);
+                self.key_domains.insert(source, id);
+                id
+            }
+        };
         if values {
             let val = self.expr(e, None);
             let (lo, len) = self.range_lo_len(val, e.span);
