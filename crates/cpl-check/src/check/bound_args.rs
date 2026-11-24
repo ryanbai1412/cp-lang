@@ -386,7 +386,7 @@ impl Checker<'_> {
         bindings: &crate::ty::Bindings,
         span: Span,
     ) {
-        let mut seen: Vec<(String, usize, Ty)> = Vec::new();
+        let mut seen: Vec<(&String, usize, Ty)> = Vec::new();
         for (i, (param, trait_name, args)) in bound_args.iter().enumerate() {
             let Some(actual) = bindings.get(param) else {
                 continue;
@@ -402,11 +402,11 @@ impl Checker<'_> {
                 if got.mentions_param() || got.has_vague() {
                     continue;
                 }
-                let Some((_, j, first)) = seen.iter().find(|(h, ..)| h == g).cloned() else {
-                    seen.push((g.clone(), i, got.clone()));
+                let Some(&(_, j, ref first)) = seen.iter().find(|(h, ..)| *h == g) else {
+                    seen.push((g, i, got.clone()));
                     continue;
                 };
-                if got.fits(&first) || first.fits(got) {
+                if got.fits(first) || first.fits(got) {
                     continue;
                 }
                 let shown = |(p, t, a): &(String, String, Vec<Ty>)| {

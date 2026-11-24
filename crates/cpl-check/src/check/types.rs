@@ -1548,14 +1548,15 @@ impl<'a> Checker<'a> {
                 continue;
             }
             seen.push(cur.clone());
-            match cur.as_str() {
-                "Ord" => stack.push("Eq".into()),
-                "IndexedMut" => stack.push("Indexed".into()),
+            let core: &[&str] = match cur.as_str() {
+                "Ord" => &["Eq"],
+                "IndexedMut" => &["Indexed"],
                 // A file sees std/seq.cp's core traits without their decls.
-                "Keyed" | "Bidir" | "Positional" => stack.push("Seq".into()),
-                "Indexed" => stack.extend(["Keyed".into(), "Positional".into(), "Bidir".into()]),
-                _ => {}
-            }
+                "Keyed" | "Bidir" | "Positional" => &["Seq"],
+                "Indexed" => &["Keyed", "Positional", "Bidir"],
+                _ => &[],
+            };
+            stack.extend(core.iter().map(|s| s.to_string()));
             if let Some(Def::Trait { supers, .. }) = self.type_def(&cur).as_deref() {
                 stack.extend(supers.iter().cloned());
             }
