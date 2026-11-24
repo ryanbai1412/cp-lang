@@ -53,13 +53,15 @@ pub struct Symbol {
     pub public: bool,
 }
 
+/// A value whose size has no bound, with its element size when it is a list of fixed-size values.
+pub type Unbounded = (String, Option<u64>);
+
 impl Database {
     /// What to show when the cursor is at `offset`.
     /// The most bytes the file's top-level values take at max input, and
     /// the names of those whose size has no bound, with the size of each
     /// element for a list of fixed-size values.
-    #[allow(clippy::type_complexity)]
-    pub fn storage(&mut self, path: &str) -> Option<(u128, Vec<(String, Option<u64>)>)> {
+    pub fn storage(&mut self, path: &str) -> Option<(u128, Vec<Unbounded>)> {
         let analysis = self.analyze(path)?;
         let (mut total, mut unbounded) = (0u128, Vec::new());
         for (name, size) in self.value_sizes(path, &analysis) {

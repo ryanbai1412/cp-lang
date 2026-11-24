@@ -70,7 +70,7 @@ impl<'a> Checker<'a> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
+    /// `memo` is the `@memo` and whether it is `@memo(array)`.
     pub(super) fn memo_fits(
         &mut self,
         f: &ast::FnDecl,
@@ -78,8 +78,7 @@ impl<'a> Checker<'a> {
         self_ty: Option<&Ty>,
         generator: bool,
         unit: bool,
-        memo: Span,
-        is_array: bool,
+        (memo, is_array): (Span, bool),
     ) {
         let name = &f.name.text;
         let changed = f.params.iter().find(|p| p.mutable && p.name.text != "self");
@@ -433,7 +432,7 @@ impl<'a> Checker<'a> {
                 Some(_) => **ret == Ty::Unit,
                 None => !gives && !matches!(f.body, FnBody::None),
             };
-            self.memo_fits(f, params, self_ty, generator, unit, memo, is_array);
+            self.memo_fits(f, params, self_ty, generator, unit, (memo, is_array));
         }
         // `@memo` refuses a `mut` parameter itself (E0311).
         let plain = self_ty.is_none() && !memo_fn && !matches!(f.body, FnBody::None);

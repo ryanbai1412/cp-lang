@@ -183,7 +183,7 @@ impl<'a> Checker<'a> {
                             .iter()
                             .map(|m| m.0.clone().unwrap_or(left.clone()))
                             .collect();
-                        self.no_operator_impl(op, op_span, rhs, &right, &wants, trait_name, owner)
+                        self.no_operator_impl((op, op_span), rhs, &right, &wants, trait_name, owner)
                     }
                 }
             }

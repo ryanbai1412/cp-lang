@@ -545,10 +545,12 @@ impl Database {
                     self.import_base = Some(ranges[index].span.start);
                     self.import(
                         path,
-                        module,
-                        names,
-                        *glob,
-                        alias.as_ref(),
+                        UseOf {
+                            module,
+                            names,
+                            glob: *glob,
+                            alias: alias.as_ref(),
+                        },
                         &mut scope,
                         &mut diags,
                     );
@@ -584,10 +586,12 @@ impl Database {
                                 let mut dummy_diags = Vec::new();
                                 self.import(
                                     path,
-                                    module,
-                                    &[],
-                                    false,
-                                    None,
+                                    UseOf {
+                                        module,
+                                        names: &[],
+                                        glob: false,
+                                        alias: None,
+                                    },
                                     &mut dummy_scope,
                                     &mut dummy_diags,
                                 );
@@ -1273,7 +1277,17 @@ impl Database {
         let (had_imports, mods_before) = (scope.has_imports, scope.modules.len());
         let mut diags = Vec::new();
         let names = std::slice::from_ref(name);
-        self.import(from, module, names, false, None, scope, &mut diags);
+        self.import(
+            from,
+            UseOf {
+                module,
+                names,
+                glob: false,
+                alias: None,
+            },
+            scope,
+            &mut diags,
+        );
         scope.has_imports = had_imports;
         let cycled = scope.modules[mods_before..]
             .iter()
@@ -1282,14 +1296,15 @@ impl Database {
     }
 
     /// Loads what one `use` names into `scope`.
-    #[allow(clippy::too_many_arguments)]
     fn import(
         &mut self,
         from: &str,
-        module: &[ast::Name],
-        names: &[ast::Name],
-        glob: bool,
-        alias: Option<&ast::Name>,
+        UseOf {
+            module,
+            names,
+            glob,
+            alias,
+        }: UseOf<'_>,
         scope: &mut Scope,
         diags: &mut Vec<Diagnostic>,
     ) {
@@ -1474,7 +1489,17 @@ impl Database {
                 (scope.has_imports, scope.modules.len(), self.cycle_hits);
             let mut diags = Vec::new();
             let from = std::slice::from_ref(method);
-            self.import(path, module, from, false, None, &mut scope, &mut diags);
+            self.import(
+                path,
+                UseOf {
+                    module,
+                    names: from,
+                    glob: false,
+                    alias: None,
+                },
+                &mut scope,
+                &mut diags,
+            );
             scope.has_imports = had_imports;
             let import = scope.imports.remove(name);
             if !diags.is_empty() {
@@ -1943,4 +1968,12 @@ fn note_idents<'t>(
         }
         prev_dot = tok.kind == cpl_syntax::TokenKind::Dot;
     }
+}
+
+/// What one `use` names: `use module.{names}`, `use module.*` or `use module as alias`.
+struct UseOf<'u> {
+    module: &'u [ast::Name],
+    names: &'u [ast::Name],
+    glob: bool,
+    alias: Option<&'u ast::Name>,
 }

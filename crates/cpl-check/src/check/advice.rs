@@ -103,11 +103,9 @@ impl Checker<'_> {
 
     /// `a * inv` with no `impl Mul` for `inv`'s type. When `inv` is a
     /// function not yet called (`x.inv`) whose result fits, the fix calls it.
-    #[allow(clippy::too_many_arguments)]
     pub(super) fn no_operator_impl(
         &mut self,
-        op: BinOp,
-        op_span: Span,
+        (op, op_span): (BinOp, Span),
         rhs: &Expr,
         right: &Ty,
         wants: &[Ty],
