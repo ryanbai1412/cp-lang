@@ -7,8 +7,11 @@ use cpl_ir::{
 };
 
 impl<'p> Compiler<'p, '_> {
-    pub(super) fn mut_fn_args_alias_free(&self, fn_id: FnId, args: &'p [Arg]) -> bool {
+    /// Whether a call must lend its args: a fn value passed may reach a place
+    /// the call takes out, its `mut` args or a slot this frame holds lent.
+    pub(super) fn call_must_lend(&self, fn_id: FnId, args: &'p [Arg]) -> bool {
         let f = &self.program.fns[fn_id];
+        let has_mut = f.params.iter().any(|p| p.mutable);
         let (mut globals, mut locals) = (Vec::new(), Vec::new());
         for arg in args {
             if let Arg::Mut(place) = arg {
@@ -23,65 +26,36 @@ impl<'p> Compiler<'p, '_> {
             globals: &globals,
             seen: Vec::new(),
         };
-        for (i, arg) in args.iter().enumerate() {
-            if !matches!(f.locals[i].ty, Ty::Fn(..)) {
-                continue;
-            }
-            let Arg::Value(Expr {
-                kind: ExprKind::Closure(cid),
-                ..
-            }) = arg
-            else {
-                return false;
-            };
-            let lends_capture = (self.program.closures[*cid].captures.iter()).any(|c| {
-                c.by_ref
-                    && match c.is_global {
-                        true => globals.contains(&(c.outer as GlobalId)),
-                        false => locals.contains(&c.outer),
-                    }
-            });
-            if lends_capture || reach.closure(*cid) {
-                return false;
-            }
-        }
-        true
-    }
-}
-
-impl<'p> Compiler<'p, '_> {
-    /// Whether a call must lend its args: a fn value passed may reach a place
-    /// the call takes out, its `mut` args or a slot this frame holds lent.
-    #[inline(never)]
-    pub(super) fn call_must_lend(&self, fn_id: FnId, args: &'p [Arg]) -> bool {
-        let f = &self.program.fns[fn_id];
-        let has_fn_param = f.locals[..f.params.len()]
-            .iter()
-            .any(|l| matches!(l.ty, Ty::Fn(..)));
-        let has_mut = f.params.iter().any(|p| p.mutable);
-        has_mut && has_fn_param && !self.mut_fn_args_alias_free(fn_id, args)
-            || self.fn_args_reach_held(f, args)
-    }
-
-    /// Whether a fn value among `args` may reach a slot this frame holds
-    /// lent: the callee would call it while the lender's place is empty.
-    fn fn_args_reach_held(&self, f: &cpl_ir::Function, args: &[Arg]) -> bool {
-        if self.held.is_empty() {
-            return false;
-        }
-        let held = |s: &Slot| self.held.contains(&(*s as u16));
+        let held = |s: Slot| self.held.contains(&(s as u16));
         (args.iter().enumerate()).any(|(i, arg)| {
-            if !f.locals[i].ty.has_fn(self.program) {
-                return false;
-            }
+            let ty = &f.locals[i].ty;
+            // A fn arg may reach a `mut` arg: the callee would call it while
+            // that arg is taken out.
+            let mut_fn = has_mut && matches!(ty, Ty::Fn(..));
             match arg {
                 Arg::Value(Expr {
                     kind: ExprKind::Closure(cid),
                     ..
-                }) => (self.program.closures[*cid].captures.iter())
-                    .any(|c| c.by_ref && !c.is_global && held(&c.outer)),
+                }) => {
+                    let caps = &self.program.closures[*cid].captures;
+                    (ty.has_fn(self.program)
+                        && caps
+                            .iter()
+                            .any(|c| c.by_ref && !c.is_global && held(c.outer)))
+                        || mut_fn
+                            && (caps.iter().any(|c| {
+                                c.by_ref
+                                    && match c.is_global {
+                                        true => globals.contains(&(c.outer as GlobalId)),
+                                        false => locals.contains(&c.outer),
+                                    }
+                            }) || reach.closure(*cid))
+                }
                 Arg::Value(_) => {
-                    self.ref_all || (self.ref_slots.iter()).any(|&s| held(&(s as Slot)))
+                    mut_fn
+                        || !self.held.is_empty()
+                            && ty.has_fn(self.program)
+                            && (self.ref_all || self.ref_slots.iter().any(|&s| held(s as Slot)))
                 }
                 Arg::Mut(_) => false,
             }

@@ -540,12 +540,13 @@ impl<'a> Lowerer<'a> {
                         self.resolve_ty(ty)
                     }
                     None => {
-                        let declared = match (trait_name, owner_ty.as_ref()) {
-                            (Some(tr), Some(ot)) => {
-                                self.trait_declared_ty(tr, &decl.name.text, Some(i), trait_args, ot)
-                            }
-                            _ => None,
-                        };
+                        let declared = self.trait_declared_ty(
+                            trait_name,
+                            &decl.name.text,
+                            Some(i),
+                            trait_args,
+                            owner_ty.as_ref(),
+                        );
                         match declared.or_else(|| owner_ty.clone()) {
                             Some(ty) => ty,
                             None => {
@@ -574,13 +575,16 @@ impl<'a> Lowerer<'a> {
         }
         self.sigs[id].params = params;
         // An unwritten result is the impl's `type Out`, else what its trait declares.
-        let declared_ret = match (&decl.ret, out_ty, trait_name, owner_ty.as_ref()) {
-            (Some(_), ..) => None,
-            (None, Some(o), ..) => Some(o.clone()),
-            (None, None, Some(tr), Some(ot)) => {
-                self.trait_declared_ty(tr, &decl.name.text, None, trait_args, ot)
-            }
-            _ => None,
+        let declared_ret = match (&decl.ret, out_ty) {
+            (Some(_), _) => None,
+            (None, Some(o)) => Some(o.clone()),
+            (None, None) => self.trait_declared_ty(
+                trait_name,
+                &decl.name.text,
+                None,
+                trait_args,
+                owner_ty.as_ref(),
+            ),
         };
         self.sigs[id].ret = match (&decl.ret, &decl.body) {
             (
@@ -662,12 +666,13 @@ impl<'a> Lowerer<'a> {
     /// the same way, as the checker reads them.
     pub(crate) fn trait_declared_ty(
         &mut self,
-        trait_name: &str,
+        trait_name: Option<&str>,
         method: &str,
         at: Option<usize>,
         trait_args: &[Ty],
-        owner: &Ty,
+        owner: Option<&Ty>,
     ) -> Option<Ty> {
+        let (trait_name, owner) = (trait_name?, owner?);
         let (f, generics, place): (&'a ast::FnDecl, Vec<&str>, _) =
             match self.traits.iter().find(|t| t.name == trait_name) {
                 Some(t) => (
