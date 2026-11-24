@@ -493,16 +493,18 @@ fn exit_code(code: Option<i32>) -> String {
     code.map_or("on a signal".to_string(), |c| c.to_string())
 }
 
-/// `bytes` with each `\r\n` as `\n`: cases and answers are LF on every OS,
-/// as the judge's program runs see them, so a Windows `print`'s `\r\n`
-/// never reaches a saved case.
+/// `bytes` with each run of `\r`s before a `\n` dropped: cases and answers
+/// are LF on every OS, as the judge's program runs see them, so neither a
+/// Windows `print`'s `\r\n` nor the `\r\r\n` a text-mode stdout makes of
+/// a written `\r\n` reaches a saved case.
 pub(crate) fn lf(bytes: Vec<u8>) -> Vec<u8> {
     if !bytes.contains(&b'\r') {
         return bytes;
     }
     let mut out = Vec::with_capacity(bytes.len());
     for (i, &b) in bytes.iter().enumerate() {
-        if !(b == b'\r' && bytes.get(i + 1) == Some(&b'\n')) {
+        let ends_line = bytes[i..].iter().find(|&&c| c != b'\r') == Some(&b'\n');
+        if !(b == b'\r' && ends_line) {
             out.push(b);
         }
     }
@@ -811,6 +813,7 @@ mod tests {
         assert_eq!(text(out.join("01.in")), "1\n2\n");
         assert_eq!(text(out.join("02.in")), "7\n8\n");
         assert_eq!(lf(b"a\rb\r\n\r".to_vec()), b"a\rb\n\r");
+        assert_eq!(lf(b"7\r\r\n8\r\r\n".to_vec()), b"7\n8\n");
         std::fs::remove_dir_all(dir.ancestors().nth(3).unwrap()).unwrap();
     }
 
