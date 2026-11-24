@@ -258,7 +258,7 @@ Fields: `k: Int,`.
 - `fn resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T>` — \(O(n)\); `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of `[if i < a.len: a[i] else: Z(0) for i in 0..size]`.; traps: when `n < 0`
 - `fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T` — \(O(1)\)
 - `fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>` — \(O(\mathit{popped})\)
-- `fn clone<T>(self: T) -> T` — \(O(\text{size of the value})\), allocates for heap values; \(O(n)\), allocates.
+- `fn clone<T>(self: T) -> T` — \(O(n)\) for a value of size \(n\), allocates for heap values; \(O(n)\), allocates.
 - `fn take_all<T>(mut self: List<T>) -> List<T>` — \(O(1)\); Move all elements out of `self` in \(O(1)\), leaving it empty.
 - `fn insert<T>(mut self: List<T>, i: Int, x: T)` — \(O(n - i)\); Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one.; traps: when `i` is not in `0..=self.len`
 - `fn remove<T>(mut self: List<T>, i: Int) -> T` — \(O(n - i)\); \(O(n)\).; traps: when `i` is not in `0..self.len`

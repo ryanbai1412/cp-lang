@@ -192,7 +192,9 @@ def growth(formula, fixed=(), k=4.0, n=float(N), let=None):
             raise ValueError(f"can't evaluate the cost formula {formula!r}: {e}") from e
 
     f = python(formula)
-    return at(k * n, f) / at(n, f)
+    if not (base := at(n, f)):
+        raise ValueError(f"the cost formula {formula!r} is 0 at n; hold a symbol with `// fixed:`")
+    return at(k * n, f) / base
 
 
 def header(text):

@@ -177,6 +177,11 @@ class Header(unittest.TestCase):
         text = "// scaling: a.f\nx // timed\ny\nz // timed: b.g\nw // timed: b.g\n"
         self.assertEqual(scaling.timed_lines(text, "a.f"), {"a.f": {2}, "b.g": {4, 5}})
 
+    def test_a_formula_zero_at_n_asks_for_a_fixed_symbol(self):
+        with self.assertRaisesRegex(ValueError, "fixed"):
+            scaling.growth(r"n - i")
+        self.assertAlmostEqual(scaling.growth(r"n - i", fixed=("i",)), (4 * scaling.N - 1) / (scaling.N - 1))
+
     def test_a_within_line_names_the_fn_its_time_counts_to(self):
         text = "let f = x => x // within: a.f\nx // timed: a.f\n// within: a.f is prose\n"
         self.assertEqual(scaling.within_lines(text), {"a.f": {1}})

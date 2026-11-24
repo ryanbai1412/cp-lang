@@ -1265,7 +1265,7 @@ pub fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>:
 
 /// \(O(n)\), allocates. A separate copy: `let b = a` moves, `let b = a.clone()` copies.
 ///
-/// cost: \(O(\text{size of the value})\), allocates for heap values
+/// cost: \(O(n)\) for a value of size \(n\), allocates for heap values
 /// traps: never
 /// example: `let a = [1]; var b = a.clone(); b.push(2); a == [1]`
 pub fn clone<T>(self: T) -> T = copy(self)
