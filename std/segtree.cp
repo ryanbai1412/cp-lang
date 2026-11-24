@@ -260,15 +260,26 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
 
     // Push dense node `p`'s tag onto its children, each with `w` leaves.
     fn push_at(mut self, p: Int, w: Int):
+        unchecked:
+            if not has_lz[p]: return
         let (l, r) = (2 * p, 2 * p + 1)
         self.push(p, l, r, self.level_width(l, w), self.level_width(r, w), l >= size)
 
+    // Push down the tags above the ends of `l..h`: node `l >> i` sits above a cut inside it
+    // exactly when `i > ctz(l)`.
     fn open(mut self, l: Int, h: Int):
+        let (tl, th) = (ctz(l), ctz(h))
         var w = size
         for i in (1..=log).rev:
             w /= 2
-            if ((l >> i) << i) != l: self.push_at(l >> i, w)
-            if ((h >> i) << i) != h: self.push_at((h - 1) >> i, w)
+            if i > tl: self.push_at(l >> i, w)
+            if i > th: self.push_at((h - 1) >> i, w)
+
+    // Rejoin dense node `p`, one of the nodes with `w` leaves, from its children.
+    fn pull_at(mut self, p: Int, w: Int):
+        unchecked:
+            t[p] = m.op(t[2 * p], t[2 * p + 1])
+            if act != None and has_lz[p]: t[p] = act!.apply(lz[p], t[p], self.level_width(p, w))
 
     // Node `p`'s value with `pend`, the tags its ancestors hold, applied.
     fn seen(self, pend: ?F, p: Int, nl: Int, nr: Int) -> T:
@@ -357,12 +368,12 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
                 h /= 2
                 w += w
         if dual: return
+        let (tl, th) = (ctz(l0), ctz(h0))
         w = 1
         for i in 1..=log:
             w += w
-            let (a, b) = (l0 >> i, (h0 - 1) >> i)
-            if ((l0 >> i) << i) != l0: self.pull_node(a, 2 * a, 2 * a + 1, self.level_width(a, w))
-            if ((h0 >> i) << i) != h0: self.pull_node(b, 2 * b, 2 * b + 1, self.level_width(b, w))
+            if i > tl: self.pull_at(l0 >> i, w)
+            if i > th: self.pull_at((h0 - 1) >> i, w)
 
     /// Apply tag `f` to every position; `apply(D.all, f)`.
     ///
