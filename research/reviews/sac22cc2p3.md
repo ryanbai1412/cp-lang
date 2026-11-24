@@ -1,9 +1,9 @@
 # sac22cc2p3
 
-Score: 4/5
+Score: 3/5
 Dream: none (no dream.cp; the ideal is in the friction report)
 
-Scored cold against the checklist and the port.
+Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
 
 Cold review: the forks read as one typed table over a Fork domain into a Node domain; parents and fork owners are optional tables, Rooted.from_parents orders the tree, and Rooted.up does the DP with lift adding the gain only on the take edge. No BFS queue, edge lists or sentinel -inf by hand.
 

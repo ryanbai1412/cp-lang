@@ -1,9 +1,9 @@
 # rpeng2 review
 
-Score: 4/5
+Score: 3/5
 Dream: none (no dream.cp; the ideal is in the friction report)
 
-Scored cold against the checklist and the port.
+Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
 
 Cold review: rethought around one `Span = (lo:, hi:)` and one `join(op, a, b) -> Span`, so the
 + and * cases are a single function instead of two hand loops over lo/hi tables with 1e18

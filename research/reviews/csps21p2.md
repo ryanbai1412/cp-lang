@@ -1,9 +1,9 @@
 # csps21p2
 
-Score: 4/5
+Score: 3/5
 Dream: none (no dream.cp; the ideal is in the friction report)
 
-Scored cold against the checklist and the port.
+Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
 
 An interval DP over `[Pos, Pos]` tables: `wrap[l, r]` counts sequences closed by a bracket pair at l and r, `seq` the full count over l..=r, and `tail` the joins with a trailing star run. Star runs are checked through one `Prefix` of non-star cells.
 
