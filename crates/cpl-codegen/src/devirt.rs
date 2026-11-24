@@ -473,17 +473,19 @@ impl<'p> Devirt<'p> {
     }
 
     /// The local `@memo` fns of `block`, wrapper slot to body slot and
-    /// whether the body calls the wrapper: each `let w; let b = <closure>;
-    /// ..; w = <closure>` where only the wrapper names the body. A body that
-    /// recurses closes its loop through `cpl::memo`, each passed the other;
-    /// one that doesn't needs no slot before its wrapper. Neither is erased.
-    pub fn memo_pairs(&self, block: &Block) -> BTreeMap<usize, (usize, bool)> {
+    /// whether the body calls the wrapper, and whether lines after the
+    /// wrapper call the body too: each `let w; let b = <closure>; ..;
+    /// w = <closure>`, a local `@memo` fn or two local fns that call each
+    /// other. A body that calls back closes the loop through `cpl::memo`,
+    /// each passed the other; one that doesn't needs no slot before its
+    /// wrapper. Neither is erased.
+    pub fn memo_pairs(&self, block: &Block) -> BTreeMap<usize, (usize, bool, bool)> {
         let mut out = BTreeMap::new();
         self.memo_pairs_in(block, &mut out);
         out
     }
 
-    fn memo_pairs_in(&self, block: &Block, out: &mut BTreeMap<usize, (usize, bool)>) {
+    fn memo_pairs_in(&self, block: &Block, out: &mut BTreeMap<usize, (usize, bool, bool)>) {
         let stmts = &block.stmts;
         for stmt in stmts {
             walk::stmt_blocks(stmt, &mut |inner| self.memo_pairs_in(inner, out));
@@ -549,9 +551,8 @@ impl<'p> Devirt<'p> {
                 && !captures(cw, *w)
                 && !names(&stmts[k + 2..j], *w)
                 && !names(&stmts[k + 2..j], *b)
-                && !names(&stmts[j + 1..], *b)
             {
-                out.insert(*w, (*b, captures(cb, *w)));
+                out.insert(*w, (*b, captures(cb, *w), names(&stmts[j + 1..], *b)));
             }
         }
     }

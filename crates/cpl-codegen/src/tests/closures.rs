@@ -795,3 +795,17 @@ fn a_top_level_fn_let_only_main_uses_is_its_closures_own_type() {
         "{explained:?}"
     );
 }
+
+#[test]
+fn local_fns_that_call_each_other_pass_each_other_instead_of_a_std_function() {
+    let out = cpp(concat!(
+        "fn walk(n: Int, k: Int) -> Int:\n",
+        "    fn down(i: Int) -> Int = if i <= 0: 0 else: k + up(i - 1)\n",
+        "    fn up(i: Int) -> Int = if i <= 0: 0 else: 1 + down(i - 1)\n",
+        "    down(n) + up(n)\n",
+        "let (n, k): (Int, Int) = read()\n",
+        "print(walk(n, k))\n",
+    ));
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(out.contains("cpl::memo("), "{out}");
+}

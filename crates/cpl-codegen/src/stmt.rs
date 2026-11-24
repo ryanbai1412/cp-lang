@@ -582,20 +582,22 @@ impl<'p> Emitter<'p> {
                 if self.closure_id.is_none() && self.memo_pairs.contains_key(slot) => {}
             Stmt::Let(slot, Some(init))
                 if self.closure_id.is_none()
-                    && self.memo_pairs.values().any(|(b, _)| b == slot)
+                    && self.memo_pairs.values().any(|(b, ..)| b == slot)
                     && matches!(init.kind, ExprKind::Closure(_)) =>
             {
                 let ExprKind::Closure(cid) = init.kind else {
                     return;
                 };
                 self.borrow_if_named_closure(*slot, Some(init));
-                self.rec_slot = self
+                let back = self
                     .memo_pairs
                     .iter()
-                    .find(|(_, (b, rec))| b == slot && *rec)
-                    .map(|(w, _)| *w);
+                    .find(|(_, (b, rec, _))| b == slot && *rec);
+                self.rec_slot = back.map(|(w, _)| *w);
+                let later = back.is_some_and(|(_, (.., later))| *later);
                 let text = self.emit_closure(cid, false).text;
                 let name = self.names[*slot].clone();
+                let name = if later { format!("{name}_body") } else { name };
                 self.line(out, &format!("auto {name} = {text};"));
             }
             Stmt::Assign(place, AssignOp::Set, value)
@@ -607,7 +609,7 @@ impl<'p> Emitter<'p> {
                 else {
                     return;
                 };
-                let (body, rec) = self.memo_pairs[w];
+                let (body, rec, later) = self.memo_pairs[w];
                 let name = self.names[*w].clone();
                 if !rec {
                     let text = self.emit_closure(*cid, false).text;
@@ -618,10 +620,18 @@ impl<'p> Emitter<'p> {
                 self.rec_slot = Some(body);
                 let text = self.emit_closure(*cid, false).text;
                 let body = self.names[body].clone();
-                self.line(
-                    out,
-                    &format!("auto {name} = cpl::memo(std::move({body}), {text});"),
-                );
+                if later {
+                    self.line(
+                        out,
+                        &format!("auto {name} = cpl::memo(std::move({body}_body), {text});"),
+                    );
+                    self.line(out, &format!("auto {body} = {name}.body();"));
+                } else {
+                    self.line(
+                        out,
+                        &format!("auto {name} = cpl::memo(std::move({body}), {text});"),
+                    );
+                }
             }
             Stmt::Let(slot, Some(init))
                 if matches!(self.locals()[*slot].ty, Ty::Fn(..))
