@@ -65,6 +65,15 @@ pub struct Server {
     /// (`initializationOptions.replayLenses`), shown while debugging.
     #[cfg(not(target_arch = "wasm32"))]
     replay: bool,
+    /// The Replay lenses wait for `cpl/debugging` to say a `cp` debug
+    /// session runs (`replayLenses: "debugging"`), and whether one does.
+    #[cfg(not(target_arch = "wasm32"))]
+    replay_debugging: bool,
+    #[cfg(not(target_arch = "wasm32"))]
+    debugging: bool,
+    /// The workspace's folder, where Import a Problem lands by default.
+    #[cfg(not(target_arch = "wasm32"))]
+    root: Option<String>,
     /// The `cpl` commands `cpl/commands` completes, from the binary serving.
     #[cfg(not(target_arch = "wasm32"))]
     commands: Vec<&'static str>,
@@ -103,6 +112,12 @@ impl Server {
             lenses: false,
             #[cfg(not(target_arch = "wasm32"))]
             replay: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            replay_debugging: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            debugging: false,
+            #[cfg(not(target_arch = "wasm32"))]
+            root: None,
             #[cfg(not(target_arch = "wasm32"))]
             commands: Vec::new(),
             #[cfg(not(target_arch = "wasm32"))]
@@ -249,8 +264,18 @@ impl Server {
                 {
                     self.lenses =
                         params.at(&["initializationOptions", "codeLens"]) == &Value::Bool(true);
-                    self.replay =
-                        params.at(&["initializationOptions", "replayLenses"]) == &Value::Bool(true);
+                    let replay = params.at(&["initializationOptions", "replayLenses"]);
+                    self.replay_debugging = replay.as_str() == Some("debugging");
+                    self.replay = replay == &Value::Bool(true) || self.replay_debugging;
+                    self.runs.trusted =
+                        params.at(&["initializationOptions", "trusted"]) != &Value::Bool(false);
+                    self.runs.lens_refresh =
+                        params.at(&["capabilities", "workspace", "codeLens", "refreshSupport"])
+                            == &Value::Bool(true);
+                    let folder = params.at(&["workspaceFolders"]).as_array();
+                    let folder = folder.and_then(|f| f.first()).map(|f| f.at(&["uri"]));
+                    let root = folder.unwrap_or(params.at(&["rootUri"])).as_str();
+                    self.root = root.and_then(path_of_uri);
                     self.runs.refresh =
                         params.at(&["capabilities", "workspace", "inlayHint", "refreshSupport"])
                             == &Value::Bool(true);
@@ -266,6 +291,8 @@ impl Server {
             "workspace/didChangeConfiguration" => Ok(self.configured(params)),
             #[cfg(not(target_arch = "wasm32"))]
             "workspace/executeCommand" => self.execute(params),
+            #[cfg(not(target_arch = "wasm32"))]
+            "cpl/debugging" => Ok(self.debugging(params)),
             "shutdown" => {
                 self.shutdown = true;
                 Ok(Reply::default())
@@ -797,6 +824,10 @@ impl Server {
             // literal argument fills.
             "textDocument/inlayHint" => {
                 let uri = uri_of(params)?;
+                #[cfg(not(target_arch = "wasm32"))]
+                if self.runs.hints_off() {
+                    return Ok(Reply::result(Value::Array(Vec::new())));
+                }
                 let Some(facts) = self.proven(uri) else {
                     return Ok(Reply::result(Value::Array(self.run_hints(uri))));
                 };

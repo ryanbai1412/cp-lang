@@ -57,16 +57,21 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   arguments `[path, port?]` waits on `127.0.0.1:port` (default `10043`)
   for Competitive Companion and answers `{port}`. Each problem it sends is
   created as `cpl new --listen` would create it in `path` (or the folder of
-  the file `path` names), and the server opens it with
+  the file `path` names, or the workspace's first folder when `path` is
+  null), and the server opens it with
   `window/showDocument`; it reports waiting and failure with
   `window/showMessage`. JetBrains' Import a Problem sends only this
   command (`crates/cpl-lsp/tests/import.rs`).
 - **Showing a run**: `workspace/executeCommand` runs `cpl.exec` itself: the
   arguments after `cpl`, with an object among them giving `stdin`,
-  `expect` and flags by name (`{case: "i1"}` is `--case i1`), completed by
+  `expect` and flags by name (`{case: "i1"}` is `--case i1`); `stdin` may
+  list choices, the first with text taken, and `typed: [line]` is the
+  expected output typed with `\n` for line breaks (`[null]`, a cancelled
+  prompt, runs nothing and answers `null`). It is completed by
   the client's `cp` settings (`cp.stress.args`, `cp.submit.copy`,
   `cp.liveValues.input`, `cp.run.timeoutMs`) and `--format json` (a trace's
-  `html`). It answers `{view, html, code, stderr}` when the run ends and
+  `html`, also sent as a `cpl/page` `{html}` notification). It answers
+  `{view, html, ok, code, stderr}` (`ok`: it exited 0) when the run ends and
   shows the `view` through the protocol: the panel as a `window/logMessage`
   (Info), the status as a `window/showMessage`, each line's strongest mark
   and the status as inlay hints at the line's end (clipped to
@@ -74,7 +79,14 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   among the document's, until the next edit. `cpl.show` `[uri, view]` shows
   a view another tool made, `cpl.clear` `[uri]` takes one away, and with
   `cp.liveValues.enabled` each save runs the samples quietly
-  (`crates/cpl-lsp/src/tests/exec.rs`).
+  (`crates/cpl-lsp/src/tests/exec.rs`). With `initializationOptions.trusted`
+  false (VS Code's Restricted Mode) `cpl.exec`, `cpl.import` and live values
+  refuse to run, and `cp.inlayHints.enabled` false hides every inlay hint.
+- **Replay while debugging**: `initializationOptions.replayLenses`
+  `"debugging"` shows the Replay lenses only after a `cpl/debugging`
+  `{type: "cp"}` notification and until one with another `type` or none,
+  asking `workspace/codeLens/refresh` at each
+  (`crates/cpl-lsp/src/tests/lenses.rs`).
 
 Editor settings, every one each editor exposes
 (`crates/cpl-cli/tests/editor_settings.rs` checks this table against each

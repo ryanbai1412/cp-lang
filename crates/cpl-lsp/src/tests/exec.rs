@@ -26,6 +26,23 @@ impl Stub {
         Stub { dir, uri, path }
     }
 
+    /// The stub also keeps the standard input it is given.
+    fn reads_stdin(&self) {
+        let script = "#!/bin/sh\ncat > \"$(dirname \"$0\")/stdin\"\nprintf '%s\\n' \"$@\" > \"$(dirname \"$0\")/argv\"\ncat \"$(dirname \"$0\")/out\"\n";
+        std::fs::write(self.dir.join("cpl"), script).unwrap();
+    }
+
+    fn exec_with(&self, server: &mut Server, args: &[&str], given: Value) -> Vec<Value> {
+        let mut arguments: Vec<Value> = args.iter().map(|a| Value::from(*a)).collect();
+        arguments.insert(1, self.path.as_str().into());
+        arguments.push(given);
+        let params = obj([
+            ("command", "cpl.exec".into()),
+            ("arguments", arguments.into()),
+        ]);
+        server.handle(&request(7, "workspace/executeCommand", params))
+    }
+
     fn prints(&self, out: &str) {
         std::fs::write(self.dir.join("out"), out).unwrap();
     }
@@ -267,6 +284,7 @@ fn a_trace_answers_with_its_page_for_the_editor_to_open() {
         .unwrap()
         .starts_with("<!doctype"));
     assert!(of(&replies, "window/logMessage").is_empty());
+    assert_eq!(of(&replies, "cpl/page").len(), 1);
 }
 
 #[test]
@@ -311,4 +329,104 @@ fn a_run_on_its_own_thread_is_answered_when_it_ends() {
     assert!(replies.iter().all(|r| r.at(&["id"]) != &Value::Int(7)));
     let later = server.finish(rx.recv().unwrap());
     assert!(later.iter().any(|r| r.at(&["id"]) == &Value::Int(7)));
+}
+
+#[test]
+fn a_typed_case_takes_the_first_input_with_text_and_a_cancelled_one_runs_nothing() {
+    let stub = Stub::new("typed");
+    stub.reads_stdin();
+    stub.prints("added 1\n");
+    let mut server = stub.server();
+    let given = obj([
+        ("stdin", vec![Value::from(""), "4".into()].into()),
+        ("typed", vec![Value::from("8\\n9")].into()),
+    ]);
+    let replies = stub.exec_with(&mut server, &["test", "--add", "-"], given);
+    let answer = replies
+        .iter()
+        .find(|r| r.at(&["id"]) == &Value::Int(7))
+        .unwrap();
+    assert_eq!(answer.at(&["result", "ok"]), &Value::Bool(true));
+    let stdin = std::fs::read_to_string(stub.dir.join("stdin")).unwrap();
+    assert!(stdin.starts_with('4'), "{stdin}");
+    let argv = stub.argv();
+    let expect = argv
+        .split(' ')
+        .skip_while(|a| *a != "--expect")
+        .nth(1)
+        .unwrap();
+    assert_eq!(std::fs::read_to_string(expect).unwrap(), "8\n9");
+    std::fs::remove_file(stub.dir.join("argv")).unwrap();
+    let cancelled = obj([("typed", vec![Value::Null].into())]);
+    let replies = stub.exec_with(&mut server, &["test", "--add", "-"], cancelled);
+    assert_eq!(replies[0].at(&["result"]), &Value::Null);
+    assert!(!stub.dir.join("argv").exists());
+}
+
+#[test]
+fn a_folder_not_trusted_runs_nothing() {
+    let stub = Stub::new("untrusted");
+    let mut server = Server::new().with_cpl(stub.dir.join("cpl"));
+    let options = obj([("trusted", false.into())]);
+    server.handle(&request(
+        1,
+        "initialize",
+        obj([("initializationOptions", options)]),
+    ));
+    let replies = stub.exec(&mut server, &["run"]);
+    let message = replies[0].at(&["error", "message"]).as_str().unwrap();
+    assert!(message.contains("Restricted Mode"), "{message}");
+    assert!(!stub.dir.join("argv").exists());
+}
+
+#[test]
+fn turning_hints_off_hides_a_runs_marks_and_asks_for_hints_again() {
+    let stub = Stub::new("hints-off");
+    stub.prints(&report());
+    let mut server = stub.server();
+    stub.exec(&mut server, &["run", "--samples"]);
+    assert!(!stub.hints(&mut server).is_empty());
+    let off = obj([("inlayHints", obj([("enabled", false.into())]))]);
+    let replies = server.handle(&notification(
+        "workspace/didChangeConfiguration",
+        obj([("settings", obj([("cp", off)]))]),
+    ));
+    let asked = replies
+        .iter()
+        .filter(|r| r.at(&["method"]).as_str() == Some("workspace/inlayHint/refresh"));
+    assert_eq!(asked.count(), 1);
+    assert!(stub.hints(&mut server).is_empty());
+}
+
+#[test]
+fn import_lands_in_the_workspace_folder_when_given_no_path() {
+    let stub = Stub::new("import");
+    let import = obj([
+        ("command", "cpl.import".into()),
+        ("arguments", vec![Value::Null, 0.into()].into()),
+    ]);
+    let (tx, rx) = std::sync::mpsc::channel();
+    let mut server = Server::new().with_outbox(tx);
+    let folder = obj([(
+        "uri",
+        crate::uri::uri_of_path(&stub.dir.display().to_string()).into(),
+    )]);
+    server.handle(&request(
+        1,
+        "initialize",
+        obj([("workspaceFolders", vec![folder].into())]),
+    ));
+    let reply = server.handle(&request(2, "workspace/executeCommand", import.clone()));
+    assert!(reply[0].at(&["result", "port"]).as_u64().is_some());
+    let said = rx.recv().unwrap();
+    assert!(said
+        .at(&["params", "message"])
+        .as_str()
+        .unwrap()
+        .starts_with("Waiting"));
+    let mut server = Server::new().with_outbox(std::sync::mpsc::channel().0);
+    server.handle(&request(1, "initialize", obj([])));
+    let reply = server.handle(&request(2, "workspace/executeCommand", import));
+    let message = reply[0].at(&["error", "message"]).as_str().unwrap();
+    assert!(message.contains("open a folder first"), "{message}");
 }

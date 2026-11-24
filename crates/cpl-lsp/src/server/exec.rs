@@ -34,8 +34,11 @@ pub(super) struct Runs {
     views: HashMap<String, (Value, bool)>,
     /// Each document's edit count: a run that began before an edit is stale.
     edits: HashMap<String, u64>,
-    /// The client can be told to ask for inlay hints again.
+    /// The client can be told to ask for inlay hints, and code lenses, again.
     pub(super) refresh: bool,
+    pub(super) lens_refresh: bool,
+    /// The folder is trusted to run `cpl` (`initializationOptions.trusted`).
+    pub(super) trusted: bool,
     requests: u64,
     /// The request being answered.
     pub(super) request: Value,
@@ -50,6 +53,8 @@ impl Runs {
             views: HashMap::new(),
             edits: HashMap::new(),
             refresh: false,
+            lens_refresh: false,
+            trusted: true,
             requests: 0,
             request: Value::Null,
         }
@@ -66,7 +71,12 @@ impl Runs {
     }
 
     fn live(&self) -> bool {
-        self.setting(&["liveValues", "enabled"]) == &Value::Bool(true)
+        self.trusted && self.setting(&["liveValues", "enabled"]) == &Value::Bool(true)
+    }
+
+    /// `cp.inlayHints.enabled` is off.
+    pub(super) fn hints_off(&self) -> bool {
+        self.setting(&["inlayHints", "enabled"]) == &Value::Bool(false)
     }
 }
 
@@ -99,8 +109,12 @@ impl Server {
             return Reply::default();
         }
         let was = self.runs.live();
+        let hints_were_off = self.runs.hints_off();
         self.runs.settings = settings.clone();
         let mut out = Vec::new();
+        if self.runs.refresh && hints_were_off != self.runs.hints_off() {
+            out.push(self.ask("workspace/inlayHint/refresh"));
+        }
         if was && !self.runs.live() {
             let quiet: Vec<String> = (self.runs.views.iter())
                 .filter(|(_, (_, quiet))| *quiet)
@@ -150,6 +164,10 @@ impl Server {
             ..Reply::default()
         };
         match params.get("command").and_then(Value::as_str) {
+            Some("cpl.exec" | "cpl.import") if !self.runs.trusted => Err((
+                INVALID_PARAMS,
+                "This folder is in Restricted Mode, so CP Lang runs nothing: trust the folder to run `cpl`.".into(),
+            )),
             Some("cpl.exec") => {
                 let mut argv: Vec<String> = (args.iter())
                     .filter_map(Value::as_str)
@@ -160,8 +178,18 @@ impl Server {
                 }
                 // An object among the arguments gives the run's standard
                 // input and expected output, and flags by name (`case`).
+                // `stdin` may list choices, the first with text taken (a
+                // selection, then the clipboard); `typed` is `[line]`, the
+                // expected output typed with `\n` for each line break, or
+                // `[null]` when the prompt was cancelled, which runs nothing.
                 let given = args.iter().find(|a| a.as_object().is_some());
                 let at = |key| given.and_then(|g| g.get(key)).and_then(Value::as_str);
+                let typed = given.and_then(|g| g.get("typed")).and_then(Value::as_array);
+                let typed = typed.map(|t| t.first().and_then(Value::as_str));
+                if let Some(None) = typed {
+                    return Ok(Reply::result(Value::Null));
+                }
+                let typed = typed.flatten().map(|t| t.replace("\\n", "\n"));
                 for (flag, value) in given.and_then(Value::as_object).into_iter().flatten() {
                     let value = value.as_str().filter(|v| !v.is_empty());
                     if let (false, Some(value)) =
@@ -170,7 +198,8 @@ impl Server {
                         argv.extend([format!("--{flag}"), value.into()]);
                     }
                 }
-                if let Some(expect) = at("expect").filter(|e| !e.is_empty()) {
+                let expect = typed.as_deref().or(at("expect"));
+                if let Some(expect) = expect.filter(|e| !e.is_empty()) {
                     let file = std::env::temp_dir().join(format!(
                         "cpl-expect-{}-{}",
                         std::process::id(),
@@ -184,7 +213,12 @@ impl Server {
                 let uri = self.uri_of_file(argv.get(1).map_or("", String::as_str));
                 let id = Some(self.runs.request.clone());
                 let progress = params.get("workDoneToken").cloned();
-                let stdin = at("stdin").map(String::from);
+                let stdin = given.and_then(|g| g.get("stdin")).and_then(|s| match s.as_array() {
+                    Some(choices) => (choices.iter().filter_map(Value::as_str))
+                        .find(|c| !c.is_empty())
+                        .map(String::from),
+                    None => s.as_str().map(String::from),
+                });
                 let mut out = Vec::new();
                 if let Some(token) = &progress {
                     let title = format!("cpl {}", argv.join(" "));
@@ -335,11 +369,18 @@ impl Server {
         let quiet = job.id.is_none();
         if let Some(id) = job.id {
             let html = if page { stdout.into() } else { Value::Null };
-            let code = code.map_or(Value::Null, |c| c.into());
+            if page {
+                out.push(obj([
+                    ("jsonrpc", "2.0".into()),
+                    ("method", "cpl/page".into()),
+                    ("params", obj([("html", html.clone())])),
+                ]));
+            }
             let result = obj([
                 ("view", view.clone()),
                 ("html", html),
-                ("code", code),
+                ("ok", (code == Some(0)).into()),
+                ("code", code.map_or(Value::Null, |c| c.into())),
                 ("stderr", stderr.into()),
             ]);
             out.push(obj([
@@ -381,14 +422,19 @@ impl Server {
     fn redraw(&mut self, uri: &str) -> Vec<Value> {
         let mut out = vec![self.diagnostics(uri)];
         if self.runs.refresh {
-            self.runs.requests += 1;
-            out.push(obj([
-                ("jsonrpc", "2.0".into()),
-                ("id", format!("cpl-{}", self.runs.requests).into()),
-                ("method", "workspace/inlayHint/refresh".into()),
-            ]));
+            out.push(self.ask("workspace/inlayHint/refresh"));
         }
         out
+    }
+
+    /// A request of the server's to the client, with no parameters.
+    pub(super) fn ask(&mut self, method: &str) -> Value {
+        self.runs.requests += 1;
+        obj([
+            ("jsonrpc", "2.0".into()),
+            ("id", format!("cpl-{}", self.runs.requests).into()),
+            ("method", method.into()),
+        ])
     }
 
     /// The problem `uri`'s view reports, as a diagnostic to its line's end.

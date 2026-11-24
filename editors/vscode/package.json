@@ -38,7 +38,7 @@
   "capabilities": {
     "untrustedWorkspaces": {
       "supported": "limited",
-      "description": "In Restricted Mode CP Lang highlights .cp files but does not run `cpl`; trust the folder for diagnostics, completion and runs.",
+      "description": "In Restricted Mode CP Lang checks .cp files but runs nothing: trust the folder to run samples, stress, traces, imports and the debugger.",
       "restrictedConfigurations": ["cp.server.path", "cp.server.args", "cp.stress.args"]
     }
   },

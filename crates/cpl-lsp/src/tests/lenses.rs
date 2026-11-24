@@ -250,3 +250,51 @@ fn lenses_trace_each_fn_but_main_on_the_first_sample() {
     );
     std::fs::remove_dir_all(dir).unwrap();
 }
+
+fn replays(server: &mut Server, uri: &str) -> usize {
+    let reply = server.handle(&request(
+        2,
+        "textDocument/codeLens",
+        obj([("textDocument", obj([("uri", uri.into())]))]),
+    ));
+    (reply[0].at(&["result"]).as_array().unwrap_or(&[]).iter())
+        .filter(|l| l.at(&["command", "command"]).as_str() == Some("cp.replayCall"))
+        .count()
+}
+
+#[test]
+fn replay_lenses_wait_for_a_cp_debug_session_when_asked() {
+    let uri = "file:///tmp/replay-debugging.cp";
+    let mut server = Server::new();
+    let refresh = obj([("codeLens", obj([("refreshSupport", true.into())]))]);
+    let params = obj([
+        (
+            "initializationOptions",
+            obj([("replayLenses", "debugging".into())]),
+        ),
+        ("capabilities", obj([("workspace", refresh)])),
+    ]);
+    server.handle(&request(1, "initialize", params));
+    let doc = obj([
+        ("uri", uri.into()),
+        ("languageId", "cp".into()),
+        ("version", 1.into()),
+        (
+            "text",
+            "fn most() -> Int:\n    return 1\nprint(most())\n".into(),
+        ),
+    ]);
+    server.handle(&notification(
+        "textDocument/didOpen",
+        obj([("textDocument", doc)]),
+    ));
+    assert_eq!(replays(&mut server, uri), 0);
+    let started = server.handle(&notification("cpl/debugging", obj([("type", "cp".into())])));
+    assert_eq!(
+        started[0].at(&["method"]).as_str(),
+        Some("workspace/codeLens/refresh")
+    );
+    assert_eq!(replays(&mut server, uri), 1);
+    server.handle(&notification("cpl/debugging", obj([("type", Value::Null)])));
+    assert_eq!(replays(&mut server, uri), 0);
+}

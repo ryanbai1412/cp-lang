@@ -46,7 +46,7 @@ impl Server {
                 lens_json(line, title, "cpl.exec", args)
             })
             .collect();
-        if self.replay {
+        if self.replay && (self.debugging || !self.replay_debugging) {
             for (line, name) in replay_lenses(text) {
                 let args = vec![uri.into(), obj([("fn", name.into())])];
                 let title = "$(debug-restart) Replay this call".to_string();
@@ -229,4 +229,20 @@ fn memory_lens(
         [one, rest @ ..] => title += &format!(", not counting {one} and {} more", rest.len()),
     }
     Some((title, vec!["judges".into(), path.into()]))
+}
+
+impl Server {
+    /// `cpl/debugging` `{type}`: the debug session the editor now runs, if
+    /// any; the Replay lenses show while it is `cp`.
+    pub(super) fn debugging(&mut self, params: &Value) -> Reply {
+        self.debugging = params.at(&["type"]).as_str() == Some("cp");
+        let notifications = match self.runs.lens_refresh {
+            true => vec![self.ask("workspace/codeLens/refresh")],
+            false => Vec::new(),
+        };
+        Reply {
+            notifications,
+            ..Reply::default()
+        }
+    }
 }

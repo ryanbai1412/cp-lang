@@ -12,16 +12,20 @@ const REQUEST_FAILED: i32 = -32803;
 impl Server {
     /// `workspace/executeCommand` of `cpl.import` with arguments
     /// `[path, port?]`: problems land in `path`, or the folder of the file
-    /// it names. Answers `{port}` once it listens.
+    /// it names, or the workspace's folder. Answers `{port}` once it listens.
     pub(super) fn import(&self, arguments: &[Value]) -> Result<Value, (i32, String)> {
         let outbox = self.outbox.clone().ok_or((
             REQUEST_FAILED,
             "this server has no way to open the files it would create".to_string(),
         ))?;
-        let path = arguments.first().and_then(Value::as_str).ok_or((
-            INVALID_PARAMS,
-            "`cpl.import` takes the folder the problems go in".to_string(),
-        ))?;
+        let path = arguments.first().and_then(Value::as_str);
+        let path = path
+            .map(String::from)
+            .or_else(|| self.root.clone())
+            .ok_or((
+                INVALID_PARAMS,
+                "Import a Problem: open a folder first; the problem lands there.".to_string(),
+            ))?;
         let path = PathBuf::from(path);
         let dir = if path.is_file() {
             path.parent().map(Path::to_path_buf).unwrap_or_default()
