@@ -1130,6 +1130,11 @@ class DanglingReferenceTest(unittest.TestCase):
         (self.root / "loose.md").write_text(f"{PKGS}/gone\n")
         self.assertEqual(corpus.dangling_references(), [])
 
+    def test_a_script_tests_fixture_is_not_a_reference(self):
+        self.track("scripts/test_x.py", f"{PKGS}/gone\n")
+        self.track("scripts/x.py", f"{PKGS}/gone\n")
+        self.assertEqual(corpus.dangling_references(), [("scripts/x.py", 1, f"{PKGS}/gone")])
+
     def test_check_fails_on_a_dangling_reference(self):
         err = io.StringIO()
         with mock.patch.object(corpus, "generate", return_value={}), mock.patch.object(corpus, "problems", return_value=[]), \

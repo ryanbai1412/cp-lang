@@ -1577,8 +1577,10 @@ PATH_REF = re.compile(r"(?<![\w./-])corpus/(problems|submissions)/([\w-](?:[\w.-
 
 def dangling_references():
     """(file, line, path) for each `corpus/problems/<id>` or `corpus/submissions/<file>`
-    a tracked file outside corpus/ names that doesn't exist; a trailing `*` names a prefix."""
-    out = subprocess.run(["git", "grep", "-n", "-I", "-E", "corpus/(problems|submissions)/", "--", ".", ":!corpus"],
+    a tracked file outside corpus/ names that doesn't exist; a trailing `*` names a prefix.
+    A script's tests are skipped: their fixtures name packages in a temporary tree."""
+    out = subprocess.run(["git", "grep", "-n", "-I", "-E", "corpus/(problems|submissions)/", "--", ".", ":!corpus",
+                          ":!scripts/test_*.py"],
                          cwd=ROOT, capture_output=True, text=True).stdout
     found = []
     for hit in out.splitlines():
