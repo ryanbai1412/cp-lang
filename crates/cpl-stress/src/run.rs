@@ -10,6 +10,8 @@ use crate::program::Program;
 use crate::rng::Rng;
 use crate::shrink::shrink;
 use crate::spec::{InputSpec, DEFAULT_INT};
+use std::cell::{Cell, RefCell};
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
@@ -175,24 +177,113 @@ enum Tried {
     /// The solution ran and was judged.
     Judged(Wrong),
     /// The program stopped, and nothing that ran says it should not
-    /// have: the brute stopped too, or there is none.
-    Stopped,
+    /// have: the brute stopped too, or there is none. Holds the run's
+    /// result when it has one.
+    Stopped(Option<Wrong>),
 }
 
 /// Like `engine.run`, for an input made from guessed ranges.
 fn attempt(engine: &dyn Engine, input: &str) -> Result<Tried, StressError> {
-    match engine.run(input) {
-        Ok(Some(Failed {
-            verdict: Verdict::RuntimeError(_) | Verdict::TimeLimit,
-            ..
-        })) if !engine.has_brute() => Ok(Tried::Stopped),
-        Ok(Some(Failed {
-            verdict: Verdict::BruteError(_),
-            ..
-        })) if engine.stops(input) => Ok(Tried::Stopped),
+    tried(engine, input, engine.run(input))
+}
+
+/// What `ran`, the run of `input` under the full limit, says of an input
+/// made from guessed ranges.
+fn tried(
+    engine: &dyn Engine,
+    input: &str,
+    ran: Result<Wrong, StressError>,
+) -> Result<Tried, StressError> {
+    match ran {
+        Ok(Some(
+            failed @ Failed {
+                verdict: Verdict::RuntimeError(_) | Verdict::TimeLimit,
+                ..
+            },
+        )) if !engine.has_brute() => Ok(Tried::Stopped(Some(Some(failed)))),
+        Ok(Some(
+            failed @ Failed {
+                verdict: Verdict::BruteError(_),
+                ..
+            },
+        )) if engine.stops(input) => Ok(Tried::Stopped(Some(Some(failed)))),
         Ok(wrong) => Ok(Tried::Judged(wrong)),
-        Err(_) if engine.stops(input) => Ok(Tried::Stopped),
+        Err(_) if engine.stops(input) => Ok(Tried::Stopped(None)),
         Err(e) => Err(e),
+    }
+}
+
+/// How many runs out of the full time limit narrowing or shrinking one
+/// case may spend: each costs the whole limit.
+pub(crate) const TLE_RUNS: u32 = 4;
+
+/// The runs that narrow or shrink one case. Each input runs once under
+/// the full limit, and once [`TLE_RUNS`] of these runs have run out of
+/// it, no more candidates are tried under it. Runs under a shorter limit
+/// are cheap, and their timing is not kept: a busy machine can slow one.
+struct Runs<'e> {
+    engine: &'e dyn Engine,
+    seen: RefCell<HashMap<String, Wrong>>,
+    timeouts: Cell<u32>,
+}
+
+impl<'e> Runs<'e> {
+    fn new(engine: &'e dyn Engine) -> Self {
+        Runs {
+            engine,
+            seen: RefCell::default(),
+            timeouts: Cell::new(0),
+        }
+    }
+
+    /// Records that `input`, the case itself, ran under the full limit as
+    /// `wrong`.
+    fn knows(&self, input: &str, wrong: &Wrong) {
+        self.seen
+            .borrow_mut()
+            .insert(input.to_string(), wrong.clone());
+    }
+
+    /// True once no more candidates run under the full limit.
+    fn spent(&self) -> bool {
+        self.timeouts.get() >= TLE_RUNS
+    }
+
+    /// `engine.run_within`, once per input under the full limit.
+    fn within(&self, input: &str, limit: Duration) -> Result<Wrong, StressError> {
+        if limit < self.engine.limit() {
+            return self.engine.run_within(input, limit);
+        }
+        if let Some(wrong) = self.seen.borrow().get(input) {
+            return Ok(wrong.clone());
+        }
+        let wrong = self.engine.run_within(input, limit)?;
+        if matches!(&wrong, Some(failed) if failed.verdict == Verdict::TimeLimit) {
+            self.timeouts.set(self.timeouts.get() + 1);
+        }
+        self.knows(input, &wrong);
+        Ok(wrong)
+    }
+
+    fn run(&self, input: &str) -> Result<Wrong, StressError> {
+        self.within(input, self.engine.limit())
+    }
+
+    /// How a shrink candidate fails under `limit`, if it is tried at all.
+    fn candidate(&self, input: &str, limit: Duration) -> Option<Failed> {
+        let costly = limit >= self.engine.limit();
+        if costly && self.spent() && !self.seen.borrow().contains_key(input) {
+            return None;
+        }
+        self.within(input, limit).ok().flatten()
+    }
+
+    /// [`attempt`], unless the time-limit runs are spent.
+    fn attempt(&self, input: &str) -> Option<Tried> {
+        if self.spent() {
+            return None;
+        }
+        tried(self.engine, input, self.run(input)).ok()
     }
 }
 
@@ -388,14 +479,18 @@ pub fn stress_with(
                     continue;
                 };
                 let seed = options.seed.wrapping_add(*index as u64);
+                let runs = Runs::new(engine);
                 let wrong = match tried {
                     Tried::Judged(wrong) => wrong,
-                    Tried::Stopped => {
+                    Tried::Stopped(ran) => {
+                        if let Some(wrong) = &ran {
+                            runs.knows(&input, wrong);
+                        }
                         // A narrower range that this seed runs under is taken,
                         // and the cases from here on are made again from it.
                         let found = match (&typed, &case) {
                             (Some(spec), Made::Typed(case)) => {
-                                narrow(spec, case, seed, options.size, engine)
+                                narrow(spec, case, seed, options.size, &runs)
                             }
                             _ => None,
                         };
@@ -409,7 +504,10 @@ pub fn stress_with(
                             continue 'narrow;
                         }
                         // Nothing explains it away: it is reported as it is.
-                        engine.run(&input)?
+                        match ran {
+                            Some(wrong) => wrong,
+                            None => runs.run(&input)?,
+                        }
                     }
                 };
                 let Some(failed) = wrong else {
@@ -419,6 +517,7 @@ pub fn stress_with(
                     }
                     continue;
                 };
+                runs.knows(&input, &Some(failed.clone()));
                 let mut failure = Failure::new(index + 1, seed, input, failed, false);
                 // Same bug only: a candidate must fail the same way.
                 let kind = std::mem::discriminant(&failure.verdict);
@@ -428,13 +527,13 @@ pub fn stress_with(
                     let mut smallest = case.clone();
                     for &within in &limits {
                         let found = shrink(spec, case, options.shrink_budget, &mut |candidate| {
-                            matches!(engine.run_within(&candidate.render(), within),
-                                Ok(Some(failed)) if fails_as(&failed.verdict))
+                            runs.candidate(&candidate.render(), within)
+                                .is_some_and(|failed| fails_as(&failed.verdict))
                         });
                         if found == *case {
                             break;
                         }
-                        if let Some(failed) = engine.run(&found.render())? {
+                        if let Some(failed) = runs.run(&found.render())? {
                             if fails_as(&failed.verdict) {
                                 failure.take(failed);
                                 failure.input = found.render();
@@ -453,12 +552,15 @@ pub fn stress_with(
                             *generator,
                             drawn,
                             options.shrink_budget,
-                            &mut |input| matches!(engine.run_within(input, within), Ok(Some(failed)) if fails_as(&failed.verdict)),
+                            &mut |input| {
+                                runs.candidate(input, within)
+                                    .is_some_and(|failed| fails_as(&failed.verdict))
+                            },
                         );
                         if found == *drawn {
                             break;
                         }
-                        if let Some(failed) = engine.run(&found.input)? {
+                        if let Some(failed) = runs.run(&found.input)? {
                             if fails_as(&failed.verdict) {
                                 failure.take(failed);
                                 failure.input = found.input.clone();
@@ -498,13 +600,19 @@ pub fn stress_with(
 /// a stuck run costs a hundredth of the limit, not all of it.
 const TLE_SHRINK_SPLIT: u32 = 100;
 
+/// The least a short limit is: below it, starting a process at all can
+/// take longer than a run that ends at once.
+const SHORT_LIMIT: Duration = Duration::from_millis(30);
+
 /// The limits a failure shrinks under. A time limit shrinks under a short
 /// one first; the case it reaches must still run past the full limit, or
-/// it shrinks again under that.
+/// it shrinks under the short one again, as a busy machine can slow a
+/// run past it, and then under the full one.
 fn shrink_limits(engine: &dyn Engine, time_limit: bool) -> Vec<Duration> {
     let full = engine.limit();
     if time_limit {
-        vec![full / TLE_SHRINK_SPLIT, full]
+        let short = (full / TLE_SHRINK_SPLIT).max(SHORT_LIMIT.min(full));
+        vec![short, short, full]
     } else {
         vec![full]
     }
@@ -520,11 +628,12 @@ fn narrow(
     case: &Case,
     seed: u64,
     size: i128,
-    engine: &dyn Engine,
+    tries: &Runs,
 ) -> Option<(InputSpec, String)> {
+    let engine = tries.engine;
     let runs = |spec: &InputSpec| {
         generate(spec, &mut Rng::new(seed), Size::Small(size))
-            .is_some_and(|case| matches!(attempt(engine, &case.render()), Ok(Tried::Judged(_))))
+            .is_some_and(|case| matches!(tries.attempt(&case.render()), Some(Tried::Judged(_))))
     };
     let outside = |name: &str, lo: i128, hi: i128| {
         case.values_of(spec, name)

@@ -1421,3 +1421,76 @@ fn an_in_process_interactor_runs_once_per_case() {
     let runs = crate::duplex::INTERACTOR_RUNS.with(|runs| runs.get()) - before;
     assert_eq!(runs, 40);
 }
+
+/// A solution, with no brute, that runs out of any limit under the full
+/// one, and out of the full limit on inputs longer than `stuck_over` bytes.
+/// `full_runs` counts the runs that spent the full limit.
+struct Spins {
+    stuck_over: usize,
+    full_runs: std::sync::atomic::AtomicU32,
+}
+
+impl crate::engine::Engine for Spins {
+    fn has_brute(&self) -> bool {
+        false
+    }
+
+    fn stops(&self, _: &str) -> bool {
+        true
+    }
+
+    fn limit(&self) -> Duration {
+        Duration::from_millis(300)
+    }
+
+    fn run_within(
+        &self,
+        input: &str,
+        limit: Duration,
+    ) -> Result<crate::case::Wrong, crate::run::StressError> {
+        let full = limit >= self.limit();
+        let spins = !full || input.len() > self.stuck_over;
+        if full && spins {
+            self.full_runs
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        }
+        Ok(spins
+            .then(|| crate::case::Failed::new(Verdict::TimeLimit, String::new(), String::new())))
+    }
+}
+
+/// Runs out of the full time limit cost the whole limit each, so narrowing
+/// and shrinking a time-limit case spend a bounded number of them.
+#[test]
+fn a_time_limit_case_spends_a_bounded_number_of_full_limit_runs() {
+    let spec = InputSpec::from_source(
+        "let k: Int = read()\nlet n: 1..=8 = read()\nlet a: [0..n]0..=10 = read()\n",
+    )
+    .unwrap();
+    // Stuck on every input, the smallest included; then stuck only on
+    // long ones, so the short case the quick shrink reaches passes.
+    for stuck_over in [0, 12] {
+        let engine = Spins {
+            stuck_over,
+            full_runs: Default::default(),
+        };
+        let options = Options {
+            cases: 30,
+            jobs: 1,
+            size: 8,
+            ..Options::default()
+        };
+        let report =
+            crate::run::stress_with(&crate::run::InputSource::Typed(&spec), &engine, &options)
+                .unwrap();
+        let failure = report.failure.expect("a time-limit case");
+        assert_eq!(failure.verdict, Verdict::TimeLimit);
+        let runs = engine.full_runs.into_inner();
+        // The case itself, the bounded runs, and the check that the case
+        // a quick shrink reached still runs out of the full limit.
+        assert!(
+            runs <= 2 + crate::run::TLE_RUNS,
+            "{runs} full-limit runs (stuck over {stuck_over} bytes)"
+        );
+    }
+}
