@@ -68,7 +68,7 @@ class LandTest(unittest.TestCase):
         git(repo, "commit", "-q", "--no-verify", "-m", msg, "-m", "Domain: infra")
 
     def land(self, repo, **extra):
-        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_TRIES": "1", **extra}
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", **extra}
         return subprocess.run(["bash", "scripts/land.sh"], cwd=repo, env=env, capture_output=True, text=True)
 
     def test_a_generated_file_conflict_takes_mains_copy_and_lands(self):
@@ -518,6 +518,25 @@ class LandTest(unittest.TestCase):
         self.assertIn("pushed", r.stdout)
         self.assertEqual(self.lock_on_remote(), "")
 
+    def test_every_pull_that_changes_land_sh_re_execs(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        pending, runs = self._steps_runner(ours)
+        git(theirs, "pull", "-q", "origin", "main")
+        land = theirs / "scripts" / "land.sh"
+        land.write_text(land.read_text() + "# main's later fix\n")
+        self.commit(theirs, "main's land.sh")
+        mine = ours / "scripts" / "land.sh"
+        mine.write_text(mine.read_text().replace("set -euo pipefail\n",
+                                                 "set -euo pipefail\necho 'land: the new copy runs' >&2\n", 1))
+        (ours / "pkg.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        pending.write_text("nextest\n")
+        # Ours's own copy at the first pull, then main's fix that lands mid-run.
+        r = self.land(ours, CI_RUNS=str(runs), RACE=str(theirs), CPL_LAND_TRIES="3")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stderr.count("landing with the new copy"), 2, r.stderr)
+        self.assertIn("pushed", r.stdout)
+
     def test_a_pull_that_changes_land_sh_lands_with_the_new_copy_once(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         pending, runs = self._steps_runner(ours)
@@ -683,13 +702,13 @@ exec {shutil.which("git")} "$@"
         (repo / "pkg.txt").write_text("x\n")
         self.commit(repo, "ours")
         env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")},
-               "CPL_LAND_TRIES": "1"}
+               "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", "CPL_LAND_HEARTBEAT": "2"}
         land = subprocess.Popen(["bash", "scripts/land.sh"], cwd=repo, env=env,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         for line in land.stderr:
             if "waiting in line behind 1000000000000000000-1-other" in line:
                 break
-        # Ours heartbeats its ticket (every 10 s) and keeps waiting, past what
+        # Ours heartbeats its ticket (every CPL_LAND_HEARTBEAT s) and keeps waiting, past what
         # lock_wait would have allowed, until the earlier waiter is gone.
         ours = lambda: [l.split() for l in git(repo, "ls-remote", "origin", "refs/locks/queue/*").splitlines()
                         if "-other" not in l]
@@ -702,7 +721,52 @@ exec {shutil.which("git")} "$@"
         self.assertEqual(land.returncode, 0, err)
         self.assertIn("pushed", out)
         self.assertNotIn("no land lock", err)
+        self.assertNotIn("ahead in line", err)
         self.assertEqual(self.tickets_on_remote(repo), [])
+
+    def test_without_cpl_land_queue_a_land_ignores_the_line(self):
+        repo = self.clone("lane")
+        self.ticket(repo, "1000000000000000000-1-other")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_QUEUE="")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertNotIn("in line", r.stderr)
+        self.assertEqual(self.tickets_on_remote(repo), ["1000000000000000000-1-other"])
+
+    def test_a_live_head_that_leaves_the_lock_free_loses_its_place(self):
+        repo = self.clone("lane")
+        stuck = "1000000000000000000-1-stuck"
+        self.ticket(repo, stuck)
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")},
+               "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", "CPL_LAND_LOCK_STALE": "3"}
+        land = subprocess.Popen(["bash", "scripts/land.sh"], cwd=repo, env=env,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+        err = []
+        reader = threading.Thread(target=lambda: err.extend(land.stderr))
+        reader.start()
+        # The stuck lane heartbeats (so it never expires as dead) but never locks.
+        while land.poll() is None and not any("left the land lock free" in l for l in err):
+            self.ticket(repo, stuck)
+        out = land.stdout.read()
+        land.wait(timeout=120)
+        reader.join()
+        self.assertEqual(land.returncode, 0, "".join(err))
+        self.assertIn(f"land: dropping queue ticket {stuck}: first in line but left the land lock free", "".join(err))
+        self.assertIn("pushed", out)
+
+    def test_a_waiter_far_back_in_line_polls_less(self):
+        # Compiler's 58-waiter queue at 2 s polls drew GitHub 504s.
+        repo = self.clone("lane")
+        for i in range(3):
+            self.ticket(repo, f"100000000000000000{i}-1-other")
+        (repo / "pkg.txt").write_text("x\n")
+        self.commit(repo, "ours")
+        r = self.land(repo, CPL_LAND_LOCK_WAIT="2", CPL_LAND_QUEUE_POLL="1")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("land: 3 ahead in line; looking every 1s", r.stderr)
 
     def test_a_rejected_push_tries_again_holding_the_lock_and_its_place(self):
         repo = self.clone("lane")
