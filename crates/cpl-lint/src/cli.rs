@@ -7,7 +7,7 @@ use crate::{
 use cpl_diag::{Diagnostic, Severity};
 use std::collections::BTreeMap;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub const USAGE: &str = "\
 usage: cpl lint [--fix] [--taste] [--save] [path]...
@@ -134,7 +134,7 @@ pub fn run_with(
     }
     let mut files = Vec::new();
     for path in &paths {
-        if let Err(e) = collect(path, &mut files) {
+        if let Err(e) = cpl_syntax::files::collect(path, &mut files) {
             let _ = writeln!(stderr, "error: can't read {}: {e}", path.display());
             return 1;
         }
@@ -357,30 +357,6 @@ fn show(stdout: &mut dyn Write, diagnostics: &[Diagnostic], name: &str, src: &st
             cpl_diag::render(diagnostic, name, src, &lines)
         );
     }
-}
-
-/// Adds `path`, or every `.cp` file under it, to `files`.
-fn collect(path: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
-    if !path.is_dir() {
-        // Reading it is what reports a missing file.
-        std::fs::metadata(path)?;
-        files.push(path.to_path_buf());
-        return Ok(());
-    }
-    for entry in std::fs::read_dir(path)? {
-        let entry = entry?;
-        let child = entry.path();
-        let name = entry.file_name();
-        let hidden = name.to_string_lossy().starts_with('.');
-        if child.is_dir() {
-            if !hidden && name != "target" {
-                collect(&child, files)?;
-            }
-        } else if child.extension().is_some_and(|e| e == "cp") {
-            files.push(child);
-        }
-    }
-    Ok(())
 }
 
 /// `cpl lint --list --json`: `{"lints": [...]}`, every record in

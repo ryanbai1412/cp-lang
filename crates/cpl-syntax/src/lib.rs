@@ -14,6 +14,7 @@
 pub mod ast;
 pub mod const_int;
 pub mod doc;
+pub mod files;
 pub mod grammar;
 mod items;
 mod lexer;

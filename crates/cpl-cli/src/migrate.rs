@@ -8,7 +8,7 @@
 
 use crate::check::errors_in;
 use std::io::Write;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub(crate) const USAGE: &str = "\
 usage: cpl migrate [path]... [--check] [--json]
@@ -63,7 +63,7 @@ pub(crate) fn migrate(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &m
     }
     let mut files = Vec::new();
     for root in roots {
-        if let Err(error) = collect(Path::new(root), &mut files) {
+        if let Err(error) = cpl_syntax::files::collect(Path::new(root), &mut files) {
             *stderr += &format!("cpl: can't read `{root}`: {error}\n");
             return crate::EXIT_USAGE;
         }
@@ -122,29 +122,6 @@ pub(crate) fn migrate(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &m
         let _ = writeln!(stdout, "{} files use the current spellings", files.len());
     }
     code
-}
-
-/// Adds `path`, or every `.cp` file under it, to `files`: brutes and
-/// generators in `d.tests/` too, but not hidden folders or `target`.
-fn collect(path: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
-    if !path.is_dir() {
-        std::fs::metadata(path)?;
-        files.push(path.to_path_buf());
-        return Ok(());
-    }
-    for entry in std::fs::read_dir(path)? {
-        let entry = entry?;
-        let child = entry.path();
-        let name = entry.file_name();
-        if child.is_dir() {
-            if !name.to_string_lossy().starts_with('.') && name != "target" {
-                collect(&child, files)?;
-            }
-        } else if child.extension().is_some_and(|e| e == "cp") {
-            files.push(child);
-        }
-    }
-    Ok(())
 }
 
 /// The changed lines between `old` and `new`, one hunk per run of changes,
