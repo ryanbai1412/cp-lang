@@ -1327,16 +1327,13 @@ pub fn simplex(
         (bb[r], nn[s]) = (nn[s], bb[r])
     fn run(phase: Int) -> Bool:
         // Bland's rule breaks exact ties by index, as kactl's LPSolver does.
-        with lint(float_equality: allow)
         let x = m + phase - 1
         loop:
             var pick: ?Int = None
             for j in 0..=n:
                 if nn[j] != -phase:
                     if let t = pick:
-                        if d[x * w + j] < d[x * w + t] or (
-                            d[x * w + j] == d[x * w + t] and nn[j] < nn[t]
-                        ): pick = j
+                        if (d[x * w + j], nn[j]) < (d[x * w + t], nn[t]): pick = j
                     else: pick = j
             let s = pick!
             if d[x * w + s] >= -eps: return true
@@ -1346,7 +1343,7 @@ pub fn simplex(
                     if let r = row:
                         let qi = d[i * w + n + 1] / d[i * w + s]
                         let qr = d[r * w + n + 1] / d[r * w + s]
-                        if qi < qr or (qi == qr and bb[i] < bb[r]): row = i
+                        if (qi, bb[i]) < (qr, bb[r]): row = i
                     else: row = i
             let r = row ?? return false
             pivot(r, s)
@@ -1359,12 +1356,9 @@ pub fn simplex(
             if not run(2) or d[(m + 1) * w + n + 1] < -eps: return None
             for i in 0..m:
                 if bb[i] == -1:
-                    with lint(float_equality: allow)
                     var s = 0
                     for j in 1..=n:
-                        if d[i * w + j] < d[i * w + s] or (
-                            d[i * w + j] == d[i * w + s] and nn[j] < nn[s]
-                        ): s = j
+                        if (d[i * w + j], nn[j]) < (d[i * w + s], nn[s]): s = j
                     pivot(i, s)
     if not run(1): return None
     var x = List.filled(n, 0.0)
