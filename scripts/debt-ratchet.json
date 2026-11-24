@@ -10,7 +10,7 @@
     "crates/cpl-check/src/check/stmt.rs": 2958,
     "crates/cpl-check/src/check/lends.rs": 2480
   },
-  "stdlib_todo": 15,
+  "stdlib_todo": 14,
   "rust_ignore": 14,
   "pending_tests": 0,
   "edition_refs": 0,
