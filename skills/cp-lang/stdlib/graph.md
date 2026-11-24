@@ -157,7 +157,6 @@ The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u
 - `fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>` — \(O(n + m)\); `Graph.undirected` on a plain list of `(u, v)` pairs: each pair gives arcs both ways, each arc the target vertex itself.
 - `fn deg<V, A>(self: [V]List<A>, u: V) -> Int` — \(O(1)\); The number of arcs out of `u` in an adjacency list, as `Graph.deg` is for a `Graph`.
 - `fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V` — \(O(1)\) per vertex yielded; Where `u`'s arcs lead in an adjacency list, as `Graph.next` is for a `Graph`: each entry's target, repeats kept.
-- `fn contains<V>(self: [V]List<V>, u: V, v: V) -> Bool` — \(O(\deg u)\); True when the adjacency list has an arc `u -> v`, as `Graph.contains` is for a `Graph`.
 - `fn transpose<V>(self: [V]List<V>) -> [V]List<V>` — \(O(n + m)\), a new adjacency list; The reverse of an adjacency list: `v` lists `u` once for each arc `u -> v`, `u` ascending.
 - `fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C)` — \(O(n + m)\); The connected components of an undirected graph, as a fresh domain `C` and each vertex's component.
 - `fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>` — \(O(n + m)\); The arcs between components: `out[comp[u]]` gets `(to: comp[a.to])` for every arc `a` of `u` that leaves its component.

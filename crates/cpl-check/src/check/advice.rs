@@ -1805,6 +1805,49 @@ impl Checker<'_> {
         Some(Ty::Bool)
     }
 
+    /// `g.contains(u, v)` or `g.has(u, v)` on a list of lists: the arc test is
+    /// `u`'s own list's `contains` (decision 525).
+    pub(super) fn adjacency_contains(
+        &mut self,
+        whole: &Expr,
+        callee: &Expr,
+        args: &[Arg],
+    ) -> Option<Ty> {
+        let ExprKind::Field { base, name } = &callee.kind else {
+            return None;
+        };
+        let [u, v] = args else { return None };
+        if !matches!(name.text.as_str(), "contains" | "has")
+            || u.name.is_some()
+            || v.name.is_some()
+            || self.global(&name.text).is_some()
+        {
+            return None;
+        }
+        let base_ty = self.quietly(|c| c.infer(base));
+        if !matches!(base_ty.seq_elem()?, Ty::Named { name, .. } if name == "List") {
+            return None;
+        }
+        self.infer(&u.value);
+        self.infer(&v.value);
+        let text = |s: Span| &self.src[s.start as usize..s.end as usize];
+        let new = format!(
+            "{}[{}].contains({})",
+            text(base.span),
+            text(u.value.span),
+            text(v.value.span)
+        );
+        let message = format!(
+            "a list of lists has no `{}(u, v)`; an arc test asks `u`'s list",
+            name.text
+        );
+        if let Some(diag) = self.error(codes::REMOVED_SYNTAX, whole.span, message) {
+            diag.help = Some(format!("write `{new}`"));
+            diag.fix(format!("write `{new}`"), whole.span, new);
+        }
+        Some(Ty::Bool)
+    }
+
     /// An enum's tokens are a distinct `@tag` on each variant; `@tags("U",
     /// "D")` above the enum is removed (R02.7.2, decision 459).
     pub(super) fn enum_tags(

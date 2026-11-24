@@ -651,15 +651,6 @@ pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
 pub fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V:
     for a in self[u]: yield a.to
 
-/// True when the adjacency list has an arc `u -> v`, as `Graph.contains` is for a `Graph`. A scan
-/// of `u`'s list, not a lookup.
-///
-/// cost: \(O(\deg u)\)
-/// traps: never
-/// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.contains(0, 2) and not g.contains(2, 0)`
-/// empty: false for a vertex with no arcs
-pub fn contains<V>(self: [V]List<V>, u: V, v: V) -> Bool = self[u].contains(v)
-
 /// The reverse of an adjacency list: `v` lists `u` once for each arc `u -> v`, `u` ascending.
 ///
 /// cost: \(O(n + m)\), a new adjacency list
