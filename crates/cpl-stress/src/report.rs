@@ -44,7 +44,7 @@ impl StressResult {
         let mut put = |key: &str, value: Value| out.insert(key.to_string(), value);
         put("case_count", report.cases.into());
         if let Some(panel) = &self.panel {
-            put("view", view_json(&crate::view::view(self, panel.clone())));
+            put("view", crate::view::view(self, panel.clone()).to_value());
         }
         if let Some(build) = &self.build {
             put("build", build.as_str().into());
@@ -200,19 +200,6 @@ pub fn render_error(error: &StressError) -> String {
 /// A stress result's JSON as one line in its published key order.
 pub fn render_json(value: &Value) -> String {
     format!("{}\n", cpl_json::to_string_ordered(value, &ORDER))
-}
-
-/// The view as a value of the report, as `cpl_diag::view` writes it.
-fn view_json(view: &cpl_diag::view::View) -> Value {
-    let written = cpl_json::write_with(|w| {
-        w.object();
-        view.write(w);
-        w.end();
-    });
-    cpl_json::parse(&written)
-        .unwrap_or_default()
-        .at(&["view"])
-        .clone()
 }
 
 fn optional(text: Option<&str>) -> Value {

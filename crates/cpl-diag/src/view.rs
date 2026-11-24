@@ -74,6 +74,19 @@ pub struct Diagnostic {
 }
 
 impl View {
+    /// The view as a value, for a report built as a `cpl_json::Value`.
+    pub fn to_value(&self) -> cpl_json::Value {
+        let written = cpl_json::write_with(|w| {
+            w.object();
+            self.write(w);
+            w.end();
+        });
+        cpl_json::parse(&written)
+            .unwrap_or_default()
+            .at(&["view"])
+            .clone()
+    }
+
     /// Writes `"view": {...}` into the object `w` has open.
     pub fn write(&self, w: &mut Writer) {
         w.key("view").object().key("panel").str(&self.panel);

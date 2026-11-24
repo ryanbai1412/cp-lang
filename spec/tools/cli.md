@@ -166,7 +166,12 @@ per choice it explains.
 "examples", "links"}]}`; each item carries its `aliases`, the names
 `spec/lib/inventory.md` gives it elsewhere (empty outside std).
 `cpl test --format json` prints `{"passed_count", "case_count", "cases": [{"name",
-"verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained"}]}`.
+"verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained", "outcome",
+"message"}], "view": {"panel", "status": {"line", "ok", "label"}}}`: each case's
+`outcome` as a test tree shows it (`passed`, `failed` for a wrong answer, `errored`
+otherwise) and its `message` when it did not pass (`WA: first difference at line 1,
+token 1: expected `7`, got `6``); the view's panel is the text `cpl test` prints and its
+status `2/3 passed`.
 `cpl test --list --json` prints `{"cases": [{"name", "input"}]}`: the
 cases in the order `cpl test` runs them, each `input` its `.in` file; the
 editors' test trees list them so.

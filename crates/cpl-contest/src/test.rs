@@ -15,6 +15,7 @@ use crate::problem::{
     cases_in, find_checker, find_grader, find_interactor, find_tests_dir, hidden_cases_in,
     source_path, tests_dir, Limits, TestCase,
 };
+use cpl_diag::view::{Status, View};
 use cpl_diag::Shown;
 use cpl_stress::args::Args;
 use cpl_stress::cli::{select_judge, solution};
@@ -57,7 +58,7 @@ options:
   --memory-limit MB  peak memory per case, past which a case is MLE (default:
                      the problem's limit)
   --format json      print `{\"cases\": [...], \"passed_count\",
-                     \"case_count\"}`, each case with its name, verdict (null
+                     \"case_count\", \"view\"}`, each case with its name, verdict (null
                      when unjudged), time_ms, peak_kb, expected, output, why
                      and explained
   --format teamcity  print one TeamCity service message per case event, as
@@ -242,6 +243,8 @@ pub fn results_json(results: &[CaseResult]) -> cpl_json::Value {
             ("output", text(&r.output)),
             ("why", maybe(why)),
             ("explained", maybe(r.explained.as_deref())),
+            ("outcome", text(outcome(r))),
+            ("message", maybe(failure_message(r).as_deref())),
         ])
     });
     let passed = results.iter().filter(|r| r.passed()).count();
@@ -249,7 +252,47 @@ pub fn results_json(results: &[CaseResult]) -> cpl_json::Value {
         ("cases", Value::Array(cases.collect())),
         ("passed_count", Value::Int(passed as i64)),
         ("case_count", Value::Int(results.len() as i64)),
+        ("view", view(results).to_value()),
     ])
+}
+
+/// How a case shows in a test tree: `passed`, `failed` (a wrong answer) or
+/// `errored` (it crashed, ran out of time or memory, or the judge failed).
+fn outcome(r: &CaseResult) -> &'static str {
+    match &r.verdict {
+        _ if r.passed() => "passed",
+        Some(Verdict::Wrong(_)) => "failed",
+        _ => "errored",
+    }
+}
+
+/// Why a case failed, in one line: `WA: first difference at line 1, ...`.
+fn failure_message(r: &CaseResult) -> Option<String> {
+    let verdict = r.verdict.as_ref().filter(|_| !r.passed())?;
+    let why = match verdict {
+        Verdict::Wrong(why) | Verdict::RuntimeError(why) => Some(why.as_str()),
+        _ => None,
+    };
+    let parts = [Some(verdict.code()), why, r.explained.as_deref()];
+    Some(parts.into_iter().flatten().collect::<Vec<_>>().join(": "))
+}
+
+/// What an editor shows of a run (spec/tools/cli.md, "The view"): the text
+/// `cpl test` prints, and `2/3 passed` on line 0.
+fn view(results: &[CaseResult]) -> View {
+    let passed = results.iter().filter(|r| r.passed()).count();
+    let label = format!("{passed}/{} passed", results.len());
+    let status = Status {
+        line: 0,
+        ok: passed == results.len(),
+        label,
+        detail: None,
+    };
+    View {
+        panel: render(results),
+        status: Some(status),
+        ..View::default()
+    }
 }
 
 /// One TeamCity service message (`##teamcity[KIND name='value' ...]`) and its newline.
@@ -288,16 +331,7 @@ pub fn render_teamcity(results: &[CaseResult], dir: &Path) -> String {
         if !r.output.is_empty() {
             out += &service_message("testStdOut", &[("name", name), ("out", &r.output)]);
         }
-        if let Some(verdict) = r.verdict.as_ref().filter(|_| !r.passed()) {
-            let why = match verdict {
-                Verdict::Wrong(why) | Verdict::RuntimeError(why) => Some(why.as_str()),
-                _ => None,
-            };
-            let message = [Some(verdict.code()), why, r.explained.as_deref()]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>()
-                .join(": ");
+        if let (Some(verdict), Some(message)) = (&r.verdict, failure_message(r)) {
             let mut attrs = vec![("name", name), ("message", message.as_str())];
             if let (Verdict::Wrong(_), Some(expected)) = (verdict, r.expected.as_deref()) {
                 attrs.extend([

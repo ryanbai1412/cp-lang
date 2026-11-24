@@ -1346,3 +1346,66 @@ fn test_and_stress_trap_on_overflow_as_run_does() {
     );
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn test_json_says_how_each_case_shows_in_a_test_tree() {
+    let case = |name: &str, verdict: Option<Verdict>, explained: Option<&str>| test::CaseResult {
+        name: name.into(),
+        verdict,
+        elapsed: Duration::from_millis(3),
+        peak_kb: None,
+        expected: Some("7\n".into()),
+        output: "6\n".into(),
+        explained: explained.map(Into::into),
+    };
+    let results = [
+        case("1", Some(Verdict::Accepted), None),
+        case("2", None, None),
+        case(
+            "3",
+            Some(Verdict::Wrong("first difference at line 1".into())),
+            None,
+        ),
+        case(
+            "4",
+            Some(Verdict::RuntimeError("exit 101".into())),
+            Some("index 5 out of 0..5"),
+        ),
+        case("5", Some(Verdict::TimeLimit), None),
+    ];
+    let json = test::results_json(&results);
+    let shown: Vec<_> = (json.at(&["cases"]).as_array().unwrap().iter())
+        .map(|c| {
+            (
+                c.at(&["outcome"]).as_str().unwrap(),
+                c.at(&["message"]).as_str(),
+            )
+        })
+        .collect();
+    assert_eq!(
+        shown,
+        [
+            ("passed", None),
+            ("passed", None),
+            ("failed", Some("WA: first difference at line 1")),
+            ("errored", Some("RE: exit 101: index 5 out of 0..5")),
+            ("errored", Some("TLE")),
+        ]
+    );
+    assert_eq!(
+        json.at(&["view", "panel"]).as_str(),
+        Some(render(&results).as_str())
+    );
+    let status = json.at(&["view", "status"]);
+    assert_eq!(status.at(&["label"]).as_str(), Some("2/5 passed"));
+    assert_eq!(
+        (status.at(&["ok"]).as_bool(), status.at(&["line"]).as_i64()),
+        (Some(false), Some(0))
+    );
+    let passing = test::results_json(&results[..2]);
+    assert_eq!(passing.at(&["view", "status", "ok"]).as_bool(), Some(true));
+    assert_eq!(
+        passing.at(&["view", "status", "label"]).as_str(),
+        Some("2/2 passed")
+    );
+}
