@@ -487,6 +487,8 @@ ioi21p4
 ioi22p2
 ioi22p4
 ioi22p5
+ioi94p1
+ioi99p2
 mccc3j4
 mccc4j4
 nccc10s4
