@@ -80,9 +80,8 @@ impl<T> Op<T> for Comm<T>:
     fn folds(self) -> Monoid<T> = m
     fn lift(self, x: T) -> T = x
 
-impl<T> HasId<T> for Comm<T>:
-    @get fn id(self) = m.id
-
+// No `HasId`: like `Monoid`, a `Comm` brings its own monoid, which `Monoid.of` takes by
+// `monoid()` with its stored op rather than rebuilding one around a capture of it.
 impl<T> Commutative<T> for Comm<T>
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
