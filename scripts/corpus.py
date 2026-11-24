@@ -158,9 +158,15 @@ def binary(src):
     key = hashlib.sha1(data + b"\0gcc " + version.encode()).hexdigest()[:16]
     exe = os.path.join(CXX_CACHE, key)
     if not os.path.exists(exe):
-        r = subprocess.run([*cxx, "-o", exe, str(src)], capture_output=True, text=True)
+        # Built aside and renamed in: a parallel check must never run a half-written binary.
+        tmp = f"{exe}.{os.getpid()}.{threading.get_ident()}"
+        r = subprocess.run([*cxx, "-o", tmp, str(src)], capture_output=True, text=True)
+        if r.returncode and "target specific option mismatch" in r.stderr:
+            # `#pragma GCC target("avx2")` before the includes: the judges' CPUs have AVX2.
+            r = subprocess.run([*cxx, "-mavx2", "-o", tmp, str(src)], capture_output=True, text=True)
         if r.returncode:
             raise RuntimeError("c++: " + r.stderr[:200])
+        os.replace(tmp, exe)
     return exe
 
 
@@ -806,6 +812,8 @@ def check_max(pkg, ctx):
         return [f"invalid-input {pkg.id} --max"]
     ref = pkg.reference()
     orig = built(ref) if ref else None
+    if ref and not orig:
+        return [f"no-ref-build {pkg.id} {Path(ref).name}"]
     return at_max(pkg, ctx.cpl, exe, orig, data)
 
 
