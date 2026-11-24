@@ -433,3 +433,26 @@ fn stress_runs_for_the_time_it_is_given() {
     assert_ne!(code, Some(0), "{out}");
     assert!(out.contains("`--time` is a duration like `30s`"), "{out}");
 }
+
+/// A clean report says how far its cases reached, so `1000 cases agree`
+/// can be weighed (`stress/U31`).
+#[test]
+fn a_clean_stress_says_how_far_its_cases_reached() {
+    let path = scratch("reach");
+    std::fs::write(
+        &path,
+        "let n: 1..=100 = read()\nlet a: [n]Int = read()\nprint(n * 2)\n\n@alt(program)\nfn slow():\n    let n: 1..=100 = read()\n    let a: [n]Int = read()\n    print(n + n)\n",
+    )
+    .unwrap();
+    let (code, out) = cpl(&[
+        "stress".as_ref(),
+        path.as_os_str(),
+        "--cases".as_ref(),
+        "200".as_ref(),
+    ]);
+    assert_eq!(code, Some(0), "{out}");
+    assert!(
+        out.contains("  tried: n from 1 to 8, a up to 8 long from -1000000000 to 1000000000\n"),
+        "{out}"
+    );
+}

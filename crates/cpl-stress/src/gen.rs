@@ -50,6 +50,82 @@ impl Value {
     }
 }
 
+/// A field's name, its numbers' range and its longest length.
+type FieldReach = (String, Option<(i128, i128)>, Option<usize>);
+
+/// How far the cases of a clean run reached, field by field: the
+/// smallest and largest number, and the longest list (use case stress/U31).
+#[derive(Clone, PartialEq, Eq, Debug, Default)]
+pub struct Reach {
+    /// By field, in reading order: its name, its numbers' range, its
+    /// longest length when it is a list.
+    fields: Vec<FieldReach>,
+    /// The most test cases one input had, under `@!multitest`.
+    tests: usize,
+}
+
+impl Reach {
+    /// Takes in one case made from `spec`.
+    pub fn add(&mut self, spec: &InputSpec, case: &Case) {
+        fn numbers(value: &Value, range: &mut Option<(i128, i128)>) {
+            match value {
+                Value::Int(v) => {
+                    *range = Some(range.map_or((*v, *v), |(lo, hi)| (lo.min(*v), hi.max(*v))));
+                }
+                Value::Seq(items) | Value::Tuple(items) => {
+                    items.iter().for_each(|item| numbers(item, range))
+                }
+                _ => {}
+            }
+        }
+        for (field, value) in spec.fields.iter().zip(&case.values) {
+            let name = (field.names.iter().flatten().next().cloned())
+                .unwrap_or_else(|| format!("line {}", field.line));
+            let at = match self.fields.iter().position(|(known, ..)| *known == name) {
+                Some(at) => at,
+                None => {
+                    self.fields.push((name, None, None));
+                    self.fields.len() - 1
+                }
+            };
+            let (_, range, longest) = &mut self.fields[at];
+            numbers(value, range);
+            if let Value::Seq(items) = value {
+                *longest = Some(longest.unwrap_or(0).max(items.len()));
+            }
+        }
+        if let Some(inner) = &spec.cases {
+            self.tests = self.tests.max(case.cases.len());
+            case.cases.iter().for_each(|test| self.add(inner, test));
+        }
+    }
+
+    /// `n from 1 to 8, a up to 8 long from -3 to 5, up to 4 tests`, or
+    /// nothing when no case was made from types.
+    pub fn describe(&self) -> String {
+        let mut parts: Vec<String> = (self.fields.iter())
+            .filter_map(|(name, range, longest)| {
+                let long = longest.map(|most| format!(" up to {most} long"));
+                let range = range.map(|(lo, hi)| match lo == hi {
+                    true => format!(" always {lo}"),
+                    false => format!(" from {lo} to {hi}"),
+                });
+                (long.is_some() || range.is_some()).then(|| {
+                    format!(
+                        "{name}{}{}",
+                        long.unwrap_or_default(),
+                        range.unwrap_or_default()
+                    )
+                })
+            })
+            .collect();
+        if self.tests > 0 {
+            parts.push(format!("up to {} tests", self.tests));
+        }
+        parts.join(", ")
+    }
+}
+
 /// One input: a value per `read()`, in order.
 #[derive(Clone, PartialEq, Eq, Debug, Default)]
 pub struct Case {

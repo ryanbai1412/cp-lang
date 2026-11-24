@@ -873,6 +873,10 @@ pub fn run_with(
             ),
             false => writeln!(stdout, "  {again}{ran} cases agree{skipped}"),
         };
+        let tried = report.reached.describe();
+        if !tried.is_empty() {
+            let _ = writeln!(stdout, "  tried: {tried}");
+        }
         // Small cases never reach the bounds; a lint that names an input
         // there that fails is pointed at (use case stress/U28).
         let lines = cpl_diag::LineIndex::new(&src);

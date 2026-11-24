@@ -109,6 +109,8 @@ pub struct Report {
     pub narrowed: Vec<String>,
     /// How many of [`Options::saved`] passed before the new cases.
     pub saved: usize,
+    /// How far the cases that passed reached.
+    pub reached: crate::gen::Reach,
 }
 
 /// Something that stopped the run before a verdict.
@@ -228,10 +230,12 @@ pub fn stress_with(
                 discarded: 0,
                 narrowed: Vec::new(),
                 saved: index,
+                reached: Default::default(),
             });
         }
     }
     let saved = options.saved.len();
+    let mut reached = crate::gen::Reach::default();
     let deadline = options
         .budget
         .map(|budget| std::time::Instant::now() + budget);
@@ -371,6 +375,9 @@ pub fn stress_with(
                     }
                 };
                 let Some((verdict, expected, got)) = wrong else {
+                    if let (InputSource::Typed(spec), Made::Typed(case)) = (&current, &case) {
+                        reached.add(spec, case);
+                    }
                     continue;
                 };
                 let mut failure = Failure {
@@ -445,6 +452,7 @@ pub fn stress_with(
                     discarded,
                     narrowed,
                     saved,
+                    reached,
                 });
             }
             done += batch.len();
@@ -456,6 +464,7 @@ pub fn stress_with(
             discarded,
             narrowed,
             saved,
+            reached,
         });
     }
 }

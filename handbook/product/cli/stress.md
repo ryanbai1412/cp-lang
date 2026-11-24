@@ -17,7 +17,9 @@ Saved cases run first so that one command checks the fix and keeps hunting
 (decision 441): a run on a new seed could miss the case it had already
 found, and checking the fix by hand with `cpl test` was a second step.
 With five minutes to spare, `cpl stress d --time 30s` hunts until the
-budget ends and reports as usual: `2400 cases agree in 30s`.
+budget ends and reports as usual: `2400 cases agree in 30s`. A clean
+report says how far its cases reached, `tried: n from 1 to 8, a up to 8
+long`, so you can tell whether `--size` should go up before trusting it.
 
 **Off the happy path.** You have no brute yet, only a WA: stress still
 runs, and a case fails on a runtime error or the time limit, shrunk and

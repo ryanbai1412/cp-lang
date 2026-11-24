@@ -633,7 +633,10 @@ mod cli {
 
         let (code, out, err) = stress(&[file, "--fast", &good, "--brute", &good, "--cases", "30"]);
         assert_eq!((code, err.as_str()), (0, ""), "{out}");
-        assert!(out.ends_with("  30 cases agree\n"), "{out}");
+        assert!(
+            out.contains("  30 cases agree\n  tried: n from 1 to 8, a up to 8 long"),
+            "{out}"
+        );
 
         let (code, out, _) = stress(&[file, "--fast", &bad, "--brute", &good, "--cases", "300"]);
         assert_eq!(code, 1);
