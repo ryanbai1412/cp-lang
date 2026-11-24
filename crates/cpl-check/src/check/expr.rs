@@ -349,7 +349,26 @@ impl<'a> Checker<'a> {
                         }
                         _ => Ty::Named { name, args },
                     },
-                    (other, None) => other,
+                    (other, None) => {
+                        let named = match &base.kind {
+                            ExprKind::Name(name) => Some(name),
+                            _ => None,
+                        };
+                        match named {
+                            Some(name)
+                                if !matches!(other, Ty::Error | Ty::Unknown)
+                                    && self.type_def(name).is_none() =>
+                            {
+                                self.report(
+                                    expr.span,
+                                    msgs::check::TYPE_MISMATCH_TYPE_ARGS_WITHOUT_PARAMS,
+                                    &[name],
+                                );
+                                Ty::Error
+                            }
+                            _ => other,
+                        }
+                    }
                 }
             }
             ExprKind::Tuple(items) if items.is_empty() => Ty::Unit,

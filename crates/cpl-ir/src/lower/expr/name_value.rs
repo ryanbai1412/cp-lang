@@ -277,9 +277,37 @@ impl<'a> Lowerer<'a> {
         &mut self,
         base: &ast::Expr,
         args: &[ast::Type],
+        hint: Option<&Ty>,
         span: Span,
     ) -> Expr {
         if let ast::ExprKind::Name(name) = &base.kind {
+            // `id::<Int>` or `Pair<Int>` named as a value is the closure that
+            // calls it with those type arguments, as `id` alone is.
+            let arity = match self.get_sym(name) {
+                Some(Sym::GenFn(gfid)) => Some(
+                    (self.gen_fns[gfid].decl.params.iter())
+                        .filter(|p| p.default.is_none() && !p.variadic)
+                        .count(),
+                ),
+                Some(Sym::GenStruct(gid)) => Some(
+                    (self.gen_structs[gid].decl.fields.iter())
+                        .filter(|f| f.default.is_none())
+                        .count(),
+                ),
+                _ => None,
+            };
+            if let Some(arity) = arity {
+                let mut lambda = self.call_closure_ast(name, arity, span);
+                if let ast::ExprKind::Lambda { body, .. } = &mut lambda.kind {
+                    if let ast::ExprKind::Call { callee, .. } = &mut body.kind {
+                        callee.kind = ast::ExprKind::Generic {
+                            base: Box::new(base.clone()),
+                            args: args.to_vec(),
+                        };
+                    }
+                }
+                return self.expr(&lambda, hint);
+            }
             if let Some(Sym::GenConst(gcid)) = self.get_sym(name) {
                 let gargs = self.resolve_gen_args(args);
                 return self.eval_gen_const(gcid, gargs);
@@ -296,7 +324,15 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        self.unsupported(span, "explicit type arguments here");
+        let named = match &base.kind {
+            ast::ExprKind::Name(name) => name.as_str(),
+            _ => "this value",
+        };
+        self.report(
+            span,
+            msgs::check::TYPE_MISMATCH_TYPE_ARGS_WITHOUT_PARAMS,
+            &[&named],
+        );
         self.err_expr(span)
     }
 }
