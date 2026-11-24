@@ -30,6 +30,12 @@ class PortCheckTest(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("  abc480f", r.stderr)
 
+    def test_a_failing_port_shows_its_errors(self):
+        r = port_check(ERROR)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("error[E0608]", r.stderr)
+        self.assertIn("port.cp:9:5", r.stderr)
+
 
 if __name__ == "__main__":
     unittest.main()

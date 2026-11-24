@@ -23,5 +23,11 @@ echo "port-check: $(ls corpus/problems/*/port.cp | wc -l | tr -d ' ') ports in $
 if [ -n "$failing" ]; then
     echo "port-check: these ports fail cpl check:" >&2
     printf '  %s\n' $failing >&2
+    # The log is the only evidence a CI runner keeps: show each port's errors.
+    set +e +o pipefail
+    for p in $failing; do
+        echo "port-check: $cpl check corpus/problems/$p/port.cp" >&2
+        "$cpl" check "corpus/problems/$p/port.cp" 2>&1 | head -40 >&2
+    done
     exit 1
 fi
