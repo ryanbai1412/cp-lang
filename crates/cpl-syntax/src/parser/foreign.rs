@@ -70,7 +70,17 @@ impl<'a> Parser<'a> {
     /// span and text, and the line as `let` or `var`.
     pub(super) fn c_decl(&self) -> Option<(Span, Span, &'a str, String)> {
         let (begin, line) = self.this_line()?;
-        let (ty_len, decl) = c_declaration(line.strip_suffix(';').unwrap_or(line).trim_end())?;
+        let whole = line.strip_suffix(';').unwrap_or(line).trim_end();
+        let (ty_len, decl) = match whole.split_once(';') {
+            Some((decl, rest)) => {
+                let (len, decl) = c_declaration(decl.trim_end())?;
+                let indent = &self.src[self.src[..begin].rfind('\n').map_or(0, |i| i + 1)..begin];
+                let decl = c_declared_read(&decl, rest)
+                    .unwrap_or_else(|| format!("{decl}\n{indent}{};", rest.trim()));
+                (len, decl)
+            }
+            None => c_declaration(whole)?,
+        };
         let at = |from: usize, to: usize| self.rel(Span::new(from as u32, to as u32));
         let written = &line[..ty_len];
         Some((
@@ -1783,6 +1793,25 @@ fn c_construct(ty: &CType, args: &str) -> Option<String> {
 /// `const` for C++'s `const`); a value
 /// C++ leaves to be filled in later (`int x;`, `vector<int> a(n);`) gets
 /// `var`.
+/// `string w; cin >> w;` on one line: the declared names are read, so
+/// `var w: Str = ""` becomes `let w: Str = read()`.
+fn c_declared_read(decl: &str, read: &str) -> Option<String> {
+    let (names, zero) = decl.strip_prefix("var ")?.split_once(": ")?;
+    let (ty, _) = zero.split_once(" = ")?;
+    let read = read.trim().strip_suffix(';').unwrap_or(read.trim());
+    let read: Vec<&str> = read
+        .strip_prefix("cin")?
+        .split(">>")
+        .map(str::trim)
+        .collect();
+    let (first, read) = read.split_first()?;
+    let names_read = match read {
+        [one] => one.to_string(),
+        _ => format!("({})", read.join(", ")),
+    };
+    (first.is_empty() && names_read == names).then(|| format!("let {names}: {ty} = read()"))
+}
+
 fn c_declaration(line: &str) -> Option<(usize, String)> {
     let (keep, line) = match line.strip_prefix("const ") {
         Some(rest) => (true, rest),
