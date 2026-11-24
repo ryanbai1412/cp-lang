@@ -522,10 +522,16 @@ def print_tuned(st):
 def resource_summary(ok):
     rss = sorted(r["rss_ratio"] for r in ok if r.get("rss_ratio"))
     rss_kb = sorted(r["port_rss_kb"] for r in ok if r.get("port_rss_kb"))
+    tuned = sorted(min(r["rss_ratio"], r.get("tuned_rss_ratio") or r["rss_ratio"]) for r in ok if r.get("rss_ratio"))
     cms = sorted(r["compile_ms"] for r in ok if r.get("compile_ms") is not None)
     return {
         "rss_ratio_p50": round(percentile(rss, 0.50), 3),
+        "rss_ratio_p95": round(percentile(rss, 0.95), 3),
         "rss_ratio_max": round(rss[-1], 3) if rss else 0.0,
+        "rss_gt_1_5": sum(1 for x in rss if x > 1.5),
+        "rss_gt_2": sum(1 for x in rss if x > 2.0),
+        "rss_tuned_max": round(tuned[-1], 3) if tuned else 0.0,
+        "rss_tuned_gt_1_1": sum(1 for x in tuned if x > TUNED_BAR),
         "rss_max_mb": round(rss_kb[-1] / 1024, 1) if rss_kb else 0.0,
         "compile_ms_p50": round(percentile(cms, 0.50)),
         "compile_ms_max": round(cms[-1]) if cms else 0,
@@ -652,9 +658,9 @@ def main():
         ratio = med_p / med_o if med_o > 0 else 1.0
         tuned = {}
         if b.get("tbin"):
-            ts_t = []
+            ts_t, rss_t = [], 0
             for _ in range(len(ts_p)):
-                tt, s_t, _ = run_once(b["tbin"], b["inp"], out_p, args.timeout)
+                tt, s_t, rss_t = run_once(b["tbin"], b["inp"], out_p, args.timeout)
                 if s_t != "ok" or not outputs_agree(b["cp"], b["inp"], out_p, out_o):
                     ts_t = []
                     tuned = {"tuned_error": f"tuned {s_t if s_t != 'ok' else 'output differs'} on {b['inp']}"}
@@ -662,6 +668,8 @@ def main():
                 ts_t.append(tt)
             if ts_t and med_o > 0:
                 tuned = {"tuned_ms": round(min(ts_t) * 1000.0, 2), "tuned_ratio": round(min(ts_t) * 1000.0 / med_o, 3)}
+                if rss_o:
+                    tuned.update(tuned_rss_kb=rss_t, tuned_rss_ratio=round(rss_t / rss_o, 3))
         elif b.get("tuned_error"):
             tuned = {"tuned_error": b["tuned_error"]}
         why = unmatched.get(b["name"]) if b["suite"] == "corpus" else None
@@ -695,7 +703,9 @@ def main():
         )
         measured = [r for r in sub if r.get("status") == "ok" and max(r["port_ms"], r["orig_ms"]) >= args.min_ms]
         print(
-            f"  peak RSS emitted/orig p50={st['rss_ratio_p50']:.3f}x max={st['rss_ratio_max']:.3f}x "
+            f"  peak RSS emitted/orig p50={st['rss_ratio_p50']:.3f}x p95={st['rss_ratio_p95']:.3f}x "
+            f"max={st['rss_ratio_max']:.3f}x (>1.5x: {st['rss_gt_1_5']}, >2x: {st['rss_gt_2']}; bars p95 <= 1.5x, max <= 2x) "
+            f"tuned max={st['rss_tuned_max']:.3f}x (bar <= {TUNED_BAR}x; over it: {st['rss_tuned_gt_1_1']}) "
             f"(largest {st['rss_max_mb']} MB); g++ on emitted C++ p50={st['compile_ms_p50']} ms max={st['compile_ms_max']} ms"
         )
         print_tuned(st)
