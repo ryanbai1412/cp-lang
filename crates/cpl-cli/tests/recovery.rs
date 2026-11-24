@@ -31,10 +31,7 @@ fn root() -> PathBuf {
 /// a port are checked once rather than once per broken copy, the way the
 /// editor sees a stream of edits.
 fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
-    thread_local! {
-        static DB: std::cell::RefCell<cpl_check::Session> = Default::default();
-    }
-    let analysis = DB.with_borrow_mut(|db| {
+    let analysis = with_db(|db| {
         db.set_file(path, src);
         db.analyze(path).expect("the file was just set")
     });
@@ -44,6 +41,14 @@ fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
         .collect();
     out.sort_by_key(|d| d.span.start);
     out
+}
+
+/// `f` on this thread's database, which `errors` and the fixes share.
+fn with_db<T>(f: impl FnOnce(&mut cpl_check::Session) -> T) -> T {
+    thread_local! {
+        static DB: std::cell::RefCell<cpl_check::Session> = Default::default();
+    }
+    DB.with_borrow_mut(f)
 }
 
 /// The accidental edits, each applied to one line. `None` when the edit
@@ -335,8 +340,7 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
         count: 1,
         ..FirstFix::default()
     };
-    let mut db = cpl_check::Session::new();
-    if let Some(fix) = cpl_cli::checked_fix(&mut db, &b.path, &b.src, &errs[0]) {
+    if let Some(fix) = with_db(|db| cpl_cli::checked_fix(db, &b.path, &b.src, &errs[0])) {
         let fixed = apply(&b.src, &fix.edits);
         first.fixed = 1;
         let line = |src: &str| src.lines().nth(b.line as usize).map(str::to_string);
@@ -368,10 +372,10 @@ fn score(b: &Broken, restore: bool) -> (Tally, Option<(String, FirstFix)>) {
     t.fixable = errs.iter().filter(|d| !d.fixes.is_empty()).count() as u32;
     let fixed = (t.fixable > 0).then(|| {
         let (once, _) = cpl_diag::splice_fixes(&b.src, &errs);
-        cpl_cli::apply_error_fixes(&b.path, &once).0
+        with_db(|db| cpl_ir::fix::apply_error_fixes_in(db, &b.path, &once).0)
     });
     if let Some(f) = &fixed {
-        let (again, n) = cpl_cli::apply_error_fixes(&b.path, f);
+        let (again, n, _) = with_db(|db| cpl_ir::fix::apply_error_fixes_in(db, &b.path, f));
         t.unconverged = (n > 0) as u32;
         if std::env::var("RECOVERY_SHOW").is_ok_and(|e| e == "unconverged") && n > 0 {
             println!("--- {} {}", b.path, b.edit);
