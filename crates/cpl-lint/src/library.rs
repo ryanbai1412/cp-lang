@@ -129,14 +129,30 @@ pub(crate) fn intern(name: &str) -> &'static Lint {
     lint
 }
 
-/// Names a pattern binds itself: the parameters before `=>`, and the
-/// variable after `for`, `let` or `var`.
+/// Names a pattern binds itself: the parameters before `=>`, the variable
+/// after `for`, `let` or `var`, and a `fn` it declares with its parameters.
 fn bound_names(toks: &[(K, String)]) -> Vec<String> {
     let mut out = Vec::new();
     for (i, (kind, _)) in toks.iter().enumerate() {
-        if matches!(kind, K::For | K::Let | K::Var) {
+        if matches!(kind, K::For | K::Let | K::Var | K::Fn) {
             if let Some((K::Ident, t)) = toks.get(i + 1) {
                 out.push(t.clone());
+            }
+        }
+        if *kind == K::Fn && toks.get(i + 2).is_some_and(|t| t.0 == K::LParen) {
+            let mut depth = 0;
+            for (j, (k, t)) in toks.iter().enumerate().skip(i + 2) {
+                match k {
+                    K::LParen | K::LBracket => depth += 1,
+                    K::RParen | K::RBracket => depth -= 1,
+                    K::Ident if depth == 1 && matches!(toks[j - 1].0, K::LParen | K::Comma) => {
+                        out.push(t.clone())
+                    }
+                    _ => {}
+                }
+                if depth == 0 {
+                    break;
+                }
             }
         }
         if *kind != K::FatArrow || i == 0 {

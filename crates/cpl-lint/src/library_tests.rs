@@ -178,3 +178,21 @@ fn a_record_with_no_fix_keeps_a_library_lint_to_advice() {
     assert_eq!(found[0].code.0, "L0524");
     assert!(found[0].fixes.is_empty(), "{:?}", found[0].fixes);
 }
+
+/// A `fn` a `from` declares is bound, its name and its parameters, so a
+/// recursive helper matches under any names. Rule: R06.4.9.
+#[test]
+fn a_fn_from_declares_binds_its_name_and_parameters() {
+    let decl = "@lint(walk_all, from: \"fn go(u: Int):\\n    if u > 0:\\n        go(u - 1)\\ngo(n)\", to: \"walk(n)\")\npub fn walk(n: Int) = ()\n";
+    let found = |body: &str| -> Vec<String> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "walk_all")
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let renamed = "let k = 3\nfn down(x: Int):\n    if x > 0:\n        down(x - 1)\ndown(k)\n";
+    assert_eq!(found(renamed), ["walk(k)"]);
+    let mixed = "let k = 3\nfn down(x: Int):\n    if x > 0:\n        go(x - 1)\nfn go(y: Int) = ()\ndown(k)\n";
+    assert!(found(mixed).is_empty());
+}
