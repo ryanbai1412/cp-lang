@@ -8,7 +8,7 @@ fn inv(x: Int) -> Int:
     var r = 1
     while e > 0:  // expect: hand_rolled_pow
         if e % 2 == 1:
-            r = r * b % 998244353  // expect: repeated_literal
+            r = r * b % 998244353
         b = b * b % 998244353
         e /= 2
     return r

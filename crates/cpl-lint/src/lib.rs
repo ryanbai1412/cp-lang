@@ -706,11 +706,50 @@ fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Ve
     let all = out.clone();
     out.retain(|d| {
         !all.iter().any(|wider| {
-            supersedes(file.src, wider, d)
-                && !library::refires(file.src, wider, d.code, &all, declared)
+            (supersedes(file.src, wider, d)
+                && !library::refires(file.src, wider, d.code, &all, declared))
+                || writes_literal(file.src, wider, d)
         })
     });
     out
+}
+
+/// Whether `inner` is about a literal alone (L0506 on `998244353`) that
+/// `wider` puts to use: `wider` spans a copy of it and its rewrite writes it
+/// (`pow_mod(b, e, 998244353)`, `Mod<998244353>`). The literal is one fact,
+/// so the finding whose rewrite uses it reports it, unless only `inner`
+/// carries a fix.
+fn writes_literal(src: &str, wider: &Diagnostic, inner: &Diagnostic) -> bool {
+    let text = |s: Span| src.get(s.start as usize..s.end as usize).unwrap_or("");
+    let lit = text(inner.span);
+    let literal = lit.starts_with(|c: char| c.is_ascii_digit())
+        && lit.bytes().all(|b| b.is_ascii_digit() || b == b'_');
+    if wider.code == inner.code || !literal || (wider.fixes.is_empty() && !inner.fixes.is_empty()) {
+        return false;
+    }
+    let value = lit.replace('_', "");
+    let spans_copy = std::iter::once(wider.span)
+        .chain(wider.labels.iter().map(|l| l.span))
+        .any(|s| has_word(text(s), lit));
+    let rewrite = std::iter::once(wider.message.as_str())
+        .chain(wider.help.as_deref())
+        .chain(
+            wider
+                .fixes
+                .iter()
+                .flat_map(|f| f.edits.iter().map(|(_, to)| to.as_str())),
+        );
+    spans_copy
+        && rewrite
+            .into_iter()
+            .any(|t| has_word(t, lit) || has_word(t, &value))
+}
+
+/// Whether `t` holds `word` with no letter, digit or `_` on either side.
+fn has_word(t: &str, word: &str) -> bool {
+    let part = |c: char| c.is_ascii_alphanumeric() || c == '_';
+    (t.match_indices(word))
+        .any(|(at, _)| !t[..at].ends_with(part) && !t[at + word.len()..].starts_with(part))
 }
 
 /// Whether `wider`'s rewrite removes the code `inner` is about, so only

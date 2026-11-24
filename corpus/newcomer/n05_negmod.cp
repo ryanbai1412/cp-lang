@@ -1,4 +1,4 @@
 let (a, b): (0..=1000000006, 0..=1000000006) = read()
-let d = (a - b + 1000000007) % 1000000007  // expect: neg_mod_fixup, repeated_literal
+let d = (a - b + 1000000007) % 1000000007  // expect: neg_mod_fixup
 let p = a * b % 1000000007  // expect: manual_mod_reduce
 print(d, p)

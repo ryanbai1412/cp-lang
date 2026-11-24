@@ -990,6 +990,30 @@ fn repeated_literal_from_noip19p4() {
 }
 
 #[test]
+fn a_repeated_modulus_is_reported_once_by_the_rewrite_that_uses_it() {
+    // spec/lints/repeated_literal's old before.cp: L0506 and L0531 both
+    // reported `998244353`; `Mod<P>` names it once, so L0531 owns it.
+    let src = "let a = [3, 4]\nprint(a.sum() % 998244353)\nprint(a[0] * a[1] % 998244353)\n";
+    let found = only(src);
+    assert_eq!(found.code, MANUAL_MOD_REDUCE.code);
+    let help = found.help.as_deref().unwrap();
+    assert!(
+        help.starts_with("declare `type Z = Mod<998244353>`"),
+        "{help}"
+    );
+    // corpus/newcomer/n26_modpow.cp: L0545's rewrite writes the modulus too.
+    let pow = "fn power(b0: Int, e0: Int) -> Int:\n    var b = b0\n    var e = e0\n    var r = 1\n    while e > 0:\n        if e % 2 == 1:\n            r = r * b % 998244353\n        b = b * b % 998244353\n        e /= 2\n    return r\nprint(power(2, 10))\n";
+    let fired = codes(pow);
+    assert!(
+        fired.contains(&"L0545") && !fired.contains(&REPEATED_LITERAL.code.0),
+        "{fired:?}"
+    );
+    // With no rewrite that uses it, the repeated modulus is L0506's.
+    let alone = "let a = [3, 4]\nprint(a.sum() % 998244353)\nprint((a[0] + a[1]) % 998244353)\n";
+    assert_eq!(only(alone).code, REPEATED_LITERAL.code);
+}
+
+#[test]
 fn turbofish_type_args_offers_plain_generic_fix() {
     let src = "let x = read::<Int>()\nprint(x)\n";
     let found = only(src);
