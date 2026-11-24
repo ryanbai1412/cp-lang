@@ -8,10 +8,18 @@ use cpl_ir::{Expr, ExprKind, Program, Ty};
 use crate::ranges::Facts;
 use crate::walk;
 
-/// By domain, whether its positions need 64 bits, and its count when it is
-/// the same small constant on every run.
-pub(crate) fn domain_sizes(program: &Program) -> (Vec<bool>, Vec<Option<u32>>) {
+/// By domain, whether its positions need 64 bits, its count when it is
+/// the same small constant on every run, and whether that count is at most
+/// 255, so a position or bound of it fits a byte.
+pub(crate) fn domain_sizes(program: &Program) -> (Vec<bool>, Vec<Option<u32>>, Vec<bool>) {
     let facts = Facts::collect(program);
+    let bytes = (0..program.domains.len())
+        .map(|d| {
+            facts
+                .fixed_domain_len(d)
+                .is_some_and(|n| n <= i64::from(u8::MAX))
+        })
+        .collect();
     let fixed = (0..program.domains.len())
         .map(|d| {
             let n = facts.fixed_domain_len(d)?;
@@ -25,7 +33,7 @@ pub(crate) fn domain_sizes(program: &Program) -> (Vec<bool>, Vec<Option<u32>>) {
             composite && max_len(program, &facts, d, 0).is_none_or(|n| n > i64::from(i32::MAX))
         })
         .collect();
-    (wide, fixed)
+    (wide, fixed, bytes)
 }
 
 /// Whether a length is made of other domains' counts (`C_len * C_len`).

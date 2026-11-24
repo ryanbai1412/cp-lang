@@ -841,6 +841,13 @@ impl<'p> Emitter<'p> {
                         let cell = ty
                             .strip_prefix("std::vector<")
                             .and_then(|c| c.strip_suffix('>'));
+                        // A byte cell takes an `int` position only by a cast:
+                        // braces refuse to narrow.
+                        let items: Vec<String> = if cell == Some("cpl::u8") {
+                            items.iter().map(|v| format!("(cpl::u8)({v})")).collect()
+                        } else {
+                            items
+                        };
                         if let Some(cell) = cell.filter(|c| c.contains("std::") && items.len() > 1)
                         {
                             // `std::vector{a, b}` copies each list out of its

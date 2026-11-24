@@ -1559,6 +1559,10 @@ pub struct Program {
     /// [`FIXED_MAX`]: an array over it is a `std::array`. Filled in by the
     /// code generator.
     pub fixed_lens: Vec<Option<u32>>,
+    /// By domain, whether its count is the same on every run and at most
+    /// 255: a list, array or grid of its positions holds each in a byte.
+    /// Filled in by the code generator.
+    pub byte_domains: Vec<bool>,
     pub globals: Vec<Global>,
     pub fns: Vec<Function>,
     /// By [`FnId`]: whether the fn is an imported module's, not the file's.

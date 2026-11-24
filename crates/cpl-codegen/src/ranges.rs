@@ -927,6 +927,10 @@ impl<'p> Facts<'p> {
         let var = |v: Var| (self.stores(v) == 1).then(|| self.init(v)).flatten();
         match &e.kind {
             ExprKind::Int(n) => Some(*n),
+            ExprKind::Cast(Cast::CharToInt, c) => match c.kind {
+                ExprKind::Char(c) => Some(i64::from(c)),
+                _ => None,
+            },
             ExprKind::Local(slot) => {
                 let v = self.local(fn_id, *slot);
                 self.exact(v.0, var(v)?, depth + 1)

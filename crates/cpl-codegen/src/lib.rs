@@ -228,7 +228,11 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
 fn prepared_with(program: &cpl_ir::Program, target: &Target, inline: bool) -> cpl_ir::Program {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
-    (program.wide_domains, program.fixed_lens) = width::domain_sizes(&program);
+    (
+        program.wide_domains,
+        program.fixed_lens,
+        program.byte_domains,
+    ) = width::domain_sizes(&program);
     prune::prune(
         &mut program,
         target.checks.keeps(cpl_ir::checks::Check::Asserts),

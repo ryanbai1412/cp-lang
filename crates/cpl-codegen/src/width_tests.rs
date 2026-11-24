@@ -46,3 +46,33 @@ fn a_checked_build_traps_on_a_plain_domain_past_32_bits() {
     let cpp = cpp("let n: Int = read()\ndomain C = 0..n\nprint(C.count)\n");
     assert!(cpp.contains("C_len > 2147483647"), "{cpp}");
 }
+
+#[test]
+fn a_list_of_a_small_domain_holds_each_position_in_a_byte() {
+    let small = cpp(concat!(
+        "domain L = 'a'..='z'\n",
+        "let xs = [L(c) for c in read<Str>()]\n",
+        "print(xs[0].ord + xs.len)\n",
+    ));
+    assert!(small.contains("std::vector<cpl::u8>"), "{small}");
+    // Braces do not narrow an `int` position to a byte without a cast.
+    let literal = cpp(concat!(
+        "domain L = 'a'..='z'\n",
+        "let (a, b) = read<(Char, Char)>()\n",
+        "let xs = [L(a), L(b)]\n",
+        "print(xs[0].ord + xs[1].ord)\n",
+    ));
+    assert!(
+        literal.contains("std::vector<cpl::u8>{(cpl::u8)("),
+        "{literal}"
+    );
+    // 256 positions and the end bound are 257 values: past a byte.
+    let wide = cpp(concat!(
+        "domain L = [256]\n",
+        "let n: 1..=1000 = read()\n",
+        "let xs = [L.at(i % 256)! for i in 0..n]\n",
+        "print(xs[0].ord + xs.len)\n",
+    ));
+    assert!(!wide.contains("cpl::u8>"), "{wide}");
+    assert!(wide.contains("std::vector<int>"), "{wide}");
+}

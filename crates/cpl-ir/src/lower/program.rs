@@ -185,6 +185,7 @@ impl Lowerer<'_> {
             unordered_maps: Vec::new(),
             wide_domains: Vec::new(),
             fixed_lens: Vec::new(),
+            byte_domains: Vec::new(),
             unordered_sets: Vec::new(),
             unreached_closures: Default::default(),
             structs: lw.structs.iter().map(|s| s.def.clone()).collect(),

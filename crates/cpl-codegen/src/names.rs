@@ -391,8 +391,14 @@ pub(crate) fn elem_ty(program: &Program, niches: Niches, ty: &Ty) -> String {
         // `std::vector<bool>` hands out proxies, not references.
         Ty::Bool => "char".into(),
         flag if is_flag_opt(flag) => "char".into(),
+        // A position of a domain of at most 255 cells, its end included, is a byte.
+        Ty::Pos(d) | Ty::Bound(d) if small_domain(program, *d) => "cpl::u8".into(),
         other => value_ty(program, niches, other),
     }
+}
+
+fn small_domain(program: &Program, d: usize) -> bool {
+    program.byte_domains.get(d).copied().unwrap_or(false)
 }
 
 /// The C++ type of a value that is stored or passed: C++ has no `void`
