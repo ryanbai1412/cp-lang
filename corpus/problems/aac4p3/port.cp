@@ -1,4 +1,5 @@
 // Source: An Animal Contest 4 P3 (Snowy Slopes), https://dmoj.ca/problem/aac4p3
+// limits: 2000 ms, 256 MB
 // Problem: 2 <= n <= 1e5 points with distinct x and distinct y (coordinates 1..=1e9) and
 //   m <= 20 slopes k_i / d_i (nonzero, |k|, |d| <= 1e9). Count the pairs of points whose line
 //   has one of the given slopes.

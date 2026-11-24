@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP K (Stones), https://atcoder.jp/contests/dp/tasks/dp_k
+// limits: 2000 ms, 1024 MB
 // Problem: a pile of k <= 1e5 stones and a set of n <= 100 sizes 1 <= a_1 < ... < a_n <= k.
 //   Players alternately remove exactly some a_i stones; whoever cannot move loses. Print First
 //   if the first player wins, else Second.

@@ -1,4 +1,5 @@
 // Source: NOI 2010 P2 (Super Piano), https://dmoj.ca/problem/noi10p2
+// limits: 1000 ms, 512 MB
 // Problem: n <= 5e5 notes of beauty |A_i| <= 1000 and L <= R. Choose k <= 5e5 distinct chords
 //   (segments of L to R consecutive notes; enough exist) to maximise their total beauty, the
 //   sum of their notes; print it.

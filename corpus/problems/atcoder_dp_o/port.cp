@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest O (Matching), https://atcoder.jp/contests/dp/tasks/dp_o
+// limits: 2000 ms, 1024 MB
 // Problem: n <= 21 men and n women with a 0/1 compatibility matrix. Count the ways to split
 //   everyone into n compatible man-woman pairs, mod 1e9+7.
 // Solution: hand out women to the men in order: ways[t], over subsets t of women, counts the

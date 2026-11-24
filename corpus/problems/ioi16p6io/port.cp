@@ -1,4 +1,5 @@
 // Source: IOI 2016 Day 2 (Aliens), standard I/O version, https://dmoj.ca/problem/ioi16p6io
+// limits: 1000 ms, 256 MB
 // Problem: n <= 1e5 points (r, c) in an m x m grid, m <= 1e6. Take at most k <= n photos, each
 //   a square with two opposite corners on the main diagonal, covering every point; print the
 //   least number of cells photographed at least once.

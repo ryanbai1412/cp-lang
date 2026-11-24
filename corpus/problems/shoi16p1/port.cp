@@ -1,5 +1,6 @@
 // Source: JLOI/SHOI 2016 (Scout Guards), https://dmoj.ca/problem/shoi16p1
 //   (not public on DMOJ; statement from Luogu P3267)
+// limits: 2000 ms, 250 MB
 // Problem: a tree on N <= 5e5 nodes; a guard at v costs W_v <= 1000 and watches every node
 //   within distance D <= 20. Given M marked nodes, print the cheapest set of guards
 //   watching all of them.

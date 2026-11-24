@@ -2,6 +2,10 @@
 statement-max input: 15 tests at n = 3e4, m = 3000, k = 10 (seed % 3 == 0), or k mixed over 0..=10,
 or n = 1 tests."""
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # 15 tests at n = 3e4, m = 3000, k = 10: the full O(m 2^k k) DP each time
+    sys.argv[1:] = ["0", "100000"]
+
 
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 tests = []

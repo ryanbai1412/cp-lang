@@ -1,4 +1,5 @@
 // Source: CCC 2019 S5 (Triangle: The Data Structure), https://dmoj.ca/problem/ccc19s5
+// limits: 1000 ms, 512 MB
 // Problem: a triangle of numbers with n <= 3000 rows (row i has i entries, 0 <= a <= 1e9) and
 //   1 <= k <= n. Print the sum, over every sub-triangle of side k, of its largest entry.
 // Solution: best[i, j] is the max of the side-s triangle with apex (i, j). The side-s triangles

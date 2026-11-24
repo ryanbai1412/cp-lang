@@ -1,4 +1,5 @@
 // Source: IOI 2019 Day 1 P1 (Arranging Shoes), https://dmoj.ca/problem/ioi19p1
+// limits: 600 ms, 1024 MB
 // Problem: 2n shoes in a row (n <= 1e5), -s a left shoe of size s and +s a right one. With
 //   swaps of adjacent shoes, make every pair of positions 2i, 2i+1 a left then a right shoe of
 //   one size. Print the fewest swaps.

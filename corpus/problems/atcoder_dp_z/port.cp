@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest Z (Frog 3), https://atcoder.jp/contests/dp/tasks/dp_z
+// limits: 2000 ms, 1024 MB
 // Problem: n <= 2e5 stones with heights 1 <= h_1 < ... < h_n <= 1e6. A jump from stone i to
 //   any later stone j costs (h_j - h_i)^2 + C, C <= 1e12. Print the cheapest way from stone
 //   1 to stone n.

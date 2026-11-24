@@ -1,5 +1,6 @@
 // Source: SAC '22 Code Challenge 4 Junior P4 (Obligatory Permutation Problem),
 //   https://dmoj.ca/problem/sac22cc4jp4
+// limits: 1000 ms, 256 MB
 // Problem: a permutation P of n <= 1e5. Start with A = P and K <= 1e18 times move every A[i] to
 //   index P_i at once. Print A.
 // Solution: after K moves A[P^K(i)] = P_i, i.e. A[P^(K-1)(j)] = j. Walk each cycle of P once and

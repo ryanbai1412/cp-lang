@@ -1,4 +1,5 @@
 // Source: NOIP 2006 Senior P2 (Jinming's Budget Plan), Luogu P1064 (not on DMOJ)
+// limits: 1000 ms, 512 MB
 // Problem: budget n <= 32000, m <= 60 items with price 0..=1e4, importance 1..5 and a main item
 //   (0 if it is a main item; a main item has at most 2 accessories). An accessory can be bought
 //   only with its main item. Print the largest sum of price * importance within the budget.

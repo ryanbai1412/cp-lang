@@ -1,4 +1,5 @@
 // Source: NOIP 2001 Senior P2 (Splitting a Number), https://dmoj.ca/problem/noip01p2
+// limits: 1000 ms, 125 MB
 // Problem: 6 < n <= 200, 2 <= k <= 6. Count the ways to split n into exactly k positive parts,
 //   order ignored.
 // Solution: either some part is 1 (drop it: ways(n - 1, k - 1)) or every part is >= 2 (take 1

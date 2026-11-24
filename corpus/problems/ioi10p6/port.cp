@@ -1,4 +1,5 @@
 // Source: IOI 2010 Day 2 (Traffic Congestion), https://dmoj.ca/problem/ioi10p6
+// limits: 4500 ms, 256 MB
 // Problem: a tree of n <= 1e6 cities, P[i] >= 1 fans in city i (2e9 in total). Everyone
 //   travels to the arena city; print a city whose most congested road (fans crossing it)
 //   carries as few fans as possible.

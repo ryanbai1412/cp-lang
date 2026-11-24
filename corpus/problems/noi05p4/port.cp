@@ -1,4 +1,5 @@
 // Source: NOI 2005 P4 (CongCong and KoKo), https://dmoj.ca/problem/noi05p4
+// limits: 600 ms, 256 MB
 // Problem: an undirected graph, N, E <= 1000, cat at C and mouse at M connected. Each turn the cat
 //   takes up to two steps, each to the neighbour nearest the mouse (smallest label on ties), then
 //   the mouse stays or moves to a neighbour, all choices equally likely. Print the expected

@@ -1,4 +1,15 @@
 import sys, random
+if sys.argv[1:] == ["--max"]:
+    # N = M = 2e5, D = 1e9, positions spread over 1..=1e9 in random order, so every insertion
+    # lands mid-segment and the answers reach about 2e14
+    g = random.Random(1)
+    n = m = 200_000
+    xs = [g.randint(1, 10**9) for _ in range(n + m)]
+    print(n, m, 10**9)
+    print(*xs[:n])
+    print(*xs[n:])
+    sys.exit()
+
 rng = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 seed = int(sys.argv[1])

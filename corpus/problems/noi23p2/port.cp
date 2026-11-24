@@ -1,4 +1,5 @@
 // Source: NOI 2023 Day 1 P2 (Osmanthus Tree), https://dmoj.ca/problem/noi23p2
+// limits: 500 ms, 512 MB
 // Problem: a rooted tree T on 1..n (n <= 3e4, parent of i < i) and k <= 10. Count rooted trees
 //   T' on n + m nodes (m <= 3000, root 1) where every two original nodes keep their LCA and
 //   every pair i, j has an LCA numbered <= max(i, j) + k. Modulo 1e9 + 7; t <= 15 tests.

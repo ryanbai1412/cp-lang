@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest M (Candies), https://atcoder.jp/contests/dp/tasks/dp_m
+// limits: 2000 ms, 1024 MB
 // Problem: count the ways to share exactly K <= 1e5 candies among N <= 100 children, child i
 //   getting 0..a_i of them (a_i <= K), modulo 1e9+7.
 // Solution: ways[g] = ways to give out g candies to the children so far; the next child with

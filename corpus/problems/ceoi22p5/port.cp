@@ -1,4 +1,5 @@
 // Source: CEOI 2022 P5 (Measures), https://dmoj.ca/problem/ceoi22p5
+// limits: 1500 ms, 512 MB
 // Problem: N people on a line, then M more added one at a time (0 <= N <= 2e5, 1 <= M <= 2e5;
 //   1 <= D, positions <= 1e9). After each addition, the least time for all, moving at speed 1,
 //   to stand pairwise at least D apart; print the M answers on one line, each an exact decimal

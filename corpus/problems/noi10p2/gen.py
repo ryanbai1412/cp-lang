@@ -6,6 +6,14 @@
 """
 import random
 import sys
+if sys.argv[1:] == ["--max"]:
+    # n = k = 5e5 with L = 1, R = n: the widest windows, so every pop splits a long range
+    g = random.Random(1)
+    n = 500_000
+    print(n, n, 1, n)
+    print(*(g.randint(-1000, 1000) for _ in range(n)))
+    sys.exit()
+
 
 if sys.argv[1] == "--max":
     sys.argv = [sys.argv[0], "0", "500000", "max"]
