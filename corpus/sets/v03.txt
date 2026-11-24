@@ -79,6 +79,10 @@ ccc23s5
 ccc96s3
 ccc99s5
 cco16p3
+cco17p1
+cco17p5
+cco18p1
+cco18p2
 cco21p2
 cco21p3
 cco21p4
