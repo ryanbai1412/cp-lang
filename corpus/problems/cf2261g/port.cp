@@ -38,12 +38,8 @@ fn shrink(mut groups: List<Group>, x: Word):
             groups.remove(i)
 
 // 2^b for each set bit b of `mask` and each left end whose xor first differs from it at b.
-// The loop, not `sum(...)`: a generator under `sum` is collected into a list first (1.5x).
-fn count_along(g: Group, pref: Word) -> Int:
-    var total = 0
-    with lint(loop_reduction: allow):
-        for (bit, count) in g.ends.walk(pref ^ g.mask) if g.mask.bit(bit): total += count << bit
-    total
+fn count_along(g: Group, pref: Word) -> Int =
+    sum(count << bit for (bit, count) in g.ends.walk(pref ^ g.mask) if g.mask.bit(bit))
 
 var groups = List<Group>()
 var pref: Word = 0
