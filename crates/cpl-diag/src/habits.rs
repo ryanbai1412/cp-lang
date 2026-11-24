@@ -257,7 +257,6 @@ pub static ARROW_LAMBDA: Habit = shape(
     "`->` names a fn's return type; a lambda's body follows `=>`",
     "",
 );
-pub static ARROW_LAMBDA_2: Habit = shape("arrow_lambda_2", codes::EXPECTED_TOKEN, "write `=>`", "");
 pub static WRITE: Habit = shape("write", codes::PARENS_MEAN_WORK, "write `{}`", "");
 pub static BAD_OPERANDS_2: Habit = shape(
     "bad_operands_2",
@@ -313,19 +312,12 @@ pub static COLON_RETURN_TYPE: Habit = shape(
     "the `:` becomes `->`: `-> {}`",
     "",
 );
-pub static COLON_RETURN_TYPE_2: Habit = shape(
-    "colon_return_type_2",
-    codes::EXPECTED_TOKEN,
-    "write `->`",
-    "",
-);
 pub static CPP_NPOS: Habit = shape(
     "cpp_npos",
     codes::REMOVED_SYNTAX,
     "compare with `None`: `s.find(t) != None`, or write `t in s`",
     "",
 );
-pub static CPP_NPOS_2: Habit = shape("cpp_npos_2", codes::REMOVED_SYNTAX, "write `None`", "");
 pub static C_ADDRESS: Habit = shape(
     "c_address",
     codes::REMOVED_SYNTAX,
@@ -333,7 +325,6 @@ pub static C_ADDRESS: Habit = shape(
     "",
 );
 pub static C_AUTO: Habit = shape("c_auto", codes::REMOVED_SYNTAX, "`let x = 0` for a value that stays, `var x = 0` for one that changes; the type comes from the value", "");
-pub static C_AUTO_2: Habit = shape("c_auto_2", codes::REMOVED_SYNTAX, "write `let`", "");
 pub static C_CASE: Habit = shape(
     "c_case",
     codes::REMOVED_SYNTAX,
@@ -430,15 +421,12 @@ pub static FOREIGN_STEP: Habit = shape(
     "write `0..10 by 2`",
     "",
 );
-pub static FOREIGN_STEP_2: Habit =
-    shape("foreign_step_2", codes::UNKNOWN_ARG_NAME, "write `by`", "");
 pub static FOREIGN_THEN: Habit = shape(
     "foreign_then",
     codes::EXPECTED_TOKEN,
     "the condition stays; `{}` becomes `:`",
     "",
 );
-pub static FOREIGN_THEN_2: Habit = shape("foreign_then_2", codes::EXPECTED_TOKEN, "write `:`", "");
 pub static FOR_OF: Habit = shape(
     "for_of",
     codes::EXPECTED_TOKEN,
@@ -500,7 +488,6 @@ pub static LAZY_LEN: Habit = shape(
     "a lazy sequence has no stored length: `.count()` walks it once",
     "",
 );
-pub static LAZY_LEN_2: Habit = shape("lazy_len_2", codes::MISSING_IMPL, "write `.count()`", "");
 pub static LIST_IN: Habit = shape("list_in", codes::MISSING_IMPL, "`in` is for sets, maps and ranges, where it is fast; a list or other sequence is scanned in O(n) with `xs.contains(x)` or `xs.any(y => y == x)`", "");
 pub static LIST_IN_2: Habit = shape(
     "list_in_2",
@@ -521,8 +508,6 @@ pub static LOOP_ADVICE: Habit = shape(
     "",
 );
 pub static MEMBER_ADVICE: Habit = shape("member_advice", codes::REMOVED_SYNTAX, "a domain reads `D.count`, `x.ord` and `D.nth(k)`, which traps outside `0..D.count`; `D.try_at(k)` gives an optional (R04.2.26)", "");
-pub static MEMBER_ADVICE_2: Habit =
-    shape("member_advice_2", codes::REMOVED_SYNTAX, "write `cuts`", "");
 pub static MEMBER_ADVICE_3: Habit = shape(
     "member_advice_3",
     codes::UNKNOWN_FIELD,
@@ -600,12 +585,6 @@ pub static REVERSED_SLICE: Habit = shape(
     "reversed_slice",
     codes::EXPECTED_TOKEN,
     "`xs.rev` is the reversed view; `List(xs.rev)` copies it",
-    "",
-);
-pub static REVERSED_SLICE_2: Habit = shape(
-    "reversed_slice_2",
-    codes::EXPECTED_TOKEN,
-    "write `.rev`",
     "",
 );
 pub static REVERSE_VIEW_HELP: Habit = shape(
@@ -720,8 +699,6 @@ pub static UNKNOWN_MEMBER_7: Habit = shape(
     "a {} combines a range with `fold`",
     "",
 );
-pub static UNKNOWN_MEMBER_8: Habit =
-    shape("unknown_member_8", codes::UNKNOWN_FIELD, "write `fold`", "");
 pub static UNKNOWN_MEMBER_9: Habit = shape(
     "unknown_member_9",
     codes::UNKNOWN_FIELD,
@@ -843,12 +820,6 @@ pub static FLOOR_DIVISION: Habit = shape(
     "`/` on two `Int`s already rounds down: `7 / 2` is 3, `-7 / 2` is -4",
     "",
 );
-pub static FLOOR_DIVISION_2: Habit = shape(
-    "floor_division_2",
-    codes::UNEXPECTED_TOKEN,
-    "replace with `/`",
-    "",
-);
 pub static C_MAIN: Habit = shape(
     "c_main",
     codes::REMOVED_SYNTAX,
@@ -856,15 +827,18 @@ pub static C_MAIN: Habit = shape(
     "",
 );
 pub static C_MAIN_2: Habit = shape("c_main_2", codes::REMOVED_SYNTAX, "unwrap `main`", "");
-pub static INCREMENT: Habit = shape("increment", codes::UNKNOWN_CHAR, "write `{} 1`", "");
-pub static INCREMENT_2: Habit = shape(
-    "increment_2",
+pub static INCREMENT: Habit = shape(
+    "increment",
     codes::UNKNOWN_CHAR,
     "replace `{}` with ` {} 1`",
     "",
 );
-pub static C_LOGIC: Habit = shape("c_logic", codes::UNEXPECTED_TOKEN, "replace with `{}`", "");
-pub static BRACE_SET: Habit = shape("brace_set", codes::REMOVED_SYNTAX, "write `{}..{}`", "");
+pub static REPLACE_WITH: Habit = shape(
+    "replace_with",
+    codes::UNEXPECTED_TOKEN,
+    "replace with `{}`",
+    "",
+);
 pub static POSTFIX_OPTIONAL: Habit = shape(
     "postfix_optional",
     codes::EXPECTED_TYPE,
@@ -883,17 +857,71 @@ pub static BRACKET_TYPE_ARGS: Habit = shape(
     "`[...]` is a list or an index; a type's arguments go in `<>`",
     "",
 );
-pub static BRACKET_TYPE_ARGS_2: Habit = shape(
-    "bracket_type_args_2",
-    codes::EXPECTED_TYPE,
-    "write `<...>`",
+
+pub static KEYED_COUNT: Habit = shape(
+    "keyed_count",
+    codes::UNKNOWN_FIELD,
+    "test a key with `in`: `{}`",
+    "",
+);
+pub static MAP_INSERT: Habit = shape(
+    "map_insert",
+    codes::UNKNOWN_FIELD,
+    "`{}[{}] = {}` replaces a key already there, which C++'s `{}` keeps: `{}`",
+    "",
+);
+pub static FLOAT_TEXT: Habit = shape(
+    "float_text",
+    codes::UNKNOWN_FIELD,
+    "a float's text is an interpolation: `{}`",
+    "",
+);
+pub static SLICE_CALL: Habit = shape(
+    "slice_call",
+    codes::UNKNOWN_FIELD,
+    "a slice indexes a range of positions: `{}`",
+    "",
+);
+pub static JOIN_RECEIVER: Habit = shape(
+    "join_receiver",
+    codes::UNKNOWN_FIELD,
+    "`join` is called on the separator: `{}`",
+    "",
+);
+pub static LIST_POP_INDEX: Habit = shape(
+    "list_pop_index",
+    codes::WRONG_ARG_COUNT,
+    "removing at an index is `remove`: `{}`",
+    "",
+);
+pub static LIST_RESIZE: Habit = shape(
+    "list_resize",
+    codes::WRONG_ARG_COUNT,
+    "`resize` takes the value for new places: `{}`",
+    "",
+);
+pub static MAP_GET_DEFAULT: Habit = shape(
+    "map_get_default",
+    codes::WRONG_ARG_COUNT,
+    "a default for a missing key is given with `??`: `{}`",
+    "",
+);
+pub static ARG_NAME: Habit = shape(
+    "arg_name",
+    codes::UNKNOWN_ARG_NAME,
+    "CP Lang names this argument `{}`",
+    "",
+);
+pub static SPLIT_ON_SPACE: Habit = shape(
+    "split_on_space",
+    codes::WRONG_ARG_COUNT,
+    "a string splits on one `Char`: `split(' ')`",
     "",
 );
 
 /// Every shape row; `all` walks them after the named rows.
 pub static SHAPES: &[&Habit] = &[
     &ARROW_LAMBDA,
-    &ARROW_LAMBDA_2,
     &WRITE,
     &BAD_OPERANDS_2,
     &BAD_OPERANDS_3,
@@ -904,12 +932,9 @@ pub static SHAPES: &[&Habit] = &[
     &CMP_TOKEN_2,
     &CMP_TOKEN_3,
     &COLON_RETURN_TYPE,
-    &COLON_RETURN_TYPE_2,
     &CPP_NPOS,
-    &CPP_NPOS_2,
     &C_ADDRESS,
     &C_AUTO,
-    &C_AUTO_2,
     &C_CASE,
     &C_CASE_2,
     &C_COUNTDOWN_REPORT,
@@ -931,9 +956,7 @@ pub static SHAPES: &[&Habit] = &[
     &FOREIGN_NEW,
     &FOREIGN_NEW_2,
     &FOREIGN_STEP,
-    &FOREIGN_STEP_2,
     &FOREIGN_THEN,
-    &FOREIGN_THEN_2,
     &FOR_OF,
     &F_STRING_PREFIX,
     &F_STRING_PREFIX_2,
@@ -945,13 +968,11 @@ pub static SHAPES: &[&Habit] = &[
     &KEYED_FIND,
     &KEYWORD_ARG,
     &LAZY_LEN,
-    &LAZY_LEN_2,
     &LIST_IN,
     &LIST_IN_2,
     &LIST_PATTERN,
     &LOOP_ADVICE,
     &MEMBER_ADVICE,
-    &MEMBER_ADVICE_2,
     &MEMBER_ADVICE_3,
     &MEMBER_ADVICE_4,
     &MEMBER_FOR_CALL,
@@ -968,7 +989,6 @@ pub static SHAPES: &[&Habit] = &[
     &PYTHON_SPLAT_2,
     &PYTHON_TERNARY,
     &REVERSED_SLICE,
-    &REVERSED_SLICE_2,
     &REVERSE_VIEW_HELP,
     &RUST_CLOSURE,
     &RUST_PRINT,
@@ -988,7 +1008,6 @@ pub static SHAPES: &[&Habit] = &[
     &UNKNOWN_MEMBER_5,
     &UNKNOWN_MEMBER_6,
     &UNKNOWN_MEMBER_7,
-    &UNKNOWN_MEMBER_8,
     &UNKNOWN_MEMBER_9,
     &TUPLE_PARTS,
     &WITHOUT,
@@ -1014,15 +1033,21 @@ pub static SHAPES: &[&Habit] = &[
     &C_CAST_FLOAT,
     &C_CAST_INT,
     &FLOOR_DIVISION,
-    &FLOOR_DIVISION_2,
     &C_MAIN,
     &C_MAIN_2,
     &INCREMENT,
-    &INCREMENT_2,
-    &C_LOGIC,
-    &BRACE_SET,
+    &REPLACE_WITH,
     &POSTFIX_OPTIONAL,
     &POSTFIX_OPTIONAL_2,
     &BRACKET_TYPE_ARGS,
-    &BRACKET_TYPE_ARGS_2,
+    &KEYED_COUNT,
+    &MAP_INSERT,
+    &FLOAT_TEXT,
+    &SLICE_CALL,
+    &JOIN_RECEIVER,
+    &LIST_POP_INDEX,
+    &LIST_RESIZE,
+    &MAP_GET_DEFAULT,
+    &ARG_NAME,
+    &SPLIT_ON_SPACE,
 ];

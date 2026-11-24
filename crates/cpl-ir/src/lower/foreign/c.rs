@@ -77,9 +77,9 @@ impl<'a> Lowerer<'a> {
         let at = self.span(whole.span);
         let ends = self.stands_alone(whole.span).1;
         if let Some(last) = self.diags.last_mut() {
-            last.help = Some(format!("test a key with `in`: `{new}`"));
+            last.help = Some(habits::KEYED_COUNT.say(&[&new]));
             if ends {
-                last.fix(format!("write `{new}`"), at, new);
+                last.fix(habits::WRITE.say(&[&new]), at, new);
             }
         }
         self.err_expr(whole.span)
@@ -117,12 +117,9 @@ impl<'a> Lowerer<'a> {
         let statement = line.trim().is_empty() && rest.trim().is_empty();
         if let (Some(last), Some((k, v))) = (self.diags.last_mut(), pair) {
             let new = format!("if {k} not in {m}: {m}[{k}] = {v}");
-            last.help = Some(format!(
-                "`{m}[{k}] = {v}` replaces a key already there, which C++'s `{}` keeps: `{new}`",
-                name.text
-            ));
+            last.help = Some(habits::MAP_INSERT.say(&[&m, &k, &v, &name.text, &new]));
             if statement {
-                last.fix(format!("write `{new}`"), at, new);
+                last.fix(habits::WRITE.say(&[&new]), at, new);
             }
         }
         self.err_expr(whole.span)

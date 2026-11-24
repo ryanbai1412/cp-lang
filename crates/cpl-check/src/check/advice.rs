@@ -262,7 +262,7 @@ impl Checker<'_> {
             }
             _ if fold_for => {
                 diag.help = Some(habits::UNKNOWN_MEMBER_7.say(&[&base_ty]));
-                diag.fix(habits::UNKNOWN_MEMBER_8.say(&[]), name.span, "fold");
+                diag.fix(habits::WRITE.say(&[&"fold"]), name.span, "fold");
             }
             Some(s) => diag.suggest(name.span, s),
             None if matches!(base_ty, Ty::Tuple(_)) => {
@@ -949,7 +949,7 @@ impl Checker<'_> {
                 msgs::check::REMOVED_SYNTAX_D_BOUNDS_WAS_RENAMED,
                 &[],
             ) {
-                diag.fix(habits::MEMBER_ADVICE_2.say(&[]), name.span, "cuts");
+                diag.fix(habits::WRITE.say(&[&"cuts"]), name.span, "cuts");
             }
             return true;
         }
@@ -1005,7 +1005,7 @@ impl Checker<'_> {
             &[&base_ty],
         ) {
             diag.help = Some(habits::LAZY_LEN.say(&[]));
-            diag.fix(habits::LAZY_LEN_2.say(&[]), name.span, "count()");
+            diag.fix(habits::WRITE.say(&[&".count()"]), name.span, "count()");
         }
     }
 

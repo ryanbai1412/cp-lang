@@ -81,7 +81,7 @@ impl<'a> Parser<'a> {
             cpl_diag::msgs::foreign::REVERSED_SLICE
                 .error(span, &[])
                 .with_help(habits::REVERSED_SLICE.say(&[]))
-                .with_fix(habits::REVERSED_SLICE_2.say(&[]), whole, ".rev"),
+                .with_fix(habits::WRITE.say(&[&".rev"]), whole, ".rev"),
         );
         for _ in 0..3 {
             self.bump();
@@ -367,7 +367,7 @@ impl<'a> Parser<'a> {
             cpl_diag::msgs::foreign::KEYWORD_ARG
                 .error(self.rel(eq), &[])
                 .with_help(habits::KEYWORD_ARG.say(&[]))
-                .with_fix(habits::FOREIGN_THEN_2.say(&[]), gap, ": "),
+                .with_fix(habits::WRITE.say(&[&":"]), gap, ": "),
         );
         let name = self.name();
         self.bump();
@@ -432,7 +432,7 @@ impl<'a> Parser<'a> {
             .error(open, &[&name, &name])
             .with_help(habits::BRACKET_TYPE_ARGS.say(&[]));
         diag.fixes.push(cpl_diag::Fix {
-            title: habits::BRACKET_TYPE_ARGS_2.say(&[]),
+            title: habits::WRITE.say(&[&"<...>"]),
             edits: vec![(open, "<".into()), (close, ">".into())],
         });
         self.error(diag);

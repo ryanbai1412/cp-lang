@@ -2091,8 +2091,6 @@ def ts_ignore(root: Path) -> list[str]:
 
 
 HABIT_FILES = ("crates/cpl-check/src/check/advice.rs",)
-# Foreign modules whose help and fix texts are not habit rows yet: lowering's.
-HABIT_UNSCANNED = ("crates/cpl-ir/",)
 
 
 HABIT_REGISTRY = "crates/cpl-diag/src/habits.rs"
@@ -2130,7 +2128,7 @@ def habit_matchers(root: Path) -> list[str]:
     replaces the count of `fn` items in those files)."""
     files = [rel for rel in _git(root, "ls-files", "crates/**/*.rs")
              if (rel in HABIT_FILES or re.search(r"foreign|habit|advice", Path(rel).name)
-                 or "/foreign/" in rel and not rel.startswith(HABIT_UNSCANNED))
+                 or "/foreign/" in rel)
              and rel != HABIT_REGISTRY and not rel.endswith("tests.rs")]
     found = []
     for rel in files:

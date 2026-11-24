@@ -277,7 +277,7 @@ impl<'a> Parser<'a> {
         };
         let mut diag = message.error(span, &[]).with_help(help);
         diag.fixes.push(cpl_diag::Fix {
-            title: habits::BRACE_SET.say(&[&l, &r]),
+            title: habits::WRITE.say(&[&format!("{l}..{r}")]),
             edits: vec![(open, l.into()), (close, r.into())],
         });
         self.error(diag);

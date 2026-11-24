@@ -57,7 +57,7 @@ impl<'a> Parser<'a> {
             cpl_diag::msgs::foreign::LET_KEYWORD
                 .error(kw, &[&self.text()])
                 .with_help(habits::C_AUTO.say(&[]))
-                .with_fix(habits::C_AUTO_2.say(&[]), kw, "let"),
+                .with_fix(habits::WRITE.say(&[&"let"]), kw, "let"),
         );
         let mut stmt = self.let_stmt();
         if let StmtKind::Let { mutable, .. } = &mut stmt {
@@ -256,7 +256,7 @@ impl<'a> Parser<'a> {
             cpl_diag::msgs::foreign::CPP_NPOS
                 .error(at, &[])
                 .with_help(habits::CPP_NPOS.say(&[]))
-                .with_fix(habits::CPP_NPOS_2.say(&[]), at, "None"),
+                .with_fix(habits::WRITE.say(&[&"None"]), at, "None"),
         );
         for _ in 0..len {
             self.bump();
@@ -653,7 +653,7 @@ impl<'a> Parser<'a> {
         self.error(
             msgs::syntax::C_LOGIC_OP
                 .error(span, &[&op, &word])
-                .with_fix(habits::C_LOGIC.say(&[&word]), span, word),
+                .with_fix(habits::REPLACE_WITH.say(&[&word]), span, word),
         );
         self.bump();
         true

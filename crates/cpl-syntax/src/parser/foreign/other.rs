@@ -23,7 +23,7 @@ impl<'a> Parser<'a> {
             cpl_diag::msgs::foreign::COLON_RETURN_TYPE
                 .error(colon, &[])
                 .with_help(habits::COLON_RETURN_TYPE.say(&[&ty]))
-                .with_fix(habits::COLON_RETURN_TYPE_2.say(&[]), colon, " ->"),
+                .with_fix(habits::WRITE.say(&[&"->"]), colon, " ->"),
         );
         self.bump();
         true
@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
             cpl_diag::msgs::foreign::FOREIGN_STEP
                 .error(span, &[])
                 .with_help(habits::FOREIGN_STEP.say(&[]))
-                .with_fix(habits::FOREIGN_STEP_2.say(&[]), span, "by"),
+                .with_fix(habits::WRITE.say(&[&"by"]), span, "by"),
         );
         self.bump();
         true
@@ -108,7 +108,7 @@ impl<'a> Parser<'a> {
             cpl_diag::msgs::foreign::ARROW_LAMBDA
                 .error(arrow, &[])
                 .with_help(habits::ARROW_LAMBDA.say(&[]))
-                .with_fix(habits::ARROW_LAMBDA_2.say(&[]), arrow, "=>"),
+                .with_fix(habits::WRITE.say(&[&"=>"]), arrow, "=>"),
         );
         let body = self.lambda_body();
         Expr {
@@ -143,7 +143,7 @@ impl<'a> Parser<'a> {
             cpl_diag::msgs::foreign::FOREIGN_THEN
                 .error(self.span(), &[&word])
                 .with_help(habits::FOREIGN_THEN.say(&[&word]))
-                .with_fix(habits::FOREIGN_THEN_2.say(&[]), gap, ":"),
+                .with_fix(habits::WRITE.say(&[&":"]), gap, ":"),
         );
         self.bump();
         true

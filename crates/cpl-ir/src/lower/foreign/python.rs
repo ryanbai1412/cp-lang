@@ -34,8 +34,8 @@ impl<'a> Lowerer<'a> {
         });
         if let Some(d) = last {
             d.fixes.clear();
-            d.help = Some(format!("`join` is called on the separator: `{new}`"));
-            d.fix(format!("write `{new}`"), edit, new);
+            d.help = Some(habits::JOIN_RECEIVER.say(&[&new]));
+            d.fix(habits::WRITE.say(&[&new]), edit, new);
         }
     }
 
@@ -56,10 +56,9 @@ impl<'a> Lowerer<'a> {
         let b = self.source(base.span);
         let a: Vec<String> = args.iter().map(|a| self.source(a.value.span)).collect();
         let (new, help) = match (name.text.as_str(), a.as_slice()) {
-            ("pop", [i]) if matches!(ty, Ty::List(_)) => (
-                format!("{b}.remove({i})"),
-                "removing at an index is `remove`",
-            ),
+            ("pop", [i]) if matches!(ty, Ty::List(_)) => {
+                (format!("{b}.remove({i})"), &habits::LIST_POP_INDEX)
+            }
             // C++'s `a.resize(n)` fills with the element's zero.
             ("resize", [n]) => {
                 let Ty::List(elem) = ty else {
@@ -72,14 +71,11 @@ impl<'a> Lowerer<'a> {
                     Ty::Str => "\"\"",
                     _ => return self.err_expr(span),
                 };
-                (
-                    format!("{b}.resize({n}, {zero})"),
-                    "`resize` takes the value for new places",
-                )
+                (format!("{b}.resize({n}, {zero})"), &habits::LIST_RESIZE)
             }
             ("get", [k, d]) => {
                 let new = self.parenthesized(whole.span, format!("{b}.get({k}) ?? {d}"));
-                (new, "a default for a missing key is given with `??`")
+                (new, &habits::MAP_GET_DEFAULT)
             }
             _ => return self.err_expr(span),
         };
@@ -89,9 +85,9 @@ impl<'a> Lowerer<'a> {
             .last_mut()
             .filter(|d| d.code == codes::WRONG_ARG_COUNT)
         {
-            last.help = Some(format!("{help}: `{new}`"));
+            last.help = Some(help.say(&[&new]));
             last.fixes.clear();
-            last.fix(format!("write `{new}`"), at, new);
+            last.fix(habits::WRITE.say(&[&new]), at, new);
         }
         self.err_expr(span)
     }
@@ -112,8 +108,8 @@ impl<'a> Lowerer<'a> {
         if let Some(label) = foreign.filter(|l| labels.contains(l)) {
             let at = self.span(name.span);
             if let Some(last) = self.diags.last_mut() {
-                last.help = Some(format!("CP Lang names this argument `{label}`"));
-                last.fix(format!("write `{label}`"), at, label);
+                last.help = Some(habits::ARG_NAME.say(&[&label]));
+                last.fix(habits::WRITE.say(&[&label]), at, label);
             }
         } else if let Some(label) = cpl_check::closest(&name.text, labels.iter().copied()) {
             self.suggest_last(name.span, label);
@@ -128,8 +124,12 @@ impl<'a> Lowerer<'a> {
         }
         let at = self.span(call);
         if let Some(last) = self.diags.last_mut() {
-            last.help = Some("a string splits on one `Char`: `split(' ')`".to_string());
-            last.fix("write `split(' ')`", Span::point(at.end - 1), "' '");
+            last.help = Some(habits::SPLIT_ON_SPACE.say(&[]));
+            last.fix(
+                habits::WRITE.say(&[&"split(' ')"]),
+                Span::point(at.end - 1),
+                "' '",
+            );
         }
     }
 }

@@ -49,7 +49,7 @@ impl<'a> Lexer<'a> {
             cpl_diag::msgs::lexer::FLOOR_DIV_IS_COMMENT
                 .error(span, &[])
                 .with_help(habits::FLOOR_DIVISION.say(&[]))
-                .with_fix(habits::FLOOR_DIVISION_2.say(&[]), span, "/"),
+                .with_fix(habits::REPLACE_WITH.say(&[&"/"]), span, "/"),
         );
         self.pos += 2;
         self.push(TokenKind::Slash, start);
@@ -147,9 +147,9 @@ impl<'a> Lexer<'a> {
         let span = Span::new(start as u32, self.pos as u32);
         self.out.diagnostics.push(
             msg.error(span, &[])
-                .with_help(habits::INCREMENT.say(&[&ours]))
+                .with_help(habits::WRITE.say(&[&format!("{ours} 1")]))
                 .with_fix(
-                    habits::INCREMENT_2.say(&[&op, &ours]),
+                    habits::INCREMENT.say(&[&op, &ours]),
                     span,
                     format!(" {ours} 1"),
                 ),

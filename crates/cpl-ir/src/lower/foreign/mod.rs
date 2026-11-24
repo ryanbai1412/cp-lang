@@ -9,4 +9,4 @@ mod python;
 pub(in crate::lower) use c::foreign_insert;
 
 use super::*;
-use cpl_diag::msgs;
+use cpl_diag::{habits, msgs};

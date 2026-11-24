@@ -26,9 +26,9 @@ impl<'a> Lowerer<'a> {
         };
         let edit = self.span(span);
         if let Some(last) = self.diags.last_mut() {
-            last.help = Some(format!("a float's text is an interpolation: `{new}`"));
+            last.help = Some(habits::FLOAT_TEXT.say(&[&new]));
             last.fixes.clear();
-            last.fix(format!("write `{new}`"), edit, new);
+            last.fix(habits::WRITE.say(&[&new]), edit, new);
         }
     }
 
@@ -59,9 +59,9 @@ impl<'a> Lowerer<'a> {
         );
         let edit = self.span(span);
         if let Some(last) = self.diags.last_mut() {
-            last.help = Some(format!("a slice indexes a range of positions: `{new}`"));
+            last.help = Some(habits::SLICE_CALL.say(&[&new]));
             last.fixes.clear();
-            last.fix(format!("write `{new}`"), edit, new);
+            last.fix(habits::WRITE.say(&[&new]), edit, new);
         }
     }
 }
