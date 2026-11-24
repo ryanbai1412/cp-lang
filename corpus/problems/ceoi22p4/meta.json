@@ -8,11 +8,15 @@
   {"id": "4734088", "language": "CPP17", "result": "RTE", "time": 0.762083089, "memory_kb": 24696.0, "file": "corpus/submissions/4734088.cpp"},
   {"id": "4734122", "language": "CPP17", "result": "RTE", "time": 0.767344795, "memory_kb": 24680.0, "file": "corpus/submissions/4734122.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ceoi22p4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ was collected (three WA, two RTE), so orig.cpp is the official CEOI 2022 solution (the accepted submission in the CEOI 2022 Kattis package). Any non-crossing drawing is accepted, so checker.py checks the permutation and runs a Shamos-Hoey sweep for crossing edges. On 300 random cases (reference output, the same with two labels swapped, a random permutation) it agreed with an independent all-pairs segment test every time, and the reference passed on every case, the samples and --max."
 }

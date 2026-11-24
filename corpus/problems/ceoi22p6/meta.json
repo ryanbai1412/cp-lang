@@ -7,11 +7,15 @@
   {"id": "4733952", "language": "CPP17", "result": "TLE", "time": 8.272746201, "memory_kb": 19576.0, "file": "corpus/submissions/4733952.cpp"},
   {"id": "4733989", "language": "CPP17", "result": "RTE", "time": 0.786663787, "memory_kb": 19048.0, "file": "corpus/submissions/4733989.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ceoi22p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ was collected (TLE and RTE only), so orig.cpp is the official CEOI 2022 solution (the accepted submission in the CEOI 2022 Kattis package). Checked on the three statement samples and on 400 random small cases against an independent BFS over parking states (the minimum drive count matched every time, and checker.py replayed every plan). The task asks for a shortest plan, and many exist, so checker.py replays the drives and requires the reference's count."
 }
