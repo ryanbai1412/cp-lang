@@ -274,6 +274,12 @@ pub(crate) struct Emitter<'p> {
     pub blank_next: bool,
     /// Locals bound as `const T&` to a place they read.
     pub ref_bound: BTreeSet<usize>,
+    /// The stores that set again the place the `let` being written reads,
+    /// when it can follow that place by pointer ([`Emitter::rebind_at`]).
+    pub rebind_sets: Option<Vec<*const cpl_ir::Place>>,
+    /// Per store, the `let`s that point at what it sets: their slot, pointer,
+    /// the value it is moved into before the store, and the place.
+    pub rebinds: BTreeMap<*const cpl_ir::Place, Vec<(usize, String, String, String)>>,
     /// Locals a `return` gives a part of (`return Some(p.x0)`, `return t.b`).
     pub given_parts: BTreeSet<usize>,
     /// Of `ref_bound`, those bound as `T&` to a local the fn owns, so a
@@ -399,6 +405,8 @@ impl<'p> Emitter<'p> {
             slot_written_next: false,
             blank_next: false,
             ref_bound: BTreeSet::new(),
+            rebind_sets: None,
+            rebinds: BTreeMap::new(),
             given_parts: BTreeSet::new(),
             mut_bound: BTreeSet::new(),
             opened: BTreeMap::new(),

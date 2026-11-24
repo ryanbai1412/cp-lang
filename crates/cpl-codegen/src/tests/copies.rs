@@ -968,3 +968,51 @@ print(hi.cut(0), hi.cut(n - 1))
     let main = &out[out.find("void solve()").unwrap()..];
     assert!(!main.contains("to_list("), "{main}");
 }
+
+#[test]
+fn a_let_of_a_field_one_branch_sets_again_points_at_it_and_moves_only_there() {
+    let out = cpp(concat!(
+        "struct S:\n",
+        "    var ks: List<Int>\n",
+        "fn grow(mut s: S, c: Bool):\n",
+        "    let old = s.ks\n",
+        "    if c: s.ks = [7, 7]\n",
+        "    print(old, s.ks)\n",
+        "var s = S(ks: [1, read<Int>()])\n",
+        "grow(mut s, read<Int>() > 0)\n",
+    ));
+    assert!(out.contains("const std::vector<ll>* old = &s"), "{out}");
+    assert!(out.contains("= std::move(s"), "{out}");
+    assert!(!out.contains("std::vector<ll> old = s"), "{out}");
+}
+
+#[test]
+fn a_let_of_a_field_pushed_to_before_it_is_set_again_still_copies() {
+    let out = cpp(concat!(
+        "struct S:\n",
+        "    var ks: List<Int>\n",
+        "fn grow(mut s: S):\n",
+        "    let old = s.ks\n",
+        "    s.ks.push(read<Int>())\n",
+        "    if old.len > 5: s.ks = [old.len]\n",
+        "    print(old, s.ks)\n",
+        "var s = S(ks: [1, 2])\n",
+        "grow(mut s)\n",
+    ));
+    assert!(out.contains("std::vector<ll> old = s"), "{out}");
+}
+
+#[test]
+fn a_match_payload_whose_scrutinee_is_set_next_moves_out() {
+    let out = cpp(concat!(
+        "enum Ev = Ask(s: Str, k: Int) | Stop\n",
+        "var e = Ev.Ask(read<Str>(), 2)\n",
+        "match e:\n",
+        "    Ask(s, k) =>\n",
+        "        e = Ev.Ask(\"zz\", 9)\n",
+        "        print(s, k)\n",
+        "    Stop => print(\"stop\")\n",
+        "print(match e: Stop => \"stop\", Ask(_, _) => \"ask\")\n",
+    ));
+    assert!(out.contains("= std::move(e.Ask_0);"), "{out}");
+}
