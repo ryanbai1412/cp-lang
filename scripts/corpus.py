@@ -1093,7 +1093,12 @@ def make(args):
     """Make the cases of every package with a tests.toml, -j at a time. Processes,
     not threads: make_cases runs the accepted C++ with a preexec_fn."""
     import concurrent.futures, multiprocessing
-    wanted = [p for p in problems(sets=args.set or None, ids=args.ids or None) if p.tests]
+    ids = list(args.ids)
+    if getattr(args, "changed", None):
+        ids = [p.id for p in problems(ids=changed_ids(args.changed))]
+        if not ids:
+            return 0
+    wanted = [p for p in problems(sets=args.set or None, ids=ids or None) if p.tests]
     jobs = [(p.id, args.out or OUT) for p in wanted]
     with concurrent.futures.ProcessPoolExecutor(max(1, args.j), mp_context=multiprocessing.get_context("fork")) as pool:
         failed = [f for f in pool.map(make_one, jobs) if f]
@@ -1347,6 +1352,7 @@ def cli(argv):
     m = sub.add_parser("make")
     m.add_argument("ids", nargs="*")
     m.add_argument("--set", action="append")
+    m.add_argument("--changed", metavar="BASE", help="only packages changed since BASE (a commit, or `staged`)")
     m.add_argument("--out")
     m.add_argument("-j", type=int, default=os.cpu_count() or 4)
     sd = sub.add_parser("seed")

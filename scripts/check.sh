@@ -273,9 +273,14 @@ case "$gate_kind" in
         esac
         step "cpl-conform ratchet ($conform_suites --check against research/scoreboard.json)"
         cargo build -q -p cpl-cli -p cpl-conform
-        # Seeded problems (problem-packages/R9) read their cases from target/corpus-tests/.
-        uv run --quiet python scripts/corpus.py make >/dev/null \
-            || fail "scripts/corpus.py make failed; rerun it to see which package"
+        # Seeded problems (problem-packages/R9) read their cases from target/corpus-tests/;
+        # only the corpus suite reads them.
+        case " $conform_suites " in
+            *" all "* | *" corpus "*)
+                uv run --quiet python scripts/corpus.py make >/dev/null \
+                    || fail "scripts/corpus.py make failed; rerun it to see which package"
+                ;;
+        esac
         # shellcheck disable=SC2086
         # CI keeps main's last green run in $CPL_CONFORM_PREV, so a case newer than
         # research/scoreboard.json still can't regress unseen (ci.yml).
@@ -390,8 +395,8 @@ if [ "$mode" = commit ]; then
     if [ "${sel_audit:-0}" = 1 ]; then
         step "staged corpus packages pass every mode (scripts/corpus.py verify --changed staged)"
         cargo build -q -p cpl-cli
-        uv run --quiet python scripts/corpus.py make >/dev/null \
-            || fail "scripts/corpus.py make failed; rerun it to see which package"
+        uv run --quiet python scripts/corpus.py make --changed staged >/dev/null \
+            || fail "scripts/corpus.py make --changed staged failed; rerun it to see which package"
         uv run --quiet python scripts/corpus.py verify --changed staged --skip dream --cpl "$cpl" \
             || fail "a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package"
         mapfile -t dreams < <(git diff --cached --name-only --diff-filter=AMR -- 'corpus/problems/*/dream.cp' \

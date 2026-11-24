@@ -310,11 +310,23 @@ class CheckTestsTest(Corpus):
 
 
 class MakeTest(Corpus):
+    def test_make_changed_makes_only_the_changed_packages(self):
+        for pid in ("p1", "p2"):
+            self.package(pid, tests_toml='[[case]]\ninput = "1"\n')
+        made = []
+        with mock.patch.object(corpus, "changed_ids", return_value=["p2", "gone"]), \
+                mock.patch.object(corpus, "make_one", side_effect=lambda job: made.append(job[0])), \
+                mock.patch("concurrent.futures.ProcessPoolExecutor", lambda *a, **k: mock.MagicMock(
+                    __enter__=lambda s: type("P", (), {"map": staticmethod(lambda f, js: [f(j) for j in js])})(),
+                    __exit__=lambda *a: False)):
+            corpus.make(type("A", (), {"ids": [], "set": None, "out": None, "j": 1, "changed": "staged"}))
+        self.assertEqual(made, ["p2"])
+
     def test_makes_every_package_in_worker_processes(self):
         for pid in ("p1", "p2", "p3"):
             self.package(pid, port_cp="", interactor_py="", tests_toml='[[case]]\ninput = "%s"\n' % pid)
         out = self.root / "out"
-        args = mock.Mock(set=None, ids=[], out=str(out), j=2)
+        args = mock.Mock(set=None, ids=[], out=str(out), j=2, changed=None)
         self.assertEqual(corpus.make(args), 0)
         self.assertEqual([(out / pid / "01.in").read_text() for pid in ("p1", "p2", "p3")], ["p1\n", "p2\n", "p3\n"])
 

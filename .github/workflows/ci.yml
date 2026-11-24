@@ -58,7 +58,8 @@ jobs:
         run: g++ --version | head -1 && rustc --version
       # scripts/cxx-cache.py keys binaries on source, flags, compiler and
       # system headers; a cold cache costs the conform part about 6 min of g++.
-      - uses: actions/cache@v4
+      # Saved after the gate even when it fails, so a cold cache warms once.
+      - uses: actions/cache/restore@v4
         with:
           path: ~/.cache/cpl/cxx
           key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ github.run_id }}
@@ -90,12 +91,21 @@ jobs:
           CPL_GATE_PART: ${{ matrix.part }}
           CPL_CONFORM_PREV: ${{ startsWith(matrix.part, 'conform:') && 'target/conform-prev.json' || '' }}
           CPL_DERIVED_HEALED: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && '1' || '' }}
-        run: scripts/check.sh --fast
+        # The shell timeout fails the step and leaves the cache saves below to run;
+        # the step's own timeout cancels the job and skips them.
+        run: |
+          timeout 680 scripts/check.sh --fast || { s=$?; [ "$s" != 124 ] \
+            || echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; exit "$s"; }
       - uses: actions/cache/save@v4
         if: ${{ always() && matrix.part == 'conform:corpus+docs' }}
         with:
           path: target/corpus-tests
           key: corpus-tests-${{ github.run_id }}
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.cache/cpl/cxx
+          key: cxx-${{ runner.os }}-${{ matrix.part }}-${{ github.run_id }}
       - name: Keep this green run's scoreboard
         if: ${{ success() && github.ref == 'refs/heads/main' && startsWith(matrix.part, 'conform:') }}
         run: "[ ! -f target/conform-prev.json.new ] || mv target/conform-prev.json.new target/conform-prev.json"
