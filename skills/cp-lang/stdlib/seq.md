@@ -262,8 +262,8 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U` — \(O(1)\) per step
 - `fn flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V` — \(O(1)\) per yielded element
 - `fn flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T` — \(O(1)\) per yielded element
-- `fn present<S: Seq, T>(self: S) -> yields T` — \(O(1)\) per step
-- `fn all_some<S: Seq, T>(self: S) -> ?List<T>` — \(O(n)\), \(O(n)\) memory
+- `fn present<S: Seq<?U>, U>(self: S) -> yields U` — \(O(1)\) per step
+- `fn all_some<S: Seq<?U>, U>(self: S) -> ?List<U>` — \(O(n)\), \(O(n)\) memory
 - `fn chain<Ss, T>(..seqs: Ss) -> yields T` — \(O(1)\) per step
 - `fn product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step, \(O(\lvert a \rvert \cdot \lvert b \rvert)\) to walk; \(O(1)\) per step.
 - `fn iterate<T>(from: ?T, step: T -> ?T) -> yields T` — \(O(1)\) per step plus one call of `step`; \(O(1)\) per step.
