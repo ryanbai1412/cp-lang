@@ -9,55 +9,31 @@
 //   shorten. Each state of t's own automaton covers lengths (link len, len] ending at one
 //   position; the lengths above what matched there are new. O((|s| + sum |t|) log |s|).
 // original: corpus/submissions/6513115.cpp
+use std.segtree.{MergeSeg, MergeSegs}
 use std.strings.{SuffixAutomaton}
 
 domain Letter = 'a'..='z'
 
 let s: Str = read()
-let n = s.len
+let n = s.len  // <= 5e5
 var of_s = SuffixAutomaton<Letter>.new()
 
-// Sets of places 0..n as segment trees that share nodes. Node 0 is the empty set.
-var left = [0]
-var right = [0]
-fn single(at: Int, lo: Int, hi: Int) -> Int:
-    left.push(0)
-    right.push(0)
-    let node = left.len - 1
-    if hi - lo > 1:
-        let mid = (lo + hi) / 2
-        if at < mid: left[node] = single(at, lo, mid)
-        else: right[node] = single(at, mid, hi)
-    node
-
-fn union(a: Int, b: Int) -> Int:
-    if a == 0 or b == 0: return a + b
-    let (l, r) = (union(left[a], left[b]), union(right[a], right[b]))
-    left.push(l)
-    right.push(r)
-    left.len - 1
-
-/// Does the set hold a place in from..to?
-fn any_in(node: Int, lo: Int, hi: Int, from: Int, to: Int) -> Bool:
-    if node == 0 or from >= hi or to <= lo or from >= to: return false
-    if from <= lo and hi <= to: return true
-    let mid = (lo + hi) / 2
-    any_in(left[node], lo, mid, from, to) or any_in(right[node], mid, hi, from, to)
-
-var ends: List<Int> = [0]  // per state of s: the places its blocks end
+domain Place = 0..n
+var places = MergeSegs<Place>()
+var ends: List<MergeSeg<Place>> = [MergeSeg<Place>()]  // per state of s: the places its blocks end
 for i in 0..n:
     of_s.push(Letter(s[i]))
-    while ends.len < of_s.len: ends.push(0)
-    ends[of_s.last] = single(i, 0, n)
+    while ends.len < of_s.len: ends.push(MergeSeg<Place>())
+    ends[of_s.last] = places.singleton(Place(i))
 let order = of_s.topo_order()
 for i in (1..order.len).rev:
     let v = order[i]
     if let up = of_s.link(v):
-        ends[up] = union(ends[up], ends[v])
+        ends[up] = places.merge(ends[up], ends[v])
 
-let q: Int = read()
-for _ in 0..q:
-    let (t, l, r): (Str, Int, Int) = read()
+let q: 1..=1e5 = read()
+repeat q:
+    let (t, l, r): (Str, 1..=n, 1..=n) = read()
     let (from, to) = (l - 1, r)  // the block of s as places from..to
     var of_t = SuffixAutomaton<Letter>.new()
     var seen: List<Int> = []  // per place of t: the longest tail ending there that occurs
@@ -68,7 +44,7 @@ for _ in 0..q:
         while true:
             if let next = of_s.step(at, c):
                 // A block of len + 1 letters ending at place e starts at e - len.
-                if any_in(ends[next], 0, n, from + len, to):
+                if from + len < to and places.any_in(ends[next], Place(from + len)..=Place(to - 1)):
                     (at, len) = (next, len + 1)
                     break
             if len == 0: break

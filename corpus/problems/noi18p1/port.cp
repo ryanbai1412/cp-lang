@@ -17,12 +17,7 @@ domain V = 1..=n
 let roads: [m](u: V, v: V, w: 1..=1e4, alt: 1..=1e9) = read()
 let home = dijkstra(Graph.undirected(roads), from: [(V.first!, 0)])
 let (domain N, kt) = kruskal_tree(roads, w: r => desc(roads[r].alt))
-let t = kt.tree
-// least[x]: the shortest walk home from any vertex under node x; a node merges after its children
-var least = t.down(0, (d, x) => 0)
-for v in V: least[kt.leaf[v]] = home[v]!
-for x in t.order.rev:
-    if kt.w[x] != None: least[x] = t.children(x).map(c => least[c]).min()!
+let least = kt.up(min, leaf: v => home[v]!)
 let q: 1..=4e5 = read()
 let k: 0..=1 = read()
 let s: 0..=1e9 = read()
