@@ -497,7 +497,11 @@ ioi22p5
 ioi94p1
 ioi99p2
 ioi99p6
+joi16fp2
+joi16op3
+mccc3j3
 mccc3j4
+mccc3j5
 mccc4j4
 nccc10s4
 nccc8s3

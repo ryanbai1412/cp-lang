@@ -6,30 +6,16 @@
 //   gains cntS[y] - cntS[x], so the best gain is max over all letters of cntS minus min over
 //   letters in T of cntS, if positive. O(|S| + |T|).
 // original: corpus/submissions/4223424.cpp
-
-let (n, m): (Int, Int) = read()
-let a: Str = read()
-let b: Str = read()
-
+let (n, m): (1..=1_000_000, 1..=1_000_000) = read()
+let s: [domain S]Char = read()
+let t: [domain T]Char = read()
+assert S.count == n and T.count == m
 domain Letter = 'A'..='Z'
-var acnt: [Letter]Int = [Letter] _ => 0
-var bcnt: [Letter]Int = [Letter] _ => 0
-for i in 0..n: acnt[Letter(a[i])] += 1
-for i in 0..m: bcnt[Letter(b[i])] += 1
+var in_s: [Letter]Int = 0
+var in_t: [Letter]Int = 0
+for c in s: in_s[Letter(c)] += 1
+for c in t: in_t[Letter(c)] += 1
 
-var base = 0
-var hi = 0
-var lo: ?Int = None
-for c in Letter:
-    base += acnt[c] * bcnt[c]
-    hi max= acnt[c]
-    if bcnt[c] > 0:
-        if let cur = lo:
-            if acnt[c] < cur: lo = acnt[c]
-        else:
-            lo = acnt[c]
-
-var gain = 0
-if let x = lo:
-    if hi - x > 0: gain = hi - x
-print(base + gain)
+// turning one letter of t from x into y gains in_s[y] - in_s[x]
+let gain = max(in_s[c] for c in Letter) - min(in_s[c] for c in Letter if in_t[c] > 0)
+print(sum(in_s[c] * in_t[c] for c in Letter) + max(gain, 0))
