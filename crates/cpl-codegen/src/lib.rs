@@ -653,6 +653,8 @@ mod devirt_tests;
 #[cfg(test)]
 mod fold_tests;
 #[cfg(test)]
+mod mangle_tests;
+#[cfg(test)]
 mod prune_tests;
 #[cfg(test)]
 mod range_tests;
