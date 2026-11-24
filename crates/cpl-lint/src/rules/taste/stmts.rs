@@ -23,60 +23,6 @@ pub(super) fn var_decl(stmt: &Stmt) -> Option<(&str, &Expr)> {
     }
 }
 
-/// `stmts` assign no place but `name`: calls (`print`, `seen.add(v)`) may
-/// run, but no other variable or table moves.
-pub(super) fn only_sets(stmts: &[Stmt], name: &str) -> bool {
-    stmts.iter().all(|s| match &s.kind {
-        StmtKind::Assign { target, .. } => {
-            matches!(&target.kind, ExprKind::Name(n) if n == name)
-        }
-        StmtKind::Break(None) | StmtKind::Continue(None) => true,
-        StmtKind::Let { .. } => true,
-        StmtKind::Expr(Expr {
-            kind: ExprKind::If {
-                branches,
-                otherwise,
-            },
-            ..
-        }) => {
-            branches.iter().all(|(_, b)| only_sets(&b.stmts, name))
-                && otherwise.as_ref().is_none_or(|b| only_sets(&b.stmts, name))
-        }
-        StmtKind::Expr(_) => true,
-        _ => false,
-    })
-}
-
-/// Some block under `stmts` sets `name` and then breaks.
-pub(super) fn breaks_after_setting(stmts: &[Stmt], name: &str) -> bool {
-    let sets = |s: &Stmt| {
-        matches!(&s.kind, StmtKind::Assign { target, op: AssignOp::Set, .. }
-            if matches!(&target.kind, ExprKind::Name(n) if n == name))
-    };
-    stmts
-        .windows(2)
-        .any(|w| sets(&w[0]) && matches!(w[1].kind, StmtKind::Break(None)))
-        || stmts.iter().any(|s| match &s.kind {
-            StmtKind::Expr(Expr {
-                kind:
-                    ExprKind::If {
-                        branches,
-                        otherwise,
-                    },
-                ..
-            }) => {
-                branches
-                    .iter()
-                    .any(|(_, b)| breaks_after_setting(&b.stmts, name))
-                    || otherwise
-                        .as_ref()
-                        .is_some_and(|b| breaks_after_setting(&b.stmts, name))
-            }
-            StmtKind::Unchecked(b) => breaks_after_setting(&b.stmts, name),
-            _ => false,
-        })
-}
-
 /// `xs.push(e)`: `e`.
 pub(super) fn pushed_onto<'e>(e: &'e Expr, name: &str, calls: Calls) -> Option<&'e Expr> {
     let ExprKind::Call { callee, args } = &e.kind else {
