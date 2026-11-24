@@ -542,9 +542,20 @@ fn a_place_passed_to_a_fn_that_moves_it_into_a_struct_is_a_sunk_copy() {
     let commented = format!("{cpp}// fn f(a) = wrap(a)\n");
     assert_eq!(sunk_copies(&commented), 1);
     let small = "struct P {\n  ll x = 0;\n  bool b = false;\n};\nstruct W {\n  P p;\n  std::vector<ll> xs;\n};\n";
-    let holding = |ty: &str| format!("{small}inline H wrap({ty} v) {{\n  return H{{std::move(v)}};\n}}\nvoid solve() {{\n  h = wrap(a);\n}}\n");
+    let holding = |ty: &str| {
+        format!("{small}inline H wrap({ty} v) {{\n  return H{{std::move(v)}};\n}}\nvoid solve() {{\n  h = wrap(a);\n}}\n")
+    };
     assert_eq!(sunk_copies(&holding("P")), 0);
     assert_eq!(sunk_copies(&holding("W")), 1);
+    let named =
+        "struct S {\n  P p;\n  std::string name;\n};\nstruct M {\n  std::map<ll, ll> at;\n};\n";
+    let held_in = |ty: &str| holding(ty).replacen("inline", &format!("{named}inline"), 1);
+    assert_eq!(sunk_copies(&held_in("S")), 1);
+    assert_eq!(sunk_copies(&held_in("M")), 1);
+    assert_eq!(sunk_copies(&holding("std::string")), 1);
+    let only_comment =
+        format!("{small}inline H wrap(W v) {{\n  return H{{std::move(v)}};\n}}\n// h = wrap(a);\n");
+    assert_eq!(sunk_copies(&only_comment), 0);
 }
 
 #[test]
