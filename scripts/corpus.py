@@ -1201,7 +1201,10 @@ def cpl_dep_info(cpl):
         return None
     rule = next((l for l in text.splitlines() if re.match(r"(\\ |[^ ])+: ", l)), "")
     deps = re.split(r"(?<!\\)\s+", rule.partition(": ")[2].strip())
-    return [os.path.join(ROOT, d.replace("\\ ", " ")) for d in deps if d]
+    paths = [os.path.join(ROOT, d.replace("\\ ", " ")) for d in deps if d]
+    # build.rs reruns on git's HEAD only to stamp `cpl --version`; every commit or
+    # rebase touches it, and an older stamp runs the same compiler.
+    return [f for f in paths if ".git" not in os.path.relpath(f, ROOT).split(os.sep)]
 
 
 def require_cpl(cpl):

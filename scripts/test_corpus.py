@@ -953,6 +953,13 @@ class StaleCplTest(unittest.TestCase):
         os.utime(self.root / "crates/cpl-a/src/lib.rs", (3000, 3000))
         corpus.require_cpl(str(self.cpl))
 
+    def test_a_newer_git_head_only_restamps_the_version_so_cpl_stays_fresh(self):
+        (self.root / ".git").mkdir()
+        (self.root / ".git/HEAD").write_text("")
+        os.utime(self.root / ".git/HEAD", (3000, 3000))
+        self.dep_info("crates/cpl-cli/src/main.rs", ".git/HEAD")
+        corpus.require_cpl(str(self.cpl))
+
     def test_a_dependency_cargo_recorded_but_is_gone_is_stale(self):
         self.dep_info("crates/cpl-cli/src/main.rs", "crates/cpl-cli/src/gone.rs")
         self.assertIn("is stale", self.stale())
