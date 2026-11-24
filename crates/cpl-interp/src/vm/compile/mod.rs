@@ -90,7 +90,9 @@ pub(super) struct Compiler<'p, 'f> {
     closure_specs: Vec<ClosureMakeSpec>,
     /// The slots a closure made here captures by reference; `ref_all` when a
     /// closure the tree-walker makes may capture any of them.
-    ref_slots: Vec<u16>,
+    pub(super) ref_slots: Vec<u16>,
+    /// Slots whose value goes back to the caller's place on exit.
+    pub(super) held: Vec<u16>,
     ref_all: bool,
     feed_calls: Vec<FeedCallSpec>,
     fed_bodies: Vec<(LoopId, u32)>,
@@ -213,6 +215,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             places: Vec::new(),
             closure_specs: Vec::new(),
             ref_slots: Vec::new(),
+            held: (0..param_count as u16).collect(),
             ref_all: false,
             feed_calls: Vec::new(),
             fed_bodies: Vec::new(),
@@ -297,12 +300,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             guarded_domains: Vec::new(),
             needs_stack,
             has_by_ref_closure: self.ref_all || !self.ref_slots.is_empty(),
-            ref_slots: (!self.ref_all).then(|| {
-                let mut slots = self.ref_slots;
-                slots.sort_unstable();
-                slots.dedup();
-                slots
-            }),
+            ref_slots: (!self.ref_all).then_some(self.ref_slots),
             back_edges: self.back_edges,
             call_sites: self.call_sites,
             keeps: {
@@ -636,6 +634,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let r = self.next_v;
         self.next_v += 1;
         r
+    }
+
+    /// The register to return `r` from: a copy when `r` holds a slot the
+    /// frame hands back on exit (a param, or a variable captured by reference).
+    pub(super) fn ret_v(&mut self, r: u16, span: Span) -> u16 {
+        let held = (r as usize) < self.num_local_v as usize
+            && (self.held.iter())
+                .any(|&s| matches!(self.slot_loc(s as Slot), SlotLoc::V(v) if v == r));
+        if !held {
+            return r;
+        }
+        let dst = self.alloc_v();
+        self.emit(Op::CloneV { dst, src: r }, span);
+        dst
     }
 
     pub(super) fn slot_loc(&self, slot: Slot) -> SlotLoc {

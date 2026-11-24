@@ -1036,6 +1036,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         self.emit(Op::RetI { src: r }, e.span);
                     } else {
                         let r = self.compile_expr_v(e);
+                        let r = self.ret_v(r, e.span);
                         self.emit(Op::RetV { src: r }, e.span);
                     }
                 } else {
@@ -1069,6 +1070,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         self.emit(Op::RetI { src: r }, e.span);
                     } else {
                         let r = self.compile_expr_v(e);
+                        let r = self.ret_v(r, e.span);
                         self.emit(Op::RetV { src: r }, e.span);
                     }
                 } else {

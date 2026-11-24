@@ -54,7 +54,9 @@ pub fn trap_locals(recording: &Recording, source: &str, at: &str) -> Option<Stri
             }
         }
     }
-    locals.sort_by_key(|(name, _)| !named(name));
+    let (mut locals, rest): (Vec<_>, Vec<_>) =
+        locals.into_iter().partition(|(name, _)| named(name));
+    locals.extend(rest);
     let more = locals.len() > TRAP_LOCALS;
     let mut parts: Vec<String> = locals
         .into_iter()

@@ -683,7 +683,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                                 caps.push(CapSrc::GlobalVal(cap.outer as u16));
                             }
                         } else if cap.by_ref {
-                            self.ref_slots.push(cap.outer as u16);
+                            // Kept sorted and unique as it is built.
+                            let slot = cap.outer as u16;
+                            if let Err(at) = self.ref_slots.binary_search(&slot) {
+                                self.ref_slots.insert(at, slot);
+                            }
                             let v = match self.slot_loc(cap.outer) {
                                 SlotLoc::V(r) => r,
                                 _ => u16::MAX,

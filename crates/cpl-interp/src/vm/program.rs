@@ -331,6 +331,8 @@ impl<'p> CompiledProgram<'p> {
                 );
                 c.traced = traced;
                 c.profiled = profiled;
+                let refs = def.captures.iter().filter(|cap| cap.by_ref);
+                c.held.extend(refs.map(|cap| cap.inner as u16));
                 let ret_kind = ScalarKind::of_ty(&def.ret, program);
                 c.compile_block(&def.body, ret_kind, true);
                 let mut chunk = c.finish();
