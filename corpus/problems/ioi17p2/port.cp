@@ -18,21 +18,19 @@ let blue: [m]0..1_000_000_000 = read()
 var points = [(at: Int(x), sign: 1) for x in red] + [(at: Int(x), sign: -1) for x in blue]
 points.sort()
 domain P = 0..n + m
-let pt: [P](at: Int, sign: Int) = [P] p => points[Int(p)]
+fn pt(p: P) -> (at: Int, sign: Int) = points[Int(p)]
 
 // near[p]: the distance from point p to the closest point of the other colour
-var left: [P]?Int = None
-var right: [P]?Int = None
+const FAR = 1_000_000_000   // past every gap
+var near: [P]0..=FAR = FAR  // to the nearest other colour; both occur
 var (seen_red, seen_blue): (?Int, ?Int) = (None, None)
 for p in P:
-    left[p] = if pt[p].sign == 1: seen_blue else: seen_red
-    if pt[p].sign == 1: seen_red = pt[p].at else: seen_blue = pt[p].at
+    if let x = if pt(p).sign == 1: seen_blue else: seen_red: near[p] min= pt(p).at - x
+    if pt(p).sign == 1: seen_red = pt(p).at else: seen_blue = pt(p).at
 (seen_red, seen_blue) = (None, None)
 for p in P.rev:
-    right[p] = if pt[p].sign == 1: seen_blue else: seen_red
-    if pt[p].sign == 1: seen_red = pt[p].at else: seen_blue = pt[p].at
-let gaps = [P] p => (left[p].map(x => pt[p].at - x), right[p].map(x => x - pt[p].at))
-let near = [P] p => min(gaps[p].0 ?? gaps[p].1!, gaps[p].1 ?? gaps[p].0!)
+    if let x = if pt(p).sign == 1: seen_blue else: seen_red: near[p] min= x - pt(p).at
+    if pt(p).sign == 1: seen_red = pt(p).at else: seen_blue = pt(p).at
 
 // cost[c]: the cheapest wiring of the points before cut c. Its last point takes its own wire
 // to the nearest other colour, or the block since the latest cut with the same red-minus-blue
@@ -44,8 +42,8 @@ var latest: [Balance]?Cut<P> = None
 latest[Balance(0)] = P.cuts.first!
 var bal = 0
 for p in P:
-    bal += pt[p].sign
-    signed[p.r] = signed[p.l] + pt[p].sign * pt[p].at
+    bal += pt(p).sign
+    signed[p.r] = signed[p.l] + pt(p).sign * pt(p).at
     cost[p.r] = cost[p.l] + near[p]
     if let c = latest[Balance(bal)]: cost[p.r] min= cost[c] + abs(signed[p.r] - signed[c])
     latest[Balance(bal)] = p.r
