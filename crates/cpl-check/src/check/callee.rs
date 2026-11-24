@@ -84,6 +84,13 @@ impl Checker<'_> {
         let ExprKind::Field { base, .. } = &callee.kind else {
             return false;
         };
+        // `List.filled(n, x)`: a built-in type's own constructor.
+        if let ExprKind::Name(t) = &base.kind {
+            const TYPES: [&str; 6] = ["List", "Map", "HashMap", "Set", "HashSet", "Str"];
+            if TYPES.contains(&t.as_str()) && self.local(t).is_none() {
+                return true;
+            }
+        }
         let ty = self.exprs.types.iter().rev().find(|t| t.0 == base.span);
         let receiver = match ty.map(|t| &t.1) {
             Some(Ty::Named { name, args }) => match (name.as_str(), args.len()) {

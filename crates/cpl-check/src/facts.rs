@@ -344,7 +344,7 @@ mod tests {
 
     #[test]
     fn a_builtin_member_is_told_from_a_programs_own() {
-        let src = "struct Bag:\n    n: Int\n\nimpl Bag:\n    fn push(self, x: Int) -> Int = self.n + x\n\nvar xs = [3, 1, 2]\nxs.push(4)\nlet b = Bag(n: 1)\nlet c = b.push(2)\nlet n = xs.len\nprint(c, n)\n";
+        let src = "struct Bag:\n    n: Int\n\nimpl Bag:\n    fn push(self, x: Int) -> Int = self.n + x\n\nvar xs = [3, 1, 2]\nxs.push(4)\nlet b = Bag(n: 1)\nlet c = b.push(2)\nlet n = xs.len\nlet ys = List.filled(2, 0)\nprint(c, n, ys)\n";
         let mut db = Database::new();
         db.set_file("a.cp", src);
         let analysis = db.analyze("a.cp").unwrap();
@@ -370,6 +370,10 @@ mod tests {
             ("push".into(), CalleeKind::Method, false)
         );
         assert_eq!(callee("xs.len"), ("len".into(), CalleeKind::Getter, true));
+        assert_eq!(
+            callee("List.filled(2, 0)"),
+            ("filled".into(), CalleeKind::Method, true)
+        );
     }
 
     #[test]
