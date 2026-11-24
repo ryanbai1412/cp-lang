@@ -20,7 +20,7 @@ for r in 0..256:
     var a = xs.clone()
     s += a.rotated_left(n / 3).len // timed: seq.rotated_left
     s += a.rotated_right(n / 3).len // timed: seq.rotated_right
-    s += a.merge_sorted(ys).len // timed: seq.merge_sorted
+    s += a.merge_sorted(ys).count() // timed: seq.merge_sorted
     s += a.sorted_union(ys).len // timed: seq.sorted_union
     s += a.sorted_intersect(ys).len // timed: seq.sorted_intersect
     s += a.sorted_diff(ys).len // timed: seq.sorted_diff
