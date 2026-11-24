@@ -80,7 +80,7 @@ List prefix sums `Prefix<T>`, built by `Prefix(a)` or `Prefix<T>.filling(n, ...)
 Fields: `p: List<T>`.
 
 - `fn new(a: List<T>) -> Prefix<T>` — \(O(a.\mathit{len})\) time and space; Build 1-D prefix sums over `a: List<T>`; `Prefix(a)` on a list calls it.
-- `fn filling(n: 0.., order: FillOrder = FillOrder.Forward) -> FillPrefix<T>` — \(O(n)\) time and space; Create an append-only 1-D prefix/suffix sum table of length `n`, filled via `.set(i, x)` in `order`.; traps: when `n < 0`
+- `fn filling(n: Len, order: FillOrder = FillOrder.Forward) -> FillPrefix<T>` — \(O(n)\) time and space; Create an append-only 1-D prefix/suffix sum table of length `n`, filled via `.set(i, x)` in `order`.; traps: when `n < 0` or `n >= 2^31`
 - `fn cut(self, k: Int) -> T` — \(O(1)\); The sum of the first `k` values; zero for `k == 0`.; traps: when `k` is not in `0..=n`
 - `fn fold(self, r: Range<Int>) -> T` — \(O(1)\); The sum of `a[i]` for `i` in `r`, or zero when `r` is empty.; traps: when `r` is non-empty and reaches outside `0..n`
 

@@ -10,7 +10,7 @@ In prelude (no `use` needed): `Deque`.
 
 A queue with both ends open: `var q = Deque<Int>()`.
 
-Fields: `buf: List<T>`, `head: Int`, `n: Int`, `mask: Int`, `want: Int`.
+Fields: `buf: List<T>`, `head: Int`, `n: Len`, `mask: Int`, `want: Int`.
 
 - `fn new() -> Deque<T>` — \(O(1)\); nothing is allocated until the first push; Create an empty `Deque<T>`.
 - `fn of(xs: List<T>) -> Deque<T>` — \(O(n)\); A deque holding `xs`, front to back: the queue of a search, `var q = Deque.of(sources)`, then `while let u = q.pop_front(): ...`.

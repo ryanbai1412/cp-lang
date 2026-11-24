@@ -4,7 +4,11 @@
 
 Ranges of positions: their end cuts, halving, binary search and the cyclic `RingRange`. Nothing here imports another std module, so `seq`, `prefix` and every other module can use it.
 
-In prelude (no `use` needed): `RingRange`.
+In prelude (no `use` needed): `Len`, `RingRange`.
+
+## Types & Constants
+
+- `type Len = 0..2_147_483_648` — A size: a count, length or capacity.
 
 ## `trait Search`
 

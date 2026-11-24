@@ -74,7 +74,7 @@ Fields: `t: List<T>`.
 
 ## `struct SparseFenwick2D<T: Add + Sub>`
 
-Fields: `n: Int`, `pts: List<(Int, Int)>`, `xs: List<Int>`, `ys: List<List<Int>>`, `ft: List<List<T>>`, `built: Bool`.
+Fields: `n: Len`, `pts: List<(Int, Int)>`, `xs: List<Int>`, `ys: List<List<Int>>`, `ft: List<List<T>>`, `built: Bool`.
 
 - `fn new() -> SparseFenwick2D<T>` — \(O(1)\); An empty offline 2-D Fenwick builder.
 - `fn add_point(mut self, x: Int, y: Int)` — \(O(1)\) amortized; Register the point `(x, y)` as a future `add` target.; traps: after `build`

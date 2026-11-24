@@ -6,7 +6,7 @@ Flows, cuts and matchings: Dinic's max flow and min cut, min-cost flow, maximum 
 
 In prelude (no `use` needed): `Arc`, `FlowGraph`, `circulation`, `general_matching`, `global_min_cut`, `gomory_hu`, `max_bounded_flow`, `max_closure`, `max_matching`, `max_weight_general_matching`, `max_weight_matching`, `min_bounded_flow`, `min_vertex_cover`, `min_weight_matching`.
 
-## `struct Arc(pub id: 0..2_147_483_648)`
+## `struct Arc(pub id: Len)`
 
 A handle to one arc of a `FlowGraph`.
 

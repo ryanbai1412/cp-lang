@@ -77,10 +77,10 @@ Fields: `f: T -> U,`.
 
 - `@get fn src(self) -> S` — \(O(1)\)
 - `fn nth<T>(self, k: Int) -> T` — \(O(1)\); traps: unless `0 <= k < self.len`
-- `fn take(self, k: 0..) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
-- `fn drop(self, k: 0.. = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
-- `fn take_last(self, k: 0..) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
-- `fn drop_last(self, k: 0.. = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
+- `fn take(self, k: Len) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
+- `fn drop(self, k: Len = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
+- `fn take_last(self, k: Len) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
+- `fn drop_last(self, k: Len = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
 
 ## `struct Items<S>(`
 
@@ -257,15 +257,15 @@ Fields: `k: Int,`.
 - `fn perm_pow<V>(p: [V]V, k: 0..) -> [V]V` — \(O(\lvert V \rvert)\); `k`-th iterate of permutation `p` (`k >= 0`), computed via cycle decomposition.; traps: when `k < 0` or `p` is not a permutation
 - `fn inversions<S: Seq<T>, T>(self: S) -> Int` — \(O(n \log n)\); Number of inversions: pairs `(i, j)` with `i < j` and `a[i] > a[j]`.
 - `fn swap_at<D, T>(mut self: [D]T, i: D, j: D)` — \(O(1)\); Swap two positions of a domain array in place; safely a no-op when `i == j`.
-- `fn resized<S: Indexed, T>(self: S, n: 0.., fill: T) -> List<T>` — \(O(n)\); `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of `[if i < a.len: a[i] else: Z(0) for i in 0..size]`.; traps: when `n < 0`
+- `fn resized<S: Indexed, T>(self: S, n: Len, fill: T) -> List<T>` — \(O(n)\); `self` cut or padded with `fill` to length `n`: `a.resized(size, Z(0))` instead of `[if i < a.len: a[i] else: Z(0) for i in 0..size]`.; traps: when `n < 0` or `n >= 2^31`
 - `fn pop_if<T>(mut self: List<T>, ok: T -> Bool) -> ?T` — \(O(1)\)
 - `fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>` — \(O(\mathit{popped})\)
 - `fn clone<T>(self: T) -> T` — \(O(n)\) for a value of size \(n\), allocates for heap values; \(O(n)\), allocates.
 - `fn take_all<T>(mut self: List<T>) -> List<T>` — \(O(1)\); Move all elements out of `self` in \(O(1)\), leaving it empty.
-- `fn drop<S: Indexed>(self: S, k: 0.. = 1) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
-- `fn drop_last<S: Indexed>(self: S, k: 0.. = 1) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
-- `fn take<S: Indexed>(self: S, k: 0..) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
-- `fn take_last<S: Indexed>(self: S, k: 0..) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
+- `fn drop<S: Indexed>(self: S, k: Len = 1) -> Slice<S>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
+- `fn drop_last<S: Indexed>(self: S, k: Len = 1) -> Slice<S>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
+- `fn take<S: Indexed>(self: S, k: Len) -> Slice<S>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
+- `fn take_last<S: Indexed>(self: S, k: Len) -> Slice<S>` — \(O(1)\); traps: when `k < 0` or `k >= 2^31`
 - `fn nth<S: Indexed, T>(self: S, k: Int) -> T` — \(O(1)\); traps: when `k` is not in `0..self.len`
 - `fn to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T>` — \(O(n)\)
 - `@get fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S>` — \(O(1)\)
@@ -296,8 +296,8 @@ Fields: `k: Int,`.
 - `fn min_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)` — \(O(n)\)
 - `fn majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)` — at most \(\lfloor 3n/2 \rfloor\) calls of `eq`; \(O(n)\) memory; The value held by more than half the elements, with its count, or `None`.
 - `fn group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>` — \(O(n \log n)\), \(O(n)\) memory
-- `fn min_k<S: Seq<T>, T, K>(self: S, k: 0.., by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0`; `k > n` gives every element
-- `fn max_k<S: Seq<T>, T, K>(self: S, k: 0.., by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0`; `k > n` gives every element
+- `fn min_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
+- `fn max_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 - `fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
 - `fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(n)\) memory
 - `fn adjacent_diff<S: Seq<T>, T>(self: S) -> List<T>` — \(O(n)\), \(O(n)\) memory
@@ -318,7 +318,7 @@ Fields: `k: Int,`.
 - `fn perm_sign<V>(self: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: when `p` is not a permutation
 - `fn perm_order<V>(self: [V]V) -> Int` — \(O(n)\), \(O(n)\) memory; traps: never; the order can overflow `Int` past about |V| = 400
 - `fn partial_inverse<I, V>(self: [I]?V) -> [V]?I` — \(O(\lvert I \rvert + \lvert V \rvert)\), \(O(\lvert I \rvert + \lvert V \rvert)\) memory; traps: when two keys map to the same value
-- `fn combinations<S: Indexed, T>(self: S, k: 0..) -> yields List<T>` — \(O(k)\) per combination; traps: when `k < 0`
+- `fn combinations<S: Indexed, T>(self: S, k: Len) -> yields List<T>` — \(O(k)\) per combination; traps: when `k < 0` or `k >= 2^31`
 - `fn index_pairs<D>(self: Range<D>) -> yields (D, D)` — \(O(1)\) per pair
 - `fn permutations<S: Indexed, T>(self: S, k: ?Int = None) -> yields List<T>` — \(O(k)\) per permutation; traps: when `k` is not in `0..=self.len`
 - `fn subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T>` — \(O(k)\) per subsequence

@@ -10,7 +10,7 @@ In prelude (no `use` needed): `SparseTable`.
 
 `SparseTable<V, Int>(min, a)`: built in \(O(n \log n)\) time and memory, `fold` is \(O(1)\).
 
-Fields: `n: Int`, `table: List<T>`.
+Fields: `n: Len`, `table: List<T>`.
 
 - `fn new(op: (T, T) -> T, a: [D]T) -> SparseTable<D, T>` — \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory, `op` called \(O(\lvert D \rvert \log \lvert D \rvert)\) times; Build a sparse table for the idempotent, associative `op` over the values of `a`.; traps: never (a non-idempotent or non-associative `op` gives unspecified folds; check with `idempotent`)
 - `fn fold(self, r: Range<D>) -> T` — \(O(1)\); The fold of `op` over the positions of the non-empty range `r`, as two overlapping power-of-two windows combined with one `op` call.; traps: when `r` is empty or reaches outside `D`
@@ -22,7 +22,7 @@ Fields: `n: Int`, `table: List<T>`.
 
 Disjoint sparse table: \(O(n \log n)\) build and memory, \(O(1)\) range fold for ANY associative operation — no idempotence and no inverse required (matrix products, `Mod<P>` products, `MaxSub`, string concatenation).
 
-Fields: `n: Int`, `table: List<T>`.
+Fields: `n: Len`, `table: List<T>`.
 
 - `fn new(op: (T, T) -> T, a: [D]T) -> DisjointSparseTable<D, T>` — \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory, `op` called \(O(\lvert D \rvert \log \lvert D \rvert)\) times; Build a disjoint sparse table for the associative `op` over `a`.; traps: never (a non-associative `op` gives unspecified folds)
 - `fn fold(self, r: Range<D>) -> T` — \(O(1)\), at most one `op` call; The fold of `op` over the non-empty range `r`, left to right in domain order, so a non-commutative `op` sees its operands in position order.; traps: when `r` is empty or reaches outside `D`
@@ -45,7 +45,7 @@ Fields: `table: List<T>`, `h: Int`, `w: Int`, `lr: Int`, `lc: Int`.
 
 A static range min or max in \(O(1)\) per query after \(O(\lvert D \rvert)\) build and memory, by block-of-64 bitmask RMQ (Four Russians): for \(O(1)\) LCA, or a static RMQ where \(O(n \log n)\) space is too large.
 
-Fields: `n: Int`, `mask: List<U64>`, `nb: Int`, `top: List<Int>`, `keys: Range<D>`.
+Fields: `n: Len`, `mask: List<U64>`, `nb: Int`, `top: List<Int>`, `keys: Range<D>`.
 
 - `fn new(a: [D]T, before: (T, T) -> Bool = (x, y) => x <y) -> LinearRmq<D, T>: let n = a.len let nb = (n + 63) / 64 let keys = a.keys var q = LinearRmq<D, T>(before, n, a, List.filled(n, U64(0)), nb, [], keys) q.top.reserve(nb * max(bit_width(nb), 1)) for b in 0..nb: var cur: U64 = U64(0) for i in 64 * b..min(64 * b + 64, n): while cur != U64(0) and before(q.values[keys.nth(i)], q.values[keys.nth(64 * b + bit_width(cur) - 1)]): cur ^= U64(1) <<(bit_width(cur) - 1) cur |= U64(1) <<(i - 64 * b)` — \(O(\lvert D \rvert)\) time and memory; Build a linear-space range-best structure over `a`, where `before(x, y)` means `x` is better than `y` (default `<`, so the best is the minimum).; traps: never (`before` must be a strict weak order, or results are unspecified)
 - `fn argbest(self, r: Range<D>) -> D` — \(O(1)\); The position of the best element of the non-empty range `r` under `before`; the leftmost when several are equally best (neither is `before` the other).; traps: when `r` is empty or reaches outside `D`

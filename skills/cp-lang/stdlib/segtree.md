@@ -14,7 +14,7 @@ The positions a `SegTree` runs over.
 
 Point update and range fold.
 
-Fields: `t: List<T>`, `lz: List<F>`, `has_lz: List<Bool>`, `size: Int`, `log: Int`, `act: ?Action<T, F>`.
+Fields: `t: List<T>`, `lz: List<F>`, `has_lz: List<Bool>`, `size: Len`, `log: Int`, `act: ?Action<T, F>`.
 
 - `fn new<M, A: Acts<T, F>, O>(op: M = NoOp(), a: ?[D]T = None, fill: ?T = None, act: A = NoAction(), over: O = NoOver()) -> SegTree<D, T, F>` — \(O(\lvert D \rvert)\); \(O(\log(hi - lo))\) with `over: lo..hi`, which then makes at; A tree over `D` folding with `op`: built from `a`, filled with `fill`, or holding the identity everywhere when neither is given.; traps: when both `a` and `fill` are given, or `over:` is given together with `a`; a tree
 - `fn apply(mut self, r: Range<D>, f: F)` — \(O(\log \lvert D \rvert)\); Apply tag `f` to every position of `r`: each fold over `r` then sees the values with `f` applied, through the action given to `act:`.; traps: when a non-empty `r` reaches outside `D`
@@ -38,7 +38,7 @@ Fields: `t: List<T>`, `lz: List<F>`, `has_lz: List<Bool>`, `size: Int`, `log: In
 
 Static merge-sort tree for orthogonal 2D range counting over `[D]T`.
 
-Fields: `data: List<T>`, `size: Int`.
+Fields: `data: List<T>`, `size: Len`.
 
 - `fn new(a: [D]T) -> MergeSortTree<D, T>` — \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory; A static tree over `a` whose nodes hold their values sorted, for counting values in a range.
 - `fn count_lt(self, r: Range<D>, x: T) -> Int` — \(O(\log^2 \lvert D \rvert)\); The number of positions in `r` whose value is `< x`.; traps: when a non-empty `r` reaches outside `D`
@@ -66,7 +66,7 @@ Fields: `t: List<T>`.
 
 Wavelet matrix over non-negative integer values: \(O(\log V)\) range k-th smallest, frequency, value-range count, predecessor/successor, and quantile sum.
 
-Fields: `bits: Int`, `n: Int`, `zs: List<Int>`, `words: List<U64>`, `before: List<Int>`, `zsum: List<Int>`.
+Fields: `bits: Int`, `n: Len`, `zs: List<Int>`, `words: List<U64>`, `before: List<Int>`, `zsum: List<Int>`.
 
 - `fn new(a: [D]Int) -> WaveletMatrix<D>` — \(O(\lvert D \rvert \log V)\) time and memory; A wavelet matrix over the non-negative values of `a`, with one bit level per bit of the largest value (`V` below is that value plus one).; traps: when some value is negative
 - `fn kth(self, r: Range<D>, k: 0..) -> ?Int` — \(O(\log V)\); The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when `k >= r.len`.; traps: when `k < 0`, or a non-empty `r` reaches outside `D`
@@ -81,7 +81,7 @@ Fields: `bits: Int`, `n: Int`, `zs: List<Int>`, `words: List<U64>`, `before: Lis
 
 \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) space.
 
-Fields: `n: Int`.
+Fields: `n: Len`.
 
 - `fn new(a: [D]T) -> DynamicOrderTree<D, T>` — \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) time and memory; A structure over `a` answering value counts and order statistics on ranges while positions are reassigned.
 - `fn set(mut self, i: D, x: T)` — \(O(\log^2 \lvert D \rvert)\); Make position `i` hold `x`.; traps: when `i` is outside `D`
@@ -113,7 +113,7 @@ One tree of values in a `MergeTrees<D, Z>` pool: a handle, so copying it is O(1)
 A pool of sparse segment trees over `D` holding values `Z`, each with a whole-tree multiply tag.
 
 - `fn new() -> MergeTrees<D, Z>` — \(O(1)\); An empty pool.
-- `fn reserve(mut self, sets: 0..)` — \(O(\mathit{sets} \log \lvert D \rvert)\); Preallocate the nodes for `sets` more calls to `set`, so they do not regrow the pool: a `set` and the `merge`s that later split its position off add at most \(\lceil \log_2 \lvert D \rvert \rceil + 1\) nodes for it, and `scale` and the queries add none.; traps: when `sets < 0`
+- `fn reserve(mut self, sets: Len)` — \(O(\mathit{sets} \log \lvert D \rvert)\); Preallocate the nodes for `sets` more calls to `set`, so they do not regrow the pool: a `set` and the `merge`s that later split its position off add at most \(\lceil \log_2 \lvert D \rvert \rceil + 1\) nodes for it, and `scale` and the queries add none.; traps: when `sets < 0` or `sets >= 2^31`
 - `fn set(mut self, mut t: MergeTree<D>, x: D, v: Z)` — \(O(\log \lvert D \rvert)\) time and new nodes; Sets position `x` of `t` to `v`.
 - `fn sum(self, t: MergeTree<D>, r: Range<D>) -> Z` — \(O(\log \lvert D \rvert)\); The sum of `t` over the positions in `r`.
 - `fn get(self, t: MergeTree<D>, x: D) -> Z` — \(O(\log \lvert D \rvert)\); The value of `t` at `x`.

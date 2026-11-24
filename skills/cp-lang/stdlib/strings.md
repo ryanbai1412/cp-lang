@@ -81,7 +81,7 @@ Fields: `p1: List<Int>`, `p2: List<Int>`, `pow1: List<Int>`, `pow2: List<Int>`.
 - `@get fn all(self) -> HashVal` — \(O(1)\); The hash of the whole sequence, `self.get(0..self.len)`.
 - `fn slice(self, l: Int, r: Int) -> HashVal` — \(O(1)\); The hash of the half-open slice `l..r` (0-based); `HashVal(0, 0)` when `l == r`.; traps: when `l > r`, `l < 0` or `r > self.len`
 - `fn get<R>(self, r: R) -> HashVal` — \(O(1)\); The hash of a range of positions: `l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when the hash was built over a `[D]T`.; traps: when the range reaches outside the hashed sequence
-- `fn combine(self, a: HashVal, b: HashVal, b_len: 0..) -> HashVal` — \(O(1)\) when `b_len <= len`, else \(O(\log b_len)\); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` per modulus.; traps: when `b_len < 0`
+- `fn combine(self, a: HashVal, b: HashVal, b_len: Len) -> HashVal` — \(O(1)\) when `b_len <= len`, else \(O(\log b_len)\); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` per modulus.; traps: when `b_len < 0` or `b_len >= 2^31`
 - `fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int` — \(O(\log n)\); The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on hashes (so it can be wrong on a collision); `of: other` puts `b` in `other`, built with the same bases.; traps: when `a` is outside `0..=self.len`, `b` outside `0..=` the len of `of` (or `self`), or
 - `fn lcs(self, a: Int, b: Int) -> Int` — \(O(\log n)\); The length of the longest common suffix of the prefixes `s[..a]` and `s[..b]`, by binary search on hashes.; traps: when `a` or `b` is outside `0..=self.len`
 
@@ -109,7 +109,7 @@ Fields: `pre: List<U64>`, `pow: List<U64>`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); True when no elements are hashed.
 - `@get fn all(self) -> Hash61` — \(O(1)\); The hash of the whole sequence, `self.get(0..self.len)`.
 - `fn get<R>(self, r: R) -> Hash61` — \(O(1)\); The hash of a range of positions (`l..r`, `l..=r`, `..k`, `k..`, or a `Range<D>` when built over a `[D]T`); an empty range hashes to `Hash61(0)`.; traps: when the range reaches outside the hashed sequence
-- `fn combine(self, a: Hash61, b: Hash61, b_len: 0..) -> Hash61` — \(O(1)\) amortized (the power table grows past `len` on demand); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` modulo `2^61 - 1`.; traps: when `b_len < 0`
+- `fn combine(self, a: Hash61, b: Hash61, b_len: Len) -> Hash61` — \(O(1)\) amortized (the power table grows past `len` on demand); The hash of `a`'s sequence followed by `b`'s, where `b` has length `b_len`: `a * base^b_len + b` modulo `2^61 - 1`.; traps: when `b_len < 0` or `b_len >= 2^31`
 - `fn push<T: Hashable>(mut self, x: T)` — \(O(1)\) amortized; Appends `x` to the end of the hashed sequence.
 - `fn pop(mut self)` — \(O(1)\); Removes the last element of the hashed sequence.; traps: when the hash is empty
 - `fn lcp(self, a: Int, b: Int, of: ?RollingHash61 = None) -> Int` — \(O(\log n)\); The length of the longest common prefix of the suffixes at `a` and `b`, by binary search on hashes; `of: other` puts `b` in `other`, built with the same bases.; traps: when `a` is outside `0..=self.len`, `b` outside `0..=` the len of `of` (or `self`), or
@@ -241,7 +241,7 @@ Fields: `alpha: Count`, `stored: Trie<A>`, `added: AcBuckets<A>`, `removed: AcBu
 
 ## Functions
 
-- `fn repeat(self: Str, n: 0..) -> Str` — \(O(\lvert \mathit{self} \rvert \cdot n)\); `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.; traps: when `n < 0`
+- `fn repeat(self: Str, n: Len) -> Str` — \(O(\lvert \mathit{self} \rvert \cdot n)\); `self` written `n` times in a row, as a new `Str`: `"0".repeat(4)` is `"0000"`.; traps: when `n < 0` or `n >= 2^31`
 - `fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool` — \(O(\min(\lvert \mathit{self} \rvert - \mathit{at}, \lvert \mathit{pat} \rvert))\); True when `pat` occurs in `self` starting at position `at` (default 0, so a prefix test): the `pat.len` elements of `self` from `at` equal those of `pat` in order, `false` when they run past the end.; traps: when `at` is outside `0..=self.len`
 - `fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool` — \(O(\min(\lvert \mathit{self} \rvert, \lvert \mathit{pat} \rvert))\); True when `self` closes with `pat`: the last `pat.len` elements of `self` equal those of `pat` in order.
 - `fn search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K` — \(O(\lvert \mathit{self} \rvert + \lvert p \rvert)\); The key where `p` first stands in `self`, or `None`.

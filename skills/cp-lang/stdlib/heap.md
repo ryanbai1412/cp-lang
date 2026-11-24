@@ -123,7 +123,7 @@ A pool of meldable min-heaps (skew heaps) that keep their nodes in one shared li
 
 - `fn new<K>(by: ?(T -> K) = None) -> MeldHeaps<T>` — \(O(1)\); An empty pool, optionally ordered by key extractor `by:`.
 - `fn of(mut self, xs: List<T>) -> Meld<T>` — \(O(n)\); A new heap in the pool holding `xs`.
-- `fn reserve(mut self, nodes: 0..)` — \(O(\mathit{nodes})\); Preallocate room for `nodes` heap nodes in total (one per element live at once, as a popped element's node is reused), so later pushes do not regrow the pool.; traps: when `nodes < 0`
+- `fn reserve(mut self, nodes: Len)` — \(O(\mathit{nodes})\); Preallocate room for `nodes` heap nodes in total (one per element live at once, as a popped element's node is reused), so later pushes do not regrow the pool.; traps: when `nodes < 0` or `nodes >= 2^31`
 - `fn top(self, h: Meld<T>) -> ?T` — \(O(1)\); The smallest element of `h`, or `None` if it is empty.; traps: when `h` is a stale copy (see `Meld`)
 - `fn push(mut self, mut h: Meld<T>, x: T)` — \(O(\log n)\) amortized; Push `x` into `h`.; traps: when `h` is a stale copy (see `Meld`)
 - `fn push_all(mut self, mut h: Meld<T>, items: Seq<T>)` — \(O(k \log n)\) amortized for `k` items; Push every element of `items` into `h`.; traps: when `h` is a stale copy (see `Meld`)
