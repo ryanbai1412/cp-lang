@@ -13,8 +13,7 @@ came of each mutant it planted.
 | state | mutants |
 |---|---|
 | caught at `d711d1a27` | 5 |
-| caught by a case added since | 6 |
-| case landed, passes once the interpreter's trap code is fixed | 1 |
+| caught by a case added since | 7 |
 | equivalent: no checked program behaves differently | 8 |
 | open: asked compiler for a program or an equivalence proof | 0 |
 
@@ -23,7 +22,7 @@ came of each mutant it planted.
 | `cpl-syntax/src/parser/stmt.rs:1659` | caught since | `core-01/binder-after-comma-needs-let` (`d338798b4`, line fixed in `0e7e4375a`); the mutant gives E0103 |
 | `cpl-check/src/check/expr.rs:127` | caught since | `core-07/in-on-a-list-fixes-to-contains` (`48b54102c`): only a lone `x in xs` gets the `xs.contains(x)` fix |
 | `cpl-interp/src/vm/compile/mod.rs:966` | caught since | `core-04/trap-in-a-small-fn-names-its-frame` (`103ed37e6`): the mutant inlines `f` and drops its call-stack note. Writing it showed that trap cases ignored `// has:`, which that commit fixes |
-| `cpl-interp/src/mutation.rs:125` | case landed | `core-07/swap-with-one-index-past-the-end-traps` (`5402b3000`) wants R0101; the interpreter says R0001 today |
+| `cpl-interp/src/mutation.rs:125` | caught since | `core-07/swap-with-one-index-past-the-end-traps` (`5402b3000`) passes since compiler's `625f2befe` made `swap` trap with R0101 |
 | `cpl-codegen/src/expr.rs:97` | equivalent (unproven) | `narrow: true` on a cast whose operand is already wide emits the same C++ |
 | `cpl-interp/src/lib.rs:1750` | equivalent | a tree-walker fast path; the general `resolve` arm gives the same cell (compiler built it and compared stdout and traces) |
 | `cpl-ir/src/lib.rs:382` | equivalent | the checker gives both sides one type before lowering, so the arm sees no differing shapes (compiler built both variants and compared them) |
