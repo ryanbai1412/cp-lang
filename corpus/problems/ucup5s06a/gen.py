@@ -1,4 +1,6 @@
 import sys, random
+if sys.argv[1] == "--max":  # sum n = 2e5: one n = 2e5 test with a random 1 <= k < n
+    sys.argv[1:] = ["2", "200000"]
 # `seed size`: up to 4 tests of 2 <= n <= 6 size^2, 1 <= k < n. size >= 2e5 fills sum n = 2e5:
 # one n = 2e5 test (k = 1, n - 1, or random), 1e5 tests of n = 2, or 100 tests of n = 2000.
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])

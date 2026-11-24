@@ -1,4 +1,6 @@
 import sys, random, math
+if len(sys.argv) > 1 and sys.argv[1] == "--max":  # n = 5000 on a convex curve: every pair is a trendline
+    sys.argv[1:] = ["2", "5000"]
 # gen.py seed size: 2 <= n <= min(size, 5000) points, 0 <= t_1 < ... < t_n <= 1e9, 0 <= p <= 1e9.
 # No arguments, or size >= 5000, gives n = 5000; the seed picks the shape: random values in a
 # small box (many collinear ties), random full-range values, or a convex or concave curve

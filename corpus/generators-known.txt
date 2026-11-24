@@ -47,12 +47,4 @@ no-max cf2124a -
 no-max cf2124b -
 no-max cf2124c -
 no-max cf2124e -
-no-max cf2237c -
-no-max cf2245b -
-no-max cf2245c -
-no-max cf2261c -
-no-max cf2268a -
-no-max cheerio1s3 -
-no-max ucup4s25h -
-no-max ucup5s06a -
 slow cf2147f --max

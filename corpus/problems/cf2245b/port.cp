@@ -1,4 +1,5 @@
 // Source: Codeforces 2245B (Delete and Concatenate), https://codeforces.com/contest/2245/problem/B
+// limits: 1500 ms, 256 MB
 // Problem: n <= 2e5 integers |a_i| <= 1e9 and a cost c <= 1e9. Until the array is empty, either
 //   remove one element (score += it) or two adjacent ones (score += their max); each operation
 //   also costs c. Print the maximum final score. Multitest, sum n <= 2e5.

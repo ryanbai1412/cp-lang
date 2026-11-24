@@ -1,5 +1,6 @@
 // Source: The 5th Universal Cup, Stage 6 (Grand Prix of Hyakumanben), problem A (Fugaku
 //   NK-kei), qoj.ac/contest/4617/problem/23669
+// limits: 2000 ms, 1024 MB
 // Problem: n regions on a circle (2 <= n <= 2e5) and a painting for every arc of d <= k < n
 //   regions; each arc is collected at the first of its regions visited. Over all visit orders,
 //   count the distinct vectors (C_1..C_n) of paintings collected per region, mod 998244353.

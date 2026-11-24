@@ -1,4 +1,5 @@
 // Source: Codeforces 2245C (MEXOR), https://codeforces.com/contest/2245/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: given n <= 2e5 and k <= 1e9, build a permutation p of 0..n-1 whose prefix mexes
 //   mex(p_0..p_i), 0 <= i < n, XOR to k, or print NO. Multitest, sum n <= 2e5.
 // Solution: mex(p_0..p_i) is the minimum of p_(i+1)..; the last is n, so the suffix minima of

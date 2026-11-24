@@ -1,4 +1,5 @@
 // Source: Cheerio Contest 1 S3 (Stock Trading), https://dmoj.ca/problem/cheerio1s3
+// limits: 1000 ms, 512 MB
 // Problem: 2 <= n <= 5000 points (t_i, p_i), t strictly increasing, 0 <= t_i, p_i <= 1e9. Count
 //   the pairs i < j whose segment is a trendline: points i..=j all lie on or above it, or all on
 //   or below.

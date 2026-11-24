@@ -1,4 +1,5 @@
 // Source: Codeforces 2237C (Duck Surplus), https://codeforces.com/contest/2237/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: n <= 2e5 piles of 1..=1e9 ducks. While unsorted, pick adjacent a[i] > a[i + 1] and
 //   replace them with (a[i + 1], a[i] + a[i + 1]). Print the least possible largest pile at the
 //   end. Multitest, sum n <= 2e5.

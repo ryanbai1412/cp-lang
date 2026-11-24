@@ -1,6 +1,6 @@
 // UCup 4 Stage 25 (Zagreb) H — Median Single-Character Deletion
 //
-// Given `s` (`1 <= |s| <= 500_000`), compare deleting position `i` vs any
+// Given `s` (`2 <= |s| <= 1e6`, sum of `|s|` at most 1e6), compare deleting position `i` vs any
 // later position `j > i`: both strings agree before `i`, then compare `s[i + 1]`
 // against `s[i]` (skipping equal runs to the first `s[k] != s[i]`).
 // Scanning `i` right-to-left, `go_right` records whether the next distinct
@@ -11,6 +11,7 @@
 //   ranks before all later deletions (`left.push(i)`).
 // Thus `left.rev + right` is the exact lexicographical order of all `n`
 // deletions, and index `n / 2` is the median.
+// limits: 1000 ms, 1024 MB
 
 @!multitest
 let s: Str = read()

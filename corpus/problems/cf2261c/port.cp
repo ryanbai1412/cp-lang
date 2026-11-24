@@ -1,5 +1,6 @@
 // Source: Codeforces 2261C (I Know About a Million Things),
 //   https://codeforces.com/contest/2261/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: n <= 1e6 integers in 1..=1e6 (sum n <= 1e6, multitest). Moggity and Larpity alternate,
 //   Moggity first, removing a non-empty set that is one element or has an even sum; whoever
 //   cannot move loses. Print the winner.

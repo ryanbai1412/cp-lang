@@ -1,4 +1,6 @@
 import sys, random
+if len(sys.argv) > 1 and sys.argv[1] == "--max":  # sum n = 1e6: one n = 1e6 test
+    sys.argv[1:] = ["0", str(10**6)]
 # gen.py seed size: t tests of n <= size + 1 values in 1..=1e6, sum n <= 1e6.
 # No arguments, or size >= 1e6: seed even gives one test with n = 1e6, seed odd gives
 # t = 1e4 tests of n = 100.

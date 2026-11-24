@@ -1,4 +1,5 @@
 // Source: Codeforces 2268A (K Is Important), https://codeforces.com/contest/2268/problem/A
+// limits: 2000 ms, 256 MB
 // Problem: n <= 1e5 values in 1..=1e9 and 1 <= k <= n. While at least k elements remain, remove
 //   the k-th element or the k-th from the end, adding it to the score. Print the largest score.
 //   Multitest, sum n <= 1e5.
