@@ -217,6 +217,9 @@ pub struct Sieve:
     /// example: `Sieve(0).is_prime(0) == false`
     /// example: `Sieve(1).primes.is_empty`
     /// example: `Sieve(30).primes == [2, 3, 5, 7, 11, 13, 17, 19, 23, 29]`
+    @lint(hand_rolled_sieve, from: "for i in 2..=n:\n    if marks[i]:\n        var j = i * i\n        while j <= n:\n            marks[j] = mark\n            j += i", to: "Sieve.new(n)", holes: "marks, mark")
+    @lint(hand_rolled_sieve, from: "for i in 2..=n:\n    if not marks[i]:\n        primes.push(i)\n        var j = i * i\n        while j <= n:\n            marks[j] = mark\n            j += i", to: "Sieve.new(n)", holes: "marks, mark, primes")
+    @lint(hand_rolled_sieve, from: "for i in 2..=n:\n    if spf[i] == 0:\n        spf[i] = i\n        primes.push(i)\n    for p in primes:\n        if p > spf[i] or i * p > n: break\n        spf[i * p] = p", to: "Sieve.new(n)", holes: "spf, primes")
     pub fn new(n: 0..) -> Sieve:
         let bound: SieveVal = n
         var odd_composite = List.filled(n / 128 + 1, U64(0))

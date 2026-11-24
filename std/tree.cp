@@ -1820,6 +1820,8 @@ pub struct JumpTree<V>:
     /// cost: \(O(n)\)
     /// traps: never
     /// example: `domain V = 0..4; let j = JumpTree<V>(); j.parent(2) == None and j.root_of(2) == 2`
+    @lint(hand_rolled_binary_lifting, from: "for k in ks:\n    for u in us:\n        up[k][u] = up[k - 1][up[k - 1][u]]", to: "JumpTree.new()", holes: "ks, us, up")
+    @lint(hand_rolled_binary_lifting, from: "for k in ks:\n    for u in us:\n        up[k, u] = up[k - 1, up[k - 1, u]]", to: "JumpTree.new()", holes: "ks, us, up")
     pub fn new() -> JumpTree<V> = JumpTree([V] _ => None, [V] v => v, [V] _ => 0)
 
     /// Hangs `v`, a lone vertex not yet in any tree, below `p`, setting its skew-binary jump

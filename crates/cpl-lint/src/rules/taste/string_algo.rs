@@ -2,16 +2,6 @@
 
 use super::*;
 
-/// Extracts `(lhs, op, rhs)` from a single binary comparison `lhs op rhs`.
-pub(super) fn single_cmp(e: &Expr) -> Option<(&Expr, CmpOp, &Expr)> {
-    if let ExprKind::Compare { first, rest } = &walk::unparen(e).kind {
-        if rest.len() == 1 {
-            return Some((first, rest[0].0, &rest[0].1));
-        }
-    }
-    None
-}
-
 /// Matches `var - 1`.
 pub(super) fn is_var_minus_one(e: &Expr, var: &str) -> bool {
     matches!(
@@ -29,11 +19,4 @@ pub(super) fn is_var_plus_one(e: &Expr, var: &str) -> bool {
             if (shapes::name(lhs) == Some(var) && is_int_lit(rhs, 1))
                 || (shapes::name(rhs) == Some(var) && is_int_lit(lhs, 1))
     )
-}
-
-pub(super) fn cond_expr(cond: &Cond) -> Option<&Expr> {
-    match cond {
-        Cond::Expr(e) => Some(e),
-        _ => None,
-    }
 }

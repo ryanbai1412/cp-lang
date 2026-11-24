@@ -61,6 +61,11 @@ pub struct Dsu<V>:
     /// ties: `var d = Dsu<0..3>(); d.unite(1, 2); d.unite(0, 1); d.find(2) == 1 and d.find(0) == 1`
     /// traps: never
     /// example: `var d = Dsu<0..4>(); d.unite(2, 3); d.find(3) == 2 and d.find(0) == 0`
+    @lint(hand_rolled_dsu, from: "par[u] = root(par[u])\nreturn par[u]", to: "par.find", holes: "par, u, root")
+    @lint(hand_rolled_dsu, from: "par[u] = root(par[u])\npar[u]", to: "par.find", holes: "par, u, root")
+    @lint(hand_rolled_dsu, from: "fn root(u: V) -> V:\n    var r = u\n    while let p = par[r]: r = p\n    var x = u\n    while let p = par[x]:\n        par[x] = r\n        x = p\n    r", to: "par.find", holes: "par")
+    @lint(hand_rolled_dsu, from: "fn root(u: Int) -> Int:\n    var r = u\n    while let p = par[r]: r = p\n    var x = u\n    while let p = par[x]:\n        par[x] = r\n        x = p\n    r", to: "par.find", holes: "par")
+    @lint(hand_rolled_dsu, from: "while par[x] != x:\n    par[x] = par[par[x]]\n    x = par[x]", to: "par.find(x)", holes: "par, x")
     pub fn find(self, v: V) -> V = V.nth(self.find_ord(v.ord))
 
     /// The present, to return to with [`undo_to`](Dsu.undo_to). The first call switches path

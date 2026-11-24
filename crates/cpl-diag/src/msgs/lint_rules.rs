@@ -22,11 +22,7 @@ super::msgs! {
     FLOAT_SQRT_FOR_INT = "L0529", "`{}` takes the root through `F64`";
     FOUND_FLAG_PAIR = "L0596", "`{}` only says whether {} {} been set";
     GROUP_INTO_MAP = "L0589", "`{}` filled with lists by key, one push per element";
-    HAND_ROLLED_BINARY_LIFTING = "L0519", "hand-rolled binary lifting table";
-    HAND_ROLLED_DSU = "L0517", "hand-rolled union-find (DSU) path compression";
-    HAND_ROLLED_DSU_2 = "L0517", "hand-rolled union-find (DSU) `find` function";
     HAND_ROLLED_PREFIX_SUM = "L0521", "`{}` is a running total built by hand: use `Prefix(...)`";
-    HAND_ROLLED_SIEVE = "L0518", "hand-rolled prime/SPF sieve loop";
     INT_DIV_POSSIBLE_ZERO = "L0599", "`{}` can be 0 here (its bounds give `{}..={}`), and `{}` by 0 traps";
     INT_OVERFLOW_AT_BOUNDS = "L0306", "`{}` can leave `Int` (64 bits) at the declared bounds: with `{}` it does, and that traps";
     INT_SHIFT_OVERFLOW_AT_BOUNDS = "L0302", "this shift leaves `Int` when `{}` is above {}, and its bounds allow {}";
