@@ -1253,7 +1253,7 @@ def unregistered_lists(root: Path) -> list[str]:
 HARD_ZERO = frozenset({
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
-    "stress_hand_json",
+    "stress_hand_json", "lint_dup_helpers",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.

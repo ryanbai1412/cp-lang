@@ -109,7 +109,7 @@
     "cpl-wasm -> cpl-stress"
   ],
   "decision_dup_numbers": 0,
-  "lint_dup_helpers": 5,
+  "lint_dup_helpers": 0,
   "plan_delta_lines": 1627,
   "vm_fallbacks": 32,
   "own_databases": 29,
@@ -156,7 +156,7 @@
   "unwrap_input": 718,
   "unsupported_sites": 43,
   "lsp_string_types": 11,
-  "lint_post_filters": 68,
+  "lint_post_filters": 52,
   "known_lists": 449,
   "prelude_gaps": 100,
   "permits": 26,
