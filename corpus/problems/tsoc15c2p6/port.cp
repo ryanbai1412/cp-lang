@@ -5,13 +5,16 @@
 // Solution: values only decrease, so clamping the minimum at 0 afterwards is exact. A lazy
 //   SegTree with range add and min: per attack one `apply`, one range fold and the whole-tree
 //   fold, O(log n).
+// original: corpus/submissions/3657393.cpp
 
-let (n, q): (Int, Int) = read()
-domain Soldier = 1..=n
-let health: [Soldier]Int = read()
+let n: 1..=1e6 = read()
+let q: 1..=1e5 = read()
+domain Column = 1..=n
+let enemies: [Column]0..=1e9 = read()
 
-var row = SegTree<Soldier, Int, Int>(min, act: add, a: health)
+var row = SegTree<Column, Int, Int>(min, act: add, a: enemies)
 for _ in 0..q:
-    let (l, r, x): (Soldier, Soldier, Int) = read()
-    row.apply(l..=r, -x)
+    let (l, r): (Column, Column) = read()
+    let kills: 0..=1e9 = read()
+    row.apply(l..=r, -kills)
     print(max(row.fold(l..=r), 0), max(row.all, 0))
