@@ -18,7 +18,7 @@
   "prelude_privilege": 24,
   "backend_std_names": 18,
   "lint_std_names": 140,
-  "dup_fn_bodies": 3,
+  "dup_fn_bodies": 4,
   "layer_violations": 1,
   "tree_walker": 1,
   "v02_port_files": 551,
@@ -117,7 +117,7 @@
   "cpp_deep_copies": 36,
   "cpp_std_functions": 144,
   "codegen_effect_guesses": 0,
-  "near_dup_fns": 9,
+  "near_dup_fns": 17,
   "consumer_rederived": 60,
   "rs_near_cap": [
     "crates/cpl-check/src/db.rs",

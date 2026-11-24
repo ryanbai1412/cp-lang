@@ -336,8 +336,75 @@ def _walk_fn_bodies(root: Path):
             i += 1
 
 
+CP_PUB_FN = re.compile(r"^(\s*)pub fn (\w+)")
+CP_DUP_MIN_CHARS = 25
+
+
+def _cp_fn_bodies(root: Path):
+    """(rel, line, name, body lines) for every `pub fn` in std/*.cp: the signature ends at
+    its depth-0 `:` (a block of deeper lines follows) or `=` (the expression after it);
+    `//` lines are dropped."""
+    for rel in _git(root, "ls-files", "std/**.cp", "std/*.cp"):
+        src = _lines(root / rel)
+        i = 0
+        while i < len(src):
+            m = CP_PUB_FN.match(src[i])
+            if not m:
+                i += 1
+                continue
+            indent, depth, j, k, body = len(m.group(1)), 0, i, src[i].index("pub fn") + 6, None
+            while j < len(src) and body is None:
+                code = src[j].split("//")[0]
+                while k < len(code):
+                    c = code[k]
+                    if c in "([{":
+                        depth += 1
+                    elif c in ")]}":
+                        depth -= 1
+                    elif depth == 0 and c == "=" and code[k - 1] not in "=!<>-" and code[k + 1:k + 2] not in ("=", ">"):
+                        body = [code[k + 1:].strip()]
+                        break
+                    elif depth == 0 and c == ":" and not code[k + 1:].strip():
+                        body = []
+                        break
+                    k += 1
+                if body is None:
+                    j, k = j + 1, 0
+            if body is None:
+                break
+            e = j + 1
+            while e < len(src) and (not src[e].strip() or len(src[e]) - len(src[e].lstrip()) > indent):
+                s = src[e].strip()
+                if s and not s.startswith("//"):
+                    body.append(s)
+                e += 1
+            yield rel, i + 1, m.group(2), [b for b in body if b]
+            i = e
+
+
+def _cp_dup_bodies(root: Path) -> list[str]:
+    """Each extra std `pub fn` whose body (> CP_DUP_MIN_CHARS) another-named std fn has."""
+    groups = defaultdict(list)
+    for rel, ln, name, body in _cp_fn_bodies(root):
+        text = "\n".join(body)
+        if len(text) > CP_DUP_MIN_CHARS:
+            groups[text].append((rel, ln, name))
+    return [f"{rel}:{ln} {name} = {g[0][0]}:{g[0][1]} {g[0][2]}"
+            for g in groups.values() if len({x[2] for x in g}) > 1 for rel, ln, name in g[1:]]
+
+
+def _cp_near_dups(root: Path) -> list[str]:
+    """std `pub fn` pairs `name` and `name_real`/`name_excl`: one algorithm written per variant."""
+    where = {}
+    for rel, ln, name, _ in _cp_fn_bodies(root):
+        where.setdefault(name, f"{rel}:{ln}")
+    return [f"{where[n + s]} {n + s} ~ {where[n]} {n}" for n in sorted(where)
+            for s in ("_real", "_excl") if n + s in where]
+
+
 def dup_fn_bodies(root: Path) -> list[str]:
-    """Each extra copy of an identical fn body (>= DUP_MIN_LINES) in another file."""
+    """Each extra copy of an identical fn body (>= DUP_MIN_LINES) in another file, and of a
+    std `pub fn` body under another name (Content)."""
     groups = defaultdict(list)
     for p, ln, name, body in _fn_bodies(root):
         if len(body) >= DUP_MIN_LINES:
@@ -348,11 +415,12 @@ def dup_fn_bodies(root: Path) -> list[str]:
         if len({x[0] for x in g}) > 1:
             first = g[0]
             out += [f"{p}:{ln} {name} ({n} lines) = {first[0]}:{first[1]}" for p, ln, name, n in g[1:]]
-    return out
+    return out + _cp_dup_bodies(root)
 
 
 def near_dup_fns(root: Path) -> list[str]:
-    """Each pair of near-identical fns (>= DUP_MIN_LINES, similarity >= NEAR_DUP_MIN) in different crates."""
+    """Each pair of near-identical fns (>= DUP_MIN_LINES, similarity >= NEAR_DUP_MIN) in different
+    crates, and each std `name`/`name_real`/`name_excl` pair (Content)."""
     fns = []
     for p, ln, name, body in _fn_bodies(root):
         if len(body) < DUP_MIN_LINES:
@@ -380,7 +448,7 @@ def near_dup_fns(root: Path) -> list[str]:
         sim = len(sa & sb) / len(sa | sb)
         if sim >= NEAR_DUP_MIN:
             out.append((-sim, f"{pb}:{lb} {nb} ~ {pa}:{la} {na} ({sim:.2f})"))
-    return [x for _, x in sorted(out)]
+    return [x for _, x in sorted(out)] + _cp_near_dups(root)
 
 
 def consumer_rederived(root: Path) -> list[str]:

@@ -163,6 +163,30 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "scripts/debt-ratchet.py", 'X = ("crates/a/src/gone.rs", "crates/**/*.rs")\n')
             self.assertEqual(dr.stale_arch_paths(root), ["scripts/debt-ratchet.py:1 crates/a/src/gone.rs"])
 
+    def test_std_fn_copies_count_as_duplicates(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "std/a.cp", "\n".join([
+                "pub fn drop_while<S: Seq>(self: S,",
+                "        keep: T -> Bool = x => x == 0) -> S:",
+                "    // skip the prefix",
+                "    let i = self.first(x => !keep(x)) ?? self.len",
+                "    self[i..]",
+                "",
+                "pub fn skip_while<S: Seq>(self: S, keep: T -> Bool) -> S:",
+                "    let i = self.first(x => !keep(x)) ?? self.len",
+                "    self[i..]",
+                "pub fn rank(self: M) -> Int = self.rows.count(r => r.any(x => x != 0))",
+                "pub fn rank_real(self: M) -> Int = self.rows.count(r => r.any(x => x.abs() > eps))",
+                "pub fn short(self: M) -> Int = 1",
+                "pub fn tiny(self: M) -> Int = 1", ""]))
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual([n for _, _, n, _ in dr._cp_fn_bodies(root)],
+                             ["drop_while", "skip_while", "rank", "rank_real", "short", "tiny"])
+            self.assertEqual(dr._cp_dup_bodies(root), ["std/a.cp:7 skip_while = std/a.cp:1 drop_while"])
+            self.assertEqual(dr._cp_near_dups(root), ["std/a.cp:11 rank_real ~ std/a.cp:10 rank"])
+
     def test_architecture_counters(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
