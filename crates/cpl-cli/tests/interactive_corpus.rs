@@ -1,7 +1,7 @@
 //! Every interactive corpus problem with a judge (`interactor.py`) is
 //! solved by its port on the cases its `gen.py`
 //! makes, in the interpreter, and as the judge's C++ when a compiler is
-//! here. A port that forgets to flush, reads past
+//! here; a package with no port yet, by its accepted C++. A port that forgets to flush, reads past
 //! the judge's reply or asks too many questions fails here.
 
 use std::io::{BufRead, BufReader, Write};
@@ -52,10 +52,17 @@ fn name_of(dir: &Path) -> String {
     dir.file_name().unwrap().to_string_lossy().to_string()
 }
 
-/// Runs `dir`'s port against its judge on every made case: how many runs,
-/// and what failed.
+/// Runs `dir`'s port (else its accepted C++) against its judge on every
+/// made case: how many runs, and what failed.
 fn judge_problem(dir: &Path, cpp: bool) -> (usize, Vec<String>) {
     let name = name_of(dir);
+    let reference = match dir.join("port.cp").exists() {
+        true => None,
+        false => match cpl_contest::package::reference_exe(dir) {
+            Ok(exe) => Some(exe),
+            Err(e) => return (0, vec![format!("{name}: {e}")]),
+        },
+    };
     let (mut runs, mut failures) = (0, Vec::new());
     let mut cases: Vec<PathBuf> = Vec::new();
     let made = Path::new(env!("CARGO_TARGET_TMPDIR"))
@@ -73,29 +80,33 @@ fn judge_problem(dir: &Path, cpp: bool) -> (usize, Vec<String>) {
         std::fs::write(&case, &out.stdout).unwrap();
         cases.push(case);
     }
-    let modes: &[&[&str]] = if cpp {
-        &[&["run"], &["run", "--release"]]
-    } else {
-        &[&["run"]]
+    let modes: &[&[&str]] = match (&reference, cpp) {
+        (Some(_), _) => &[&[]],
+        (None, true) => &[&["run"], &["run", "--release"]],
+        (None, false) => &[&["run"]],
     };
     for case in &cases {
         for mode in modes {
             runs += 1;
             let mut judge = Command::new("python3");
-            judge
-                .arg("interactor.py")
-                .arg(case)
-                .arg("--")
-                .arg(env!("CARGO_BIN_EXE_cpl"))
-                .args(*mode)
-                .arg("port.cp")
-                .current_dir(dir);
+            judge.arg("interactor.py").arg(case).arg("--");
+            match &reference {
+                Some(exe) => judge.arg(exe),
+                None => judge
+                    .arg(env!("CARGO_BIN_EXE_cpl"))
+                    .args(*mode)
+                    .arg("port.cp"),
+            };
+            judge.current_dir(dir);
             let out = within(judge, Duration::from_secs(120));
             if !out.status.success() {
                 failures.push(format!(
-                    "{name} {} (cpl {} port.cp): {}",
+                    "{name} {} ({}): {}",
                     case.file_name().unwrap().to_string_lossy(),
-                    mode.join(" "),
+                    match &reference {
+                        Some(_) => "accepted C++".to_string(),
+                        None => format!("cpl {} port.cp", mode.join(" ")),
+                    },
                     String::from_utf8_lossy(&out.stderr).trim()
                 ));
             }
@@ -121,10 +132,10 @@ fn every_interactive_port_satisfies_its_judge() {
         .iter()
         .partition(|dir| dir.join("interactor.py").exists());
     let unjudged: Vec<String> = unjudged.iter().map(|dir| name_of(dir)).collect();
-    // A package with a judge but no port yet has nothing here to judge.
-    let (judges, portless): (Vec<&PathBuf>, Vec<&PathBuf>) = judges
-        .into_iter()
-        .partition(|dir| dir.join("port.cp").exists());
+    let portless = judges
+        .iter()
+        .filter(|dir| !dir.join("port.cp").exists())
+        .count();
     let judged = judges.len();
     // Each problem's runs are independent and wait on python and the judge
     // more than on a core, so the problems run side by side.
@@ -157,10 +168,9 @@ fn every_interactive_port_satisfies_its_judge() {
         "interactive problems need an interactor.py to be judged: {unjudged:?}"
     );
     eprintln!(
-        "interactive corpus: {judged} problems judged, {runs} runs, {} failed; {} without a judge, {} without a port",
+        "interactive corpus: {judged} problems judged, {runs} runs, {} failed; {} without a judge, {portless} judged by their accepted C++",
         failures.len(),
-        unjudged.len(),
-        portless.len()
+        unjudged.len()
     );
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }

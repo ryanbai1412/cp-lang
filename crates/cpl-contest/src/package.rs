@@ -580,6 +580,18 @@ fn reference_cxx(package: &Path) -> Result<(PathBuf, String), String> {
     ))
 }
 
+/// The accepted C++ ([`reference`]) built with the reference g++: what a
+/// package with no port is judged by.
+pub fn reference_exe(package: &Path) -> Result<PathBuf, String> {
+    let src = reference(package).ok_or_else(|| {
+        format!(
+            "{} has no accepted C++ (orig.cpp or an AC submission)",
+            package.display()
+        )
+    })?;
+    built(&src, package)
+}
+
 /// `src` built with the reference g++, cached by content and compiler in
 /// `~/.cache/cpl/cxx/corpus/`.
 fn built(src: &Path, package: &Path) -> Result<PathBuf, String> {
