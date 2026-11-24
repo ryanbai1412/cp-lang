@@ -44,6 +44,8 @@ DATA_TESTS = [(f"{PACKAGES}/*/{leaf}", "package(cpl-lint) & test(/corpus_warning
 # Editor files a crate embeds or its tests read; the rest are CI's editor jobs'.
 # Programs no test reads but that must still pass `cpl check`.
 CHECK_ONLY = ["research/acceptance/solutions/*.cp", f"{PACKAGES}/*/perf.cp"]
+# Package files the commit tier leaves to the corpus audit; CI runs the rest.
+AUDIT_ONLY = [f"{PACKAGES}/*/{leaf}" for leaf in ("gen.py", "tests.toml", "orig.cpp", "meta.json")]
 # Owner-named tests a touched path runs ahead of the rest of the commit tier,
 # each under SLICE_LIMIT_S warm (ci/R39): name, owner, paths, nextest
 # `binary_id[ test]` entries.
@@ -178,6 +180,8 @@ def select(paths, dirs):
             sel["check_files"].append(path)
         elif path.endswith(".cp") and matches(path, CHECK_ONLY):
             sel["check_files"].append(path)
+        elif matches(path, AUDIT_ONLY):
+            continue
         elif matches(path, PROSE):
             continue
         elif matches(path, EVERY_CRATE):

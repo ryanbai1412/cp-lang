@@ -69,6 +69,12 @@ class AffectedTest(unittest.TestCase):
         self.assertTrue(self.sel("corpus/problems/cf2/spec.cp")["audit"])
         self.assertFalse(self.sel("research/acceptance/solutions/x/linux/cf1.cp")["audit"])
 
+    def test_a_corpus_package_file_runs_only_the_audit(self):
+        for leaf in ("gen.py", "tests.toml", "orig.cpp", "meta.json"):
+            sel = self.sel(f"corpus/problems/cf2/{leaf}")
+            self.assertFalse(sel["all"], leaf)
+            self.assertTrue(sel["audit"], leaf)
+
     def test_idioms_std_and_checker_changes_run_the_lint_catalog_check(self):
         for path in ("spec/idioms/lints.md", "std/seq.cp", "crates/cpl-check/src/lib.rs"):
             self.assertTrue(self.sel(path)["idioms_catalog"], path)

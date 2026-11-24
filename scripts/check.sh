@@ -205,6 +205,13 @@ if [ "$mode" = land ] || [ "$mode" = commit ]; then
             printf -v "sel_$key" '%s' "$value"
         done < <(uv run --quiet python "${affected[@]}")
     fi
+    if [ "$mode" = commit ] && [ "${sel_audit:-0}" = 1 ]; then
+        # Before anything that builds, --fast included, so the hook's time
+        # limit never skips these: they need no binary.
+        step "staged corpus packages: header and package (scripts/corpus.py verify --only header,package)"
+        uv run --quiet python scripts/corpus.py verify --changed staged --only header,package \
+            || fail "a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package"
+    fi
     if [ "$sel_all" = 1 ]; then
         printf '\ncheck: %s is not mapped by scripts/affected.py; running --fast\n' "$sel_reason"
         mode=fast
@@ -262,7 +269,7 @@ if [ "$mode" = commit ]; then
         cargo build -q -p cpl-cli
         uv run --quiet python scripts/corpus.py make --changed staged >/dev/null \
             || fail "scripts/corpus.py make --changed staged failed; rerun it to see which package"
-        uv run --quiet python scripts/corpus.py verify --changed staged --skip dream --cpl "$cpl" \
+        uv run --quiet python scripts/corpus.py verify --changed staged --skip dream,header,package --cpl "$cpl" \
             || fail "a staged corpus package fails scripts/corpus.py verify; the finding above names the mode and the package"
         mapfile -t dreams < <(git diff --cached --name-only --diff-filter=AMR -- 'corpus/problems/*/dream.cp' \
             | sed 's|^corpus/problems/||; s|/dream\.cp$||')
