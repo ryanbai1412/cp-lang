@@ -254,7 +254,7 @@ impl Checker<'_> {
             .extend(super::types::extract_bounds(bounds));
         let target_ty = self.resolve_type(target);
         for sup in supers {
-            if !self.implements_trait(&target_ty, &sup) {
+            if !self.implements_trait(&target_ty, sup) {
                 let (tr_text, target_text) = (self.quote(tr.span), self.quote(target.span));
                 self.report(
                     tr.span,

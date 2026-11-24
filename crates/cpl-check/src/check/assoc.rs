@@ -120,7 +120,7 @@ impl Checker<'_> {
             else {
                 continue;
             };
-            let inherited = self.trait_members(&methods, &generics, &def);
+            let inherited = self.trait_members(methods, generics, &def);
             out.extend(inherited.into_iter().map(|(m, t)| (m, t.subst(&bindings))));
         }
         out

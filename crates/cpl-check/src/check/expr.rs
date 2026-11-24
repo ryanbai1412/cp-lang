@@ -773,7 +773,7 @@ impl<'a> Checker<'a> {
         }
         let mut seen = Vec::new();
         for arm in arms.iter().filter(|arm| arm.guard.is_none()) {
-            if named(&arm.pat, &variants, &mut seen).is_none() {
+            if named(&arm.pat, variants, &mut seen).is_none() {
                 return;
             }
         }
