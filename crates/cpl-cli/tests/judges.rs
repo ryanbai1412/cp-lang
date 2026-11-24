@@ -125,7 +125,11 @@ fn written_within_limit(judge: &str) {
                 port.display(),
                 cpp.len()
             );
-            assert!(cpp.contains("static void cpl_main()"), "{}", port.display());
+            assert!(
+                cpp.contains("static void cpl_main()") || graded(port),
+                "{}",
+                port.display()
+            );
             cpp.len()
         });
         let mut sorted = sizes.clone();
@@ -350,16 +354,31 @@ fn every_port_compiles_with_every_judges_flags() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
-/// The tracked ports moved to v0.3 (`corpus/sets/v03.txt`): each `port.cp`
-/// checks today. The set grows as the mechanical move lands; lint and fmt
-/// use it as their false-positive corpus.
+/// Whether `file` is a program of `@grader` fns, which the package's
+/// grader.cpp calls from its own `main`.
+fn graded(file: &Path) -> bool {
+    std::fs::read_to_string(file)
+        .is_ok_and(|src| cpl_contest::problem::find_grader(file, &src).is_some())
+}
+
+/// The tracked solutions moved to v0.3 (`corpus/sets/v03.txt`): each
+/// package's `port.cp`, else its dream of `@grader` fns, checks today. The
+/// set grows as the mechanical move lands; lint and fmt use it as their
+/// false-positive corpus.
 fn v03_ports() -> Vec<PathBuf> {
     std::fs::read_to_string(root().join("corpus/sets/v03.txt"))
         .unwrap()
         .lines()
         .map(str::trim)
         .filter(|id| !id.is_empty() && !id.starts_with('#'))
-        .map(|id| cpl_corpus::package(&root(), id).join("port.cp"))
+        .map(|id| {
+            let package = cpl_corpus::package(&root(), id);
+            let (port, dream) = (package.join("port.cp"), package.join("dream.cp"));
+            match !port.is_file() && graded(&dream) {
+                true => dream,
+                false => port,
+            }
+        })
         .collect()
 }
 
