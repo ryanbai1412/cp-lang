@@ -984,10 +984,6 @@ impl<'a> Lowerer<'a> {
                 self.member_typo(&ty, &name.text, name.span);
                 self.position_member_hint(&ty, &name.text);
                 match (&ty, name.text.as_str()) {
-                    (Ty::List(_), "indices") => self.help(
-                        "a list is indexed by `Int` from 0: write `0..xs.len`; \
-                         an array `[D]T` has `.indices`, the positions of `D`",
-                    ),
                     _ => {}
                 }
                 self.err_expr(span)
