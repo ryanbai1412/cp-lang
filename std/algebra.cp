@@ -68,7 +68,7 @@ pub struct Comm<T>(pub m: Monoid<T>):
     pub fn monoid(self) -> Monoid<T> = m
 
 impl<T> Op<T> for Comm<T>:
-    fn op(self, a, b) = m.op(a, b)
+    fn op(self, a: T, b: T) -> T = m.op(a, b)
 
 impl<T> HasId<T> for Comm<T>:
     @get fn id(self) = m.id
@@ -626,7 +626,7 @@ impl Reversible for Word:
 
 @test
 fn plain_values_are_their_own_reverse():
-    assert 5.rev == 5 and (3, 4).rev == (3, 4)
+    assert 5.rev() == 5 and (3, 4).rev() == (3, 4)
     assert Word("abc").rev() == Word("cba")
 
 @test
