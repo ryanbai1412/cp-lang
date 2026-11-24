@@ -956,6 +956,8 @@ struct MeldNode<T>:
 ///
 /// The pool relinks a heap's nodes in place, so a handle stands for its heap only until the heap
 /// changes: using a copy taken before a `push`, `pop` or `meld` traps.
+///
+/// not a container: a handle; `len` counts its heap's elements, which only the pool reads.
 pub struct Meld<T>:
     var _root: Int = -1
     var _len: Int = 0
