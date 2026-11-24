@@ -158,7 +158,7 @@ their front ends.
 | A failed install or setup says why and what to do | failure modes with a tested message (no network, no compiler, unwritable folder, unknown editor) | hand-written suite | `missing` |
 | Toolchains, pins and channels behave as documented | `cpl self` paths tested, including offline | hand-written suite | `crates/cpl-cli/tests/toolchain.rs` |
 | Linux, macOS and Windows behave alike (paths, CRLF input, clipboard) | CLI suite passing per OS | the same suite on each OS | CI `cli` job (three OSes); CRLF sample and input files: `missing` as a dedicated case |
-| Everything but `fetch` and `self update` works offline | commands that make no network call | `missing` (a test that runs the contest flow with the network off) | `missing` |
+| Everything but `fetch` and `self update` works offline | commands that make no network call | the contest flow with `curl`, `wget` and `code` stubbed and proxies closed | `crates/cpl-cli/tests/offline.rs` (Unix: 14 commands, `new` through `submit`, 0 network calls; `fetch` reaching the stub is the control) |
 
 ### Starting problems and contests (J4)
 
