@@ -1119,8 +1119,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **mo** (5/6 named by a case)
   - uncovered: `mo_steps`
 - **mod** (29/29 named by a case)
-- **ntt** (19/20 named by a case)
-  - uncovered: `SosOver`
+- **ntt** (20/20 named by a case)
 - **opt** (3/3 named by a case)
 - **pair** (5/5 named by a case)
 - **persistent** (47/47 named by a case)
@@ -1147,7 +1146,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (23/24 named by a case)
   - uncovered: `Undo`
 
-2356 of 2455 std items are named by a case.
+2357 of 2455 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 
