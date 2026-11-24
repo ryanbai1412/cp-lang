@@ -1,10 +1,10 @@
 import sys, random
 
 if sys.argv[1] == "--max":
-    # one test at sum n = 2e5 (odd, so the middle fixed point is used): solvable, columns
+    # one test at sum n = 2e5: solvable, columns
     # shuffled into long cycles so nearly n swaps are printed
     rng = random.Random(1)
-    n = 199_999
+    n = 200_000
     a = list(range(1, n + 1))
     rng.shuffle(a)
     b = a[::-1]

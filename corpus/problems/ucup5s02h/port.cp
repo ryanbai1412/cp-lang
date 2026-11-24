@@ -22,7 +22,7 @@
 // weakest on x" for increasing x. A charge no weaker than the newest and
 // farther away never wins, so charges strictly decrease, and the weakest one
 // only moves right as x does.
-// Bounds: n: 2..=150_000
+// Bounds: n: 2..=1e5; sum(n): 2..=5e5
 
 struct Pt(x: Int, q: Int, id: Int)
 

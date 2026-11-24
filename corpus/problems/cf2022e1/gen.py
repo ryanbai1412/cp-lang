@@ -16,7 +16,7 @@ def case(r, n, m, k, hi):
 
 if sys.argv[1] == "--max":
     r = random.Random(1)
-    lines = case(r, 50000, 50000, 100000, 2**30 - 1)
+    lines = case(r, 100000, 100000, 100000, 2**30 - 1)
     lines = [l if i == 0 or r.random() > 0.0 else l for i, l in enumerate(lines)]
     print(1)
     print("\n".join(lines))

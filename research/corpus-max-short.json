@@ -1,24 +1,11 @@
 {
   "max_short": [
-    "max-short cf2022e1 m: --max reads 50000, the statement allows 1e5",
-    "max-short cf2022e1 n: --max reads 50000, the statement allows 1e5",
-    "max-short cf2084c n: --max reads 199999, the statement allows 200_000",
-    "max-short cf2127e k: --max reads 100000, the statement allows 200_000",
-    "max-short cf2135f n: --max reads 399999, the statement allows MAX_N",
     "max-short cf2150g k: --max reads 5000, the statement allows 9999",
-    "max-short cf2211d n: --max reads 100000, the statement allows 200_000",
-    "max-short cf2222g n: --max reads 100000, the statement allows 200_000",
-    "max-short cf2229e n: --max reads 200000, the statement allows 300_000",
-    "max-short cf2237e n: --max reads 200000, the statement allows 500_000",
-    "max-short cf2262a1 n: --max reads 100000, the statement allows 200_000",
-    "max-short cf2262d n: --max reads 1000, the statement allows 2000",
     "max-short egoi23p7 m1: --max reads 299399, the statement allows 3e5",
     "max-short ioi07p2 m: --max reads 149335, the statement allows 2e5",
     "max-short ioi07p2 n: --max reads 99856, the statement allows 1e5",
     "max-short ioi08p6 p: --max reads 30000, the statement allows 4e5",
-    "max-short noi18p2 n: --max reads 1, the statement allows 6e5",
-    "max-short ucup5s02h n: --max reads 100000, the statement allows 150_000",
-    "max-short ucup5s05e n: --max reads 100000, the statement allows 2e5"
+    "max-short noi18p2 n: --max reads 1, the statement allows 6e5"
   ],
   "max_unread": [
     "max-unread cco05p4 timeout",
