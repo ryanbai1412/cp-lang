@@ -27,6 +27,10 @@ async function spawnWorker(): Promise<Worker> {
 /** Whether the compiler has been requested yet; loading it fetches cpl.wasm. */
 export const started = () => worker !== null;
 
+let state: 'idle' | 'loading' | 'ready' | 'failed' = 'idle';
+/** Whether the compiler has answered, is still loading, or couldn't fetch cpl.wasm. */
+export const compilerState = () => state;
+
 export function compiler(): Promise<Worker> {
   worker ??= spawnWorker();
   return worker;
@@ -39,14 +43,18 @@ export async function stop() {
 }
 
 async function call<T>(f: (w: Worker) => Promise<T>): Promise<T> {
+  if (state !== 'ready') state = 'loading';
   try {
-    return await f(await compiler());
+    const result = await f(await compiler());
+    state = 'ready';
+    return result;
   } catch (error) {
     const kind = (error as { kind?: string }).kind;
     // A worker that couldn't fetch its wasm is dropped too, so the next call
     // retries the download (site/R17).
     const unloaded = kind === 'load' && !/is in cpl-build\.wasm/.test((error as Error).message);
     if (kind === 'timeout' || kind === 'terminated' || unloaded) worker = null;
+    state = unloaded ? 'failed' : kind === 'timeout' || kind === 'terminated' ? 'idle' : 'ready';
     throw error;
   }
 }

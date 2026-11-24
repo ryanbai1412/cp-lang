@@ -1,12 +1,16 @@
 import {
+  acceptCompletion,
   autocompletion,
   type Completion,
   type CompletionContext,
   type CompletionResult,
+  completionStatus,
   snippet,
+  startCompletion,
 } from "@codemirror/autocomplete";
 import {
   type Extension,
+  Prec,
   StateEffect,
   StateField,
 } from "@codemirror/state";
@@ -23,7 +27,7 @@ import {
   ViewPlugin,
   WidgetType,
 } from "@codemirror/view";
-import { started } from "@/lib/cpl";
+import { compilerState, started } from "@/lib/cpl";
 import { LspDoc } from "@/lib/lsp";
 
 type Position = { line: number; character: number };
@@ -331,6 +335,13 @@ export function intelligence(prefix: string, editable: boolean): Extension {
     },
   );
 
+  let reopened = false;
+  const note = (from: number, label: string): CompletionResult => ({
+    from,
+    filter: false,
+    options: [{ label, type: "text", apply: () => {} }],
+  });
+
   async function complete(
     ctx: CompletionContext,
   ): Promise<CompletionResult | null> {
@@ -349,12 +360,30 @@ export function intelligence(prefix: string, editable: boolean): Extension {
         : opener
           ? { triggerKind: 2, triggerCharacter: opener.text[0] }
           : { triggerKind: 1 };
-    const res = await ask<{ items: Item[] } | Item[]>(
-      ctx.view,
+    // Until cpl.wasm answers, the menu says it is loading or didn't load, and
+    // opens again with the real items once the request settles (complete/U30).
+    const view = ctx.view;
+    const state = compilerState();
+    if (state === "failed" && reopened) {
+      reopened = false;
+      return note(word.from, "The compiler didn't load, so there are no suggestions. Press Ctrl+Space to try again.");
+    }
+    reopened = false;
+    const pending = ask<{ items: Item[] } | Item[]>(
+      view,
       "textDocument/completion",
       ctx.pos,
       { context },
     );
+    if (state !== "ready") {
+      void pending.then(() => {
+        if (completionStatus(view.state) !== "active") return;
+        reopened = true;
+        startCompletion(view);
+      });
+      return note(word.from, "Loading the compiler for suggestions…");
+    }
+    const res = await pending;
     if (!res || ctx.aborted) return null;
     const options = (Array.isArray(res) ? res : res.items).map(
       (it): Completion => {
@@ -449,6 +478,7 @@ export function intelligence(prefix: string, editable: boolean): Extension {
     hintField,
     hints,
     editable ? autocompletion({ override: [complete] }) : [],
+    editable ? Prec.highest(keymap.of([{ key: "Tab", run: acceptCompletion }])) : [],
     editable ? [signatureField, signature] : [],
     keymap.of([
       {
