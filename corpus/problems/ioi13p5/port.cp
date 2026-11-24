@@ -6,37 +6,38 @@
 //   largest-size toys among those light enough (a heap of sizes, toys sorted by weight); then
 //   small robots by falling limit each take the m largest left, failing when one is too big.
 //   O(T log^2 T).
-// As it builds today: sizes are negated for the min-heap and the cursor over the sorted toys is
-//   an index (K9, K10, K6).
-// original: corpus/submissions/4688418.cpp (a grader-style `putaway`; check.sh adds a main)
 // Bounds: a, b: 0..=5e4; t: 1..=1e6; weak, small, toys.weight, toys.size: 1..=2e9
-let a: 0..=5e4 = read()
-let b: 0..=5e4 = read()
-let t: 1..=1e6 = read()
-let weak: [a]1..=2e9 = read()
-let small: [b]1..=2e9 = read()
-let toys: [t](weight: 1..=2e9, size: 1..=2e9) = read()
+// original: corpus/submissions/4688418.cpp (a grader-style `putaway`; orig.cpp adds a main)
+type Limit = 1..=2e9
+let (a, b, t): (0..=5e4, 0..=5e4, 1..=1e6) = read()
+domain Weak = 0..a
+domain Small = 0..b
+domain Toy = 0..t
+var weak: [Weak]Limit = read()
+var small: [Small]Limit = read()
+let toys: [Toy](weight: Limit, size: Limit) = read()
 
-let by_weight = toys.sorted()
-let weak_up = weak.sorted()
-let small_up = small.sorted()
+weak.sort()
+small.sort(by: desc)
+// The sizes of the toys each weak robot (by rising limit) is the first one
+// strong enough for, and the sizes of the toys no weak robot can carry.
+var newly: [Weak]List<Desc<Int>> = []
+var heavy: List<Desc<Int>> = []
+for toy in toys:
+    if let r = weak.partition_point(w => w > toy.weight).right: newly[r].push(desc(toy.size))
+    else: heavy.push(desc(toy.size))
 
 fn done_in(minutes: Int) -> Bool:
-    var left = MinHeap<Int>()
-    var next = 0
-    for limit in weak_up:
-        while next < t and by_weight[next].weight < limit:
-            left.push(-by_weight[next].size)
-            next += 1
-        for _ in 0..minutes:
-            if left.pop() == None: break
-    while next < t:
-        left.push(-by_weight[next].size)
-        next += 1
-    for limit in small_up.rev:
+    var left = MinHeap<Desc<Int>>()  // largest size first
+    for r in Weak:
+        left.push_all(newly[r])
+        for _ in 0..min(minutes, left.len): left.pop()
+    left.push_all(heavy)
+    for limit in small:
         for _ in 0..minutes:
             if let s = left.pop():
-                if -s >= limit: return false
+                if s.x >= limit: return false
+            else: break
     left.len == 0
 
 domain Minutes = 1..=t
