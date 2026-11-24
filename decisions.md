@@ -8880,3 +8880,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** After `type M = -10..=10`, `M.MIN == -10`, `M.MAX == 10` and `M.count == 21` (R02.6.2), the same values a generic `T` bound to `M` already reads since cdde42a75.
 - **Why.** An alias is the type it names everywhere (R02.6.2), and the range's ends were visible through a generic but not through the alias's own name, which was E0302. One type should answer `.MIN` the same way in both places.
 - **Reverse.** Drop the sentence from R02.6.2; `M.MIN` goes back to E0302, and generic code keeps the range's ends.
+
+## 540. (reserved, content)
