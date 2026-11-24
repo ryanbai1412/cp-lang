@@ -43,28 +43,34 @@ elif (x + h * (h + 1) / 2 + t) % 2 == 1:
     p += s
 
 var need = (k * (k + 1) / 2 + t - p) / 2
-var fwd: List<Int> = []
-var back: List<Int> = []
+// The greedy split of k..1 takes s while s fits what is still needed. Two walkers replay
+// it, one stopping at the parts it takes and one at the rest, so neither side is stored.
+var taken = 0
+var left = need
 for s in (1..=k).rev:
-    if s <= need:
-        fwd.push(s)
-        need -= s
-    else:
-        back.push(s)
-var i = 0
-var j = 0
-while i < fwd.len or j < back.len:
-    if j == back.len or (i < fwd.len and (p < t or (p == t and 2 * t <= n + 1))):
-        moves.push(fwd[i])
-        p += fwd[i]
-        i += 1
-    else:
-        moves.push(-back[j])
-        p -= back[j]
-        j += 1
-
-print(moves.len)
+    if s <= left:
+        taken += 1
+        left -= s
+print(moves.len + k)
 for d in moves: print(d)
+var (fs, fneed, fleft) = (k + 1, need, taken)
+var (bs, bneed, bleft) = (k + 1, need, k - taken)
+while fleft > 0 or bleft > 0:
+    if bleft == 0 or (fleft > 0 and (p < t or (p == t and 2 * t <= n + 1))):
+        fs -= 1
+        while fs > fneed: fs -= 1
+        fneed -= fs
+        fleft -= 1
+        print(fs)
+        p += fs
+    else:
+        bs -= 1
+        while bs <= bneed:
+            bneed -= bs
+            bs -= 1
+        bleft -= 1
+        print(-bs)
+        p -= bs
 
 @check
 fn check():
