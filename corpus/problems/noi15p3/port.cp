@@ -2,11 +2,11 @@
 // limits: 1000 ms, 512 MB
 // Problem: count pairs of subsets X, Y of {2..n} with every x in X coprime to every y in Y,
 //   n <= 500, modulo a runtime p <= 1e9.
-// Solution: every number up to 500 has at most one prime above 19. Track which of the 8 small
-//   primes each side already uses: dp[a, b], with a and b disjoint. Numbers sharing a big prime
-//   must all avoid one side, so a group goes through the DP twice, once allowed only X (to_x)
-//   and once only Y (to_y), and dp = to_x + to_y - dp removes the twice-counted "neither".
-//   A number without a big prime is a group of its own. O(n 4^8).
+// Solution: every number up to 500 has at most one prime above 19. Give each of the 8 small
+//   primes a side (X, Y or nobody; 3^8 ways); then each big prime's group (its multiples, or a
+//   lone number without one) goes wholly to X, wholly to Y or nowhere, among the members the
+//   small sides allow. A small prime used by nobody is counted three times, so
+//   inclusion-exclusion with weight (-2)^|S| over primes forced to nobody fixes it. O(3^8 n).
 // original: corpus/submissions/3782724.cpp
 
 let (n, p): (2..=500, 1..=1e9) = read()
@@ -23,34 +23,33 @@ fn small(x: Int) -> Mask:
 
 let sieve = Sieve(n)
 fn big(x: Int) -> ?Int = sieve.factor(x).map(f => f.0).find(q => q > 19)
-var groups: [2..=n]List<Int> = []
+// per big prime its multiples, and every other number alone: the small primes of each member
+var groups: [2..=n]List<Mask> = []
 for x in 2..=n:
-    if let q = big(x): groups[q].push(x)
-    else: groups[x].push(x)
+    if let q = big(x): groups[q].push(small(x))
+    else: groups[x].push(small(x))
+let pow2 = [Z.new(2) ** i for i in 0..=n]
 
-// one more number with small primes s, which may join X, or Y, or neither
-fn join_x<T>(f: [Mask, Mask]T, s: Mask) -> [Mask, Mask]T:
-    var g = f
-    for a in Mask:
-        for b in Mask:
-            if s & b == Mask.empty: g[a | s, b] += f[a, b]
-    g
-fn join_y<T>(f: [Mask, Mask]T, s: Mask) -> [Mask, Mask]T:
-    var g = f
-    for a in Mask:
-        for b in Mask:
-            if s & a == Mask.empty: g[a, b | s] += f[a, b]
-    g
+// Give each small prime to X only (xs), Y only (ys) or nobody. A group then goes wholly to X
+// (2^a choices among its a members that fit X), wholly to Y, or nowhere: 2^a + 2^b - 1.
+// Ways are summed by the set of small primes left to nobody.
+var by_none: [Mask]Z = 0
+for xs in Mask:
+    for ys in xs.complement().subsets:
+        var way = Z.new(1)
+        for g in groups if not g.is_empty:
+            var (fit_x, fit_y) = (0, 0)
+            for s in g:
+                if (s - xs).is_empty: fit_x += 1
+                if (s - ys).is_empty: fit_y += 1
+            way *= pow2[fit_x] + pow2[fit_y] - Z.new(1)
+        by_none[(xs | ys).complement()] += way
 
-var dp: [Mask, Mask]Z = 0
-dp[Mask.empty, Mask.empty] = 1
-for g in groups if not g.is_empty:
-    var (to_x, to_y) = (dp, dp)
-    for x in g:
-        to_x = join_x(to_x, small(x))
-        to_y = join_y(to_y, small(x))
-    dp = [Mask, Mask] (a, b) => to_x[a, b] + to_y[a, b] - dp[a, b]
-var total: Z = 0
-for a in Mask:
-    for b in Mask: total += dp[a, b]
+// A prime nobody uses is counted under all three of its choices; inclusion-exclusion with weight
+// (-2)^|S| over primes forced to nobody keeps each pair once.
+var total = Z.new(0)
+for s in Mask:
+    var forced = Z.new(0)
+    for t in s.supersets: forced += by_none[t]
+    total += forced * (-Z.new(2)) ** s.len
 print(total)

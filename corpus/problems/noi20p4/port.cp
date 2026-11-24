@@ -7,11 +7,8 @@
 //   largest ingredient (>= k) makes a dish alone; otherwise the smallest (< k) is finished off
 //   with the largest. With m = n - 2, split the ingredients into two groups of s and n - s that
 //   each hold (size - 1) * k grams: a subset of offsets d_i - k summing to -k, found by a
-//   subset-sum DP over (prefix, offset) in O(n * n * k) and traced back; then greedy on each.
+//   subset-sum bitset per prefix over sums in -n k..=n k, O(n * n * k / 64), traced back; then greedy on each.
 // original: corpus/submissions/3890337.cpp
-// The m = n - 2 subset sum keeps one Bool per (prefix, offset) in a flat
-// List<Bool>: 8x the memory of the bitset the full limits need, so this form
-// is verified on small and medium cases only.
 let tests: 1..=10 = read()
 
 var rem: List<Int> = []  // grams left of each ingredient of this case
@@ -20,10 +17,7 @@ var k = 0
 // Uses up the ingredients in `group` with exactly `dishes` dishes
 // (dishes >= group.len - 1 and their total is dishes * k).
 fn greedy(group: List<Int>, dishes: Int):
-    var live: List<Int> = []
-    for i in group:
-        if rem[i] > 0:
-            live.push(i)
+    var live = [i for i in group if rem[i] > 0]
     for made in 0..dishes:
         var a = 0
         var b = 0
@@ -42,11 +36,7 @@ fn greedy(group: List<Int>, dishes: Int):
             print(i + 1, small, j + 1, k - small)
             rem[i] = 0
             rem[j] -= k - small
-        var keep: List<Int> = []
-        for q in live:
-            if rem[q] > 0:
-                keep.push(q)
-        live = keep
+        live = [q for q in live if rem[q] > 0]
 
 for t in 0..tests:
     let n: 1..=500 = read()
@@ -57,38 +47,28 @@ for t in 0..tests:
     for i in 0..n:
         let d: Int = read()
         rem.push(d)
-    var everyone: List<Int> = []
-    for i in 0..n:
-        everyone.push(i)
     if m >= n - 1:
-        greedy(everyone, m)
+        greedy((0..n).collect(), m)
     else:
-        // offsets d - k summed over a subset; find a subset summing to -k
-        var mn = 0
-        var mx = 0
-        for i in 0..n:
-            mn min= mn + rem[i] - k
-            mx max= mx + rem[i] - k
-        let w = mx - mn + 1
-        var reach: List<Bool> = []
-        for o in 0..w:
-            reach.push(o == -mn)
-        for i in 0..n:
-            let c = rem[i] - k
-            for o in 0..w:
-                var r = reach[i * w + o]
-                if o - c >= 0 and o - c < w and reach[i * w + o - c]:
-                    r = true
-                reach.push(r)
+        // offsets d - k summed over a subset; find a subset summing to -k. A running sum above
+        // -k - mn (mn: all negative offsets) can never come back down, so sums live in mn..=-k - mn.
+        let mn = sum(min(d - k, 0) for d in rem)
         var off = -k - mn
-        if off < 0 or not reach[n * w + off]:
+        if off < 0:
+            print(-1)
+            continue
+        domain Off = 0..=off - mn
+        // reach[i]: the sums (shifted by -mn) of subsets of the first i offsets
+        var reach = [Bitset<Off>.single(Off(-mn))]
+        for i in 0..n: reach.push(reach[i].bitor(reach[i].shifted(rem[i] - k)))
+        if not reach[n].contains(Off(off)):
             print(-1)
         else:
             var s: List<Int> = []
             var rest: List<Int> = []
             for back in 0..n:
                 let i = n - 1 - back
-                if reach[i * w + off]:
+                if reach[i].contains(Off(off)):
                     rest.push(i)
                 else:
                     s.push(i)
