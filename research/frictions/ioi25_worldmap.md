@@ -127,6 +127,8 @@ form is what compiles. The quoted errors come from the first dream on a freshly 
   pairs a `@grader` dream with a stdin port.
 - **Owner:** Consumers/Tools.
 - **Severity:** medium.
+- **Status:** fixed by 57c83b9a8: a found `grader.cpp` is linked only into a program that
+  declares a `@grader fn`, so `grader.cpp` and `worldmap.h` now sit at the package root.
 
 ## Measurements
 
