@@ -6,9 +6,9 @@
 // Solution: the pebbles left lie between two cuts, so the reds taken so far come from prefix
 //   sums and the state is (cuts, reds of the player to move); the other's reds follow. A
 //   memoized win/lose recursion over taking either end: O(n^2 k) states, O(1) each.
-// Bounds: n, k: 1..=350
+// Bounds: n: 1..=350; k: 1..=(n + 1) / 2
 let n: 1..=350 = read()
-let k: 1..=350 = read()
+let k: 1..=(n + 1) / 2 = read()
 domain Pebble = 0..n
 let s: [Pebble]Char = read()
 domain Held = 0..=k
