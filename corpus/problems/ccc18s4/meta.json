@@ -32,5 +32,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "floor_quotients joined the prelude; @memo(map) for n up to 1e9."
+ "notes": "floor_quotients joined the prelude; @memo(map) for n up to 1e9.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 4,
+  "sha": "b56499ee15ca7484287730149eca42b975169f2c"
+ }
 }

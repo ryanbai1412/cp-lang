@@ -3,5 +3,5 @@
 @memo
 fn trees(w: Int) -> Int =
     if w == 1: 1
-    else: w.quotients(from: 2).sum(of: q => q.count * trees(q.value))
-print(trees(read()))
+    else: sum((b.hi - b.lo) * trees(b.q) for b in floor_quotients(w, from: 2))
+print(trees(read<1..=1e9>()))

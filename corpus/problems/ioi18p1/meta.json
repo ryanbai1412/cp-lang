@@ -23,5 +23,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "grader task (extern fn press); spec.cp plays the sample grader (reads S, prints Accepted: q) until local runs can bind an extern fn to a judge (research/frictions/ioi18p1.md)."
+ "notes": "grader task (extern fn press); spec.cp plays the sample grader (reads S, prints Accepted: q) until local runs can bind an extern fn to a judge (research/frictions/ioi18p1.md).",
+ "dream_stress": {
+  "ok": false,
+  "cases": 0,
+  "sha": "6cf287632a2d8dc6952f9f2a529410cd6be8b4f7"
+ }
 }
