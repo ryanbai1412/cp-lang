@@ -1,4 +1,7 @@
 import sys, random
+if sys.argv[1] == "--max":
+    print(1); print(100, 5000, 25)  # one test: n = 100, l = sum l = 5000, k = 25
+    sys.exit()
 seed, size = int(sys.argv[1]), int(sys.argv[2])
 rng = random.Random(seed)
 if size <= 20:

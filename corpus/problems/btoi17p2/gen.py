@@ -1,6 +1,16 @@
 # BOI 2017 Toll: `gen.py SEED S`. Roads only from layer a / K to the next, one per pair,
 # tolls 1..=10000, orders 0 <= a < b < N (statement constraints).
 import sys, random
+if sys.argv[1] == "--max":
+    # K = 5, N = 5e4, every allowed road (one per pair, so M = K^2 (N/K - 1)), O = 1e4 orders
+    # spanning nearly every gap (the longest folds)
+    r = random.Random(1)
+    k, n, o = 5, 50_000, 10_000
+    roads = [(a, b) for a in range(n) for b in range((a // k + 1) * k, min(n, (a // k + 2) * k))]
+    print(k, n, len(roads), o)
+    print("\n".join(f"{a} {b} {r.randint(1, 10000)}" for a, b in roads))
+    print("\n".join(f"{r.randrange(k)} {n - 1 - r.randrange(k)}" for _ in range(o)))
+    sys.exit()
 r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
 k = r.randint(1, 5)
 n = r.randint(2, max(2, S * k))

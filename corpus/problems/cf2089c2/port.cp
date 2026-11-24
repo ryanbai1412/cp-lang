@@ -1,4 +1,5 @@
 // Source: Codeforces 2089C2 (Key of Like, hard), https://codeforces.com/contest/2089/problem/C2
+// limits: 3000 ms, 512 MB
 // Problem: 1 <= n <= 100 members take turns trying one key on one lock, always a pair most
 //   likely to match given all past tries (ties uniform), until all 1 <= l <= 5000 locks are
 //   open; there are l + k keys, 0 <= k <= 25 of them fake. Print each member's expected number

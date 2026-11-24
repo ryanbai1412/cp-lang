@@ -1,4 +1,5 @@
 // Source: Codeforces 2096F (Wonderful Impostors), https://codeforces.com/contest/2096/problem/F
+// limits: 2000 ms, 256 MB
 // Problem: n viewers, each crewmate or impostor; m <= 2e5 statements, each "no impostor in
 //   [a, b]" or "at least one impostor in [a, b]". q <= 2e5 questions l r: can statements l..r all
 //   be true? Multitest, sums of n, m, q <= 2e5.

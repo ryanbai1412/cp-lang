@@ -1,4 +1,5 @@
 // Source: Codeforces 2101E (Kia Bakes a Cake), https://codeforces.com/contest/2101/problem/E
+// limits: 6000 ms, 512 MB
 // Problem: a tree on n <= 7e4 vertices and a binary string s. Over the vertices with s_i = 1,
 //   with tree distance as weight, a path is nice if each edge weighs at least twice the previous.
 //   For each i print the most vertices on a nice simple path starting at i, or -1 if s_i = 0.

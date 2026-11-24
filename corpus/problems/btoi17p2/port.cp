@@ -1,4 +1,5 @@
 // Source: BOI 2017 P2 (Toll), https://dmoj.ca/problem/btoi17p2
+// limits: 1000 ms, 1024 MB
 // Problem: n <= 5e4 places, m one-way roads with tolls, each from a to b with
 //   b / k = a / k + 1 (k <= 5). For o <= 1e4 orders (a, b) print the cheapest toll from a
 //   to b, or -1.

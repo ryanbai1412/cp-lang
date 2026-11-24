@@ -1,4 +1,5 @@
 // Source: Codeforces 2115C (Eternal Violet), https://codeforces.com/contest/2115/problem/C
+// limits: 2000 ms, 1024 MB
 // Problem: n <= 20 monsters with hp h_i <= 400 and m <= 4000 rounds. Each round the sword shines
 //   with chance p, seen before acting; attacking hits every monster for 1 if it shines, else one
 //   chosen monster. Print the best chance to bring every hp to exactly 1. Multitest, sum n <= 100.

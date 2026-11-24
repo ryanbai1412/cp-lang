@@ -1,4 +1,5 @@
 // Source: Codeforces 2101F, https://codeforces.com/contest/2101/problem/F
+// limits: 7000 ms, 256 MB
 // Problem: a tree on n <= 3000 vertices (multitest, sum n <= 3000). Colour each vertex red,
 //   blue or white; a colouring scores the max distance between a red and a blue vertex (0 if
 //   either is missing). Sum the score over all 3^n colourings mod 998244353.

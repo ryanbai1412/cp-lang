@@ -1,5 +1,6 @@
 // Source: Codeforces 2115B (Gellyfish and Camellia Japonica),
 //   https://codeforces.com/contest/2115/problem/B
+// limits: 2000 ms, 512 MB
 // Problem: an unknown array a of n values becomes b after q operations c[z] := min(c[x], c[y]).
 //   Given b and the operations, print any valid a (0 <= a_i <= 1e9), or -1 if none exists.
 //   n, q <= 3e5 (sums over tests), multitest.
