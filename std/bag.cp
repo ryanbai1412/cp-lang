@@ -685,15 +685,15 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `var b = SortedBag.of([1]); b.reserve(100); b.to_list() == [1]`
     pub fn reserve(mut self, cap: Int):
-        if cap <= 0: return
-        keys.reserve(cap + BAG_B)
-        ws.reserve(cap + BAG_B)
+        keys.reserve(max(cap, 0) + BAG_B)
+        ws.reserve(max(cap, 0) + BAG_B)
 
     /// Split off and return all elements `>= k`, keeping `< k` in `self`.
     ///
     /// Every copy of a key goes to the same side.
     ///
-    /// The larger side keeps the node array; the smaller side's keys move to a fresh one.
+    /// The larger side keeps the node array (`self` on a tie); the smaller side's keys move to a
+    /// fresh one.
     ///
     /// cost: \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys
     /// empty: `var b = SortedBag<Int>(); let hi = b.split_at(3); b.len == 0 and hi.len == 0`
@@ -726,7 +726,8 @@ pub struct SortedBag<K>:
     /// The inverse of `split_at`. The precondition is checked in \(O(1)\) against `self.last` and
     /// `other.first`; either side may be empty.
     ///
-    /// The smaller side's keys move into the larger side's node array, as in `split_at`.
+    /// The smaller side's keys move into the larger side's node array (`self`'s on a tie), as in
+    /// `split_at`.
     ///
     /// cost: \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys
     /// traps: when both are non-empty and `self.last >= other.first`
@@ -742,7 +743,8 @@ pub struct SortedBag<K>:
     /// Merge all elements of `other` into `self` (small-to-large, emptying `other`).
     ///
     /// Copies add up: a key with count `a` in `self` and `b` in `other` ends with `a + b`. The
-    /// smaller bag's elements are inserted into the larger, whichever side that is.
+    /// smaller bag's elements are inserted into the larger, whichever side that is (`self` on a
+    /// tie).
     ///
     /// cost: \(O(\min(n, m) \log(n + m))\) expected
     /// empty: `var a = SortedBag.of([1, 2]); var e = SortedBag<Int>(); a.absorb(mut e); a.to_list() == [1, 2]`
@@ -784,7 +786,7 @@ pub struct SortedBag<K>:
 
     fn node(mut self, x: K, inner: Bool) -> Int:
         var u = meta.len / 4
-        if free >= 0:
+        if free != -1:
             u = free
             free = self.nxt(u)
         else:
@@ -3009,3 +3011,41 @@ fn check_aug(b: AugSortedBag<Int, (Int, Int)>, cnt: List<Int>):
         assert b.count(lo) == (if lo < cnt.len: cnt[lo] else: 0)
         assert b.rank(lo) == have.count(x => x < lo)
         if lo < have.len: assert b.nth(lo) == Some(have[lo])
+
+// Which bag keeps its nodes when two meet with equal sizes: `self`, as the docs of `split_at`,
+// `join` and `absorb` say.
+@test
+fn sorted_bag_ties_keep_selfs_node_array():
+    var s = SortedBag<Int>.new()
+    for i in 0..200: s.add(i)
+    let m = s.meta.len
+    let hi = s.split_at(100)
+    assert s.meta.len == m and hi.meta.len < m and s.len == 100 and hi.len == 100
+    for joined in [false, true]:
+        var a = SortedBag<Int>.new()
+        for i in 0..300: a.add(i)
+        for i in 100..300: let _ = a.remove(i)
+        let ma = a.meta.len
+        var o = SortedBag<Int>.new()
+        for i in 100..200: o.add(i)
+        if joined: a.join(o)
+        else: a.absorb(mut o)
+        assert a.meta.len == ma and a.to_list() == (0..200).collect()
+
+// A bag holds only the room its nodes use: the first node grows slot by slot, a leaf has no
+// child slots, every later node takes a whole node's slots, and a reused node keeps its child
+// slots.
+@test
+fn sorted_bag_holds_only_the_room_its_nodes_use():
+    var c = SortedBag<Int>.new()
+    for i in 0..3: c.add(i)
+    assert c.keys.len == 3 and c.ws.len == 3 and c.kids.len == 0
+    var d = SortedBag<Int>.new()
+    for i in 0..200: d.add(i)
+    assert d.keys.len == d.meta.len / 4 * BAG_B and d.kids.len == BAG_B
+    var e = SortedBag.of((0..8).collect())
+    for _ in 0..5:
+        for i in 8..64: e.add(i)
+        assert e.kids.len <= 2 * BAG_B
+        for i in 8..64: let _ = e.remove(i)
+        assert e.height == 0 and e.to_list() == (0..8).collect()
