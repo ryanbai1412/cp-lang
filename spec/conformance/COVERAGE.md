@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3726 (3600 passing). Rules: 617.
+Cases: 3728 (3600 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -976,7 +976,7 @@ and `spec/diagnostics.md`, with the cases that expect each.
 - L0599 int_div_possible_zero: **no case**
 - L0601 Right side changes the place it assigns: 3 case(s)
 - L0602 Lazy chain walked twice: 1 case(s)
-- L0603 `.map` view read many times by index: 1 case(s)
+- L0603 `.map` or `.filter` view read on every pass: 3 case(s)
 - L0604 Generator holding a `mut` lend walked twice: 2 case(s)
 - L0605 Literal index into a slice that keeps source keys: 2 case(s)
 - L0606 Wide array of `Int`: 1 case(s)

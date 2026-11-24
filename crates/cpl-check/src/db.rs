@@ -1064,16 +1064,14 @@ impl Database {
                         .with_help("store it as `Packed<S>` (data only, unaligned loads) or with `layout: columns` (one array per field)"),
                     );
             }
-            if let Some((name, at, reads)) = map_recomputed(&items, index) {
-                let at = at.shift(range.span.start);
-                sink.push(
-                        Diagnostic::warning(
-                            codes::MAP_RECOMPUTED,
-                            at,
-                            format!("`{name}` is a `.map` view read {reads} times by index, and each read reruns the function"),
-                        )
-                        .with_help(format!("copy it once with `List(...)` so each `{name}[i]` is a plain read (R07.2.11)")),
-                    );
+            let types = checks.get(index).map_or(&[][..], |c| &c.exprs.types[..]);
+            let is_view = |at: Span| {
+                types
+                    .iter()
+                    .any(|(span, ty)| *span == at && !matches!(ty, Ty::Optional(_)))
+            };
+            for reread in view_rereads(&items, index, &is_view) {
+                sink.push(reread.diagnostic(range.span.start));
             }
         }
 
@@ -2254,7 +2252,7 @@ fn declare_with_var(
 
 mod cycles;
 mod top_level;
-use top_level::{map_recomputed, padded_array, rewalk_kind, wide_array};
+use top_level::{padded_array, rewalk_kind, view_rereads, wide_array};
 mod env;
 mod fields;
 mod rebind;

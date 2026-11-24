@@ -46,7 +46,7 @@ fn mul(x: Matrix, y: Matrix) -> Matrix:
     out
 
 fn solve_block(blk: Block) -> Matrix:
-    let rows = Row.filter(row => row.ord / B == blk.ord)
+    let rows = List(Row.filter(row => row.ord / B == blk.ord))
     var out = identity
     for i in Col:
         for row in rows:

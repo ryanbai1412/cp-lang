@@ -833,9 +833,9 @@ pub const REGISTRY: &[CodeInfo] = &[
     },
     CodeInfo {
         code: Code("L0603"),
-        title: "`.map` view read many times by index",
-        summary: "A `let m = xs.map(f)` view is indexed more than once, so `f` runs again on every read.",
-        explanation: "`xs.map(f)` is a view: `m[i]` calls `f(xs[i])` each time. Copy it once with `List(xs.map(f))` when it is read repeatedly.",
+        title: "`.map` or `.filter` view read on every pass",
+        summary: "A `let m = xs.map(f)` or `xs.filter(p)` view is indexed more than once, or indexed or walked inside a loop or lambda, so `f` runs again on every read.",
+        explanation: "`xs.map(f)` and `xs.filter(p)` are views: `m[i]` calls `f(xs[i])` each time, and each walk reruns the function on every item. Copy it once with `List(xs.map(f))` when it is read repeatedly.",
         trigger: "let a = [1, 2, 3]\nlet m = a.map(x => x * x)\nprint(m[0] + m[1])\n",
         fix: "let a = [1, 2, 3]\nlet m = List(a.map(x => x * x))\nprint(m[0] + m[1])\n",
         mode: "check",

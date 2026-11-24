@@ -44,51 +44,222 @@ pub(super) fn padded_array(
     (bytes > 1e6 && (size - data) * 5 > size).then_some((elem.span, data, size, bytes))
 }
 
-/// R07.2.11: a top-level `let m = xs.map(f)` that later items index more
-/// than once. Gives the name, the initializer's span and the read count.
-pub(super) fn map_recomputed(
-    items: &[Arc<ItemSyntax>],
-    index: usize,
-) -> Option<(String, Span, usize)> {
+/// R07.2.11: a `let v = xs.map(f)` or `xs.filter(p)` view, at the top level
+/// or in a block, read again on every pass (L0603): indexed more than once
+/// or under two loops, or walked inside a loop, comprehension or lambda.
+/// Each read reruns the function, so copying it once is the fix.
+pub(super) struct ViewReread {
+    name: String,
+    init: Span,
+    method: &'static str,
+    func: Option<String>,
+    index_reads: usize,
+    repeated: bool,
+}
+
+impl ViewReread {
+    pub(super) fn diagnostic(&self, shift: u32) -> Diagnostic {
+        let (name, method) = (&self.name, self.method);
+        let (reruns, runs) = match &self.func {
+            Some(f) => (format!("`{f}`"), format!("`{f}`")),
+            None => ("its function".to_string(), "it".to_string()),
+        };
+        let how = if self.repeated {
+            "a loop reads it again on every pass".to_string()
+        } else {
+            format!("it is read {} times by index", self.index_reads)
+        };
+        let at = self.init.shift(shift);
+        let mut diag = Diagnostic::warning(
+            codes::MAP_RECOMPUTED,
+            at,
+            format!("`{name}` is a lazy `.{method}` view and {how}: each read reruns {reruns}"),
+        )
+        .with_help(format!(
+            "copy it once with `List(...)`, so {runs} runs once per item and each read of `{name}` is plain (R07.2.11)"
+        ));
+        diag.fixes.push(cpl_diag::Fix {
+            title: format!("copy `{name}` once with `List(...)`"),
+            edits: vec![
+                (Span::new(at.start, at.start), "List(".to_string()),
+                (Span::new(at.end, at.end), ")".to_string()),
+            ],
+        });
+        diag
+    }
+}
+
+/// The `.map` or `.filter` view a `let` binds without a type: its name,
+/// initializer, method and function.
+fn view_let(stmt: &ast::Stmt) -> Option<(&str, &ast::Expr, &'static str, &ast::Expr)> {
     use ast::{ExprKind, PatternKind};
-    use cpl_syntax::visit::{walk_stmt, Visitor};
     let StmtKind::Let {
         pat,
         init: Some(init),
         ty: None,
         ..
-    } = &items[index].parsed.stmts.first()?.kind
+    } = &stmt.kind
     else {
         return None;
     };
     let PatternKind::Name(name) = &pat.kind else {
         return None;
     };
-    let ExprKind::Call { callee, .. } = &crate::check::lends::unparen(init).kind else {
+    let ExprKind::Call { callee, args } = &crate::check::lends::unparen(init).kind else {
         return None;
     };
-    if !matches!(&callee.kind, ExprKind::Field { name, .. } if name.text == "map")
-        || rewalk_kind(items, index, false).is_some()
-    {
+    let ExprKind::Field { name: m, .. } = &callee.kind else {
+        return None;
+    };
+    let method = match m.text.as_str() {
+        "map" => "map",
+        "filter" => "filter",
+        _ => return None,
+    };
+    let [arg] = args.as_slice() else {
+        return None;
+    };
+    Some((name, init, method, &arg.value))
+}
+
+/// Reads of the view `name`, in statements that come after its `let`.
+/// `loops` holds the spans of the loop bodies, comprehensions and lambdas
+/// seen so far (the walk is pre-order), so a read inside them repeats.
+struct Reads<'a> {
+    name: &'a str,
+    loops: Vec<Span>,
+    index_reads: usize,
+    repeated: bool,
+    seen: bool,
+}
+
+impl Reads<'_> {
+    fn depth(&self, at: Span) -> usize {
+        self.loops
+            .iter()
+            .filter(|s| s.start <= at.start && at.end <= s.end)
+            .count()
+    }
+
+    fn is_view(&self, e: &ast::Expr) -> bool {
+        matches!(&crate::check::lends::unparen(e).kind, ast::ExprKind::Name(n) if n == self.name)
+    }
+}
+
+impl cpl_syntax::visit::Visitor for Reads<'_> {
+    fn stmt(&mut self, s: &ast::Stmt) {
+        match &s.kind {
+            StmtKind::For { iter, body, .. } => {
+                if self.is_view(iter) && self.depth(iter.span) > 0 {
+                    self.repeated = true;
+                }
+                self.loops.push(body.span);
+            }
+            StmtKind::While { body, .. } => self.loops.push(body.span),
+            _ => {}
+        }
+    }
+
+    fn expr(&mut self, e: &ast::Expr) {
+        use ast::ExprKind;
+        match &e.kind {
+            ExprKind::Lambda { .. } | ExprKind::Comprehension { .. } | ExprKind::Table { .. } => {
+                self.loops.push(e.span)
+            }
+            ExprKind::Index { base, .. } if self.is_view(base) => {
+                self.index_reads += 1;
+                self.repeated |= self.depth(e.span) > 1;
+            }
+            ExprKind::Call { callee, .. } => {
+                if let ExprKind::Field { base, .. } = &callee.kind {
+                    if self.is_view(base) && self.depth(e.span) > 0 {
+                        self.repeated = true;
+                    }
+                }
+            }
+            ExprKind::Name(n) if n == self.name => self.seen = true,
+            _ => {}
+        }
+    }
+}
+
+fn reread<'a>(
+    stmt: &ast::Stmt,
+    text: &str,
+    groups: impl Iterator<Item = &'a [ast::Stmt]>,
+    stop_after_first: bool,
+    is_view: &dyn Fn(Span) -> bool,
+) -> Option<ViewReread> {
+    let (name, init, method, func) = view_let(stmt)?;
+    if !is_view(crate::check::lends::unparen(init).span) {
         return None;
     }
-    struct Reads<'a>(&'a str, usize);
-    impl Visitor for Reads<'_> {
-        fn expr(&mut self, e: &ast::Expr) {
-            if let ExprKind::Index { base, .. } = &e.kind {
-                if matches!(&base.kind, ExprKind::Name(n) if n == self.0) {
-                    self.1 += 1;
-                }
+    let mut reads = Reads {
+        name,
+        loops: Vec::new(),
+        index_reads: 0,
+        repeated: false,
+        seen: false,
+    };
+    for group in groups {
+        reads.loops.clear();
+        for s in group {
+            cpl_syntax::visit::walk_stmt(s, &mut reads);
+        }
+        if stop_after_first && reads.seen {
+            break;
+        }
+    }
+    if !(reads.repeated || method == "map" && reads.index_reads > 1) {
+        return None;
+    }
+    let func = text
+        .get(func.span.start as usize..func.span.end as usize)
+        .filter(|t| t.len() <= 32 && !t.contains('\n'))
+        .map(str::to_string);
+    Some(ViewReread {
+        name: name.to_string(),
+        init: init.span,
+        method,
+        func,
+        index_reads: reads.index_reads,
+        repeated: reads.repeated,
+    })
+}
+
+/// Every [`ViewReread`] whose `let` is the top-level item at `index` (read
+/// by the later items) or sits in one of its blocks. The later items are
+/// walked one at a time: their spans are each item's own. A lazy chain
+/// walked by two items is L0602's, so only its first walking item counts.
+/// `is_view` says whether the checker typed an initializer (by its span) as
+/// a sequence view: `opt.map(f)` on an optional is an eager `?U`.
+pub(super) fn view_rereads(
+    items: &[Arc<ItemSyntax>],
+    index: usize,
+    is_view: &dyn Fn(Span) -> bool,
+) -> Vec<ViewReread> {
+    let item = &items[index];
+    let mut out = Vec::new();
+    if let Some(stmt) = item.parsed.stmts.first() {
+        let chain = rewalk_kind(items, index, false).is_some();
+        let later = items[index + 1..].iter().map(|i| i.parsed.stmts.as_slice());
+        out.extend(reread(stmt, &item.text, later, chain, is_view));
+    }
+    struct Blocks<'a>(&'a str, Vec<ViewReread>, &'a dyn Fn(Span) -> bool);
+    impl cpl_syntax::visit::Visitor for Blocks<'_> {
+        fn block(&mut self, block: &ast::Block) {
+            for (k, stmt) in block.stmts.iter().enumerate() {
+                let after = std::iter::once(&block.stmts[k + 1..]);
+                self.1.extend(reread(stmt, self.0, after, false, self.2));
             }
         }
     }
-    let mut reads = Reads(name, 0);
-    for item in &items[index + 1..] {
-        for stmt in &item.parsed.stmts {
-            walk_stmt(stmt, &mut reads);
-        }
+    let mut blocks = Blocks(&item.text, Vec::new(), is_view);
+    for stmt in &item.parsed.stmts {
+        cpl_syntax::visit::walk_stmt(stmt, &mut blocks);
     }
-    (reads.1 > 1).then(|| (name.clone(), init.span, reads.1))
+    out.extend(blocks.1);
+    out
 }
 
 /// What makes the top-level `let` at `index` walkable once: a lazy chain
