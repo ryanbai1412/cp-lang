@@ -195,7 +195,19 @@ pub(crate) fn given_root(value: &Expr) -> Option<(bool, usize)> {
             root
         }
         ExprKind::Builtin(cpl_ir::Builtin::ListToArray, of) => given_root(of.first()?),
-        _ => walk::path_root(value),
+        _ => storage_root(value),
+    }
+}
+
+/// The variable whose storage a place lives in, whatever its indices
+/// compute: `self.keys[i * 2]` is in `self`.
+fn storage_root(e: &Expr) -> Option<(bool, usize)> {
+    match &e.kind {
+        ExprKind::Field(base, _)
+        | ExprKind::Index(base, _)
+        | ExprKind::Unwrap(base, _)
+        | ExprKind::Payload(base, ..) => storage_root(base),
+        _ => walk::path_root(e),
     }
 }
 

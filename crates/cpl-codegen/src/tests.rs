@@ -814,3 +814,17 @@ fn a_local_fn_guards_the_runtime_domains_it_declares() {
 ");
     assert!(out.contains("cpl::DomGuard"), "{out}");
 }
+
+#[test]
+fn an_element_a_mut_call_may_move_is_copied_whatever_its_index() {
+    let out = cpp("struct T<K>:
+    var keys: List<K>
+    fn grow(mut self, x: K) -> Int:
+        for _ in 0..1000: keys.push(x)
+        keys.len
+    fn dup(mut self, i: Int) -> Int = self.grow(keys[i * 2])
+var t = T<(Int, Int)>([(1, 2)])
+print(t.dup(0))
+");
+    assert!(out.contains("_grow(self, std::tuple<ll, ll>("), "{out}");
+}
