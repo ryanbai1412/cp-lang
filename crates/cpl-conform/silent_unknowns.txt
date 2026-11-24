@@ -614,7 +614,6 @@
 29 corpus/problems/egoi23p7/spec.cp
 2 corpus/problems/egoi23p8/port.cp
 7 corpus/problems/etsr23r1p4/perf.cp
-4 corpus/problems/etsr23r2p2/port.cp
 3 corpus/problems/etsr23r2p4/port.cp
 5 corpus/problems/etsr23r3p3/dream.cp
 5 corpus/problems/etsr23r3p3/port.cp

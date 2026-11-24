@@ -4725,20 +4725,6 @@
     "scout_batch_43"
    ]
   },
-  "etsr23r2p2": {
-   "family": "DMOJ contests",
-   "canonical": "proto/ports/scout_batch_43/today/etsr23r2p2.cp",
-   "canonical_form": "runnable",
-   "canonical_verified": "pass",
-   "spec_port": "proto/ports/scout_batch_43/etsr23r2p2.cp",
-   "duplicates": [
-    "proto/ports/scout_batch_43/etsr23r2p2.cp"
-   ],
-   "port_files": 2,
-   "groups": [
-    "scout_batch_43"
-   ]
-  },
   "etsr23r2p4": {
    "family": "DMOJ contests",
    "canonical": "proto/ports/scout_batch_43/today/etsr23r2p4.cp",
@@ -25369,24 +25355,6 @@
    "verified": "no harness"
   },
   {
-   "path": "proto/ports/scout_batch_43/etsr23r2p2.cp",
-   "group": "scout_batch_43",
-   "form": "spec",
-   "problem": "etsr23r2p2",
-   "mapped_by": "header",
-   "submission": "5494433",
-   "original": "corpus/submissions/5494433.cpp",
-   "generation": "v2",
-   "cp_loc": 33,
-   "wish_markers": 0,
-   "harness": null,
-   "cpp_raw_loc": 90,
-   "cpp_stripped_loc": 54,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "no harness"
-  },
-  {
    "path": "proto/ports/scout_batch_43/etsr23r2p4.cp",
    "group": "scout_batch_43",
    "form": "spec",
@@ -25476,25 +25444,6 @@
    "original_language": "cpp",
    "verified": "pass",
    "harness_line": "PASS etsr23r1p4: 30/30 cases matched 5495163.cpp"
-  },
-  {
-   "path": "proto/ports/scout_batch_43/today/etsr23r2p2.cp",
-   "group": "scout_batch_43",
-   "form": "runnable",
-   "problem": "etsr23r2p2",
-   "mapped_by": "header",
-   "submission": "5494433",
-   "original": "corpus/submissions/5494433.cpp",
-   "generation": "v2",
-   "cp_loc": 58,
-   "wish_markers": 0,
-   "harness": "proto/ports/scout_batch_43/check.py",
-   "cpp_raw_loc": 90,
-   "cpp_stripped_loc": 54,
-   "strip_source": "auto",
-   "original_language": "cpp",
-   "verified": "pass",
-   "harness_line": "PASS etsr23r2p2: 30/30 cases matched 5494433.cpp"
   },
   {
    "path": "proto/ports/scout_batch_43/today/etsr23r2p4.cp",

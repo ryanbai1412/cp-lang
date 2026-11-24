@@ -871,17 +871,6 @@ def g_egoi22p1(p, big, _):
     W(p, lines)
 
 
-def g_etsr23r2p2(p, big, _):
-    rng = random.Random(2040)
-    t = 20 if big else 5
-    lines = [t]
-    for _ in range(t):
-        n = 25 if big else 10
-        s = "".join(rng.choice("0123456789") for _ in range(n))
-        lines.append(f"{s} {rng.randint(0, 254)}")
-    W(p, lines)
-
-
 def g_ioi07p3(p, big, _):
     rng = random.Random(2042)
     n = 100_000 if big else 500
@@ -1119,7 +1108,6 @@ SPECS += [
     ("wave2/dpr", O(4131862), "matrix exp", "n=50, k=1e18", g_dpr, "exact"),
     ("scout_batch_18/today/dpw", O(4133460), "lazy segtree", "n=m=2e5", g_dpw, "exact"),
     ("scout_batch_48/today/egoi22p1", O(5198974), "greedy", "t=500, n=50", g_egoi22p1, "exact"),
-    ("scout_batch_43/etsr23r2p2", O(5494433), "interval DP", "t=20, n=25", g_etsr23r2p2, "exact"),
     ("scout_batch_24/today/ioi07p3", O(5120005), "lazy segtree", "n=1e5", g_ioi07p3, "exact"),
     ("scout_batch_2/ioi08p2", O(5107842), "functional graph", "n=1e6", g_ioi08p2, "exact"),
     ("scout_batch_29/ioi09p2", O(5102705), "sort+heap", "n=5e5", g_ioi09p2, "head1"),

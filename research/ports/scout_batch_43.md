@@ -8,7 +8,7 @@ Ten diverse, previously unported hard problems from the **ETSR '23** series (exc
 
 - `etsr23r1p3.cp` (submission 5494303, deleted with the package): All-permutation subsequence check via backward occurrence table + `Subset<Alpha>` bitmask DP (`@multitest`).
 - `etsr23r1p4.cp` (`corpus/submissions/5495163.cpp`): Segment Tree Beats for range add, range Euclidean floor-division, range min, and range sum.
-- `etsr23r2p2.cp` (`corpus/submissions/5494433.cpp`): Interval DP for minimum `+`/`*` insertions in a digit string to hit target `<= 250` (`@multitest`).
+- `etsr23r2p2.cp` (submission 5494433): Interval DP for minimum `+`/`*` insertions in a digit string to hit target `<= 250` (`@multitest`).
 - `etsr23r2p3.cp` (submission 5494453, deleted with the package): Bitwise `ctz` divisibility characterization on sorted triples (`@multitest`).
 - `etsr23r2p4.cp` (`corpus/submissions/5494510.cpp`): Bounded-window XOR scheduling DP via `@memo(hash)` over a sliding `Subset<Win>` (`@multitest`).
 - `etsr23r3p1.cp` (submission 5527625, deleted with the package): Clamped affine + linear-in-initial-x composition via coordinate compression and `LazySegTree` `max_right`/`min_left`.

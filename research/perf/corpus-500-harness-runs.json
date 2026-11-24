@@ -1990,10 +1990,6 @@
           "line": "PASS etsr23r1p4: 30/30 cases matched 5495163.cpp",
           "verdict": "pass"
         },
-        "etsr23r2p2": {
-          "line": "PASS etsr23r2p2: 30/30 cases matched 5494433.cpp",
-          "verdict": "pass"
-        },
         "etsr23r2p4": {
           "line": "PASS etsr23r2p4: 30/30 cases matched 5494510.cpp",
           "verdict": "pass"
