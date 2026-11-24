@@ -671,7 +671,7 @@ pub struct HistoricBeatsSegTree<D>:
                 let j = if not one: k elif k < 2: 0 else: -1
                 if j >= 0:
                     let q = 3 * k
-                    t[q + 1] = max(t[q + 1], t[q] + g[3 * j + 1])
+                    t[q + 1] max= t[q] + g[3 * j + 1]
                     t[q] += g[3 * j]
                     t[q + 2] += g[3 * j + 2]
         let mid = (nl + nr) / 2

@@ -70,7 +70,7 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
 /// example: `"banana".search('n') == Some(2)`
 /// example: `"banana"[2..].search('a') == Some(3)`
 /// example: `"banana".search("x") == None`
-pub fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
+pub fn search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K:
     for k in find_all(self, "" + p): return Some(k)
     None
 
@@ -86,7 +86,7 @@ pub fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
 /// example: `"banana".rsearch("an") == Some(3)`
 /// example: `"banana".rsearch('a') == Some(5)`
 /// example: `"ab".rsearch("") == Some(1)`
-pub fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
+pub fn rsearch<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K:
     var last: ?K = None
     for k in find_all(self, "" + p): last = Some(k)
     last

@@ -1770,7 +1770,7 @@ fn bit_reads_one_bit():
 @test
 fn digits_are_lowest_first():
     assert 1203.digits() == [3, 0, 2, 1] and 0.digits() == [0] and 5.digits(2) == [1, 0, 1]
-    assert 7 in 1700.digits() and not (7 in 1800.digits())
+    assert 1700.digits().contains(7) and not 1800.digits().contains(7)
     for _ in 0..100:
         let (x, base) = (rand(0, 1 << 40), rand(2, 16))
         let ds = x.digits(base)
