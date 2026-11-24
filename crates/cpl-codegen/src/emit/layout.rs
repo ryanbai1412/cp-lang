@@ -152,7 +152,7 @@ impl<'p> Emitter<'p> {
             }
             match ty {
                 Ty::Array { dims, elem } => {
-                    if let Some(cell) = l.cpp_elem(elem) {
+                    if let Some(cell) = self.layout_cell(l, elem) {
                         return if let Some(k) = self.ty_fixed_len(ty) {
                             format!("std::array<{cell}, {k}>")
                         } else if dims.len() == 1 {
@@ -163,22 +163,22 @@ impl<'p> Emitter<'p> {
                     }
                 }
                 Ty::List(elem) => {
-                    if let Some(cell) = l.cpp_elem(elem) {
+                    if let Some(cell) = self.layout_cell(l, elem) {
                         return format!("std::vector<{cell}>");
                     }
                 }
                 Ty::ListView(elem, _) => {
-                    if let Some(cell) = l.cpp_elem(elem) {
+                    if let Some(cell) = self.layout_cell(l, elem) {
                         return format!("cpl::ListView<{cell}>");
                     }
                 }
                 Ty::Keyed(elem, _) => {
-                    if let Some(cell) = l.cpp_elem(elem) {
+                    if let Some(cell) = self.layout_cell(l, elem) {
                         return format!("cpl::Keyed<{cell}>");
                     }
                 }
                 Ty::MutView(elem, _) => {
-                    if let Some(cell) = l.cpp_elem(elem) {
+                    if let Some(cell) = self.layout_cell(l, elem) {
                         return format!("cpl::MutView<{cell}>");
                     }
                 }
@@ -247,12 +247,20 @@ impl<'p> Emitter<'p> {
             cpl_ir::NarrowLayout::Int(w) => format!("{}({text})", w.cpp()),
             cpl_ir::NarrowLayout::OptI32 => format!("cpl::OptI32({text})"),
             cpl_ir::NarrowLayout::OptOptI32 => format!("cpl::OptOptI32({text})"),
-            cpl_ir::NarrowLayout::Tuple(ws) => {
-                let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
+            cpl_ir::NarrowLayout::Tuple(fs) => {
+                let kept = |t: &Ty| crate::names::value_ty(self.program, self.niches, t);
+                let parts: Vec<String> = fs.iter().map(|f| f.cpp(&kept)).collect();
                 format!("std::tuple<{}>({text})", parts.join(", "))
             }
             cpl_ir::NarrowLayout::Seq(_) | cpl_ir::NarrowLayout::Map(..) => text.to_string(),
         }
+    }
+
+    /// The C++ cell of a container of `elem_ty` stored at `layout`.
+    pub fn layout_cell(&self, layout: &cpl_ir::NarrowLayout, elem_ty: &Ty) -> Option<String> {
+        layout.cpp_elem(elem_ty, &|t| {
+            crate::names::value_ty(self.program, self.niches, t)
+        })
     }
 
     /// The initializer that gives a new variable its type's zero.

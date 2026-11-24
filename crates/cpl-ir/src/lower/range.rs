@@ -206,31 +206,30 @@ impl RangeInfo {
                     _ => None,
                 }
             }
-            (RangeInfo::Tuple(items), Ty::Tuple(ts))
-                if !ts.is_empty() && items.len() == ts.len() =>
-            {
-                let mut widths = Vec::with_capacity(ts.len());
-                for (item, t) in items.iter().zip(ts) {
-                    if *t != Ty::Int {
-                        return None;
-                    }
-                    let w = item.as_ref()?.scalar()?.narrow_width()?;
-                    widths.push(w);
+            (RangeInfo::Tuple(items), Ty::Tuple(_) | Ty::Record(_)) => {
+                let tys: Vec<&Ty> = match ty {
+                    Ty::Tuple(ts) => ts.iter().collect(),
+                    Ty::Record(fs) => fs.iter().map(|(_, t)| t).collect(),
+                    _ => unreachable!(),
+                };
+                if tys.is_empty() || items.len() != tys.len() {
+                    return None;
                 }
-                Some(NarrowLayout::Tuple(widths))
-            }
-            (RangeInfo::Tuple(items), Ty::Record(fs))
-                if !fs.is_empty() && items.len() == fs.len() =>
-            {
-                let mut widths = Vec::with_capacity(fs.len());
-                for (item, (_, t)) in items.iter().zip(fs) {
-                    if *t != Ty::Int {
-                        return None;
-                    }
-                    let w = item.as_ref()?.scalar()?.narrow_width()?;
-                    widths.push(w);
+                let mut fields = Vec::with_capacity(tys.len());
+                for (item, t) in items.iter().zip(tys) {
+                    let width = (*t == Ty::Int)
+                        .then(|| item.as_ref()?.scalar()?.narrow_width())
+                        .flatten();
+                    fields.push(match width {
+                        Some(w) => FieldLayout::Int(w),
+                        None if t.is_scalar() && *t != Ty::Unit => FieldLayout::Kept(t.clone()),
+                        None => return None,
+                    });
                 }
-                Some(NarrowLayout::Tuple(widths))
+                fields
+                    .iter()
+                    .any(|f| matches!(f, FieldLayout::Int(_)))
+                    .then_some(NarrowLayout::Tuple(fields))
             }
             (
                 RangeInfo::Elem(_),

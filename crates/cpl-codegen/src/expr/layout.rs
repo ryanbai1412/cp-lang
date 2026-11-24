@@ -144,7 +144,7 @@ impl<'p> Emitter<'p> {
             | Ty::Keyed(elem, _) => Some(elem.as_ref()),
             _ => None,
         };
-        let Some(cpp_cell) = elem_ty.and_then(|et| l.cpp_elem(et)) else {
+        let Some(cpp_cell) = elem_ty.and_then(|et| self.layout_cell(l, et)) else {
             return self.expr(e);
         };
         match &e.kind {

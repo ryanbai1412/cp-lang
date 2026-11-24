@@ -659,7 +659,7 @@ impl<'p> Emitter<'p> {
     ) {
         let elem_ty_ir = elem.ty();
         let cell = layout
-            .and_then(|l| l.cpp_elem(&elem_ty_ir))
+            .and_then(|l| self.layout_cell(l, &elem_ty_ir))
             .unwrap_or_else(|| elem_ty(self.program, self.niches, &elem_ty_ir));
         let lens: Vec<String> = dims.iter().map(|d| self.dim(d)).collect();
         let lead = pad(self.indent);

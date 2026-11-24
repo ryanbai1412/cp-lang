@@ -469,3 +469,31 @@ print(total(oil))
     assert!(out.contains("cpl::Grid<uint16_t, 2> oil;"), "{out}");
     assert!(out.contains("(const cpl::Grid<uint16_t, 2>& a)"), "{out}");
 }
+
+#[test]
+fn a_record_with_a_domain_field_still_stores_its_ranged_fields_narrow() {
+    // aac5p3, noi19p1: a `V` field keeps its own type; the ranged ones beside it still narrow,
+    // in a read table and in the lists the edges are pushed into.
+    let out = cpp("let n: 1..=2e5 = read()
+domain V = 1..=n
+let hills: [n - 1](u: V, v: V, d: 1..=1e9) = read()
+var adj: [V]List<(to: V, d: 1..=1e9)> = []
+for (u, v, d) in hills:
+    adj[u].push((to: v, d:))
+    adj[v].push((to: u, d:))
+let given: [0..n](u: V, v: V, s: 0..=1000, e: 0..=1000, late: Bool) = read()
+print(adj[V.first!].len, given[0].s)
+");
+    assert!(
+        out.contains("std::vector<std::tuple<int, int, uint32_t>> hills;"),
+        "{out}"
+    );
+    assert!(
+        out.contains("std::vector<std::vector<std::tuple<int, uint32_t>>> adj;"),
+        "{out}"
+    );
+    assert!(
+        out.contains("std::vector<std::tuple<int, int, uint16_t, uint16_t, bool>> given;"),
+        "{out}"
+    );
+}

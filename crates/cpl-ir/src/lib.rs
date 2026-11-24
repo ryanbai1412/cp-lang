@@ -1351,8 +1351,9 @@ impl IntWidth {
 pub enum NarrowLayout {
     /// Leaf element is a narrowed 32-bit `Int` (`uint32_t` or `int32_t`).
     Int(IntWidth),
-    /// Leaf element is a tuple or record whose fields are all narrowed 32-bit `Int`s.
-    Tuple(Vec<IntWidth>),
+    /// Leaf element is a tuple or record: each ranged `Int` field at its width, any other
+    /// scalar field as it is.
+    Tuple(Vec<FieldLayout>),
     /// Element is itself a nested array/grid/list whose elements have the inner layout.
     Seq(Box<NarrowLayout>),
     /// Leaf element is a `?lo..hi` inside `int32_t` above `INT32_MIN`, which is `none`.
@@ -1364,25 +1365,40 @@ pub enum NarrowLayout {
     Map(Option<IntWidth>, Option<IntWidth>),
 }
 
+/// How one field of a narrowed tuple or record is stored.
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum FieldLayout {
+    Int(IntWidth),
+    /// A field with no narrower width, stored as its own type.
+    Kept(Ty),
+}
+
+impl FieldLayout {
+    /// The field's C++ type; `kept` names a field type left as it is.
+    pub fn cpp(&self, kept: &dyn Fn(&Ty) -> String) -> String {
+        match self {
+            FieldLayout::Int(w) => w.cpp().to_string(),
+            FieldLayout::Kept(t) => kept(t),
+        }
+    }
+}
+
 impl NarrowLayout {
-    /// C++ element type for a container whose IR element type is `elem_ty`.
-    pub fn cpp_elem(&self, elem_ty: &Ty) -> Option<String> {
+    /// C++ element type for a container whose IR element type is `elem_ty`; `kept` names
+    /// a field type left as it is.
+    pub fn cpp_elem(&self, elem_ty: &Ty, kept: &dyn Fn(&Ty) -> String) -> Option<String> {
         match (self, elem_ty) {
             (NarrowLayout::Int(w), Ty::Int) => Some(w.cpp().to_string()),
             (NarrowLayout::OptI32, Ty::Opt(t)) if **t == Ty::Int => Some("cpl::OptI32".to_string()),
             (NarrowLayout::OptOptI32, Ty::Opt(t)) if **t == Ty::opt(Ty::Int) => {
                 Some("cpl::OptOptI32".to_string())
             }
-            (NarrowLayout::Tuple(ws), Ty::Tuple(ts)) if ws.len() == ts.len() => {
-                let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
-                Some(format!("std::tuple<{}>", parts.join(", ")))
-            }
-            (NarrowLayout::Tuple(ws), Ty::Record(fs)) if ws.len() == fs.len() => {
-                let parts: Vec<&str> = ws.iter().map(|w| w.cpp()).collect();
+            (NarrowLayout::Tuple(fs), Ty::Tuple(_) | Ty::Record(_)) => {
+                let parts: Vec<String> = fs.iter().map(|f| f.cpp(kept)).collect();
                 Some(format!("std::tuple<{}>", parts.join(", ")))
             }
             (NarrowLayout::Seq(inner), Ty::Array { dims, elem }) => {
-                let cell = inner.cpp_elem(elem)?;
+                let cell = inner.cpp_elem(elem, kept)?;
                 if dims.len() == 1 {
                     Some(format!("std::vector<{cell}>"))
                 } else {
@@ -1390,11 +1406,11 @@ impl NarrowLayout {
                 }
             }
             (NarrowLayout::Seq(inner), Ty::List(elem)) => {
-                let cell = inner.cpp_elem(elem)?;
+                let cell = inner.cpp_elem(elem, kept)?;
                 Some(format!("std::vector<{cell}>"))
             }
             (NarrowLayout::Seq(inner), Ty::ListView(elem, _) | Ty::Keyed(elem, _)) => {
-                let cell = inner.cpp_elem(elem)?;
+                let cell = inner.cpp_elem(elem, kept)?;
                 Some(format!("cpl::ListView<{cell}>"))
             }
             _ => None,
