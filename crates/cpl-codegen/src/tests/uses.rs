@@ -1,7 +1,7 @@
 //! The Uses table: what may happen to each heap binding.
 
 use super::lower;
-use crate::uses::{Home, KEPT};
+use crate::uses::Home;
 
 fn uses_of(source: &str, name: &str) -> crate::uses::Use {
     let target = crate::Target::default();
@@ -24,7 +24,7 @@ for v in 0..n:
     print(xs[0] + xs.len)
 ";
     let xs = uses_of(source, "xs");
-    assert!(!xs.mutated && !xs.moved && xs.escapes.is_none(), "{xs:?}");
+    assert!(!xs.mutated && !xs.moved, "{xs:?}");
 }
 
 #[test]
@@ -38,17 +38,6 @@ for v in 0..n:
 ";
     let xs = uses_of(source, "xs");
     assert!(xs.mutated && xs.moved, "{xs:?}");
-}
-
-#[test]
-fn a_list_a_kept_closure_captures_escapes() {
-    let source = "let n = read<Int>()
-for v in 0..n:
-    let xs = [v]
-    let fs = [() => xs.len]
-    print(fs[0]())
-";
-    assert_eq!(uses_of(source, "xs").escapes, Some(KEPT));
 }
 
 #[test]

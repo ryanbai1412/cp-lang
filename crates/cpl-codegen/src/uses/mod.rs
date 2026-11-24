@@ -11,9 +11,7 @@ pub(crate) mod effects;
 
 use crate::lend::{copied_at_test, Tail};
 use crate::walk;
-use cpl_ir::{
-    Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, PlaceKind, Program, Stmt, Ty,
-};
+use cpl_ir::{AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, PlaceKind, Program, Stmt, Ty};
 use effects::Touch;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -37,14 +35,7 @@ pub(crate) struct Use {
     /// Read whole, not only through an index, field, length or `for`: the
     /// C++ may move it there.
     pub(crate) moved: bool,
-    /// Why it may outlive its home's frame, when it may.
-    #[allow(dead_code)]
-    pub(crate) escapes: Option<&'static str>,
 }
-
-pub(crate) const RETURNED: &str = "it is returned";
-pub(crate) const STORED: &str = "it is stored in another variable";
-pub(crate) const KEPT: &str = "a closure that may be kept captures it";
 
 /// The Uses table: each heap binding's [`Use`] and each fn's [`Effects`],
 /// computed once per program.
@@ -107,57 +98,18 @@ impl Uses {
         muts: &[usize],
     ) {
         let (mut mutated, mut moved) = (BTreeSet::new(), BTreeSet::new());
-        let mut escapes = BTreeMap::new();
         mutated.extend(muts.iter().copied());
         for block in blocks {
             mutated.extend(Touch::of_block(block).stored_locals());
             moved.extend(crate::lend::whole_reads(block));
-            let mut called = BTreeSet::new();
-            walk::deep_stmts(block, &mut |stmt| match stmt {
-                Stmt::Let(s, Some(e)) if matches!(e.kind, ExprKind::Closure(_)) => {
-                    if crate::lend::only_called(program, block, *s, 3) {
-                        called.insert(e as *const Expr);
-                    }
-                }
-                Stmt::Return(Some(e)) | Stmt::Give(e) => {
-                    if let ExprKind::Local(s) = e.kind {
-                        escapes.entry(s).or_insert(RETURNED);
-                    }
-                }
-                Stmt::Assign(_, _, e) => {
-                    if let ExprKind::Local(s) = e.kind {
-                        escapes.entry(s).or_insert(STORED);
-                    }
-                }
-                _ => {}
-            });
             walk::deep_exprs(block, &mut |e| {
-                if let ExprKind::Call(f, args) = &e.kind {
-                    for (j, arg) in args.iter().enumerate() {
-                        if let Arg::Value(v) = arg {
-                            if matches!(v.kind, ExprKind::Closure(_))
-                                && crate::lend::fn_param_only_called(program, *f, j)
-                            {
-                                called.insert(v as *const Expr);
-                            }
-                        }
-                    }
-                }
-            });
-            walk::deep_exprs(block, &mut |e| {
-                let ExprKind::Closure(cid) = e.kind else {
-                    return;
-                };
-                for c in program.closures[cid]
-                    .captures
-                    .iter()
-                    .filter(|c| !c.is_global)
-                {
-                    if c.by_ref {
-                        mutated.insert(c.outer);
-                    } else if !called.contains(&(e as *const Expr)) {
-                        escapes.entry(c.outer).or_insert(KEPT);
-                    }
+                if let ExprKind::Closure(cid) = e.kind {
+                    let captures = program.closures[cid].captures.iter();
+                    mutated.extend(
+                        captures
+                            .filter(|c| !c.is_global && c.by_ref)
+                            .map(|c| c.outer),
+                    );
                 }
             });
         }
@@ -168,7 +120,6 @@ impl Uses {
             let found = Use {
                 mutated: mutated.contains(&slot),
                 moved: moved.contains(&slot),
-                escapes: escapes.get(&slot).copied(),
             };
             self.bindings.insert((home, slot), found);
         }
