@@ -29,6 +29,9 @@
  ],
  "cpp_ac": 5,
  "artifacts": {
+  "dream": [
+   "corpus/problems/tle18p5/dream.cp"
+  ],
   "original": [
    "corpus/problems/tle18p5/orig.cpp"
   ],

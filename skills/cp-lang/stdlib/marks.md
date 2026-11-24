@@ -84,6 +84,7 @@ Contiguous pool allocator returning compact 4-byte `Id<T>` handles (for user tre
 - `fn alloc(mut self, x: T) -> Id<T>` — \(O(1)\) amortized; Store `x` as a new node and return its handle.; traps: when the arena already holds `2_000_000_001` slots
 - `fn free(mut self, id: Id<T>)` — \(O(1)\) amortized; Hand the node behind `id` back, so a later `alloc` reuses its slot.; traps: when `id` is not below the slots issued, or is already freed. A freed handle passed
 - `fn get(self, id: Id<T>) -> T` — \(O(1)\); The node behind `id`; also `arena[id]`.; traps: when `id` is not below the slots issued. A handle issued before a `clear` or a
+- `fn at(mut self, id: Id<T>) -> lends mut T` — \(O(1)\); The node behind `id`, lent in place: `arena.at(id).v = 9`, `arena[id].v += 1` and `arena[id].kids[0] = 7` write into the slot with no copy of the node (R05.6.3).; traps: when `id` is not below `len` (stale handles as in `get`)
 - `fn set(mut self, id: Id<T>, x: T)` — \(O(1)\); Overwrite the node behind `id` with `x`; also `arena[id] = x`.; traps: when `id` is not below the slots issued (stale handles as in `get`)
 - `fn reserve(mut self, cap: Int)` — \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise; Allocate room for at least `cap` slots in total; changes no handle or node.; traps: when `cap < 0`
 - `fn clear(mut self)` — \(O(1)\); Drop every node, so the next `alloc` returns handle `0` again.

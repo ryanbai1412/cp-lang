@@ -322,8 +322,8 @@ Fields: `k: Int,`.
 - `fn lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>` — \(O(n \log n)\), \(O(n)\) memory
 - `fn lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>` — \(O(\lvert a \rvert \cdot \lvert b \rvert)\), \(O(\lvert a \rvert \cdot \lvert b \rvert)\) memory
 - `fn cartesian_tree<D, T>(self: [D]T, min_root: Bool = true) -> (root: ?D, left: [D]?D, right: [D]?D, parent: [D]?D)` — \(O(n)\), \(O(n)\) memory
-- `fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty.
-- `fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
+- `fn argmax<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first largest value (optionally under key `by:`), or `None` when empty.
+- `fn argmin<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D` — \(O(n)\); The index of the first smallest value (optionally under key `by:`), or `None` when empty.
 - `@get fn swap<A>(self: (A, A)) -> (A, A)` — \(O(1)\)
 - `fn split<S: Indexed, T, P: Sep<T>>(self: S, sep: P) -> yields Slice<S>` — \(O(n)\); Pieces between separators: elements equal to `sep`, or where the predicate `sep` holds.
 - `fn maximal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>` — \(O(n)\) amortized pushes and pops on `state`; Two pointers: for each right end, the longest piece ending there that is `ok`, fed through `state: Track`, as its positions.; traps: never in release; debug traps when `ok` fails on a single element after a shrink

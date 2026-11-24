@@ -4,7 +4,7 @@
 
 Number theory on plain `Int`s.
 
-In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `abs`, `bit`, `bit_len`, `ceil`, `ceil_div`, `choose`, `choose2`, `crt`, `crt_all`, `digits`, `divisors`, `divisors_from_factors`, `divmod`, `ext_gcd`, `factor`, `fixed`, `floor`, `floor_quotients`, `floor_sum`, `gcd`, `inf`, `inv_mod`, `is_prime`, `isqrt`, `lcm`, `mod_log`, `mod_sqrt`, `mul_mod`, `phi`, `popcount`, `pow_mod`, `primitive_root`, `round`, `sieve_multiplicative`, `sign`, `splitmix64`, `sqrt`, `to_str`, `trunc`.
+In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `abs`, `bit`, `bit_ceil`, `bit_len`, `bit_width`, `ceil`, `ceil_div`, `choose`, `choose2`, `clz`, `crt`, `crt_all`, `ctz`, `digits`, `divisors`, `divisors_from_factors`, `divmod`, `ext_gcd`, `factor`, `fixed`, `floor`, `floor_quotients`, `floor_sum`, `gcd`, `inf`, `inv_mod`, `is_prime`, `isqrt`, `lcm`, `mod_log`, `mod_sqrt`, `mul_mod`, `phi`, `popcount`, `pow_mod`, `primitive_root`, `round`, `sieve_multiplicative`, `sign`, `splitmix64`, `sqrt`, `to_str`, `trunc`.
 
 ## Types & Constants
 
@@ -96,6 +96,10 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `fn divmod(self: Int, d: Int) -> (Int, Int)` — \(O(1)\); The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < \|d\|` and `self == q * d + r`.; traps: when `d == 0`, or on overflow (`Int.MIN.divmod(-1)`)
 - `fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T>` — \(O(n)\) time and memory, plus one `prime_pow` call per prime power; Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.; traps: when `n < 0`
 - `fn popcount<W: Word>(x: W) -> Int` — \(O(1)\); The number of 1 bits in `x`'s 64-bit word, one `popcnt`: a negative `Int` counts its two's complement.
+- `fn ctz<W: Word>(x: W) -> Int` — \(O(1)\); The 0 bits below the lowest 1 bit of `x`'s 64-bit word; `ctz(0) == 64`.
+- `fn clz<W: Word>(x: W) -> Int` — \(O(1)\); The 0 bits above the highest 1 bit of `x`'s 64-bit word; `clz(0) == 64`.
+- `fn bit_width<W: Word>(x: W) -> Int` — \(O(1)\); The bits needed to write `x`'s 64-bit word, `64 - clz(x)`.
+- `fn bit_ceil(x: Int) -> Int` — \(O(1)\); The smallest power of two that is at least `x`, `1` for `x <= 1`.; traps: when `x > 2^62`
 - `@get fn abs<N: Signed>(self: N) -> N` — \(O(1)\); The absolute value of `x`, of its type.; traps: when an integer has none (`abs(Int.MIN)`)
 - `@get fn sqrt<N: Real>(self: N) -> F64` — \(O(1)\); The square root of `x` as an `F64`.; traps: when `x < 0`
 - `@get fn floor(self: F64) -> Int` — \(O(1)\); `x` rounded down to an `Int`; traps outside `Int`.

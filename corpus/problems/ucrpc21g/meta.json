@@ -9,6 +9,9 @@
  ],
  "cpp_ac": 1,
  "artifacts": {
+  "dream": [
+   "corpus/problems/ucrpc21g/dream.cp"
+  ],
   "port": [
    "corpus/problems/ucrpc21g/port.cp"
   ]
