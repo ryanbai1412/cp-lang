@@ -75,6 +75,14 @@ pub struct FillPrefix<D, T: Add + Sub>:
         assert in_filled
         return if rev: self.p[D.cuts.nth(0)] - self.p[b] else: self.p[b]
 
+    /// `f[c]`: the same as `prefix(c)`, as on a built `Prefix`; at a position `v`, `f[v]` is the
+    /// sum through `v`, the same as `f[v.r]` (R07.1.6).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when a position left of `c` is not yet written
+    /// example: `domain D = 0..3; var f = Prefix<D, Int>.filling(); f.set(0, 5); f.set(1, 7); f[D(1)] == 12`
+    pub fn at(self, c: Cut<D>) -> T = self.prefix(c)
+
     /// The sum of `a[i]` for `i` in `r`, or `0` when `r` is empty.
     ///
     /// cost: \(O(1)\)
