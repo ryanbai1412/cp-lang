@@ -34,10 +34,10 @@
  "difficulty": null,
  "dream": "draft",
  "spec": "draft",
- "notes": "orig.cpp is the AC submission corpus/submissions/3868871.cpp with maxn 1e5 -> 1e6: its arrays only fit the judge's data, and the statement's n <= 1e6 (the --max input) indexes past them. No other change.",
+ "notes": "",
  "dream_stress": {
   "ok": true,
-  "cases": 8,
+  "cases": 9,
   "sha": "fe7241f54df0bcd82c5741c7e2fc8f4951531d21"
  }
 }

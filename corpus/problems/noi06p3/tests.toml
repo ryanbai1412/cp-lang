@@ -23,3 +23,8 @@ input = "2\n9 12\n4 7\n"
 
 [[case]]
 input = "17\n7 13\n1 3\n0 3\n10 20\n1 11\n5 6\n8 14\n4 8\n7 10\n8 9\n3 6\n1 5\n6 12\n1 3\n2 6\n5 9\n3 5\n"
+
+# n = 113130 > 1e5: both AC submissions (3868871, 5032889) index past their maxn = 1e5 arrays.
+[[case]]
+seed = 2
+size = 30000

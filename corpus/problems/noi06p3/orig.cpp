@@ -1,3 +1,15 @@
+// Reference for NOI 2006 P3 at the statement's bounds: the AC submission
+// corpus/submissions/3868871.cpp with its memoised recursion run bottom-up. Every change:
+// - maxn 1e5 -> gone: the arrays sized for the judge's data were indexed past by n <= 1e6.
+// - memo[maxn][25][2] (400 MB at maxn = 1e6, against 128 MB) and heights[maxn] become two rows:
+//   dp(ind, ...) reads only dp(ind + 1, ...), so the rows ind and ind + 1 are kept, from
+//   ind = n - 1 down to 0. This also drops the recursion 1e6 calls deep. At n = 1e6 the
+//   widened original took 2 s and 650 MB against the 1 s, 128 MB limit.
+// - A height missing from row ind + 1 still costs 4e18, through the same additions.
+// Unchanged: the candidate heights (within 2 of a value in rows i - 2..=i + 2), the
+// transitions (keep the height, or rise from lo, fall from hi), the base case (the last row
+// must be lo), the answer's 1e9 start and min, the mirroring of the left side, and the input
+// and output formats.
 #include "bits/extc++.h"
 
 using namespace std;
@@ -36,79 +48,66 @@ void dbgh(const T &t, const U &...u) {
 
 #define inline inline __attribute__((always_inline))
 
-const int maxn = 1e6, maxm = 25;
+const int maxm = 25;
 const bool lo = false, hi = true;
+const long inf = 4e18;
 
 int n;
 vector<int> arr;
-vector<int> heights[maxn];
-long memo[maxn][maxm][2];
 
-long dp(int ind, int height, bool cur) {
-	auto it = lower_bound(begin(heights[ind]), end(heights[ind]), height);
-	if(it == heights[ind].end() || *it != height) {
-		return 4e18;
-	}
-
-	if(ind == n - 1) {
-		if(cur == lo) {
-			return 0;
-		}
-		return 4e18;
-	}
-
-	long &ans = memo[ind][it - heights[ind].begin()][cur];
-	if(ans != -1) {
-		return ans;
-	}
-	ans = 4e18;
-
-	// continue
-	ans = min(ans, height - arr[ind + 1] + dp(ind + 1, height, cur));
-
-	// new
-	{
-		bool next = cur ^ true;
-
-		if(next == lo) {
-			for(auto &a: heights[ind + 1]) {
-				if(a < height) {
-					ans = min(ans, a - arr[ind + 1] + dp(ind + 1, a, next));
-				}
-			}
-		}else {
-			for(auto &a: heights[ind + 1]) {
-				if(a > height) {
-					ans = min(ans, a - arr[ind + 1] + dp(ind + 1, a, next));
-				}
-			}
+void cands(int i, vector<int> &h) {
+	h.clear();
+	for(int j = max(0, i - 2); j <= min(n - 1, i + 2); j++) {
+		for(int k = max(arr[i], arr[j] - 2); k <= arr[j] + 2; k++) {
+			h.push_back(k);
 		}
 	}
-
-	return ans;
+	sort(begin(h), end(h));
+	h.erase(unique(begin(h), end(h)), h.end());
 }
 
 long solve(const vector<int> &_arr) {
 	arr = _arr;
 	n = sz(arr);
 
-	for(int i = 0; i < n; i++) {
-		heights[i].clear();
+	// nxt[k][cur] = dp(ind + 1, nh[k], cur); dp of a height not in the row is inf.
+	vector<int> h, nh;
+	long cur_dp[maxm][2], nxt[maxm][2];
+	cands(n - 1, nh);
+	for(int k = 0; k < sz(nh); k++) {
+		nxt[k][lo] = 0;
+		nxt[k][hi] = inf;
+	}
+	for(int ind = n - 2; ind >= 0; ind--) {
+		cands(ind, h);
+		for(int k = 0; k < sz(h); k++) {
+			int height = h[k];
+			auto it = lower_bound(begin(nh), end(nh), height);
+			for(int c = 0; c < 2; c++) {
+				bool cur = c;
+				long ans = inf;
 
-		for(int j = max(0, i - 2); j <= min(n - 1, i + 2); j++) {
-			for(int k = max(arr[i], arr[j] - 2); k <= arr[j] + 2; k++) {
-				heights[i].push_back(k);
+				// continue
+				ans = min(ans, height - arr[ind + 1] + (it != nh.end() && *it == height ? nxt[it - nh.begin()][cur] : inf));
+
+				// new
+				bool next = cur ^ true;
+				for(int j = 0; j < sz(nh); j++) {
+					int a = nh[j];
+					if(next == lo ? a < height : a > height) {
+						ans = min(ans, a - arr[ind + 1] + nxt[j][next]);
+					}
+				}
+				cur_dp[k][cur] = ans;
 			}
 		}
-
-		sort(begin(heights[i]), end(heights[i]));
-		heights[i].erase(unique(begin(heights[i]), end(heights[i])), heights[i].end());
+		swap(h, nh);
+		memcpy(nxt, cur_dp, sizeof(nxt));
 	}
 
-	memset(memo, -1, sizeof(memo));
 	long ans = 1e9;
-	for(auto &a: heights[0]) {
-		ans = min(ans, a - arr[0] + dp(0, a, lo));
+	for(int k = 0; k < sz(nh); k++) {
+		ans = min(ans, nh[k] - arr[0] + nxt[k][lo]);
 	}
 	return ans;
 }
