@@ -1,7 +1,7 @@
 // A memo over ranges whose product the declarations bound is a flat table
 // alone; a call outside the range is still answered, uncached.
 let singles: 0..=20*400 = read()
-let shines: 0..=399 = read()
+let shines: 28..=399 = read()
 
 @memo
 fn win(k: 0..=singles, s: 0..=shines) -> Bool:
