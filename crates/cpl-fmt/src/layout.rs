@@ -251,6 +251,7 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
             text: tok.span.text(src),
             space_before: start > last_end || last_tok_end.is_none(),
             col: column(start),
+            line_start: breaks(last_end, start) > 0,
             leading: Vec::new(),
             trailing: None,
         };
@@ -677,12 +678,21 @@ impl<'a, 'b> Emitter<'a, 'b> {
             })
             .collect();
         let wants_comma = takes_trailing_comma(self.toks, items);
+        let table = self.toks[open].kind == K::LBracket && self.is_table(items, &elements, inner);
         for (n, element) in elements.iter().enumerate() {
-            self.flush_pending();
-            self.start_line(inner, false);
             let ends_with_comma =
                 matches!(element.last(), Some(Node::Tok(i)) if self.toks[*i].kind == K::Comma);
             let adds_comma = n + 1 == elements.len() && wants_comma && !ends_with_comma;
+            let mut prev = self.prev;
+            let joins = table
+                && n > 0
+                && !self.starts_row(element)
+                && self.column() + self.flat_width(element, &mut prev) + adds_comma as usize
+                    <= self.width;
+            if !joins {
+                self.flush_pending();
+                self.start_line(inner, false);
+            }
             self.tail = adds_comma as usize;
             self.seq(element, inner);
             self.tail = 0;
@@ -705,6 +715,25 @@ impl<'a, 'b> Emitter<'a, 'b> {
             self.pending = Some(comment);
         }
         self.cont = outer_cont;
+    }
+
+    /// A list written in rows of several elements, each of which fits on a
+    /// line, keeps its rows; a row too long for the width is refilled.
+    fn is_table(&self, items: &[Node], elements: &[&[Node]], inner: usize) -> bool {
+        let rest = || elements.iter().skip(1);
+        is_list(self.toks, items)
+            && !items.iter().any(|n| self.holds_comment(n))
+            && rest().any(|e| self.starts_row(e))
+            && rest().any(|e| !self.starts_row(e))
+            && elements
+                .iter()
+                .all(|e| inner + self.flat_width(e, &mut None) < self.width)
+    }
+
+    fn starts_row(&self, element: &[Node]) -> bool {
+        match &element[0] {
+            Node::Tok(i) | Node::Group { open: i, .. } => self.toks[*i].line_start,
+        }
     }
 }
 

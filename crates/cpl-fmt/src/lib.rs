@@ -78,6 +78,8 @@ pub(crate) struct Tok<'a> {
     pub space_before: bool,
     /// Column of the token in the source.
     pub col: u32,
+    /// The token is the first on its source line.
+    pub line_start: bool,
     /// Comments on their own lines between the previous token and this one.
     pub leading: Vec<Comment<'a>>,
     /// The comment that follows it on its line.

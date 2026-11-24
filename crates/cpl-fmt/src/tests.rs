@@ -263,6 +263,51 @@ fn breaks_a_long_bracket_one_element_per_line() {
 }
 
 #[test]
+fn keeps_the_rows_of_a_table() {
+    let src = "let segs: [0..12]((Int, Int), (Int, Int)) = [
+    ((2, 0), (2, 1)), ((2, 1), (2, 2)), ((1, 1), (2, 1)), ((1, 1), (2, 0)),
+    ((1, 2), (2, 1)), ((0, 0), (2, 1)), ((0, 0), (1, 2)), ((0, 1), (1, 1)),
+    ((0, 2), (1, 2)), ((1, 0), (2, 0)), ((0, 0), (0, 1)), ((0, 1), (0, 2)),
+]
+";
+    assert_eq!(fmt(src), src);
+
+    let src = "let cases = [(first_case_value, 1), (second_case_value, 2), (third_case_value, 3), (fourth, 4),
+    (a, 5), (b, 6)]
+";
+    let want = "let cases = [
+    (first_case_value, 1), (second_case_value, 2), (third_case_value, 3), (fourth, 4),
+    (a, 5), (b, 6),
+]
+";
+    assert_eq!(fmt(src), want, "a row joins the `[` line's elements");
+
+    let src = "let cases = [
+    (first_case_value, 1), (second_case_value, 2), (third_case_value, 3), (fourth_case_value, 4), (a, 5),
+    (b, 6),
+]
+";
+    let want = "let cases = [
+    (first_case_value, 1), (second_case_value, 2), (third_case_value, 3), (fourth_case_value, 4),
+    (a, 5),
+    (b, 6),
+]
+";
+    assert_eq!(fmt(src), want, "a row past the width is refilled");
+
+    let src = "let names = [first_name_in_the_list, second_name_in_the_list, third_name_in_the_list, fourth_name_in_the_list]
+";
+    let want = "let names = [
+    first_name_in_the_list,
+    second_name_in_the_list,
+    third_name_in_the_list,
+    fourth_name_in_the_list,
+]
+";
+    assert_eq!(fmt(src), want, "a list written on one line has no rows");
+}
+
+#[test]
 fn breaks_nested_brackets_only_as_far_as_needed() {
     let src = "    let table = make_table(first_dimension_size, second_dimension_size, combine(left_operand_value, right_operand_value, extra_operand_value, more), 0)\n";
     let src = format!("fn f():\n{src}");
