@@ -3488,8 +3488,9 @@ fn brute_pick<V, E>(es: [E](u: V, v: V, w: Int), root: V, i: Int, mut pick: [V]?
             brute_pick(es, root, i + 1, mut pick, mut best)
     pick[v] = None
 
-/// A spanning forest of an undirected graph as chosen edges: a BFS from each unvisited
-/// vertex in vertex order takes the arc that discovers each vertex.
+/// A spanning forest of an undirected graph as chosen edges: vertices in vertex order, each
+/// vertex's arcs in arc order, taking every arc that joins two trees (Kruskal order without
+/// weights, by a `Dsu`).
 ///
 /// cost: \(O(n + m)\)
 /// order: keyed by `E`
