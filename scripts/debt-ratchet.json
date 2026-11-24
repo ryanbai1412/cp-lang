@@ -116,6 +116,7 @@
   "plan_delta_lines": 0,
   "vm_fallbacks": 16,
   "own_databases": 0,
+  "ir_reinfer": 12,
   "cpp_deep_copies": 20,
   "cpp_std_functions": 70,
   "codegen_effect_guesses": 0,

@@ -3,6 +3,7 @@
 
 use super::*;
 use std::collections::HashSet;
+mod probe;
 
 pub(super) type ModId = usize;
 pub(super) type GenStructId = usize;
@@ -2496,17 +2497,6 @@ impl<'a> Lowerer<'a> {
 
     /// Lowers `e` only to learn about it: the statements it would hoist ahead of its
     /// statement and the errors it would report are dropped, so the probe never runs.
-    pub(super) fn probe_expr(&mut self, e: &ast::Expr, hint: Option<&Ty>) -> Expr {
-        let saved_diags = self.diags.len();
-        let saved_cx = self.cx.clone();
-        let saved_outer = self.outer_cxs.clone();
-        let val = self.expr(e, hint);
-        self.diags.truncate(saved_diags);
-        self.cx = saved_cx;
-        self.outer_cxs = saved_outer;
-        val
-    }
-
     fn probe_expr_ty(
         &mut self,
         e: &ast::Expr,

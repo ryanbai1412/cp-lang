@@ -919,6 +919,19 @@ class DebtRatchetTest(unittest.TestCase):
                 "CPL_CHOICES_OUT: crates/cpl-codegen/src/runtime.rs:1",
             ])
 
+    def test_ir_reinfer_counts_lowering_probes(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "crates/cpl-ir/src/lower/a.rs"
+            src.parent.mkdir(parents=True)
+            src.write_text("let t = self.probe_expr(e, None).ty;\nfn probe_expr(&mut self) {}\n"
+                           "let u = self.probe_expr_ty(e);\n")
+            tests = root / "crates/cpl-ir/tests/a.rs"
+            tests.parent.mkdir(parents=True)
+            tests.write_text("x.probe_expr(e, None);\n")
+            self.assertEqual(dr.ir_reinfer(root),
+                             ["crates/cpl-ir/src/lower/a.rs:1", "crates/cpl-ir/src/lower/a.rs:3"])
+
     def test_own_databases_and_copy_baselines(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
