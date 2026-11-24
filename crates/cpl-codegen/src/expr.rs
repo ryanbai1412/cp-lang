@@ -128,6 +128,17 @@ pub(crate) fn infix(l: &Code, sym: &str, r: &Code, prec: u8) -> Code {
 }
 
 /// `e` as a position and a small step from it, when it is one.
+/// `(a ++ b)[i]` as its operands `[a, b, i]`.
+fn concat_at<'e>(base: &'e Expr, indices: &'e [Expr]) -> Option<[&'e Expr; 3]> {
+    match (&base.kind, indices) {
+        (ExprKind::Builtin(Builtin::ListConcat, args), [i]) => match args.as_slice() {
+            [a, b] => Some([a, b, i]),
+            _ => None,
+        },
+        _ => None,
+    }
+}
+
 fn neighbour(e: &Expr) -> Option<(&Expr, char, i64)> {
     let ExprKind::Binary(op @ (BinOp::Add | BinOp::Sub), l, r) = &e.kind else {
         return None;
@@ -324,8 +335,8 @@ impl<'p> Emitter<'p> {
                 if let Ty::Struct(id) = l.ty {
                     let sdef = &program.structs[id];
                     match op {
-                        CmpOp::Eq | CmpOp::Ne if sdef.eq_fn.is_some() => {
-                            let f = fn_name(&program.fns[sdef.eq_fn.unwrap()].name);
+                        CmpOp::Eq | CmpOp::Ne if let Some(eq_fn) = sdef.eq_fn => {
+                            let f = fn_name(&program.fns[eq_fn].name);
                             let call = format!("{f}({}, {})", codes[0].text, codes[1].text);
                             return if *op == CmpOp::Eq {
                                 Code::primary(call)
@@ -333,16 +344,19 @@ impl<'p> Emitter<'p> {
                                 Code::new(format!("!{call}"), UNARY)
                             };
                         }
-                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge if sdef.ord.is_some() => {
-                            let f = order_fn(program, sdef.ord.unwrap());
-                            let (a, b) = (&codes[0].text, &codes[1].text);
-                            return match op {
-                                CmpOp::Lt => Code::primary(format!("{f}({a}, {b})")),
-                                CmpOp::Gt => Code::primary(format!("{f}({b}, {a})")),
-                                CmpOp::Le => Code::new(format!("!{f}({b}, {a})"), UNARY),
-                                CmpOp::Ge => Code::new(format!("!{f}({a}, {b})"), UNARY),
-                                _ => unreachable!(),
-                            };
+                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge => {
+                            if let Some(ord) = sdef.ord {
+                                let f = order_fn(program, ord);
+                                let (a, b) = (&codes[0].text, &codes[1].text);
+                                // `a > b` is `b < a`; `a <= b` is `!(b < a)`.
+                                let swap = matches!(op, CmpOp::Gt | CmpOp::Le);
+                                let (x, y) = if swap { (b, a) } else { (a, b) };
+                                let less = format!("{f}({x}, {y})");
+                                return match op {
+                                    CmpOp::Le | CmpOp::Ge => Code::new(format!("!{less}"), UNARY),
+                                    _ => Code::primary(less),
+                                };
+                            }
                         }
                         _ => {}
                     }
@@ -361,24 +375,18 @@ impl<'p> Emitter<'p> {
                     prec,
                 )
             }),
-            ExprKind::Cast(Cast::Trust, inner) if neighbour(inner).is_some() => {
+            ExprKind::Cast(Cast::Trust, inner) if let Some((pos, op, step)) = neighbour(inner) => {
                 // `v.after`, `v.prev`: a position a small step away
                 // stays an `int`.
-                let (pos, op, step) = neighbour(inner).expect("checked");
                 let pos = self.expr(pos);
                 let mut code = Code::new(format!("{} {op} {step}", pos.at(ADD)), ADD);
                 code.narrow = true;
                 code
             }
             ExprKind::Cast(Cast::Raw, inner)
-                if matches!(
-                    inner.kind,
-                    ExprKind::Cast(Cast::FromOrd(_) | Cast::FromLabel(_), _)
-                ) =>
+                if let ExprKind::Cast(cast @ (Cast::FromOrd(_) | Cast::FromLabel(_)), ord) =
+                    &inner.kind =>
             {
-                let ExprKind::Cast(cast, ord) = &inner.kind else {
-                    unreachable!()
-                };
                 let code = self.expr(ord);
                 match cast {
                     Cast::FromLabel(d) => Code::new(
@@ -487,18 +495,8 @@ impl<'p> Emitter<'p> {
                 });
                 Code::primary(cell.map(|f| f.2.clone()).unwrap_or_default())
             }
-            ExprKind::Index(base, indices)
-                if indices.len() == 1
-                    && matches!(
-                        &base.kind,
-                        ExprKind::Builtin(Builtin::ListConcat, args) if args.len() == 2
-                    ) =>
-            {
-                let ExprKind::Builtin(Builtin::ListConcat, args) = &base.kind else {
-                    unreachable!()
-                };
+            ExprKind::Index(base, indices) if let Some(operands) = concat_at(base, indices) => {
                 self.need("list_concat_at");
-                let operands = [&args[0], &args[1], &indices[0]];
                 let is_bool = matches!(&base.ty, Ty::List(elem) | Ty::ListView(elem, _) | Ty::Keyed(elem, _) | Ty::MutView(elem, _) if **elem == Ty::Bool);
                 self.sequence(&operands, &e.ty, |_, codes| {
                     let call = format!(

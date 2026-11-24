@@ -219,3 +219,20 @@ fn a_long_token_is_scanned_a_word_at_a_time_and_copied_out_by_chunk() {
     );
     assert!(read.contains("0x8080808080808080ULL"), "{read}");
 }
+
+#[test]
+fn a_structs_own_order_spells_every_comparison_through_its_lt() {
+    let cpp = cpp(concat!(
+        "struct P(a: Int, b: Int)\nimpl Ord for P:\n    fn lt(a, b) = a.a < b.a\n",
+        "let n: Int = read()\nlet p = P(n, 0)\nlet q = P(0, n)\n",
+        "if p < q: print(1)\nif p > q: print(2)\nif p <= q: print(3)\nif p >= q: print(4)\n",
+    ));
+    for test in [
+        "(P_lt(p, q))",
+        "(P_lt(q, p))",
+        "(!P_lt(q, p))",
+        "(!P_lt(p, q))",
+    ] {
+        assert!(cpp.contains(&format!("if {test} {{")), "{test}: {cpp}");
+    }
+}

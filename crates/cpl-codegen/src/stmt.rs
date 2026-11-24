@@ -31,6 +31,20 @@ fn flat(e: &Expr) -> Option<(&[Stmt], &Expr)> {
 }
 
 impl<'p> Emitter<'p> {
+    /// The closure a `let` of a fn binds once, outside any closure, and that
+    /// calls itself: it is emitted through `cpl::rec`.
+    fn rec_closure(&self, slot: usize, init: &Expr) -> Option<cpl_ir::ClosureId> {
+        let ExprKind::Closure(cid) = init.kind else {
+            return None;
+        };
+        (matches!(self.locals()[slot].ty, Ty::Fn(..))
+            && self.closure_id.is_none()
+            && !self.hoisted.contains(&slot)
+            && self.devirt.local_rec(slot, cid)
+            && self.facts.stores(self.facts_local(slot)) <= 1)
+            .then_some(cid)
+    }
+
     /// A plain domain's position is an `int`: a checked build traps on one
     /// with more positions than that holds (a product or sum domain is
     /// widened instead).
@@ -635,16 +649,7 @@ impl<'p> Emitter<'p> {
                     );
                 }
             }
-            Stmt::Let(slot, Some(init))
-                if matches!(self.locals()[*slot].ty, Ty::Fn(..))
-                    && self.closure_id.is_none()
-                    && !self.hoisted.contains(slot)
-                    && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_rec(*slot, cid))
-                    && self.facts.stores(self.facts_local(*slot)) <= 1 =>
-            {
-                let ExprKind::Closure(cid) = init.kind else {
-                    unreachable!()
-                };
+            Stmt::Let(slot, Some(init)) if let Some(cid) = self.rec_closure(*slot, init) => {
                 self.borrow_if_named_closure(*slot, Some(init));
                 self.need("rec");
                 self.rec_slot = Some(*slot);

@@ -189,8 +189,7 @@ impl<'p> Emitter<'p> {
                     b.push_str(&fields(self, items, "    "));
                 }
             }
-            Ty::Enum(_) if program.show_fn(ty).is_some() => {
-                let show_fn = program.show_fn(ty).expect("a Show impl");
+            Ty::Enum(_) if let Some(show_fn) = program.show_fn(ty) => {
                 let name = crate::names::fn_name(&program.fns[show_fn].name);
                 b.push_str(&format!("    cpl::put_str({name}(v));\n"));
             }

@@ -1129,8 +1129,7 @@ fn keep_map_fields(
         });
         crate::walk::deep_exprs(body, &mut |e| {
             match &e.kind {
-                ExprKind::Tuple(items) if matches!(e.ty, Ty::Struct(_)) => {
-                    let Ty::Struct(s) = e.ty else { unreachable!() };
+                ExprKind::Tuple(items) if let Ty::Struct(s) = e.ty => {
                     for (f, item) in items.iter().enumerate() {
                         if !empty(item) {
                             wide.insert((s, f));

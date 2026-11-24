@@ -420,8 +420,7 @@ impl<'p> Flow<'p> {
             }),
             ExprKind::None => Some(Key::Nil),
             ExprKind::Some(x) | ExprKind::Unwrap(x, _) => self.eval(ctx, x),
-            ExprKind::Tuple(items) if matches!(e.ty, Ty::Struct(_)) => {
-                let Ty::Struct(s) = e.ty else { unreachable!() };
+            ExprKind::Tuple(items) if let Ty::Struct(s) = e.ty => {
                 let mut fields = Vec::new();
                 for ((_, ty), item) in self.program.structs[s].fields.iter().zip(items) {
                     fields.push(match self.is_tracked(ty) {
