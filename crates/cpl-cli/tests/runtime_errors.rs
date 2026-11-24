@@ -752,8 +752,9 @@ fn range_typed_stores_trap_in_interp_and_checked_cpp() {
 fn domain_array_literal_mismatch_traps_in_interp_and_checked_cpp() {
     let msg = "an array literal needs one value per position";
     let cases = [
-        "domain D = 0..3\nstruct Boxed(xs: [D]Int)\nlet b = Boxed(xs: [10, 20])\nprint(b.xs[D(0)])\n",
-        "domain D = 0..3\nlet xs: [D]Int = [10, 20]\nprint(xs[D(0)])\n",
+        // A size known only at run time; a constant one is E0302 (R04.8.10).
+        "let n = [3][0]\ndomain D = 0..n\nstruct Boxed(xs: [D]Int)\nlet b = Boxed(xs: [10, 20])\nprint(b.xs[D(0)])\n",
+        "let n = [3][0]\ndomain D = 0..n\nlet xs: [D]Int = [10, 20]\nprint(xs[D(0)])\n",
     ];
     for (idx, src) in cases.iter().enumerate() {
         let (code, err) = run_stderr(src, "");

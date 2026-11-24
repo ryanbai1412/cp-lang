@@ -4055,6 +4055,30 @@ impl<'a> Lowerer<'a> {
                     }
                     Dim::Sym(_) | Dim::IntFrom(_) => unreachable!("matched above"),
                 };
+                // `domain V = 0..3` writes its count, so `[V]Int = [0, 2]` is
+                // as wrong as `[0..3]Int = [0, 2]` (R04.8.10).
+                let cells = match dims[0] {
+                    Dim::Pos(d) => self
+                        .domain_lens
+                        .get(&d)
+                        .filter(|(l, h)| l == h)
+                        .map(|l| l.0),
+                    Dim::Bound(d) => self
+                        .domain_lens
+                        .get(&d)
+                        .filter(|(l, h)| l == h)
+                        .map(|l| l.0 + 1),
+                    _ => None,
+                };
+                if let Some(cells) = cells.filter(|&c| c != items.len() as i64) {
+                    let message = format!(
+                        "this array has {}, but the list gives {}",
+                        super::stmt::plural(cells, "cell"),
+                        super::stmt::plural(items.len() as i64, "value"),
+                    );
+                    self.error(codes::TYPE_MISMATCH, span, message);
+                    return self.err_expr(span);
+                }
                 let index_ty = match dims[0] {
                     Dim::Bound(d) => Ty::Bound(d),
                     Dim::Pos(d) => Ty::Pos(d),

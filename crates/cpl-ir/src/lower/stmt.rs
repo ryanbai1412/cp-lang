@@ -6216,7 +6216,7 @@ pub(super) fn diverging_default(e: &ast::Expr) -> Option<&ast::Stmt> {
     }
 }
 
-fn plural(n: i64, what: &str) -> String {
+pub(super) fn plural(n: i64, what: &str) -> String {
     format!("{n} {what}{}", if n == 1 { "" } else { "s" })
 }
 
