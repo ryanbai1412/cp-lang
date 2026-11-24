@@ -1,4 +1,4 @@
-// error: expected Int, got ?Int
+// error: `+=` can't be applied to an ?Int
 // Synthesis #2: this spelling stays rejected (research/archive/architecture/language-architecture-synthesis-2.md, rejected list).
 var o: ?Int = 3
 o += 2

@@ -1,3 +1,3 @@
-// error: std.dsu has no pub `Union`
+// error: `std.dsu` has no `Union`
 use std.dsu.{Union}
 print(1)

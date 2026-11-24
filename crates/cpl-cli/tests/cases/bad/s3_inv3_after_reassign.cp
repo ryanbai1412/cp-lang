@@ -1,4 +1,4 @@
-// error: expected Int, got ?Int
+// error: `y` is declared an Int, but `x` is an ?Int
 // Anti-spookiness Invariant 3: mutating a narrowed local invalidates the narrowing immediately.
 fn maybe() -> ?Int = None
 var x: ?Int = 5

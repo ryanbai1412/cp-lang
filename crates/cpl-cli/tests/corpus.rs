@@ -40,13 +40,9 @@ fn check(path: &Path) -> cpl_cli::Outcome {
 /// Files this checker does not take as they stand. A file leaves this
 /// list when it checks clean, and the test below says so.
 ///
-/// These are ports still written in v2.1, which `proto/` migrates in its
-/// own pass: a `read() where` guard, `Dsu.count` and `std.steps` are not
-/// in v2.2, and each is reported with what to write instead.
-const PENDING: &[&str] = &[
-    "crates/cpl-cli/tests/cases/ergo/compound_div.cp",
-    "crates/cpl-cli/tests/cases/ergo/library.cp",
-];
+/// `compound_div` reads a word into a `[domain S]Letter`, which `read()`
+/// can't size yet (sent to Core).
+const PENDING: &[&str] = &["crates/cpl-cli/tests/cases/ergo/compound_div.cp"];
 
 /// Files the checker takes and lowering does not: until `cpl check` ran
 /// lowering too, it called these clean while `cpl run` and `cpl build`
@@ -55,21 +51,10 @@ const PENDING: &[&str] = &[
 /// file leaves this list when it builds, and the test below says so;
 /// nothing is to be added to it.
 const NOT_BUILT: &[&str] = &[
-    "crates/cpl-cli/tests/cases/ergo/columns.cp",
     "crates/cpl-cli/tests/cases/ergo/counter.cp",
-    "crates/cpl-cli/tests/cases/ergo/moves.cp",
     "crates/cpl-cli/tests/cases/ergo/ranges.cp",
-    "crates/cpl-cli/tests/cases/ergo/sugar.cp",
-    "crates/cpl-cli/tests/cases/fn/invariant.cp",
     "crates/cpl-cli/tests/cases/lend/grid_rows.cp",
     "crates/cpl-cli/tests/cases/lend/projection.cp",
-    "crates/cpl-cli/tests/cases/lend/slices.cp",
-    "crates/cpl-cli/tests/cases/ok/at1.cp",
-    "crates/cpl-cli/tests/cases/ok/do2.cp",
-    "crates/cpl-cli/tests/cases/ok/subset2.cp",
-    "crates/cpl-cli/tests/cases/redteam/empty_slice_reduce.cp",
-    "crates/cpl-cli/tests/cases/redteam/hashmap_sentinel.cp",
-    "crates/cpl-cli/tests/cases/redteam/list_expr_once.cp",
 ];
 
 #[test]
@@ -179,55 +164,6 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
     );
 }
 
-/// Failing tests this checker still accepts: each needs a rule it does
-/// not have yet. A name leaves this list when its case is rejected for
-/// its stated reason, and the test below says so.
-const NOT_YET: &[&str] = &[
-    // Synthesis #3, in the prototype only so far: `const struct` and
-    // `a.get(i)` on a domain-indexed array.
-    "s3_const_struct_non_pod",
-    "s3_get_bare_int",
-    "s3_get_wrong_domain",
-];
-
-/// Failing tests this checker rejects for the stated reason, in words
-/// of its own: the prototype says `expected Int, got ?Int`, this checker
-/// names the variable. Each is held to the wording given here.
-const REWORDED: &[(&str, &str)] = &[
-    (
-        "s3_inv1_bool_alias",
-        "`y` is declared an Int, but `x` is an ?Int",
-    ),
-    (
-        "s3_inv2_array_place",
-        "`y` is declared an Int, but `a[i]` is an ?Int",
-    ),
-    (
-        "s3_inv2_struct_field",
-        "`y` is declared an Int, but `b.x` is an ?Int",
-    ),
-    (
-        "s3_inv3_after_join",
-        "`y` is declared an Int, but `x` is an ?Int",
-    ),
-    (
-        "s3_inv3_after_mut_arg",
-        "`y` is declared an Int, but `x` is an ?Int",
-    ),
-    (
-        "s3_inv3_after_reassign",
-        "`y` is declared an Int, but `x` is an ?Int",
-    ),
-    (
-        "s3_inv3_closure_mutation",
-        "`y` is declared an Int, but `x` is an ?Int",
-    ),
-    (
-        "s3_inv4_bang_non_opt",
-        "`!` takes the value out of an optional, but this is a `Int`",
-    ),
-];
-
 /// Failing tests that state a limit of the prototype's code generator,
 /// not a rule of the language. `a[nx()] max= 4` evaluates `a[nx()]` once
 /// here (`tests/programs/semantics.cp`), and simultaneous tuple assignment
@@ -257,53 +193,12 @@ fn each_failing_test_is_rejected_for_its_stated_reason() {
             }
             continue;
         };
-        // The prototype says "index of type Other into array over Cell";
-        // this checker says which array, and what it is indexed by, and
-        // why a name can't be assigned. And a `lend` need not be last:
-        // what follows it is the write-back.
-        let reason = match name.as_str() {
-            "index_wrong_struct" => "`d` is indexed by Cell, but `Other(Row.first)` is an Other",
-            "lend_outside_projection" => "`lend` is a statement of a projection's body",
-            "counter_not_var" => "`seen` is a `let`, so it can't be assigned",
-            "use_unknown_name" => "`std.dsu` has no `Union`",
-            "span_two_domains" => "span of an I and a J",
-            "rt_min_empty_slice" => "`k` is declared an Int, but `a[f..f].max()` is an ?Int",
-            // A message names no line: the loop is pointed at instead.
-            "rt_for_fn_push" => {
-                "`grow` can't be called here: it changes `xs`, and the `for` loop is going over `xs`"
-            }
-            "rt_for_push" => "the `for` loop is going over `xs`",
-            // v2.2: the body ends with the place, and `mut` says it is lent to change.
-            "proj_no_lend" => "so the body ends with `mut cnt[i]`",
-            // Synthesis #2's rejected spellings, in this checker's words.
-            "s2_array_default_literal" => "expected `:` between a key and its value",
-            "s2_char_of_digit" => "no value named `Char` here",
-            "s2_f64_to_int" => "`n` is declared an Int, but `x` is an F64",
-            "s2_float_name" => "no type or domain named `Float`",
-            "s2_for_mut" => "expected a value after `in`, found `mut`",
-            "s2_opt_plus_eq" => "`+=` can't be applied to an ?Int",
-            "s2_print_yes_no" => "`print` has no argument named `yes`",
-            "s2_dom_try" => "a `domain D` has no method `try`",
-            "s2_read_angle" => "no value named `read` here",
-            "s2_read_no_type" => "can't tell what to read here",
-            "s2_subdomain_widen" => "`a` is indexed by Pkg, but `d` is a Dep",
-            "s2_unwrap_let" => "`o` is a `let`, so it can't be assigned",
-            _ => reason,
-        };
         cases += 1;
         if PROTOTYPE_ONLY.contains(&name.as_str()) {
             continue;
         }
         let out = check(&path);
-        let reason = REWORDED
-            .iter()
-            .find(|(case, _)| *case == name)
-            .map_or(reason, |(_, ours)| ours);
-        if NOT_YET.contains(&name.as_str()) {
-            if out.code != 0 && out.stderr.contains(reason) {
-                wrong.push(format!("{name} is rejected now: take it off `NOT_YET`"));
-            }
-        } else if out.code == 0 {
+        if out.code == 0 {
             wrong.push(format!("{name} was accepted; expected: {reason}"));
         } else if !out.stderr.contains(reason) {
             wrong.push(format!("{name}: expected `{reason}` in:\n{}", out.stderr));

@@ -1,4 +1,4 @@
-// error: `lend` is the last statement of a projection
+// error: `lend` is a statement of a projection's body
 let n: 2..=9 = read()
 domain V = 1..=n
 var a: [V]Int = read()

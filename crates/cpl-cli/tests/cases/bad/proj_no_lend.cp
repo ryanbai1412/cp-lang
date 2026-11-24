@@ -1,4 +1,4 @@
-// error: must reach one `lend place`
+// error: so the body ends with `mut cnt[i]`
 let n: 2..=9 = read()
 domain V = 1..=n
 struct Bag:

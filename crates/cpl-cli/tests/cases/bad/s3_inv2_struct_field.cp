@@ -1,4 +1,4 @@
-// error: expected Int, got ?Int
+// error: `y` is declared an Int, but `b.x` is an ?Int
 // Anti-spookiness Invariant 2: struct fields (`b.x`) are NEVER narrowed, only local bindings.
 struct Box:
     x: ?Int

@@ -1,4 +1,4 @@
-// error: index of type
+// error: `d` is indexed by Cell, but `Other(Row.first)` is an Other
 let h: 1..=9 = read()
 let w: 1..=9 = read()
 domain Row = 1..=h

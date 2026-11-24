@@ -8,12 +8,13 @@ let plain = [1: 2]
 print(plain[1])
 domain G = 1..=n
 fn two(x: G.cuts, y: G.cuts) -> Int:
-    let (g, h) = (x.right, y.right) else: return 0
+    let g = x.r else: return 0
+    let h = y.r else: return 0
     g.ord + h.ord + 1
 fn two2(x: G.cuts, y: G.cuts) -> Int:
-    let g = x.right and let h = y.right else: return -1
+    let g = x.r and let h = y.r else: return -1
     g.ord * 10 + h.ord
-print(two(G.first.l, G.last.l), two(G.last.r, G.first.l), two2(G.first.r, G.last.l), two2(G.first.l, G.last.r))
+print(two(G.first!.l, G.last!.l), two(G.last!.r, G.first!.l), two2(G.first!.r, G.last!.l), two2(G.first!.l, G.last!.r))
 let d: [G]?Int = [G] i => if i.ord % 2 == 0: None else: i.ord
 fn arrival(i: G) -> ?Int: i.ord * 100 + d[i]?
 fn both(i: G, j: G) -> ?Int:

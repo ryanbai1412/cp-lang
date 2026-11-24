@@ -1,4 +1,4 @@
-// error: the `for` loop on line 5 is going over `xs`
+// error: the `for` loop is going over `xs`
 var xs: List<Int> = List<Int>()
 xs.push(1)
 xs.push(2)

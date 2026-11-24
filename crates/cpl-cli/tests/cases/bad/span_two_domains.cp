@@ -1,4 +1,4 @@
-// error: span of a I and a J
+// error: span of an I and a J
 let n: 2..=9 = read()
 domain I = 1..=n
 domain J = 1..=n

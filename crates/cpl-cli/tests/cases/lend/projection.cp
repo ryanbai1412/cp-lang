@@ -6,17 +6,16 @@ struct Bag:
     cnt: [V]Int
     total: Int
 
-    fn at(self, i: V) lends mut Int:
-        law disjoint(i, j) = i != j
-        lend mut cnt[i]
+    fn at(self, i: V) -> lends mut Int:
+        @law disjoint(i, j) = i != j
+        mut cnt[i]
 
-    fn first(self) lends Int:
-        lend cnt[V.first]
+    fn first(self) -> lends Int = cnt[V.first!]
 
-    fn window(self, l: V, r: V) lends mut [V]Int:
-        law disjoint(l, r, l2, r2) = r < l2 or r2 < l
+    fn window(self, l: V, r: V) -> lends mut [V]Int:
+        @law disjoint(l, r, l2, r2) = r < l2 or r2 < l
         assert l <= r
-        lend mut cnt[l..=r]
+        mut cnt[l..=r]
 
 fn add(mut x: Int, d: Int):
     x += d
@@ -37,10 +36,11 @@ if i != j:
     move(mut b.at(i), mut b.at(j))        // ok: the law `i != j` holds here
 print(b.cnt)
 
-add(mut b.total, b.at(j))                 // different fields never conflict; b.at(j) is copied first
+let moved = b.at(j)                       // a field and a projection of one value may overlap: copy first
+add(mut b.total, moved)
 print(b.total)
 
 b.window(V(2), V(4)).sort()
 let win = b.window(V(1), V(2))
-print(sum(win), win.len)
+print(win.sum(), win.len)
 print(b.cnt)

@@ -1,4 +1,4 @@
-// error: a map literal is
+// error: expected `:` between a key and its value
 // Synthesis #2: this spelling stays rejected (research/archive/architecture/language-architecture-synthesis-2.md, rejected list).
 domain D = 0..5
 let a: [D]Int = [1: 7, ..0]
