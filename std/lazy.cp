@@ -1168,11 +1168,6 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
         let (a, b) = self.cut(root, pos)
         root = self.join(self.join(a, self.leaf(x)), b)
 
-    /// The element at position `pos`, with every tag and reversal applied.
-    ///
-    /// cost: \(O(\log n)\) expected
-    /// traps: when `pos < 0` or `pos >= len`
-    /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); s.reverse(0..3); s.get(0) == 3`
     /// Insert `xs`, in order, before position `pos` (`pos == len` appends): they take positions
     /// `pos..pos + xs.len` and later elements move up by `xs.len`.
     ///
@@ -1235,6 +1230,11 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>, mirror: ?(T -> 
         other.root = 0
         self.insert_many(pos, moved)
 
+    /// The element at position `pos`, with every tag and reversal applied.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `pos < 0` or `pos >= len`
+    /// example: `var s = SeqFold<Int>(+, [1, 2, 3]); s.reverse(0..3); s.get(0) == 3`
     pub fn get(mut self, pos: Int) -> T:
         assert 0 <= pos < self.len, "`get` position out of range"
         self.fold(pos..pos + 1)
