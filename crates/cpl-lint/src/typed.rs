@@ -16,36 +16,9 @@ use crate::{
 use cpl_check::{Analysis, Ty};
 use cpl_diag::{Diagnostic, Span};
 
-const TYPED: [cpl_diag::Code; 22] = [
-    LOOP_REDUCTION.code,
-    MANUAL_BIT_TEST.code,
-    MANUAL_STARTS_WITH.code,
-    LAST_VIA_LEN.code,
-    FLOAT_SQRT_FOR_INT.code,
-    REVERSE_INDEX.code,
-    NEG_MOD_FIXUP.code,
-    CEIL_DIV_FORMULA.code,
-    PEEK_THEN_POP.code,
-    COMPOUND_SELF_REF.code,
-    CHMIN_CHMAX_IF.code,
-    UNPROVEN_LIST_INDEX.code,
-    STALE_ENTRY_SKIP.code,
-    MAP_AS_MULTISET.code,
-    NEGATED_HEAP.code,
-    SORT_FOR_EXTREME.code,
-    PUSH_POP_PAIR.code,
-    POP_MIN_LOOP.code,
-    COUNTER_BY_MAP.code,
-    CONTAINS_THEN_ADD.code,
-    COPY_COMPREHENSION.code,
-    FLOAT_EQUALITY.code,
-];
-
 /// `diags` less the findings `analysis`'s facts rule out.
 pub fn refine_with_analysis(diags: &mut Vec<Diagnostic>, analysis: &Analysis) {
-    if diags.iter().any(|d| TYPED.contains(&d.code)) {
-        refine_with_facts(diags, analysis.facts());
-    }
+    refine_with_facts(diags, analysis.facts());
 }
 
 /// Lints a checked file the way `cpl lint` does: no lints on a file with
@@ -83,9 +56,7 @@ pub(crate) fn lints_of(
         &library,
         proven,
     );
-    if diags.iter().any(|d| TYPED.contains(&d.code)) {
-        refine_with_facts(&mut diags, facts);
-    }
+    refine_with_facts(&mut diags, facts);
     crate::recheck::recheck(&mut diags, &analysis.text);
     crate::drop_repeats(&mut diags, &analysis.diagnostics);
     diags

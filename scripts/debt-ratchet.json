@@ -149,7 +149,7 @@
   "unwrap_input": 718,
   "unsupported_sites": 43,
   "lsp_string_types": 11,
-  "lint_post_filters": 52,
+  "lint_post_filters": 25,
   "known_lists": 123,
   "prelude_gaps": 100,
   "permits": 0,
