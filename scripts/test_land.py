@@ -681,7 +681,7 @@ exec {shutil.which("git")} "$@"
         self.ticket(repo, "1000000000000000000-1-dead")
         (repo / "pkg.txt").write_text("x\n")
         self.commit(repo, "ours")
-        r = self.land(repo, CPL_LAND_LOCK_STALE="2")
+        r = self.land(repo, CPL_LAND_TICKET_STALE="2")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("dropping queue ticket 1000000000000000000-1-dead: no heartbeat for over 2s", r.stderr)
         self.assertEqual(self.tickets_on_remote(repo), [])
@@ -741,7 +741,7 @@ exec {shutil.which("git")} "$@"
         (repo / "pkg.txt").write_text("x\n")
         self.commit(repo, "ours")
         env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")},
-               "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", "CPL_LAND_LOCK_STALE": "3"}
+               "CPL_LAND_QUEUE": "1", "CPL_LAND_TRIES": "1", "CPL_LAND_TICKET_STALE": "3"}
         land = subprocess.Popen(["bash", "scripts/land.sh"], cwd=repo, env=env,
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         err = []

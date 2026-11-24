@@ -365,6 +365,8 @@ if [ "$lock_stale" -lt 120 ]; then
     echo "land: CPL_LAND_LOCK_STALE=${CPL_LAND_LOCK_STALE} is under 120 s and would take live lands' locks; using 120" >&2
     lock_stale=120
 fi
+# A ticket only orders waiters, so its expiry may be shorter (tests); the lock's may not.
+ticket_stale=${CPL_LAND_TICKET_STALE:-$lock_stale}
 # Unset, a waiter never gives up (tests bound it to observe a wait).
 lock_wait=${CPL_LAND_LOCK_WAIT:-}
 # The holder restamps the lock this often, so a lock is stale only when its holder
@@ -441,8 +443,8 @@ first_in_line() {
         if [ "${ticket_sha[$name]:-}" != "$sha" ]; then
             ticket_sha[$name]=$sha
             ticket_seen[$name]=$now
-        elif [ "$ref" != "$ticket" ] && [ $((now - ticket_seen[$name])) -gt "$lock_stale" ]; then
-            drop_ticket "$ref" "$sha" "no heartbeat for over ${lock_stale}s"
+        elif [ "$ref" != "$ticket" ] && [ $((now - ticket_seen[$name])) -gt "$ticket_stale" ]; then
+            drop_ticket "$ref" "$sha" "no heartbeat for over ${ticket_stale}s"
             continue
         fi
         first=${first:-$ref}
@@ -463,12 +465,12 @@ take_lock() {
             [ "$first" = "$lined" ] || [ "$first" = "?" ] || echo "land: waiting in line behind ${first##*/}" >&2
             lined=$first
             # A live head that leaves the lock free isn't landing (Idioms' 30 min
-            # behind one ticket): past $lock_stale s it loses its place.
+            # behind one ticket): past $ticket_stale s it loses its place.
             if [ "$first" = "?" ] || [ -n "$lock_now" ] || [ "$first" != "$stuck_head" ]; then
                 stuck_head=$first stuck_since=$(date +%s)
-            elif [ $(($(date +%s) - stuck_since)) -gt "$lock_stale" ]; then
+            elif [ $(($(date +%s) - stuck_since)) -gt "$ticket_stale" ]; then
                 drop_ticket "$first" "${ticket_sha[${first#refs/locks/queue/}]}" \
-                    "first in line but left the land lock free for over ${lock_stale}s"
+                    "first in line but left the land lock free for over ${ticket_stale}s"
                 stuck_head=""
                 continue
             fi
