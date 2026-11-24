@@ -7,6 +7,7 @@
 // `stay` = |adj(b) - out| + 1 ways. With b in T, any outsider next to b may
 // pick it, each outsider at most once: dp[s] counts the ways in which exactly
 // the outsiders in s have picked, and the zeta over adj(b) & out adds b's picks.
+use std.graph.{two_color}
 type Z = Mod<998_244_353>
 
 @!multitest
@@ -14,17 +15,26 @@ let (n, k): (2..=31, 1..=2e4) = read()
 domain V = 0..n
 let p: [V]Pt = read()
 fn near(u: V, v: V) -> Bool = (p[u] - p[v]).norm2 == k
-let side = two_color<V>(u => V.filter(v => near(u, v)))!
-let small = side.minority
-domain A = V if side[v] == small
-domain B = V if side[v] != small
-let adj: [B]Subset<A> = [b => { a in A if near(a, b) }]
+let side = two_color<V>(u => [v for v in V if near(u, v)])!
+let small = V.count(v => side[v]) * 2 <= n
+let a = [v for v in V if side[v] == small]
+let b = [v for v in V if side[v] != small]
+domain A = 0..a.len
+fn nbr(v: V) -> Subset<A>:
+    var m = Subset<A>.empty
+    for i in A if near(a[i.ord], v): m = m.with(i)
+    m
+let adj = [nbr(v) for v in b]
 
+// Fix the outsiders `out`; each b in turn stays put or is picked by one outsider next to it.
 fn ways(out: Subset<A>) -> Z:
-    var dp: [Subset<out>]Z = 1
-    for b in B:
-        let stay = (adj[b] - out).len + 1
-        // any of the outsiders next to b may pick it: a zeta over adj[b]
-        dp = stay * dp + dp.zeta(over: adj[b])
-    return dp[out]
-print(Subset<A>.all.map(ways).sum() - 1)
+    var dp: [Subset<A>]Z = 0
+    for s in out.subsets: dp[s] = 1
+    for m in adj:
+        let stay = Z((m - out).len + 1)
+        let skip = [Subset<A>] s => dp[s] * stay
+        for i in m & out:
+            for s in out.without(i).subsets: dp[s.with(i)] += dp[s]
+        for s in out.subsets: dp[s] += skip[s]
+    dp[out]
+print(sum(ways(out) for out in Subset<A>.full.subsets) - 1)
