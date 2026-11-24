@@ -203,6 +203,13 @@ impl<'p> Emitter<'p> {
         if stops {
             self.break_targets.insert(*inner_id);
         }
+        // A consumer fused onto this loop's own pushes may break out of this
+        // loop, which is no longer a loop of its own: its end gets the label.
+        let broken_out = self.fused_pushes.iter().any(|(_, f)| {
+            crate::uses::loops::labeled_jumps(&f.body)
+                .0
+                .contains(&outer_id)
+        });
         self.fused_pushes.push((
             *vec_slot,
             FusedPush {
@@ -229,6 +236,9 @@ impl<'p> Emitter<'p> {
         self.inside
             .truncate(self.inside.len() - usize::from(inside.is_some()));
         self.fused_pushes.pop();
+        if broken_out {
+            self.line(out, &format!("brk_{outer_id}:;"));
+        }
         true
     }
 
