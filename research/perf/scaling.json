@@ -10432,6 +10432,38 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/merge_trees.cp::segtree.MergeTrees.merge": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.17,
+   "fn": "segtree.MergeTrees.merge",
+   "measured": 1.17,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/merge_trees.cp::segtree.MergeTrees.set": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.17,
+   "fn": "segtree.MergeTrees.set",
+   "measured": 0.97,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/merge_trees.cp::segtree.MergeTrees.sum": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.17,
+   "fn": "segtree.MergeTrees.sum",
+   "measured": 0.99,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/merge_trees_reserve.cp::segtree.MergeTrees.reserve": {
+   "cost": "\\mathit{sets} \\log \\lvert D \\rvert",
+   "documented": 4.89,
+   "fn": "segtree.MergeTrees.reserve",
+   "measured": 3.93,
+   "n": 512,
+   "ok": true
+  },
   "bench/scaling/mo.cp::mo.mo": {
    "cost": "(n + q) \\sqrt n",
    "documented": 8.0,

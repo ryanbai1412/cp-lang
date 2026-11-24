@@ -1542,63 +1542,133 @@ pub struct MergeSegs<D>:
 pub struct MergeTree<D>:
     var root: Int = 0
 
+// The largest `MergeTrees` node index, and the `r` that marks a chain node.
+const MERGE_CHAIN = 2_147_483_647
+
+// A node's index in its `MergeTrees` pool, stored narrow.
+type MergeAt = 0..=MERGE_CHAIN
+
+// A `MergeTrees` node: its children (0 for the empty tree), its subtree's sum, and the
+// multiply tag still owed to its children. A chain node (`r == MERGE_CHAIN`) stands for a subtree
+// with one value, `sm` at position `l`, and has no children until a `set` or `merge` reaches below
+// it, so a `set` into an empty tree costs one node, as a lazily pushed-down pool would.
+
+struct MergeNode<Z>:
+    var l: MergeAt = 0
+    var r: MergeAt = 0
+    var sm: Z
+    var tag: Z
+
 /// A pool of sparse segment trees over `D` holding values `Z`, each with a whole-tree multiply tag.
 /// `merge` combines two trees position by position through a hook that sees both values and both
 /// trees' sums left of the position, the segment-tree merge that DP over a tree uses for a max- or
-/// min-convolution. A tree costs nodes only where it has been `set`.
+/// min-convolution. A tree costs nodes only where it has been `set`, and a position set alone in a
+/// subtree costs one node until a `set` or `merge` reaches below it; the nodes live in one list,
+/// node 0 being the shared all-zero tree.
 pub struct MergeTrees<D, Z: Add + Mul>:
-    ls: List<Int>
-    rs: List<Int>
-    sm: List<Z>
-    tag: List<Z>
+    _nodes: List<MergeNode<Z>>
 
     /// An empty pool.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
-    pub fn new() -> MergeTrees<D, Z> = MergeTrees([0], [0], [Z.zero], [Z.one])
+    pub fn new() -> MergeTrees<D, Z> = MergeTrees([MergeNode(sm: Z.zero, tag: Z.one)])
 
-    fn node(mut self) -> Int:
-        ls.push(0)
-        rs.push(0)
-        sm.push(Z.zero)
-        tag.push(Z.one)
-        ls.len - 1
+    /// Preallocate the nodes for `sets` more calls to `set`, so they do not regrow the pool:
+    /// a `set` and the `merge`s that later split its position off add at most
+    /// \(\lceil \log_2 \lvert D \rvert \rceil + 1\) nodes for it, and `scale` and the queries add
+    /// none. Changes no tree.
+    ///
+    /// cost: \(O(\mathit{sets} \log \lvert D \rvert)\)
+    /// traps: when `sets < 0`
+    /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); p.reserve(sets: 2); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.get(t, D(3)) == 5`
+    pub fn reserve(mut self, sets: Int):
+        assert sets >= 0, "reserve requires sets >= 0"
+        var depth = 1
+        while 1 << (depth - 1) < D.count: depth += 1
+        _nodes.reserve(_nodes.len + sets * depth)
 
     fn scale_node(mut self, u: Int, k: Z):
         if u == 0: return
-        sm[u] *= k
-        tag[u] *= k
+        _nodes[u].sm *= k
+        _nodes[u].tag *= k
 
     fn down(mut self, u: Int):
-        self.scale_node(ls[u], tag[u])
-        self.scale_node(rs[u], tag[u])
-        tag[u] = Z.one
+        let k = _nodes[u].tag
+        self.scale_node(_nodes[u].l, k)
+        self.scale_node(_nodes[u].r, k)
+        _nodes[u].tag = Z.one
 
-    fn put(mut self, u0: Int, lo: Int, hi: Int, k: Int, v: Z) -> Int:
-        let u = if u0 == 0: self.node() else: u0
+    fn chain(mut self, k: Int, v: Z) -> Int:
+        _nodes.push(MergeNode(l: k, r: MERGE_CHAIN, sm: v, tag: Z.one))
+        _nodes.len - 1
+
+    // Gives the chain node c over lo..hi one child, the chain one level down.
+    fn split(mut self, c: Int, lo: Int, hi: Int):
+        let k = _nodes[c].l
+        let w = self.chain(k, _nodes[c].sm)
+        (_nodes[c].l, _nodes[c].r) = if k < (lo + hi) / 2: (w, 0) else: (0, w)
+        _nodes[c].tag = Z.one
+
+    fn put(mut self, u: Int, lo: Int, hi: Int, k: Int, v: Z) -> Int:
+        if u == 0: return self.chain(k, v)
         if lo + 1 == hi:
-            sm[u] = v
+            _nodes[u].sm = v
             return u
-        self.down(u)
+        if _nodes[u].r == MERGE_CHAIN:
+            if _nodes[u].l == k:
+                _nodes[u].sm = v
+                return u
+            self.split(u, lo, hi)
+        else:
+            self.down(u)
         let mid = (lo + hi) / 2
         if k < mid:
-            let l = self.put(ls[u], lo, mid, k, v)
-            ls[u] = l
+            let l = self.put(_nodes[u].l, lo, mid, k, v)
+            _nodes[u].l = l
         else:
-            let r = self.put(rs[u], mid, hi, k, v)
-            rs[u] = r
-        sm[u] = sm[ls[u]] + sm[rs[u]]
+            let r = self.put(_nodes[u].r, mid, hi, k, v)
+            _nodes[u].r = r
+        _nodes[u].sm = _nodes[_nodes[u].l].sm + _nodes[_nodes[u].r].sm
         u
+
+    // The sum over the positions before b, walking one root-to-leaf path.
+    fn prefix(self, root: Int, b: Int) -> Z:
+        var (u, lo, hi, k, s) = (root, 0, D.count, Z.one, Z.zero)
+        while u != 0 and lo < b:
+            if hi <= b or _nodes[u].r == MERGE_CHAIN and _nodes[u].l < b:
+                return s + _nodes[u].sm * k
+            if _nodes[u].r == MERGE_CHAIN: return s
+            let mid = (lo + hi) / 2
+            k = _nodes[u].tag * k
+            if b <= mid:
+                (u, hi) = (_nodes[u].l, mid)
+            else:
+                s += _nodes[_nodes[u].l].sm * k
+                (u, lo) = (_nodes[u].r, mid)
+        s
 
     fn part(self, u: Int, lo: Int, hi: Int, a: Int, b: Int) -> Z:
         if u == 0 or b <= lo or hi <= a: return Z.zero
-        if a <= lo and hi <= b: return sm[u]
+        if a <= lo and hi <= b: return _nodes[u].sm
+        if _nodes[u].r == MERGE_CHAIN:
+            return if a <= _nodes[u].l and _nodes[u].l < b: _nodes[u].sm else: Z.zero
         let mid = (lo + hi) / 2
-        (self.part(ls[u], lo, mid, a, b) + self.part(rs[u], mid, hi, a, b)) * tag[u]
+        (
+            self.part(_nodes[u].l, lo, mid, a, b) + self.part(_nodes[u].r, mid, hi, a, b)
+        ) * _nodes[u].tag
 
-    fn join(mut self, a: Int, b: Int, lo: Int, hi: Int, pa: Z, pb: Z, leaf: (Z, Z, Z, Z) -> Z) -> Int:
+    fn join(
+        mut self,
+        a: Int,
+        b: Int,
+        lo: Int,
+        hi: Int,
+        pa: Z,
+        pb: Z,
+        leaf: (Z, Z, Z, Z) -> Z,
+    ) -> Int:
         if b == 0:
             self.scale_node(a, leaf(Z.one, Z.zero, pa, pb))
             return a
@@ -1606,18 +1676,22 @@ pub struct MergeTrees<D, Z: Add + Mul>:
             self.scale_node(b, leaf(Z.zero, Z.one, pa, pb))
             return b
         if lo + 1 == hi:
-            sm[a] = leaf(sm[a], sm[b], pa, pb)
+            _nodes[a].sm = leaf(_nodes[a].sm, _nodes[b].sm, pa, pb)
             return a
-        self.down(a)
-        self.down(b)
+        let (ca, cb) = (_nodes[a].r == MERGE_CHAIN, _nodes[b].r == MERGE_CHAIN)
+        if ca and cb and _nodes[a].l == _nodes[b].l:
+            _nodes[a].sm = leaf(_nodes[a].sm, _nodes[b].sm, pa, pb)
+            return a
+        if ca: self.split(a, lo, hi) else: self.down(a)
+        if cb: self.split(b, lo, hi) else: self.down(b)
         let mid = (lo + hi) / 2
-        let la = sm[ls[a]]
-        let lb = sm[ls[b]]
-        let l = self.join(ls[a], ls[b], lo, mid, pa, pb, leaf)
-        let r = self.join(rs[a], rs[b], mid, hi, pa + la, pb + lb, leaf)
-        ls[a] = l
-        rs[a] = r
-        sm[a] = sm[l] + sm[r]
+        let la = _nodes[_nodes[a].l].sm
+        let lb = _nodes[_nodes[b].l].sm
+        let l = self.join(_nodes[a].l, _nodes[b].l, lo, mid, pa, pb, leaf)
+        let r = self.join(_nodes[a].r, _nodes[b].r, mid, hi, pa + la, pb + lb, leaf)
+        _nodes[a].l = l
+        _nodes[a].r = r
+        _nodes[a].sm = _nodes[l].sm + _nodes[r].sm
         a
 
     /// Sets position `x` of `t` to `v`.
@@ -1636,7 +1710,7 @@ pub struct MergeTrees<D, Z: Add + Mul>:
     /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.set(mut t, D(6), 2); p.sum(t, D(0)..D(4)) == 5 and p.sum(t, D(4)..D(4)) == 0`
     pub fn sum(self, t: MergeTree<D>, r: Range<D>) -> Z:
         let (lo, hi) = r.ends
-        self.part(t.root, 0, D.count, lo, hi)
+        if lo == 0: self.prefix(t.root, hi) else: self.part(t.root, 0, D.count, lo, hi)
 
     /// The value of `t` at `x`.
     ///
@@ -1651,7 +1725,7 @@ pub struct MergeTrees<D, Z: Add + Mul>:
     /// empty: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
     /// traps: never
     /// example: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
-    pub fn total(self, t: MergeTree<D>) -> Z = sm[t.root]
+    pub fn total(self, t: MergeTree<D>) -> Z = _nodes[t.root].sm
 
     /// Multiplies every value of `t` by `k`.
     ///
@@ -1675,7 +1749,14 @@ pub struct MergeTrees<D, Z: Add + Mul>:
     /// replace their inputs; \(O(\text{overlap})\) for one merge
     /// traps: never
     /// example: `domain D = 0..4; var p = MergeTrees<D, Int>(); var a = MergeTree<D>(); var b = MergeTree<D>(); p.set(mut a, D(1), 2); p.set(mut b, D(2), 3); let m = p.merge(a, b, (va, vb, pa, pb) => va * (pb + vb) + vb * pa); p.get(m, D(1)) == 0 and p.get(m, D(2)) == 6`
-    pub fn merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D> =
+    pub fn merge(
+        mut self,
+        a: MergeTree<D>,
+        b: MergeTree<D>,
+        leaf: (Z, Z, Z, Z) -> Z,
+        pre_a: Z = Z.zero,
+        pre_b: Z = Z.zero,
+    ) -> MergeTree<D> =
         MergeTree(self.join(a.root, b.root, 0, D.count, pre_a, pre_b, leaf))
 
 impl Show for MergeSeg<D>:
@@ -1692,7 +1773,7 @@ impl Show for MergeTree<D>:
 
 impl Show for MergeTrees<D, Z>:
     /// The pool's node count, past the shared empty node.
-    fn show(p) = "{p.ls.len - 1} nodes"
+    fn show(p) = "{p._nodes.len - 1} nodes"
 
 @test
 fn merge_sort_and_sparse_segtree_match_brute():

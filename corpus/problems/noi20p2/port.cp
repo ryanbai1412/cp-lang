@@ -29,6 +29,7 @@ var need: [V]Dep = Dep(0)
 for p in P: need[paths[p].v] max= Dep(tree.depth(paths[p].u) + 1)
 
 var pool = MergeTrees<Dep, Z>()
+pool.reserve(sets: n)  // one `set` per vertex
 var dp: [V]MergeTree<Dep> = MergeTree<Dep>()
 for u in tree.at.rev:
     let d = tree.depth(u) + 1
