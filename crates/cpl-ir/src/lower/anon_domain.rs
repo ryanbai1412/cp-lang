@@ -343,6 +343,84 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The domain generic `name` is for an array indexed from `lo` (see `bind_range_domain`).
+    pub(super) fn range_domain_at(
+        &mut self,
+        name: &str,
+        lo: i64,
+        list: bool,
+        span: Span,
+        of: Option<(GenFnId, Option<&ast::Type>)>,
+    ) -> DomainId {
+        let shared = match of {
+            Some((gfid, ret)) if !ret.is_some_and(|ret| mono::type_names(ret, name)) => Some(gfid),
+            _ => None,
+        };
+        let site = match shared {
+            Some(gfid) => (
+                usize::MAX - self.gen_fns[gfid].mod_id,
+                self.gen_fns[gfid].offset + self.gen_fns[gfid].decl.name.span.start,
+                format!("{name} from {lo}{}", if list { " of a list" } else { "" }),
+            ),
+            None => (self.cur_mod, self.offset + span.start, name.to_string()),
+        };
+        match self.range_domain_sites.get(&site) {
+            Some(d) => *d,
+            None => {
+                let d = self.domains.len();
+                self.domains.push(format!("{name}_{d}"));
+                self.range_domains.insert(d, lo);
+                if list {
+                    self.list_domains.insert(d);
+                }
+                self.range_domain_sites.insert(site, d);
+                if shared.is_some() {
+                    self.range_domains_shared.insert(d);
+                }
+                d
+            }
+        }
+    }
+
+    /// `[R, C]T` given an `Int`-indexed grid: each axis's generic is a domain the grid sizes
+    /// (R04.4.30), as `[D]T` is for an array.
+    pub(super) fn bind_grid_range_domains(
+        &mut self,
+        index: &[ast::Type],
+        arg: &ast::Expr,
+        gen_names: &[String],
+        inferred: &mut GenEnv,
+        span: Span,
+        of: Option<(GenFnId, Option<&ast::Type>)>,
+    ) {
+        let Some(Ty::Array { dims, .. }) = self.probe_ty_silent(arg) else {
+            return;
+        };
+        if dims.len() != index.len() {
+            return;
+        }
+        let mut axes = Vec::new();
+        for (ix, dim) in index.iter().zip(&dims) {
+            let (ast::TypeKind::Named { name, args }, Dim::Int | Dim::IntFrom(_)) = (&ix.kind, dim)
+            else {
+                return;
+            };
+            if !args.is_empty() || !gen_names.contains(&name.text) {
+                return;
+            }
+            let lo = if let Dim::IntFrom(lo) = dim { *lo } else { 0 };
+            axes.push((name.text.clone(), lo));
+        }
+        for (name, lo) in axes {
+            let names = |(gfid, _): (GenFnId, _)| self.gen_fn_names(gfid, &name);
+            if inferred.contains_key(&name) || of.is_some_and(|of| !names(of)) {
+                continue;
+            }
+            let d = self.range_domain_at(&name, lo, false, span, of);
+            inferred.insert(name, GenArg::Domain(d));
+        }
+    }
+
     /// A fieldless enum with variants, which is a domain (R04.2.5).
     pub(super) fn unit_enum(&self, id: EnumId) -> bool {
         let variants = &self.enums[id].variants;

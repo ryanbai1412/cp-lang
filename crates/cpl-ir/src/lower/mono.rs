@@ -2343,7 +2343,7 @@ impl<'a> Lowerer<'a> {
 
     /// Whether the generic fn says its parameter `name` anywhere but as the index of an array it
     /// takes: in what it returns, in another parameter, or in its body.
-    fn gen_fn_names(&self, gfid: GenFnId, name: &str) -> bool {
+    pub(super) fn gen_fn_names(&self, gfid: GenFnId, name: &str) -> bool {
         let tpl = &self.gen_fns[gfid];
         let decl = tpl.decl;
         let only_indexes = |ty: &ast::Type| {
@@ -2402,6 +2402,9 @@ impl<'a> Lowerer<'a> {
         let ast::TypeKind::Array { index, elem } = &pty.kind else {
             return;
         };
+        if index.len() > 1 {
+            return self.bind_grid_range_domains(index, arg, gen_names, inferred, span, of);
+        }
         let [ast::Type {
             kind: ast::TypeKind::Named { name, args: targs },
             ..
@@ -2474,38 +2477,7 @@ impl<'a> Lowerer<'a> {
         if !list && of.is_some_and(|(gfid, _)| !self.gen_fn_names(gfid, &name.text)) {
             return;
         }
-        let shared = match of {
-            Some((gfid, ret)) if !ret.is_some_and(|ret| type_names(ret, &name.text)) => Some(gfid),
-            _ => None,
-        };
-        let site = match shared {
-            Some(gfid) => (
-                usize::MAX - self.gen_fns[gfid].mod_id,
-                self.gen_fns[gfid].offset + self.gen_fns[gfid].decl.name.span.start,
-                format!(
-                    "{} from {lo}{}",
-                    name.text,
-                    if list { " of a list" } else { "" }
-                ),
-            ),
-            None => (self.cur_mod, self.offset + span.start, name.text.clone()),
-        };
-        let d = match self.range_domain_sites.get(&site) {
-            Some(d) => *d,
-            None => {
-                let d = self.domains.len();
-                self.domains.push(format!("{}_{d}", name.text));
-                self.range_domains.insert(d, lo);
-                if list {
-                    self.list_domains.insert(d);
-                }
-                self.range_domain_sites.insert(site, d);
-                if shared.is_some() {
-                    self.range_domains_shared.insert(d);
-                }
-                d
-            }
-        };
+        let d = self.range_domain_at(&name.text, lo, list, span, of);
         inferred.insert(name.text.clone(), GenArg::Domain(d));
         if let ast::TypeKind::Named {
             name: ename,
@@ -4286,7 +4258,7 @@ fn type_uses_as_index(ty: &ast::Type, name: &str) -> bool {
 }
 
 /// Whether the written type `ty` names `name` anywhere inside it.
-fn type_names(ty: &ast::Type, name: &str) -> bool {
+pub(super) fn type_names(ty: &ast::Type, name: &str) -> bool {
     match &ty.kind {
         ast::TypeKind::Named { name: n, args } => {
             n.text == name

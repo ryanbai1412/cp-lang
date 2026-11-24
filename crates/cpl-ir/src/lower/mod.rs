@@ -4618,19 +4618,18 @@ impl<'a> Lowerer<'a> {
                     Dim::IntFrom(lo) => Some(*lo),
                     _ => None,
                 };
-                // To the domain sets its size; only a 1-D array has one.
-                let mut sized = None;
-                for (w, h) in want_dims.iter().zip(have_dims) {
+                // The domains each axis sets the size of.
+                let mut sized = Vec::new();
+                for (axis, (w, h)) in want_dims.iter().zip(have_dims).enumerate() {
                     match (w, h) {
                         _ if w == h => {}
                         (Dim::Pos(d), h)
-                            if want_dims.len() == 1
-                                && self
-                                    .range_domains
-                                    .get(d)
-                                    .is_some_and(|lo| first(h) == Some(*lo)) =>
+                            if self
+                                .range_domains
+                                .get(d)
+                                .is_some_and(|lo| first(h) == Some(*lo)) =>
                         {
-                            sized = Some((*d, self.range_domains[d]));
+                            sized.push((axis, *d, self.range_domains[d]));
                         }
                         (w, Dim::Pos(d))
                             if self
@@ -4640,21 +4639,27 @@ impl<'a> Lowerer<'a> {
                         _ => return Err(e),
                     }
                 }
-                let Some((d, lo)) = sized else {
+                if sized.is_empty() {
                     return Ok(Expr {
                         ty: want.clone(),
                         ..e
                     });
-                };
+                }
+                let grid = want_dims.len() > 1;
                 Ok(self.do_expr(Some(want), span, |lw, out| {
                     let held = lw.hold(e, out);
-                    let len = lw.mk(
-                        ExprKind::Builtin(Builtin::Len, vec![held.clone()]),
-                        Ty::Int,
-                        span,
-                    );
-                    let size = lw.size_domain(d, lo, len, span);
-                    out.push(size);
+                    for (axis, d, lo) in sized {
+                        let len = match grid {
+                            false => ExprKind::Builtin(Builtin::Len, vec![held.clone()]),
+                            true => ExprKind::Builtin(
+                                Builtin::AxisLen,
+                                vec![held.clone(), lw.int_lit(axis as i64, span)],
+                            ),
+                        };
+                        let len = lw.mk(len, Ty::Int, span);
+                        let size = lw.size_domain(d, lo, len, span);
+                        out.push(size);
+                    }
                     out.push(Stmt::Give(Expr {
                         ty: want.clone(),
                         ..held

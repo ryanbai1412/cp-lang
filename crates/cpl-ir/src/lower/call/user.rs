@@ -1329,14 +1329,14 @@ impl<'a> Lowerer<'a> {
         // array until it returns; then it is what it was, for a caller
         // further out that is the same fn.
         let mut put_back: Vec<Stmt> = Vec::new();
-        for param in &params {
-            let Ty::Array { dims, .. } = &param.ty else {
-                continue;
-            };
-            let [Dim::Pos(d)] = dims.as_slice() else {
-                continue;
-            };
-            let d = *d;
+        let shared = params.iter().flat_map(|param| match &param.ty {
+            Ty::Array { dims, .. } => dims.as_slice(),
+            _ => &[],
+        });
+        for d in shared.filter_map(|d| match d {
+            Dim::Pos(d) => Some(*d),
+            _ => None,
+        }) {
             let known = put_back
                 .iter()
                 .any(|s| matches!(s, Stmt::DefDomain { id, .. } if *id == d));
