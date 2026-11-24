@@ -348,6 +348,38 @@ fn programs_resolve_by_extension() {
 }
 
 #[test]
+fn a_rebuild_reuses_the_emitted_cpp_until_a_file_it_read_changes() {
+    if std::process::Command::new("g++")
+        .arg("--version")
+        .output()
+        .is_err()
+    {
+        return;
+    }
+    let dir = scratch("emitted");
+    std::fs::create_dir_all(dir.join("mylib")).unwrap();
+    std::fs::write(dir.join("cp.toml"), "[libs]\nmylib = \"mylib\"\n").unwrap();
+    let helper = dir.join("mylib/helper.cp");
+    std::fs::write(&helper, "pub fn f() -> Int = 1\n").unwrap();
+    let main = dir.join("main.cp");
+    std::fs::write(&main, "use mylib.helper.{f}\nprint(f())\n").unwrap();
+    let run = || {
+        let built = Program::resolve(&main).unwrap();
+        let out = built.run("", Duration::from_secs(10)).unwrap().stdout;
+        (built.argv, out)
+    };
+    let (first, out) = run();
+    assert_eq!(out, "1\n");
+    assert_eq!(run(), (first.clone(), out));
+    // The library is read again, so its edit is built, not the old C++.
+    std::fs::write(&helper, "pub fn f() -> Int = 2\n").unwrap();
+    let (second, out) = run();
+    assert_eq!(out, "2\n");
+    assert_ne!(second, first);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
 fn the_token_judge_names_each_way_of_failing() {
     let limit = Duration::from_secs(10);
     let verdict = |script: &str, expected: Option<&str>| {

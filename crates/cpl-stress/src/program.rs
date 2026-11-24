@@ -256,7 +256,7 @@ fn compile_with(
 }
 
 /// Which program of a `.cp` file to build.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 enum Part {
     Solution,
     ColdCache,
@@ -283,6 +283,10 @@ fn emit_cpp(
             .map_err(|e| BuildError(format!("can't read {name}: {e}")))?,
     };
     let profile = cpl_judge::resolve(source, &text, None).map_err(BuildError)?;
+    let key = emitted_key(&name, &text, part, checks, &profile);
+    if let Some(cpp) = emitted(&key) {
+        return Ok((cpp, profile));
+    }
     let errors = |diagnostics: &[cpl_diag::Diagnostic]| {
         BuildError(format!(
             "{name} does not build:\n{}",
@@ -329,7 +333,75 @@ fn emit_cpp(
     let out = dir.join(format!("{stem}-{:016x}.cpp", hash(cpp.as_bytes())));
     std::fs::write(&out, cpp)
         .map_err(|e| BuildError(format!("can't write {}: {e}", out.shown())))?;
+    remember_emitted(&key, &out, &analysis);
     Ok((out, profile))
+}
+
+/// What the C++ of a `.cp` file depends on beyond the files it reads:
+/// this `cpl` (and the std built into it), the part, its checks and its judge.
+fn emitted_key(
+    name: &str,
+    text: &str,
+    part: Part,
+    checks: cpl_codegen::Checks,
+    profile: &cpl_judge::Profile,
+) -> String {
+    let exe = std::env::current_exe()
+        .and_then(|exe| exe.metadata())
+        .map(|m| format!("{} {:?}", m.len(), m.modified().ok()))
+        .unwrap_or_default();
+    let mut key = format!("{exe}\0{part:?}\0{checks:?}\0{profile:?}\0{name}\0");
+    key.push_str(text);
+    let stem = Path::new(name)
+        .file_stem()
+        .unwrap_or_default()
+        .to_string_lossy();
+    format!("{stem}-{:016x}.emitted", hash(key.as_bytes()))
+}
+
+/// The C++ an earlier build emitted under `key`, while every file that
+/// build read still has the bytes it read. A rerun of `cpl test` or
+/// `cpl stress` on an unchanged file skips the front end.
+fn emitted(key: &str) -> Option<PathBuf> {
+    let record = std::fs::read_to_string(cache_dir().join(key)).ok()?;
+    let mut lines = record.lines();
+    let cpp = PathBuf::from(lines.next()?);
+    for line in lines {
+        let (bytes, path) = line.split_once('\t')?;
+        if format!("{:016x}", hash(&std::fs::read(path).ok()?)) != bytes {
+            return None;
+        }
+    }
+    cpp.is_file().then_some(cpp)
+}
+
+/// Records that `cpp` is what `key` emits, with each file `analysis` read.
+/// The bundled std is part of `cpl` itself, which the key names.
+fn remember_emitted(key: &str, cpp: &Path, analysis: &cpl_check::Analysis) {
+    let mut read = std::collections::BTreeSet::new();
+    let mut pending: Vec<&cpl_check::Analysis> = vec![analysis];
+    while let Some(next) = pending.pop() {
+        for module in next.modules() {
+            let bundled = !cpl_check::std_from_disk()
+                && (module.name == "std" || module.name.starts_with("std."));
+            if !bundled && read.insert(module.path.as_str()) {
+                pending.push(&module.analysis);
+            }
+        }
+    }
+    let mut record = format!("{}\n", cpp.display());
+    for path in read {
+        let Ok(bytes) = std::fs::read(path) else {
+            // A module that is no file (an editor buffer) can't be checked again.
+            return;
+        };
+        record.push_str(&format!("{:016x}\t{path}\n", hash(&bytes)));
+    }
+    let file = cache_dir().join(key);
+    let partial = file.with_extension(format!("{}.tmp", std::process::id()));
+    if std::fs::write(&partial, record).is_ok() && std::fs::rename(&partial, &file).is_err() {
+        let _ = std::fs::remove_file(&partial);
+    }
 }
 
 /// Builds the C++ of a `.cp` file as its judge does, as far as the
@@ -362,19 +434,15 @@ pub fn missing_compiler(source: &Path) -> Option<String> {
     (!found(&host.compiler)).then_some(host.compiler)
 }
 
-/// Whether `compiler` can be started here, asked once per compiler.
+/// Whether `compiler` can be started here: a file, or a name on the
+/// PATH. Looked up, not started, so a cached build costs no process.
 fn found(compiler: &str) -> bool {
     type Asked = std::sync::Mutex<std::collections::HashMap<String, bool>>;
     static FOUND: std::sync::OnceLock<Asked> = std::sync::OnceLock::new();
     let mut found = FOUND.get_or_init(Default::default).lock().unwrap();
-    *found.entry(compiler.to_string()).or_insert_with(|| {
-        let probe = Command::new(compiler)
-            .arg("--version")
-            .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status();
-        !matches!(probe, Err(e) if e.kind() == std::io::ErrorKind::NotFound)
-    })
+    *found
+        .entry(compiler.to_string())
+        .or_insert_with(|| on_path(compiler).is_some())
 }
 
 /// `part` of `source` run by `cpl run` in the interpreter, on a machine
@@ -415,6 +483,18 @@ fn current_stack() -> Option<String> {
     static STACK: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
     STACK
         .get_or_init(|| {
+            // Linux says it without a shell.
+            if let Ok(limits) = std::fs::read_to_string("/proc/self/limits") {
+                let soft = limits
+                    .lines()
+                    .find_map(|line| line.strip_prefix("Max stack size"))?
+                    .split_whitespace()
+                    .next()?;
+                return Some(match soft.parse::<u64>() {
+                    Ok(bytes) => (bytes >> 10).to_string(),
+                    Err(_) => soft.to_string(),
+                });
+            }
             let out = Command::new("sh").args(["-c", "ulimit -s"]).output().ok()?;
             Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
         })
@@ -466,7 +546,15 @@ fn find_interpreter(program: &str) -> Option<String> {
     if Path::new(program).is_file() {
         return Some(program.to_string());
     }
-    let name = interpreter_name(program);
+    on_path(interpreter_name(program))
+}
+
+/// `name` as a file, or the first file of that name on the PATH (with
+/// Windows' `.exe` and `.cmd`).
+fn on_path(name: &str) -> Option<String> {
+    if name.contains(['/', '\\']) {
+        return Path::new(name).is_file().then(|| name.to_string());
+    }
     let exts: &[&str] = if cfg!(windows) {
         &[".exe", ".cmd", ""]
     } else {
