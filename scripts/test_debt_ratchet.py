@@ -968,6 +968,26 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 1}, ref="HEAD"),
                              ["lint_std_names: reached 0 on HEAD; a counter at 0 is never raised"])
 
+    def test_main_lowering_a_baseline_mid_land_is_not_this_changes_raise(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            git = lambda *a: subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", *a], cwd=root,
+                                            check=True, capture_output=True, env=dr._git_env())
+            git("init", "-q", "-b", "main")
+            self._write(root, "scripts/debt-ratchet.json", json.dumps({"lint_std_names": 5, "skip_lists": 2}))
+            git("add", "-A")
+            git("commit", "-qm", "base")
+            git("checkout", "-q", "-b", "lane")
+            git("checkout", "-q", "main")
+            self._write(root, "scripts/debt-ratchet.json", json.dumps({"lint_std_names": 3, "skip_lists": 0}))
+            git("commit", "-qam", "main lowers both")
+            git("checkout", "-q", "lane")
+            self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 5, "skip_lists": 2}, ref="main"), [])
+            self.assertEqual([b.split(":")[0] for b in dr.unexplained_bumps(root, {"lint_std_names": 6}, ref="main")],
+                             ["lint_std_names"])
+            self.assertEqual(dr.unexplained_bumps(root, {"skip_lists": 3}, ref="main"),
+                             ["skip_lists: reached 0 on main; a counter at 0 is never raised"])
+
     def test_a_file_entering_the_near_cap_list_is_a_raise(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

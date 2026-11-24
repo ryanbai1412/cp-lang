@@ -3522,19 +3522,24 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> l
     if not shown:
         return []
     old = json.loads("\n".join(shown))
+    base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
+    # Main lowering a number while this change gates isn't this change raising it:
+    # only a number above the change's own base is (the rebase then takes main's).
+    mine = json.loads("\n".join(_git(root, "show", f"{base}:scripts/debt-ratchet.json") or ["{}"]))
     raised = [(n, n) for n, v in baseline.items()
-              if n in old and isinstance(v, int) and isinstance(old[n], int) and v > old[n]]
-    old_allow = old.get("rs_file_size_allowlist", {})
+              if n in old and isinstance(v, int) and isinstance(old[n], int) and v > old[n]
+              and not (isinstance(mine.get(n), int) and v <= mine[n])]
+    old_allow, mine_allow = old.get("rs_file_size_allowlist", {}), mine.get("rs_file_size_allowlist", {})
     raised += [(rel, "rs_file_size_allowlist") for rel, cap in baseline.get("rs_file_size_allowlist", {}).items()
-               if cap > old_allow.get(rel, 0)]
-    if "rs_near_cap" in old and set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow):
+               if cap > old_allow.get(rel, 0) and cap > mine_allow.get(rel, 0)]
+    if "rs_near_cap" in old and (set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow)
+                                 - set(mine.get("rs_near_cap", [])) - set(mine_allow)):
         raised.append(("rs_near_cap", "rs_near_cap"))
     zero = [n for n, _ in raised if n in COUNTERS and old.get(n, 1) == 0]
     if zero:
         return [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]
     if not raised:
         return []
-    base = (_git(root, "merge-base", ref, "HEAD") or [ref])[0]
     return [f"{n}: baseline raised above {ref} ({old.get(n, old_allow.get(n))} -> "
             f"{baseline.get(n, baseline.get('rs_file_size_allowlist', {}).get(n))}); remove the new debt "
             f"instead (only a change to the code that measures it may re-measure it)"
