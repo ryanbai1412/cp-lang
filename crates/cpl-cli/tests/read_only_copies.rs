@@ -194,7 +194,7 @@ const DIRECTIVES: [(&str, Count); 2] = [
 
 /// The most `std::function`s the corpus may build to, summed over programs.
 const TOTALS: [(&str, Count, usize); 2] = [
-    ("std_functions", std_functions, 80),
+    ("std_functions", std_functions, 68),
     ("sunk_copies", sunk_copies, 16),
 ];
 

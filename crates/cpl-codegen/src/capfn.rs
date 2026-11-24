@@ -17,6 +17,7 @@ pub(crate) fn known_captures(program: &mut Program) {
         let devirt = Devirt::collect(program);
         for (id, f) in program.fns.iter().enumerate() {
             let changed = changed(program, id);
+            let aliases = param_aliases(f);
             walk::deep_exprs(&f.body, &mut |e| {
                 let ExprKind::Closure(cid) = e.kind else {
                     return;
@@ -28,16 +29,22 @@ pub(crate) fn known_captures(program: &mut Program) {
                 let known: Vec<(Slot, ClosureId)> = def
                     .captures
                     .iter()
-                    .filter(|cap| {
-                        !cap.is_global
+                    .filter_map(|cap| {
+                        let param = match aliases.get(&cap.outer) {
+                            Some(&p) => p,
+                            None => cap.outer,
+                        };
+                        let ok = !cap.is_global
                             && !cap.by_ref
-                            && cap.outer < f.params.len()
-                            && !f.params[cap.outer].mutable
+                            && param < f.params.len()
+                            && !f.params[param].mutable
+                            && !changed.contains(&param)
                             && !changed.contains(&cap.outer)
                             && only_called(&def.body, cap.inner)
-                            && !nested_capture(program, &def.body, cap.inner)
+                            && !nested_capture(program, &def.body, cap.inner);
+                        ok.then(|| Some((cap.inner, devirt.param_target(id, param)?)))
+                            .flatten()
                     })
-                    .filter_map(|cap| Some((cap.inner, devirt.param_target(id, cap.outer)?)))
                     .collect();
                 if !known.is_empty() {
                     plan.insert((id, cid), known);
@@ -76,6 +83,29 @@ pub(crate) fn known_captures(program: &mut Program) {
             def.captures.retain(|c| c.is_global || c.inner != slot);
         }
     }
+}
+
+/// Each local of `f` bound once to a parameter or to the value in an
+/// optional one (`if let g = cmp`), with the parameter it names.
+fn param_aliases(f: &cpl_ir::Function) -> BTreeMap<Slot, Slot> {
+    let mut lets: BTreeMap<Slot, Option<Slot>> = BTreeMap::new();
+    walk::deep_stmts(&f.body, &mut |s| {
+        if let Stmt::Let(slot, init) = s {
+            let param = match init.as_ref().map(|e| &e.kind) {
+                Some(ExprKind::Local(p)) => Some(*p),
+                Some(ExprKind::Unwrap(inner, _)) => match inner.kind {
+                    ExprKind::Local(p) => Some(p),
+                    _ => None,
+                },
+                _ => None,
+            };
+            let once = !lets.contains_key(slot);
+            lets.insert(*slot, param.filter(|&p| once && p < f.params.len()));
+        }
+    });
+    lets.into_iter()
+        .filter_map(|(slot, p)| Some((slot, p?)))
+        .collect()
 }
 
 /// The closures made at one place only: a fn cloned per call keeps its

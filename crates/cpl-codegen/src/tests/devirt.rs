@@ -462,3 +462,17 @@ print(adder(3)(2), twice(2))
         "`adder` makes one closure at its one return, so it returns `auto`:\n{out}"
     );
 }
+
+#[test]
+fn a_closure_capturing_an_unwrapped_known_param_captures_nothing() {
+    let out = cpp("use std.heap.Heap
+var h: Heap<Int> = Heap(by: x => -x)
+h.push(1)
+h.push(5)
+print(h.pop()!)
+");
+    assert!(
+        !out.contains("std::function"),
+        "`by` is one known closure, so the comparator made from it captures nothing:\n{out}"
+    );
+}
