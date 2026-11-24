@@ -9,7 +9,7 @@ Status: draft for 0.3.0. Sources: `plan/40-tooling.md` §4-5,
 - Stripped: tests, alts, generators, checkers, interactors, samples,
   `debug(...)`, `@local` items. (Rbundle.2)
 - Libraries are inlined from the content-addressed store by pin, so a
-  rebuild is byte-identical; `cpl vendor` copies them next to the file.
+  rebuild is byte-identical; `cpl vendor` copies them next to the file. (Rbundle.6)
 - Size is checked against the profile; `--size` attributes bytes to
   header, runtime, types, library functions, user code and glue. (Rbundle.3)
 - `@cpp("...", includes:)` items and `extern fn` judge functions are

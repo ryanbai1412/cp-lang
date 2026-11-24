@@ -18,7 +18,7 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   padding over 20 % and `wide_array` are quick fixes. The numbers come
   from the same computation as `cpl explain`. (Rlsp.7)
 - **Inlay hints**: inferred types, parameter names past two positional
-  arguments, opt-in live sample values per top-level `let`.
+  arguments, opt-in live sample values per top-level `let`. (Rlsp.8)
 - **Completion** ranked by type (positions of `V` inside `a[` for
   `a: [V]T`, operation values where an `Op<T>` is expected, unimported
   stdlib names with the `use` edit); signature help with bound
@@ -28,7 +28,7 @@ Status: draft for 0.3.0. Sources: `plan/60-editor.md`, decisions 29,
   to map. Go to definition reaches stdlib sources too. (Rlsp.3)
 - **Editors**: a VS Code extension (highlighting, run/test/stress
   buttons, debugger, trace panel, judge in the status bar); any LSP
-  client works for the rest.
+  client works for the rest. (Rlsp.9)
 - **Formatting**: `textDocument/formatting` returns exactly what `cpl fmt`
   writes, so an editor's format-on-save and the CLI agree. (Rlsp.4)
 - **Neovim and Vim** (the Milestone 1 editors): Neovim 0.10 or later gets

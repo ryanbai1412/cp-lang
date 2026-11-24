@@ -2,8 +2,8 @@
 //! as one document and print what the server sends back, one JSON message
 //! per line, for `// has:` / `// lacks:` to check. Features: `diagnostics`
 //! (the published diagnostics only), `hover`, `completion`, `definition`
-//! (each at the needle's `|`, in the first non-comment line holding it) and
-//! `formatting`. The document's URI prints as `<case>`.
+//! (each at the needle's `|`, in the first non-comment line holding it),
+//! `formatting` and `inlay` (the whole document's inlay hints). The document's URI prints as `<case>`.
 
 use crate::conformance::ToolRun;
 use cpl_json::{obj, Value};
@@ -11,11 +11,12 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 
-const REQUESTS: [(&str, &str); 4] = [
+const REQUESTS: [(&str, &str); 5] = [
     ("hover", "textDocument/hover"),
     ("completion", "textDocument/completion"),
     ("definition", "textDocument/definition"),
     ("formatting", "textDocument/formatting"),
+    ("inlay", "textDocument/inlayHint"),
 ];
 
 pub(crate) fn session(
@@ -25,7 +26,7 @@ pub(crate) fn session(
     args: &[&str],
 ) -> Result<ToolRun, String> {
     let feature = *args.first().ok_or(
-        "`// tool: lsp` needs a feature: diagnostics, hover, completion, definition or formatting",
+        "`// tool: lsp` needs a feature: diagnostics, hover, completion, definition, formatting or inlay",
     )?;
     let uri = file_uri(file);
     let doc = || obj([("uri", uri.as_str().into())]);
@@ -55,6 +56,8 @@ pub(crate) fn session(
         let params = if feature == "formatting" {
             let options = obj([("tabSize", 4.into()), ("insertSpaces", true.into())]);
             obj([("textDocument", doc()), ("options", options)])
+        } else if feature == "inlay" {
+            obj([("textDocument", doc())])
         } else {
             let needle = args.get(1).ok_or_else(|| {
                 format!("`lsp {feature}` needs a needle with a `|` cursor, like `h.|`")

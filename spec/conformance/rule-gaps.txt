@@ -5,6 +5,7 @@ Rjudge.3 no reject case
 Rjudge.4 no reject case
 Rjudge.6 no accept case
 Rjudge.8 no reject case
+Rlsp.9 no accept case
 Rstress.2 no accept case
 Rtrace.2 no reject case
 Rtrace.3 no accept case

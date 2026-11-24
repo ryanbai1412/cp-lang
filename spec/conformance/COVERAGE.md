@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3133 (1093 passing). Rules: 600.
+Cases: 3135 (1093 passing). Rules: 603.
 
 ## Summary per chapter
 
@@ -26,12 +26,12 @@ Cases: 3133 (1093 passing). Rules: 600.
 - R11 (11-modules-prelude.md): 16 rules, 52 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R12 (12-powers.md): 17 rules, 37 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R13 (13-lowering.md): 22 rules, 30 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rbundle (bundle.md): 4 rules, 4 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rbundle (bundle.md): 5 rules, 5 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rjudge (judge-profiles.md): 8 rules, 10 cases; 1 uncovered, 3 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rlsp (lsp.md): 7 rules, 8 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- Rlsp (lsp.md): 9 rules, 9 cases; 1 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 2 rules, 2 cases; 1 uncovered, 0 happy-path only, 0 negative only
 - Rtrace (trace-debug.md): 6 rules, 5 cases; 2 uncovered, 2 happy-path only, 0 negative only
 
@@ -61,15 +61,15 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | R11 | 16 | 16 (100%) | 10 | 10 (100%) | 16 (100%) |
 | R12 | 17 | 17 (100%) | 6 | 6 (100%) | 17 (100%) |
 | R13 | 22 | 22 (100%) | 5 | 5 (100%) | 22 (100%) |
-| Rbundle | 4 | 4 (100%) | 0 | 0 (0%) | 4 (100%) |
+| Rbundle | 5 | 5 (100%) | 0 | 0 (0%) | 5 (100%) |
 | Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
 | Rjudge | 8 | 7 (87%) | 5 | 1 (20%) | 4 (50%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
-| Rlsp | 7 | 7 (100%) | 1 | 1 (100%) | 7 (100%) |
+| Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 600 | 596 (99%) | 244 | 236 (96%) | 591 (98%) |
+| all | 603 | 598 (99%) | 244 | 236 (96%) | 593 (98%) |
 
 ## Rules
 
@@ -692,6 +692,7 @@ Each rule: positive / negative case counts, then the gap if any.
 
 - Rbundle.1 [1+ 0-]: `cpl build` emits one deterministic C++17 file for the judge profile: the stamp and source...
 - Rbundle.2 [1+ 1-]: Stripped: tests, alts, generators, checkers, interactors, samples, `debug(...)`, `@local` ...
+- Rbundle.6 [1+ 0-]: Libraries are inlined from the content-addressed store by pin, so a rebuild is byte-identi...
 - Rbundle.3 [1+ 0-]: Size is checked against the profile; `--size` attributes bytes to header, runtime, types, ...
 - Rbundle.5 [1+ 0-]: `@cpp("...", includes:)` items and `extern fn` judge functions are emitted verbatim or as ...
 
@@ -725,8 +726,10 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rlsp.1 [2+ 1-]: **Diagnostics** as you type, cheapest first (syntax, names, types, domains, borrows, range...
 - Rlsp.6 [1+ 0-]: **Hover**: the type, where `None` lives, storage width and peak bytes, proven ranges, the ...
 - Rlsp.7 [1+ 0-]: **Storage sizes** (decision 149): hover on a type or variable gives its size, field storag...
+- Rlsp.8 [1+ 0-]: **Inlay hints**: inferred types, parameter names past two positional arguments, opt-in liv...
 - Rlsp.2 [1+ 0-]: **Completion** ranked by type (positions of `V` inside `a[` for `a: [V]T`, operation value...
 - Rlsp.3 [1+ 0-]: **Navigation and refactoring**: definition, references, rename, extract nested fn, inline,...
+- Rlsp.9 [0+ 0-] **uncovered**: **Editors**: a VS Code extension (highlighting, run/test/stress buttons, debugger, trace p...
 - Rlsp.4 [1+ 1-]: **Formatting**: `textDocument/formatting` returns exactly what `cpl fmt` writes, so an edi...
 - Rlsp.5 [1+ 0-]: **Neovim and Vim** (the Milestone 1 editors): Neovim 0.10 or later gets diagnostics, compl...
 
