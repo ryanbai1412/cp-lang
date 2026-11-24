@@ -718,15 +718,12 @@ fn flat(value: &Value) -> Option<String> {
 
 fn write(value: &Value, out: &mut String) {
     match (flat(value), value) {
-        (Some(line), _) => {
-            out.push_str(&line);
-            out.push('\n');
-        }
         (None, Value::Seq(items) | Value::Tuple(items)) => {
             items.iter().for_each(|item| write(item, out))
         }
-        (None, Value::Int(_) | Value::Char(_) | Value::Word { .. } | Value::Drawn { .. }) => {
-            unreachable!("a number and a drawn value are always flat")
+        (line, _) => {
+            out.push_str(&line.unwrap_or_default());
+            out.push('\n');
         }
     }
 }

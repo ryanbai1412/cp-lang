@@ -252,32 +252,32 @@ impl Stress {
                     && analysis.is_some_and(cpl_ir::has_cached_fields);
                 // The builds are the whole wait before the first case, so
                 // they run side by side.
-                let (fast, brute, cold) = std::thread::scope(|scope| {
-                    let brute = scope.spawn(|| match (native.brute, &own_brute) {
-                        (Some(path), _) => resolve(path).map(Some),
-                        (None, Some((fn_name, _))) => Program::resolve_brute(path, fn_name)
-                            .map(Some)
-                            .map_err(said),
-                        (None, None) => match &part_brute {
-                            Some(swapped) => crate::cli::build_part_brute(path, name, swapped)
+                let (mut brute, mut cold) = (Ok(None), Ok(None));
+                let fast = std::thread::scope(|scope| {
+                    scope.spawn(|| {
+                        brute = match (native.brute, &own_brute) {
+                            (Some(path), _) => resolve(path).map(Some),
+                            (None, Some((fn_name, _))) => Program::resolve_brute(path, fn_name)
                                 .map(Some)
-                                .map_err(Unbuilt::Said),
-                            None => Ok(None),
-                        },
+                                .map_err(said),
+                            (None, None) => match &part_brute {
+                                Some(swapped) => crate::cli::build_part_brute(path, name, swapped)
+                                    .map(Some)
+                                    .map_err(Unbuilt::Said),
+                                None => Ok(None),
+                            },
+                        }
                     });
-                    let cold = scope.spawn(|| match cached {
-                        true => Program::resolve_cold_cache(path).map(Some).map_err(said),
-                        false => Ok(None),
+                    scope.spawn(|| {
+                        cold = match cached {
+                            true => Program::resolve_cold_cache(path).map(Some).map_err(said),
+                            false => Ok(None),
+                        }
                     });
-                    let fast = match native.grader {
+                    match native.grader {
                         Some(grader) => Program::resolve_with_grader(path, grader).map_err(said),
                         None => crate::cli::solution(path, native.fast).map_err(Unbuilt::Said),
-                    };
-                    (
-                        fast,
-                        brute.join().expect("a build does not panic"),
-                        cold.join().expect("a build does not panic"),
-                    )
+                    }
                 });
                 let process = |program: &Program| Runner::Process(program.clone());
                 Roles {

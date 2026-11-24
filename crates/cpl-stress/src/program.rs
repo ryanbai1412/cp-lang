@@ -539,7 +539,10 @@ pub fn missing_compiler(source: &Path) -> Option<String> {
 fn found(compiler: &str) -> bool {
     type Asked = std::sync::Mutex<std::collections::HashMap<String, bool>>;
     static FOUND: std::sync::OnceLock<Asked> = std::sync::OnceLock::new();
-    let mut found = FOUND.get_or_init(Default::default).lock().unwrap();
+    let mut found = FOUND
+        .get_or_init(Default::default)
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     *found
         .entry(compiler.to_string())
         .or_insert_with(|| on_path(compiler).is_some())
@@ -910,27 +913,23 @@ impl Program {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        let mut stdin = child.stdin.take().unwrap();
-        let mut stdout = child.stdout.take().unwrap();
-        let mut stderr = child.stderr.take().unwrap();
-        let (out, err, (exit, peak_kb, elapsed)) = std::thread::scope(|scope| {
+        let mut stdin = piped(child.stdin.take())?;
+        let mut stdout = piped(child.stdout.take())?;
+        let mut stderr = piped(child.stderr.take())?;
+        let (mut out, mut err) = (Vec::new(), Vec::new());
+        let (exit, peak_kb, elapsed) = std::thread::scope(|scope| {
             // Each pipe has its own thread, so a program that prints a
             // lot or never reads its input cannot block either side.
             scope.spawn(move || {
                 let _ = stdin.write_all(input.as_bytes());
             });
-            let out = scope.spawn(move || {
-                let mut buffer = Vec::new();
-                let _ = stdout.read_to_end(&mut buffer);
-                buffer
+            scope.spawn(|| {
+                let _ = stdout.read_to_end(&mut out);
             });
-            let err = scope.spawn(move || {
-                let mut buffer = Vec::new();
-                let _ = stderr.read_to_end(&mut buffer);
-                buffer
+            scope.spawn(|| {
+                let _ = stderr.read_to_end(&mut err);
             });
-            let ended = supervise(child, start, limit);
-            (out.join().unwrap(), err.join().unwrap(), ended)
+            supervise(child, start, limit)
         });
         Ok(Outcome {
             // LF everywhere: a Windows program's `\r\n` never reaches a compare, report or saved case.
@@ -958,9 +957,10 @@ impl Program {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
-        let mut stdout = child.stdout.take().unwrap();
-        let mut stderr = child.stderr.take().unwrap();
-        let (err, (exit, peak_kb, elapsed)) = std::thread::scope(|scope| {
+        let mut stdout = piped(child.stdout.take())?;
+        let mut stderr = piped(child.stderr.take())?;
+        let mut err = Vec::new();
+        let (exit, peak_kb, elapsed) = std::thread::scope(|scope| {
             scope.spawn(move || {
                 let mut chunk = vec![0; 1 << 16];
                 while let Ok(read @ 1..) = stdout.read(&mut chunk) {
@@ -973,13 +973,10 @@ impl Program {
                     }
                 }
             });
-            let err = scope.spawn(move || {
-                let mut buffer = Vec::new();
-                let _ = stderr.read_to_end(&mut buffer);
-                buffer
+            scope.spawn(|| {
+                let _ = stderr.read_to_end(&mut err);
             });
-            let ended = supervise(child, start, limit);
-            (err.join().unwrap(), ended)
+            supervise(child, start, limit)
         });
         Ok(Outcome {
             stdout: String::new(),
@@ -1207,4 +1204,10 @@ mod shebang_tests {
         );
         std::fs::remove_dir_all(dir).unwrap();
     }
+}
+
+/// The pipe `spawn` was asked to make: an error rather than a panic if the
+/// child has none.
+pub fn piped<T>(pipe: Option<T>) -> std::io::Result<T> {
+    pipe.ok_or_else(|| std::io::Error::other("the child process was started without its pipe"))
 }

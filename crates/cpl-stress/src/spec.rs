@@ -834,13 +834,9 @@ impl InputSpec {
                 }
                 StmtKind::Let {
                     init: Some(init), ..
-                } if !in_judge
-                    && judge.is_none()
-                    && above.is_none()
-                    && !multitest
-                    && read_gen(init).is_some() =>
+                } if let Some(func) = read_gen(init)
+                    .filter(|_| !in_judge && judge.is_none() && above.is_none() && !multitest) =>
                 {
-                    let func = read_gen(init).expect("tested above");
                     let line = lines.line_of(stmt.span.shift(builder.base).start) + 1;
                     let program = gen_program(src, &func, line).ok_or_else(|| {
                             builder.error(stmt.span, format!("`cpl stress` can't run `{func}` on its own to make this input; check that the file builds"))
@@ -887,12 +883,11 @@ impl InputSpec {
                     ty: Some(ty),
                     init: Some(init),
                     ..
-                } if read_count(init).is_some() && builder.cell(ty).is_some() => {
-                    let len = read_count(init).expect("tested above");
+                } if let (Some(len), Some(cell)) = (read_count(init), builder.cell(ty)) => {
                     names_in(&len, &mut builder.spec.sizes);
                     let shape = Shape::Array {
                         len,
-                        elem: Box::new(builder.shape(builder.cell(ty).expect("tested above"))?),
+                        elem: Box::new(builder.shape(cell)?),
                         index: None,
                     };
                     let field = Field {

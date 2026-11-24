@@ -382,17 +382,19 @@ fn disorder(spec: &InputSpec, case: &Case) -> u128 {
 /// Where a number sits in a case: the field, then the indexes into it.
 type Path = Vec<usize>;
 
-fn at<'a>(case: &'a mut Case, path: &[usize]) -> &'a mut Value {
-    let mut value = &mut case.values[path[0]];
-    for index in &path[1..] {
+/// The value at `path` in `case`, if the path still leads somewhere.
+fn at<'a>(case: &'a mut Case, path: &[usize]) -> Option<&'a mut Value> {
+    let (first, rest) = path.split_first()?;
+    let mut value = case.values.get_mut(*first)?;
+    for index in rest {
         value = match value {
-            Value::Seq(items) | Value::Tuple(items) => &mut items[*index],
+            Value::Seq(items) | Value::Tuple(items) => items.get_mut(*index)?,
             Value::Int(_) | Value::Char(_) | Value::Word { .. } | Value::Drawn { .. } => {
-                unreachable!("a path ends at a number")
+                return None
             }
         };
     }
-    value
+    Some(value)
 }
 
 /// The number at `path` in `case`, if there is still one there.
@@ -445,7 +447,9 @@ fn lower_equal(
         let target = floor + (current - floor) / 2;
         let mut candidate = cases.clone();
         for (index, path) in &paths {
-            let slot = at(&mut candidate[*index], path);
+            let Some(slot) = at(&mut candidate[*index], path) else {
+                continue;
+            };
             *slot = slot.with(target);
         }
         match accept(candidate) {
@@ -891,7 +895,7 @@ fn without_vertex(spec: &InputSpec, case: &Case, field: usize, v: i128) -> Optio
     };
     let mut smaller = with_vertices_renamed(spec, case, field, &kept, &down)?;
     for (path, by) in [(vertices, 1), (edges, gone)] {
-        let slot = at(&mut smaller, &path);
+        let slot = at(&mut smaller, &path)?;
         *slot = slot.with(slot.number()? - by);
     }
     Some(smaller)
@@ -1031,7 +1035,9 @@ pub fn shrink(
         // that fits, as `none` is below a gap in `?(1..=n)`.
         if lo < start {
             let mut candidate = best.clone();
-            let slot = at(&mut candidate, path);
+            let Some(slot) = at(&mut candidate, path) else {
+                return false;
+            };
             *slot = slot.with(lo);
             if attempt(best, candidate) {
                 return true;
@@ -1041,7 +1047,9 @@ pub fn shrink(
         while floor < current {
             let target = floor + (current - floor) / 2;
             let mut candidate = best.clone();
-            let slot = at(&mut candidate, path);
+            let Some(slot) = at(&mut candidate, path) else {
+                break;
+            };
             *slot = slot.with(target);
             if attempt(best, candidate) {
                 current = target;
@@ -1205,7 +1213,9 @@ pub fn shrink(
                     break;
                 }
                 let mut candidate = best.clone();
-                let slot = at(&mut candidate, &path);
+                let Some(slot) = at(&mut candidate, &path) else {
+                    continue;
+                };
                 *slot = slot.with(tag);
                 improved |= attempt(&mut best, candidate);
             }
@@ -1219,7 +1229,9 @@ pub fn shrink(
             let mut toward = 0;
             while toward > from {
                 let mut candidate = best.clone();
-                let slot = at(&mut candidate, &path);
+                let Some(slot) = at(&mut candidate, &path) else {
+                    break;
+                };
                 *slot = slot.with(toward);
                 if attempt(&mut best, candidate) {
                     improved = true;
@@ -1259,7 +1271,9 @@ pub fn shrink(
                             continue;
                         };
                         let mut candidate = smaller.clone();
-                        let slot = at(&mut candidate, &path);
+                        let Some(slot) = at(&mut candidate, &path) else {
+                            continue;
+                        };
                         *slot = slot.with(value - 1);
                         if attempt(&mut best, candidate) {
                             improved = true;
@@ -1283,7 +1297,7 @@ pub fn shrink(
 fn without_element(spec: &InputSpec, case: &Case, path: &Path, position: usize) -> Option<Case> {
     let current = number_at(case, path)?;
     let mut smaller = case.clone();
-    *at(&mut smaller, path) = Value::Int(current - 1);
+    *at(&mut smaller, path)? = Value::Int(current - 1);
     let fitted = fit(spec, &smaller)?;
     let mut any = false;
     for (field, new) in fitted.values.iter().enumerate() {

@@ -208,7 +208,12 @@ impl Vm {
         }));
         let io = io.choosing(std::sync::Arc::clone(&choices));
         let input = run_ir(&self.program, io, self.stack_limit, limit).map_err(|(_, t)| *t)?;
-        let made = std::mem::take(&mut choices.lock().unwrap().made);
+        let made = std::mem::take(
+            &mut choices
+                .lock()
+                .unwrap_or_else(std::sync::PoisonError::into_inner)
+                .made,
+        );
         let (sites, choices) = made.into_iter().unzip();
         Ok(Drawn {
             choices,

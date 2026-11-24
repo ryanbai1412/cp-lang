@@ -361,22 +361,24 @@ pub fn stress_with(
             } else {
                 // A batch runs at once; results are read in case order, so the
                 // failure reported is the same whatever `jobs` is.
+                // Each thread fills its own slot; a thread that panics
+                // makes the scope panic, so no slot is read unfilled.
+                let mut slots: Vec<BatchItem> = batch.iter().map(|_| Ok(None)).collect();
                 std::thread::scope(|scope| {
-                    let handles: Vec<_> = batch
-                        .iter()
-                        .map(|index| {
-                            let seed = options.seed.wrapping_add(*index as u64);
-                            let make = &make;
-                            scope.spawn(move || -> Result<_, StressError> {
+                    for (slot, index) in slots.iter_mut().zip(&batch) {
+                        let seed = options.seed.wrapping_add(*index as u64);
+                        let make = &make;
+                        scope.spawn(move || {
+                            *slot = (|| {
                                 let Some((case, input)) = make(seed)? else {
                                     return Ok(None);
                                 };
                                 Ok(Some((case, attempt(engine, &input)?, input)))
-                            })
-                        })
-                        .collect();
-                    handles.into_iter().map(|h| h.join().unwrap()).collect()
-                })
+                            })();
+                        });
+                    }
+                });
+                slots
             };
             for (index, result) in batch.iter().zip(results) {
                 let Some((case, tried, input)) = result? else {
