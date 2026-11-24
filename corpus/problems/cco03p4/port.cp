@@ -2,35 +2,23 @@
 // limits: 1000 ms, 16 MB
 // Problem: n <= 9 and k constraints "x comes before y". Print how many permutations of 1..=n
 //   satisfy them all.
-// Solution: place the numbers front to back; need[y] is the mask of numbers that must come
-//   before y. dp[s] counts orders of the set s placed first; y can join s when need[y] is in s.
+// Solution: place the numbers front to back; need[y] is the Subset of numbers that must come
+//   before y. ways[s] counts orders of the set s placed first; y can join s once need[y] is
+//   inside s.
 //   O(2^n n).
-// Runnable today on proto/cpc; matches the v2.1 Subset<V> solution.
 // original: corpus/submissions/5024536.cpp
+// Bounds: n: 1..=9; rules.x, rules.y: 1..=n
+let n: 1..=9 = read()
+let k: Int = read()
+domain V = 1..=n
+type Placed = Subset<V>
+let rules: [k](x: V, y: V) = read()  // x comes before y
 
-fn bit(k: Int) -> Int: return 1 << k
+var need: [V]Placed = Placed.empty
+for r in rules if r.x != r.y: need[r.y] = need[r.y].with(r.x)
 
-fn main_solve():
-    let n: Int = read()
-    let k: Int = read()
-    domain V = 0..n
-    var need: [V]Int = 0
-    for _ in 0..k:
-        let x: Int = read()
-        let y: Int = read()
-        if x != y: need[V(y - 1)] |= bit(x - 1)
-
-    let total = bit(n)
-    domain Mask = 0..total
-    var dp: [Mask]Int = 0
-    dp[Mask(0)] = 1
-    for s in 0..total:
-        let ways = dp[Mask(s)]
-        if ways == 0: continue
-        for v in 0..n:
-            let b = bit(v)
-            if (s & b) == 0 and (need[V(v)] & s) == need[V(v)]:
-                dp[Mask(s | b)] += ways
-    print(dp[Mask(total - 1)])
-
-main_solve()
+var ways: [Placed]Int = 0
+ways[Placed.empty] = 1
+for s in Placed:
+    for v in V if not s.contains(v) and (need[v] - s).is_empty: ways[s.with(v)] += ways[s]
+print(ways[Placed.full])
