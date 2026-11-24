@@ -316,23 +316,6 @@ impl<'a> Parser<'a> {
         found
     }
 
-    /// `&&` or `||` from C: reported with the word to write, then read as
-    /// that word. Leaves the second character for [`Self::binary`].
-    fn c_logic(&mut self, half: TokenKind, word: &str) -> bool {
-        if !self.doubled(half) {
-            return false;
-        }
-        let span = Span::new(self.start(), self.span_n(1).end);
-        let op = if half == T::Amp { "&&" } else { "||" };
-        self.error(
-            msgs::syntax::C_LOGIC_OP
-                .error(span, &[&op, &word])
-                .with_fix(format!("replace with `{word}`"), span, word),
-        );
-        self.bump();
-        true
-    }
-
     pub(super) fn not(&mut self) -> Expr {
         if self.at(T::Not) {
             let start = self.start();

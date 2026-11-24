@@ -8,7 +8,6 @@
 //! missing `:` on a `for` line doesn't hide the errors, or the hovers, in
 //! its body.
 
-mod c_decl;
 mod clause;
 mod expr;
 mod foreign;
@@ -699,34 +698,6 @@ impl<'a> Parser<'a> {
         diag.fixes.push(cpl_diag::Fix {
             title: "write it in brackets".into(),
             edits: vec![(open, "[".into()), (close, "]".into())],
-        });
-        self.error(diag);
-    }
-
-    /// `{1, 2}`, a set written the other languages' way: `Set([1, 2])`.
-    /// `f({a, b})`, C++'s braced argument, is a pair: `f((a, b))`.
-    fn brace_set(&mut self, span: Span, open: Span, close: Span, pair: bool) {
-        if self.c_decl().is_some() {
-            return;
-        }
-        let (message, help, l, r) = match pair {
-            true => (
-                &msgs::syntax::BRACE_PAIR,
-                "braces make a block; parentheses make a tuple",
-                "(",
-                ")",
-            ),
-            false => (
-                &msgs::syntax::BRACE_SET,
-                "braces make a block; brackets make lists and maps",
-                "Set([",
-                "])",
-            ),
-        };
-        let mut diag = message.error(span, &[]).with_help(help);
-        diag.fixes.push(cpl_diag::Fix {
-            title: format!("write `{l}..{r}`"),
-            edits: vec![(open, l.into()), (close, r.into())],
         });
         self.error(diag);
     }

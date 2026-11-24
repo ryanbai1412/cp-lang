@@ -2010,8 +2010,9 @@ def ts_ignore(root: Path) -> list[str]:
     return _grep_all(root, r"@ts-(ignore|nocheck)", "web")
 
 
-HABIT_FILES = ("crates/cpl-syntax/src/parser/foreign.rs", "crates/cpl-syntax/src/parser/c_decl.rs",
-               "crates/cpl-check/src/check/advice.rs")
+HABIT_FILES = ("crates/cpl-check/src/check/advice.rs",)
+# Foreign modules whose help and fix texts are not habit rows yet: lowering's.
+HABIT_UNSCANNED = ("crates/cpl-ir/",)
 
 
 HABIT_REGISTRY = "crates/cpl-diag/src/habits.rs"
@@ -2048,7 +2049,8 @@ def habit_matchers(root: Path) -> list[str]:
     fails any row whose mistake doesn't show it or whose fix doesn't check (Consumers; this
     replaces the count of `fn` items in those files)."""
     files = [rel for rel in _git(root, "ls-files", "crates/**/*.rs")
-             if (rel in HABIT_FILES or re.search(r"foreign|habit|advice", Path(rel).name))
+             if (rel in HABIT_FILES or re.search(r"foreign|habit|advice", Path(rel).name)
+                 or "/foreign/" in rel and not rel.startswith(HABIT_UNSCANNED))
              and rel != HABIT_REGISTRY and not rel.endswith("tests.rs")]
     found = []
     for rel in files:

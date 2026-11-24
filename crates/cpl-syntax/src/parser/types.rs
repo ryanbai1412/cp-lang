@@ -24,28 +24,6 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// `Int?`, Kotlin's and C#'s optional: CP Lang writes `?Int` (R02.4).
-    fn postfix_optional(&mut self, inner: Type) -> Type {
-        let q = self.span();
-        self.bump();
-        let span = Span::new(inner.span.start, q.end);
-        let mut diag = msgs::syntax::OPTIONAL_MARK_FIRST
-            .error(span, &[])
-            .with_help("write `?T`, as in `?Int`, for a `T` or `None`");
-        diag.fixes.push(cpl_diag::Fix {
-            title: "move the `?` to the front".into(),
-            edits: vec![
-                (Span::point(inner.span.start), "?".into()),
-                (q, String::new()),
-            ],
-        });
-        self.recovered(diag);
-        Type {
-            kind: TypeKind::Optional(Box::new(inner)),
-            span,
-        }
-    }
-
     /// `Str of "01"`, `Str(len: 1..=n)`, or both, `Str(len: n..=n) of "01"`
     /// (R02.3.2). `glued` when `(` follows `Str` directly.
     fn constrained_str(&mut self, start: u32, glued: bool) -> Type {
@@ -849,46 +827,6 @@ impl<'a> Parser<'a> {
         traits
     }
 
-    /// The built-in type a foreign type name here stands for. Rust's
-    /// `Vec<T>` counts only with `<`: `std.geometry`'s `Vec` is a point.
-    fn foreign_type_here(&self) -> Option<&'static str> {
-        match self.text() {
-            "Vec" | "ArrayList" | "Vector" if self.peek_n(1) == T::Lt => Some("List"),
-            name => foreign_type(name),
-        }
-    }
-
-    /// `List[Int]`, Python's generic brackets: read as `List<Int>`, with
-    /// one error that turns the brackets into `<>`.
-    fn bracket_type_args(&mut self, name: &str) -> Vec<Type> {
-        if !self.at(T::LBracket) || !matches!(name, "List" | "Map" | "Set" | "HashMap" | "HashSet")
-        {
-            return Vec::new();
-        }
-        let open = self.span();
-        self.bump();
-        let mut args = Vec::new();
-        while !self.at(T::RBracket) && !self.at_line_end() {
-            args.push(self.ty());
-            if !self.eat(T::Comma) {
-                break;
-            }
-        }
-        let close = self.span();
-        if !self.eat(T::RBracket) {
-            return args;
-        }
-        let mut diag = msgs::syntax::TYPE_ARGS_IN_ANGLES
-            .error(open, &[&name, &name])
-            .with_help("`[...]` is a list or an index; a type's arguments go in `<>`");
-        diag.fixes.push(cpl_diag::Fix {
-            title: "write `<...>`".into(),
-            edits: vec![(open, "<".into()), (close, ">".into())],
-        });
-        self.error(diag);
-        args
-    }
-
     /// Parses `where T: Ord, U: Add + Mul` if it is here.
     pub(super) fn where_clause(&mut self, bounds: &mut Vec<Bound>) {
         if !self.at_ident("where") {
@@ -905,21 +843,6 @@ impl<'a> Parser<'a> {
             }
         }
     }
-}
-
-/// The built-in type another language's lowercase name stands for.
-fn foreign_type(name: &str) -> Option<&'static str> {
-    Some(match name {
-        "int" | "long" | "ll" | "i64" | "i32" | "int64" | "integer" | "usize" => "Int",
-        "string" | "str" => "Str",
-        "bool" | "boolean" => "Bool",
-        "float" | "double" | "f64" => "F64",
-        "char" => "Char",
-        "vector" | "vec" | "list" => "List",
-        "map" | "dict" | "unordered_map" => "Map",
-        "set" | "unordered_set" => "Set",
-        _ => return None,
-    })
 }
 
 /// Written as only a type can be: a capitalized name, or a tuple, array,

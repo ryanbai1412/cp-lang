@@ -808,6 +808,59 @@ pub static C_CAST_INT: Habit = shape(
     "",
 );
 
+pub static FLOOR_DIVISION: Habit = shape(
+    "floor_division",
+    codes::UNEXPECTED_TOKEN,
+    "`/` on two `Int`s already rounds down: `7 / 2` is 3, `-7 / 2` is -4",
+    "",
+);
+pub static FLOOR_DIVISION_2: Habit = shape(
+    "floor_division_2",
+    codes::UNEXPECTED_TOKEN,
+    "replace with `/`",
+    "",
+);
+pub static C_MAIN: Habit = shape(
+    "c_main",
+    codes::REMOVED_SYNTAX,
+    "remove `int main() {{` and its `}}`, and move the body out one level",
+    "",
+);
+pub static C_MAIN_2: Habit = shape("c_main_2", codes::REMOVED_SYNTAX, "unwrap `main`", "");
+pub static INCREMENT: Habit = shape("increment", codes::UNKNOWN_CHAR, "write `{} 1`", "");
+pub static INCREMENT_2: Habit = shape(
+    "increment_2",
+    codes::UNKNOWN_CHAR,
+    "replace `{}` with ` {} 1`",
+    "",
+);
+pub static C_LOGIC: Habit = shape("c_logic", codes::UNEXPECTED_TOKEN, "replace with `{}`", "");
+pub static BRACE_SET: Habit = shape("brace_set", codes::REMOVED_SYNTAX, "write `{}..{}`", "");
+pub static POSTFIX_OPTIONAL: Habit = shape(
+    "postfix_optional",
+    codes::EXPECTED_TYPE,
+    "write `?T`, as in `?Int`, for a `T` or `None`",
+    "",
+);
+pub static POSTFIX_OPTIONAL_2: Habit = shape(
+    "postfix_optional_2",
+    codes::EXPECTED_TYPE,
+    "move the `?` to the front",
+    "",
+);
+pub static BRACKET_TYPE_ARGS: Habit = shape(
+    "bracket_type_args",
+    codes::EXPECTED_TYPE,
+    "`[...]` is a list or an index; a type's arguments go in `<>`",
+    "",
+);
+pub static BRACKET_TYPE_ARGS_2: Habit = shape(
+    "bracket_type_args_2",
+    codes::EXPECTED_TYPE,
+    "write `<...>`",
+    "",
+);
+
 /// Every shape row; `all` walks them after the named rows.
 pub static SHAPES: &[&Habit] = &[
     &ARROW_LAMBDA,
@@ -929,4 +982,16 @@ pub static SHAPES: &[&Habit] = &[
     &HEAP,
     &C_CAST_FLOAT,
     &C_CAST_INT,
+    &FLOOR_DIVISION,
+    &FLOOR_DIVISION_2,
+    &C_MAIN,
+    &C_MAIN_2,
+    &INCREMENT,
+    &INCREMENT_2,
+    &C_LOGIC,
+    &BRACE_SET,
+    &POSTFIX_OPTIONAL,
+    &POSTFIX_OPTIONAL_2,
+    &BRACKET_TYPE_ARGS,
+    &BRACKET_TYPE_ARGS_2,
 ];
