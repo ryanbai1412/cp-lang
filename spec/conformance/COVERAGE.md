@@ -29,7 +29,7 @@ Cases: 3140 (1093 passing). Rules: 603.
 - Rbundle (bundle.md): 5 rules, 5 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rcli (cli.md): 2 rules, 6 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rfmt (fmt-lint.md): 1 rules, 2 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- Rjudge (judge-profiles.md): 8 rules, 10 cases; 1 uncovered, 3 happy-path only, 0 negative only
+- Rjudge (judge-profiles.md): 8 rules, 11 cases; 0 uncovered, 4 happy-path only, 0 negative only
 - Rlint (fmt-lint.md): 2 rules, 3 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - Rlsp (lsp.md): 9 rules, 9 cases; 1 uncovered, 0 happy-path only, 0 negative only
 - Rstress (stress.md): 2 rules, 2 cases; 1 uncovered, 0 happy-path only, 0 negative only
@@ -64,12 +64,12 @@ negative case. Complete: rules with no gap in `rule-gaps.txt`.
 | Rbundle | 5 | 5 (100%) | 0 | 0 (0%) | 5 (100%) |
 | Rcli | 2 | 2 (100%) | 1 | 1 (100%) | 2 (100%) |
 | Rfmt | 1 | 1 (100%) | 1 | 1 (100%) | 1 (100%) |
-| Rjudge | 8 | 7 (87%) | 5 | 1 (20%) | 4 (50%) |
+| Rjudge | 8 | 8 (100%) | 5 | 1 (20%) | 4 (50%) |
 | Rlint | 2 | 2 (100%) | 2 | 2 (100%) | 2 (100%) |
 | Rlsp | 9 | 8 (88%) | 1 | 1 (100%) | 8 (88%) |
 | Rstress | 2 | 1 (50%) | 1 | 0 (0%) | 1 (50%) |
 | Rtrace | 6 | 4 (66%) | 4 | 1 (25%) | 2 (33%) |
-| all | 603 | 598 (99%) | 244 | 236 (96%) | 593 (98%) |
+| all | 603 | 599 (99%) | 244 | 236 (96%) | 593 (98%) |
 
 ## Rules
 
@@ -712,7 +712,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - Rjudge.2 [2+ 1-]: The C++ file's second line names the profile, its compiler command and its stack, so the f...
 - Rjudge.3 [1+ 0-] *happy-path only*: `I128` on a profile without `__int128` is an error naming the judge
 - Rjudge.4 [1+ 0-] *happy-path only*: Size: a warning above 32 KB (or half of a smaller `source_kb`), an error above 64 KB or `s...
-- Rjudge.6 [0+ 0-] **uncovered**: `time_ms` and `memory_mb` are a problem's limits when its `cp.toml` has no `[limits]`.
+- Rjudge.6 [1+ 0-] *happy-path only*: `time_ms` and `memory_mb` are a problem's limits when its `cp.toml` has no `[limits]`.
 - Rjudge.7 [1+ 0-]: `memory_mb` feeds `cpl explain`'s peak-memory check and the LSP's code lens; `time_ms` fee...
 - Rjudge.8 [2+ 0-] *happy-path only*: Local release runs build with the profile's flags and run under its stack (`ulimit -s`), s...
 

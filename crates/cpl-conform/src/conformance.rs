@@ -315,6 +315,28 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
     })
 }
 
+/// `text` with each `<digits> ms` and the padding before it blanked: a tool that reports how long a case
+/// ran (`cpl test`) is deterministic in everything but that.
+fn untimed(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut rest = text;
+    while let Some(start) = rest.find(|c: char| c.is_ascii_digit()) {
+        let end = rest[start..]
+            .find(|c: char| !c.is_ascii_digit())
+            .map_or(rest.len(), |e| start + e);
+        out.push_str(&rest[..start]);
+        if rest[end..].starts_with(" ms") {
+            out.truncate(out.trim_end_matches(' ').len());
+            out.push('#');
+        } else {
+            out.push_str(&rest[start..end]);
+        }
+        rest = &rest[end..];
+    }
+    out.push_str(rest);
+    out
+}
+
 /// A `// tool:` case: runs the tool twice (tool output is deterministic),
 /// then checks the expectation and every `// has:` / `// lacks:` string.
 fn run_tool_case(
@@ -332,7 +354,7 @@ fn run_tool_case(
         (Ok(a), Ok(b)) => (a, b),
         (Err(e), _) | (_, Err(e)) => return fail(e),
     };
-    if first.status != second.status || first.stdout != second.stdout {
+    if first.status != second.status || untimed(&first.stdout) != untimed(&second.stdout) {
         return fail(format!("`cpl {args}` gave different output on two runs"));
     }
     let all = format!("{}{}", first.stdout, first.stderr);

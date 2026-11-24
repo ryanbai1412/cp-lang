@@ -23,7 +23,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-COPY = re.compile(r"(?:std::vector<[^;()]*?>|std::string)\(\w+(?:\.\w+)*\)|cpl::to_list\(")
+COPY = re.compile(r"(?:std::vector<[^;()]*?>|std::string)\(\w+(?:\.\w+)*\)|cpl::to_list\(|cpl::sorted\(\w+(?:\.\w+)*\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
 NAME = re.compile(r"[A-Za-z_]\w*(?:\.[A-Za-z_]\w*)*")
 SCALARS = ("int", "ll", "bool", "double", "char", "auto", "unsigned", "__int128", "cpl::OptPos")

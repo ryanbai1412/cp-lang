@@ -1,4 +1,4 @@
-// expect: R0102 at 7
+// expect: R0102 at 5
 // rule: 04.2.10
 // `P((r, c))` checks each integer part into its factor, as `R(2)` does: `(2, 0)` has its first part outside `R`.
 domain R = 0..2
