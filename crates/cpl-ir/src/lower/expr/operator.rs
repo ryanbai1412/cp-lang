@@ -245,6 +245,19 @@ impl<'a> Lowerer<'a> {
             _ => (!is_bare_read(rhs)).then_some(&l.ty),
         };
         let r = unwrap_first_last(self.expr(rhs, r_hint));
+        // `xs + v` with a view `v` (either side) joins what the view walks.
+        let (l, r) = if op == Add
+            && (seq_concat_elem(&l.ty).is_some() || seq_concat_elem(&r.ty).is_some())
+        {
+            let mut walk = |lw: &mut Self, e: Expr| match e.ty {
+                Ty::Struct(sid) if lw.struct_op_fn(sid, "add").is_none() => lw.walked_struct(e),
+                _ => e,
+            };
+            let l = walk(self, l);
+            (l, walk(self, r))
+        } else {
+            (l, r)
+        };
         // Dispatch operator traits (`impl Add/Sub/Mul/Div for Struct`).
         if let Ty::Struct(sid) = l.ty {
             // `z ** e` is the struct's `pow(e: Int)`: `Mod<P>` has one.

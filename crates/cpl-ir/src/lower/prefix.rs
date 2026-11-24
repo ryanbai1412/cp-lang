@@ -21,6 +21,8 @@ impl<'a> Lowerer<'a> {
             return self.err_expr(span);
         };
         let src = self.expr(exprs[0], None);
+        // A view's prefix sums what it walks.
+        let src = self.walked_struct(src);
         if src.ty == Ty::Error {
             return self.err_expr(span);
         }
