@@ -75,7 +75,7 @@ const BOUNDS: [Bound; 5] = [
     // global-copied-by-a-fn-a-closure-calls-twice, -called-in-a-loop,
     // -by-a-recursive-fn, global-read-by-another-fn-after-the-copy and
     // match-payload-outlives-a-fn-writing-its-global-scrutinee.
-    ("deep_copies", deep_copies, 31),
+    ("deep_copies", deep_copies, 34),
     ("std_functions", std_functions, 79),
 ];
 
