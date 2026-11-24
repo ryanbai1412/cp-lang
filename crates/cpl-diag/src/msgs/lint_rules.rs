@@ -7,7 +7,6 @@ super::msgs! {
     BINOM_BY_HAND = "L0557", "`{}[{}]` over `{}[{}]` and `{}[{} - {}]` is `{}` choose `{}`, by hand";
     BINOM_BY_HAND_2 = "L0557", "`{}[..]` over two `{}[..]` entries is `{}` choose `{}`, by hand";
     CHAR_OFFSET_INDEX = "L0574", "`{} - '{}'` turns a letter into an `Int` index";
-    COALESCE_TEST_THEN_UNWRAP = "L0595", "`{}` is tested with the stand-in `?? {}`, then `{}!` unwraps it";
     COMPONENTS_BY_DFS = "L0560", "a search from each unvisited `{}` counts components by hand, with `{}`";
     COMPOUND_SELF_REF = "L0210", "`{}` is written in terms of itself; this is `{} {} ...`";
     CONTAINS_THEN_ADD = "L0552", "`{}` is tested for a key before `+=`";
@@ -71,6 +70,5 @@ super::msgs! {
     UNUSED_BINDING = "L0598", "`{}` is never read";
     UNWRAP_ON_POSSIBLY_EMPTY = "L0305", "the declared bounds let `{}` be empty, and then `{}` traps";
     VAR_NEVER_REASSIGNED = "L0201", "{} {} declared `var` but never changed";
-    WHILE_NOT_EMPTY_POP = "L0591", "`{}` is tested for empty, then `{}.{}()!` unwraps";
     LIBRARY_LINT_FIX = BAD_LIBRARY_LINT, "write `{}`";
 }

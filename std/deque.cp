@@ -157,6 +157,9 @@ pub struct Deque<T>:
     /// empty: `var q = Deque<Int>(); q.pop_front() == None and q.len == 0`
     /// traps: never
     /// example: `var q = Deque.of([1, 2]); q.pop_front() == Some(1) and q.to_list() == [2]`
+    @lint(while_not_empty_pop, from: "while not self.is_empty:\n    let x = self.pop_front()!\n    b", to: "while let x = self.pop_front():\n    b", holes: "x, b")
+    @lint(while_not_empty_pop, from: "while self.len > 0:\n    let x = self.pop_front()!\n    b", to: "while let x = self.pop_front():\n    b", holes: "x, b")
+    @lint(while_not_empty_pop, from: "while self.len != 0:\n    let x = self.pop_front()!\n    b", to: "while let x = self.pop_front():\n    b", holes: "x, b")
     pub fn pop_front(mut self) -> ?T:
         if n == 0: return None
         unchecked:
