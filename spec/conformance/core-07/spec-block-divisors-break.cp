@@ -3,7 +3,7 @@
 let n = 12
 let lim = 5
 fn divisors(n: Int) -> yields Int:
-    for d in 1..=n.isqrt():
+    for d in 1..=n.isqrt:
         if n % d == 0:
             yield d
             if d * d != n: yield n / d

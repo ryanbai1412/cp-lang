@@ -4,5 +4,5 @@ for v in [1, 2, 4, 5].windows(2):
     print(v.sum())
 for c in [1, 2, 3, 4, 5].chunks(2):
     print(c.sum())
-for (x, y) in [1, 2, 4].adjacent():
+for (x, y) in [1, 2, 4].adjacent:
     print(y - x)

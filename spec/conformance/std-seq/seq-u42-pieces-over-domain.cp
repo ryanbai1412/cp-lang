@@ -2,7 +2,7 @@
 // Acceptance for seq/U42 (windows and pairs over a domain array), handbook/product/std/sequences-usecases.md.
 domain I = 0..4
 let a: [I]Int = [I] i => Int(i) * Int(i)
-for (x, y) in a.adjacent():
+for (x, y) in a.adjacent:
     print(y - x)
 for (i, j) in zip(I, I.rev):
     print(i, j)

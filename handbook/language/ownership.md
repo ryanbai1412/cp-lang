@@ -465,7 +465,7 @@ fields, so `divisors(12)` is owned and `dfs(g, from: [s])` is lent from
 
 ```cp
 fn divisors(n: Int) -> yields Int:
-    for d in 1..=n.isqrt():
+    for d in 1..=n.isqrt:
         if n % d == 0:
             yield d
             if d * d != n: yield n / d

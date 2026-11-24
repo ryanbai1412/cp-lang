@@ -224,7 +224,7 @@ Evidence: program `spec/conformance/std-seq/seq-u41-frequency-counts.cp`; the co
 
 ### seq/U14: fixed windows, chunks and adjacent pairs
 Need: sum of each length-`k` window, each block of `k`, or each difference.
-Design: `a.windows(k)`, `a.chunks(k)`, `a.adjacent()`, `a.cyclic_pairs()`, all views.
+Design: `a.windows(k)`, `a.chunks(k)`, `a.adjacent`, `a.cyclic_pairs()`, all views.
 Milestone: M1-critical. Status: supported
 Evidence: program `spec/conformance/std-seq/seq-u14-windows-and-pairs.cp`; cost program `spec/conformance/std-seq/seq-u14-windows-and-pairs-cost.cp`; cost program `seq-u14-windows-cost.cp`.
 

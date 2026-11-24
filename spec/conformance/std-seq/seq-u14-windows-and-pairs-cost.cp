@@ -5,6 +5,6 @@ let a = List.filled(n, 1)
 var s = 0
 for w in a.windows(3):
     s += w.sum()
-for (x, y) in a.adjacent():
+for (x, y) in a.adjacent:
     s += y - x
 print(s)
