@@ -1828,7 +1828,8 @@ def mono_unguarded(root: Path) -> list[str]:
     return [] if used else ["crates/cpl-check, crates/cpl-ir: no GROWING_INSTANTIATION use"]
 
 
-STD_ITEM_RE = re.compile(r"^(\s*)(?:@\w+\s+)*pub\s+(fn|struct|enum|trait|type)\s+(\w+)\s*(<[^>(]*>)?\s*(?:\(([^)]*))?")
+# Generics nest one level, `<S: Seq<T>, T>`.
+STD_ITEM_RE = re.compile(r"^(\s*)(?:@\w+\s+)*pub\s+(fn|struct|enum|trait|type)\s+(\w+)\s*(<(?:[^<>(]|<[^<>(]*>)*>)?\s*(?:\(([^)]*))?")
 # Receivers a built-in arm on lists, strings, maps, sets, arrays or a type
 # parameter can catch: a std fn over one of these never runs its body.
 BUILTIN_SELF_RE = re.compile(r"^self:\s*(?:\[|List<|Str\b|Map<|Set<|HashMap<|HashSet<|Range<)")
