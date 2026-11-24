@@ -809,3 +809,32 @@ fn local_fns_that_call_each_other_pass_each_other_instead_of_a_std_function() {
     assert!(!out.contains("std::function"), "{out}");
     assert!(out.contains("cpl::memo("), "{out}");
 }
+
+#[test]
+fn a_closure_passed_in_an_optional_the_callee_only_calls_borrows_its_list() {
+    let source = concat!(
+        "fn total(n: Int, weight: ?(Int -> Int) = None) -> Int:\n",
+        "    var t = 0\n",
+        "    for i in 0..n:\n",
+        "        if let w = weight: t += w(i)\n",
+        "        else: t += 1\n",
+        "    t\n",
+        "fn go(k: Int) -> Int:\n",
+        "    let xs = [k, 2, 3]\n",
+        "    var s = 0\n",
+        "    for weighted in [false, true]:\n",
+        "        s += total(3, weight: if weighted: Some((i: Int) => xs[i]) else: None)\n",
+        "    s\n",
+        "print(go(read<Int>()))\n",
+    );
+    let out = cpp(source);
+    assert!(
+        out.contains("[&xs_2 = xs]"),
+        "the closure lives only for the call to `total`, so it borrows `xs`:\n{out}"
+    );
+    let explained = crate::explain_copies(&super::lower(source));
+    assert!(
+        explained.is_empty(),
+        "no copy is left to explain: {explained:?}"
+    );
+}

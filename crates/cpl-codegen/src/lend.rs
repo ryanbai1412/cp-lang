@@ -951,6 +951,71 @@ fn moved_while_live(
     .contains(&capture)
 }
 
+/// Whether `?fn` param `slot` of fn `fn_id` is only tested and its payload
+/// only called: a closure passed in it lives no longer than the call.
+pub(crate) fn opt_fn_param_only_called(
+    program: &cpl_ir::Program,
+    fn_id: usize,
+    slot: usize,
+) -> bool {
+    let f = &program.fns[fn_id];
+    slot < f.params.len()
+        && !f.params[slot].mutable
+        && matches!(f.locals[slot].ty, Ty::Opt(ref inner) if matches!(**inner, Ty::Fn(..)))
+        && opt_only_called(program, &f.body, slot, 3)
+}
+
+/// Whether optional local `slot` of `body` is only tested (`IsSome`), bound
+/// whole to another such local, or unwrapped into a name [`only_called`].
+fn opt_only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
+    let is_slot = |e: &cpl_ir::Expr| matches!(e.kind, ExprKind::Local(s) if s == slot);
+    let (mut uses, mut ok, mut escapes) = (0usize, 0usize, false);
+    walk::deep_stmts(body, &mut |stmt| match stmt {
+        Stmt::Assign(place, _, _) => escapes |= walk::root(place) == (false, slot),
+        Stmt::Let(s, Some(init)) => match &init.kind {
+            ExprKind::Local(_) if is_slot(init) => {
+                ok += 1;
+                escapes |= depth == 0 || !opt_only_called(program, body, *s, depth - 1);
+            }
+            ExprKind::Unwrap(inner, _) if is_slot(inner) => {
+                ok += 1;
+                escapes |= !only_called(program, body, *s, depth);
+            }
+            _ => {}
+        },
+        _ => {}
+    });
+    walk::deep_exprs(body, &mut |e| match &e.kind {
+        ExprKind::Local(s) if *s == slot => uses += 1,
+        ExprKind::IsSome(inner) if is_slot(inner) => ok += 1,
+        ExprKind::Closure(cid) => {
+            escapes |= program.closures[*cid]
+                .captures
+                .iter()
+                .any(|c| !c.is_global && c.outer == slot);
+        }
+        _ => {}
+    });
+    !escapes && uses == ok
+}
+
+/// The closures an optional argument holds: `Some(closure)`, through the
+/// branches of an `if`.
+pub(crate) fn optional_closures(value: &cpl_ir::Expr) -> Vec<usize> {
+    match &value.kind {
+        ExprKind::Some(inner) => match inner.kind {
+            ExprKind::Closure(cid) => vec![cid],
+            _ => Vec::new(),
+        },
+        ExprKind::If(_, then, otherwise) => {
+            let mut cids = optional_closures(then);
+            cids.extend(optional_closures(otherwise));
+            cids
+        }
+        _ => Vec::new(),
+    }
+}
+
 pub(crate) fn only_called(program: &cpl_ir::Program, body: &Block, slot: usize, depth: u8) -> bool {
     only_called_in(program, body, slot, depth, None)
 }

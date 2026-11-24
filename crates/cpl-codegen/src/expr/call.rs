@@ -96,6 +96,12 @@ impl<'p> Emitter<'p> {
                     {
                         borrowed.push(cid);
                     }
+                } else if crate::lend::opt_fn_param_only_called(program, id, slot) {
+                    for cid in crate::lend::optional_closures(value) {
+                        if self.borrow_closures.insert(cid) {
+                            borrowed.push(cid);
+                        }
+                    }
                 }
             }
         }
