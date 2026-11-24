@@ -1,6 +1,6 @@
-// Tuned: blocks hash to one 61-bit value, as the original's single modulus does, and a
-// shared block shows as the merged set coming out smaller than its branches together,
-// with no lookup before each insert.
+// Tuned: blocks hash to one 61-bit value, as the original's single modulus does, and live in
+// hash sets rather than ordered ones; a shared block shows as the merged set coming out smaller
+// than its branches together, with no lookup before each insert.
 //
 // Source: New Year's '18 P7 (Tree of Life), https://dmoj.ca/problem/year2018p7
 // limits: 1000 ms, 256 MB
@@ -30,8 +30,8 @@ let hash = [V] v => RollingHash61(word[v], base: base)
 fn shared(len: Int) -> Bool:
     var found = false
     /// The blocks of `len` letters in the words at and below u.
-    fn blocks(u: V) -> Set<Hash61>:
-        var all = Set<Hash61>()
+    fn blocks(u: V) -> HashSet<Hash61>:
+        var all = HashSet<Hash61>()
         var parts = 0
         for v in kids[u]:
             var branch = blocks(v)
