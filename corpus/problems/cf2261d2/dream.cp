@@ -26,7 +26,8 @@ for _ in 0..m:
     let key = rand(0, (1 << 62) - 1)
     diff[l - 1] ^= key
     diff[r] ^= key
-let hash = scan(diff[0..n], ^)
+let xors = scan(diff[0..n], ^)
+let hash = [xors.cut(i + 1) for i in 0..n]
 
 var next: [0..n]?Int = None
 var (first_bad, last_bad): (?Int, ?Int) = (None, None)
@@ -37,7 +38,7 @@ for (a, b) in order.adjacent if hash[a] == hash[b]:
     last_bad max= b
 
 var cuts: List<Int> = []
-if let f = first_bad and let l = last_bad and hash.cut(f) == hash.cut(l): cuts.push(0)
+if let f = first_bad and let l = last_bad and hash[f] == hash[l]: cuts.push(0)
 for i in 0..n - 1:
     if next[i] == i + 1: cuts.push(i + 1)
     else: next[i + 1] min= next[i]

@@ -19,8 +19,13 @@ let phi = (1.0 + sqrt(5.0)) / 2.0
 
 @!multitest
 let x: 0..=1e7 = read()
+fn split_walk(z: Int) -> ?List<0..=1> =
+    if 1 <= z < x: walk(z, x - z, room: MAX_N - 1).map(w => [1] + w) else: None
+
+// Try splits z outward from x / phi, nearest first.
+let z0 = trunc(F64(x) / phi)
 let diag = if x <= 1: [x] else:
-    (1..x).sorted(by: z => abs(z - x / phi)).first_some(z => walk(z, x - z, room: MAX_N - 1).map(w => [1] + w))!
+    (0..x).first_some(d => split_walk(z0 - d) ?? split_walk(z0 + d + 1))!
 domain N = 0..diag.len
 print(N.count)
 print([N, N] (i, j) =>
