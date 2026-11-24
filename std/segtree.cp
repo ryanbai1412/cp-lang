@@ -1376,16 +1376,37 @@ pub struct WaveletMatrix<D>:
                 (lo, hi) = (zs[l] + self.ones(l, lo), zs[l] + self.ones(l, hi))
         total + rem * res
 
-/// \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) space. Dynamic point-update + 2D range value-count and k-th structure
-/// (Fenwick of order trees) over `[D]T`.
+/// \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) space, or \(O(\lvert vs \rvert + \lvert D \rvert \log \lvert vs \rvert)\) built with
+/// `values: vs`. Dynamic point-update + 2D range value-count and k-th structure (Fenwick of order
+/// trees, or a segment tree over the given values' ranks) over `[D]T`.
 pub struct DynamicOrderTree<D, T>:
     n: Len
     val: List<T> = []
     // `bit[j]` for `j >= 1` holds the values at positions `j - (j & -j)..j`; `bit[0]` holds
     // every value, the candidates `kth` searches.
     bit: List<SortedBag<T>> = []
+    // With `values:`, the sorted distinct values `vs`, and `at[p]`, a segment tree of `sz` leaves
+    // over their ranks whose node `p` holds the positions whose value's rank is under it.
+    ranked: Bool = false
+    vs: List<T> = []
+    sz: Int = 1
+    at: List<SortedBag<Int>> = []
+
+    fn rank_of(self, x: T, le: Bool) -> Int = (0..vs.len).first_true(
+        i => if le: vs[i] > x else: vs[i] >= x
+    ) ?? vs.len
 
     fn bump(mut self, i: Int, x: T, put: Bool):
+        if ranked:
+            let b = self.rank_of(x, false)
+            assert b < vs.len and
+                vs[b] == x, "a `DynamicOrderTree` built with `values:` holds only those values"
+            var p = b + sz
+            while p >= 1:
+                if put: at[p].add(i)
+                else: at[p].remove(i)
+                p /= 2
+            return
         if put: bit[0].add(x)
         else: bit[0].remove(x)
         var j = i + 1
@@ -1397,31 +1418,52 @@ pub struct DynamicOrderTree<D, T>:
     fn below(self, end: Int, x: T, le: Bool) -> Int:
         var acc = 0
         var j = end
+        if ranked:
+            var (l, h) = (sz, self.rank_of(x, le) + sz)
+            while l < h:
+                if l % 2 == 1:
+                    acc += at[l].rank(end)
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    acc += at[h].rank(end)
+                l /= 2
+                h /= 2
+            return acc
         while j > 0:
             acc += bit[j].rank(x)
             if le: acc += bit[j].count(x)
             j -= j & -j
         acc
 
+    fn ends(self, r: Range<D>) -> (Int, Int) = (r.first!.ord, r.last!.ord + 1)
+
     fn span_count(self, r: Range<D>, x: T, le: Bool) -> Int:
         if r.is_empty: return 0
-        let (lo, hi) = (r.first!.ord, r.last!.ord + 1)
+        let (lo, hi) = self.ends(r)
         self.below(hi, x, le) - self.below(lo, x, le)
 
     /// A structure over `a` answering value counts and order statistics on ranges while positions
     /// are reassigned.
     ///
-    /// cost: \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) time and memory
+    /// With `values: vs`, every value it will hold, given ahead: a segment tree over their ranks
+    /// holds each node's positions in order, so `kth` descends it in \(O(\log \lvert D \rvert \log \lvert vs \rvert)\) instead of searching values.
+    ///
+    /// cost: \(O(\lvert D \rvert \log^2 \lvert D \rvert)\) time and memory; with `values: vs`, \(O(\lvert vs \rvert \log \lvert vs \rvert + \lvert D \rvert \log \lvert D \rvert \log \lvert vs \rvert)\) time and \(O(\lvert vs \rvert + \lvert D \rvert \log \lvert vs \rvert)\) memory
     /// empty: `DynamicOrderTree<0..0, Int>([]).count_lt(0..0, 3) == 0`
     /// order: positions keep the domain `D` of `a`
-    /// traps: never
+    /// traps: with `values:`, when `a` holds a value not in it
     /// example: `DynamicOrderTree([3, 1, 4]).count_lt(0..3, 4) == 2`
-    pub fn new(a: [D]T) -> DynamicOrderTree<D, T>:
-        var t = DynamicOrderTree<D, T>(
-            D.count,
-            [a[i] for i in D],
-            [SortedBag<T>.new() for _ in 0..D.count + 1],
-        )
+    /// example: `DynamicOrderTree([3, 1, 4], values: [1, 3, 4, 9]).kth(0..3, 2) == Some(4)`
+    pub fn new(a: [D]T, values: ?List<T> = None) -> DynamicOrderTree<D, T>:
+        var t = DynamicOrderTree<D, T>(D.count, [a[i] for i in D], [])
+        if let given = values:
+            t.ranked = true
+            for x in given.sorted():
+                if t.vs.is_empty or t.vs.last! != x: t.vs.push(x)
+            while t.sz < t.vs.len: t.sz *= 2
+            t.at = [SortedBag<Int>.new() for _ in 0..2 * t.sz]
+        else: t.bit = [SortedBag<T>.new() for _ in 0..D.count + 1]
         for i in 0..D.count: t.bump(i, t.val[i], true)
         t
 
@@ -1464,7 +1506,7 @@ pub struct DynamicOrderTree<D, T>:
     /// The `k`-th smallest value in `r`, counting from 0 and with repeats, or `None` when
     /// `k >= r.len`.
     ///
-    /// cost: \(O(\log^3 \lvert D \rvert)\): a binary search over all stored values, counting each in `r`
+    /// cost: \(O(\log^3 \lvert D \rvert)\): a binary search over all stored values, counting each in `r`; with `values: vs`, \(O(\log \lvert D \rvert \log \lvert vs \rvert)\), one descent of the rank tree
     /// empty: `DynamicOrderTree([3, 1, 4]).kth(1..1, 0) == None`
     /// ties: `let t = DynamicOrderTree([2, 1, 2]); t.kth(0..3, 1) == Some(2) and t.kth(0..3, 2) == Some(2)`
     /// traps: when `k < 0`, or a non-empty `r` reaches outside `D`
@@ -1473,8 +1515,23 @@ pub struct DynamicOrderTree<D, T>:
     pub fn kth(self, r: Range<D>, k: 0..) -> ?T:
         assert k >= 0, "`kth` takes `k >= 0`"
         if k >= r.len: return None
+        if ranked: return self.walk(r, k)
         let lo = (0..bit[0].len - 1).first_true(mid => self.span_count(r, bit[0].nth(mid)!, true) > k) ?? (bit[0].len - 1)
         bit[0].nth(lo)
+
+// The `k`-th smallest value in `r`, descending the rank tree by how many of `r`'s
+// positions each left child holds.
+impl DynamicOrderTree<D, T>:
+    fn walk(self, r: Range<D>, k: Int) -> ?T:
+        let (l, h) = self.ends(r)
+        var (p, left) = (1, k)
+        while p < sz:
+            let here = at[2 * p].rank(h) - at[2 * p].rank(l)
+            if left < here: p = 2 * p
+            else:
+                left -= here
+                p = 2 * p + 1
+        vs.get(p - sz)
 
 /// One set of positions of `D` in a `MergeSegs<D>` pool: a handle, so copying it is O(1).
 /// `MergeSeg<D>()` is the empty set.

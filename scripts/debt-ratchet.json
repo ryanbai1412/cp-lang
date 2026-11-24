@@ -254,7 +254,7 @@
   "trap_text_outside_registry": 0,
   "foreign_outside_modules": 0,
   "reviews_pending": 0,
-  "std_gaps": 6,
+  "std_gaps": 5,
   "reviews_orphan": 0,
   "reviews_uncapped": 0,
   "string_keyed_maps": 0,

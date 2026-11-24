@@ -9286,4 +9286,8 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 627. (reserved, content)
 
-## 628. (reserved, stdlib)
+## 628. `DynamicOrderTree(a, values: vs)` trades memory for an O(log^2) `kth` (stdlib, 2026-11-24)
+
+- **Call.** `DynamicOrderTree` keeps one constructor; the named option `values: vs` (every value it will ever hold, given ahead) builds a segment tree over the ranks of `vs` whose nodes hold their positions in order, so `kth(r, k)` is one descent in \(O(\log \lvert D \rvert \log \lvert vs \rvert)\) instead of the online mode's \(O(\log^3 \lvert D \rvert)\) value search. `set` to a value outside `vs` traps. The default stays online, with its \(O(\log^3)\) `kth` documented as its cost, not a gap. Stdlib ruling of 2026-11-24.
+- **Why.** The k-th over arbitrary online values needs a search over values on top of the counting tree; knowing the values ahead makes the value axis the tree. Measured in C++ (65536 `kth`s): 1.09 s vs 0.17 s at \(\lvert D \rvert = 16384\), 3.66 s vs 2.08 s at 262144, for about 2.7x the default mode's memory (148 MB vs 397 MB at 262144), stated on the constructor. A first cut with a Fenwick of rank-count trees was faster to build but took 652 MB at 262144 and was dropped.
+- **Reverse.** Drop the `values:` option and its private fields; callers fall back to the online `kth`.

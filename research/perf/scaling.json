@@ -14048,6 +14048,22 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/segtree_order_values.cp::segtree.DynamicOrderTree.kth": {
+   "cost": "\\log^3 \\lvert D \\rvert",
+   "documented": 1.49,
+   "fn": "segtree.DynamicOrderTree.kth",
+   "measured": 1.37,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_order_values.cp::segtree.DynamicOrderTree.set": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.DynamicOrderTree.set",
+   "measured": 1.27,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/segtree_point.cp::segtree.SegTree.at": {
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
