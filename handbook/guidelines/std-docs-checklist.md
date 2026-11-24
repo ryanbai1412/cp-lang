@@ -21,7 +21,7 @@ Each `pub fn` doc carries the three required labels.
 
 - **Why:** cost, failure and a copyable call are what a contestant needs mid-contest.
 - **Example:** `cost: \(O(\log n)\)`, `traps: never`, ``example: `[3, 1].sorted() == [1, 3]` ``.
-- **Enforced by:** `scripts/spec-stub.py --audit`, counted in `plan/domains/stdlib/metrics.toml`.
+- **Enforced by:** `scripts/spec-stub.py --audit`, at 0 in `scripts/check.sh`.
 
 ### R2. `empty:`, `ties:` and `order:` wherever they apply
 
@@ -95,7 +95,7 @@ Docs use the spelling of `spec/GLOSSARY.md` and link the spec section for long e
 
 - **Why:** one vocabulary across spec, errors, trace and docs.
 - **Example:** "cut", not "boundary index"; "domain", not "index type".
-- **Enforced by:** `scripts/spec-gate.py vocab`.
+- **Enforced by:** `scripts/spec-gate.py vocab`, in `scripts/check.sh`.
 
 ### R10. Each module opens with what it is for
 
@@ -105,16 +105,7 @@ A `//!` line names the module's job and its main types.
 - **Example:** ``//! Ordered multiset and set with order statistics, range views, and cursors: `SortedBag<K>`, `SortedSet<K>`. ``
 - **Enforced by:** `scripts/std-docs-lint.py` fails a std module whose first line is not `//!`.
 
-## Verification
-
-### R11. A page counts as verified only after a checklist walk
-
-A module's docs are verified when someone has checked every public item against R1 to R10 and recorded the date in `plan/domains/stdlib/docs-tracker.md`.
-
-- **Why:** label counts say a doc exists, not that it is right.
-- **Example:** the tracker row for `prefix.cp` lists the date and the rules that still fail.
-- **Enforced by:** process; the tracker's count of verified modules only goes up.
-
 ## Changes
 
 - 2026-11-23: first version.
+- 2026-11-23: R11's manual walk retired: R1 to R10 each run in `scripts/check.sh`.

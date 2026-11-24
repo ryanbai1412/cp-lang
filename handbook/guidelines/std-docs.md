@@ -60,11 +60,10 @@ against the checklist and recorded that in the tracker.
 
 [std-docs-checklist.md](std-docs-checklist.md) lists every rule with an id
 (`std-docs/R4`). `scripts/spec-stub.py --audit` finds fns missing a
-required label, and `cpl-conform docs` runs every `example:` line. The
-weakest areas today are that a failing example is ratcheted rather than a
-hard gate, that rendered docs don't yet show trait bounds, and that no page
-has been verified end to end against the checklist; the tracker in
-`plan/domains/stdlib/docs-tracker.md` records progress.
+required label, and `cpl-conform docs` runs every `example:` line. Every rule
+R1 to R10 runs in `scripts/check.sh`. The weakest areas today are that a
+failing example is ratcheted rather than a hard gate and that rendered docs
+don't yet show trait bounds.
 
 ## Where to start
 

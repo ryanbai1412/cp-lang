@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Check std/*.cp, or reduce it to reference docs (every fn body `todo`).
 
+`--audit` enforces handbook/guidelines/std-docs-checklist.md#r1 (required doc labels).
+
 std is the standard library: signatures, docs, costs and bodies.
 Without --check, only fn bodies change: headers, docs, traits, structs and bodiless
 trait methods are kept as written. `lends` fns keep their bodies, since the
