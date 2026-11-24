@@ -222,35 +222,7 @@ impl Cells {
     }
 
     pub fn get(&self, idx: usize) -> Option<Value> {
-        match self {
-            Cells::Int(v) => v.get(idx).copied().map(Value::Int),
-            Cells::OneIntStruct(v) => v
-                .get(idx)
-                .copied()
-                .map(|x| Value::Tuple(TupleVal::OneInt(x))),
-            Cells::OptInt(v) => v.get(idx).copied().map(|o| match o {
-                Some(x) => Value::Opt(OptVal::Int(x)),
-                None => Value::Opt(OptVal::None),
-            }),
-            Cells::Bool(v) => v.get(idx).copied().map(|b| Value::Bool(b != 0)),
-            Cells::Char(v) => v.get(idx).copied().map(Value::Char),
-            Cells::Float(v) => v.get(idx).copied().map(float_of),
-            Cells::SmallIntTuple {
-                stride,
-                kinds,
-                data,
-            } => {
-                let s = *stride as usize;
-                let off = idx.checked_mul(s)?;
-                let slice = data.get(off..off + s)?;
-                Some(box_small_tuple(*stride, kinds, slice))
-            }
-            Cells::SmallEnum { data, .. } => idx
-                .checked_mul(4)
-                .and_then(|o| data.get(o..o + 4))
-                .map(box_small_enum),
-            Cells::Values(v) => v.get(idx).cloned(),
-        }
+        (idx < self.len()).then(|| self.get_unchecked_val(idx))
     }
 
     #[inline]
@@ -356,15 +328,8 @@ impl Cells {
     }
 
     pub fn contains(&self, needle: &Value) -> bool {
-        match (self, needle) {
-            (Cells::Int(v), Value::Int(x)) => v.contains(x),
-            (Cells::OneIntStruct(v), Value::Tuple(TupleVal::OneInt(x))) => v.contains(x),
-            (Cells::OptInt(v), Value::Opt(OptVal::None)) => v.contains(&None),
-            (Cells::OptInt(v), Value::Opt(OptVal::Int(x))) => v.contains(&Some(*x)),
-            (Cells::Bool(v), Value::Bool(b)) => v.contains(&u8::from(*b)),
-            (Cells::Char(v), Value::Char(c)) => v.contains(c),
-            (Cells::Float(v), Value::Float(f)) => v.contains(&key_of(*f)),
-            (Cells::Values(v), _) => v.contains(needle),
+        match self {
+            Cells::Values(v) => v.contains(needle),
             _ => (0..self.len()).any(|i| &self.get_unchecked_val(i) == needle),
         }
     }
@@ -412,40 +377,8 @@ impl Cells {
 
     pub fn to_values(&self) -> Vec<Value> {
         match self {
-            Cells::Int(v) => v.iter().copied().map(Value::Int).collect(),
-            Cells::OneIntStruct(v) => v
-                .iter()
-                .copied()
-                .map(|x| Value::Tuple(TupleVal::OneInt(x)))
-                .collect(),
-            Cells::OptInt(v) => v
-                .iter()
-                .copied()
-                .map(|o| match o {
-                    Some(x) => Value::Opt(OptVal::Int(x)),
-                    None => Value::Opt(OptVal::None),
-                })
-                .collect(),
-            Cells::Bool(v) => v.iter().copied().map(|b| Value::Bool(b != 0)).collect(),
-            Cells::Char(v) => v.iter().copied().map(Value::Char).collect(),
-            Cells::Float(v) => v.iter().copied().map(float_of).collect(),
-            Cells::SmallIntTuple {
-                stride,
-                kinds,
-                data,
-            } => {
-                let s = *stride as usize;
-                data.chunks_exact(s)
-                    .map(|chunk| box_small_tuple(*stride, kinds, chunk))
-                    .collect()
-            }
-            Cells::SmallEnum { data, .. } => data
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .map(|w| box_small_enum(w))
-                .collect(),
             Cells::Values(v) => v.clone(),
+            _ => (0..self.len()).map(|i| self.get_unchecked_val(i)).collect(),
         }
     }
 

@@ -59,6 +59,7 @@ impl Recycle for ListViewVal {
 pub(crate) struct Shared<T: Recycle>(Rc<T>);
 
 impl<T: Recycle> Shared<T> {
+    #[inline(never)]
     fn reused() -> Option<Rc<T>> {
         T::pool()
             .try_with(|p| p.try_borrow_mut().ok()?.pop())
@@ -86,14 +87,24 @@ impl<T: Recycle> Shared<T> {
 
 impl Shared<Vec<Value>> {
     /// The fields `field(0..n)`, in a reused box when one is free.
+    #[inline]
     pub fn collect(n: usize, mut field: impl FnMut(usize) -> Value) -> Shared<Vec<Value>> {
-        if let Some(mut rc) = Self::reused() {
-            if let Some(fs) = Rc::get_mut(&mut rc) {
-                fs.extend((0..n).map(&mut field));
-                return Shared(rc);
+        Self::collect_dyn(n, &mut field)
+    }
+
+    /// [`Shared::collect`] for every `field`: one copy in cpl.wasm, not one per caller.
+    #[inline(never)]
+    fn collect_dyn(n: usize, field: &mut dyn FnMut(usize) -> Value) -> Shared<Vec<Value>> {
+        let mut rc = Self::reused().unwrap_or_else(|| Rc::new(Vec::with_capacity(n)));
+        if Rc::get_mut(&mut rc).is_none() {
+            rc = Rc::new(Vec::with_capacity(n));
+        }
+        if let Some(fs) = Rc::get_mut(&mut rc) {
+            for i in 0..n {
+                fs.push(field(i));
             }
         }
-        Shared(Rc::new((0..n).map(field).collect()))
+        Shared(rc)
     }
 }
 
@@ -111,24 +122,31 @@ impl<T: Recycle> std::ops::Deref for Shared<T> {
 }
 
 impl<T: Recycle> Drop for Shared<T> {
+    #[inline]
     fn drop(&mut self) {
-        if Rc::strong_count(&self.0) != 1 || Rc::weak_count(&self.0) != 0 {
-            return;
+        if Rc::strong_count(&self.0) == 1 && Rc::weak_count(&self.0) == 0 {
+            give_back(&mut self.0);
         }
-        let Ok(blank) = T::blank().try_with(Rc::clone) else {
-            return;
-        };
-        let mut rc = std::mem::replace(&mut self.0, blank);
-        if let Some(value) = Rc::get_mut(&mut rc) {
-            // Outside the pool's borrow: what the value held may hold boxes too.
-            value.reset();
-        }
-        let _ = T::pool().try_with(|p| {
-            if let Ok(mut p) = p.try_borrow_mut() {
-                if p.len() < KEPT {
-                    p.push(rc);
-                }
-            }
-        });
     }
+}
+
+/// Puts the last holder's box back in its pool; out of line, so a drop of a
+/// [`Value`] stays small where it is inlined.
+#[inline(never)]
+fn give_back<T: Recycle>(this: &mut Rc<T>) {
+    let Ok(blank) = T::blank().try_with(Rc::clone) else {
+        return;
+    };
+    let mut rc = std::mem::replace(this, blank);
+    if let Some(value) = Rc::get_mut(&mut rc) {
+        // Outside the pool's borrow: what the value held may hold boxes too.
+        value.reset();
+    }
+    let _ = T::pool().try_with(|p| {
+        if let Ok(mut p) = p.try_borrow_mut() {
+            if p.len() < KEPT {
+                p.push(rc);
+            }
+        }
+    });
 }

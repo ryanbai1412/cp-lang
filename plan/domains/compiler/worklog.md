@@ -1128,3 +1128,4 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   `Tracer::int_write`, with no view; a chunk lists its named locals once
   when it compiles. Recording 10M scalar steps: about 1.0 s to 0.87 s.
   The 1.2x budget still needs fused raw trace events (next).
+- VM-memory: cpl_interp wasm 234,648 -> 233,654 B gz. `Shared::collect` takes its fields through one `dyn FnMut` copy instead of a collect, map and extend per caller, `Shared`'s drop hands the box back out of line, and `Cells::get`, `to_values` and `contains` read through `get_unchecked_val` instead of an arm per cell kind. Covered by the cells and recycle tests in `cpl-interp`.
