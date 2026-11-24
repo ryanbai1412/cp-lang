@@ -1154,6 +1154,7 @@ pub(crate) fn entry_binding(ty: &Ty, cpp: &str, var: &str, e: &str) -> String {
 /// A non-scalar value the C++ copies: a `let` of a place (at the span of
 /// what it reads, with the fn instance that makes it: each instance of a
 /// generic fn is its own C++) or a closure's by-value capture (closure id, name).
+#[derive(PartialEq)]
 pub(crate) enum Copied {
     Let(cpl_diag::Span, &'static str, Option<usize>),
     /// A copy in a library fn, at the span of the call that runs it, with
@@ -1209,7 +1210,7 @@ pub(crate) const SET_COPY: &str =
     "a store keeps its own value, and the place it reads still holds it";
 
 /// Why `Some(xs)` of a place copies.
-const SOME_COPY: &str = "an optional holds its own value";
+pub(crate) const SOME_COPY: &str = "an optional holds its own value";
 pub(crate) const STATIC_COPY: &str =
     "a long literal is one shared static, so a value that keeps it copies it";
 
@@ -1313,10 +1314,9 @@ impl Emitter<'_> {
         if self.ref_bound.contains(&slot) || !holds_heap(self.program, &inner.ty) {
             return None;
         }
-        self.copies.retain(|c| {
-            !matches!(c, Copied::Let(span, why, _) | Copied::Library(span, _, why)
-                if *span == inner.span && *why == SOME_COPY)
-        });
+        // Only this fn's record: a library fn's copies share the call's span.
+        let mine = self.copy_record(inner.span, SOME_COPY, None);
+        self.copies.retain(|c| *c != mine);
         Some(format!(
             "{}({})",
             self.ty(ty),
@@ -1541,8 +1541,13 @@ impl Emitter<'_> {
         why: &'static str,
         slot: Option<usize>,
     ) {
+        let record = self.copy_record(span, why, slot);
+        self.copies.push(record);
+    }
+
+    fn copy_record(&self, span: cpl_diag::Span, why: &'static str, slot: Option<usize>) -> Copied {
         let Some(id) = self.fn_id.filter(|_| self.in_library()) else {
-            return self.copies.push(Copied::Let(span, why, self.fn_id));
+            return Copied::Let(span, why, self.fn_id);
         };
         let name = slot.map(|s| self.locals()[s].name.clone());
         let fun = &self.program.fn_display[id];
@@ -1550,7 +1555,7 @@ impl Emitter<'_> {
             Some(name) => format!("`{name}` in {fun}"),
             None => format!("a read in {fun}"),
         };
-        self.copies.push(Copied::Library(span, what, why));
+        Copied::Library(span, what, why)
     }
 
     /// Whether local `slot` of the fn being emitted is a `cpl::Lent`

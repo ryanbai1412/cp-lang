@@ -433,3 +433,13 @@ print(f([[\"a\"]], \"b\"))
         [crate::uses::SET_AGAIN, crate::uses::SET_AGAIN]
     );
 }
+
+#[test]
+fn a_some_moved_in_one_library_fn_keeps_another_fns_copy_at_the_call() {
+    let source = "use std.matrix.{sparse_solve}
+use std.mod.{Mod}
+print(sparse_solve(2, [(0, 0, Mod<7>(1)), (1, 1, Mod<7>(2))], [Mod<7>(1), Mod<7>(3)]) == None)
+";
+    let reasons = copy_reasons(source);
+    assert!(reasons.contains(&crate::lend::SOME_COPY), "{reasons:?}");
+}
