@@ -368,6 +368,23 @@ impl<'a> Checker<'a> {
     /// `s.range(r)` on `SortedBag<K>`, `SortedSet<K>`, `Set<K>`, or `Map<K, V>`:
     /// returns an O(1) `SortedRange<E>` view over entries matching `r`
     /// (`a..b`, `a..=b`, `a..`, `..b`, `..=b`, `..`, or a `Range<K>` value).
+    /// Records `call` as a call of `type_name`'s projection `name`, if it has one.
+    fn note_projection(&mut self, call: &Expr, type_name: &str, name: &str) -> Option<()> {
+        let members = self.members_of(type_name)?;
+        let projection = members.projections.into_iter().find(|p| p.name == name)?;
+        self.note_proj_call(
+            call,
+            super::lends::ProjCall {
+                who: format!("{type_name}.{}", projection.name),
+                name: projection.name,
+                mutable: projection.mutable,
+                lent: projection.lent,
+                law: projection.law,
+            },
+        );
+        Some(())
+    }
+
     fn sorted_range_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         let ExprKind::Field { base, name } = &callee.kind else {
             return None;
@@ -388,6 +405,7 @@ impl<'a> Checker<'a> {
             ("Map", [k, v]) => (k.clone(), Ty::Tuple(vec![k.clone(), v.clone()])),
             _ => return None,
         };
+        self.note_projection(call, cname, "range");
         if args.len() != 1 || args[0].name.is_some() {
             for a in args {
                 self.infer(&a.value);
@@ -1125,22 +1143,7 @@ impl<'a> Checker<'a> {
             Ty::Named {
                 name: type_name, ..
             } => {
-                let members = self.members_of(&type_name)?;
-                let projection = members
-                    .projections
-                    .iter()
-                    .find(|p| p.name == name.text)?
-                    .clone();
-                self.note_proj_call(
-                    call,
-                    super::lends::ProjCall {
-                        who: format!("{type_name}.{}", projection.name),
-                        name: projection.name,
-                        mutable: projection.mutable,
-                        lent: projection.lent,
-                        law: projection.law,
-                    },
-                );
+                self.note_projection(call, &type_name, &name.text);
                 None
             }
             _ => None,

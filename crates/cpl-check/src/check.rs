@@ -343,7 +343,7 @@ impl<'a> Checker<'a> {
                 true
             }
             Ty::Named { name, .. } => {
-                let field_tys: Vec<Ty> = match self.env.global(name).as_deref() {
+                let field_tys: Vec<Ty> = match self.type_def(name).as_deref() {
                     Some(Def::Struct { fields, .. }) => {
                         fields.iter().map(|f| f.ty.clone()).collect()
                     }

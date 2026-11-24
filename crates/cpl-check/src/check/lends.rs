@@ -246,10 +246,9 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
                 ExprKind::Index { .. } => true,
                 ExprKind::Field { name, .. } if name.text == "rev" => true,
                 ExprKind::Call { callee, .. } => match &unparen(callee).kind {
-                    ExprKind::Field { name, .. } => matches!(
-                        name.text.as_str(),
-                        "row" | "rev" | "filter" | "take" | "drop"
-                    ),
+                    // Any method may be a projection (`b.range(r)`); the
+                    // replay asks the types.
+                    ExprKind::Field { .. } => true,
                     ExprKind::Name(n) => n.chars().next().is_some_and(|c| c.is_ascii_lowercase()),
                     _ => false,
                 },
@@ -1625,6 +1624,29 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
+                // `b.range(r)` on a projection returning a view holds `b`.
+                if let ExprKind::Field { base, name } = &unparen(callee).kind {
+                    let projection = match self.quietly(|c| c.infer(base)) {
+                        Ty::Named {
+                            name: type_name, ..
+                        } => self
+                            .members_of(&type_name)
+                            .and_then(|m| m.projections.into_iter().find(|p| p.name == name.text)),
+                        _ => None,
+                    };
+                    let ty = self.quietly(|c| c.infer(e));
+                    let is_struct = matches!(&ty, Ty::Named { name, .. }
+                        if matches!(self.type_def(name).as_deref(), Some(Def::Struct { .. })));
+                    if let Some(projection) =
+                        projection.filter(|_| is_struct || self.is_heap_type(&ty))
+                    {
+                        if let Some(mut place) = self.place(base) {
+                            place.steps.clear();
+                            let mutable = projection.mutable;
+                            return vec![("lent view", place, !mutable, mutable)];
+                        }
+                    }
+                }
                 // `lends` fn call: holds all `mut` or heap-typed args.
                 let is_lends_fn = match &unparen(callee).kind {
                     ExprKind::Name(n) => {
@@ -2595,7 +2617,15 @@ impl<'a> Checker<'a> {
         let ExprKind::Call { args, .. } = &call.kind else {
             return;
         };
-        if !mutating_call(&name.text, args) {
+        let own = match self.quietly(|c| c.infer(base)) {
+            Ty::Named {
+                name: type_name, ..
+            } => self
+                .members_of(&type_name)
+                .is_some_and(|m| m.mutators.contains(&name.text)),
+            _ => false,
+        };
+        if !own && !mutating_call(&name.text, args) {
             return;
         }
         if name.text == "sort" {
@@ -2729,8 +2759,13 @@ impl<'a> Checker<'a> {
             );
             self.error(codes::BAD_PROJECTION, span, message);
         }
-        let root = root_name(place);
-        if !root.is_some_and(|root| root == "self" || fields.iter().any(|f| f == root)) {
+        let reaches = |e: &Expr| {
+            root_name(e).is_some_and(|root| root == "self" || fields.iter().any(|f| f == root))
+        };
+        // `SortedRange(self, ..)`: a view built around `self` lends `self`.
+        let built_on_self = matches!(&place.kind, ExprKind::Call { callee, args }
+            if matches!(callee.kind, ExprKind::Name(_)) && args.iter().any(|a| reaches(&a.value)));
+        if !reaches(place) && !built_on_self {
             let message = format!(
                 "a projection may only lend part of `self`; `{}` is not reached through a field",
                 show(place)
