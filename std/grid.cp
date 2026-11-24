@@ -190,6 +190,12 @@ pub struct Dir8(k: Int):
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).step(Dir4.up) == Some((R(0), C(1)))`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(1)).step(Dir4.up) == None`
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).step(Dir8.all()[3]) == Some((R(2), C(2)))`
+@lint(dx_dy_arrays, from: "let dx = [1, -1, 0, 0]\nlet dy = [0, 0, 1, -1]", to: "for dir in Dir4.all():\n    let next = (r, c).step(dir)")
+@lint(dx_dy_arrays, from: "let dx = [-1, 1, 0, 0]\nlet dy = [0, 0, -1, 1]", to: "for dir in Dir4.all():\n    let next = (r, c).step(dir)")
+@lint(dx_dy_arrays, from: "let dx = [-1, 0, 1, 0]\nlet dy = [0, 1, 0, -1]", to: "for dir in Dir4.all():\n    let next = (r, c).step(dir)")
+@lint(dx_dy_arrays, from: "let dx = [0, 1, 0, -1]\nlet dy = [1, 0, -1, 0]", to: "for dir in Dir4.all():\n    let next = (r, c).step(dir)")
+@lint(grid_neighbour_step, from: "if r > 0:\n    g[r, c] += g[r - 1, c]", to: "if let (pr, pc) = (r, c).step(Dir4.up):\n    g[r, c] += g[pr, pc]", holes: "r, c, g")
+@lint(grid_neighbour_step, from: "if c > 0:\n    g[r, c] += g[r, c - 1]", to: "if let (pr, pc) = (r, c).step(Dir4.left):\n    g[r, c] += g[pr, pc]", holes: "r, c, g")
 pub fn step<R, C, D>(self: (R, C), d: D) -> ?(R, C):
     let (dr, dc) = d.delta
     let r = R.at(self.0 + dr)
@@ -221,6 +227,8 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// traps: never
 /// example: `domain R = 0..3; domain C = 0..3; (R(1), C(1)).adj4.collect() == [(R(0), C(1)), (R(1), C(2)), (R(2), C(1)), (R(1), C(0))]`
 /// example: `domain R = 0..3; domain C = 0..3; (R(0), C(0)).adj4.collect() == [(R(0), C(1)), (R(1), C(0))]`
+@lint(grid_bounds_check, from: "if nx >= 0 and nx < h and ny >= 0 and ny < w:\n    body", to: "for (nx, ny) in (x, y).adj4:\n    body", holes: "nx, ny, h, w, body")
+@lint(grid_bounds_check, from: "if 0 <= nx and nx < h and 0 <= ny and ny < w:\n    body", to: "for (nx, ny) in (x, y).adj4:\n    body", holes: "nx, ny, h, w, body")
 @get pub fn adj4<R, C>(self: (R, C)) -> yields (R, C):
     for d in Dir4.all():
         let q = step(self, d)

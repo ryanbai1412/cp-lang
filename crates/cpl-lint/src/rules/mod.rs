@@ -18,7 +18,6 @@ mod fields;
 mod floats;
 mod found_flag;
 mod grid;
-mod grid_step;
 mod hand_ds;
 mod hand_graph;
 mod hand_input;
@@ -92,7 +91,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(found_flag::check(file));
     findings.extend(mod_reduce::check(file));
     findings.extend(grid::check(file));
-    findings.extend(grid_step::check(file));
     findings.extend(floats::check(file));
     findings.extend(imports::check(file));
     findings.extend(fields::check(file));
