@@ -3,4 +3,4 @@
 
 use std.algebra.{Affine}
 
-print(pow(2, 10), pow(5, 0), pow(3, 5, op: +), pow(9, 4, op: max), pow(Affine(2, 1), 3, op: Affine.monoid()).eval(0))
+print(2 ** 10, 5 ** 0, pow(3, 5, op: +), pow(9, 4, op: max), pow(Affine(2, 1), 3, op: Affine.monoid()).eval(0))

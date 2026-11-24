@@ -168,16 +168,29 @@ fn in_on_a_list_offers_the_scan() {
 
 #[test]
 fn enumerate_and_reversed_become_members() {
-    let src = "let xs = [1, 2]\nfor (i, x) in enumerate(xs):\n    print(i, x)\nfor x in reversed(xs):\n    print(x)\nprint(\"ab\".charAt(1))\n";
+    let src = "let xs = [1, 2]\nfor (i, x) in enumerate(xs):\n    print(i, x)\nfor x in reversed(xs):\n    print(x)\nprint(pow(2, xs.len + 1))\nprint(\"ab\".charAt(1))\n";
     let d = check(src);
     let fixes: Vec<_> = d.iter().map(|d| d.fixes[0].edits[0].1.as_str()).collect();
-    assert_eq!(fixes, ["xs.items", "xs.rev", "\"ab\"[1]"], "{d:?}");
+    assert_eq!(
+        fixes,
+        ["xs.items", "xs.rev", "2 ** (xs.len + 1)", "\"ab\"[1]"],
+        "{d:?}"
+    );
 }
 
 #[test]
 fn pow_with_an_op_is_std_fast_power() {
     let d = check("let xs = [1, 2]\nprint(pow(3, xs.len + 1, op: *), pow(3, 4, op: +))\n");
     assert!(d.is_empty(), "{d:?}");
+}
+
+#[test]
+fn pow_of_a_modulus_is_pow_mod() {
+    let d = one("print(pow(2, 10, 1_000_000_007))\n");
+    assert_eq!(
+        d.fixes[0].edits[0].1, "pow_mod(2, 10, 1_000_000_007)",
+        "{d:?}"
+    );
 }
 
 #[test]

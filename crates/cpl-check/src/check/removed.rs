@@ -131,7 +131,7 @@ impl Checker<'_> {
     /// `Pt(1, 2).dot(Pt(3, 4))` where `Pt` has no `dot` but the free `dot` in scope takes a
     /// `Pt` first: the error rewrites the call to `dot(Pt(1, 2), Pt(3, 4))`, so `cpl fix`
     /// migrates a method std removed in favour of its free fn.
-    pub(super) fn receiver_free_fn(&mut self, call: &Expr, callee: &Expr) -> bool {
+    pub(super) fn receiver_free_fn(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> bool {
         let ExprKind::Field { base, name } = &callee.kind else {
             return false;
         };
@@ -156,7 +156,22 @@ impl Checker<'_> {
         let Some(first) = params.first().filter(|p| p.name != "self") else {
             return false;
         };
-        let base_ty = self.quietly(|c| c.infer(base));
+        let named = |p: &&crate::ty::Param| {
+            args.iter()
+                .any(|a| a.name.as_ref().is_some_and(|n| n.text == p.name))
+        };
+        let given = 1 + args.iter().filter(|a| a.name.is_none()).count();
+        let positional = params.iter().filter(|p| !p.named_only && !named(p));
+        let fits_arity = params.iter().any(|p| p.variadic)
+            || (given <= positional.clone().count()
+                && given >= positional.filter(|p| !p.has_default).count());
+        let missing_named = params
+            .iter()
+            .any(|p| p.named_only && !p.has_default && !named(&p));
+        if !fits_arity || missing_named {
+            return false;
+        }
+        let base_ty = self.quietly(|c| c.infer(base)).widen();
         if matches!(base_ty, Ty::Error | Ty::Unknown) || !self.fits(&base_ty, &first.ty) {
             return false;
         }

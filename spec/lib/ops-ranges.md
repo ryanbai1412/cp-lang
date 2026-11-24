@@ -359,9 +359,10 @@ The same values fold any `Seq`, with no structure:
 | `xs.scan(op)` | a `Prefix<D, T>`: the n + 1 exclusive folds, indexed by cuts (ch. 7) | \(O(n)\) |
 | `pow(x, k, op:)` | `x` folded with itself `k` times by squaring | \(O(\log k)\) ops |
 
-`pow` is the one fast power (`x ** k` is its operator spelling, through `Pow`): numbers, `Mod<P>`, matrices under any
-semiring, `Affine` maps, permutations, and any user monoid. `op` is anything
-`Monoid.of` takes, so `k = 0` gives its identity; a negative `k` traps.
+A plain power of a number, `Mod<P>` or matrix is `x ** k` (through `Pow`). `pow` is
+the fast power under a named `op:`: matrices under any semiring, `Affine` maps,
+permutations, and any user monoid. `op` is anything `Monoid.of` takes, so `k = 0`
+gives its identity; a negative `k` traps. `pow(a, k, m)` is `pow_mod(a, k, m)`.
 
 ```python
 let f = pow(Affine(a, b), k, op: Affine.monoid())    // apply x -> a x + b, k times

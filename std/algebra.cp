@@ -208,7 +208,7 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
 /// example: `pow(3, 0, op: +) == 0`
 /// example: `pow(3, 5, op: +) == 15`
 /// example: `pow(Affine(2, 1), 3, op: Affine.monoid()).eval(0) == 7`
-pub fn pow<T, M>(x: T, k: Int, op: M) -> T:
+pub fn pow<T, M>(x: T, k: Int; op: M) -> T:
     assert k >= 0, "pow: a negative exponent"
     let m = Monoid<T>.of(op)
     var acc = m.id
