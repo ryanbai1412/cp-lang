@@ -534,6 +534,34 @@ print(top.len, reach[0].len)
     assert!(!out.contains("HashMap<ll, ll"), "{out}");
 }
 
+/// cf2147g, ucup4s24f: a map shown, there or in a fn it is passed to, is
+/// printed by a helper that takes the map at the width it is stored at.
+#[test]
+fn a_narrow_map_shown_or_passed_on_is_shown_at_its_width() {
+    let out = cpp("let n: 1..=10 = read()
+var m: Map<1..=10 ** 6, Int> = Map()
+var s = Set<1..=10 ** 6>()
+fn show_all(m: Map<1..=10 ** 6, Int>, s: Set<1..=10 ** 6>):
+    print(m)
+    print(s)
+for i in 0..n:
+    m[i + 1] += i
+    s.add(i + 1)
+show_all(m, s)
+print(m)
+");
+    assert!(out.contains("std::map<uint32_t, ll> m;"), "{out}");
+    assert!(!out.contains("const std::map<ll, ll>&"), "{out}");
+    assert!(
+        out.contains("show_all(const std::map<uint32_t, ll>& m_2,"),
+        "{out}"
+    );
+    assert!(
+        out.contains("template <class CplSeq> void show_1(const CplSeq& v,"),
+        "{out}"
+    );
+}
+
 #[test]
 fn a_ranged_map_widens_when_it_meets_a_plain_one() {
     let out = cpp("type R = 0..=9
