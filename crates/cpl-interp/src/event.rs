@@ -18,6 +18,8 @@ pub(crate) enum Event<'e, 'v> {
     /// The tree-walker ran `stmt`: what deleting it still has to move.
     Walked(&'e Stmt),
     /// The VM left what `tag` names to the tree-walker, in a loop when `in_loop`.
+    /// Native only: `CPL_VM_STATS` is its one reader.
+    #[cfg(not(target_family = "wasm"))]
     FellBack {
         tag: &'e dyn Fn() -> String,
         in_loop: bool,

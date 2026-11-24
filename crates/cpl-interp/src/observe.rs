@@ -87,9 +87,9 @@ impl Observer for Unobserved {
 impl Observer for Tracer {
     fn on(&mut self, event: Event<'_, '_>) -> bool {
         match event {
-            Event::Step(_) | Event::Walked(_) | Event::FellBack { .. } | Event::Hush(_) => {
-                return false
-            }
+            Event::Step(_) | Event::Walked(_) | Event::Hush(_) => return false,
+            #[cfg(not(target_family = "wasm"))]
+            Event::FellBack { .. } => return false,
             Event::BeginCases => self.case = Some(0),
             Event::Divider => self.divider(),
             Event::StartCase(case) => self.start_case(case),
@@ -190,7 +190,12 @@ impl<O: Observer> Interp<'_, '_, O> {
     }
 
     /// The VM fell back to the tree-walker (see [`Event::FellBack`]).
+    /// Only `CPL_VM_STATS` reads the tag, and `cpl.wasm` has no stats: there
+    /// the tag is never made into a `dyn Fn`, so its formatting isn't linked.
     pub(crate) fn fell_back(&mut self, tag: impl Fn() -> String, in_loop: bool) {
+        #[cfg(target_family = "wasm")]
+        let _ = (tag, in_loop);
+        #[cfg(not(target_family = "wasm"))]
         if let (true, Some(o)) = (O::ON, self.tracer.as_mut()) {
             o.on(Event::FellBack { tag: &tag, in_loop });
         }
