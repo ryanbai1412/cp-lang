@@ -466,6 +466,7 @@ ioi20p6
 ioi21p1
 ioi21p4
 ioi22p2
+ioi22p4
 ioi22p5
 mccc3j4
 mccc4j4
