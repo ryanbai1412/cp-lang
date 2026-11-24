@@ -609,7 +609,7 @@ pub struct Diff<D, T: Add + Sub>:
         var out: [D]T = T.zero
         var cur = T.zero
         for i in D:
-            cur = cur + d[i.l]
+            cur += d[i.l]
             out[i] = cur
         out
 
@@ -761,10 +761,10 @@ pub struct ArithDiff<D, T: Add + Sub + Mul>:
         var val = T.zero
         var s = T.zero
         for i in D:
-            s = s + e[i.l]
-            val = val + d[i.l]
+            s += e[i.l]
+            val += d[i.l]
             out[i] = val
-            val = val + s
+            val += s
         out
 
 impl Show for Prefix<D, T>:
