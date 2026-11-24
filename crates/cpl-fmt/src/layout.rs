@@ -65,7 +65,13 @@ pub(crate) fn render(src: &str, lexed: &Lexed, style: &Style, chains: bool) -> S
         let mut emitter = Emitter {
             toks: &line.toks,
             roles: &roles,
-            out: &mut out,
+            done: &mut out,
+            line: OutLine {
+                indent: line.depth * indent,
+                code: String::new(),
+                comment: None,
+                blank_before: line.blank_before,
+            },
             base_indent: line.depth * indent,
             cont: line.depth * indent,
             indent,
@@ -82,13 +88,10 @@ pub(crate) fn render(src: &str, lexed: &Lexed, style: &Style, chains: bool) -> S
             at_line_start: true,
             prev: None,
         };
-        emitter.start_line(line.depth * indent, line.blank_before);
         let nodes = tree(&line.toks);
         emitter.seq(&nodes, line.depth * indent);
         emitter.flush_pending();
-        if let Some(comment) = line.trailing {
-            out.last_mut().unwrap().comment = Some(comment.trim_end().to_string());
-        }
+        emitter.finish(line.trailing);
     }
     align_comments(&mut out, style.line_width);
 
@@ -214,14 +217,15 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
             let (from, to) = (span.start as usize, span.end as usize);
             let text = &src[from..to];
             let trails = last_tok_end.is_some_and(|end| breaks(end, from) == 0);
-            if trails {
-                // The token it trails is the last one pushed: in the
-                // current line, or closing the line before.
-                let owner = match current.as_mut() {
-                    Some(line) => line.toks.last_mut(),
-                    None => lines.last_mut().and_then(|l| l.toks.last_mut()),
-                };
-                owner.unwrap().trailing = Some(text);
+            // The token it trails is the last one pushed: in the current
+            // line, or closing the line before.
+            let owner = match current.as_mut() {
+                Some(line) => line.toks.last_mut(),
+                None => lines.last_mut().and_then(|l| l.toks.last_mut()),
+            }
+            .filter(|_| trails);
+            if let Some(owner) = owner {
+                owner.trailing = Some(text);
             } else {
                 leading.push(Comment {
                     text,
@@ -258,8 +262,7 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
         };
         match current.as_mut() {
             Some(line) => {
-                line.toks.push(entry);
-                line.toks.last_mut().unwrap().leading = leading;
+                line.toks.push(Tok { leading, ..entry });
             }
             None if entry.kind == K::Comma
                 && open_brackets > 0
@@ -271,8 +274,7 @@ fn logical_lines<'a>(src: &'a str, lexed: &Lexed) -> Vec<Line<'a>> {
                 // A trailing comma that closed a bracketed layout block (`=>\n    ...,\n`)
                 // stays attached to the preceding line so re-lexing emits the same Dedent before `,`.
                 if let Some(prev) = lines.last_mut() {
-                    prev.toks.push(entry);
-                    prev.toks.last_mut().unwrap().leading = leading;
+                    prev.toks.push(Tok { leading, ..entry });
                 }
             }
             None => {
@@ -330,11 +332,9 @@ fn tree(toks: &[Tok]) -> Vec<Node> {
                 stack.push((i, std::mem::take(&mut nodes)));
             }
             K::RParen | K::RBracket | K::RBrace
-                if stack
-                    .last()
-                    .is_some_and(|(open, _)| closer_of(toks[*open].kind) == tok.kind) =>
+                if let Some((open, outer)) =
+                    stack.pop_if(|(open, _)| closer_of(toks[*open].kind) == tok.kind) =>
             {
-                let (open, outer) = stack.pop().unwrap();
                 let items = std::mem::replace(&mut nodes, outer);
                 nodes.push(Node::Group {
                     open,
@@ -358,7 +358,10 @@ fn tree(toks: &[Tok]) -> Vec<Node> {
 struct Emitter<'a, 'b> {
     toks: &'a [Tok<'b>],
     roles: &'a [Role],
-    out: &'a mut Vec<OutLine>,
+    /// The lines finished before `line`.
+    done: &'a mut Vec<OutLine>,
+    /// The line being written.
+    line: OutLine,
     /// Base indentation of the logical line (outside any brackets).
     base_indent: usize,
     /// Indentation of a line started in the middle of an element.
@@ -397,14 +400,12 @@ impl<'a, 'b> Emitter<'a, 'b> {
     }
     fn start_line(&mut self, indent: usize, blank_before: bool) {
         self.at_line_start = true;
-        if let Some(last) = self.out.last_mut().filter(|_| self.prev.is_some()) {
-            // A line started and never written to is started again.
-            if last.code.is_empty() && last.comment.is_none() {
-                last.indent = indent;
-                return;
-            }
+        // A line started and never written to is started again.
+        if self.prev.is_some() && self.line.code.is_empty() && self.line.comment.is_none() {
+            self.line.indent = indent;
+            return;
         }
-        self.out.push(OutLine {
+        self.push_line(OutLine {
             indent,
             code: String::new(),
             comment: None,
@@ -413,15 +414,26 @@ impl<'a, 'b> Emitter<'a, 'b> {
         self.at_line_start = true;
     }
 
+    fn push_line(&mut self, line: OutLine) {
+        self.done.push(std::mem::replace(&mut self.line, line));
+    }
+
+    /// Ends the logical line, with the comment that trails it.
+    fn finish(mut self, trailing: Option<&str>) {
+        if let Some(comment) = trailing {
+            self.line.comment = Some(comment.trim_end().to_string());
+        }
+        self.done.push(self.line);
+    }
+
     fn column(&self) -> usize {
-        let line = self.out.last().unwrap();
-        line.indent + line.code.len()
+        self.line.indent + self.line.code.len()
     }
 
     fn flush_pending(&mut self) -> bool {
         match self.pending.take() {
             Some(comment) => {
-                self.out.last_mut().unwrap().comment = Some(comment.trim_end().to_string());
+                self.line.comment = Some(comment.trim_end().to_string());
                 true
             }
             None => false,
@@ -429,13 +441,12 @@ impl<'a, 'b> Emitter<'a, 'b> {
     }
 
     fn comment_line(&mut self, indent: usize, comment: &Comment) {
-        if self.at_line_start && self.out.last().is_some_and(|l| l.comment.is_none()) {
+        if self.at_line_start && self.line.comment.is_none() {
             // Reuse the empty line that was just started.
-            let line = self.out.last_mut().unwrap();
-            line.indent = indent;
-            line.comment = Some(comment.text.trim_end().to_string());
+            self.line.indent = indent;
+            self.line.comment = Some(comment.text.trim_end().to_string());
         } else {
-            self.out.push(OutLine {
+            self.push_line(OutLine {
                 indent,
                 code: String::new(),
                 comment: Some(comment.text.trim_end().to_string()),
@@ -449,7 +460,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
         let tok = &self.toks[i];
         if tok.kind == K::Comma && self.pending.is_some() {
             // `a  // why` then `,`: the comma goes before the comment.
-            self.out.last_mut().unwrap().code.push(',');
+            self.line.code.push(',');
             self.prev = Some(i);
             self.flush_pending();
             self.start_line(self.cont, false);
@@ -475,11 +486,11 @@ impl<'a, 'b> Emitter<'a, 'b> {
         if !self.at_line_start {
             if let Some(p) = self.prev {
                 if spacing::space_between(&self.toks[p], self.roles[p], tok, self.roles[i]) {
-                    self.out.last_mut().unwrap().code.push(' ');
+                    self.line.code.push(' ');
                 }
             }
         }
-        self.out.last_mut().unwrap().code.push_str(tok.text);
+        self.line.code.push_str(tok.text);
         self.at_line_start = false;
         self.prev = Some(i);
         if let Some(comment) = tok.trailing {
@@ -563,7 +574,13 @@ impl<'a, 'b> Emitter<'a, 'b> {
         if nodes.is_empty() {
             return;
         }
-        let forced = nodes.iter().position(|n| self.must_break(n));
+        // The bracket to open: where it is, its opener, contents and closer.
+        let forced = nodes.iter().enumerate().find_map(|(n, node)| match node {
+            Node::Group { open, items, close } if self.must_break(node) => {
+                Some((n, *open, items, *close))
+            }
+            _ => None,
+        });
         if forced.is_none() {
             let mut prev = if self.at_line_start { None } else { self.prev };
             if self.column() + self.flat_width(nodes, &mut prev) + self.tail <= self.width {
@@ -580,16 +597,17 @@ impl<'a, 'b> Emitter<'a, 'b> {
                 .iter()
                 .enumerate()
                 .filter_map(|(n, node)| match node {
-                    Node::Group { items, .. } => {
+                    Node::Group { open, items, close } => {
                         let width = self.flat_width(items, &mut None);
                         let is_list = top_level(self.toks, items).any(|k| k == K::Comma);
                         // Opening `a[i]` gains nothing.
-                        (is_list || width >= MIN_BREAK_WIDTH).then_some((width, n))
+                        (is_list || width >= MIN_BREAK_WIDTH)
+                            .then_some((width, (n, *open, items, *close)))
                     }
                     _ => None,
                 })
-                .max()
-                .map(|(_, n)| n)
+                .max_by_key(|&(width, (n, ..))| (width, n))
+                .map(|(_, group)| group)
         });
         // Opening a bracket in the middle of a long condition would leave
         // the operands after it trailing its closer (`] and x`); break the
@@ -604,12 +622,12 @@ impl<'a, 'b> Emitter<'a, 'b> {
             .op_cuts(nodes)
             .filter(|_| self.chains && forced.is_none());
         let cont = indent + self.hang;
-        if let (Some(pivot), Some(cuts)) = (pivot, &cuts) {
+        if let (Some((pivot, ..)), Some(cuts)) = (pivot, &cuts) {
             if nodes.iter().enumerate().skip(pivot + 1).any(loose) {
                 return self.chain(nodes, indent, cont, cuts);
             }
         }
-        let Some(pivot) = pivot else {
+        let Some((pivot, open, items, close)) = pivot else {
             // No bracket worth opening: break after the loosest operators.
             match cuts {
                 Some(cuts) => self.chain(nodes, indent, cont, &cuts),
@@ -619,10 +637,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
         };
         let tail = std::mem::take(&mut self.tail);
         self.seq(&nodes[..pivot], indent);
-        let Node::Group { open, items, close } = &nodes[pivot] else {
-            unreachable!()
-        };
-        self.broken(*open, items, *close, indent);
+        self.broken(open, items, close, indent);
         self.tail = tail;
         self.seq(&nodes[pivot + 1..], indent);
     }
@@ -736,7 +751,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
             self.seq(element, inner);
             self.tail = 0;
             if adds_comma {
-                self.out.last_mut().unwrap().code.push(',');
+                self.line.code.push(',');
             }
         }
         self.nest -= 1;
@@ -748,7 +763,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
         self.start_line(indent, false);
         // The closer's comments were just written.
         let tok = &self.toks[close];
-        self.out.last_mut().unwrap().code.push_str(tok.text);
+        self.line.code.push_str(tok.text);
         self.at_line_start = false;
         self.prev = Some(close);
         if let Some(comment) = tok.trailing {

@@ -1133,3 +1133,12 @@ fn lays_out_blocks_breaks_and_comments() {
         assert_eq!(fmt(src), want, "{src}");
     }
 }
+
+#[test]
+fn a_comment_opens_its_own_bracket_not_the_widest_one() {
+    let src = "f(aaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbb)(x, // why\n    y)\nprint(1) // done\n";
+    assert_eq!(
+        fmt(src),
+        "f(aaaaaaaaaaaaaaaaaaaa, bbbbbbbbbbbbbbbbbbbb)(\n    x,  // why\n    y,\n)\nprint(1)  // done\n"
+    );
+}
