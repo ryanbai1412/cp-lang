@@ -515,7 +515,7 @@ class CommitTest(unittest.TestCase):
         self.assertEqual(ev[1:], [f"cargo fmt --check {ps}", f"cargo clippy -q {ps} --all-targets -- -D warnings",
                                   self.TREE + " --target wasm32-unknown-unknown -e normal --prefix none",
                                   "rustc --print target-libdir --target wasm32-unknown-unknown",
-                                  f"cargo nextest run --workspace --profile commit --no-fail-fast -E {expr}"])
+                                  f"scripts/new_reds.py -- cargo nextest run --workspace --profile commit --no-fail-fast -E {expr}"])
         code, ev, _, _, _, _ = self._commit(sel, outs={self.TREE: "cpl-wasm v0.1.0\n"})
         self.assertFalse([e for e in ev if e.startswith("rustc")])
 
@@ -555,7 +555,7 @@ class CommitTest(unittest.TestCase):
         code, ev, _, _, _, _ = self._commit(sel, outs={"git diff --cached": dream})
         self.assertEqual(code, 0)
         self.assertEqual(self.tiers, [("commit", None), ("touched", {"scripts/x.py"})])
-        firsts = ["scripts/affected.py --run-slices a b", "cargo nextest run --workspace --no-fail-fast -E (test(=d))",
+        firsts = ["scripts/affected.py --run-slices a b", "scripts/new_reds.py -- cargo nextest run --workspace --no-fail-fast -E (test(=d))",
                   "target/debug/cpl check scripts/ci.py", "scripts/corpus.py make --changed staged",
                   "scripts/corpus.py verify --only dream --cpl target/debug/cpl p1", "scripts/idioms-catalog.py --check",
                   "scripts/spec-gate.py traits",

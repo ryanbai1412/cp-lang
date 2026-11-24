@@ -366,3 +366,18 @@ and never reached the lint test it can break; main went red on it twice in
 30 minutes. *Example:* a std edit that raises L0550 fails
 `touched-path slices: vm-trace corpus-warnings`.
 *Enforced by:* `scripts/affected.py`, `scripts/test_affected.py`.
+
+### ci/R40
+
+The commit tier refuses only the reds a change brings: when its nextest
+fails, `scripts/new_reds.py` reruns each failing test at the base (cached
+per base tree) and refuses only a test that passes there. A test red at the
+base too prints `pre-existing red, owner <lane>` and goes to main's culprit
+job.
+*Why:* Perf C's fix for 12 of 16 differential shards, and the compiler and
+wasm lanes' cuts, were refused for 4 tests already red on clean main; a red
+main then blocked the very fixes that would turn it green. Nothing is
+skipped: every test still runs, and a new red still refuses.
+*Example:* with `cpl-codegen tests::only_the_runtime_a_program_uses_is_written`
+red on main, an interp-only cut lands and names it as pre-existing.
+*Enforced by:* `scripts/new_reds.py`, `scripts/ci.py`, `scripts/test_land.py`.

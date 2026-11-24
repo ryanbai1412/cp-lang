@@ -609,12 +609,12 @@ class Tail:
             expr = f"({sel.get('filter', '')}){not_slow}"
             if slice_filter := sel.get("slice_filter"):
                 expr += f" & not ({slice_filter})"
-            if self.call(["cargo", "nextest", "run", "--workspace", "--profile", "commit", "--no-fail-fast", "-E", expr]):
+            if self.call([*NEW_REDS, "cargo", "nextest", "run", "--workspace", "--profile", "commit", "--no-fail-fast", "-E", expr]):
                 raise Failed(f"the touched crates' tests failed (named above); rerun: cargo nextest run --workspace -E '{expr}'")
         if (data := sel.get("data_filter")) and self.wants("data"):
             self.step(f"tests that read the touched data files: {data}")
             expr = f"({data}){not_slow}"
-            if self.call(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr]):
+            if self.call([*NEW_REDS, "cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr]):
                 raise Failed(f"tests that read the touched data files failed (named above); rerun: cargo nextest run --workspace -E '{expr}'")
         if (files := sel.get("check_files", "").split()) and self.wants("check_files"):
             self.step("cpl check of the touched corpus programs")
@@ -1046,6 +1046,9 @@ AUDIT_FIRST = "staged corpus packages: header (scripts/corpus.py verify --only h
 # `ci.py commit --only` takes. A hook cut past 25 s leaves the ones it didn't
 # reach to land.sh (CPL_COMMIT_PROGRESS); the touched-path slices and the staged
 # conformance cases have pending files of their own, and gen.py --check only notes.
+# The commit tier refuses only the reds a change brings: a test that fails at
+# the base too is main's, reported with its owner (scripts/new_reds.py).
+NEW_REDS = [sys.executable, str(ROOT / "scripts" / "new_reds.py"), "--"]
 COMMIT_STEPS = ("scripts", "fmt", "clippy", "wasm", "nextest", "data", "check_files", "audit", "idioms", "traits",
                 "touched_steps", "script_tests", "site")
 

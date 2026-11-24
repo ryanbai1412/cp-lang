@@ -29,7 +29,8 @@ class LandTest(unittest.TestCase):
         git(self.tmp, "init", "-q", "--bare", "-b", "main", str(remote))
         seed = self.clone("seed")
         (seed / "scripts").mkdir()
-        for name in ("land.sh", "wasm-warm.sh", "retry.sh", "ratchet_merge.py", "ratchet_remeasure.py", "gen.py"):
+        for name in ("land.sh", "wasm-warm.sh", "retry.sh", "ratchet_merge.py", "ratchet_remeasure.py", "gen.py",
+                     "new_reds.py", "culprit.py", "domain_of.py"):
             shutil.copy(HERE / name, seed / "scripts" / name)
         (seed / "gen.toml").write_text('[[gen]]\nname = "widths"\nfiles = ["spec/conformance/widths/*.cp"]\n')
         # A regen.sh that dirties a file the rebase never saw: land must not run it.
@@ -140,6 +141,39 @@ class LandTest(unittest.TestCase):
         self.assertIn("gate: bad.txt", r.stderr)
         self.assertIn("bad.txt", git(ours, "show", "--name-only", "--format=", "HEAD"))
         self.assertNotIn("bad.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+
+    def test_the_commit_tier_refuses_only_the_reds_a_change_brings(self):
+        # Perf C's fix was refused for 4 tests red on clean main: a test red at
+        # the base is main's to fix, one that passes there is the change's.
+        theirs, ours, next_ = self.clone("theirs"), self.clone("ours"), self.clone("next")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\ncat reds*.txt 2>/dev/null | while read -r b t; do echo \"        FAIL [   0.010s] $b $t\"; done\n"
+            "! cat reds*.txt 2>/dev/null | grep -q . || exit 100\n")
+        (theirs / "reds.txt").write_text("cpl-codegen tests::red_on_main\n")
+        (theirs / "crates" / "cpl-codegen" / "src").mkdir(parents=True)
+        (theirs / "crates" / "cpl-codegen" / "src" / "lib.rs").write_text("fn red_on_main() {}\n")
+        self._hook(theirs, "exec python3 scripts/new_reds.py -- sh scripts/fake-tests.sh -E all\n")
+        self.commit(theirs, "main is red")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "x.txt").write_text("x\n")
+        self.commit(ours, "ours")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("pre-existing red, owner infra: cpl-codegen tests::red_on_main", r.stderr)
+        self.assertIn("x.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+        (next_ / "reds-new.txt").write_text("cpl-codegen tests::new_red\n")
+        self.commit(next_, "next")
+        r = self.land(next_)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("NEW red: cpl-codegen tests::new_red", r.stderr)
+        self.assertIn("pre-existing red, owner infra: cpl-codegen tests::red_on_main", r.stderr)
+        self.assertNotIn("reds-new.txt", git(next_, "show", "--name-only", "--format=", "origin/main"))
+        # The base's results are cached by its tree: asking again reruns nothing there.
+        r = subprocess.run([sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"],
+                           cwd=next_, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 1)
+        self.assertIn("NEW red: cpl-codegen tests::new_red", r.stderr)
+        self.assertNotIn("new-reds: rerunning", r.stderr)
 
     def test_the_ratchet_measures_with_a_cpl_built_at_the_rebased_tip(self):
         # corpus_fmt_dirty refuses a cpl older than the sources the rebase brought in.
