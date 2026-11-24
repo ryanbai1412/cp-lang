@@ -961,6 +961,9 @@ class DebtRatchetTest(unittest.TestCase):
                 '                if ok =>\n'
                 '        let x = ("not", "arm");\n')
             self.assertEqual(dr.ir_builtin_names(root), ["at", "find", "len", "nth", "sum"])
+            self._write(root, "plan/domains/tech-debt/architecture/builtin-floor.md",
+                        "| Storage | intrinsic | `len` `at` `nth` |\n| Derived | move | `sum` `find` |\n")
+            self.assertEqual(dr.ir_builtin_derived(root), ["find", "sum"])
 
     def test_a_raised_baseline_needs_a_decision_naming_it(self) -> None:
         with tempfile.TemporaryDirectory() as d:

@@ -44,7 +44,7 @@ Factory owns it.
 | Surface | The one mechanism | Owner | Gate (counter or check) |
 |---|---|---|---|
 | Analysis | `cpl_check::Session` is the only thing that builds an analysis; it is per-revision and query-shaped | Core, with Consumers | `own_databases`, `consumer_rederived` |
-| Std names in the compiler | Only the intrinsics table (decision 266) may name a std item | Core | `ir_builtin_names`, `backend_std_names`, `lint_std_names`, `prelude_privilege` |
+| Std names in the compiler | Only the intrinsics table (decision 266) may name a std item | Core | `ir_builtin_names`, `ir_builtin_derived`, `backend_std_names`, `lint_std_names`, `prelude_privilege` |
 | Std metrics | Each `plan/domains/*/measure.py` has a self-test that fails on a `0 of 0` reading | Content | `measure_broken`, `scripts/test_stdlib_measure.py` |
 | Std bodies | Every pub std item runs its CP Lang body; the compiler never bypasses it | Content | `std_shadowed` (std pub names the compiler also matches by string, intrinsics excluded) |
 | Running programs | The VM, also built to wasm; no interpreter fallback path; compile-time growth is refused (E0319) | Core | `vm_fallbacks`, `tree_walker`, `mono_unguarded` |

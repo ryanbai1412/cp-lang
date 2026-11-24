@@ -8864,4 +8864,8 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** `.fold` on a sequence already means "fold every element", so a second meaning on windows would break one-name-one-meaning. Three module docs taught a `windows(k).fold` that never existed.
 - **Reverse.** Drop `window_fold` from `std/window.cp` and the prelude.
 
-## 535. (reserved, core)
+## 535. Every name the lowering string-matches has a floor row, and off-floor names ratchet to 0 (core, 2026-11-24)
+
+- **Call.** `plan/domains/tech-debt/architecture/builtin-floor.md` classifies all 161 `ir_builtin_names`. The decision-266 floor now also lists the storage writes (`push` `insert` `reserve` ...), views (`take` `rebase` `rekey` ...), ordered-set lookups (`first_ge` ...), positions and cuts (`l` `r` `idx` `ord` ...), optionals (`is_some` `is_none`) and the libm functions (`sin` ... `hypot`): all storage or numeric primitives that the first pass had left unlisted. The remaining 38 names (seq reducers, sorts, `Char` predicates, trait default getters, name-keyed help) are counted by `ir_builtin_derived`, which shrinks to 0 as each becomes a std body or a registry row.
+- **Why.** The table listed 66 of 161 names, so 95 privileged names had no class and nothing stopped a new one. Now a new string-matched name fails the ratchet unless it gets an intrinsic row, which needs a line here. `std_shadowed` excludes floor names, so it falls from 81 to 62 by this reclassification alone, not by moved bodies.
+- **Reverse.** Drop `ir_builtin_derived` from `scripts/debt-ratchet.py` and the added intrinsic rows from the floor table.

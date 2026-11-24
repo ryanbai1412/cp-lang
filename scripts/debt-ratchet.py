@@ -1581,6 +1581,12 @@ def _builtin_floor(root: Path) -> set[str]:
     return floor
 
 
+def ir_builtin_derived(root: Path) -> list[str]:
+    """String-matched names not on a decision-266 intrinsic row: std bodies the compiler still owns."""
+    floor = _builtin_floor(root)
+    return [n for n in ir_builtin_names(root) if n not in floor]
+
+
 def _compiler_strings(root: Path) -> set[str]:
     """Every identifier-like string literal in the checker, IR, interpreter and emitter, tests aside."""
     found: set[str] = set()
@@ -1870,6 +1876,7 @@ COUNTERS = {
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
+    "ir_builtin_derived": ("string-matched names off the decision-266 floor table", ir_builtin_derived, True),
     "prelude_privilege": ("public std names in cpl-check prelude.rs tables", prelude_privilege, True),
     "backend_std_names": ("std type names in IR/interp/codegen", backend_std_names, True),
     "lint_std_names": ("std fn names string-matched in lint rules", lint_std_names, True),
