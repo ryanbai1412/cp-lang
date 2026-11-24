@@ -1,5 +1,6 @@
 // What each prebuild stage (web/scripts/<name>.mjs) reads and writes, as
-// repo-relative paths (prebuild/cache.mjs has the syntax). prebuild.mjs skips
+// repo-relative paths (prebuild/cache.mjs has the syntax). A stage runs after
+// every stage whose outputs it reads, so the order follows from these lists. prebuild.mjs skips
 // a stage when these are unchanged and fails one that reads a repo file not
 // listed here. `always` stages depend on something outside the repo (git
 // HEAD, the network) and always run.
@@ -23,10 +24,6 @@ export const stages = [
   { name: 'gate', inputs: [...compiler, 'web/content', 'examples', 'corpus/problems', 'dist/wasm', 'web/public/wasm'], outputs: ['web/.gate'] },
 ];
 
-export const chains = [
-  ['wasm', 'wasm-size', 'lint-inputs', 'practice-mutants'],
-  ['stamp', 'releases', 'practice', 'downloads', 'gen-ref', 'gen-tools', 'gen-debug', 'facts', 'gate'],
-];
-// Run after the chains, one at a time: stress-parity holds the browser build
+// Run after every other stage, one at a time: stress-parity holds the browser build
 // to a wall-clock limit, which another chain's load on the runner would break.
 export const alone = ['stress-parity'];

@@ -1,5 +1,6 @@
-// Runs the prebuild stages as two independent chains at once (the wasm build
-// shares nothing with the generated docs and the snippet gate), skipping each
+// Runs the prebuild stages, PREBUILD_JOBS (default 2) at a time, each after
+// every stage whose outputs it reads (the gate after the wasm it checks
+// against), skipping each
 // stage whose inputs and outputs are unchanged since its last successful run
 // (prebuild/cache.mjs). Every stage declares what it reads; a run that reads
 // a repo file outside its declaration fails, because a cache keyed on the
@@ -11,8 +12,8 @@ import { existsSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { hashFiles, record, recorded, saveMemo, stageKey, undeclared, web } from './prebuild/cache.mjs';
-import { alone, chains, stages } from './prebuild/stages.mjs';
+import { dependencies, hashFiles, record, recorded, saveMemo, stageKey, undeclared, web } from './prebuild/cache.mjs';
+import { alone, stages } from './prebuild/stages.mjs';
 
 // A stage that hangs fails by name instead of running into CI's job timeout
 // with no log; each stage's time is printed so slow ones show.
@@ -54,13 +55,39 @@ const run = (stage) =>
     });
   });
 
+const deps = dependencies(stages);
+const selected = new Set(stages.filter((s) => !alone.includes(s.name) && (!only.length || only.includes(s.name))).map((s) => s.name));
+let free = Math.max(1, Number(process.env.PREBUILD_JOBS ?? 2));
+const waiting = [];
+const slot = async (f) => {
+  if (free) free--;
+  else await new Promise((r) => waiting.push(r));
+  try {
+    return await f();
+  } finally {
+    const next = waiting.shift();
+    if (next) next();
+    else free++;
+  }
+};
+const runs = new Map();
+const start = (stage) => {
+  if (!runs.has(stage.name))
+    runs.set(
+      stage.name,
+      (async () => {
+        for (const d of deps.get(stage.name).filter((d) => selected.has(d.name)))
+          await start(d).catch(() => {
+            throw new Error(`prebuild: ${stage.name} skipped: ${d.name} failed`);
+          });
+        return slot(() => run(stage));
+      })(),
+    );
+  return runs.get(stage.name);
+};
 const byName = new Map(stages.map((s) => [s.name, s]));
-const results = await Promise.allSettled(
-  chains.map(async (steps) => {
-    for (const step of steps) if (!only.length || only.includes(step)) await run(byName.get(step));
-  }),
-);
-// After the chains, even when one failed: a red docs stage must not hide
+const results = await Promise.allSettled([...selected].map((n) => start(byName.get(n))));
+// After the rest, even when one failed: a red docs stage must not hide
 // whether the browser keeps stress parity.
 for (const step of alone)
   if (!only.length || only.includes(step))

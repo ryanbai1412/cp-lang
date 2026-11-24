@@ -118,3 +118,27 @@ export function undeclared(stage, reads) {
   }
   return [...bad].sort();
 }
+
+/** The stages whose outputs `stage` reads, so it must run after them. */
+export function producers(stage, all) {
+  const reads = (out) => {
+    const o = join(repo, out);
+    return covers(stage.inputs, o) || stage.inputs.some((i) => !i.startsWith('!') && under(parse(i).root, o));
+  };
+  return all.filter((s) => s !== stage && s.outputs.some(reads));
+}
+
+/** Every stage's producers, failing on a cycle, since no order would build it. */
+export function dependencies(all) {
+  const deps = new Map(all.map((s) => [s.name, producers(s, all)]));
+  const state = new Map();
+  const visit = (s, path) => {
+    if (state.get(s.name) === 'done') return;
+    if (state.get(s.name) === 'open') throw new Error(`prebuild: stages read each other's outputs: ${[...path, s.name].join(' -> ')}`);
+    state.set(s.name, 'open');
+    for (const d of deps.get(s.name)) visit(d, [...path, s.name]);
+    state.set(s.name, 'done');
+  };
+  for (const s of all) visit(s, []);
+  return deps;
+}
