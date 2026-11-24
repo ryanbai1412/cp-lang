@@ -1478,6 +1478,7 @@ impl<'a> Checker<'a> {
                 ) = (callee_name, callee_def.as_deref())
                 {
                     self.shared_bound_args_agree(fn_name, bound_args, &bindings, call.span);
+                    self.item_impls_hold(fn_name, bound_args, &bindings, call.span);
                     let bounds = (bounds.iter())
                         .flat_map(|(p, ts)| ts.iter().map(move |t| (p.clone(), t.clone())))
                         .collect::<Vec<_>>();
