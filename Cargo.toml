@@ -72,6 +72,24 @@ opt-level = 1
 [profile.dev.package.cpl-json]
 opt-level = 1
 
+# A `cpl run` proves its ranges, reads its config and env, and judges its
+# output; unoptimized, those take most of each run the trace and vm-fallback
+# suites make (hundreds of runs per suite).
+[profile.dev.package.cpl-prover]
+opt-level = 1
+
+[profile.dev.package.cpl-env]
+opt-level = 1
+
+[profile.dev.package.cpl-rt]
+opt-level = 1
+
+[profile.dev.package.cpl-judge]
+opt-level = 1
+
+[profile.dev.package.cpl-config]
+opt-level = 1
+
 # CI's optimized cpl (site, acceptance): what users run is `release`; this
 # builds in about two thirds of the time with the same opt-level.
 [profile.ci]
