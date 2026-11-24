@@ -106,7 +106,27 @@ pub fn rounds(rounds: usize, modes: &mut [&mut dyn FnMut()]) -> Rounds {
     )
 }
 
+/// Times `modes` as [`rounds`] does, then [`ROUNDS`] more at a time, up
+/// to [`MAX_ROUNDS`], while `holds` says no: a least time only goes down
+/// with more rounds, so a busy machine gets more chances and a real
+/// slowdown still fails.
+pub fn rounds_until(modes: &mut [&mut dyn FnMut()], holds: impl Fn(&Rounds) -> bool) -> Rounds {
+    let mut all = rounds(ROUNDS, modes);
+    while !holds(&all) && all.0.len() < MAX_ROUNDS {
+        all.0.extend(rounds(ROUNDS, modes).0);
+    }
+    all
+}
+
+/// The most rounds [`rounds_until`] runs.
+pub const MAX_ROUNDS: usize = 4 * ROUNDS;
+
 impl Rounds {
+    /// How many rounds were timed.
+    pub fn count(&self) -> usize {
+        self.0.len()
+    }
+
     /// Mode `k`'s least time, the round the load disturbed least.
     pub fn time(&self, k: usize) -> Duration {
         self.0.iter().map(|round| round[k]).min().unwrap()
