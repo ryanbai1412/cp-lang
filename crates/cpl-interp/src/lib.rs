@@ -292,11 +292,19 @@ fn observe(
         let mut output = output
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let io = io
+        let taken = io
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
-            .take()
-            .expect("only the thread that starts takes the input");
+            .take();
+        let Some(io) = taken else {
+            return Observed {
+                trap: Some(Trap::said(
+                    Span::default(),
+                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                )),
+                ..Observed::default()
+            };
+        };
         let trace = trace
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner())
@@ -540,7 +548,10 @@ fn stmt_failure(stmt: &Stmt, message: Option<Value>) -> Box<Trap> {
             failed
         }
         Stmt::Trap(message, span) => Box::new(Trap::written(*span, message.clone())),
-        _ => unreachable!("only an assert or a trap fails"),
+        _ => Box::new(Trap::said(
+            Span::default(),
+            cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+        )),
     }
 }
 
@@ -750,7 +761,7 @@ fn relifetime<'a, 'b>(
     mut locals: Vec<(&'a str, &'a Ty, &'a Value)>,
 ) -> Vec<(&'b str, &'b Ty, &'b Value)> {
     locals.clear();
-    locals.into_iter().map(|_| unreachable!()).collect()
+    locals.into_iter().filter_map(|_| None).collect()
 }
 
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
@@ -814,11 +825,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         if let Some(tracer) = &mut self.tracer {
             tracer.on(crate::observe::Event::BeginCases);
         }
-        let returned = match self.vm.clone() {
-            Some(compiled) => match &compiled.setup {
-                Some(setup) => self.run_setup_vm(&compiled, setup)?,
-                None => unreachable!("a multitest program compiles its setup"),
-            },
+        let vm = self.vm.clone();
+        let returned = match vm.as_ref().and_then(|c| Some((c, c.setup.as_ref()?))) {
+            Some((compiled, setup)) => self.run_setup_vm(compiled, setup)?,
             None => matches!(self.block(&program.setup)?, Flow::Return(_)),
         };
         if returned {
@@ -1100,14 +1109,27 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     _ => None,
                 };
                 match direct {
-                    Some(Value::Tuple(fields)) => {
-                        fields.get(*index).expect("field index within tuple")
-                    }
+                    Some(Value::Tuple(fields)) => match fields.get(*index) {
+                        Some(field) => field,
+                        None => {
+                            return trap(
+                                span,
+                                cpl_diag::msgs::interp::INTERNAL_FIELD_VALUE_WITHOUT_FIELDS.at(&[]),
+                            )
+                        }
+                    },
                     Some(Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),
                     _ => match self.eval(base)? {
-                        Value::Tuple(fields) => {
-                            fields.get(*index).expect("field index within tuple")
-                        }
+                        Value::Tuple(fields) => match fields.get(*index) {
+                            Some(field) => field,
+                            None => {
+                                return trap(
+                                    span,
+                                    cpl_diag::msgs::interp::INTERNAL_FIELD_VALUE_WITHOUT_FIELDS
+                                        .at(&[]),
+                                )
+                            }
+                        },
                         _ => {
                             return trap(
                                 span,
@@ -1528,12 +1550,12 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 
     fn index(&mut self, base: &'p Expr, indices: &'p [Expr], span: Span) -> Res<Value> {
         // A variable is indexed in place: only the element is copied.
-        let direct = matches!(base.kind, ExprKind::Local(_) | ExprKind::Global(_));
+        let direct = Var::of(base);
         let held;
         let mut stack_vals: [Value; 2] = [Value::Unit, Value::Unit];
         let mut heap_vals: Vec<Value> = Vec::new();
         let n = indices.len();
-        let holder: &Value = if direct {
+        let holder: &Value = if let Some(var) = direct {
             if n <= 2 {
                 for (i, index) in indices.iter().enumerate() {
                     stack_vals[i] = self.eval(index)?;
@@ -1544,11 +1566,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     heap_vals.push(self.eval(index)?);
                 }
             }
-            match &base.kind {
-                ExprKind::Local(slot) => self.local(*slot),
-                ExprKind::Global(id) => &self.globals[*id],
-                _ => unreachable!("checked above"),
-            }
+            self.var(var)
         } else {
             held = self.eval(base)?;
             if n <= 2 {
@@ -1848,6 +1866,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         })
     }
 
+    /// The value of the variable `var`, where it is.
+    fn var(&self, var: Var) -> &Value {
+        match var {
+            Var::Local(slot) => self.local(slot),
+            Var::Global(id) => &self.globals[id],
+        }
+    }
+
     /// The value of a local, through the alias a by-reference capture holds.
     fn local(&self, slot: usize) -> &Value {
         match &self.stack[self.base + slot] {
@@ -1863,13 +1889,9 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         // `k in m` and `m.get(k)` on a variable look in it where it is:
         // copying a map to ask it one question makes a loop quadratic.
         if let (Builtin::Contains | Builtin::MapGet, [holder, key]) = (op, args) {
-            if matches!(holder.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
+            if let Some(var) = Var::of(holder) {
                 let key = value::strip_cached(&self.eval(key)?, &key.ty, self.program);
-                let held = match &holder.kind {
-                    ExprKind::Local(slot) => self.local(*slot),
-                    ExprKind::Global(id) => &self.globals[*id],
-                    _ => unreachable!("checked above"),
-                };
+                let held = self.var(var);
                 match (op, held) {
                     (Builtin::Contains, Value::Map(entries)) => {
                         let entries = entries.clone();
@@ -1966,5 +1988,22 @@ fn seq_noun(seq: &Value) -> &'static str {
         Value::Array(_) => "array",
         Value::Range(..) | Value::Range128(..) | Value::RangeF(..) => "range",
         _ => "list",
+    }
+}
+
+/// A variable an expression names, so it can be read where it is.
+#[derive(Clone, Copy)]
+enum Var {
+    Local(usize),
+    Global(usize),
+}
+
+impl Var {
+    fn of(e: &Expr) -> Option<Var> {
+        match e.kind {
+            ExprKind::Local(slot) => Some(Var::Local(slot)),
+            ExprKind::Global(id) => Some(Var::Global(id)),
+            _ => None,
+        }
     }
 }

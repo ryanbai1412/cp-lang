@@ -2004,3 +2004,18 @@ print(walk([1, 2], \"ab\"))
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "4243\n");
 }
+
+#[test]
+fn operands_fields_and_variables_read_in_place() {
+    let src = "\
+let g = [4, 5, 6]
+var m: Map<Int, Int> = []
+m[2] = 7
+let p = (3, 9)
+let q = (8,)
+print(g[1], p.1, q.0, -p.0, yes(2 in m), yes(5 in m), yes(p.0 < p.1))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "5 9 8 -3 YES NO YES\n");
+}

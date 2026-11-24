@@ -102,8 +102,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let span = e.span;
         Ok(match &e.kind {
             ExprKind::Cmp(op, lhs, _) => {
-                let mut vals = vals.into_iter();
-                let (l, r) = (vals.next().unwrap(), vals.next().unwrap());
+                let [l, r] = operand_values(vals, span)?;
                 let l = match l {
                     Value::MutView(mv) => Value::List(Rc::new(crate::value::Cells::from(
                         self.mut_view_to_vec(&mv, span)?,
@@ -184,18 +183,18 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 Value::Bool(compare(*op, &l, &r))
             }
             ExprKind::Cast(cast, _) => {
-                let value = vals.into_iter().next().unwrap();
+                let [value] = operand_values(vals, span)?;
                 self.cast(*cast, value, span)?
             }
             ExprKind::Tuple(items) => {
                 let mut values = vals;
-                if items.len() == 1
+                let one = items.len() == 1
                     && !matches!(
                         &e.ty,
                         Ty::List(_) | Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..)
-                    )
-                {
-                    let v = values.pop().unwrap();
+                    );
+                if let (true, [_]) = (one, values.as_slice()) {
+                    let v = std::mem::replace(&mut values[0], Value::Unit);
                     if let Value::Int(x) = v {
                         return Ok(Value::Tuple(TupleVal::OneInt(x)));
                     }
@@ -223,12 +222,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 }
             }
             ExprKind::Variant(tag, _) => Value::Enum(*tag as u32, Rc::new(vals)),
-            ExprKind::IsVariant(_, tag) => match vals.into_iter().next().unwrap() {
-                Value::Enum(actual, _) => Value::Bool(actual as usize == *tag),
+            ExprKind::IsVariant(_, tag) => match operand_values(vals, span)? {
+                [Value::Enum(actual, _)] => Value::Bool(actual as usize == *tag),
                 _ => Value::Bool(false),
             },
-            ExprKind::Payload(_, tag, index) => match vals.into_iter().next().unwrap() {
-                Value::Enum(actual, payload) if actual as usize == *tag => payload[*index].clone(),
+            ExprKind::Payload(_, tag, index) => match operand_values(vals, span)? {
+                [Value::Enum(actual, payload)] if actual as usize == *tag => {
+                    payload[*index].clone()
+                }
                 _ => {
                     return trap(
                         span,
@@ -236,34 +237,37 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     )
                 }
             },
-            ExprKind::Unary(op, _) => match (op, vals.into_iter().next().unwrap()) {
-                (UnOp::Neg, Value::Int(v)) => match v.checked_neg() {
-                    Some(v) => Value::Int(v),
-                    None => {
-                        return trap(
-                            span,
-                            cpl_diag::msgs::interp::INTEGER_OVERFLOW_DOES_NOT_FIT.at(&[&v]),
-                        )
-                    }
-                },
-                (UnOp::Neg, Value::I128(v)) => match v.get().checked_neg() {
-                    Some(v) => Value::I128(v.into()),
-                    None => {
-                        return trap(
-                            span,
-                            cpl_diag::msgs::interp::INTEGER_OVERFLOW_DOES_NOT_FIT_2.at(&[&v]),
-                        )
-                    }
-                },
-                (UnOp::Neg, Value::U64(v)) => Value::U64(v.wrapping_neg()),
-                (UnOp::Neg, Value::Float(v)) => Value::Float(-v),
-                (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
-                (UnOp::Pos, v) => v,
-                (UnOp::BitNot, Value::Int(v)) => Value::Int(!v),
-                (UnOp::BitNot, Value::I128(v)) => Value::I128((!v.get()).into()),
-                (UnOp::BitNot, Value::U64(v)) => Value::U64(!v),
-                (_, other) => other,
-            },
+            ExprKind::Unary(op, _) => {
+                let [value] = operand_values(vals, span)?;
+                match (op, value) {
+                    (UnOp::Neg, Value::Int(v)) => match v.checked_neg() {
+                        Some(v) => Value::Int(v),
+                        None => {
+                            return trap(
+                                span,
+                                cpl_diag::msgs::interp::INTEGER_OVERFLOW_DOES_NOT_FIT.at(&[&v]),
+                            )
+                        }
+                    },
+                    (UnOp::Neg, Value::I128(v)) => match v.get().checked_neg() {
+                        Some(v) => Value::I128(v.into()),
+                        None => {
+                            return trap(
+                                span,
+                                cpl_diag::msgs::interp::INTEGER_OVERFLOW_DOES_NOT_FIT_2.at(&[&v]),
+                            )
+                        }
+                    },
+                    (UnOp::Neg, Value::U64(v)) => Value::U64(v.wrapping_neg()),
+                    (UnOp::Neg, Value::Float(v)) => Value::Float(-v),
+                    (UnOp::Not, Value::Bool(v)) => Value::Bool(!v),
+                    (UnOp::Pos, v) => v,
+                    (UnOp::BitNot, Value::Int(v)) => Value::Int(!v),
+                    (UnOp::BitNot, Value::I128(v)) => Value::I128((!v.get()).into()),
+                    (UnOp::BitNot, Value::U64(v)) => Value::U64(!v),
+                    (_, other) => other,
+                }
+            }
             ExprKind::Read(spec) => {
                 let given: Vec<_> = operands(e).into_iter().zip(vals).collect();
                 self.read(spec, span, &given)?
@@ -288,8 +292,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 holder => self.index_value(holder, &vals[1..], &base.ty, span)?,
             },
             ExprKind::Binary(op, ..) => {
-                let mut vals = vals.into_iter();
-                let (l, r) = (vals.next().unwrap(), vals.next().unwrap());
+                let [l, r] = operand_values(vals, span)?;
                 binary(*op, l, r, span)?
             }
             _ => {
@@ -354,5 +357,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
         }
         Ok(self.cmp_ty_val(ty, l, r, span)?.is_lt())
+    }
+}
+
+/// The values `apply` was handed for an expression with `N` operands.
+fn operand_values<const N: usize>(vals: Vec<Value>, span: Span) -> Res<[Value; N]> {
+    match <[Value; N]>::try_from(vals) {
+        Ok(vals) => Ok(vals),
+        Err(_) => trap(
+            span,
+            cpl_diag::msgs::interp::INTERNAL_NO_SHARED_EVALUATION_FOR.at(&[]),
+        ),
     }
 }
