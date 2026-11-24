@@ -324,19 +324,13 @@ pub fn div_mod<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> (q: List<Mod<P>>, r: List
     var ra = List.filled(q_len, Mod<P>(0))
     unchecked:
         for i in 0..q_len: ra[i] = ta[ta.len - 1 - i]
-    let rb = rev_poly(tb)
-    var q_rev = convolve(ra, inv(rb, q_len))
-    if q_rev.len > q_len: q_rev.truncate(q_len)
-    while q_rev.len < q_len: q_rev.push(Mod<P>(0))
-    let q = rev_poly(q_rev)
+    var q = convolve(ra, inv(rev_poly(tb), q_len))
+    q.truncate(q_len)
+    q = rev_poly(q)
     let qb = convolve(q, tb)
-    let r_len = tb.len - 1
-    var r = List.filled(r_len, Mod<P>(0))
+    var r = List.filled(tb.len - 1, Mod<P>(0))
     unchecked:
-        for i in 0..r_len:
-            let ai = if i < ta.len: ta[i] else: Mod<P>(0)
-            let qbi = if i < qb.len: qb[i] else: Mod<P>(0)
-            r[i] = ai - qbi
+        for i in 0..r.len: r[i] = ta[i] - qb[i]
     (trim_poly(q), trim_poly(r))
 
 fn subproduct_tree<P>(xs: List<Mod<P>>) -> List<List<Mod<P>>>:
@@ -399,8 +393,7 @@ fn eval_on_tree<P>(a: List<Mod<P>>, nodes: List<List<Mod<P>>>, n: Int) -> List<M
     let rev_r = rev_poly(r_pad)
     let inv_rev_m = inv(rev_poly(root), n)
     var top = convolve(rev_r, inv_rev_m)
-    if top.len > n: top.truncate(n)
-    while top.len < n: top.push(Mod<P>(0))
+    top.truncate(n)
     var down: List<List<Mod<P>>> = List.filled(2 * n, [])
     down[1] = top
     for i in 1..n:
