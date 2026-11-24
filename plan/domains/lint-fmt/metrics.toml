@@ -132,6 +132,6 @@ note = "C++-translated ports are the newcomer proxy (Milestone 1, J2/J5); L0414 
 [[metric]]
 name = "fmt_mutation_score"
 command = "python3 scripts/mutation-score.py -p cpl-fmt"
-today = 0.948
+today = 0.952
 target = 0.95
-note = "2026-11-23 full run: 696 caught, 38 missed, 12 timeout, 18 unviable of 764; misses: layout.rs 20, cli.rs 6, spacing.rs 5, range.rs 4, style.rs 2, imports.rs 1. Several layout and spacing misses look equivalent (no probe input changes the output)"
+note = "2026-11-23 full run at 52d66f442 with its baseline: 701 caught, 35 missed, 12 timeout, 18 unviable of 766; misses: layout.rs 20, spacing.rs 5, range.rs 4, cli.rs 3, style.rs 2, imports.rs 1. Several layout and spacing misses look equivalent (no probe input changes the output)"
