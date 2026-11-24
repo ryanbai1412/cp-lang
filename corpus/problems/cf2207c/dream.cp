@@ -9,10 +9,11 @@
 //   drains get w plus one drain in each of two children or both in one child. O(n).
 
 @!multitest
+use std.tree.{cartesian_tree}
 let (n, h): (1..=2000, 1..=10 ** 9) = read()
 domain C = 0..n
 let a: [C]1..=h = read()
-let t = a.cartesian_tree(by: desc)      // a Rooted over C, the tallest column at the root
+let t = Rooted.from_parents(cartesian_tree(a, by: (x, y) => x > y))      // a Rooted over C, the tallest column at the root
 
 fn drain(u: C, top: Int) -> (one: Int, two: Int):
     var (one, both, two) = (0, 0, 0)
