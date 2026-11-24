@@ -755,9 +755,7 @@ pub(super) fn array_flat_index(
     span: Span,
 ) -> Res<usize> {
     match step {
-        PlaceStep::Key(_) => {
-            unreachable!("a path ends at a map entry only for an op that walks it whole")
-        }
+        PlaceStep::Key(_) => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
         PlaceStep::Index1(r_i) => {
             let idx = regs_i[r_i as usize];
             let len = arr.dims[0];
@@ -896,7 +894,9 @@ pub(super) fn with_place_cell<R>(
             if !matches!(arr.data, Cells::Values(_)) {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
                 let a = Rc::make_mut(arr);
-                let mut cell = a.get(flat).expect("index checked");
+                let Some(mut cell) = a.get(flat) else {
+                    return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]));
+                };
                 let out = f(&mut cell)?;
                 a.set(flat, cell);
                 return Ok(out);
@@ -1007,9 +1007,7 @@ pub(super) fn store_place_leaf_scalar(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => {
-            unreachable!("a path ends at a map entry only for an op that walks it whole")
-        }
+        PlaceStep::Key(_) => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
                 crate::value::Shared::make_mut(fs)[f as usize] = kind.box_val(raw);
@@ -1086,9 +1084,7 @@ pub(super) fn store_place_leaf_opt_scalar(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => {
-            unreachable!("a path ends at a map entry only for an op that walks it whole")
-        }
+        PlaceStep::Key(_) => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
                 crate::value::Shared::make_mut(fs)[f as usize] = kind.box_opt(raw, some);
@@ -1155,9 +1151,7 @@ pub(super) fn store_place_leaf_val(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => {
-            unreachable!("a path ends at a map entry only for an op that walks it whole")
-        }
+        PlaceStep::Key(_) => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
                 crate::value::Shared::make_mut(fs)[f as usize] = val;
@@ -1361,9 +1355,7 @@ pub(super) fn assign_place_leaf_scalar(
     span: Span,
 ) -> Res<()> {
     match last {
-        PlaceStep::Key(_) => {
-            unreachable!("a path ends at a map entry only for an op that walks it whole")
-        }
+        PlaceStep::Key(_) => return trap(span, cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[])),
         PlaceStep::Field(f) => match container {
             Value::Tuple(TupleVal::Boxed(fs)) => {
                 let slice = crate::value::Shared::make_mut(fs);

@@ -1417,7 +1417,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                 }
             }
-            _ => unreachable!("non-container op routed to exec_seq_and_list"),
+            _ => {
+                return trap(
+                    spans[cur_pc],
+                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                )
+            }
         }
         Ok(())
     }

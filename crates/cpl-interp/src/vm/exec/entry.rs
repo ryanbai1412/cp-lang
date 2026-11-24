@@ -107,7 +107,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         compiled: &CompiledProgram<'p>,
         cid: cpl_ir::ClosureId,
     ) -> Res<Value> {
-        let chunk = compiled.closures[cid].as_ref().unwrap();
+        let Some(chunk) = compiled.closures[cid].as_ref() else {
+            return trap(
+                cpl_diag::Span::default(),
+                cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+            );
+        };
         let def = &self.program.closures[cid];
         let by_ref = (def.captures.iter())
             .filter(|cap| cap.by_ref)
@@ -120,7 +125,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         compiled: &CompiledProgram<'p>,
         fn_id: FnId,
     ) -> Res<Value> {
-        let chunk = compiled.fns[fn_id].as_ref().unwrap();
+        let Some(chunk) = compiled.fns[fn_id].as_ref() else {
+            return trap(
+                cpl_diag::Span::default(),
+                cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+            );
+        };
         self.run_chunk_lending(compiled, chunk, 0..chunk.param_count)
     }
 
@@ -188,7 +198,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 ),
                 SlotLoc::V(r) => std::mem::replace(&mut regs_v[r as usize], Value::Unit),
                 SlotLoc::SmallTuple { .. } => {
-                    unreachable!("a lent slot is never SmallTuple")
+                    return trap(
+                        cpl_diag::Span::default(),
+                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                    )
                 }
             };
             *self.lender(&part)? = val;

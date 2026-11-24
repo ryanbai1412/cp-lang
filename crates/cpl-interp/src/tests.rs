@@ -2062,3 +2062,29 @@ print(\" \".join(xs), s.first_ge(5)!, m[1], t[1].1, total)
     assert!(trap.is_none(), "unexpected trap: {trap:?}");
     assert_eq!(out, "3 2 1 9 5 7 5\n");
 }
+
+#[test]
+fn vm_feeds_values_and_writes_nested_places() {
+    let src = "\
+fn words(mut n: Int) -> yields Str:
+    while n > 0:
+        n -= 1
+        yield \"w\"
+struct P:
+    var xs: List<Int>
+    var best: ?Int
+var ps = [P(xs: [1, 2], best: None), P(xs: [3], best: Some(4))]
+ps[0].xs[1] = 7
+ps[1].xs[0] += 5
+ps[0].best = Some(2)
+var k = 3
+var s = \"\"
+for w in words(mut k):
+    s += w
+let add = (a: Int) => a + ps[0].xs[1]
+print(ps[0].xs, ps[1].xs, ps[0].best!, s, k, add(1))
+";
+    let (out, trap) = outcome(src, "");
+    assert!(trap.is_none(), "unexpected trap: {trap:?}");
+    assert_eq!(out, "1 7 8 2 www 0 8\n");
+}

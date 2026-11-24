@@ -639,7 +639,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let f = &self.program.fns[fn_id as usize];
                 self.tick(spans[cur_pc])?;
                 self.stack_left(spans[cur_pc], Some(&f.name))?;
-                let callee = compiled.fns[fn_id as usize].as_ref().unwrap();
+                let Some(callee) = compiled.fns[fn_id as usize].as_ref() else {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                    );
+                };
                 let ab = arg_base as usize;
                 let mut arg_buf = [0i64; 8];
                 let n = argc as usize;
@@ -777,7 +782,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let f = &self.program.fns[fn_id as usize];
                 self.tick(spans[cur_pc])?;
                 self.stack_left(spans[cur_pc], Some(&f.name))?;
-                let callee = compiled.fns[fn_id as usize].as_ref().unwrap();
+                let Some(callee) = compiled.fns[fn_id as usize].as_ref() else {
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                    );
+                };
                 let mut ni = 0usize;
                 let mut nv = 0usize;
                 for loc in callee.slot_map.iter().take(callee.param_count) {
@@ -1002,7 +1012,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             SlotLoc::OptI { .. } => ni += 2,
                             SlotLoc::V(_) => nv += 1,
                             SlotLoc::SmallTuple { .. } => {
-                                unreachable!("params are never SmallTuple")
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                                )
                             }
                         }
                     }
@@ -1057,13 +1070,19 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                 iv += 1;
                             }
                             SlotLoc::SmallTuple { .. } => {
-                                unreachable!("params are never SmallTuple")
+                                return trap(
+                                    spans[cur_pc],
+                                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                                )
                             }
                         }
                     }
                     for (cap, cval) in def.captures.iter().zip(caps.iter()) {
                         let crate::CaptureVal::Val(v) = cval else {
-                            unreachable!("compiled closures only have value captures")
+                            return trap(
+                                spans[cur_pc],
+                                cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                            );
                         };
                         match callee.slot_map[cap.inner] {
                             SlotLoc::I(r, _) => {
@@ -1108,7 +1127,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                                     std::mem::replace(&mut c_regs_v[r as usize], Value::Unit)
                                 }
                                 SlotLoc::SmallTuple { .. } => {
-                                    unreachable!("params are never SmallTuple")
+                                    return trap(
+                                        spans[cur_pc],
+                                        cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                                    )
                                 }
                             });
                         }
@@ -1302,7 +1324,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 regs_i[dst_val as usize] = v;
                 regs_i[dst_some as usize] = s;
             }
-            _ => unreachable!("non-call op routed to exec_fields_and_calls"),
+            _ => {
+                return trap(
+                    spans[cur_pc],
+                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
+                )
+            }
         }
         Ok(None)
     }
