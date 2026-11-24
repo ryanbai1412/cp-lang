@@ -20,7 +20,7 @@ Cases: 3519 (3494 passing). Rules: 616.
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R06 (06-control-functions.md): 26 rules, 125 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 96 rules, 254 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R08 (08-traits-generics.md): 31 rules, 108 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R08 (08-traits-generics.md): 31 rules, 109 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R10 (10-io.md): 20 rules, 121 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R11 (11-modules-prelude.md): 16 rules, 54 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -552,7 +552,7 @@ Each rule: positive / negative case counts, then the gap if any.
 ### R08: 08-traits-generics.md
 
 - R08.5.2 [1+ 4-]: **Floats** are the other literals with a `.` or an exponent: `0.5`, `2.0`, `1.5e-9`. A lit...
-- R08.1.4 [3+ 2-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
+- R08.1.4 [4+ 2-]: **A fold costs what the receiver's type says.** The costs above are the generic walks ever...
 - R08.1.1 [14+ 2-]: A trait declares methods (with optional default bodies), associated types, field requireme...
 - R08.1.2 [5+ 2-]: `impl Trait for T` implements it; `impl A + B for T` is shorthand for two impls. One impl ...
 - R08.1.3 [1+ 2-]: Inherent methods (`impl T:` or methods in a struct body) live in the type's module only.
