@@ -280,6 +280,26 @@ class LandTest(unittest.TestCase):
         self.assertIn("(try 2)", r.stdout)
         self.assertFalse(pending.exists())
 
+    def test_a_lanes_land_leaves_another_worktrees_pending_steps_alone(self):
+        a = self.clone("ours")
+        _, runs = self._steps_runner(a)
+        b = self.tmp / "b"
+        git(a, "worktree", "add", "-q", "-b", "b", str(b), "HEAD")
+        pending_b = Path(git(b, "rev-parse", "--absolute-git-dir").strip()) / "cpl-pending-steps"
+        pending_b.write_text("nextest\n")
+        (a / "a.txt").write_text("x\n")
+        self.commit(a, "a")
+        r = self.land(a, CI_RUNS=str(runs))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(runs.exists())
+        self.assertTrue(pending_b.exists())
+        (b / "b.txt").write_text("x\n")
+        self.commit(b, "b")
+        r = self.land(b, CI_RUNS=str(runs))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(runs.read_text(), "commit --only nextest\n")
+        self.assertFalse(pending_b.exists())
+
     def test_a_std_change_runs_the_traits_gate_and_the_signature_callers(self):
         ours = self.clone("ours")
         (ours / "scripts" / "spec-gate.py").write_text(

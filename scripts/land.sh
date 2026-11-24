@@ -129,6 +129,7 @@ recheck() {
     rechecked=1
     echo "land: main changed the gates ($(printf '%s\n' $moved | head -3 | tr '\n' ' ' | sed 's/ $//')); rerunning the commit tier on the rebased tip" >&2
     tip=$(git rev-parse HEAD)
+    prev=$(trap -p EXIT)
     trap 'git reset -q --soft "$tip"' EXIT
     git reset -q --soft FETCH_HEAD
     # No cpl is handed over: the rebase rewrote main's crate files, and the commit tier
@@ -138,7 +139,7 @@ recheck() {
     rc=$?
     set -e
     git reset -q --soft "$tip"
-    trap - EXIT
+    eval "${prev:-trap - EXIT}"
     [ "$rc" = 0 ] || { echo "land: the commit tier fails on the rebased tip (above); fix it and land again" >&2; exit 1; }
 }
 # Only committed work lands (handbook/guidelines/ci-checklist.md ci/R27): a
@@ -154,7 +155,7 @@ rm -f "$failed_log"
 recheck
 # The slices a hook's 25 s cut skipped (a cold build of their tests) run here,
 # on the rebased tip, before anything lands.
-pending="$(git rev-parse --git-common-dir)/cpl-pending-slices"
+pending="$(git rev-parse --git-dir)/cpl-pending-slices"
 if [ -s "$pending" ]; then
     slices=$(sort -u "$pending" | tr '\n' ' ' | sed 's/ $//')
     echo "land: running the touched-path slices the hook's cut skipped: $slices" >&2
@@ -163,15 +164,17 @@ if [ -s "$pending" ]; then
         { echo "land: a touched-path slice fails at the rebased tip; fix it and land again: uv run scripts/affected.py --run-slices $slices" >&2; exit 1; }
     rm -f "$pending"
 fi
-# The commit-tier steps a hook's cut never reached (b3b3c30dd's came before its
+# Pending files are per worktree (git-dir): one lane's land neither runs nor
+# deletes another's. The commit-tier steps a hook's cut never reached (b3b3c30dd's came before its
 # wasm check), on the rebased tip staged against main as the hook stages them,
 # and again on the new tip after a lost push race.
-pending_steps="$(git rev-parse --git-common-dir)/cpl-pending-steps"
+pending_steps="$(git rev-parse --git-dir)/cpl-pending-steps"
 run_pending_steps() {
     [ -s "$pending_steps" ] || return 0
     steps=$(sort -u "$pending_steps" | tr '\n' ',' | sed 's/,$//')
     echo "land: running the commit-tier steps the hook's cut skipped: $steps" >&2
     tip=$(git rev-parse HEAD)
+    prev=$(trap -p EXIT)
     trap 'git reset -q --soft "$tip"' EXIT
     git reset -q --soft FETCH_HEAD
     set +e
@@ -179,7 +182,7 @@ run_pending_steps() {
     rc=$?
     set -e
     git reset -q --soft "$tip"
-    trap - EXIT
+    eval "${prev:-trap - EXIT}"
     [ "$rc" = 0 ] || { echo "land: a commit-tier step the hook's cut skipped fails at the rebased tip (above); fix it and land again: uv run scripts/ci.py commit --only $steps" >&2; exit 1; }
 }
 run_pending_steps
@@ -192,7 +195,7 @@ if [ -n "$std_changed" ] && [ -f scripts/spec-gate.py ]; then
     uv run --quiet python scripts/spec-gate.py traits >&2 ||
         { echo "land: a std trait impl has no spec/conformance/traits.toml case; write it, then: scripts/spec-gate.py traits --write" >&2; exit 1; }
 fi
-pending_cases="$(git rev-parse --git-common-dir)/cpl-pending-cases"
+pending_cases="$(git rev-parse --git-dir)/cpl-pending-cases"
 # A std pub fn signature change runs every case and corpus program that calls
 # it (8f1685382 changed splice and three cases went red on main).
 sig_callers=
