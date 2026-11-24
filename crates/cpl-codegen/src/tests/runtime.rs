@@ -285,6 +285,33 @@ fn a_tuple_with_a_closure_bound_part_by_part_is_never_built() {
 }
 
 #[test]
+fn a_sort_by_a_pure_std_method_compares_in_place() {
+    // `Prefix.prefix` is `if`s and `return`s of cells: nothing to cache.
+    let src = |key: &str| {
+        format!(
+            "let n: 1..=9 = read()\ndomain I = 0..n\nlet a: [I]-99..=99 = read()\n\
+             let pref = prefix(a)\nvar ord = I.collect()\n\
+             ord.sort(by: i => {key})\nprint(ord[0])\n"
+        )
+    };
+    let build_with = |source: &str, checks| {
+        let program = super::lower(source);
+        let target = crate::Target {
+            checks,
+            ..crate::Target::default()
+        };
+        crate::emit_for(&program, "t.cp", None, &target)
+    };
+    let key = src("(pref.prefix(i.l), i)");
+    let fast = build_with(&key, crate::Checks::None);
+    assert!(fast.contains("std::sort(ord"), "{fast}");
+    assert!(!fast.contains("cpl::sort_by"), "{fast}");
+    // Checked, its asserts trap once, in the keys' order.
+    let checked = build_with(&key, crate::Checks::Traps);
+    assert!(checked.contains("cpl::sort_by<true>(ord"), "{checked}");
+}
+
+#[test]
 fn a_sort_by_negated_or_desc_cells_compares_in_place_unstably() {
     let src = |table: &str, list: &str, key: &str| {
         format!(
