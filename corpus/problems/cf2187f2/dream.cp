@@ -11,12 +11,17 @@ type Z = Mod<998_244_353>
 let n: 2..=5000 = read()
 domain V = 1..=n
 let (a, b) = read<(Perm<V>, Perm<V>)>()
-let t = PermTree(b.rev.map(a.inverse))
+let pos_a = a.inverse()
+let t = PermTree([V] i => pos_a[b[V.nth(n - 1 - i.ord)]])
 
-fn ends(v: t.Node) -> List<Z> = match t.node(v):
+fn running(e: List<Z>) -> List<Z>:
+    let pre = e.scan(+)
+    [pre.prefix(i + 1) for i in e.keys]
+
+fn ends<Node>(v: Node) -> List<Z> = match t.node(v):
     Leaf(_) => [1]
-    Inner(l, r, Decr) if t.kind[r] == PermKind.Leaf => (ends(l) + [0]).prefix_sums()
+    Inner(l, r, Decr) if t.kind[r] == PermKind.Leaf => running(ends(l) + [0])
     Inner(l, r, Decr) => (ends(l) + [0]).map(e => e * ways(r))
     Inner(l, r, _) => [ways(l) * ways(r)]
-fn ways(v: t.Node) -> Z = ends(v).sum()
+fn ways<Node>(v: Node) -> Z = ends(v).sum()
 print(ways(t.root))
