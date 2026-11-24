@@ -603,14 +603,23 @@ pub(crate) fn interact(
             });
             let solution_stderr = scope.spawn(move || drain(solution_err));
             let judge_stderr = scope.spawn(move || drain(judge_err));
-            let wall = judge_limit(limit);
+            // A slow interactor that keeps talking is given up on at `wall`.
+            let wall = judge_limit(limit) * 3;
+            let mut idled = false;
             let mut own = None;
+            let mut cpu = None;
             let mut timed_out = false;
             let mut reject_deadline: Option<Instant> = None;
+            // The solution is charged its own CPU time, as judges do; where
+            // the system doesn't say, the wall clock while it has the turn.
+            let spent = |cpu: Option<Duration>| cpu.unwrap_or_else(|| locked(clock).own());
             let statuses = loop {
+                if own.is_none() {
+                    cpu = crate::program::cpu_time(contestant.id()).or(cpu);
+                }
                 let (a, b) = (contestant.try_wait()?, judge.try_wait()?);
                 if a.is_some() && own.is_none() {
-                    own = Some(locked(clock).own());
+                    own = Some(spent(cpu));
                 }
                 if let (Some(a), Some(b)) = (a, b) {
                     break (a, b);
@@ -625,8 +634,10 @@ pub(crate) fn interact(
                             .get_or_insert_with(|| Instant::now() + Duration::from_millis(200));
                     }
                 }
-                let expired =
-                    own.unwrap_or_else(|| locked(clock).own()) >= limit || start.elapsed() >= wall;
+                // A solution blocked on its turn for twice its limit is idle.
+                let busy = own.unwrap_or_else(|| spent(cpu)) > limit;
+                idled = locked(clock).own() > limit * 2;
+                let expired = busy || idled || start.elapsed() >= wall;
                 let grace_over = reject_deadline.is_some_and(|d| Instant::now() >= d);
                 if expired || grace_over {
                     timed_out = expired;
@@ -638,7 +649,10 @@ pub(crate) fn interact(
                 }
                 std::thread::sleep(Duration::from_micros(300));
             };
-            let own = own.unwrap_or_else(|| locked(clock).own());
+            let own = match idled {
+                true => locked(clock).own(),
+                false => own.unwrap_or_else(|| spent(cpu)),
+            };
             std::io::Result::Ok((
                 statuses,
                 own,

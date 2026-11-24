@@ -958,6 +958,20 @@ fn peak_memory(pid: u32) -> Option<u64> {
     line.split_whitespace().nth(1)?.parse().ok()
 }
 
+/// The CPU time a running process has spent, user and system, with that
+/// of the children it has waited for: what a judge charges it. `None`
+/// where the system doesn't say (no `/proc`) or once it is gone.
+pub(crate) fn cpu_time(pid: u32) -> Option<Duration> {
+    let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
+    // Fields after the parenthesized name: utime, stime, cutime and cstime
+    // are the 12th to the 15th, in ticks of 1/100 s (USER_HZ).
+    let after = &stat[stat.rfind(')')? + 1..];
+    let ticks: u64 = (after.split_whitespace().skip(11).take(4))
+        .map(|field| field.parse::<u64>().ok())
+        .sum::<Option<u64>>()?;
+    Some(Duration::from_millis(ticks * 10))
+}
+
 /// Stops a program and everything it started. A shell script's children
 /// would otherwise keep its pipes open after the script is killed.
 pub(crate) fn kill_group(pid: u32) {

@@ -531,6 +531,26 @@ fn an_accepted_interactive_solution_finishing_slowly_is_not_killed_as_re() {
     assert_eq!(judged.verdict, Verdict::Accepted);
 }
 
+/// Judges charge a solution its CPU time: a turn it spends blocked (here
+/// asleep) is not time it used, so a 1 s limit passes a 1.5 s nap. Only
+/// twice the limit blocked on its turn is idle.
+#[cfg(target_os = "linux")]
+#[test]
+fn an_interactive_solution_is_charged_its_cpu_time_not_its_turns() {
+    let interactor = Judge::Interactor(sh("echo 7; read ans; [ \"$ans\" = 8 ]"), Launch::Stdio);
+    let limit = Duration::from_millis(1000);
+    let run = |solution: &str| interactor.run(&sh(solution), "", None, limit).unwrap();
+    let napping = run("read q; sleep 1.5; echo $((q + 1))");
+    assert_eq!(napping.verdict, Verdict::Accepted, "{napping:?}");
+    assert!(napping.outcome.elapsed < limit, "{napping:?}");
+    let stuck = run("read q; sleep 5");
+    assert_eq!(stuck.verdict, Verdict::TimeLimit, "{stuck:?}");
+    assert!(stuck.outcome.elapsed > limit * 2, "{stuck:?}");
+    let spinning = run("read q; while :; do :; done");
+    assert_eq!(spinning.verdict, Verdict::TimeLimit, "{spinning:?}");
+    assert!(spinning.outcome.elapsed > limit, "{spinning:?}");
+}
+
 #[test]
 fn declared_judges_are_found_with_their_lines() {
     let src = "@check\nfn valid():\n    let out: Int = read_output()\n    assert out > 0\n\n@interactor(Guess)\nfn judge():\n    0\nfn plain() = 1\n";
