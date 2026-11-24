@@ -1008,7 +1008,10 @@ impl<'a> Parser<'a> {
             extra_traits.push(self.ty());
         }
         let (trait_name, target) = if self.eat(T::For) {
-            (Some(first), self.ty())
+            let outer = self.impl_bounds.replace(Vec::new());
+            let target = self.ty();
+            bounds.extend(std::mem::replace(&mut self.impl_bounds, outer).unwrap_or_default());
+            (Some(first), target)
         } else {
             (None, first)
         };

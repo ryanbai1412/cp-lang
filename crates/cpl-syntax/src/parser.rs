@@ -89,6 +89,8 @@ pub(crate) struct Parser<'a> {
     in_trait: bool,
     /// Inside an `impl` body, where operator fns desugar directly to methods.
     in_impl: bool,
+    /// Inside an impl target, where `Wrap<S: Seq<T>>` binds `S` and bounds it.
+    impl_bounds: Option<Vec<Bound>>,
     /// Inside a `@grader` statement, where a fn may have no body: the
     /// judge supplies it.
     in_grader: bool,
@@ -127,6 +129,7 @@ impl<'a> Parser<'a> {
             block_depth: 0,
             in_trait: false,
             in_impl: false,
+            impl_bounds: None,
             in_grader: false,
             half_shr: false,
             extra_stmts: Vec::new(),

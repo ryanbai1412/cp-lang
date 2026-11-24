@@ -680,7 +680,27 @@ impl<'a> Parser<'a> {
                     self.peek_n(1),
                     T::Comma | T::Gt | T::Shr | T::Plus | T::Minus | T::Star | T::StarStar
                 );
-            if value {
+            if self.impl_bounds.is_some() && self.at(T::Ident) && self.peek_n(1) == T::Colon {
+                // `impl Keyed<K, T> for Filter<S: Keyed<K, T>, P: T -> Bool>` (R12.3).
+                let name = self.expect_name("a type parameter name");
+                self.bump();
+                let outer = self.impl_bounds.take();
+                let traits = self.bound_traits();
+                self.impl_bounds = outer;
+                if let Some(bounds) = self.impl_bounds.as_mut() {
+                    bounds.push(Bound {
+                        name: name.clone(),
+                        traits,
+                    });
+                }
+                args.push(Type {
+                    span: name.span,
+                    kind: TypeKind::Named {
+                        name,
+                        args: Vec::new(),
+                    },
+                });
+            } else if value {
                 let start = self.span().start;
                 let expr = self.range_bound();
                 // `read<l + 1..=9>()`: the value is the low end of a range type.
