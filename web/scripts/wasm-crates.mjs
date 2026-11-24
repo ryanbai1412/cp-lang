@@ -1,8 +1,8 @@
 // Per-crate gzipped bytes of cpl.wasm and their budgets (site/R7). The total
 // cap in wasm-size.mjs is the hard limit; a crate's budget says which lane's
 // growth is eating it. Budgets live in wasm-crate-budgets.json, measured on
-// CI (the hosted build is the truth); each crate's owner is the domain
-// handbook/domains/README.md says owns it.
+// CI (the hosted build is the truth); each crate's owner is the domain whose
+// charter in handbook/domains/ describes it.
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
@@ -10,12 +10,22 @@ import { gzipSync } from 'node:zlib';
 export const DATA = 'data (std source, strings)';
 export const RUNTIME = '(runtime)';
 
-// Rust's v0 mangling (`_R`): the first crate root, `C`, a disambiguator
-// `s<base62>_`, and the crate's name, length-prefixed; for an impl, the
-// crate it is in. Anything else is libc or compiler-rt.
+// Rust's v0 mangling (`_R`): each crate root is `C`, an optional
+// disambiguator `s<base62>_`, and the crate's name, length-prefixed. A std
+// generic (`core`, `alloc`, `hashbrown`) instantiated on a cpl type is
+// charged to the first cpl crate in its path or type arguments, else to its
+// own crate. A root ending the symbol is the crate the linker kept the copy
+// from, which depends on link order, not on who uses it, so it is skipped.
+// Anything else is libc or compiler-rt.
+const ROOT = /C(?:s[0-9A-Za-z]*_)?(\d+)/g;
 export function crateOf(name) {
-  const m = /^_R.*?C(?:s[0-9A-Za-z]*_)?(\d+)/.exec(name);
-  return m ? name.substr(m.index + m[0].length, +m[1]) : RUNTIME;
+  if (!name.startsWith('_R')) return RUNTIME;
+  const roots = [...name.matchAll(ROOT)].map((m) => {
+    const at = m.index + m[0].length;
+    return [name.substr(at, +m[1]), at + +m[1]];
+  });
+  if (roots.length > 1 && roots.at(-1)[1] === name.length) roots.pop();
+  return (roots.find(([c]) => c.startsWith('cpl_')) ?? roots[0])?.[0] ?? RUNTIME;
 }
 
 /** [crate, raw code bytes, gzipped bytes] for a cpl.wasm built with names, largest first. */

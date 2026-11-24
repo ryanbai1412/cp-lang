@@ -15,6 +15,14 @@ describe('wasm crate budgets', () => {
   test('crate names come from v0 mangling', () => {
     expect(crateOf('_RNvCs1a2b_9cpl_check4main')).toBe('cpl_check');
     expect(crateOf('memcpy')).toBe('(runtime)');
+    expect(crateOf('_RNvMs2_NtNtCsiErZIu7dPQ0_4core3fmt8buildersNtB5_11DebugStruct9is_pretty')).toBe('core');
+  });
+
+  test('a std generic is charged to the cpl crate of its type, not the crate the linker kept', () => {
+    const drop = '_RINvNtCsiErZIu7dPQ0_4core3ptr9drop_glueTNtNtCsd7qzcshS4qx_5alloc6string6StringNtNtCs3AcHtDQUFWa_9cpl_check2ty2TyReE';
+    expect(crateOf(drop)).toBe('cpl_check');
+    expect(crateOf(`${drop}Csamg1HCxCxBg_7cpl_lsp`)).toBe('cpl_check');
+    expect(crateOf('_RNvMNtCsiErZIu7dPQ0_4core5slice6reverseCsamg1HCxCxBg_7cpl_doc')).toBe('core');
   });
 
   test('owners come from each charter\'s Describes row', () => {
