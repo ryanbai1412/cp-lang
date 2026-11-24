@@ -207,3 +207,113 @@ fn the_vscode_tables_and_grammar_name_what_the_compiler_and_stdlib_ship() {
         "the grammar rule support.constant.stdlib.cp and PRELUDE_CONSTANTS + STDLIB_CONSTANTS differ"
     );
 }
+
+/// `cp.<key>` read as `getConfiguration('cp').get<..>('<key>', <default>)`
+/// in the extension's sources: the default as written, spaces dropped and
+/// quotes made double.
+fn reads(sources: &str) -> BTreeMap<String, String> {
+    let mut out = BTreeMap::new();
+    for part in sources.split(".get<").skip(1) {
+        let Some(call) = part.split_once(">(").map(|(_, rest)| rest) else {
+            continue;
+        };
+        let Some(key) = call.strip_prefix('\'').and_then(|k| k.split_once('\'')) else {
+            continue;
+        };
+        let default = key.1.trim_start_matches([',', ' ']);
+        let mut depth = 0;
+        let end = default
+            .char_indices()
+            .find(|&(_, c)| {
+                match c {
+                    '[' | '(' => depth += 1,
+                    ']' if depth > 0 => depth -= 1,
+                    ')' if depth > 0 => depth -= 1,
+                    ')' => return true,
+                    _ => {}
+                }
+                false
+            })
+            .map_or(default.len(), |(i, _)| i);
+        let default: String = default[..end].replace('\'', "\"").replace(' ', "");
+        out.insert(format!("cp.{}", key.0), default);
+    }
+    out
+}
+
+#[test]
+fn every_vscode_setting_is_read_documented_and_defaults_alike() {
+    let package = cpl_json::parse(&read("editors/vscode/package.json")).unwrap();
+    let declared: BTreeMap<String, String> = package
+        .at(&["contributes", "configuration", "properties"])
+        .as_object()
+        .expect("package.json declares its settings")
+        .iter()
+        .map(|(k, v)| (k.clone(), v.at(&["default"]).to_string().replace(' ', "")))
+        .collect();
+    assert!(
+        declared.len() <= 15,
+        "{} settings; keep them few",
+        declared.len()
+    );
+    let src = root().join("editors/vscode/src");
+    let mut sources = String::new();
+    for entry in fs::read_dir(&src).unwrap().flatten() {
+        if entry.path().extension().is_some_and(|e| e == "ts") {
+            sources += &fs::read_to_string(entry.path()).unwrap();
+        }
+    }
+    let read_by = reads(&sources);
+    let readme = read("editors/vscode/README.md");
+    let table = readme
+        .split("## Settings")
+        .nth(1)
+        .and_then(|s| s.split("\n## ").next())
+        .expect("README.md has a Settings section");
+    let documented: BTreeMap<String, String> = table
+        .lines()
+        .filter_map(|l| {
+            let cells: Vec<&str> = l.split(" | ").collect();
+            let key = cells.first()?.strip_prefix("| `")?.strip_suffix('`')?;
+            let default = cells.get(1)?.trim_matches('`').replace(' ', "");
+            Some((key.to_string(), default))
+        })
+        .collect();
+    let mut wrong = Vec::new();
+    for (key, default) in &declared {
+        // vscode-languageclient reads `<client id>.trace.server` itself.
+        let read = if key == "cp.trace.server" {
+            sources
+                .contains("new LanguageClient('cp'")
+                .then(|| default.clone())
+        } else {
+            read_by.get(key).cloned()
+        };
+        match read {
+            None => wrong.push(format!("{key}: declared, never read")),
+            Some(d) if &d != default => {
+                wrong.push(format!("{key}: package.json default {default}, source {d}"))
+            }
+            _ => {}
+        }
+        match documented.get(key) {
+            None => wrong.push(format!("{key}: not in README.md's Settings")),
+            Some(d) if d != default => wrong.push(format!(
+                "{key}: README.md default {d}, package.json {default}"
+            )),
+            _ => {}
+        }
+    }
+    for key in read_by.keys().chain(documented.keys()) {
+        if !declared.contains_key(key) {
+            wrong.push(format!("{key}: read or documented, not declared"));
+        }
+    }
+    wrong.sort();
+    wrong.dedup();
+    assert!(
+        wrong.is_empty(),
+        "settings out of step:\n{}",
+        wrong.join("\n")
+    );
+}

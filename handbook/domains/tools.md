@@ -231,7 +231,7 @@ their front ends.
 |---|---|---|---|
 | Old solutions keep building, and `cpl migrate` moves them | removed spellings rewritten under a folder | hand-written suite | `crates/cpl-cli/tests/golden.rs` (`migrate_rewrites_removed_spellings_under_a_folder`) |
 | Personal libraries get completion, hover and definition like std | user-library names covered by the completion, hover and definition metrics | generated, as for std | `missing` |
-| Editor settings are few and documented | settings each editor exposes that are documented and tested | hand-written suite | `missing` |
+| Editor settings are few and documented | settings each editor exposes that are documented and tested | hand-written suite | `crates/cpl-cli/tests/vscode_sync.rs` (VS Code: 12 settings, each read, documented in its README and defaulted alike, at most 15); other editors: `missing` |
 | One analysis per command | databases each command opens (`own_databases`) | ratchet now; architecture once every tool takes one `cpl_check::Session`; rule `commands/R11` | `scripts/debt-ratchet.py` |
 | No tools file is too large to change safely | files over the 2,000-line cap | ratchet | `scripts/debt-ratchet.py` |
 

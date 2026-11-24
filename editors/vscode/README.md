@@ -144,6 +144,25 @@ $ cpl stress d.cp --format json
 
 Stage-level diffs (`stages: [{"name": "...", "line": 12, "fast": "...", "brute": "..."}]`) highlight the first differing stage across the whole line and mark agreeing stages in green. Plain-text output from `cpl` is printed directly to the `CP Lang` output channel.
 
+## Settings
+
+Every setting the extension reads; `crates/cpl-cli/tests/vscode_sync.rs` checks this table against `package.json` and the sources.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `cp.server.path` | `"cpl"` | The `cpl` binary. A bare name is looked up on `PATH`, then in the workspace's `target/release` and `target/debug`. |
+| `cp.server.args` | `["lsp"]` | Arguments that start the language server. The server speaks LSP on stdio. |
+| `cp.trace.server` | `"off"` | Log the messages between VS Code and the language server. |
+| `cp.codeLens.enabled` | `true` | Show Run, Stress and Trace lenses above the file, its samples and its `@brute`/`@check`/`@interactor` functions. |
+| `cp.inlayHints.enabled` | `true` | Show inferred type inlay hints for unannotated bindings and domain loops when `cpl lsp` does not provide its own. |
+| `cp.liveValues.enabled` | `false` | After each save, run the file on ``cp.liveValues.input`` and show the value of each top-level `let` at the end of its line. |
+| `cp.liveValues.input` | `""` | The sample live values are computed on, such as `i1` or `1`. Empty means the file's first sample. |
+| `cp.liveValues.maxLength` | `60` | Longest value shown inline before it is cut; the full value is in the hover. |
+| `cp.submit.copy` | `true` | Copy the C++ to the clipboard when `CP: Submit` finds it ready to send (`cpl submit --copy`). |
+| `cp.stress.args` | `[]` | Extra flags passed to `cpl stress` (for example `["--cases", "1000", "--size", "10"]`). |
+| `cp.run.timeoutMs` | `10000` | Kill a sample run or stress run that takes longer than this. |
+| `cp.companion.port` | `10043` | The port `CP: Import a Problem` waits on for Competitive Companion (`cpl new --listen --port`); 10043 is one the extension sends to out of the box. |
+
 ## Layout and tests
 
 - `syntaxes/cp.tmLanguage.json`, `language-configuration.json`, `snippets/cp.json` — grammar, indentation/bracket config, and contest snippets.

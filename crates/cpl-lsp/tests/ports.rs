@@ -69,6 +69,8 @@ struct Definitions {
     asked: usize,
     resolved: usize,
     misses: std::collections::BTreeMap<String, usize>,
+    /// Each unresolved name's first line, `file: text`.
+    first: std::collections::BTreeMap<String, String>,
 }
 
 /// Opens `src`, asks hover and definition at every first use of a name and
@@ -162,6 +164,10 @@ fn walk(
             if reply.contains("\"uri\"") {
                 defs.resolved += 1;
             } else {
+                let line_start = src[..at].rfind('\n').map_or(0, |i| i + 1);
+                let line_end = src[at..].find('\n').map_or(src.len(), |i| at + i);
+                let line = format!("{name}: {}", src[line_start..line_end].trim());
+                defs.first.entry(word.clone()).or_insert(line);
                 *defs.misses.entry(word).or_default() += 1;
             }
         }
@@ -221,7 +227,8 @@ fn every_hill_climb_port_gets_hover_definition_and_completion() {
     let mut misses: Vec<_> = defs.misses.iter().collect();
     misses.sort_by_key(|(w, n)| (std::cmp::Reverse(**n), (*w).clone()));
     for (word, n) in misses.iter().take(40) {
-        println!("no definition {n:4}  {word}");
+        let first = defs.first.get(*word).map_or("", String::as_str);
+        println!("no definition {n:4}  {word}  (first: {first:.100})");
     }
     let permille = defs.resolved * 1000 / defs.asked.max(1);
     println!(
