@@ -9,11 +9,15 @@
   {"id": "3861739", "language": "CPP17", "result": "RTE", "time": 8.824356759, "memory_kb": 3404.0, "file": "corpus/submissions/3861739.cpp"},
   {"id": "3861777", "language": "CPP17", "result": "RTE", "time": 8.927006532, "memory_kb": 3416.0, "file": "corpus/submissions/3861777.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noi21p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ submission. orig.cpp was written for the corpus (inclusion-exclusion over the start set: spans <= n/2 enumerated as offset sets, wider spans by a DP over the last n/2 starts) and matches an exhaustive brute (every input tape, every start, robots combined by AND of their feasible start masks) on 300 random cases with n <= 4 and m <= 4."
 }
