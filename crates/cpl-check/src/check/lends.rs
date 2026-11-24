@@ -17,6 +17,7 @@
 //! facts*): never by a guess. When it can't be decided, the error says
 //! which condition to state.
 
+mod capture;
 mod walk;
 
 use super::moves::{is_compound, nested_moves};
@@ -244,7 +245,8 @@ pub(crate) fn flow_of(stmts: &[Stmt]) -> Flow {
             let view = match &unparen(init).kind {
                 ExprKind::Mut(_) => true,
                 ExprKind::Index { .. } => true,
-                ExprKind::Field { name, .. } if name.text == "rev" => true,
+                // Any getter may lend (`g.rows`); the replay asks the types.
+                ExprKind::Field { .. } => true,
                 ExprKind::Call { callee, .. } => match &unparen(callee).kind {
                     // Any method may be a projection (`b.range(r)`); the
                     // replay asks the types.
@@ -1400,16 +1402,16 @@ impl<'a> Checker<'a> {
                     Some(last) => last.span,
                     None => return,
                 };
-                for cap in self.lambda_ref_captures(init) {
+                for (root, steps, is_capture) in self.captured_places(init) {
                     self.lends.holds.push(Hold {
                         name: name.clone(),
-                        root: cap,
-                        steps: Vec::new(),
+                        root,
+                        steps,
                         mutable: false,
                         at: ELSEWHERE,
                         until,
                         in_loop: false,
-                        is_capture: true,
+                        is_capture,
                     });
                 }
             }
@@ -1604,6 +1606,11 @@ impl<'a> Checker<'a> {
                     .iter()
                     .any(|i| matches!(unparen(i).kind, ExprKind::Range { .. })) =>
             {
+                // An element of a lent view (`g.rows[r]`) carries its lend.
+                let lent = self.extra_holds(base);
+                if !lent.is_empty() {
+                    return lent;
+                }
                 let ty = self.quietly(|c| c.infer(e));
                 if self.is_heap_type(&ty) {
                     if let Some(place) = self.place(e) {
@@ -1612,6 +1619,7 @@ impl<'a> Checker<'a> {
                 }
                 Vec::new()
             }
+            ExprKind::Field { base, name } if self.lends_getter(name) => self.receiver_hold(base),
             ExprKind::Call { callee, args } => {
                 if let ExprKind::Field { base, name } = &unparen(callee).kind {
                     if matches!(name.text.as_str(), "filter" | "take" | "drop") {
@@ -1721,16 +1729,16 @@ impl<'a> Checker<'a> {
             let Some(last) = rest.iter().rev().find(|s| mentions(s, name)) else {
                 return;
             };
-            for cap in self.lambda_ref_captures(value) {
+            for (root, steps, is_capture) in self.captured_places(value) {
                 self.lends.holds.push(Hold {
                     name: name.to_string(),
-                    root: cap,
-                    steps: Vec::new(),
+                    root,
+                    steps,
                     mutable: false,
                     at: stmt.span,
                     until: last.span,
                     in_loop: false,
-                    is_capture: true,
+                    is_capture,
                 });
             }
             return;
@@ -1847,7 +1855,7 @@ impl<'a> Checker<'a> {
             };
         }
         self.add_loop_facts(stmt);
-        if self.hold_walk(stmt, iter, iter_ty) {
+        if self.hold_walk(stmt, iter) {
             return;
         }
         if let ExprKind::Field { base, name } = &iter.kind {

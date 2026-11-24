@@ -201,8 +201,3 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - std-window/track-infers-element-from-sequence.cp: compiler
 - tools-bundle/vendor-copies-pinned-libraries.cp: tools Milestone 2 (pins, Rbundle.6), not promised for Milestone 1
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: compiler associated types chosen by impl (decision 456)
-- core-05/for-over-a-bag-range-keeps-the-bag-lent.cp: compiler: a `for` header view of a `lends` method keeps the receiver lent
-- core-05/closure-capturing-a-view-keeps-its-source-lent.cp: compiler: a closure capturing a view keeps the source lent
-- std-bag/closure-captures-a-range-view.cp: compiler: a captured bag range view is typed `()`
-- core-04/grid-rows-view-lends-the-grid.cp: compiler: a bound `lends` getter view (`g.rows`) keeps the grid lent
-- core-04/grid-row-from-rows-lends-the-grid.cp: compiler: a row from a bound `lends` getter view keeps the grid lent

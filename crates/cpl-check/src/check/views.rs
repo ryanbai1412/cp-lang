@@ -587,10 +587,18 @@ impl Checker<'_> {
             }
             let by_ref = if let Some(local) = self.local(&n) {
                 let ty = local.ty.clone();
-                local.mutable || local.keyword == "param" || self.is_heap_type(&ty)
+                let span = local.span;
+                local.mutable
+                    || local.keyword == "param"
+                    || self.is_heap_type(&ty)
+                    || self.lends.views.contains_key(&span)
             } else if let Some(def) = self.global(&n) {
                 match &*def {
-                    Def::Value { ty, mutable, .. } => *mutable || self.is_heap_type(ty),
+                    Def::Value { ty, mutable, .. } => {
+                        *mutable
+                            || self.is_heap_type(ty)
+                            || self.lends.global_views.contains_key(&n)
+                    }
                     _ => false,
                 }
             } else {

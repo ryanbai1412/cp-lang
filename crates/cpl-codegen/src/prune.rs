@@ -92,6 +92,7 @@ struct Cx<'a> {
     home: Option<FnId>,
     /// Slots the body (or a closure, by reference) may store to.
     written: BTreeSet<Slot>,
+    captured: BTreeSet<Slot>,
     lets: BTreeSet<Slot>,
 }
 
@@ -119,6 +120,7 @@ fn run(program: &mut Program, asserts: bool, nones: &Nones) {
         nones,
         home,
         written: written(program, body),
+        captured: captured(program, body),
         lets: BTreeSet::new(),
     };
     let mut cxs: Vec<Cx> = program
@@ -138,23 +140,23 @@ fn run(program: &mut Program, asserts: bool, nones: &Nones) {
     block(&mut program.main, asserts, &mut main_cx);
     block(&mut program.setup, asserts, &mut setup_cx);
     for (f, cx) in program.fns.iter_mut().zip(&cxs) {
-        drop_unread(&mut f.body, &cx.lets);
+        drop_unread(&mut f.body, &cx.lets, &cx.captured);
     }
     for (c, cx) in program.closures.iter_mut().zip(&closure_cxs) {
-        drop_unread(&mut c.body, &cx.lets);
+        drop_unread(&mut c.body, &cx.lets, &cx.captured);
     }
-    drop_unread(&mut program.main, &main_cx.lets);
-    drop_unread(&mut program.setup, &setup_cx.lets);
+    drop_unread(&mut program.main, &main_cx.lets, &main_cx.captured);
+    drop_unread(&mut program.setup, &setup_cx.lets, &setup_cx.captured);
 }
 
 /// Drops the `let`s of `lets` (each binds a `None` read from a variable)
 /// that nothing reads now that the branches testing them are gone, so the
 /// variable they read is not left named for nothing.
-fn drop_unread(body: &mut Block, lets: &BTreeSet<Slot>) {
+fn drop_unread(body: &mut Block, lets: &BTreeSet<Slot>, captured: &BTreeSet<Slot>) {
     if lets.is_empty() {
         return;
     }
-    let mut read = BTreeSet::new();
+    let mut read = captured.clone();
     deep_exprs(body, &mut |e| {
         if let ExprKind::Local(s) = e.kind {
             read.insert(s);
@@ -187,6 +189,18 @@ fn drop_unread(body: &mut Block, lets: &BTreeSet<Slot>) {
         }
     }
     go(body, &dead);
+}
+
+/// The slots of `body` a closure built in it captures.
+fn captured(program: &Program, body: &Block) -> BTreeSet<Slot> {
+    let mut out = BTreeSet::new();
+    deep_exprs(body, &mut |e| {
+        if let ExprKind::Closure(cid) = e.kind {
+            let caps = &program.closures[cid].captures;
+            out.extend(caps.iter().filter(|c| !c.is_global).map(|c| c.outer));
+        }
+    });
+    out
 }
 
 /// The slots `body` stores to, or lends to a closure by reference.

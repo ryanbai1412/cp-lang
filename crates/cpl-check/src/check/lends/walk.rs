@@ -8,9 +8,9 @@ use super::*;
 impl Checker<'_> {
     /// Lends the places a walk over the call `iter` reads until the loop
     /// `stmt` ends; `false` when `iter` is no generator or view call.
-    pub(super) fn hold_walk(&mut self, stmt: &Stmt, iter: &Expr, iter_ty: &Ty) -> bool {
+    pub(super) fn hold_walk(&mut self, stmt: &Stmt, iter: &Expr) -> bool {
         let mut sources = self.walk_sources(iter);
-        if sources.is_empty() && matches!(iter_ty, Ty::Named { name, .. } if name == "Gen") {
+        if sources.is_empty() {
             sources = (self.extra_holds(iter).into_iter())
                 .map(|(_, place, _, force_mut)| (place, force_mut))
                 .collect();

@@ -10,6 +10,7 @@
 mod anon_domain;
 mod cache;
 mod call;
+mod capture;
 mod collect;
 mod comprehension;
 mod declare;

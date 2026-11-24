@@ -1843,6 +1843,16 @@ impl FileCtx<'_> {
                 .map(|item| item_names(&item.parsed.stmts))
                 .collect()
         });
+        let mut carried = crate::fx::HashSet::default(); // views a closure carries here
+        for k in (0..current).rev() {
+            if let Flow::Capture(name) = &items[k].flow {
+                if carried.contains(name)
+                    || (current..items.len()).any(|j| names[j].0.contains(name))
+                {
+                    carried.extend(names[k].0.iter().cloned());
+                }
+            }
+        }
         let mut out = Vec::new();
         let offsets = &self.offsets;
         for (index, item) in items[..current].iter().enumerate() {
@@ -1858,7 +1868,8 @@ impl FileCtx<'_> {
                 Flow::None => {}
                 Flow::View(name) | Flow::Capture(name) => {
                     let mentioned = |k: usize| names[k].0.contains(name);
-                    let live_after = (current + 1..items.len()).any(mentioned);
+                    let live_after =
+                        carried.contains(name) || (current + 1..items.len()).any(mentioned);
                     if !(live_after || mentioned(current)) {
                         continue;
                     }

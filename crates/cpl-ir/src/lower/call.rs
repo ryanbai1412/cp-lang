@@ -933,14 +933,35 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The slot of the `b.range(r)` view named `n`, captured into the closure being lowered
+    /// when a fn around it holds the view.
+    fn sorted_view_slot(&mut self, n: &str) -> Option<Slot> {
+        let is_view = |cx: &FnCx, slot: Slot| cx.sorted_views.contains_key(&slot);
+        if let Some(slot) = self
+            .lookup(n)
+            .or_else(|| self.cx.captured_names.get(n).copied())
+        {
+            return is_view(&self.cx, slot).then_some(slot);
+        }
+        if !self.cx.is_closure {
+            return None;
+        }
+        let outer = self.outer_cxs.iter().rev().find_map(|cx| {
+            let slot = cx.scopes.iter().rev().find_map(|s| s.get(n).copied())?;
+            Some(is_view(cx, slot))
+        });
+        if outer != Some(true) {
+            return None;
+        }
+        self.capture_from_outer(n)
+    }
+
     pub(super) fn is_sorted_range_expr(&mut self, mut e: &ast::Expr) -> bool {
         loop {
             match &e.kind {
                 ast::ExprKind::Paren(inner) => e = inner,
                 ast::ExprKind::Name(n) => {
-                    return self
-                        .lookup(n)
-                        .is_some_and(|slot| self.cx.sorted_views.contains_key(&slot));
+                    return self.sorted_view_slot(n).is_some();
                 }
                 ast::ExprKind::Field { base, name } if name.text == "rev" => e = base,
                 ast::ExprKind::Call { callee, args } if args.len() == 1 => {
@@ -1078,7 +1099,7 @@ impl<'a> Lowerer<'a> {
                     cur = base;
                 }
                 ast::ExprKind::Name(n) => {
-                    let slot = self.lookup(n)?;
+                    let slot = self.sorted_view_slot(n)?;
                     let mut v = self.cx.sorted_views.get(&slot)?.clone();
                     if flip {
                         v.rev = !v.rev;
