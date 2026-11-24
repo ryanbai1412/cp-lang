@@ -139,7 +139,7 @@ export const STDLIB_VALUES: readonly string[] = [
     'minkowski_lower', 'minkowski_sum', 'minkowski_upper', 'mo', 'mo_order', 'mo_order_hilbert',
     'mo_rollback', 'mo_steps', 'mo_with_updates', 'mod_kth_root', 'mod_log', 'mod_sqrt',
     'monge_break', 'monge_path', 'monge_paths', 'monotone_minima', 'mul_mod', 'mult_order',
-    'negative_cycle', 'newton', 'next_same', 'next_smaller', 'nth', 'ntt', 'odd_cycle',
+    'negative_cycle', 'newton', 'next', 'next_same', 'next_smaller', 'nth', 'ntt', 'odd_cycle',
     'offline_over', 'on_segment', 'only', 'outermost', 'overlap', 'parallel_bsearch', 'parse',
     'parse_int', 'partial_inverse', 'partition_in_place', 'partition_table', 'perm_cycles',
     'perm_order', 'perm_pow', 'perm_rank', 'perm_sign', 'perm_unrank', 'permutations',
