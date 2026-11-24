@@ -430,6 +430,7 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
                     }
                 }
             };
+            input = lf(input);
             if !input.ends_with(b"\n") {
                 input.push(b'\n');
             }
@@ -440,7 +441,7 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
             if let Some(exe) = &exe {
                 match run(&mut judge_stack(exe), &input, budget, "the accepted C++")? {
                     Ran::Exited(Some(0), answer) => {
-                        write(&aside.join(format!("{n}.ans")), &answer)?
+                        write(&aside.join(format!("{n}.ans")), &lf(answer))?
                     }
                     Ran::Past => {
                         return Err(format!(
@@ -471,6 +472,22 @@ pub fn make_within(package: &Path, out: &Path, budget: Duration) -> Result<(), S
 
 fn exit_code(code: Option<i32>) -> String {
     code.map_or("on a signal".to_string(), |c| c.to_string())
+}
+
+/// `bytes` with each `\r\n` as `\n`: cases and answers are LF on every OS,
+/// as the judge's program runs see them, so a Windows `print`'s `\r\n`
+/// never reaches a saved case.
+pub(crate) fn lf(bytes: Vec<u8>) -> Vec<u8> {
+    if !bytes.contains(&b'\r') {
+        return bytes;
+    }
+    let mut out = Vec::with_capacity(bytes.len());
+    for (i, &b) in bytes.iter().enumerate() {
+        if !(b == b'\r' && bytes.get(i + 1) == Some(&b'\n')) {
+            out.push(b);
+        }
+    }
+    out
 }
 
 fn write(path: &Path, data: &[u8]) -> Result<(), String> {
@@ -762,6 +779,19 @@ mod tests {
         make(&dir, &out).unwrap();
         assert_eq!(names(&out), [".stamp", "01.in"]);
         assert_eq!(text(out.join("01.in")), "2\n");
+        std::fs::remove_dir_all(dir.ancestors().nth(3).unwrap()).unwrap();
+    }
+
+    #[test]
+    fn cases_are_lf_whatever_wrote_them() {
+        let gen = "import sys\nsys.stdout.write('7\\r\\n8\\r\\n')\n";
+        let toml = "[[case]]\ninput = \"1\\r\\n2\"\n\n[[case]]\nseed = 7\nsize = 1\n";
+        let dir = package("lf", toml, gen);
+        let out = cases_dir(&dir);
+        make(&dir, &out).unwrap();
+        assert_eq!(text(out.join("01.in")), "1\n2\n");
+        assert_eq!(text(out.join("02.in")), "7\n8\n");
+        assert_eq!(lf(b"a\rb\r\n\r".to_vec()), b"a\rb\n\r");
         std::fs::remove_dir_all(dir.ancestors().nth(3).unwrap()).unwrap();
     }
 

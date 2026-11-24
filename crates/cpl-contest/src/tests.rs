@@ -363,6 +363,23 @@ fn cases_named_apart_only_by_letter_case_are_rejected() {
 }
 
 #[test]
+fn an_added_case_is_lf() {
+    let dir = scratch("add-lf");
+    let tests = dir.join("d.tests");
+    std::fs::write(dir.join("pasted.txt"), "3 4\r\n5").unwrap();
+    std::fs::write(dir.join("answer.txt"), "7\r\n").unwrap();
+    let from = dir.join("pasted.txt").to_string_lossy().into_owned();
+    let expect = dir.join("answer.txt").to_string_lossy().into_owned();
+    let name = crate::test::add_case(&tests, &from, Some(&expect)).unwrap();
+    assert_eq!(name, "1");
+    assert_eq!(
+        std::fs::read_to_string(tests.join("1.in")).unwrap(),
+        "3 4\n5\n"
+    );
+    assert_eq!(std::fs::read_to_string(tests.join("1.out")).unwrap(), "7\n");
+}
+
+#[test]
 fn cases_are_samples_in_order_then_the_rest_by_name() {
     let dir = scratch("cases");
     let tests = dir.join("d.tests");

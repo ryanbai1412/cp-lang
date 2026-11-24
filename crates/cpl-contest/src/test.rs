@@ -378,15 +378,16 @@ pub(crate) const VALUED: &[&str] = &[
 
 /// Writes the next numbered case into `dir`: `from` (a file, or `-` for
 /// standard input) as `N.in` and, with `expect`, that file as `N.out`,
-/// each ending in a newline.
-fn add_case(dir: &Path, from: &str, expect: Option<&str>) -> Result<String, String> {
+/// each LF and ending in a newline.
+pub(crate) fn add_case(dir: &Path, from: &str, expect: Option<&str>) -> Result<String, String> {
     let read = |path: &str| {
         let mut bytes = Vec::new();
         match path {
             "-" => std::io::Read::read_to_end(&mut std::io::stdin(), &mut bytes).map(|_| bytes),
             path => std::fs::read(path),
         }
-        .map(|mut bytes| {
+        .map(|bytes| {
+            let mut bytes = crate::package::lf(bytes);
             if bytes.last().is_some_and(|&b| b != b'\n') {
                 bytes.push(b'\n');
             }
