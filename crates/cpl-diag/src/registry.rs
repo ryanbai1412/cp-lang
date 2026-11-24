@@ -504,7 +504,7 @@ pub const REGISTRY: &[CodeInfo] = &[
     CodeInfo {
         code: Code("E0505"),
         title: "Library lint that cannot be used",
-        summary: "An `@lint` on a library fn whose `from` or `to` is not one expression or statement, whose `to` drops or invents a parameter or does not call the fn, or whose name the module uses twice.",
+        summary: "An `@lint` on a library fn whose `from` is not an expression or a run of statements or whose `to` is not one expression or statement, whose `to` drops or invents a parameter or does not call the fn, or whose name the module uses twice.",
         explanation: "`@lint(name, from: \"<code>\", to: \"<code>\")` rewrites `from` into `to`; the fn's parameter names are the holes, so `to` must call the fn with every hole `from` matched (R06.4.9).",
         trigger: "@lint(square_by_hand, from: \"x * x\", to: \"sq(1)\")\nfn sq(x: Int) -> Int:\n    x * x\nprint(sq(3))\n",
         fix: "@lint(square_by_hand, from: \"x * x\", to: \"sq(x)\")\nfn sq(x: Int) -> Int:\n    x * x\nprint(sq(3))\n",

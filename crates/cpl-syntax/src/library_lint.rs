@@ -82,15 +82,21 @@ pub fn declared(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>)
             continue;
         };
         let holes: Vec<String> = f.params.iter().map(|p| p.name.text.clone()).collect();
-        let (Some(from_toks), Some(to_toks)) = (code(&from), code(&to)) else {
-            let which = if code(&from).is_none() { "from" } else { "to" };
+        let (Some(from_run), Some(to_toks)) = (run(&from), code(&to)) else {
+            let which = if run(&from).is_none() { "from" } else { "to" };
+            let what = if which == "from" {
+                "one expression or statement, or a run of statements"
+            } else {
+                "one expression or statement"
+            };
             error(
-                format!("`{which}` of `@lint({name})` is not one expression or statement"),
+                format!("`{which}` of `@lint({name})` is not {what}"),
                 "write CP Lang code that parses on its own, such as `x * x`",
                 &mut label,
             );
             continue;
         };
+        let from_toks: Vec<(TokenKind, String)> = from_run.concat();
         let names = |toks: &[(TokenKind, String)]| -> Vec<String> {
             toks.iter()
                 .filter(|(k, t)| is_name(*k, t))
@@ -180,6 +186,39 @@ pub fn module_errors<'a>(
 /// A name, or `self`: what a hole can be.
 pub fn is_name(kind: TokenKind, text: &str) -> bool {
     kind == TokenKind::Ident || (kind == TokenKind::SelfKw && text == "self")
+}
+
+/// The tokens of each statement of `src`, in order, if it parses as one
+/// expression or a run of statements: a `from` may span consecutive
+/// statements of one block.
+pub fn run(src: &str) -> Option<Vec<Vec<(TokenKind, String)>>> {
+    let parsed = crate::parse_file(src);
+    if !parsed.diagnostics.is_empty() {
+        return None;
+    }
+    let spans: Vec<Span> = (parsed.items.iter())
+        .flat_map(|(offset, item)| item.stmts.iter().map(move |s| s.span.shift(*offset)))
+        .collect();
+    if spans.is_empty() {
+        return None;
+    }
+    let toks = tokens(src);
+    Some(
+        spans
+            .iter()
+            .map(|span| {
+                (toks.iter())
+                    .filter(|t| span.contains(t.span))
+                    .map(|t| {
+                        (
+                            t.kind,
+                            src[t.span.start as usize..t.span.end as usize].to_string(),
+                        )
+                    })
+                    .collect()
+            })
+            .collect(),
+    )
 }
 
 /// The tokens of `src` if it is one expression or statement, without the

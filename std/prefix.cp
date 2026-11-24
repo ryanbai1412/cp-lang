@@ -31,6 +31,7 @@ use std.range.{ends, RingRange, first_true}
 /// example: `[3, 1, 4].scan(+).prefix(2) == 4`
 /// example: `[3, 1, 4].scan(+).fold(1..=2) == 5`
 /// example: `[3, 1, 4].scan(+, from: 10).prefix(0) == 10`
+@lint(prefix_totals_list, from: "var p = [0]\nfor x in self:\n    p.push(p.last! + x)", to: "let p = self.scan(+)")
 pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T> =
     Prefix<D, T>.of_scan(self, f, from)
 

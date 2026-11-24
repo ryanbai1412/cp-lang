@@ -168,7 +168,8 @@ library or by this spec:
   `from` a hole matches any expression (a bracketed one with its
   brackets), a hole written twice matches the same tokens twice and only
   an expression that calls nothing, and every other name matches itself,
-  except names `from` binds (lambda parameters, a `for` variable), which
+  except names `from` binds (lambda parameters, a `for`, `let` or `var`
+  variable), which
   match any name consistently. A finding names the lint (`warning[name]`),
   is in the `idiom` group, warns by default, and `with lint(name: allow)`
   turns it off; its fix is `to` with each hole replaced by what it matched.

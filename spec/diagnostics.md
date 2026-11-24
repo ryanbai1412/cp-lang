@@ -74,7 +74,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0502 | non_ascii | `é` is not ASCII; a Str literal holds single-byte ASCII characters only |
 | E0503 | removed_syntax | names the 0.3 spelling (`D.bounds` is `D.cuts`, `(+, max)` is `each(+, max)`, `.enumerate()` is `.keyed().items`, `@alt(main)` is `@alt(program)`, `@allow(x)` is `with lint(x: allow)`) |
 | E0504 | not_implemented | planned syntax this version reads but does not implement yet; the help names today's spelling |
-| E0505 | bad_library_lint | an `@lint` that cannot be used: `from` or `to` is not one expression or statement, `to` drops or invents a parameter, `to` does not call the fn, or the name is used twice in the module (R06.4.9) |
+| E0505 | bad_library_lint | an `@lint` that cannot be used: `from` is not an expression or a run of statements, `to` is not one expression or statement, `to` drops or invents a parameter, `to` does not call the fn, or the name is used twice in the module (R06.4.9) |
 | E0601 | lent_twice | `a` is lent `mut` here while lent at line N; one place passed twice says `x` is lent to this call twice |
 | E0602 | used_while_lent | `xs` is written while the view `w` (line N) still reads it |
 | E0603 | lent_escapes | a lent value outlives its source |

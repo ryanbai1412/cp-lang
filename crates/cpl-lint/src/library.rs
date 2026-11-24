@@ -19,8 +19,10 @@ pub(crate) struct Declared {
     decl: LibraryLint,
     /// `std.seq`; empty for the file itself.
     module: String,
-    from: Vec<(K, String)>,
-    /// Names `from` binds itself (lambda parameters, loop variables).
+    /// The tokens of each statement `from` spans; one for an expression.
+    from: Vec<Vec<(K, String)>>,
+    /// Names `from` binds itself (lambda parameters, loop and `let`/`var`
+    /// variables).
     bound: Vec<String>,
 }
 
@@ -31,12 +33,12 @@ pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
         for item in &a.items {
             for stmt in &item.syntax.parsed.stmts {
                 for decl in library_lint::declared(stmt, item.offset).0 {
-                    let Some(from) = library_lint::code(&decl.from) else {
+                    let Some(from) = library_lint::run(&decl.from) else {
                         continue;
                     };
                     out.push(Declared {
                         lint: intern(&decl.name),
-                        bound: bound_names(&from),
+                        bound: bound_names(&from.concat()),
                         decl,
                         module: module.to_string(),
                         from,
@@ -94,11 +96,11 @@ pub(crate) fn intern(name: &str) -> &'static Lint {
 }
 
 /// Names a pattern binds itself: the parameters before `=>`, and the
-/// variable after `for`.
+/// variable after `for`, `let` or `var`.
 fn bound_names(toks: &[(K, String)]) -> Vec<String> {
     let mut out = Vec::new();
     for (i, (kind, _)) in toks.iter().enumerate() {
-        if *kind == K::For {
+        if matches!(kind, K::For | K::Let | K::Var) {
             if let Some((K::Ident, t)) = toks.get(i + 1) {
                 out.push(t.clone());
             }
@@ -123,15 +125,22 @@ fn bound_names(toks: &[(K, String)]) -> Vec<String> {
     out
 }
 
-/// Every expression and statement of the file, in file positions.
+/// Every expression and statement of the file, and the statements of each
+/// block in order, in file positions.
 #[derive(Default)]
 struct Spans {
     base: u32,
     exprs: Vec<Span>,
     stmts: Vec<Span>,
+    blocks: Vec<Vec<Span>>,
 }
 
 impl Visitor for Spans {
+    fn stmts(&mut self, stmts: &[Stmt]) {
+        let base = self.base;
+        self.blocks
+            .push(stmts.iter().map(|s| s.span.shift(base)).collect());
+    }
     fn expr(&mut self, expr: &Expr) {
         self.exprs.push(expr.span.shift(self.base));
     }
@@ -162,6 +171,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         .collect();
     let mut spans = Spans::default();
     file.walk(&mut spans, |s, base| s.base = base);
+    (spans.blocks).push(file.top_level().map(|(b, s)| s.span.shift(b)).collect());
     let mut ends: HashMap<u32, Vec<u32>> = HashMap::new();
     for e in &spans.exprs {
         ends.entry(e.start).or_default().push(e.end);
@@ -174,13 +184,20 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         .collect();
     candidates.sort_by_key(|c| (c.0, std::cmp::Reverse(c.1)));
     candidates.dedup_by_key(|c| (c.0, c.1));
+    // A statement's span can run past its last token (a block's newline).
+    let tok_range = |s: &Span| {
+        let start = toks.partition_point(|t| t.span.start < s.start);
+        let stop = toks.partition_point(|t| t.span.end <= s.end);
+        (start < stop).then_some((start, stop))
+    };
     let mut out = Vec::new();
     for d in declared {
+        let all = d.from.concat();
         let repeated: Vec<bool> = (d.decl.holes.iter())
-            .map(|h| d.from.iter().filter(|(_, t)| t == h).count() > 1)
+            .map(|h| all.iter().filter(|(_, t)| t == h).count() > 1)
             .collect();
-        let m = Matcher {
-            pat: &d.from,
+        let matcher = |pat| Matcher {
+            pat,
             holes: &d.decl.holes,
             bound: &d.bound,
             text: &text,
@@ -188,10 +205,24 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             toks: &toks,
             ends: &ends,
             by_end: &by_end,
-            repeated,
+            repeated: repeated.clone(),
+        };
+        let parts: Vec<Matcher> = d.from.iter().map(|p| matcher(p.as_slice())).collect();
+        // A run of statements matches statement by statement, in one block.
+        let sites: Vec<Vec<Span>> = match d.from.len() {
+            1 => candidates.iter().map(|c| vec![c.2]).collect(),
+            k => {
+                let mut runs: Vec<Vec<Span>> = (spans.blocks.iter())
+                    .flat_map(|b| b.windows(k).map(<[Span]>::to_vec))
+                    .collect();
+                runs.sort_by_key(|r| (r[0].start, r[k - 1].end));
+                runs.dedup();
+                runs
+            }
         };
         let mut taken: Vec<Span> = Vec::new();
-        for &(start, stop, span) in &candidates {
+        for site in sites {
+            let span = Span::new(site[0].start, site[site.len() - 1].end);
             if (d.module.is_empty() && d.decl.item.contains(span))
                 || taken.iter().any(|t| t.contains(span))
             {
@@ -199,7 +230,11 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             }
             let mut holes = vec![None; d.decl.holes.len()];
             let mut names = Vec::new();
-            if !m.go(0, start, stop, &mut holes, &mut names) {
+            let matched = site.iter().zip(&parts).all(|(s, m)| {
+                tok_range(s)
+                    .is_some_and(|(start, stop)| m.go(0, start, stop, &mut holes, &mut names))
+            });
+            if !matched {
                 continue;
             }
             taken.push(span);

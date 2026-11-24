@@ -968,8 +968,7 @@ fn dnc_layers_match_the_quadratic_dp():
     for _ in 0..30:
         let n = rand(1, 12)
         let a = [rand(0, 9) for _ in 0..n]
-        var pre = [0]
-        for x in a: pre.push(pre.last! + x)
+        let pre = a.scan(+)
         let cost = (j, i) => (pre[i] - pre[j]) * (pre[i] - pre[j])
         var fast: List<?Int> = [if i == 0: 0 else: None for i in 0..=n]
         var slow = fast.clone()
@@ -987,8 +986,7 @@ fn knuth_matches_the_cubic_interval_dp():
     for _ in 0..30:
         let n = rand(1, 10)
         let a = [rand(1, 9) for _ in 0..n]
-        var pre = [0]
-        for x in a: pre.push(pre.last! + x)
+        let pre = a.scan(+)
         let dp = knuth(n, (l, r) => pre[r] - pre[l])
         var slow = [[0 for _ in 0..=n] for _ in 0..=n]
         for len in 2..=n:

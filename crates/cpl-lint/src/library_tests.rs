@@ -81,3 +81,43 @@ fn cp_toml_sets_a_library_lints_level() {
     );
     assert!(report.contains("no lint called `nope`"), "{report}");
 }
+
+/// A `from` may be a run of statements: it matches consecutive statements of
+/// one block, whole, with each bound name the same across the run, and its
+/// fix replaces the run. A wider finding it rewrites (L0521) gives way.
+/// Rule: R06.4.9, spec/core/06-control-functions.md.
+#[test]
+fn a_library_lint_matches_a_run_of_statements() {
+    let decl = "@lint(totals, from: \"var p = [0]\\nfor x in xs:\\n    p.push(p.last! + x)\", to: \"let p = totals(xs)\")\npub fn totals(xs: List<Int>) -> Int:\n    xs.len\n";
+    let found = |body: &str| -> Vec<(String, String)> {
+        crate::lint(&format!("{decl}{body}"), &crate::Config::default())
+            .into_iter()
+            .map(|d| {
+                let fix = d.fixes.first().map(|f| f.edits[0].1.clone());
+                (d.code.0.to_string(), fix.unwrap_or_default())
+            })
+            .collect()
+    };
+    let run =
+        "let a = [3, 1, 4]\nvar s = [0]\nfor v in a:\n    s.push(s.last! + v)\nprint(s.len)\n";
+    // std declares the same run on `scan` (decision 512).
+    assert_eq!(
+        found(run),
+        [
+            ("prefix_totals_list".into(), "let s = a.scan(+)".into()),
+            ("totals".into(), "let s = totals(a)".into())
+        ]
+    );
+    let nested = "fn f(a: List<Int>):\n    var s = [0]\n    for v in a:\n        s.push(s.last! + v)\n    print(s.len)\nf([1])\n";
+    assert!(found(nested).contains(&("totals".into(), "let s = totals(a)".into())));
+    // Another statement between, or a different list pushed to, is not the run.
+    let apart = "let a = [3, 1, 4]\nvar s = [0]\nprint(a)\nfor v in a:\n    s.push(s.last! + v)\n";
+    let other =
+        "let a = [3, 1, 4]\nvar s = [0]\nvar t = [0]\nfor v in a:\n    t.push(s.last! + v)\n";
+    for near in [apart, other] {
+        assert!(
+            found(near).iter().all(|(c, _)| !c.contains("totals")),
+            "{near}"
+        );
+    }
+}
