@@ -206,7 +206,7 @@ domain V = 1..=5
 domain Item = 1..=5
 domain Cut = 0..=5
 let edges: List<(u: V, v: V)> = [(V(1), V(2))]
-let adj = adjacency(edges, into: Bitset)
+let adj = Bitset.undirected(edges)
 let full: Bitset<V> = V.all
 let diff = V.all - adj[V(1)]
 for v in diff: print(v)

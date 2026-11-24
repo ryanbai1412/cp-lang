@@ -9046,4 +9046,9 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** `laws_hold` was a compiler arm (`lower_laws_hold`) that walked the law decls by name; std could not reach them, which broke "small core, no privileged stdlib". With `sizes` and index picks the entry type is the same for every law of a struct whatever its arity, so std enumerates samples itself.
 - **Reverse.** Delete `parser/laws.rs` and its call in `struct_decl`, restore the compiler `laws_hold` arm and the prelude row.
 
-## 577. (reserved, content)
+## 577. `adjacency(edges, into: Bitset)` is `Bitset.undirected(edges)`; `adjacency` is std's (stdlib, 2026-11-24)
+
+- **Call.** The prelude takes `adjacency` from `std.graph` (the directed `[V]List<V>` builder over any walk of `(u, v, ..)` records), and the `into: Bitset` form is gone: `Bitset<V>.undirected(edges)` already builds the same neighbour sets, each edge both ways. A call with `into: Bitset` is E0310, and its fix, a `respelled` row in `check/removed.rs`, rewrites it to `Bitset.undirected(edges)`, so `cpl fix` migrates old code. The frozen v0.2 copy of cf2147h was migrated by `cpl fix` in the same commit.
+- **Why.** std can't spell `into: Bitset`, because a type isn't a value, so the form kept `adjacency` a compiler arm (`lower_adjacency`, the checker's known call, `BUILT_ON`). One std fn and one constructor do the job with nothing privileged. It amends 66.1.
+- **Lost.** One name for both shapes. The fix writes `Bitset.undirected` without `<V>`, which the edges infer.
+- **Reverse.** Restore the compiler arm and drop the row.

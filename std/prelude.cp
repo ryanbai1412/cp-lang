@@ -124,6 +124,7 @@ use std.graph.{
     Visit,
     Complement,
     Walk,
+    adjacency,
     bfs,
     components,
     condense,
