@@ -81,7 +81,7 @@ fn plan(x: Int) -> ?Plan:
     var free: ?Seg = None
     for s in Seg.rev:
         let from = came[spent, s.r, at]!
-        piece[s] = (from: from, to: at)
+        piece[s] = (from:, to: at)
         if spent and freed[s.r, at]: (free, spent) = (Some(s), false)
         at = from
     Plan(piece, free!)
