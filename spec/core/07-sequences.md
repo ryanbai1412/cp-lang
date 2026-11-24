@@ -357,8 +357,9 @@ since the second walk reruns against what the first wrote.
 | Form | Result | Cost |
 |---|---|---|
 | `s.sum()`, `s.prod()` | `T`; empty is the identity | \(O(n)\) (R07.9.1) |
-| `s.fold(op)` | `T` when `op` has an identity (`+`, `max` on a bounded type, `gcd`), else `?T` | \(O(n)\) (R07.9.2) |
-| `s.fold(f, init: a)` | `Acc`: a left fold into any accumulator, `init` when empty | \(O(n)\) (R07.9.2) |
+| `s.fold(op)` | `T`; `op` has an identity (anything `Monoid.of` takes: `+`, `max` on a bounded type, `gcd`, a `Monoid`), and a plain fn is E0706 with a fix to `reduce` | \(O(n)\) (R07.9.2) |
+| `s.reduce(f)` | `?T`: a fold by a fn without an identity, `None` when empty | \(O(n)\) (R07.9.2) |
+| `s.fold_from(a, f)` | `Acc`: a left fold into any accumulator, init first, `a` when empty; `cpl fix` rewrites the old `s.fold(f, init: a)` | \(O(n)\) (R07.9.2) |
 | `s.min()`, `s.max()`, `s.min(by: k)`, `s.max(ties: Ties.Last)` | `?T`, `None` when empty; first on ties, the last with `ties: Ties.Last` | \(O(n)\) (R07.9.3) |
 | `s.min_k(k, by: f)`, `s.max_k(k, by: f)` | `List<T>`, the `k` smallest or largest (every element when `k >= n`) in no set order; earlier wins ties | \(O(n)\) expected (R07.9.3) |
 | `s.count(p)`, `s.any(p)`, `s.all(p)`; `s.count()` counts every element, so on a `Seq<Bool>` it is an error naming `count(x => x)` (the trues) and `len` (decision 378) | `Int`, `Bool` | \(O(n)\) (R07.9.4) |

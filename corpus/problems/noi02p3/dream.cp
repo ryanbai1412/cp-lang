@@ -12,7 +12,7 @@ fn pays(a: Eater, b: Eater) -> Bool = a == b and (a == Big or m == 2)
 
 let cost = t.up((v, kids) =>
     [for me in Eater:
-        kids.fold(if me == Big: [inf, 0] else: [0], (acc, (arc, sub)) =>
+        kids.fold_from(if me == Big: [inf, 0] else: [0], (acc, (arc, sub)) =>
             convolve(acc, [for j in sub[Big].keys:
                 min(for them in Eater: sub[them][j] + (if pays(me, them): arc.w else: 0))],
                 over: Semiring(min, +)))])

@@ -10,6 +10,7 @@
 //! - Nearest smaller: `prev_smaller`/`next_smaller` (larger with `by: desc`), `prev_same`/`next_same`, `MonoStack`; sliding windows fold with `a.window_fold(k, op)` or `Window(op)` (`std.window`).
 //! - Coordinate compression: `let (domain C, xs) = compress(all)` -> `Compressed<C, T>` (`index_of`, `try_index_of`, `contains`, `first_ge`, `first_gt`, `last_le`, `last_lt`).
 
+use std.algebra.{Monoid}
 use std.hashmap.{Counter}
 use std.prefix.{Prefix}
 use std.range.{RingRange, ends, first_true, last_true}
@@ -1949,13 +1950,29 @@ pub fn reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T:
         else: acc = Some(x)
     acc
 
-/// \(O(n)\). Seeded left fold into an arbitrary accumulator `Acc`.
+/// \(O(n)\). The elements folded left to right with `op`: `op(op(op(id, x0), x1), x2)`. `op` is
+/// anything `Monoid.of` accepts (`+`, `*`, `^`, `|`, `&`, `max`, `min`, `gcd`, `or`, `and`, a
+/// `Monoid`), so the empty fold is its identity. A fn without an identity is `reduce(f)`, and a fold
+/// into another type is `fold_from(init, f)` (decision 550).
+///
+/// cost: \(O(n)\) calls of `op`
+/// empty: `let a: List<Int> = []; a.fold(+) == 0`
+/// traps: never (an `op` without a known identity is a compile-time error)
+/// example: `[1, 2, 3].fold(+) == 6`
+/// example: `[3, 9, 6].fold(gcd) == 3`
+pub fn fold<S: Seq<T>, T, M>(self: S, op: M) -> T:
+    let m = Monoid<T>.of(op)
+    var acc = m.id
+    for x in self: acc = m.op(acc, x)
+    acc
+
+/// \(O(n)\). Seeded left fold into an arbitrary accumulator `Acc`, `init` first.
 ///
 /// cost: \(O(n)\) calls of `f`
-/// empty: `let a: List<Int> = []; a.fold((s, x) => s * 10 + x, 7) == 7`
+/// empty: `let a: List<Int> = []; a.fold_from(7, (s, x) => s * 10 + x) == 7`
 /// traps: never
-/// example: `[1, 2, 3].fold((s, x) => s * 10 + x, 0) == 123`
-pub fn fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc:
+/// example: `[1, 2, 3].fold_from(0, (s, x) => s * 10 + x) == 123`
+pub fn fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> Acc:
     var acc = init
     for x in self: acc = f(acc, x)
     acc

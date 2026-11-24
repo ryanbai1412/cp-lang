@@ -8,6 +8,6 @@ var t = 0
 for k in 1..=2:
     t += s.items.sum(of: b => b.ord * k)
 print(t)
-print(s.items.fold((a, b) => a + b.ord, 0))
+print(s.items.fold_from(0, (a, b) => a + b.ord))
 var w = 2
 print(s.items.sum(of: b => b.ord * w + w))

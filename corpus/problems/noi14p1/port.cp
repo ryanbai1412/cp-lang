@@ -9,7 +9,7 @@
 // Bounds: n: 1..=1e5; m, doors.t: 0..=1e9
 let (n, m): (1..=1e5, 0..=1e9) = read()
 let doors: [0..n](op: Str, t: 0..=1e9) = read()
-fn through(x: Int) -> Int = doors.fold((v, d) => if d.op == "AND": v & d.t elif d.op == "OR": v | d.t else: v ^ d.t, x)
+fn through(x: Int) -> Int = doors.fold_from(x, (v, d) => if d.op == "AND": v & d.t elif d.op == "OR": v | d.t else: v ^ d.t)
 
 let bits = 30
 let zeros = through(0)

@@ -21,7 +21,7 @@ fn random_number() -> List<Char>:
 // The numbers are far too long to hold, so keep each one modulo a large prime.
 type Z = Mod<2305843009213693951>
 fn residue(s: [domain S]Char) -> Z:
-    let v = s.fold((v, c) => if c == '-': v else: v * Z(10) + Z(c - '0'), Z(0))
+    let v = s.fold_from(Z(0), (v, c) => if c == '-': v else: v * Z(10) + Z(c - '0'))
     if s[S.first!] == '-': -v else: v
 let coef = [residue(read(gen: random_number)) for _ in 0..=n]
 

@@ -394,7 +394,7 @@ impl<'a> Checker<'a> {
             return None;
         }
         // Arguments the fn doesn't take are the receiver's own member's,
-        // `xs.fold(+)` beside `xs.fold(f, init: 0)`.
+        // `xs.fold(+)` beside `xs.fold_from(0, f)`.
         if own_member && free_failed {
             self.chosen_methods.retain(|r| r.0 != name.span);
             return None;
@@ -469,7 +469,7 @@ impl Checker<'_> {
 
     /// Whether `base.name(args)` gives arguments its built-in member's row
     /// doesn't take while a library fn fits the receiver: then the call is
-    /// the library's, `xs.fold(f, init: 0)` beside the built-in `xs.fold(+)`.
+    /// the library's, `xs.fold_from(0, f)` beside the built-in `xs.fold(+)`.
     /// `s.split(" ")`: a `Str` splits on a `Char` or a `Char -> Bool` (`Sep<T>`), so a one-char
     /// `Str` separator is fixed to its `Char`. True when it reported.
     fn split_on_str(&mut self, args: &[Arg]) -> bool {

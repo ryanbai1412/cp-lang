@@ -1,7 +1,7 @@
 //! `i + 1` and other `?I` values used where a position of `I` is wanted.
 
 use super::*;
-use cpl_syntax::ast::{Expr, ExprKind, Name};
+use cpl_syntax::ast::{Arg, Expr, ExprKind, Name};
 
 impl Checker<'_> {
     /// R11.1.4: E0207 when `base.name` reads a member another module declares
@@ -127,6 +127,47 @@ impl Checker<'_> {
             Diagnostic::warning(codes::PARENS_MEAN_WORK, expr.span, message)
                 .with_help(format!("write `{shown}()`: `()` marks a call that does work, and only O(1) getters read as fields")),
         );
+    }
+
+    /// R07.9.2: `s.fold(f)` by a lambda or a fn value: an op `Monoid.of` gives no identity.
+    pub(super) fn fold_without_identity(&mut self, op: &Expr) -> bool {
+        if let ExprKind::Lambda { params, .. } = &op.kind {
+            return params.len() == 2 && self.text(op.span).contains("=>");
+        }
+        let with_identity = ["+", "*", "^", "|", "&", "max", "min", "gcd", "or", "and"];
+        !with_identity.contains(&self.text(op.span))
+            && matches!(self.quietly(|c| c.infer(op)), Ty::Fn { .. })
+    }
+
+    /// R07.9.2: `s.fold(f, init)` or `s.fold(f, init: a)` on a sequence is the seeded fold std
+    /// spells `fold_from(init, f)`; the arity error carries that rewrite (removed.rs).
+    pub(super) fn seeded_fold(&mut self, base_ty: &Ty, name: &Name, args: &[Arg]) -> Option<Ty> {
+        let [f, init] = args else {
+            return None;
+        };
+        let init_slot = init.name.as_ref().is_none_or(|n| n.text == "init");
+        let is_fn = matches!(f.value.kind, ExprKind::Lambda { .. })
+            || matches!(self.quietly(|c| c.infer(&f.value)), Ty::Fn { .. });
+        if f.name.is_some() || !init_slot || !is_fn {
+            return None;
+        }
+        if matches!(self.element_ty(base_ty), Ty::Unknown | Ty::Error) {
+            return None;
+        }
+        let acc = self.infer(&init.value);
+        let message = "`fold` takes one op; a seeded fold is `fold_from(init, f)`".to_string();
+        self.error(codes::WRONG_ARG_COUNT, name.span, message);
+        Some(acc)
+    }
+
+    /// R07.9.2: `fold(op)` takes only an op with an identity; a plain fn folds with `reduce`.
+    pub(super) fn fold_is_reduce(&mut self, name: &Name) {
+        let message = "`fold` takes an op with an identity, and a plain fn has none".to_string();
+        if let Some(diag) = self.error(codes::EMPTY_FOLD_NO_IDENTITY, name.span, message) {
+            diag.help =
+                Some("`reduce(f)` folds without an identity and gives `None` when empty".into());
+            diag.fix("write `reduce`", name.span, "reduce");
+        }
     }
 
     /// R07.9.2: `s.fold(f)` with a plain fn has no identity, so it is `?T`.

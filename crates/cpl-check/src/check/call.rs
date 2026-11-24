@@ -1065,15 +1065,17 @@ impl<'a> Checker<'a> {
         }
         if name.text == "fold" {
             if let ExprKind::Call { args, .. } = &call.kind {
-                if args.len() == 1
-                    && args[0].name.is_none()
-                    && matches!(&args[0].value.kind, ExprKind::Lambda { params, .. } if params.len() == 2)
-                    && self.text(args[0].value.span).contains("=>")
-                {
-                    let elem = self.element_ty(&base_ty);
-                    if !matches!(elem, Ty::Unknown | Ty::Error) {
-                        self.infer(&args[0].value);
-                        return Some(Ty::Optional(Box::new(elem)));
+                if let Some(acc) = self.seeded_fold(&base_ty, name, args) {
+                    return Some(acc);
+                }
+                if let [arg] = args.as_slice() {
+                    if arg.name.is_none() && self.fold_without_identity(&arg.value) {
+                        let elem = self.element_ty(&base_ty);
+                        if !matches!(elem, Ty::Unknown | Ty::Error) {
+                            self.infer(&arg.value);
+                            self.fold_is_reduce(name);
+                            return Some(Ty::Optional(Box::new(elem)));
+                        }
                     }
                 }
             }

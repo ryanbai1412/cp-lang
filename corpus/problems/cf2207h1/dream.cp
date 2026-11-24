@@ -43,7 +43,7 @@ fn solve(span: Range<Int>, is_max: Bool, known: ?Int = None) -> List<Int>:
         x[outer].reverse()
         if moved_left: mid = join(mid, right.pop()!, not is_max)
         else: mid = join(left.pop()!, mid, is_max)
-    left + [right.rev.fold((m, b) => join(m, b, not is_max), mid)]
+    left + [right.rev.fold_from(mid, (m, b) => join(m, b, not is_max))]
 
 fn eval(vals: List<Int>, v: Int) -> Int:
     guard let g = nodes[v].gate else: return vals[v]

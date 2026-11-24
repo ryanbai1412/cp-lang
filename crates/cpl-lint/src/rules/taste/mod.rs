@@ -1286,7 +1286,7 @@ impl<'a> Taste<'a> {
                 format!("a loop that only folds `{name}` through `{f}` is one `fold`"),
             )
             .with_help(format!(
-                "write `{seq}.fold({folded}, {i})`; one call says what the loop computes, with the start value next to it"
+                "write `{seq}.fold_from({i}, {folded})`; one call says what the loop computes, with the start value first"
             ));
             self.push(&LOOP_REDUCTION, diag);
             return;

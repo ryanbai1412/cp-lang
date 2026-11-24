@@ -711,7 +711,7 @@ impl Spelled<'_> {
                 decl.name.span,
                 (
                     format!("`{}` is Euclid's algorithm, written by hand", decl.name.text),
-                    format!("call `gcd({a}, {b})` from `std.math`; a fold over a list is `xs.fold(gcd, 0)`"),
+                    format!("call `gcd({a}, {b})` from `std.math`; a fold over a list is `xs.fold(gcd)`"),
                 ),
                 None,
                 None,

@@ -1494,12 +1494,12 @@ fn a_call_fold_loop_teaches_fold() {
     assert!(
         f.help
             .as_deref()
-            .is_some_and(|h| h.contains("`a.fold(g, 0)`")),
+            .is_some_and(|h| h.contains("`a.fold_from(0, g)`")),
         "{:?}",
         f.help
     );
     let after =
-        "let a: List<Int> = read()\nfn g(x: Int, y: Int) -> Int = x + y\nprint(a.fold(g, 0))\n";
+        "let a: List<Int> = read()\nfn g(x: Int, y: Int) -> Int = x + y\nprint(a.fold_from(0, g))\n";
     assert!(crate::fix_tests::checker_errors(after).is_empty());
     let flipped = src.replace("g(r, x)", "g(x, r)");
     assert!(
