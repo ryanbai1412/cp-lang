@@ -441,6 +441,13 @@ fn newcomer_fixes_still_check() {
         found.contains(&"L0583") && !found.contains(&"L0501"),
         "{found:?}"
     );
+    // A comment in the loop keeps the search's fix back, not its place.
+    let noted = palindrome.replace("n / 2:\n", "n / 2:  // mirrored\n");
+    let found = codes(&noted);
+    assert!(
+        found.contains(&"L0583") && !found.contains(&"L0501"),
+        "{found:?}"
+    );
     let all = "let s: Str = \"abba\"\nlet n = s.len\nvar ok = true\nfor i in 0..n / 2:\n    if s[i] != s[i + 1]:\n        ok = false\n        break\nprint(yes(ok))\n";
     let any = "let a = [1, 2]\nvar ok = false\nfor x in a:\n    if x > 1:\n        ok = true\n        break\nprint(yes(ok))\n";
     for src in [search, all, any] {

@@ -57,6 +57,13 @@ pub(crate) struct Declared {
     spell: Vec<(String, String)>,
 }
 
+impl Declared {
+    /// Whether its finding carries `to` as a fix where the site allows one.
+    pub(crate) fn fixes(&self) -> bool {
+        self.lint.no_fix.is_none() && !self.decl.advice
+    }
+}
+
 /// The usable `@lint` declarations of `analysis`'s file, every module it
 /// uses, and std's advice.
 pub(crate) fn collect(analysis: &Analysis) -> Vec<Declared> {
@@ -535,7 +542,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
         let compound = library_lint::code(&d.decl.to)
             .is_some_and(|to| library_lint::compound(&to, &d.decl.fn_name));
         // With no fix nothing is dropped, so `to` may leave out any hole.
-        let fixes = d.lint.no_fix.is_none() && !d.decl.advice;
+        let fixes = d.fixes();
         let to_kinds: Vec<(K, String)> = (to.iter())
             .map(|t| {
                 (
@@ -947,7 +954,7 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                             && !d.decl.holes.iter().any(|h| h == user)
                     })
                 });
-            if !commented && !shadows && d.lint.no_fix.is_none() && !d.decl.advice {
+            if !commented && !shadows && d.fixes() {
                 diag = fixed;
             }
             taken.push(span);

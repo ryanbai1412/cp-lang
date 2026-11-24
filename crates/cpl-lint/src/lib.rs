@@ -706,7 +706,7 @@ fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Ve
     let all = out.clone();
     out.retain(|d| {
         !all.iter().any(|wider| {
-            supersedes(file.src, wider, d)
+            supersedes(file.src, wider, d, declared)
                 && !library::refires(file.src, wider, d.code, &all, declared)
         })
     });
@@ -721,9 +721,18 @@ fn lint_file(file: &File, config: &Config, declared: &[library::Declared]) -> Ve
 /// span or evidence (the cache lookup a `@memo` removes; on one span, a
 /// search loop that is `is_palindrome`). A rewrite that keeps the inner code
 /// keeps both; `inner`'s evidence counts as its code (`var found = -1`, set
-/// in a search loop that becomes `first(..) ?? -1`).
-fn supersedes(src: &str, wider: &Diagnostic, inner: &Diagnostic) -> bool {
+/// in a search loop that becomes `first(..) ?? -1`). A std lint whose site
+/// withholds its fix (a comment in the loop) goes as if it had it.
+fn supersedes(
+    src: &str,
+    wider: &Diagnostic,
+    inner: &Diagnostic,
+    declared: &[library::Declared],
+) -> bool {
     let whole = |d: &Diagnostic| LINTS.iter().any(|l| l.code == d.code && l.replaces_whole);
+    let fixes = |d: &Diagnostic| {
+        !d.fixes.is_empty() || (declared.iter()).any(|l| l.lint.code == d.code && l.fixes())
+    };
     // Trailing whitespace a statement's span runs on into does not widen it.
     let len = |s: Span| {
         let text = src.get(s.start as usize..s.end as usize).unwrap_or("");
@@ -732,8 +741,8 @@ fn supersedes(src: &str, wider: &Diagnostic, inner: &Diagnostic) -> bool {
     let shorter = len(inner.span) < len(wider.span)
         || (len(inner.span) == len(wider.span)
             && whole(wider)
-            && wider.fixes.is_empty()
-            && (!whole(inner) || !inner.fixes.is_empty()));
+            && !fixes(wider)
+            && (!whole(inner) || fixes(inner)));
     if wider.code == inner.code || !shorter {
         return false;
     }
