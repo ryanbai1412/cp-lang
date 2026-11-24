@@ -41,8 +41,19 @@ pub fn problem_dir(port: &Path) -> PathBuf {
 }
 
 /// The `.cp` files one directory down from the corpus problems and the
-/// conformance cases, plus the snapshot ports that differ from their live port.
+/// conformance cases, plus the snapshot ports that differ from their live port:
+/// what the build-and-agree suites run.
 pub fn corpus_and_conformance(repo: &Path) -> Vec<PathBuf> {
+    let mut found = shipped(repo);
+    found.extend(v02_snapshot_ports(repo));
+    found.sort();
+    found
+}
+
+/// The corpus and conformance sources without the snapshot: what the idiom
+/// and perf gates judge. The snapshot is a frozen regression input, never
+/// rewritten to meet today's taste.
+pub fn shipped(repo: &Path) -> Vec<PathBuf> {
     let mut found = Vec::new();
     for root in ["corpus/problems", "spec/conformance"] {
         for dir in std::fs::read_dir(repo.join(root)).expect("source root exists") {
@@ -58,7 +69,6 @@ pub fn corpus_and_conformance(repo: &Path) -> Vec<PathBuf> {
             }
         }
     }
-    found.extend(v02_snapshot_ports(repo));
     found.sort();
     found
 }

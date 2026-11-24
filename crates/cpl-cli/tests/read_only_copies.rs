@@ -81,7 +81,7 @@ const BOUNDS: [Bound; 5] = [
 /// The `.cp` files one directory down from each root: the corpus
 /// problems and the conformance cases.
 fn sources() -> Vec<PathBuf> {
-    corpus_programs::corpus_and_conformance(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
+    corpus_programs::shipped(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."))
 }
 
 #[test]
