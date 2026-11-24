@@ -20,7 +20,7 @@ use std.dsu.{Dsu}
 use std.graph.{Next, Target, Graph, Visit, Edged, dfs, Tree, arc_len}
 use std.math.{bit, bit_width}
 use std.rand.{Rng, shuffle}
-use std.range.{first_true}
+use std.range.{Len, first_true}
 use std.segtree.{SegTree}
 use std.seq.{collect, dedup, get_or_insert, span, any}
 
@@ -138,11 +138,20 @@ pub struct Rooted<V, Pre, A>:
     /// traps: never
     /// example: `domain V = 0..2; let par: [V]?V = [Some(1), Some(0)]; Rooted.try_from_parents(par) == None`
     pub fn try_from_parents(par: [V]?V) -> ?Rooted<V, _, _>:
-        var kids: [V]List<V> = []
+        // the children as compressed rows, by a counting sort over `par`, so no vertex owns a list
+        var start: [V.cuts]Len = 0
         var roots: List<V> = []
         for v in V:
-            if let p = par[v]: kids[p].push(v)
+            if let p = par[v]: start[p.ord] += 1
             else: roots.push(v)
+        for i in 1..start.len: start[i] += start[i - 1]
+        var kids: List<V> = if V.count > 0: List.filled(start[V.count], V.nth(0)) else: []
+        for j in (0..V.count).rev:
+            let v = V.nth(j)
+            if let p = par[v]:
+                start[p.ord] -= 1
+                kids[start[p.ord]] = v
+        let g = Graph<V>(start, kids)
         // a cycle in `par` is a set of vertices no root reaches
         var todo: List<V> = []
         var reached = 0
@@ -150,8 +159,8 @@ pub struct Rooted<V, Pre, A>:
             todo.push(r)
             while let u = todo.pop():
                 reached += 1
-                for c in kids[u]: todo.push(c)
-        if roots.len > 0 and reached == V.count: Some(Rooted.build(kids, roots)) else: None
+                for c in g.out(u): todo.push(c)
+        if roots.len > 0 and reached == V.count: Some(Rooted.build(g, roots)) else: None
 
     /// A spanning forest: walks `from` as `dfs` does, skipping a root already reached, then roots
     /// each unreached vertex in `V` order, so `from: []` spans every component (decision 451).
