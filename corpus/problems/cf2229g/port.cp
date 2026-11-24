@@ -1,4 +1,5 @@
 // Source: Codeforces 2229G (Roadworks), https://codeforces.com/contest/2229/problem/G
+// limits: 3000 ms, 512 MB
 // Problem: n <= 2e5 houses in a row with h_i <= 1e9; road i (between i and i + 1) is built on day
 //   d_i. Start at house x; on each day 1..k (k <= 1e9) roads due open, you may step to a
 //   neighbour over a built road, then gain h of your house. Print the maximum total. Multitest,

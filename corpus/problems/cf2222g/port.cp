@@ -1,4 +1,5 @@
 // Source: Codeforces 2222G (Statistics on Tree), https://codeforces.com/contest/2222/problem/G
+// limits: 2000 ms, 512 MB
 // Problem: a tree on n <= 1e5 vertices. The value of a pair u <= v is the size of the largest
 //   component left after deleting every edge on the u-v path; for each i in 1..=n print how many
 //   pairs have value i. Multitest, sum n <= 5e5.

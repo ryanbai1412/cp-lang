@@ -1,5 +1,13 @@
 import sys, random
 
+if sys.argv[1] == "--max":
+    # every character free: the most reachable ends and distinct scores
+    n = 100_000
+    print(1)
+    print(n, 999_983, 1_000_000)
+    print("?" * n)
+    sys.exit()
+
 r = random.Random(int(sys.argv[1]))
 S = int(sys.argv[2])
 if S >= 1000:

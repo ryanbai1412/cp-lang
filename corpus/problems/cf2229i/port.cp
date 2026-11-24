@@ -1,4 +1,5 @@
 // Source: Codeforces 2229I (The Endians), https://codeforces.com/contest/2229/problem/I
+// limits: 2000 ms, 1024 MB
 // Problem: a tree of n <= 4000 nodes (sum n <= 4000, multitest) with weights w_i <= 1e9, and
 //   k. Rooted at x, choose S of k nodes containing x; f(i) sums the weights of chosen nodes
 //   on the path from i to the root, and the score is the sum of f(i) over i in S. Print the

@@ -1,4 +1,5 @@
 // Source: Codeforces 2222F (Building Tree), https://codeforces.com/contest/2222/problem/F
+// limits: 2500 ms, 512 MB
 // Problem: a graph of n, m <= 3e5 with edge weights 0..=m; a path's length is the mex of its
 //   weights, dis(u, v) the least over u-v paths. q vertices with colors c_i: joining two costs
 //   dis(c_u, c_v), allowed only when connected. Print the cheapest way to connect all q, or -1.

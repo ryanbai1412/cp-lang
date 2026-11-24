@@ -1,4 +1,5 @@
 // Source: Codeforces 2211F (Learning Binary Search), https://codeforces.com/contest/2211/problem/F
+// limits: 2000 ms, 256 MB
 // Problem: f(a, k) counts the calls of the given recursive binary search for k on a sorted
 //   a[1..=n] (0 if k is absent). Over all nondecreasing a of length n with values in 1..=m, print
 //   the sum of f(a, k) for k in 1..=m, mod 676767677. n, m <= 1e6; multitest, sums <= 1e6.

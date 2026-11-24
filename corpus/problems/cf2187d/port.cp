@@ -1,4 +1,5 @@
 // Source: Codeforces 2187D (Cool Problem), https://codeforces.com/contest/2187/problem/D
+// limits: 4000 ms, 256 MB
 // Problem: integers x, y <= 1e6 and a string s over 0, 1, ? (n <= 1e5). With c_0 = 0,
 //   c_i = x + c_{i-1} on '0' and y - c_{i-1} on '1', f = sum c_i. Print the sum of the distinct
 //   values f takes over all completions of s, mod 998244353. Multitest, sum n <= 1e5.

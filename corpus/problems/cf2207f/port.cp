@@ -1,4 +1,5 @@
 // Source: Codeforces 2207F (Hanabi), https://codeforces.com/contest/2207/problem/F
+// limits: 3000 ms, 512 MB
 // Problem: Zuko holds all n m cards (rank 1..n, colour 1..m; n m <= 2e5) in a given order. Each
 //   turn Iroh clues a rank or a colour (it must highlight a card left) and Zuko plays the leftmost
 //   highlighted card; rank r needs rank r - 1 of its colour played first. Print the least number

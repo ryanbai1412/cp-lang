@@ -1,5 +1,6 @@
 // Source: Codeforces 2201D (Binary Not Search and Queries),
 //   https://codeforces.com/contest/2201/problem/D
+// limits: 4000 ms, 512 MB
 // Problem: an array a of n <= 2e5 values in 1..n gets q <= 1e5 point assignments. After each,
 //   print k_max, the largest k such that two different length-k windows i < j hold the same
 //   multiset, and f, the number of such (i, j, k) with k = k_max (0 0 if none). Sums of n
