@@ -13,16 +13,15 @@
 
 use cpl_diag::{Diagnostic, LineIndex, Severity};
 use std::collections::BTreeMap;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
 
 fn root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
 }
 
-fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
-    let mut db = cpl_check::Session::new();
+/// `src`'s errors, checked as `path` in `db`: one session per thread
+/// checks the std library once for all its copies.
+fn errors(db: &mut cpl_check::Session, path: &str, src: &str) -> Vec<Diagnostic> {
     db.set_file(path, src);
     let analysis = db.analyze(path).expect("the file was just set");
     let mut out: Vec<Diagnostic> = cpl_ir::check(&analysis)
@@ -235,29 +234,23 @@ fn tests_of(json: &str) -> Vec<(String, String)> {
         .collect()
 }
 
-fn passes(src: &str, tests: &[(String, String)], n: usize) -> bool {
-    let path = std::env::temp_dir().join(format!("cpl-newcomer-{}-{n}.cp", std::process::id()));
-    std::fs::write(&path, src).unwrap();
-    let ok = tests.iter().all(|(input, expected)| {
-        let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .arg("run")
-            .arg(&path)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()
-            .unwrap();
-        child
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(input.as_bytes())
-            .unwrap();
-        let out = child.wait_with_output().unwrap();
-        out.status.success() && String::from_utf8_lossy(&out.stdout) == *expected
-    });
-    let _ = std::fs::remove_file(&path);
-    ok
+/// Whether `src`, written to `file`, passes every test, run in process
+/// like the `cpl run` a user types.
+fn passes(src: &str, tests: &[(String, String)], file: &Path) -> bool {
+    std::fs::write(file, src).unwrap();
+    let file = file.to_str().unwrap();
+    tests.iter().all(|(input, expected)| {
+        let out = cpl_cli::run_with_input(&["run", file], input.as_bytes());
+        out.code == 0 && String::from_utf8_lossy(&out.stdout) == *expected
+    })
+}
+
+/// What one copy scored, its tally counting only itself.
+#[derive(Default)]
+struct Scored {
+    tally: Tally,
+    crlf_differs: Option<String>,
+    shown: Option<String>,
 }
 
 #[derive(Default, Clone, Copy)]
@@ -313,40 +306,39 @@ fn newcomer_scoreboard() {
         }
     }
     let show = std::env::var("NEWCOMER_SHOW").ok();
-    let mut by_habit: BTreeMap<&str, Tally> = BTreeMap::new();
-    let mut crlf_differs = Vec::new();
-    for (n, c) in cases.iter().enumerate() {
+    let score = |db: &mut cpl_check::Session, file: &Path, c: &Case| -> Scored {
         let (original, tests) = &tests[&c.problem];
         let path = dir
             .join(&c.problem)
             .join("ref.cp")
             .to_string_lossy()
             .to_string();
-        let errs = errors(&path, &c.src);
-        let t = by_habit.entry(c.habit).or_default();
-        t.copies += 1;
+        let errs = errors(db, &path, &c.src);
+        let mut out = Scored::default();
+        let t = &mut out.tally;
+        t.copies = 1;
         if errs.is_empty() {
-            t.silent += 1;
-            continue;
+            t.silent = 1;
+            return out;
         }
-        t.errors += errs.len() as u32;
+        t.errors = errs.len() as u32;
         let index = LineIndex::new(&c.src);
         let on = |s: cpl_diag::Span| index.line_of(s.start) as usize == c.line;
         let right = on(errs[0].span) || errs[0].labels.iter().any(|l| on(l.span));
-        t.first_right += right as u32;
-        t.fixable += !errs[0].fixes.is_empty() as u32;
-        let (fixed, _) = cpl_cli::apply_error_fixes(&path, &c.src);
+        t.first_right = right as u32;
+        t.fixable = !errs[0].fixes.is_empty() as u32;
+        let (fixed, ..) = cpl_ir::fix::apply_error_fixes_in(db, &path, &c.src);
         // Windows: the same copy with CRLF line ends gets the same fixes.
-        let (crlf, _) = cpl_cli::apply_error_fixes(&path, &c.src.replace('\n', "\r\n"));
+        let (crlf, ..) = cpl_ir::fix::apply_error_fixes_in(db, &path, &c.src.replace('\n', "\r\n"));
         if crlf.replace("\r\n", "\n") != fixed {
-            crlf_differs.push(format!("{} {}: {}", c.problem, c.line + 1, c.habit));
+            out.crlf_differs = Some(format!("{} {}: {}", c.problem, c.line + 1, c.habit));
         }
-        let runs =
-            fixed == *original || (errors(&path, &fixed).is_empty() && passes(&fixed, tests, n));
-        t.runs += runs as u32;
+        let runs = fixed == *original
+            || (errors(db, &path, &fixed).is_empty() && passes(&fixed, tests, file));
+        t.runs = runs as u32;
         if show.as_deref() == Some(c.habit) && !(right && runs) {
             let line = |s: &str| s.lines().nth(c.line).unwrap_or("").to_string();
-            println!(
+            out.shown = Some(format!(
                 "--- {} {}: {}\n    {} {}\n    got {}",
                 c.problem,
                 c.line + 1,
@@ -354,7 +346,52 @@ fn newcomer_scoreboard() {
                 errs[0].code.0,
                 errs[0].message,
                 line(&fixed)
-            );
+            ));
+        }
+        out
+    };
+    // Each thread takes the next copy as it frees up, in a session and
+    // scratch file of its own.
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let mut scored: Vec<(usize, Scored)> = std::thread::scope(|s| {
+        let workers: Vec<_> = (0..threads)
+            .map(|w| {
+                let (next, score, cases) = (&next, &score, &cases);
+                s.spawn(move || {
+                    let mut db = cpl_check::Session::new();
+                    let file = std::env::temp_dir()
+                        .join(format!("cpl-newcomer-{}-{w}.cp", std::process::id()));
+                    let mut done = Vec::new();
+                    loop {
+                        let n = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(c) = cases.get(n) else { break };
+                        done.push((n, score(&mut db, &file, c)));
+                    }
+                    let _ = std::fs::remove_file(&file);
+                    done
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap())
+            .collect()
+    });
+    scored.sort_by_key(|(n, _)| *n);
+    let mut by_habit: BTreeMap<&str, Tally> = BTreeMap::new();
+    let mut crlf_differs = Vec::new();
+    for (n, one) in scored {
+        let t = by_habit.entry(cases[n].habit).or_default();
+        t.copies += one.tally.copies;
+        t.silent += one.tally.silent;
+        t.first_right += one.tally.first_right;
+        t.fixable += one.tally.fixable;
+        t.runs += one.tally.runs;
+        t.errors += one.tally.errors;
+        crlf_differs.extend(one.crlf_differs);
+        if let Some(shown) = one.shown {
+            println!("{shown}");
         }
     }
     let mut all = Tally::default();
