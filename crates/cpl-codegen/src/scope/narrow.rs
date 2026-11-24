@@ -581,7 +581,9 @@ pub(crate) fn narrow_elems(
                 | Builtin::PosKey
                 | Builtin::KeyPos
                 | Builtin::First
-                | Builtin::Last,
+                | Builtin::Last
+                | Builtin::CutAfter
+                | Builtin::CutBefore,
                 args,
             ) => {
                 for a in args {

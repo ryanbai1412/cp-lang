@@ -680,11 +680,15 @@ impl Lowerer<'_> {
         };
         let acc = self.temp(ty.clone());
         if dims.len() == 1 {
-            if let Some(bounds) = elem_range {
-                self.cx.local_ranges.insert(
-                    acc,
-                    RangeInfo::Elem(Box::new(RangeInfo::Scalar(bounds.clone()))),
-                );
+            // A cell holds the declared range, or else the body's.
+            let r = match elem_range {
+                Some(bounds) => Some(RangeInfo::Scalar(bounds.clone())),
+                None => self.expr_range(&value),
+            };
+            if let Some(r) = r {
+                self.cx
+                    .local_ranges
+                    .insert(acc, RangeInfo::Elem(Box::new(r)));
             }
         }
         let cell = Place {

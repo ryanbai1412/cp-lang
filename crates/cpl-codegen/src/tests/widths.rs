@@ -622,6 +622,30 @@ print(at[P(1)])
 }
 
 #[test]
+fn a_scan_of_a_narrow_table_reads_it_at_its_width() {
+    let out = cpp("let n: 1..=200_000 = read()
+let a: [0..n]0..n = read()
+let q = scan([0..n] i => a[i], max)
+print(q.prefix(1), a.scan(+).prefix(1))
+");
+    assert!(
+        out.contains("cpl::blank<uint32_t>(n)"),
+        "the table takes its body's 4 B range:\n{out}"
+    );
+    let scans: Vec<&str> = out
+        .lines()
+        .filter(|l| !l.starts_with(' ') && l.contains("_of_scan_Op_"))
+        .collect();
+    assert!(scans.len() >= 2, "{out}");
+    assert!(
+        scans
+            .iter()
+            .all(|l| l.contains("(const std::vector<uint32_t>& a")),
+        "the std scan is instantiated at its argument's width: {scans:?}"
+    );
+}
+
+#[test]
 fn a_rolling_hash_keeps_its_prefixes_and_powers_as_two_pair_lists() {
     let out = cpp("use std.strings.{RollingHash}
 let s: Str = read()
