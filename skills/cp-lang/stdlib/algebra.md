@@ -31,6 +31,10 @@ A monoid whose `op(a, b) == op(b, a)` is stated; [`Monoid.commutative`] makes on
 
 A lazy update `F` on values `T` folded with `over`.
 
+## `trait Acts<T, F>`
+
+What an `act:` argument is: a stock action or an `Action`, acting with tags `F` on values `T`.
+
 ## `struct Desc<T>(pub x: T)`
 
 `x` with its order reversed.

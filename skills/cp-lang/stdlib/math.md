@@ -4,7 +4,7 @@
 
 Number theory on plain `Int`s.
 
-In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `bit`, `bit_len`, `ceil_div`, `choose`, `choose2`, `crt`, `crt_all`, `digits`, `divisors`, `divisors_from_factors`, `divmod`, `ext_gcd`, `factor`, `fixed`, `floor_quotients`, `floor_sum`, `gcd`, `inf`, `inv_mod`, `is_prime`, `isqrt`, `lcm`, `mod_log`, `mod_sqrt`, `mul_mod`, `phi`, `pow_mod`, `primitive_root`, `sieve_multiplicative`, `sign`, `splitmix64`, `to_str`.
+In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `bit`, `bit_len`, `ceil_div`, `choose`, `choose2`, `crt`, `crt_all`, `digits`, `divisors`, `divisors_from_factors`, `divmod`, `ext_gcd`, `factor`, `fixed`, `floor_quotients`, `floor_sum`, `gcd`, `inf`, `inv_mod`, `is_prime`, `isqrt`, `lcm`, `mod_log`, `mod_sqrt`, `mul_mod`, `phi`, `popcount`, `pow_mod`, `primitive_root`, `sieve_multiplicative`, `sign`, `splitmix64`, `to_str`.
 
 ## Types & Constants
 
@@ -24,6 +24,10 @@ The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear
 - `fn div_count_table(self) -> List<Int>` — \(O(n)\); The number of positive divisors of every `0..=n`, with `d[0] == 0`.
 - `fn div_sum_table(self) -> List<Int>` — \(O(n)\); The sum of the positive divisors of every `0..=n`, with `sigma[0] == 0`.; traps: when a sum overflows `Int`
 - `fn divisors(self, x: Int) -> yields Int` — \(O(1)\) to start, \(O(\log x)\) amortized per divisor; The positive divisors of `x` in `1..=n`, built from the factorization, with no allocation.; traps: when `x` is outside `1..=n`
+
+## `trait Word`
+
+A 64-bit machine word whose bits `popcount` counts: an `Int` as its two's complement, or a `U64` as it is.
 
 ## `enum Sign: Neg`
 
@@ -80,6 +84,7 @@ Fields: `pre: List<T>`, `g_sum: Int -> T`, `fg_sum: Int -> T`, `g1: T`, `memo: M
 - `fn ceil_div(self: Int, b: Int) -> Int` — \(O(1)\); `ceil(self / b)` for any non-zero `b`; `n.ceil_div(k)` or `ceil_div(n, k)`.; traps: when `b == 0`, or on overflow (`ceil_div(Int.MIN, -1)`)
 - `fn divmod(self: Int, d: Int) -> (Int, Int)` — \(O(1)\); The Euclidean quotient and remainder `(self / d, self % d)`: `0 <= r < \|d\|` and `self == q * d + r`.; traps: when `d == 0`, or on overflow (`Int.MIN.divmod(-1)`)
 - `fn sieve_multiplicative<T>(n: Int, prime_pow: (Int, Int, Int) -> T) -> List<T>` — \(O(n)\) time and memory, plus one `prime_pow` call per prime power; Tabulate a multiplicative function `f` on `0..=n` in \(O(n)\) with a linear sieve.; traps: when `n < 0`
+- `fn popcount<W: Word>(x: W) -> Int` — \(O(1)\); The number of 1 bits in `x`'s 64-bit word, one `popcnt`: a negative `Int` counts its two's complement.
 - `fn bit_len(x: Int) -> Int` — \(O(1)\); The number of bits needed to write `x >= 0`: `bit_len(0) == 0`, `bit_len(5) == 3`.; traps: when `self < 0`
 - `fn digits(self: Int, base: Int = 10) -> List<Int>` — \(O(\mathit{log\_base} x)\); The digits of `x >= 0` in `base`, lowest first; `0` has the one digit `0`.; traps: when `self < 0` or `base < 2`
 - `fn to_str(self: Int, base: Int = 10) -> Str` — \(O(\log \lvert \mathit{self} \rvert)\); `self` written in `base` (2..=36), highest digit first, lowercase letters past 9, a leading `-` when negative.; traps: when `base` is outside `2..=36`

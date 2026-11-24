@@ -4,7 +4,7 @@
 
 Graphs: one stored representation and the algorithms over "what comes after v".  Vertices and edges are domains, so per-vertex data is `[V]T`, per-edge data is `[E]T`, and mixing the two does not type-check. An algorithm takes any `Next<V>`: a stored `Graph`, a `[V]List` of arcs, or any fn from a vertex to a `Seq` of arcs. An arc is anything with `.to`; what else it carries (`.w`, `.e`) decides which algorithms accept it:  bfs(g, from: [s]) dijkstra(g, from: [(s, 0)])                          # arcs carry w dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])   # weights from a fn bfs(p => p.adj4.filter(q => grid[q] != '#'), from: [start]) bridges(g)                                           # arcs carry e  Customizing a graph is a lambda over `g.out(u)`; nothing is rebuilt. Unreachable is `None`. Whole-graph algorithms need `V: Domain`.
 
-In prelude (no `use` needed): `Complement`, `Functional`, `Graph`, `Lit`, `Target`, `Tree`, `TwoSat`, `Visit`, `Walk`, `bellman_ford`, `bfs`, `bfs01`, `blocks`, `bridges`, `complement`, `components`, `condense`, `dfs`, `dial`, `dijkstra`, `euler_walk`, `find_cycle`, `floyd_warshall`, `kruskal`, `peel`, `reachable`, `scc`, `topo`, `two_color`, `two_edge_components`.
+In prelude (no `use` needed): `Complement`, `Functional`, `Graph`, `Lit`, `Target`, `Tree`, `TwoSat`, `Visit`, `Walk`, `adjacency`, `bellman_ford`, `bfs`, `bfs01`, `blocks`, `bridges`, `complement`, `components`, `condense`, `dfs`, `dial`, `dijkstra`, `euler_walk`, `find_cycle`, `floyd_warshall`, `kruskal`, `peel`, `reachable`, `scc`, `topo`, `two_color`, `two_edge_components`.
 
 ## Types & Constants
 
@@ -50,7 +50,7 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 - `fn directed<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(edges: S, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — \(O(n + m)\) time and memory, plus `m` calls of `keep`; A graph with one arc `u -> v` per edge of `edges`, in compressed sparse rows.
 - `fn undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(edges: S, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — \(O(n + m)\) time and memory, plus `2m` calls of `keep`; A graph with two arcs per edge of `edges`, `u -> v` and `v -> u`, both carrying the same `e`.
 - `fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>` — \(O(n + m)\); A graph from `(from, arc)` pairs: `arc` is stored as one of `from`'s arcs.
-- `fn at(self, u: V) -> lends Slice<A>` — \(O(1)\); `g[u]`: the arcs out of `u` as an `Indexed` view, without copying.
+- `fn at(self, u: V) -> lends Slice<List<A>>` — \(O(1)\); `g[u]`: the arcs out of `u` as an `Indexed` view, without copying.
 - `fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W>` — \(O(n^2 + m)\) time, \(O(n^2)\) memory; The weight matrix: `d[u, v]` is the least `.w` over the arcs `u -> v`, `None` without one.
 - `fn deg(self, u: V) -> Int` — \(O(1)\); The number of arcs out of `u`.
 - `fn next(self, u: V) -> yields V` — \(O(1)\) per vertex yielded; Where `u`'s arcs lead: `out(u)` mapped to `.to`, repeats kept.

@@ -10,6 +10,9 @@ In prelude (no `use` needed): `Mat`.
 
 A dense `rows x cols` matrix stored flat in row-major order.
 
+Fields: `cells: List<T>`.
+
+- `@get fn data(self) -> List<T>` — The entries, row by row, as a new list: `get(r, c)` is `data[r * cols + c]`.
 - `fn new<R, C, S>(a: [R, C]T, over: S = Semiring(+, *)) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A matrix from a 2-D table, multiplied under `over` (default `Semiring(+, *)`): `Mat(over: Semiring(min, +), d)`.
 - `fn of(rows: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A matrix from a list of equal-length rows: `Mat<Z>.of(adj)` for an adjacency table read as nested lists.; traps: when the rows differ in length
 - `fn filled<S>(rows: Int, cols: Int, fill: T, over: S = Semiring(+, *)) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; A `rows x cols` matrix with every entry `fill`, multiplied under `over` (default `Semiring(+, *)`).; traps: when `rows < 0` or `cols < 0`
@@ -19,7 +22,7 @@ A dense `rows x cols` matrix stored flat in row-major order.
 - `fn from_rows(grid: List<List<T>>) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.; traps: when the rows differ in length
 - `fn get(self, r: Int, c: Int) -> T` — \(O(1)\); The entry at `(r, c)`, 0-based.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn set(mut self, r: Int, c: Int, val: T)` — \(O(1)\); Set the entry at `(r, c)` to `val`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
-- `fn at(self, r: Int, c: Int) -> lends mut T` — \(O(1)\); The entry at `(r, c)`, lent in place: `m.at(i, j) += x`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
+- `fn at(mut self, r: Int, c: Int) -> lends mut T` — \(O(1)\); The entry at `(r, c)`, lent in place: `m.at(i, j) += x`.; traps: when `r` is not in `0..rows` or `c` is not in `0..cols`
 - `fn transpose(self) -> Mat<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time and space; The transpose, a new `cols x rows` matrix with entry `(c, r)` equal to `self`'s `(r, c)`.
 - `fn mul_vec(self, v: List<T>) -> List<T>` — \(O(\mathit{rows} \cdot \mathit{cols})\) time, \(O(\mathit{rows})\) space; The matrix-vector product `self * v` under the matrix's semiring: entry `r` folds `get(r, c) * v[c]` over `c` with the semiring's addition.; traps: when `v.len != cols`
 - `fn product<S>(n: Int, over: S = Semiring(+, *)) -> Monoid<Mat<T>>` — \(O(n^2)\) time and space (for the identity); The matrix-multiplication monoid for `n x n` matrices under `over` (usable in `SegTree`): identity the semiring's identity matrix, op `*`, which is associative but not commutative.; traps: when `n < 0`

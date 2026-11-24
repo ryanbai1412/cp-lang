@@ -32,9 +32,9 @@ Fields: `marked: Bool`.
 
 Union-find where every set carries a value of type `T`.
 
-Fields: `val: [V]T`, `join: (T, T) -> T`, `marked: Bool`.
+Fields: `val: [V]T`, `join: (T, T) -> T`, `parts: Int`, `marked: Bool`.
 
-- `fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T>` — \(O(n)\) calls of `init`; three `[V]` arrays; A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and `join` combining the values of two sets when they merge.
+- `fn new(init: (V) -> T, join: (T, T) -> T) -> DsuOf<V, T>` — \(O(n)\) calls of `init`; two `[V]` arrays; A union-find over `V` with every position alone, the set of `v` holding `init(v)`, and `join` combining the values of two sets when they merge.
 - `fn find(self, v: V) -> V` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The representative of `v`'s set, as for [`Dsu.find`](Dsu.find).
 - `fn get(self, v: V) -> T` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`; The value of `v`'s set.
 - `fn set(mut self, v: V, x: T)` — \(O(\alpha(n))\) amortized; \(O(\log n)\) after the first `mark`, plus one log entry; Replaces the value of `v`'s whole set with `x`.

@@ -263,6 +263,7 @@ Fields: `k: Int,`.
 - `fn take<S: Indexed>(self: S, k: Int) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn take_last<S: Indexed>(self: S, k: Int) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn nth<S: Indexed, T>(self: S, k: Int) -> T` — \(O(1)\); traps: when `k` is not in `0..self.len`
+- `fn to_list<S: Indexed<K, T>, K, T>(self: Slice<S>) -> List<T>` — \(O(n)\)
 - `@get fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S>` — \(O(1)\)
 - `fn step<S: Indexed<K, T>, K, T>(self: S, k: Int) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).; traps: when `k < 1`
 - `@get fn even<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\).
