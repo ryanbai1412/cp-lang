@@ -129,7 +129,7 @@ fn the_bundled_stdlib_drops_tests_and_keeps_every_line() {
         }
     }
     let range = crate::modules::bundled_std(&["range".to_string()]).expect("range is bundled");
-    assert!(range.contains("pub fn bsearch<D>"));
+    assert!(range.contains("pub fn bsearch<D: Search>"));
 }
 
 /// `@memo` on a fn that neither back end keeps a table for is an error,
