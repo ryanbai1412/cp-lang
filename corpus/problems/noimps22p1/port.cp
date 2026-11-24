@@ -4,9 +4,9 @@
 //   "#undef name" print an empty line; other lines print with each maximal [A-Za-z0-9_] run
 //   naming a defined macro replaced by its content, expanded again, except names already being
 //   expanded (no recursion). Output lines have at most 1000 chars.
-// Solution: keep macros in a Map. expand(line, active) walks the line's runs of identifier
-//   and other characters; a run naming a macro not in the active Set becomes its body,
-//   expanded with the name added to active; every other run is copied. The bounds are tiny.
+// Solution: keep macros in a Map. expand(line) walks the line's runs of identifier
+//   and other characters; a run naming a macro not being expanded becomes its body,
+//   expanded with the name marked active until it returns; every other run is copied. The bounds are tiny.
 // Original C++: corpus/submissions/4533698.cpp (116 LOC raw, ~76 LOC stripped)
 let n: 1..=100 = read_line().parse_int()!
 let lines: List<Str> = [read_line() for _ in 0..n]
@@ -15,14 +15,16 @@ fn is_ident(ch: Char) -> Bool = ch.is_alnum or ch == '_'
 
 var macros: Map<Str, Str> = Map()
 
-fn expand(line: Str, active: Set<Str>) -> Str:
+var active = Set<Str>()  // the macros being expanded right now
+
+fn expand(line: Str) -> Str:
     var out = ""
     for run in line.runs(by: is_ident):
         let word = run.to_str()
         if let body = macros.get(word) and word not in active:
-            var inner = active
-            inner.insert(word.clone())
-            out += expand(body, inner)
+            active.insert(word)
+            out += expand(body)
+            active.remove(run.to_str())
         else:
             out += word
     out
@@ -38,7 +40,7 @@ for line in lines:
         macros.remove(line[undef.len..].trim())
         print("")
     else:
-        print(expand(line, Set()))
+        print(expand(line))
 
 // Valid preprocessor programs: never `#undef` an undefined macro; recursive and mutual
 // macro cycles, multi-space indentation and empty lines all occur.
