@@ -1412,3 +1412,14 @@ fn pairs_of_a_lazy_sequence_collects_it_once() {
         "the filtered values are collected: {out}"
     );
 }
+
+#[test]
+fn a_field_apart_from_the_place_a_call_writes_is_passed_in_place() {
+    let apart = body(concat!(
+        "struct S:\n    a: List<Int>\n    b: List<Int>\n",
+        "fn put(xs: List<Int>, mut v: Int):\n    v += xs.len\n",
+        "var s = S(a: [1, 2], b: [3, 4])\nput(s.a, mut s.b[0])\nprint(s.b[0])\n",
+    ));
+    assert!(!apart.contains("std::vector<ll>(s.a)"), "{apart}");
+    assert!(apart.contains("put(s.a, cpl::at(s.b, 0))"), "{apart}");
+}

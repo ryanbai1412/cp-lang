@@ -214,7 +214,7 @@ impl<'p> Emitter<'p> {
                         }
                         let shared = match crate::lend::given_root(value, &this.lent_roots) {
                             Some(root) => {
-                                lent.contains(&root)
+                                args.iter().any(|a| matches!(a, Arg::Mut(place) if walk::root(place) == root && !crate::lend::apart(value, place)))
                                     || (root.0 && this.uses.effects(id).writes.contains(&root.1))
                             }
                             None => false,
