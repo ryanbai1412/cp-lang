@@ -4072,6 +4072,126 @@
    "n": 1024,
    "ok": true
   },
+  "bench/scaling/geometry_algo.cp::geometry.any_segments_meet": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.any_segments_meet",
+   "measured": 4.53,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.any_segments_meet_idx": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.any_segments_meet_idx",
+   "measured": 4.7,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.circles_union_area": {
+   "cost": "n^2 \\log n",
+   "documented": 19.2,
+   "fn": "geometry.circles_union_area",
+   "measured": 13.71,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.closest_pair": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.closest_pair",
+   "measured": 6.43,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.closest_pair2": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.closest_pair2",
+   "measured": 6.29,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.convex_hull_3d": {
+   "cost": "n^2",
+   "documented": 16.0,
+   "fn": "geometry.convex_hull_3d",
+   "measured": 10.45,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.convex_hull_3d_idx": {
+   "cost": "n^2",
+   "documented": 16.0,
+   "fn": "geometry.convex_hull_3d_idx",
+   "measured": 10.89,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.delaunay": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.delaunay",
+   "measured": 4.72,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.manhattan_mst": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.manhattan_mst",
+   "measured": 4.1,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.min_enclosing_circle": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.min_enclosing_circle",
+   "measured": 4.52,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.planar_faces": {
+   "cost": "(n + m) \\log m",
+   "documented": 4.8,
+   "fn": "geometry.planar_faces",
+   "measured": 3.95,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.point_location_planar": {
+   "cost": "(n + m + q) \\log(n + m)",
+   "documented": 4.73,
+   "fn": "geometry.point_location_planar",
+   "measured": 4.18,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.polyhedron_volume6": {
+   "cost": "\\lvert \\mathit{faces} \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.polyhedron_volume6",
+   "measured": 3.89,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.rects_union_area": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.rects_union_area",
+   "measured": 4.68,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/geometry_algo.cp::geometry.voronoi_cells": {
+   "cost": "n \\log n",
+   "documented": 4.8,
+   "fn": "geometry.voronoi_cells",
+   "measured": 4.3,
+   "n": 1024,
+   "ok": true
+  },
   "bench/scaling/geometry_points.cp::geometry.Circle.area": {
    "cost": "1",
    "documented": 1.0,
@@ -10101,6 +10221,62 @@
    "documented": 4.67,
    "fn": "persistent.RangeKth.new",
    "measured": 6.21,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/pointset.cp::geometry.PointSet.contains": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.PointSet.contains",
+   "measured": 1.0,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/pointset.cp::geometry.PointSet.drain": {
+   "cost": "\\log^2 n + k",
+   "documented": 1.36,
+   "fn": "geometry.PointSet.drain",
+   "measured": 1.07,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/pointset.cp::geometry.PointSet.each": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.PointSet.each",
+   "measured": 4.11,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/pointset.cp::geometry.PointSet.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.PointSet.is_empty",
+   "measured": 0.99,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/pointset.cp::geometry.PointSet.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.PointSet.len",
+   "measured": 0.98,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/pointset.cp::geometry.PointSet.of": {
+   "cost": "n \\log n",
+   "documented": 4.67,
+   "fn": "geometry.PointSet.of",
+   "measured": 5.39,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/pointset.cp::geometry.PointSet.remove": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "geometry.PointSet.remove",
+   "measured": 0.99,
    "n": 4096,
    "ok": true
   },
@@ -17300,28 +17476,6 @@
   "dsu.PersistentDsuWithin.is_empty",
   "dsu.PersistentDsuWithin.items",
   "dsu.PersistentDsuWithin.len",
-  "geometry.PointSet.contains",
-  "geometry.PointSet.drain",
-  "geometry.PointSet.each",
-  "geometry.PointSet.is_empty",
-  "geometry.PointSet.len",
-  "geometry.PointSet.of",
-  "geometry.PointSet.remove",
-  "geometry.any_segments_meet",
-  "geometry.any_segments_meet_idx",
-  "geometry.circles_union_area",
-  "geometry.closest_pair",
-  "geometry.closest_pair2",
-  "geometry.convex_hull_3d",
-  "geometry.convex_hull_3d_idx",
-  "geometry.delaunay",
-  "geometry.manhattan_mst",
-  "geometry.min_enclosing_circle",
-  "geometry.planar_faces",
-  "geometry.point_location_planar",
-  "geometry.polyhedron_volume6",
-  "geometry.rects_union_area",
-  "geometry.voronoi_cells",
   "grid.GridCols.at",
   "grid.GridCols.each",
   "grid.GridRows.at",
