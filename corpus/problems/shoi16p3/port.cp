@@ -22,7 +22,10 @@ let comb = Comb<Z>(n + 2)
 
 fn tables(c: Course) -> Z:
     let (above, below) = (rank[c] - 1, n - rank[c])
-    lagrange_at([sum(Z(s) ** below * Z(u - s) ** above for s in 1..=u) for u in 0..=n + 1], Z(top[c]))
+    lagrange_at(
+        [sum(Z(s) ** below * Z(u - s) ** above for s in 1..=u) for u in 0..=n + 1],
+        Z(top[c]),
+    )
 
 var still = [Others] j => Z(Int(j.label == n - 1))
 for c in Course:

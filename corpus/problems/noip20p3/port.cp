@@ -45,7 +45,9 @@ fn split(mut given: List<Tube>, lo: Int, hi: Int):
         mv(spare, helper, lows)
 
     // two mixed tubes with the same bottom half pour the tops off and fill one with bottoms
-    while let (a, b) = given.pairs().find(p => mixed(p.0) and mixed(p.1) and high_bottom(p.0) == high_bottom(p.1)):
+    while let (a, b) = given.pairs().find(
+        p => mixed(p.0) and mixed(p.1) and high_bottom(p.0) == high_bottom(p.1)
+    ):
         let (a0, b0) = (bottoms(a), bottoms(b))
         mv(a, spare, m - a0); mv(b, spare, m - b0)
         mv(b, a, m - a0)

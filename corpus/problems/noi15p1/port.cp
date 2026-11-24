@@ -14,4 +14,6 @@ let (domain X, ids) = compress(cons.flat_map(c => [c.i, c.j]))
 let at = (v: Int) => ids.index_of(v)
 var eq = Dsu<X>()
 for c in cons if c.e == 1: eq.unite(at(c.i), at(c.j))
-print(yes(cons.filter(c => c.e == 0).all(c => not eq.same(at(c.i), at(c.j))), answers: ("YES", "NO")))
+print(
+    yes(cons.filter(c => c.e == 0).all(c => not eq.same(at(c.i), at(c.j))), answers: ("YES", "NO"))
+)
