@@ -1,5 +1,4 @@
 // expect: ok, output "6 3 6 4"
-// gap: compiler 2026-11-24T05Z
 // rule: 07.1.6 07.2.5
 domain V = 1..=4
 let a = [V] v => Int(v)
