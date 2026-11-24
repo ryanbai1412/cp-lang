@@ -7,7 +7,7 @@ impl Ord for Frac:
 let xs = [Frac(k % 3 + 1, (k % 3 + 1) * (k % 2 + 2)) for k in 0..12]
 let tagged = [(xs[k], k) for k in 0..12]
 print([t.1 for t in tagged.sorted(by: t => t.0)])
-print([f.q for f in xs.sorted(desc: true)])
+print([f.q for f in xs.sorted(by: x => desc(x))])
 print([f.q for f in xs.sorted().rev])
 domain D = 0..12
 var a: [D]Frac = Frac(1, 1)

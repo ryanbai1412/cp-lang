@@ -90,7 +90,7 @@ fn plan(x: Int) -> ?Plan:
         at = back
     Plan(piece, free!)
 
-let thresholds = total.sorted(desc: true).distinct()
+let thresholds = total.sorted(by: x => desc(x)).distinct()
 fn first_plan() -> ?(Int, Plan):
     for t in thresholds:
         if let p = plan(t): return Some((t, p))

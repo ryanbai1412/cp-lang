@@ -258,7 +258,7 @@ Sort in place or into a copy, by key, stable; get the order, its inverse and ran
 
 ### seq/U12: sort or sorted by key, descending, stable
 Need: order events by time, ties by input order.
-Design: `a.sort(by:, desc:)`, `a.sorted(by:, desc:)`, stable; tuple keys for several.
+Design: `a.sort(by:)`, `a.sorted(by:)`, stable; descending is a key, `by: x => desc(x)`; tuple keys for several.
 Milestone: M1-critical. Status: supported
 Evidence: program `spec/conformance/std-seq/seq-u12-sort-by-key.cp`; cost program `spec/conformance/std-seq/seq-u12-sort-by-key-cost.cp`; cost program `seq-u12-sort-cost.cp`.
 
@@ -316,7 +316,7 @@ Sorted lists treated as sets: dedup, merge, union, intersection.
 
 ### seq/U19: distinct values of sorted input
 Need: unique heights in descending order.
-Design: `a.sorted(desc: true).distinct()`.
+Design: `a.sorted(by: x => desc(x)).distinct()`.
 Milestone: M1-critical. Status: supported
 Evidence: program `spec/conformance/std-seq/seq-u19-distinct-sorted.cp`.
 

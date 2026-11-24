@@ -20,7 +20,7 @@ const BITS = 30
 @!multitest
 let (n, q): (1..=500_000, 1..=50_000) = read()
 let a: [0..n]0..=2 ** 30 - 1 = read()
-let top = a.sorted(desc: true)[..min(n, BITS)].to_list()
+let top = a.sorted(by: x => desc(x))[..min(n, BITS)].to_list()
 
 for _ in 0..q:
     var buf = top

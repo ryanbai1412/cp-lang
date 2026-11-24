@@ -33,7 +33,7 @@ let rev = g.transpose()
 var indeg: [V]Int = [V] u => rev[u].len
 var val_of: [V]?Int = None
 
-let targets = [(val: b[i], node: cur[i]) for i in Slot].sorted(by: e => e.val, desc: true)
+let targets = [(val: b[i], node: cur[i]) for i in Slot].sorted(by: e => desc(e.val))
 var work: List<V> = []
 fn fix(u: V, v: Int):
     if val_of[u] == None:

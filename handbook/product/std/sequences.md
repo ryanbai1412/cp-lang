@@ -30,7 +30,7 @@ index a different array by accident.
   `scan`, `runs`, `windows`, `max`, `sorted`.
 - **Positions keep their index space.** A search over `[I]T` gives `?I`, a
   boundary gives `Cut<I>`, and absence is `?T`, never `-1` or `n`.
-- **Options are named arguments.** `max(by:)`, `sorted(desc:)` and
+- **Options are named arguments.** `max(by:)`, `sorted(by:)` and
   `argmax(ties:)`, not `_by` variants.
 - **Views are free.** `a[l..r]`, `a.rev` and `windows(k)` don't copy, and
   they compose: `a.rev.items` keeps `a`'s keys.

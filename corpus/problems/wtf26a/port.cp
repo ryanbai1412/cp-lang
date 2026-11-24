@@ -18,7 +18,7 @@ struct Cut(w: Int, size: Int, parent: Node)
 let n: Int = read()
 domain U = 1..=n
 domain Node = 0..2 * n - 1
-let edges = read<[0..n - 1](u: U, v: U, w: Int)>().sorted(by: e => e.w, desc: true)
+let edges = read<[0..n - 1](u: U, v: U, w: Int)>().sorted(by: e => desc(e.w))
 let max_w = edges[0].w * (n - 1)
 
 var cut: [Node]?Cut = None
@@ -42,7 +42,7 @@ let joins = [
         v:,
         parent: c.parent,
     ) for v in Node if let c = cut[v]
-].sorted(by: j => j.cost, desc: true)
+].sorted(by: j => desc(j.cost))
 
 var leaves = DsuOf<Node, Int>(v => if v.ord < n: 1 else: 0, (a, b) => a + b)
 var ans: Z = 0

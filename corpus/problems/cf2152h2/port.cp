@@ -57,7 +57,7 @@ fn raise(h: Int, d: Int) -> ?Int:
     rest = br.meld(br.single(cross, slope - 1 - part), rest)
     br.meld(br.single(d, 1), rest)
 
-for (u, v, w) in edges.sorted(by: e => e.w, desc: true):
+for (u, v, w) in edges.sorted(by: e => desc(e.w)):
     let (kept, merged) = dsu.merge(u, v)!
     set[kept] = br.meld(set[kept], set[merged])
     bound[kept] += bound[merged] - 2 * w

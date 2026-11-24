@@ -47,7 +47,7 @@ fn wins(board: Board, who: Player) -> F64:
                 next[q] = Some(who)
                 next[p] = None
                 chances.push(1.0 - wins(next, other(who)))
-    let best = chances.sorted(desc: true)
+    let best = chances.sorted(by: x => desc(x))
     let take = min(best.len, slack(who))
     let chance = if take == 0: 0.0 else: best[0..take].sum() / F64(take)
     memo[k] = chance

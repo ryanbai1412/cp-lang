@@ -9,5 +9,5 @@
 let (n, k): (1..=200_000, 1..=200_000) = read()
 let l: [0..n]0..=10 ** 9 = read()
 let r: [0..n]0..=10 ** 9 = read()
-let mins = sorted([min(l[i], r[i]) for i in 0..n], desc: true)
+let mins = sorted([min(l[i], r[i]) for i in 0..n], by: x => desc(x))
 print(sum(max(l[i], r[i]) for i in 0..n) + mins[0..k - 1].sum() + 1)

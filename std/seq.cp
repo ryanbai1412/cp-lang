@@ -225,7 +225,7 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
         if p(x): return Some(x)
     None
 
-/// Sort `self` in place by `by` (descending when `desc`). Stable: equal keys keep their order.
+/// Sort `self` in place by `by`; descending is a key, `by: x => desc(x)`. Stable: equal keys keep their order.
 /// Works on any `IndexedMut`, including slices: `a[l..=r].sort()`.
 ///
 /// cost: \(O(n \log n)\) comparisons, \(O(n)\) extra space
@@ -234,7 +234,7 @@ pub fn rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T:
 /// traps: never (beyond what `by` traps on)
 /// example: `var a = [3, 1, 2]; a.sort(); a == [1, 2, 3]`
 /// example: `var a = [(1, 'b'), (0, 'z'), (1, 'a')]; a.sort(by: p => p.0); a == [(0, 'z'), (1, 'b'), (1, 'a')]`
-pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bool = false):
+pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x):
     let n = self.len
     let ks = self.keys
     var a: List<(K, T)> = [(by(self[k]), self[k]) for k in ks]
@@ -242,8 +242,8 @@ pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bo
     var in_a = true
     var w = 1
     while w < n:
-        if in_a: merge_runs(a, mut b, w, desc)
-        else: merge_runs(b, mut a, w, desc)
+        if in_a: merge_runs(a, mut b, w)
+        else: merge_runs(b, mut a, w)
         in_a = not in_a
         w *= 2
     var t = 0
@@ -253,7 +253,7 @@ pub fn sort<S: IndexedMut, T, K: Ord>(mut self: S, by: T -> K = x => x, desc: Bo
 
 /// One bottom-up pass of `sort`: merges each pair of adjacent sorted runs of length `w` in
 /// `src` into `dst`, stably.
-fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int, desc: Bool):
+fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int):
     let n = src.len
     var lo = 0
     while lo < n:
@@ -262,7 +262,7 @@ fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int, desc:
         var (i, j) = (lo, mid)
         for k in lo..hi:
             let right = j < hi and (
-                i >= mid or (if desc: src[i].0 < src[j].0 else: src[j].0 < src[i].0)
+                i >= mid or src[j].0 < src[i].0
             )
             if right:
                 dst[k] = src[j]
@@ -278,13 +278,13 @@ fn merge_runs<K: Ord, T>(src: List<(K, T)>, mut dst: List<(K, T)>, w: Int, desc:
 /// cost: \(O(n \log n)\) comparisons, \(O(n)\) space
 /// empty: `[]`
 /// ties: stable; equal keys keep their relative order
-/// order: increasing `by` (decreasing when `desc`), keyed from 0
+/// order: increasing `by` (decreasing with `by: x => desc(x)`), keyed from 0
 /// traps: never (beyond what `by` traps on)
 /// example: `[3, 1, 2].sorted() == [1, 2, 3]`
-/// example: `[3, 1, 2].sorted(desc: true) == [3, 2, 1]`
-pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x, desc: Bool = false) -> List<T>:
+/// example: `[3, 1, 2].sorted(by: x => desc(x)) == [3, 2, 1]`
+pub fn sorted<S: Seq, T, K: Ord>(self: S, by: T -> K = x => x) -> List<T>:
     var out: List<T> = self.collect()
-    sort(mut out, by:, desc:)
+    sort(mut out, by:)
     out
 
 /// \(O(n)\). Reverse `self` in place (or only the subrange `range` when given; prefer `self[l..r].reverse()`).

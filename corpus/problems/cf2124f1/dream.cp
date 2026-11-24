@@ -21,7 +21,7 @@ var bads: [0..2 * n - 1]List<Int> = []
 for _ in 0..m:
     let (i, x): (1..=n, 1..=n) = read()
     bads[diag(i, x)].push(i - 1)
-for off in 0..2 * n - 1: bads[off].sort(desc: true)
+for off in 0..2 * n - 1: bads[off].sort(by: x => desc(x))
 fn next_bad(off: Int) -> Int: bads[off].last ?? n
 
 var dp: [0..=n]Z = 0

@@ -8,8 +8,8 @@
 // original: corpus/submissions/5324109.cpp
 let n: 1..=1e5 = read()
 let odds: [n](a: F64, b: F64) = read()  // WISH R9: 1.0..=1000.0
-let a = [o.a for o in odds].sorted(desc: true)
-let b = [o.b for o in odds].sorted(desc: true)
+let a = [o.a for o in odds].sorted(by: x => desc(x))
+let b = [o.b for o in odds].sorted(by: x => desc(x))
 
 // Only the best odds of each outcome are worth a bet, and the next bet
 // always goes on the outcome that would pay less.

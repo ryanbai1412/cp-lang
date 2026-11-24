@@ -12,7 +12,7 @@ let n: 1..=200_000 = read()
 let a: [0..n]1..=10 ** 9 = read()
 
 let base = sum(x / 2 for x in a)
-let extras = [cnt for (x, cnt) in a.tally().items if x % 2 == 1].sorted(desc: true)
+let extras = [cnt for (x, cnt) in a.tally().items if x % 2 == 1].sorted(by: x => desc(x))
 var score: [0..2]Int = base
 for (k, c) in extras.items: score[k % 2] += c
 print(score[0], score[1])
