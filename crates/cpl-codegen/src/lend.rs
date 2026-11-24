@@ -1537,10 +1537,23 @@ impl Emitter<'_> {
                         .iter()
                         .any(|later| touches(&Stmt::Expr(later.clone()), &path))
                     && (overwritten_before_read(item, rest)
-                        || crate::uses::place_dies(self.program, block, k, item, outer))
+                        || crate::uses::place_dies(self.program, block, k, item, outer)
+                        || self.sunk_dies(block, k, item))
             })
             .map(|(_, item)| item as *const Expr)
             .collect()
+    }
+
+    /// A by-value param of the fn being written that nothing after statement
+    /// `k` of its body reads.
+    fn sunk_dies(&self, block: &Block, k: usize, item: &Expr) -> bool {
+        let (ExprKind::Local(p), Some(id)) = (&item.kind, self.fn_id) else {
+            return false;
+        };
+        self.closure_id.is_none()
+            && std::ptr::eq(block, &self.program.fns[id].body)
+            && self.sunk[id].contains(p)
+            && crate::uses::unread_after(self.program, block, k, *p)
     }
 
     /// A `let` an enclosing statement found reads its source for the last

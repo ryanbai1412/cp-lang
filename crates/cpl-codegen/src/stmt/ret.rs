@@ -93,6 +93,12 @@ impl Emitter<'_> {
                     }
                 }
                 let dies = self.handed_item_dies(items, idx, is_return);
+                // A call item of a returned literal is the last use of the
+                // locals it is given that no other item names.
+                self.last_use_call = is_return
+                    && self.closure_id.is_none()
+                    && self.fn_id.is_some()
+                    && self.call_item_alone(items, idx);
                 if let (ExprKind::Local(slot), true) = (&item.kind, dies) {
                     let moved = format!("std::move({})", self.names[*slot]);
                     return match struct_id {
@@ -105,9 +111,11 @@ impl Emitter<'_> {
                     .cloned()
                 {
                     let v = self.expr_with_elem_layout(item, Some(&l)).text;
+                    self.last_use_call = false;
                     return self.moved_if(dies, v);
                 }
                 let v = self.expr(item).text;
+                self.last_use_call = false;
                 let v = self.moved_if(dies, v);
                 match struct_id {
                     Some(s) => self.narrow_field_store(s, idx, &v),
@@ -116,6 +124,26 @@ impl Emitter<'_> {
             })
             .collect();
         Some(format!("{ty}{{{}}}", rendered.join(", ")))
+    }
+
+    /// Item `idx` is a call, and no other item names a local it is given.
+    fn call_item_alone(&self, items: &[Expr], idx: usize) -> bool {
+        let ExprKind::Call(_, args) = &items[idx].kind else {
+            return false;
+        };
+        let given = args.iter().filter_map(|arg| match arg {
+            cpl_ir::Arg::Value(Expr {
+                kind: ExprKind::Local(s),
+                ..
+            }) => Some(*s),
+            _ => None,
+        });
+        given.into_iter().all(|s| {
+            items
+                .iter()
+                .enumerate()
+                .all(|(j, other)| j == idx || !crate::uses::mentions_any(self.program, other, s))
+        })
     }
 
     /// Whether item `idx` is a value the fn (for a `return`) or the `Do`

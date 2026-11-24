@@ -742,6 +742,40 @@ pub(crate) fn place_dies(
 /// Value parameters whose one read copies them into a local the body
 /// changes, `var l = limbs`: taken by value, the copy moves in instead, and
 /// a caller at its last use moves its own value in.
+/// The params a struct literal of the body's own statements takes as an item
+/// at their last read: by value, they move into the field.
+pub(crate) fn stored_last(program: &Program, f: &cpl_ir::Function) -> BTreeSet<usize> {
+    let body = &f.body;
+    let mut sunk = BTreeSet::new();
+    for (k, stmt) in body.stmts.iter().enumerate() {
+        let (Stmt::Let(_, Some(init)) | Stmt::Assign(_, AssignOp::Set, init)) = stmt else {
+            continue;
+        };
+        let ExprKind::Tuple(items) = &init.kind else {
+            continue;
+        };
+        for (i, item) in items.iter().enumerate() {
+            let ExprKind::Local(p) = item.kind else {
+                continue;
+            };
+            let elsewhere = items
+                .iter()
+                .enumerate()
+                .any(|(j, other)| j != i && mentions(program, &[Stmt::Expr(other.clone())], p).any);
+            if p < f.params.len()
+                && !f.params[p].mutable
+                && !item.ty.is_scalar()
+                && !matches!(item.ty, Ty::Fn(..))
+                && !elsewhere
+                && unread_after(program, body, k, p)
+            {
+                sunk.insert(p);
+            }
+        }
+    }
+    sunk
+}
+
 pub(crate) fn copied_once(f: &cpl_ir::Function) -> BTreeSet<usize> {
     let stored = Touch::of_block(&f.body).stored_locals();
     let mut reads = vec![0usize; f.params.len()];

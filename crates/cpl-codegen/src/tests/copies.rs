@@ -593,3 +593,38 @@ fn a_local_passed_at_its_last_read_moves_into_a_var_param() {
     ));
     assert!(out.contains("(std::move(ys), "), "{out}");
 }
+
+#[test]
+fn a_param_a_literal_stores_at_its_last_read_is_sunk_and_moved_in() {
+    let out = cpp(concat!(
+        "struct R:\n",
+        "    var n: Int\n",
+        "    vals: List<Int>\n",
+        "    keys: Range<Int>\n",
+        "    pub fn new(a: List<Int>) -> R:\n",
+        "        let n = a.len\n",
+        "        let keys = a.keys\n",
+        "        var q = R(n, a, keys)\n",
+        "        q.n += 1\n",
+        "        q\n",
+        "struct W(xs: List<Int>)\n",
+        "fn kept(a: List<Int>) -> Int:\n",
+        "    let w = W(a)\n",
+        "    w.xs.len + a.len\n",
+        "struct S(sa: List<Int>, r: R)\n",
+        "fn build(m: Int) -> S:\n",
+        "    let sa = [i for i in 0..m]\n",
+        "    let lcp = [i * 2 for i in 0..m]\n",
+        "    S(sa, R(lcp))\n",
+        "let m: Int = read()\n",
+        "let s = build(m)\n",
+        "print(s.sa.len + s.r.vals.len + s.r.n, kept(s.sa))\n",
+    ));
+    assert!(out.contains("R R_new(std::vector<ll> a)"), "{out}");
+    assert!(out.contains("R q = R{n, std::move(a)"), "{out}");
+    assert!(out.contains("R_new(std::move(lcp))"), "{out}");
+    assert!(
+        out.contains("ll kept(const std::vector<ll>& a)"),
+        "read after the literal, so lent and copied: {out}"
+    );
+}
