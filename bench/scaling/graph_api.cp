@@ -1,6 +1,6 @@
 // n: 65536
 // fixed: k, deg, u
-use std.graph.{Graph, Lit, arc_len, bfs, complement, euler_walk}
+use std.graph.{Graph, Lit, arc_len, bfs, complement, euler_walk, only}
 // O(1) accessors and per-arc iterators of graph types, on a graph whose every vertex has
 // out-degree 2 (arcs i -> i+1 and i -> i+3 mod n), so a whole `out(u)` is O(1).
 let n: Int = read()
@@ -13,7 +13,6 @@ let gd = Graph.directed(es)
 let gw = Graph.directed(wes)
 let p = bfs(gd, from: [V(0)])
 let walk = euler_walk(es, directed: true)!
-// Views made once: making one copies the graph (a codegen copy of a live argument), so they aren't timed here.
 let o = gd.only(keep: x => x.ord % 2 == 0)
 let rw = gd.weighted(a => a.e.ord % 3)
 var s = 0
@@ -26,6 +25,14 @@ for j in 0..2 * n:
     s += gd.deg(u) // timed: graph.Graph.deg
     s += gd.next(u).count() // timed: graph.Graph.next
     s += Int(gd.contains(u, v)) // timed: graph.Graph.contains
+    let vo = gd.only(keep: x => x.ord % 2 == 0) // timed: graph.Graph.only
+    s += vo.deg(u)
+    let fo = only(gd, keep: x => x.ord % 2 == 0) // timed: graph.only
+    s += fo.deg(u)
+    let vw = gd.weighted(a => a.e.ord % 3) // timed: graph.Graph.weighted
+    s += vw.out(u).count()
+    let vc = complement(gd) // timed: graph.complement
+    s += vc.out(V(0)).take(1).count()
     s += o.out(u).count() // timed: graph.Only.out
     s += o.deg(u) // timed: graph.Only.deg
     s += rw.out(u).count() // timed: graph.Reweighted.out

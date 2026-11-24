@@ -3460,7 +3460,7 @@
    "cost": "\\lvert V \\rvert + \\deg u",
    "documented": 4.0,
    "fn": "graph.Complement.out",
-   "measured": 3.91,
+   "measured": 4.12,
    "n": 65536,
    "ok": true
   },
@@ -3468,7 +3468,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Edged.e",
-   "measured": 0.95,
+   "measured": 1.02,
    "n": 65536,
    "ok": true
   },
@@ -3476,7 +3476,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Graph.at",
-   "measured": 0.96,
+   "measured": 1.03,
    "n": 65536,
    "ok": true
   },
@@ -3484,7 +3484,7 @@
    "cost": "\\deg u",
    "documented": 1.0,
    "fn": "graph.Graph.contains",
-   "measured": 0.96,
+   "measured": 1.01,
    "n": 65536,
    "ok": true
   },
@@ -3492,7 +3492,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Graph.deg",
-   "measured": 0.97,
+   "measured": 1.02,
    "n": 65536,
    "ok": true
   },
@@ -3500,7 +3500,7 @@
    "cost": "n + m",
    "documented": 4.0,
    "fn": "graph.Graph.edges",
-   "measured": 4.24,
+   "measured": 4.45,
    "n": 65536,
    "ok": true
   },
@@ -3508,7 +3508,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Graph.next",
-   "measured": 0.96,
+   "measured": 1.02,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Graph.only": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Graph.only",
+   "measured": 1.01,
    "n": 65536,
    "ok": true
   },
@@ -3516,7 +3524,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Graph.out",
-   "measured": 0.96,
+   "measured": 1.01,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Graph.weighted": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Graph.weighted",
+   "measured": 0.99,
    "n": 65536,
    "ok": true
   },
@@ -3524,7 +3540,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Lit.neg",
-   "measured": 0.97,
+   "measured": 1.01,
    "n": 65536,
    "ok": true
   },
@@ -3532,7 +3548,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Next.out",
-   "measured": 0.97,
+   "measured": 1.05,
    "n": 65536,
    "ok": true
   },
@@ -3540,7 +3556,7 @@
    "cost": "\\deg u",
    "documented": 1.0,
    "fn": "graph.Only.deg",
-   "measured": 0.96,
+   "measured": 1.01,
    "n": 65536,
    "ok": true
   },
@@ -3548,7 +3564,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Only.out",
-   "measured": 0.99,
+   "measured": 1.0,
    "n": 65536,
    "ok": true
   },
@@ -3556,7 +3572,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Paths.get",
-   "measured": 0.97,
+   "measured": 1.05,
    "n": 65536,
    "ok": true
   },
@@ -3564,7 +3580,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Paths.iter",
-   "measured": 0.98,
+   "measured": 1.08,
    "n": 65536,
    "ok": true
   },
@@ -3572,7 +3588,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Paths.reached",
-   "measured": 0.96,
+   "measured": 1.02,
    "n": 65536,
    "ok": true
   },
@@ -3580,7 +3596,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Reweighted.out",
-   "measured": 0.96,
+   "measured": 1.02,
    "n": 65536,
    "ok": true
   },
@@ -3588,7 +3604,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Target.to",
-   "measured": 0.96,
+   "measured": 1.01,
    "n": 65536,
    "ok": true
   },
@@ -3596,7 +3612,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Walk.vertices",
-   "measured": 0.96,
+   "measured": 1.02,
    "n": 65536,
    "ok": true
   },
@@ -3604,7 +3620,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.Weighted.w",
-   "measured": 0.96,
+   "measured": 1.02,
    "n": 65536,
    "ok": true
   },
@@ -3612,7 +3628,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.arc_len",
-   "measured": 0.96,
+   "measured": 1.01,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.complement": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.complement",
+   "measured": 1.02,
    "n": 65536,
    "ok": true
   },
@@ -3620,7 +3644,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.deg",
-   "measured": 0.96,
+   "measured": 1.01,
    "n": 65536,
    "ok": true
   },
@@ -3628,7 +3652,15 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "graph.next",
-   "measured": 0.96,
+   "measured": 1.02,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.only": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.only",
+   "measured": 1.01,
    "n": 65536,
    "ok": true
   },
@@ -12758,10 +12790,6 @@
   "geometry.upper_hull",
   "geometry.upper_hull_idx",
   "geometry.voronoi_cells",
-  "graph.Graph.only",
-  "graph.Graph.weighted",
-  "graph.complement",
-  "graph.only",
   "grid.Dir4.all",
   "grid.Dir4.back",
   "grid.Dir4.ccw",
