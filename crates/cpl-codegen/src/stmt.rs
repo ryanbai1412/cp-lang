@@ -287,6 +287,11 @@ impl<'p> Emitter<'p> {
             self.line(out, &format!("{p}.erase({k});"));
             return;
         }
+        if let Some((a, b)) = crate::expr::whole_swap_do(e) {
+            let (a, b) = (self.place(a), self.place(b));
+            self.line(out, &format!("std::swap({a}, {b});"));
+            return;
+        }
         let e = self.flatten(e, out);
         let mark = self.pin_stored(e, out);
         self.flat_expr_stmt(e, out);

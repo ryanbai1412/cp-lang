@@ -1468,6 +1468,43 @@ pub(crate) fn map_remove_do(e: &Expr) -> Option<(&[Stmt], &Place, &Expr)> {
     }
 }
 
+/// Recognizes the IR `Do` block emitted for `swap(mut a, mut b)` of two whole values:
+/// `[let held = take(a), a = take(b), b = take(held), give ()]`. `std::swap` trades them
+/// with no named temporary, which in a deep recursion would cost a frame slot per level.
+pub(crate) fn whole_swap_do(e: &Expr) -> Option<(&Place, &Place)> {
+    fn whole(p: &Place) -> bool {
+        match &p.kind {
+            PlaceKind::Local(_) | PlaceKind::Global(_) => true,
+            PlaceKind::Field(base, _) => whole(base),
+            PlaceKind::Index(..) | PlaceKind::Some(_) => false,
+        }
+    }
+    fn take(e: &Expr) -> Option<&Place> {
+        match &e.kind {
+            ExprKind::Mutate(Mutation::Take, place, args) if args.is_empty() => Some(place),
+            _ => None,
+        }
+    }
+    let ExprKind::Do(block) = &e.kind else {
+        return None;
+    };
+    let [Stmt::Let(held, Some(from_a)), Stmt::Assign(a, cpl_ir::AssignOp::Set, from_b), Stmt::Assign(b, cpl_ir::AssignOp::Set, from_held), Stmt::Give(Expr {
+        kind: ExprKind::Unit,
+        ..
+    })] = block.stmts.as_slice()
+    else {
+        return None;
+    };
+    let held_place = take(from_held)?;
+    (take(from_a)? == a
+        && take(from_b)? == b
+        && matches!(held_place.kind, PlaceKind::Local(h) if h == *held)
+        && a.ty == b.ty
+        && whole(a)
+        && whole(b))
+    .then_some((a, b))
+}
+
 impl Emitter<'_> {
     /// The position a `next` (`PosNext`) or `prev` (`PosPrev`) in `value` steps
     /// from, when the facts prove the step lands on a position.

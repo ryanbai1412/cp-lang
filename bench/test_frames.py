@@ -10,6 +10,8 @@ SU = (
     "t.cpp:9:12:prog::ends_D2(int)::<lambda(auto:1&&)>\t80\tstatic\n"
     "t.cpp:5:31:std::vector<prog::Mod> prog::ends_D2(int)\t96\tstatic\n"
     "t.cpp:3:28:cpl::OptField<&prog::Span::deep> prog::span(const OptPos&, ll)\t112\tstatic\n"
+    "t.cpp:20:26:prog::shared(ll)::<lambda(auto:1&, int)> mutable [with auto:1 = cpl::Rec<prog::shared(ll)::<lambda(auto:1&, int)> >]\t192\tstatic\n"
+    "t.cpp:18:6:bool prog::shared(ll)\t112\tstatic\n"
 )
 
 
@@ -17,6 +19,10 @@ class Frames(unittest.TestCase):
     def test_a_fn_frame_leaves_out_its_lambdas(self):
         self.assertEqual(frames.frame_of(SU, "ends_"), 96)
         self.assertEqual(frames.frame_of(SU, "span"), 112)
+
+    def test_an_outer_prefix_measures_the_closure_inside_it(self):
+        self.assertEqual(frames.frame_of(SU, "shared::"), 192)
+        self.assertIsNone(frames.frame_of(SU, "span::"))
 
     def test_a_frame_over_its_bound_fails(self):
         messages, failed = frames.verdict([("cf2187f2", 160, 96)])

@@ -865,3 +865,25 @@ fn a_constant_trap_message_is_built_only_when_the_check_fails() {
         assert!(!cpp.contains("std::string(\"`ok`"), "{cpp}");
     }
 }
+
+#[test]
+fn swapping_two_whole_values_trades_them_with_no_temporary() {
+    let out = cpp("let n: 1..=100 = read()
+var kids: [0..n]List<Int> = []
+for v in 1..n: kids[v - 1].push(v)
+fn merged(u: Int) -> Set<Int>:
+    var all = Set<Int>()
+    for v in kids[u]:
+        var branch = merged(v)
+        if branch.len > all.len: swap(mut all, mut branch)
+        for x in branch: all.add(x)
+    all.add(u)
+    all
+var rows = [[1, 2], [3]]
+swap(mut rows[0], mut rows[1])
+print(merged(0).len, rows)
+");
+    assert!(out.contains("std::swap(all, branch);"), "{out}");
+    assert!(!out.contains("std::exchange(all"), "{out}");
+    assert!(out.contains("std::exchange(cpl::at(rows, 0), {})"), "{out}");
+}

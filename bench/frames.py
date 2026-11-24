@@ -13,10 +13,12 @@ import argparse, os, re, subprocess, sys, tempfile
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# case: (corpus package, the recursive fn's C++ name prefix, frame bound in bytes)
+# case: (corpus package, the recursive fn's C++ name prefix, frame bound in bytes).
+# `outer::` names the recursive closure declared inside fn `outer`.
 CASES = {
     "apio07p1": ("apio07p1", "span", 112),
     "cf2187f2": ("cf2187f2", "ends_", 96),
+    "year2018p7": ("year2018p7", "shared::", 192),
 }
 
 
@@ -33,9 +35,20 @@ def frames(su_text):
     return out
 
 
+def closure_frames(su_text, outer):
+    """The frames of the lambdas declared inside fn `outer`."""
+    pat = re.compile(rf"(?:prog::)?{re.escape(outer)}\([^)]*\)::<lambda")
+    return [int(parts[1]) for parts in (line.split("\t") for line in su_text.splitlines())
+            if len(parts) >= 2 and pat.search(parts[0])]
+
+
 def frame_of(su_text, prefix):
-    """The largest frame of a fn whose name starts with `prefix`, or None."""
-    sizes = [b for name, b in frames(su_text).items() if name.startswith(prefix)]
+    """The largest frame of a fn whose name starts with `prefix` (or of a
+    closure inside fn `outer`, for `outer::`), or None."""
+    if prefix.endswith("::"):
+        sizes = closure_frames(su_text, prefix[:-2])
+    else:
+        sizes = [b for name, b in frames(su_text).items() if name.startswith(prefix)]
     return max(sizes) if sizes else None
 
 
