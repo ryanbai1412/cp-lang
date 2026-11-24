@@ -315,7 +315,7 @@ impl<'a> Lowerer<'a> {
             between == [name, "="]
         });
         let help = format!(
-            "`type {name} = {shown}` names a range of integers; `domain {name} = {shown}` declares positions, which have `{name}.first`, `{name}.last` and index `[{name}]T`"
+            "`type {name} = {shown}` names a range of integers, with `{name}.MIN`, `{name}.MAX` and `{name}.count`; `domain {name} = {shown}` declares positions, which have `{name}.first`, `{name}.last` and index `[{name}]T`"
         );
         let Some(last) = self.diags.last_mut() else {
             return;
