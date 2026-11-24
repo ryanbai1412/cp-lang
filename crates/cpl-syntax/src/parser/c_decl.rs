@@ -7,6 +7,37 @@ pub(super) struct CType {
     elem: Option<Box<CType>>,
 }
 
+/// Whether `line`'s first word can begin a type [`c_type`] reads: checked
+/// first, as trying each split of a line that cannot is quadratic.
+fn starts_with_c_type(line: &str) -> bool {
+    let head = line.trim_start();
+    let head = &head[..head.find([' ', '<']).unwrap_or(head.len())];
+    let heads = [
+        "int",
+        "long",
+        "short",
+        "unsigned",
+        "signed",
+        "ll",
+        "ull",
+        "size_t",
+        "double",
+        "float",
+        "bool",
+        "char",
+        "string",
+        "priority_queue",
+        "vector",
+        "map",
+        "unordered_map",
+        "set",
+        "unordered_set",
+        "pair",
+        "tuple",
+    ];
+    heads.contains(&head) || head.ends_with("int64_t") || head.ends_with("int32_t")
+}
+
 /// `int`, `long long`, `vector<pair<int, int>>`: the whole of `s` as a type.
 pub(super) fn c_type(s: &str) -> Option<CType> {
     let s = s.trim();
@@ -199,6 +230,9 @@ pub(super) fn c_declaration(line: &str) -> Option<(usize, String)> {
         None => (false, line),
     };
     let skip = usize::from(keep) * "const ".len();
+    if !starts_with_c_type(line) {
+        return None;
+    }
     let name_at = |s: &str| s.ends_with(|c: char| c.is_alphanumeric() || c == '_' || c == '>');
     let ty_end = (1..line.len())
         .rev()

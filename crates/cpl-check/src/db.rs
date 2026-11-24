@@ -463,7 +463,7 @@ impl Database {
         // ones are reported below.
         let mut scope = Scope::default();
         let mut import_diags: Vec<(usize, Diagnostic)> = Vec::new();
-        let mut failed_names: std::collections::HashSet<String> = std::collections::HashSet::new();
+        let mut failed_names: crate::fx::HashSet<String> = crate::fx::HashSet::default();
         let mut prelude_off = false;
         let mut used: Vec<(usize, ast::Name)> = Vec::new();
         let depth = self.analyzing.len();
@@ -553,14 +553,12 @@ impl Database {
         // leaves those names alone (all of them for a glob).
         let library = self.analyzing.len() > 1;
         if !prelude_off && !library && !is_prelude(path) {
-            let declared: std::collections::HashSet<&str> = items
+            let declared: crate::fx::HashSet<&str> = items
                 .iter()
                 .flat_map(|item| item.decls.iter().map(|decl| decl.name.as_str()))
                 .collect();
-            let mut ident_tokens: std::collections::HashSet<&str> =
-                std::collections::HashSet::new();
-            let mut dot_ident_tokens: std::collections::HashSet<&str> =
-                std::collections::HashSet::new();
+            let mut ident_tokens: crate::fx::HashSet<&str> = crate::fx::HashSet::default();
+            let mut dot_ident_tokens: crate::fx::HashSet<&str> = crate::fx::HashSet::default();
             for (range, item) in ranges.iter().zip(&items) {
                 if imported_module
                     && item.parsed.stmts.iter().any(|s| {
@@ -1698,7 +1696,7 @@ struct FileCtx<'d> {
     /// The fns whose effects are being worked out, innermost last.
     effects_of: Vec<String>,
     /// The top-level `var`s.
-    vars: Option<std::collections::HashSet<String>>,
+    vars: Option<crate::fx::HashSet<String>>,
     /// Every impl in reach, by the type it is for, once a lookup needs it.
     impl_names: Option<ImplNames>,
 }

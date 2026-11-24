@@ -1597,7 +1597,7 @@ pub(crate) fn rename_values(
     src: &str,
 ) -> Vec<cpl_diag::Diagnostic> {
     let at = |s: Span| src.get(s.start as usize..s.end as usize).unwrap_or("");
-    let words: std::collections::HashSet<&str> = src
+    let words: crate::fx::HashSet<&str> = src
         .split(|c: char| !(c.is_alphanumeric() || c == '_'))
         .collect();
     let refs: Vec<(Span, &str)> = ranges

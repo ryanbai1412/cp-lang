@@ -186,7 +186,7 @@ pub(crate) struct Checker<'a> {
     scopes: Vec<HashMap<String, Local>>,
     /// The name spans of params declared `?mut T`: `if let s = p:` binds
     /// `s` to the caller's place, so it is mutable.
-    opt_mut_params: std::collections::HashSet<Span>,
+    opt_mut_params: crate::fx::HashSet<Span>,
     generics: Vec<String>,
     /// Trait bounds in scope for the enclosing fn / struct / impl: `(param, traits)`.
     pub(crate) param_bounds: Vec<(String, Vec<String>)>,
@@ -215,7 +215,7 @@ pub(crate) struct Checker<'a> {
     /// Where `-> T` goes in each fn declared without one.
     ret_slots: HashMap<String, Option<Span>>,
     /// The `mut` parameters something changes, by their names' spans.
-    changed_params: std::collections::HashSet<Span>,
+    changed_params: crate::fx::HashSet<Span>,
     /// For each of `fns`: whether its body has given a value so far.
     gives: Vec<bool>,
     /// Inside a fn signature or body, where a single capital letter is a
@@ -247,7 +247,7 @@ pub(crate) struct Checker<'a> {
     /// The computed range of each `let` with a constant initializer (R02.10.2).
     pub(crate) let_ranges: HashMap<String, (i128, i128)>,
     /// `let`s bound to a walk-only sequence such as `filter` (R07.1.2).
-    pub(crate) walk_only: std::collections::HashSet<String>,
+    pub(crate) walk_only: crate::fx::HashSet<String>,
     /// Structs and enums declared inside a fn body, visible to the whole block.
     local_defs: HashMap<String, Arc<Def>>,
     /// The types a lambda passed to a built-in method gives its unwritten

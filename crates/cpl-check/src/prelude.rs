@@ -79,18 +79,18 @@ pub fn shared_method(name: &str) -> bool {
 /// Every fn, method and getter name the active standard library declares.
 /// A struct's fields are not members of the built-in types (R02.6.4). A member of a built-in
 /// type that the checker can't type and no module declares is a spec gap.
-pub fn spec_member_names() -> &'static std::collections::HashSet<String> {
-    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+pub fn spec_member_names() -> &'static crate::fx::HashSet<String> {
+    static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
     NAMES.get_or_init(|| member_names(crate::modules::std_index()))
 }
 
-fn member_names(std: Std) -> std::collections::HashSet<String> {
+fn member_names(std: Std) -> crate::fx::HashSet<String> {
     let ident = |s: &str| -> String {
         s.chars()
             .take_while(|c| c.is_alphanumeric() || *c == '_')
             .collect()
     };
-    let mut names = std::collections::HashSet::new();
+    let mut names = crate::fx::HashSet::default();
     for (_, text) in std {
         for line in text.lines() {
             let code = line.split('#').next().unwrap_or("").trim_start();
@@ -108,19 +108,19 @@ fn member_names(std: Std) -> std::collections::HashSet<String> {
 /// The member names std declares only inside `struct` bodies: a view's
 /// `src`, a stack's `push`. A built-in type such as `Range` gets none of
 /// them, though the name is on `spec_member_names`.
-pub fn spec_struct_only_member_names() -> &'static std::collections::HashSet<String> {
-    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+pub fn spec_struct_only_member_names() -> &'static crate::fx::HashSet<String> {
+    static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
     NAMES.get_or_init(|| struct_only_member_names(crate::modules::std_index()))
 }
 
-fn struct_only_member_names(std: Std) -> std::collections::HashSet<String> {
+fn struct_only_member_names(std: Std) -> crate::fx::HashSet<String> {
     let ident = |s: &str| -> String {
         s.chars()
             .take_while(|c| c.is_alphanumeric() || *c == '_')
             .collect()
     };
-    let mut in_struct = std::collections::HashSet::new();
-    let mut elsewhere = std::collections::HashSet::new();
+    let mut in_struct = crate::fx::HashSet::default();
+    let mut elsewhere = crate::fx::HashSet::default();
     for (_, text) in std {
         let mut struct_body = false;
         for line in text.lines() {
@@ -150,12 +150,12 @@ fn struct_only_member_names(std: Std) -> std::collections::HashSet<String> {
 
 /// The names of the top-level `fn name(self: S, ..)` methods: all a value
 /// of no declared struct, such as a generator, can be given.
-pub fn spec_receiver_method_names() -> &'static std::collections::HashSet<String> {
-    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+pub fn spec_receiver_method_names() -> &'static crate::fx::HashSet<String> {
+    static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
     NAMES.get_or_init(|| receiver_method_names(crate::modules::std_index()))
 }
 
-fn receiver_method_names(std: Std) -> std::collections::HashSet<String> {
+fn receiver_method_names(std: Std) -> crate::fx::HashSet<String> {
     std.iter()
         .flat_map(|(_, text)| scan_top_level_methods(text))
         .map(|(n, _)| n.to_string())
@@ -165,14 +165,13 @@ fn receiver_method_names(std: Std) -> std::collections::HashSet<String> {
 /// The `self` each top-level std `fn name(self: T, ..)` takes, by name:
 /// `Some(head)` for a named type (`Range`, `List`, `[` for an array) and
 /// `None` for one of the fn's own type parameters, which takes any receiver.
-pub fn std_self_heads() -> &'static std::collections::HashMap<String, Vec<Option<String>>> {
-    static HEADS: OnceLock<std::collections::HashMap<String, Vec<Option<String>>>> =
-        OnceLock::new();
+pub fn std_self_heads() -> &'static crate::fx::HashMap<String, Vec<Option<String>>> {
+    static HEADS: OnceLock<crate::fx::HashMap<String, Vec<Option<String>>>> = OnceLock::new();
     HEADS.get_or_init(|| self_heads(crate::modules::std_index()))
 }
 
-fn self_heads(std: Std) -> std::collections::HashMap<String, Vec<Option<String>>> {
-    let mut heads: std::collections::HashMap<String, Vec<Option<String>>> = Default::default();
+fn self_heads(std: Std) -> crate::fx::HashMap<String, Vec<Option<String>>> {
+    let mut heads: crate::fx::HashMap<String, Vec<Option<String>>> = Default::default();
     for (_, text) in std {
         for line in text.lines() {
             let line = line.strip_prefix("@get ").unwrap_or(line);
@@ -255,8 +254,8 @@ pub fn is_work_method(name: &str) -> bool {
 /// getter and gives every other parameter a default.
 #[derive(Default)]
 struct SelfMethods {
-    work: std::collections::HashSet<String>,
-    other: std::collections::HashSet<String>,
+    work: crate::fx::HashSet<String>,
+    other: crate::fx::HashSet<String>,
 }
 
 fn self_methods_in(text: &str) -> SelfMethods {
@@ -282,14 +281,14 @@ fn self_methods_in(text: &str) -> SelfMethods {
 /// The top-level std methods that are only ever `@get`: every
 /// `pub fn name(self: S, ..)` of that name is a getter, so `g.rows()` is
 /// E0304 as `xs.len()` is (R06.4.2).
-pub fn getter_methods() -> &'static std::collections::HashSet<String> {
-    static NAMES: OnceLock<std::collections::HashSet<String>> = OnceLock::new();
+pub fn getter_methods() -> &'static crate::fx::HashSet<String> {
+    static NAMES: OnceLock<crate::fx::HashSet<String>> = OnceLock::new();
     NAMES.get_or_init(|| getter_methods_in(crate::modules::std_index()))
 }
 
-fn getter_methods_in(std: Std) -> std::collections::HashSet<String> {
-    let mut get = std::collections::HashSet::new();
-    let mut other = std::collections::HashSet::new();
+fn getter_methods_in(std: Std) -> crate::fx::HashSet<String> {
+    let mut get = crate::fx::HashSet::default();
+    let mut other = crate::fx::HashSet::default();
     for (_, text) in std {
         if !text.contains("self:") {
             continue;
@@ -875,7 +874,7 @@ mod tests {
         assert_eq!(receiver_method_names(files), receiver_method_names(index));
         assert_eq!(self_heads(files), self_heads(index));
         let work = |std: Std| -> Vec<(Vec<String>, Vec<String>)> {
-            let sorted = |set: &std::collections::HashSet<String>| {
+            let sorted = |set: &crate::fx::HashSet<String>| {
                 let mut v: Vec<String> = set.iter().cloned().collect();
                 v.sort();
                 v

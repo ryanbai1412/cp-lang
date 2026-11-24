@@ -2136,7 +2136,7 @@ impl<'a> Checker<'a> {
 
     /// Outer `var`s referenced inside a `@memo` fn body.
     fn memo_captured_vars(&self, f: &ast::FnDecl) -> Vec<String> {
-        let mut param_names = std::collections::HashSet::new();
+        let mut param_names = crate::fx::HashSet::default();
         for p in &f.params {
             param_names.insert(p.name.text.clone());
         }

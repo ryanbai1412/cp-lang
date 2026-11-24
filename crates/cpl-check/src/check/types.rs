@@ -1329,7 +1329,7 @@ impl<'a> Checker<'a> {
         fn go(
             env: &mut dyn crate::check::Env,
             name: &str,
-            seen: &mut std::collections::HashSet<String>,
+            seen: &mut crate::fx::HashSet<String>,
         ) -> Option<Option<i128>> {
             if !seen.insert(name.to_string()) {
                 return None;
