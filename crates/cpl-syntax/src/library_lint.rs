@@ -3,7 +3,9 @@
 //! fn's parameter names are the holes. The checker reports the declarations
 //! it cannot use (E0505); `cpl-lint` matches the rest.
 
-use crate::ast::{BinOp, Expr, ExprKind, FnBody, FnDecl, Stmt, StmtKind, StrPiece, TypeKind};
+use crate::ast::{
+    BinOp, CmpOp, Cond, Expr, ExprKind, FnBody, FnDecl, Stmt, StmtKind, StrPiece, TypeKind,
+};
 use crate::token::{Token, TokenKind};
 use crate::ParsedItem;
 use cpl_diag::{msgs, Diagnostic, Span};
@@ -268,7 +270,7 @@ fn declared_on(
         };
         let uses = calls(&to_toks, &suggests)
             || calls(&read_toks, &suggests)
-            || writes_body_ops(f, &to, &to_toks)
+            || writes_body_ops(f, &from, &to, &to_toks)
             || compound(&to_toks, &f.name.text);
         let drops = !uses && !advice && calls(&from_toks, &f.name.text);
         if !uses && !drops && !advice {
@@ -335,17 +337,56 @@ fn scalar(p: &crate::ast::Param) -> Option<String> {
     }
 }
 
-/// Whether `to` calls nothing and writes only operators that `f`'s
-/// one-expression body writes: the lint teaches the operator `f` is
-/// defined by (`self % d` on `divmod`, whose body is `(self / d, self % d)`).
-fn writes_body_ops(f: &FnDecl, to: &str, to_toks: &[(TokenKind, String)]) -> bool {
-    struct Ops(Vec<BinOp>);
-    impl crate::visit::Visitor for Ops {
-        fn expr(&mut self, e: &Expr) {
-            if let ExprKind::Binary { op, .. } = e.kind {
-                self.0.push(op);
+/// Whether `to` calls nothing, writes a form `f`'s one-expression body
+/// writes (an operator, a comparison, a `let` condition), and no form
+/// that neither the body nor `from` writes: the lint teaches the core form
+/// `f` is defined by (`self % d` on `divmod`, whose body is
+/// `(self / d, self % d)`; `while let w = e, w > y` on `is_some_and`, whose
+/// body is `if let`, with the `>` that `from` wrote).
+fn writes_body_ops(f: &FnDecl, from: &str, to: &str, to_toks: &[(TokenKind, String)]) -> bool {
+    #[derive(PartialEq)]
+    enum Form {
+        Op(BinOp),
+        Cmp(CmpOp),
+        Let,
+    }
+    fn binds(c: &Cond) -> bool {
+        match c {
+            Cond::Let { .. } => true,
+            Cond::Guard { and, .. } => binds(and),
+            _ => false,
+        }
+    }
+    struct Forms(Vec<Form>);
+    impl crate::visit::Visitor for Forms {
+        fn stmt(&mut self, s: &Stmt) {
+            if let StmtKind::While { cond, .. } = &s.kind {
+                if binds(cond) {
+                    self.0.push(Form::Let);
+                }
             }
         }
+        fn expr(&mut self, e: &Expr) {
+            match &e.kind {
+                ExprKind::Binary { op, .. } => self.0.push(Form::Op(*op)),
+                ExprKind::Compare { rest, .. } => {
+                    self.0.extend(rest.iter().map(|(op, _)| Form::Cmp(*op)))
+                }
+                ExprKind::If { branches, .. } if branches.iter().any(|b| binds(&b.0)) => {
+                    self.0.push(Form::Let)
+                }
+                _ => {}
+            }
+        }
+    }
+    fn forms(src: &str) -> Forms {
+        let mut forms = Forms(Vec::new());
+        for (_, item) in &crate::parse_file(src).items {
+            for s in &item.stmts {
+                crate::visit::walk_stmt(s, &mut forms);
+            }
+        }
+        forms
     }
     let FnBody::Expr(body) = &f.body else {
         return false;
@@ -353,14 +394,12 @@ fn writes_body_ops(f: &FnDecl, to: &str, to_toks: &[(TokenKind, String)]) -> boo
     let calls = to_toks.windows(2).any(|w| {
         w[1].0 == TokenKind::LParen && matches!(w[0].0, TokenKind::Ident | TokenKind::RParen)
     });
-    let (mut have, mut used) = (Ops(Vec::new()), Ops(Vec::new()));
+    let mut have = Forms(Vec::new());
     crate::visit::walk_expr(body, &mut have);
-    for (_, item) in &crate::parse_file(to).items {
-        for s in &item.stmts {
-            crate::visit::walk_stmt(s, &mut used);
-        }
-    }
-    !calls && !used.0.is_empty() && used.0.iter().all(|op| have.0.contains(op))
+    let (said, used) = (forms(from), forms(to));
+    !calls
+        && used.0.iter().any(|x| have.0.contains(x))
+        && (used.0.iter()).all(|x| have.0.contains(x) || said.0.contains(x))
 }
 
 /// Whether `to` uses `f` as its compound assignment, `p f= e` (`min=`,
@@ -686,5 +725,18 @@ mod tests {
         for bad in [other, call] {
             assert_eq!(errors(bad).len(), 1, "{bad}: {:?}", errors(bad));
         }
+    }
+
+    #[test]
+    fn to_may_write_its_fns_let_condition_and_what_from_wrote() {
+        let fun = "pub fn some_and(self: ?Int, p: Int -> Bool) -> Bool = if let Some(v) = self: p(v) else: false\n";
+        let let_cond = format!("@lint(test_then_unwrap, from: \"if (self ?? c) > y:\\n    let w = self!\\n    body\", to: \"if let w = self, w > y:\\n    body\", holes: \"c, y, body\")\n{fun}");
+        assert!(errors(&let_cond).is_empty(), "{:?}", errors(&let_cond));
+        for bad in ["w + 1 > y:", "w < y:"] {
+            let bad = let_cond.replace("w > y:", bad);
+            assert_eq!(errors(&bad).len(), 1, "{bad}: {:?}", errors(&bad));
+        }
+        let no_form = let_cond.replace("if let w = self, w > y:\\n    body", "body");
+        assert_eq!(errors(&no_form).len(), 1, "{:?}", errors(&no_form));
     }
 }
