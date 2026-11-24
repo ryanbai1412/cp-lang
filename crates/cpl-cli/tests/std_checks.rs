@@ -7,6 +7,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::process::Command;
 
+#[path = "support/parallel.rs"]
+mod parallel;
+
 fn baseline(root: &Path) -> BTreeMap<String, usize> {
     let text = std::fs::read_to_string(root.join("crates/cpl-cli/tests/std-check-errors.txt"))
         .expect("the baseline exists");
@@ -36,16 +39,21 @@ fn std_errors_never_grow() {
         .map(|name| format!("std/{name}"))
         .collect();
     files.sort();
+    // std is checked as `std/<file>.cp`, the path its modules load as, so
+    // the checks run in process from the repo root.
+    std::env::set_current_dir(&root).unwrap();
+    let counts = parallel::parallel(&files, |file| {
+        let out = cpl_cli::run(&["check", file]);
+        let errors = out
+            .stderr
+            .lines()
+            .filter(|l| l.starts_with("error"))
+            .count();
+        (errors, out.stderr)
+    });
     let mut grown = Vec::new();
     let mut shrunk = Vec::new();
-    for file in &files {
-        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .args(["check", file])
-            .current_dir(&root)
-            .output()
-            .expect("cpl runs");
-        let stderr = String::from_utf8_lossy(&out.stderr);
-        let errors = stderr.lines().filter(|l| l.starts_with("error")).count();
+    for (file, (errors, stderr)) in files.iter().zip(counts) {
         let limit = allowed.get(file).copied().unwrap_or(0);
         if errors > limit {
             grown.push(format!(
