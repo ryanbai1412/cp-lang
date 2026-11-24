@@ -4,7 +4,7 @@
 
 Open-addressing hash map for `Int` keys with splitmix64 salting.   `FlatMap<V>` stores keys, values, and occupancy states in flat parallel arrays with linear probing and power-of-two capacity, avoiding per-node heap allocations when built-in `HashMap<Int, V>` overhead matters.
 
-In prelude (no `use` needed): `Counter`.
+In prelude (no `use` needed): `Counter`, `tally`.
 
 ## `struct FlatMap<V>`
 
@@ -34,7 +34,7 @@ Default-valued frequency / weight map over hashable keys `K`.
 
 Fields: `m: HashMap<K, V>`, `init: V`.
 
-- `fn new(xs: Seq<K> = []; init: V = V(0)) -> Counter<K, V>` — \(O(n)\) expected; Count each element of `xs`, as Python's `Counter(xs)` does; `Counter()` starts empty.
+- `fn new(xs: Seq<K> = List<K>(); init: V = V(0)) -> Counter<K, V>` — \(O(n)\) expected; Count each element of `xs`, as Python's `Counter(xs)` does; `Counter()` starts empty.
 - `fn of(xs: List<K>) -> Counter<K, Int>` — \(O(n)\) expected; Count occurrences of each element in `xs`.
 - `@get fn len(self) -> Int` — \(O(1)\); Number of keys with a stored entry.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether no keys are stored.
@@ -57,6 +57,7 @@ Fields: `m: HashMap<K, V>`, `init: V`.
 
 - `fn push<K>(mut self: Counter<K, Int>, x: K)` — \(O(1)\) expected; Count one more `x`: `c.add(x, 1)`, so a `Counter` fills like a bag.
 - `fn pop<K>(mut self: Counter<K, Int>, x: K)` — \(O(1)\) expected; Count one fewer `x`: `c.add(x, -1)`, the undo of `push`.
+- `fn tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>` — \(O(n)\) expected, \(O(\mathit{distinct})\) memory
 
 ## Example
 

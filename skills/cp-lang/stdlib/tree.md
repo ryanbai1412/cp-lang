@@ -275,6 +275,10 @@ Fields: `edge: [N]Int`, `links: JumpTree<N>`.
 - `fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T` — \(O(n)\) calls of `op` and `leaf`; For every node, `op` folded over the `leaf` values of the leaves under it.
 - `fn bottleneck(self, a: V, b: V) -> ?W` — \(O(\log n)\); The least possible largest edge weight on a path from `a` to `b`: the weight of their lowest common ancestor.
 
+## `enum TreeShape`
+
+The shape of tree `gen<Rooted<V>>(shape:)` draws: a path, a star, a binary heap, a caterpillar (a spine with legs), or a random one (each vertex below a uniform earlier one).
+
 ## Functions
 
 - `fn spanning_tree<V, G: Next<V>>(self: G) -> Rooted<V, _, _>` — \(O(n + m)\); A BFS spanning tree rooted at `V.first`, as a `Rooted`.; traps: when the graph is not connected from `V.first`, or `V` is empty
