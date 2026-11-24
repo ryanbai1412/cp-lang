@@ -9,12 +9,12 @@ Cold review of `port.cp` and the dream (`## Dream` of the friction report, or `d
 
 - R1: header lists every case.
 - R2: the cases as the editorial, but the poster is built from `letter(i: Int, j: Int)` on raw coordinates (L28-41) and transposed by swapping them (L43).
-- R3: the report says a `[Row, Col]` array "can't be built as `[Col, Row]` and transposed", but std has `transposed` (`std/grid.cp`); the report's general fix already exists.
+- R3: std's `transposed()` already builds the swapped poster (`cpl run` in the report, now marked not a gap); the port does not use it.
 - R6: `Int` coordinates instead of `Row`/`Col`.
 
 ## Owed rewrites
 
-- Build the extreme-side poster over `[Col, Row]` and call `.transposed`, as the dream does; correct the report.
+- Build the extreme-side poster over `[Col, Row]` and call `.transposed()`, as the dream does.
 
 ## Language gaps
 

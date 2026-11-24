@@ -1,22 +1,27 @@
 # Friction Report: ccc18s5
 
-## An enum of domain pairs overflowed its packed `int` (fixed in Core)
-- **Where:** `enum Link: Flight(a: City, b: City) / Portal(a: Planet, b: Planet)`, sizes 1e5.
-- **What felt wrong:** codegen packed the enum into a C++ `int` over a 2e10 range: `--checks all`
-  failed "no arm of this `match` fits the value" at `gen.py --max`; the unchecked build was UB.
-  The port carries flight and portal indexes instead (`Flight(f: F)`), which also reads well.
-- **Goal it hurts:** correctness.
-- **Ideal code:** either spelling.
-- **General fix:** Core's packing width table (reported with a repro, fixed upstream).
-- **Severity:** high
+## Links are packed into one `Int` to sort them together
+- **Where:** `[flights[f].cost << 18 | f.ord for f in F] + [portals[g].cost << 18 | p + g.ord for g in G]`,
+  sorted, then unpacked with `key >> 18` and `key % (1 << 18)`.
+- **What felt wrong:** a C++ sort trick: the two link kinds share one sorted `Int` list so the
+  walk sees them by cost. An earlier `enum Link` spelling overflowed Core's packed `int`
+  (`--checks all` failed "no arm of this `match` fits the value" at `gen.py --max`); that is
+  fixed upstream, so nothing forces the packing now.
+- **Goal it hurts:** readability; each fact once (the 18-bit width and the `p` offset are a second
+  encoding of the link).
+- **Ideal code:** `for l in flights.map(Flight).merge_sorted(portals.map(Portal), by: cost)`
+  over two cost-sorted lists; `cpl run` of `fl.merge_sorted(po, by: cost)` over two `Link` enum
+  lists prints them in cost order.
+- **General fix:** none; an owed rewrite of the port.
+- **Severity:** low
 
 ## Kruskal over a product graph is hand-rolled
 - **Where:** the merged sort and two `Dsu`s.
 - **What felt wrong:** `kruskal` takes one edge list; the product-graph variant (each kind weighted
   by the other side's component count) is written out.
 - **Goal it hurts:** brevity.
-- **Ideal code:** see the dream; `sorted_merge` of the two kinds by cost removes the enum.
-- **General fix:** none needed beyond a merged-by-key iterator over two sorted sequences.
+- **Ideal code:** see the dream; std's `merge_sorted` of the two kinds by cost removes the packing.
+- **General fix:** none needed: `merge_sorted` is the merged-by-key iterator.
 - **Severity:** low
 
 ## Dream

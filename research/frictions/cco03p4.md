@@ -5,9 +5,11 @@ The v0.2 port wrapped everything in `main_solve()` for a local domain and kept I
 `need: [V]Subset<V>`, and fills `ways: [Subset<V>]Int` with `with`/`contains`/`-`. Adds gen.py and
 tests.toml.
 
-## "need is inside s" is spelled as a difference
+## "need is inside s" is spelled as a difference (not a gap: `<=` exists)
 - **Where:** `(need[v] - s).is_empty`.
-- **Ideal:** `need[v] <= s` (or `need[v].within(s)`) as a subset test on `Subset<B>`.
+- **Ideal:** `need[v] <= s`, which `Subset<B>` already has: `cpl run` of
+  `let a = Subset<V>.empty.with(V(1)); let b = a.with(V(2)); print(yes(a <= b))` prints `YES`.
+  An owed rewrite of the port, not a std gap.
 
 ## The count of rules has no stated bound
 - **Where:** `let k: Int = read()`; the statement as kept in the corpus gives no limit for k.

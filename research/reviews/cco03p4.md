@@ -9,11 +9,11 @@ Cold review of `port.cp` and the dream (`## Dream` of the friction report, or `d
 
 - R1: `k: Int` (L12) is unbounded; reported.
 - R2: subset DP over placed numbers: the editorial.
-- R3: `(need[v] - s).is_empty` (L23) spells "subset of" as a difference, and the report asks for `need[v] <= s`, which already exists: `yes(a <= b)` on two `Subset<V>` prints YES under `cpl run`.
+- R3: `(need[v] - s).is_empty` (L23) spells "subset of" as a difference, where `need[v] <= s` already exists (`cpl run` in the report, now marked not a gap).
 
 ## Owed rewrites
 
-- `need[v] <= s`; correct the report.
+- `need[v] <= s`.
 
 ## Language gaps
 

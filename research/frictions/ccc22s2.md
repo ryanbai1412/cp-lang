@@ -1,14 +1,14 @@
 # Friction Report: ccc22s2
 
-## A group of three names is three assignments
-- **Where:** `group_of[groups[k].a] = k` / `.b` / `.c`.
-- **What felt wrong:** "every name of group k maps to k" reads the record's fields one by one;
-  destructuring them into a list (`for s in [a, b, c]`) copies the three strings.
-- **Goal it hurts:** brevity; costs are visible.
-- **Ideal code:** `let group_of = Map(groups.enumerate().flat_map((k, names) => names.map(s => (s, k))))`
-  with `groups: [Group][3]Str` lent, not copied.
-- **General fix:** read fixed-size rows as `[3]Str` arrays, and lend record fields through
-  `for s in row` without copies.
+## A group of three names is a nested loop (not a gap: `Map` takes a generator)
+- **Where:** `for k in Group:` / `let names: [3]Str = read()` / `for name in names: group_of[name] = k`.
+- **What felt wrong:** "every name of group k maps to k" is a read-and-insert loop. That is an owed
+  rewrite, not a gap: `cpl run` of `let groups: [Group][3]Str = read()` then
+  `let group_of = Map((name, k) for k in Group for name in groups[k])` compiles and maps each
+  name to its group.
+- **Goal it hurts:** brevity.
+- **Ideal code:** `let group_of = Map((name, k) for k in Group for name in groups[k])`.
+- **General fix:** none; rewrite the port.
 - **Severity:** low
 
 ## `Map<Str, Group>` costs 8x the memory of the C++

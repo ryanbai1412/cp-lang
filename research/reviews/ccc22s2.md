@@ -9,12 +9,12 @@ Cold review of `port.cp` and the dream (`## Dream` of the friction report, or `d
 
 - R1: header names the `Map<Str, Group>` and the two counts.
 - R2: map names to groups, count broken rules: the editorial.
-- R4: the report's first section describes `group_of[groups[k].a] = k` / `.b` / `.c`; the port now reads `[3]Str` rows (L19-20), so the report is stale.
+- R3: the map is filled by a read-and-insert loop over `[3]Str` rows (L18-20) where `Map((name, k) for k in Group for name in groups[k])` works (`cpl run` in the report).
 - R10: 0.12 s, 89 MB vs 0.08 s, 11 MB (1.5x time, 8x memory) at `--max`, with no performance friction; now filed.
 
 ## Owed rewrites
 
-- Update the report's first section to the `[3]Str` read the port uses.
+- Read `groups: [Group][3]Str` and build `group_of` with one `Map(...)` generator, then re-measure.
 
 ## Language gaps
 
