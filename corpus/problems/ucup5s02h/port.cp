@@ -1,5 +1,6 @@
 // Source: The 5th Universal Cup, Stage 2 (Grand Prix of EPS), problem H: Harmonizing Charges
 //   (QOJ contest 4207)
+// limits: 1000 ms, 512 MB
 // Problem: multitest, n <= 1e5 (sum 5e5) charges q_i <= 15000 at distinct x_i <= 2e5 on a line,
 //   some pinned to set A or B. Split them into two nonempty sets maximizing the min over
 //   same-set pairs of q_i q_j / (x_i - x_j)^2; print that value as a reduced fraction p/q.
@@ -97,25 +98,23 @@ while not C.all(i => colour.same(node_of(i), node_of(C.first!))):
     var best: [0..v]?(gap: (num: Int, den: Int), i: C, j: C) = None
     fn sweep(order: List<C>, sign: Int):
         var hulls = [Hull.new() for _ in 0..2 * v]
-        fn ancestors(cc: Int) -> List<Int>:
-            var out: List<Int> = []
-            var node = cc + v
-            while node > 1:
-                out.push(node)
-                node >>= 1
-            out
         for i in order:
             let x = sign * pts[i].x
             let cc = comp[colour.find(node_of(i)).root]
-            let path = ancestors(cc)
             var hit: ?Pt = None
-            for node in path: hit = weaker(hit, hulls[node ^ 1].query(x), x)
+            var node = cc + v
+            while node > 1:
+                hit = weaker(hit, hulls[node ^ 1].query(x), x)
+                node >>= 1
             if let h = hit:
                 let j = C.at(h.id)
                 let cand = gap(pts[j!], pts[i])
                 let wins = if let cur = best[cc]: weaker_gap(cand, cur.gap) else: true
                 if wins: best[cc] = Some((cand, i, j!))
-            for node in path: hulls[node].add(Pt(x, pts[i].q, i.ord))
+            node = cc + v
+            while node > 1:
+                hulls[node].add(Pt(x, pts[i].q, i.ord))
+                node >>= 1
     sweep(C.collect(), 1)
     sweep(C.rev.collect(), -1)
     for e in best if let edge = e: link(edge.i, edge.j)

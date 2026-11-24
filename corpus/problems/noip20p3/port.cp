@@ -1,4 +1,5 @@
 // Source: NOIP 2020 P3 (Ball Move), https://dmoj.ca/problem/noip20p3
+// limits: 1000 ms, 512 MB
 // Problem: n + 1 pillars of capacity m (2 <= n <= 50, 2 <= m <= 400); pillars 1..n each hold
 //   m balls and pillar n + 1 is empty; each of the n colours has m balls. A move takes the top
 //   ball of one pillar to another that is not full. Print any plan of at most 820000 moves that

@@ -1,5 +1,6 @@
 import sys, random
-r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
+MAX = sys.argv[1] == "--max"
+r = random.Random(0 if MAX else int(sys.argv[1])); S = 10**6 if MAX else int(sys.argv[2])
 
 
 def pair(n, mode):
@@ -20,6 +21,10 @@ def pair(n, mode):
     return p, q
 
 
+if MAX:  # statement max: one case with N = sum N = 1e6, Q a few adjacent swaps of P (longest shared prefix)
+    p, q = pair(S, 3)
+    print("\n".join(["1", str(S), " ".join(map(str, p)), " ".join(map(str, q))]))
+    sys.exit()
 if S <= 1000:  # small: a few random cases with n <= S + 3
     ns = [r.randint(2, S + 3) for _ in range(5)]
 else:  # large: sum N = S (statement: sum N <= 1e6), one big case or many small ones

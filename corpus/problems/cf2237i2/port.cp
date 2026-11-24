@@ -1,5 +1,6 @@
 // Source: Codeforces 2237 I2, DBFS Order (Hard Version),
 //   https://codeforces.com/contest/2237/problem/I2
+// limits: 2000 ms, 1024 MB
 // Problem: multitest; a rooted tree with ordered children, n <= 3000, sum n^2 <= 9e6. Non-root
 //   vertices are coloured 0/1 as allowed by a string over 0, 1, ?. The traversal pushes the next
 //   unvisited child to the deque front if 0 (DFS-like) or back if 1 (BFS-like). Count distinct

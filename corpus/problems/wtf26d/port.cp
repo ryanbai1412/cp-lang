@@ -1,5 +1,6 @@
 // Source: AtCoder World Tour Finals 2026 Algorithm D,
 //   https://atcoder.jp/contests/awtf2026algo/tasks/awtf2026algo_d
+// limits: 3000 ms, 2048 MB
 // Problem: multitest; permutations P <= Q (lexicographically) of 1..N, sum N <= 1e6. Repeatedly
 //   swap adjacent elements of P so that P stays <= Q and no unordered pair of values is swapped
 //   twice. Print the lexicographically greatest P reachable.

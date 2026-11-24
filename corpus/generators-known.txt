@@ -165,7 +165,6 @@ no-max cf2237e -
 no-max cf2237f -
 no-max cf2237h -
 no-max cf2237i1 -
-no-max cf2237i2 -
 no-max cf2245b -
 no-max cf2245c -
 no-max cf2245d2 -
@@ -202,7 +201,6 @@ no-max noi08p5 -
 no-max noi09p4 -
 no-max noi14p5 -
 no-max noip09p4 -
-no-max noip20p3 -
 no-max noip21p3 -
 no-max ucup4s24f -
 no-max ucup4s25b -
@@ -211,7 +209,6 @@ no-max ucup4s25e -
 no-max ucup4s25h -
 no-max ucup5s01a -
 no-max ucup5s02e -
-no-max ucup5s02h -
 no-max ucup5s03a -
 no-max ucup5s03f -
 no-max ucup5s05b -
@@ -222,6 +219,5 @@ no-max ucup5s06g -
 no-max wtf26a -
 no-max wtf26b -
 no-max wtf26c -
-no-max wtf26d -
 no-max yac6p4 -
 slow cf2147f --max
