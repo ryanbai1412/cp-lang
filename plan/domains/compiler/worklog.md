@@ -1057,3 +1057,12 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   Recording is about 10x an untraced run in debug (from 14x), 6.5x in release.
 - VM-memory: `ArrayData` becomes `value::Cells` in its own module, the typed cell store an `Array` derefs to, so lists can share it instead of a second packed store.
 - VM-memory: `List` keeps its cells in `value::Cells`, the typed store arrays use: a list of `Int`, `Bool`, `Char`, `?Int`, `Float`, one-int structs or 2..=4-field scalar tuples is packed (8 bytes a scalar field) and boxed only when read; an empty list takes its first cell's kind and a cell of another kind turns it back to boxed values. Peaks: cco24p1 809 -> 406 MB, yac7p3 555 -> 427, dmopc21c4p2 418 -> 395, sac22cc2p5 403 -> 368, cco21p4 230 -> 179, dmopc20c4p4 245 -> 223 (the last two under 256 MB). Regressions: `a_list_of_scalars_is_packed`, program `packed_lists`.
+
+### VM-traced lane (2026-11-24): traced calls of fn values lend `mut` args
+
+- A traced call of a fn value with `mut` arguments compiles to `CallTraced` (stmt.rs
+  `traced_call`); the VM moves each lent place out for the call and puts it back after
+  (vm/exec/trace.rs `call_moving_lent`), as the tree-walker lends to a closure. The traced
+  `stmt:Expr(CallExpr)` and `stmt:Let(CallExpr)` kinds are gone: vm_fallbacks 12 -> 10.
+- Regression: tests/programs/vm_traced_closure_mut_args.cp (an element and a field lent),
+  and batch12_mut_fn, which used to fall back.

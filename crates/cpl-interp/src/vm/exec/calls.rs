@@ -676,18 +676,23 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let outer = self.enter_fallback(chunk, cur_pc, regs_i, regs_v);
                 self.show_lent();
                 // Lent once the globals and lent values are back in place.
-                let returned = match self.lend_args(lent, &mut args, regs_v, index_regs) {
-                    Ok(()) => match callee {
-                        Some(fv) => self.call_lending(fv, args, &[], span).map(|(v, _)| v),
-                        None => {
-                            let base = self.stack.len();
-                            self.stack.extend(args);
-                            let locals = self.program.fns[id].locals.len();
-                            self.stack.resize(base + locals, Value::Unit);
-                            self.call_at(id, base, span, None)
-                        }
+                let returned = match (callee, lent) {
+                    (Some(fv), Some(lent)) => {
+                        self.call_moving_lent(fv, args, lent, regs_v, index_regs, span)
+                    }
+                    (callee, _) => match self.lend_args(lent, &mut args, regs_v, index_regs) {
+                        Ok(()) => match callee {
+                            Some(fv) => self.call_lending(fv, args, &[], span).map(|(v, _)| v),
+                            None => {
+                                let base = self.stack.len();
+                                self.stack.extend(args);
+                                let locals = self.program.fns[id].locals.len();
+                                self.stack.resize(base + locals, Value::Unit);
+                                self.call_at(id, base, span, None)
+                            }
+                        },
+                        Err(e) => Err(e),
                     },
-                    Err(e) => Err(e),
                 };
                 self.hide_lent();
                 self.leave_fallback(outer);

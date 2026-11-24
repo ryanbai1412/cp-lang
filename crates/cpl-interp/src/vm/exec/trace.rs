@@ -261,3 +261,44 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         all_raw
     }
 }
+
+impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
+    /// Calls the fn value `fv` with its `mut` arguments in `lent` moved out
+    /// of their places for the call and put back after, as a traced run
+    /// lends them; their places' index values start at `regs_v[first]`.
+    pub(super) fn call_moving_lent(
+        &mut self,
+        fv: Value,
+        mut args: Vec<Value>,
+        lent: &'p [cpl_ir::Arg],
+        regs_v: &mut [Value],
+        mut first: usize,
+        span: cpl_diag::Span,
+    ) -> crate::Res<Value> {
+        let mut parts = Vec::new();
+        for (i, arg) in lent.iter().enumerate() {
+            let cpl_ir::Arg::Mut(place) = arg else {
+                continue;
+            };
+            let mut exprs = Vec::new();
+            place_indices(place, &mut exprs);
+            let indices: Vec<Value> = (first..first + exprs.len())
+                .map(|r| std::mem::replace(&mut regs_v[r], Value::Unit))
+                .collect();
+            first += exprs.len();
+            let part = self.part_of(place, &mut indices.into_iter());
+            let value = std::mem::replace(self.part_mut(&part, place.span)?, Value::Moved);
+            if matches!(value, Value::Moved) {
+                return crate::trap(place.span, crate::LENT);
+            }
+            args[i] = value;
+            parts.push((i, place, part));
+        }
+        let at: Vec<usize> = parts.iter().map(|&(i, ..)| i).collect();
+        let (value, back) = self.call_lending(fv, args, &at, span)?;
+        for ((_, place, part), value) in parts.into_iter().zip(back) {
+            *self.part_mut(&part, place.span)? = value;
+        }
+        Ok(value)
+    }
+}
