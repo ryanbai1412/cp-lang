@@ -7,14 +7,14 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3407 (3312 passing). Rules: 615.
+Cases: 3409 (3312 passing). Rules: 615.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 184 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R02 (02-values-types.md): 53 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 25 rules, 119 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R04 (04-indices.md): 73 rules, 193 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R04 (04-indices.md): 73 rules, 195 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 78 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 256 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -246,7 +246,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R04.2.22 [2+ 0-]: | `v.ord` | position to its 0-based ordinal: 0 for the first position whatever the base, t...
 - R04.2.17 [2+ 1-]: | `V.cuts(k)`, `V.cuts.at(k)` | integer to cut, the inverse of `Int(c)`: `k` positions bef...
 - R04.2.18 [6+ 4-]: | `5` where a `V` or `V.cuts` is expected | integer literal is that position or cut (integ...
-- R04.2.26 [5+ 1-]: The impl writes `count`, `ord` and `nth` under those names; `count` is sized like a domain...
+- R04.2.26 [7+ 1-]: The impl writes `count`, `ord` and `nth` under those names; `count` is sized like a domain...
 - R04.2.27 [7+ 3-]: The type is then a domain like any other: `[Two]E` indexes by `t.ord`, `for t in Two` and ...
 - R04.2.28 [5+ 3-]: .
 - R04.3.1 [2+ 1-]: | position `v` | `v.prev`, `v.next`: `?V` | `v.l`, `v.r`: its cuts
@@ -1014,9 +1014,9 @@ prepends it.
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
 - 04-indices.md: 8 blocks, 1 with a case, 3 spec-only, 4 neither
   - line 59: `struct Two(a: Int, b: Int)`
-  - line 208: `for j in ..i:`
-  - line 306: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 327: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 210: `for j in ..i:`
+  - line 308: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 329: `fn inversions(r: Range<Pos>) -> Int:`
 - 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`
