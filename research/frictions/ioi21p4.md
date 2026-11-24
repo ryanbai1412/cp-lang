@@ -40,3 +40,7 @@ column sum; `have.row(s).sum` / `have.col(s).sum` would name them.
 30 random cases agree with the v0.2 port and 30 with the accepted C++ (`orig.cpp`, the AC
 grader functions plus a stdin `main`); the max case (n = q = 1e5, half the queries on
 rotated aligned triples) is byte-identical to the C++ and runs in 0.03 s.
+
+## Tuned twin retired (2026-11-24)
+
+The plain port is within 1.1x of the accepted C++ on `gen.py --max` on both counts (best of 9, CPU time and peak RSS, `scripts/corpus.py`'s judge builds): 0.026 s / 10.5 MB against 0.027 s / 9.6 MB (0.95x time, 1.09x memory), with the same output, so `perf.cp` is deleted (performance/R6 keeps a twin only over 1.1x).

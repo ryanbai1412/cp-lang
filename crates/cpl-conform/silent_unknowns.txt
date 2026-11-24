@@ -672,7 +672,6 @@
 6 corpus/problems/ioi20p5/port.cp
 4 corpus/problems/ioi20p6/port.cp
 2 corpus/problems/ioi21p1/port.cp
-1 corpus/problems/ioi21p4/perf.cp
 1 corpus/problems/ioi21p4/port.cp
 16 corpus/problems/ioi22p5/dream.cp
 18 corpus/problems/ioi22p5/port.cp
