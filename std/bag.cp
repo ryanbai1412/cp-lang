@@ -82,11 +82,34 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([3, 1, 3]).to_list() == [1, 3, 3]`
     pub fn of(xs: List<K>) -> SortedBag<K>:
         var b = SortedBag<K>.new()
-        if xs.len > 0:
-            let cap = min(max(xs.len, 4), BAG_B)
-            b.keys.reserve(cap)
-            b.ws.reserve(cap)
-        for x in xs: b.add(x)
+        if xs.len == 0: return b
+        if xs.len > BAG_B:
+            b.keys.reserve(BAG_B)
+            b.ws.reserve(BAG_B)
+            for x in xs: b.add(x)
+            return b
+        // Few enough for one leaf: sort the keys in place and count each run, with no
+        // descent per element.
+        b.keys.reserve(xs.len)
+        b.ws.reserve(xs.len)
+        for x in xs: b.keys.push(x)
+        b.keys.sort()
+        var d = 0
+        for i in 0..xs.len:
+            if d > 0 and not b.keys[d - 1] < b.keys[i]: b.ws[d - 1] += 1
+            else:
+                b.keys[d] = b.keys[i]
+                b.ws.push(1)
+                d += 1
+        while b.keys.len > d: let _ = b.keys.pop()
+        b.meta.reserve(4)
+        for v in [d, -1, -1, -1]: b.meta.push(v)
+        b.root = 0
+        b.head = 0
+        b.tail = 0
+        b.live = d
+        b.total = xs.len
+        b.changed(BAG_ADD)
         b
 
     /// Total number of elements in the bag (counting duplicates).
