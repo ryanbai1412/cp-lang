@@ -659,9 +659,8 @@ impl<'a> Lowerer<'a> {
                     Ty::DomainVal | Ty::Range(_) | Ty::Map(..) | Ty::HashMap(..) => {
                         self.collect_iter_to_list(src, span)
                     }
-                    ref elem @ (Ty::Int | Ty::Bool | Ty::Char | Ty::Float) => {
-                        let ty = Ty::list(elem.clone());
-                        self.mk(ExprKind::Tuple(vec![val]), ty, span)
+                    ref ty @ (Ty::Int | Ty::Bool | Ty::Char | Ty::Float) => {
+                        self.not_contents("List", src, ty, span)
                     }
                     _ => val,
                 }

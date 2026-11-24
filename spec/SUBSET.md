@@ -200,9 +200,6 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-11/prelude-has-components.cp: compiler
 - core-11/strings-table-in-prelude.cp: compiler
 - diagnostics/graph-edge-field-names.cp: diagnostics
-- std-hashmap/hashmap-of-a-list-is-rejected.cp: compiler (builtin `HashMap(xs)` of non-pairs checks clean)
-- std-hashmap/hashmap-of-an-int-is-rejected.cp: compiler (builtin `HashMap(5)` silently builds an empty map)
-- std-hashmap/list-of-an-int-is-rejected.cp: compiler (builtin `List(5)` is `[5]`)
 - std-search/real-bsearch-is-a-range-method.cp: stdlib `Range<F64>.bsearch/peak/valley(steps:)` replace `bsearch_real`/`ternary_*_real` (decision 419)
 - std-seq/keyed-by-answers-with-the-key.cp: compiler (a `Keys` view's `.items` doesn't walk; the `keys` + `at` walk rule)
 - std-segtree/closure-op-picks-index.cp: stdlib `all` of an identity-less op is `?T`; needs identity-less fold typing (plan/QUESTIONS.md)

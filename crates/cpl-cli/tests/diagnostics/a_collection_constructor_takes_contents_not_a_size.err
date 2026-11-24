@@ -1,0 +1,24 @@
+error[E0302]: `HashMap(a)` copies `(key, value)` pairs, but `a` holds `Int`s
+  --> a_collection_constructor_takes_contents_not_a_size.cp:2:9
+  |
+1 | let a: List<Int> = [3, 1, 3]
+  |     - `a` is declared here
+2 | let m = HashMap(a)
+  |         ^^^^^^^^^^
+  = help: pair each with its value: `HashMap((x, v) for x in a)`
+
+error[E0302]: `HashMap(5)` copies `(key, value)` pairs, not an `Int`
+  --> a_collection_constructor_takes_contents_not_a_size.cp:3:28
+  |
+3 | let h: HashMap<Int, Int> = HashMap(5)
+  |                            ^^^^^^^^^^
+  = help: write `HashMap()` for an empty map
+
+error[E0302]: `List(5)` copies a sequence, not an `Int`
+  --> a_collection_constructor_takes_contents_not_a_size.cp:4:20
+  |
+4 | let l: List<Int> = List(5)
+  |                    ^^^^^^^
+  = help: write `[0 for _ in 0..5]` for 5 zeros, or `[5]`
+
+a_collection_constructor_takes_contents_not_a_size.cp: 3 errors

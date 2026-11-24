@@ -32,15 +32,17 @@ impl<'a> Lowerer<'a> {
         src: &ast::Expr,
         span: Span,
     ) -> Expr {
-        let pair = match self.expr(src, None).ty {
-            Ty::Map(k, v) | Ty::HashMap(k, v) => Some((*k, *v)),
+        let src_ty = self.expr(src, None).ty;
+        let pair = match &src_ty {
+            Ty::Map(k, v) | Ty::HashMap(k, v) => Some(((**k).clone(), (**v).clone())),
             other => match other.seq_elem() {
                 Some(Ty::Tuple(kv)) if kv.len() == 2 => Some((kv[0].clone(), kv[1].clone())),
                 _ => None,
             },
         };
         let Some((k_ty, v_ty)) = pair else {
-            return self.err_expr(span);
+            let name = if hashed { "HashMap" } else { "Map" };
+            return self.not_contents(name, src, &src_ty, span);
         };
         let ty = match ty {
             Ty::Map(..) | Ty::HashMap(..) if typed => ty,
@@ -80,6 +82,49 @@ impl<'a> Lowerer<'a> {
             let res = lw.local(acc, span);
             out.push(Stmt::Give(res));
         })
+    }
+
+    /// R04b.3.2: a built-in collection's one argument is the contents it
+    /// copies, what a `for` walks, and a map's are `(key, value)` pairs;
+    /// never a size, as C++'s `vector(5)` or a bucket count would read.
+    pub(in crate::lower) fn not_contents(
+        &mut self,
+        name: &str,
+        src: &ast::Expr,
+        ty: &Ty,
+        span: Span,
+    ) -> Expr {
+        if matches!(ty, Ty::Error) {
+            return self.err_expr(span);
+        }
+        let text = self.source(src.span).trim().to_string();
+        let map = name != "List";
+        let shown = self.show(ty);
+        let article = if shown.starts_with(['A', 'E', 'I', 'O', 'U']) {
+            "an"
+        } else {
+            "a"
+        };
+        let (message, help) = match ty.seq_elem() {
+            Some(elem) if map => (
+                format!(
+                    "`{name}({text})` copies `(key, value)` pairs, but `{text}` holds `{}`s",
+                    self.show(&elem)
+                ),
+                format!("pair each with its value: `{name}((x, v) for x in {text})`"),
+            ),
+            _ if map => (
+                format!("`{name}({text})` copies `(key, value)` pairs, not {article} `{shown}`"),
+                format!("write `{name}()` for an empty map"),
+            ),
+            _ => (
+                format!("`{name}({text})` copies a sequence, not {article} `{shown}`"),
+                format!("write `[0 for _ in 0..{text}]` for {text} zeros, or `[{text}]`"),
+            ),
+        };
+        self.error(codes::TYPE_MISMATCH, span, message);
+        self.help(help);
+        self.err_expr(span)
     }
 
     fn domain_call(&mut self, id: DomainId, name: &str, args: &[ast::Arg], span: Span) -> Expr {
