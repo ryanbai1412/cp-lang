@@ -820,7 +820,7 @@ def has_max(pkg):
 
 
 LIMITS = re.compile(r"^//\s*limits:\s*(\d+)\s*ms,\s*(\d+)\s*MB", re.M)
-MAX_GEN_TIMEOUT = 120
+MAX_GEN_TIMEOUT = 60
 CHECKED_SLOWER = 10
 
 

@@ -719,5 +719,13 @@ class VerifyCplTest(Corpus):
         self.assertIn("cargo build --release -p cpl-cli", str(e.exception))
 
 
+class GenTimeoutTest(unittest.TestCase):
+    def test_a_max_generator_gets_the_briefs_60_seconds(self):
+        pkg = mock.Mock()
+        pkg.case_input.return_value = "1\n"
+        corpus.gen_out(pkg, ["--max"])
+        self.assertEqual(pkg.case_input.call_args.kwargs["timeout"], 60)
+
+
 if __name__ == "__main__":
     unittest.main()
