@@ -127,16 +127,14 @@ pub(super) fn sync_refs_to_stack(
     stack: &mut [Value],
     base: usize,
 ) {
-    match &chunk.ref_slots {
-        None => sync_to_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced),
-        Some(slots) => {
-            for &slot in slots {
-                let slot = slot as usize;
-                let loc = &chunk.slot_map[slot];
-                slot_to_stack(slot, loc, regs_i, regs_v, stack, base, chunk.traced);
-            }
-        }
-    }
+    slots_to_stack(
+        chunk,
+        chunk.ref_slots.as_deref(),
+        regs_i,
+        regs_v,
+        stack,
+        base,
+    );
 }
 
 /// Takes back what `sync_refs_to_stack` put on the stack.
@@ -147,11 +145,49 @@ pub(super) fn sync_refs_from_stack(
     stack: &mut [Value],
     base: usize,
 ) {
-    match &chunk.ref_slots {
+    slots_from_stack(
+        chunk,
+        chunk.ref_slots.as_deref(),
+        regs_i,
+        regs_v,
+        stack,
+        base,
+    );
+}
+
+/// Puts `slots` of `chunk`'s frame on the stack, or every slot for `None`.
+fn slots_to_stack(
+    chunk: &Chunk,
+    slots: Option<&[u16]>,
+    regs_i: &[i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+) {
+    let Some(slots) = slots else {
+        return sync_to_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced);
+    };
+    for &slot in slots {
+        let slot = usize::from(slot);
+        let loc = &chunk.slot_map[slot];
+        slot_to_stack(slot, loc, regs_i, regs_v, stack, base, chunk.traced);
+    }
+}
+
+/// Takes back what `slots_to_stack` put on the stack.
+fn slots_from_stack(
+    chunk: &Chunk,
+    slots: Option<&[u16]>,
+    regs_i: &mut [i64],
+    regs_v: &mut [Value],
+    stack: &mut [Value],
+    base: usize,
+) {
+    match slots {
         None => sync_from_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced),
         Some(slots) => {
             for &slot in slots {
-                let slot = slot as usize;
+                let slot = usize::from(slot);
                 let loc = &chunk.slot_map[slot];
                 slot_from_stack(slot, loc, regs_i, regs_v, stack, base, chunk.traced);
             }
@@ -163,7 +199,7 @@ pub(super) fn sync_refs_from_stack(
 /// The slots of `chunk`'s frame a call can reach while the frame lends
 /// `lent`: the lent ones and those a closure captures by reference, or
 /// `None` for every slot.
-fn reachable_slots(chunk: &Chunk, lent: &[(usize, Rc<Part>)], base: usize) -> Option<Vec<usize>> {
+fn reachable_slots(chunk: &Chunk, lent: &[(usize, Rc<Part>)], base: usize) -> Option<Vec<u16>> {
     let refs = chunk.ref_slots.as_ref().filter(|_| !chunk.traced)?;
     let mut reach = vec![false; chunk.slot_map.len()];
     for l in lent.iter().rev().take_while(|l| l.0 >= base) {
@@ -173,9 +209,8 @@ fn reachable_slots(chunk: &Chunk, lent: &[(usize, Rc<Part>)], base: usize) -> Op
         reach[usize::from(s)] = true;
     }
     Some(
-        (reach.iter().enumerate())
-            .filter(|r| *r.1)
-            .map(|r| r.0)
+        (0..reach.len() as u16)
+            .filter(|&s| reach[usize::from(s)])
             .collect(),
     )
 }
@@ -190,22 +225,8 @@ pub(super) fn sync_reachable_to_stack(
     stack: &mut [Value],
     base: usize,
 ) {
-    match reachable_slots(chunk, lent, base) {
-        None => sync_to_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced),
-        Some(slots) => {
-            for slot in slots {
-                slot_to_stack(
-                    slot,
-                    &chunk.slot_map[slot],
-                    regs_i,
-                    regs_v,
-                    stack,
-                    base,
-                    false,
-                );
-            }
-        }
-    }
+    let slots = reachable_slots(chunk, lent, base);
+    slots_to_stack(chunk, slots.as_deref(), regs_i, regs_v, stack, base);
 }
 
 /// Takes back what `sync_reachable_to_stack` put on the stack.
@@ -217,23 +238,8 @@ pub(super) fn sync_reachable_from_stack(
     stack: &mut [Value],
     base: usize,
 ) {
-    match reachable_slots(chunk, lent, base) {
-        None => sync_from_stack(&chunk.slot_map, regs_i, regs_v, stack, base, chunk.traced),
-        Some(slots) => {
-            for slot in slots {
-                slot_from_stack(
-                    slot,
-                    &chunk.slot_map[slot],
-                    regs_i,
-                    regs_v,
-                    stack,
-                    base,
-                    false,
-                );
-            }
-        }
-    }
-    keep_view_roots(chunk, regs_v, stack, base);
+    let slots = reachable_slots(chunk, lent, base);
+    slots_from_stack(chunk, slots.as_deref(), regs_i, regs_v, stack, base);
 }
 
 /// Hands the moved values back to their registers after a trace point,
