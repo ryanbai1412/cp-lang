@@ -74,13 +74,25 @@ impl<'p> Emitter<'p> {
                     return Code::new(format!("{a}.has_value() ? {value} : {}", b.at(COND)), COND);
                 }
                 let ret = self.ty(&e.ty);
+                // A map's entry is pointed at, so only a found value is copied, once.
+                let entry = match &l.kind {
+                    ExprKind::Builtin(Builtin::MapGet, got) if !keeps_opt => Some(got),
+                    _ => None,
+                };
                 self.lambda(&ret, |this, out| {
-                    let a = this.expr(l).text;
+                    let held = match entry {
+                        Some(got) => {
+                            this.need("map_lend");
+                            let (m, k) = (this.expr(&got[0]).text, this.expr(&got[1]).text);
+                            format!("const auto {{}} = cpl::map_lend({m}, {k});")
+                        }
+                        None => format!("{} {{}} = {};", this.ty(&l.ty), this.expr(l).text),
+                    };
                     let name = this.temp();
                     out.push_str(&format!(
-                        "{}{} {name} = {a};\n",
+                        "{}{}\n",
                         pad(this.indent),
-                        this.ty(&l.ty)
+                        held.replacen("{}", &name, 1)
                     ));
                     let b = this.expr(r);
                     let value = if keeps_opt {

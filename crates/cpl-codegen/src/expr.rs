@@ -348,7 +348,7 @@ impl<'p> Emitter<'p> {
                 Some(l) => this.expr_with_elem_layout(e, Some(l)),
                 None => this.expr(e),
             };
-        let touches: Vec<Touch> = operands.iter().map(|e| self.touch(e)).collect();
+        let touches: Vec<Touch> = operands.iter().map(|e| self.operand_touch(e)).collect();
         let n = operands.len();
         let ordered = (0..n).any(|i| (i + 1..n).any(|j| touches[i].conflicts(&touches[j])));
         if !ordered {
@@ -391,6 +391,24 @@ impl<'p> Emitter<'p> {
             let lead = if is_unit { "" } else { "return " };
             out.push_str(&format!("{}{lead}{};\n", pad(this.indent), result.text));
         })
+    }
+
+    /// What evaluating operand `e` touches before the next one runs: a
+    /// closure literal only reads what it captures by value; its body runs later.
+    fn operand_touch(&self, e: &Expr) -> Touch {
+        let ExprKind::Closure(c) = e.kind else {
+            return self.touch(e);
+        };
+        let caps = &self.program.closures[c].captures;
+        Touch {
+            closures: true,
+            reads: caps
+                .iter()
+                .filter(|cap| !cap.by_ref)
+                .map(|cap| (cap.is_global, cap.outer))
+                .collect(),
+            ..Touch::default()
+        }
     }
 
     pub fn expr(&mut self, e: &Expr) -> Code {
@@ -1006,7 +1024,9 @@ impl<'p> Emitter<'p> {
                 let code = self.expr(value);
                 let flag = code.at(COND);
                 Code::primary(if *checked {
-                    format!("({flag} ? cpl::Unit() : (cpl::fail(\"`!` on `None`: there is no value here\"), cpl::Unit()))")
+                    format!(
+                        "({flag} ? cpl::Unit() : (cpl::fail(\"`!` on `None`: there is no value here\"), cpl::Unit()))"
+                    )
                 } else {
                     format!("((void){flag}, cpl::Unit())")
                 })
