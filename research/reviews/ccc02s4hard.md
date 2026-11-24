@@ -10,20 +10,21 @@ and min dp + max with an assign-max action. The port is that, on std `SegTree` w
 
 ## Checklist failures
 - idiomatic-code/R3: `fn lower(x: ?Best, y: ?Best)` (lines 18-23) is `min` lifted over `?Best`.
-  The friction names `Monoid.min.opt()` as the ideal, and std has it (`opt` in
-  std/algebra.cp). Bookkeeping the language already removes.
+  The friction named `Monoid.min.opt()` as missing; std has `opt` (std/algebra.cp), and
+  `((a: Best, b: Best) => min(a, b)).opt()` runs. Bookkeeping the language already removes.
 - idiomatic-code/R4: `dp` (lines 40, 51) duplicates the `low` value the SegTree already stores
   (line 53). It is read once, at line 55.
 - idiomatic-code/R6: the monotone stack `taller: List<Int>` and `(0..n).rev` (lines 43-44) are
   raw positions turned into `Cut(i + 1)` at each use.
 
 ## Owed rewrites
-- `join` over `min.opt()` for both fields, and drop `lower`. Correct the friction.
+- `join` over `((a: Best, b: Best) => min(a, b)).opt()` for both fields, and drop `lower`.
 - Drop `dp` and print `st.get(Cut.first!).low!.val`.
 - Iterate cuts (`Cut.before_last.rev`, as the dream does) and keep cuts on the stack.
 
 ## Language gaps
 - A stock assign action (`then` at line 29): in the friction.
+- Bare `min.opt()` resolves `min` at `Int` (E0302 against `?Best`): in the friction, with a run.
 
 ## Dream notes
 Names the right objects (`min.opt()`, an assign action, `follow(next)`), but `Best`,

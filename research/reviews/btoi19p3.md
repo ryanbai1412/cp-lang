@@ -11,13 +11,13 @@ The subtree minimum, though, is a hand sweep that std already provides.
 ## Checklist failures
 - idiomatic-code/R3: `shop_under` is filled by a reverse-preorder `min=` sweep (lines 38-42).
   std `Rooted.up(op, lift:, finish:)` (std/tree.cp) is that fold, and `min.opt()` is the
-  `?Int` monoid. The friction says "std's `Rooted` has no fold over subtrees", which is wrong.
+  `?Int` monoid. The friction said "std's `Rooted` has no fold over subtrees", which is wrong.
 - idiomatic-code/R3: `let cut = if tree.parent(u) == w: u else: w` (line 61) re-derives std
   `tree.lower(u, w)`. Unreported.
 
 ## Owed rewrites
 - Fold `shop_under` with `tree.up` over `min.opt()`, joining a shop's own `far` in `finish`,
-  and drop the sweep. Correct the friction.
+  and drop the sweep (the friction now marks it not a gap, with a run).
 - `let cut = tree.lower(u, w)`.
 
 ## Language gaps

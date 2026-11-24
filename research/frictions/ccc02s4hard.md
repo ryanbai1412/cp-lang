@@ -11,6 +11,24 @@ and the stack holds only real people.
 ## Optional min with an arg needs a hand-written `lower`
 - **Where:** `fn lower(x: ?Best, y: ?Best) -> ?Best`, the identity-carrying min of `Best`.
 - **Ideal:** `Monoid.min.opt()` (or `min` lifted over `?T` with `None` as the identity).
+- **Not a gap (corrected in review):** std has `opt` (std/algebra.cp). Run (b244fe76c):
+  `type Best = (val: Int, at: Int)` /
+  `fn lower(x: ?Best, y: ?Best) -> ?Best = ((a: Best, b: Best) => min(a, b)).opt().op(x, y)`,
+  printing `lower(x, y)!, lower(x, None)!, yes(lower(None, None) == None)` for
+  `x = (4, 2)`, `y = (4, 1)`, under `cpl run` prints `4 1 4 2 YES`. The hand-written `lower`
+  goes.
+
+## Bare `min.opt()` resolves `min` at `Int`, not at the expected `?Best`
+- **Where:** the one-line `lower` above.
+- **What felt wrong:** the natural spelling needs the lambda wrapper. Run (b244fe76c): the same
+  `lower` with body `min.opt().op(x, y)` gives
+  `` error[E0302]: expected `?(val: Int, at: Int)`, found `?Int` ``.
+- **Goal it hurts:** the obvious way is the correct way.
+- **Ideal code:** `min.opt().op(x, y)`.
+- **General fix:** resolve an overloaded function value such as `min` against the expected
+  type before defaulting it to `Int`.
+- **Severity:** low
+- **Owner:** check.
 
 ## An assign tag needs its own `then`
 - **Where:** `fn then(new: ?Int, old: ?Int)`, the newest-wins composition.

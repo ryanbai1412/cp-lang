@@ -12,11 +12,12 @@ try (lines 17, 24, 29), and `search` returns only `Bool`.
 - idiomatic-code/R7/R2: the undo stack `picked` (lines 17-29). The friction proposes
   `Pair.find_map` and list prepend as the fix, but std already has both: `first_some` on any
   sequence (std/seq.cp, used on a domain as `T.first_some` in other ports) and `[p] + l`. The
-  friction calls this a missing feature; it is bookkeeping the language already removes.
+  friction called this a missing feature; it is bookkeeping the language already removes.
 
 ## Owed rewrites
 - `fn search(ahead: Str, top: Bool, left: Int) -> ?List<Pair>` with
-  `Pair.first_some(p => ...)`, as the dream has it. Correct the friction.
+  `Pair.first_some(p => ...)`, as the dream has it. The friction now marks it not a gap, with
+  a run.
 
 ## Language gaps
 None; `first_some` and list concatenation exist.

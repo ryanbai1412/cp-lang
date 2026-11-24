@@ -7,9 +7,12 @@
 - **Goal it hurts:** common mistakes hard to write.
 - **Ideal code:** `fn search(ahead, top) -> ?List<Pair>` with
   `Pair.find_map(p => ... search(rest).map(l => [p] + l))`.
-- **General fix:** `find_map` on domains and cheap list prepend (a persistent list) for
-  search results.
-- **Severity:** low
+- **General fix:** none needed: not a gap (corrected in review). `first_some` (std/seq.cp)
+  is `find_map`, it works on a domain, and `[p] + l` prepends. Run (b244fe76c):
+  `fn search(left: Int) -> ?List<Pair>:` / `if left == 0: return None` /
+  `Pair.first_some(p => if p.label == 3: Some([p]) else: search(left - 1).map(l => [p] + l))`
+  with `domain Pair = 1..=3`, then `print(search(3)!)`, under `cpl run` prints `1 1 3`.
+- **Severity:** none (the undo stack is the port's to remove).
 
 ## Dream
 

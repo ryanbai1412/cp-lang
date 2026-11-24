@@ -11,18 +11,17 @@ rebuilds the functional graph's structure by hand.
 ## Checklist failures
 - idiomatic-code/R3: the ring walk (lines 46-50, `while loves[ring.last!] != start:
   ring.push(...)` and `fans[p] = 0`) re-derives std `Functional(loves).cycles()`
-  (std/graph.cp), which lists every cycle in walk order. The friction says "std has no split of
+  (std/graph.cp), which lists every cycle in walk order. The friction said "std has no split of
   a functional graph into ... its cycles", which is wrong for the cycles half.
 - The in-degree peel (lines 36-43) is hand-written as well. It interleaves with the matching,
   so it may have to stay; std `peel(g, on_remove:)` is the candidate to check.
 
 ## Owed rewrites
 - Get the cycles from `Functional(loves).cycles()`. Keep the peel if `peel` can't carry the
-  matching, and correct the friction to say only that.
+  matching (the friction now says so).
 
 ## Language gaps
-- The friction's "no functional-graph split" holds for the peel order at most: `Functional`
-  has `cycles()`.
+None: the friction now marks the cycles as not a gap, with a run.
 
 ## Dream notes
 The dream is one line, `let (rings, peel) = functional_graph(loves)`. It names the missing
