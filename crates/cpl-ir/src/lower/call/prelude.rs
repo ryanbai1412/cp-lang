@@ -719,6 +719,12 @@ impl<'a> Lowerer<'a> {
             }
             "Map" | "HashMap" => {
                 let hashed = name == "HashMap";
+                if let [src] = args {
+                    let typed = matches!(hint, Some(Ty::HashMap(..)) if hashed)
+                        || matches!(hint, Some(Ty::Map(..)) if !hashed);
+                    let ty = hint.cloned().unwrap_or(Ty::Unit);
+                    return self.map_from(hashed, ty, typed, &src.value, span);
+                }
                 let ty = match hint {
                     Some(ty @ (Ty::Map(..) | Ty::HashMap(..))) => ty.clone(),
                     _ if hashed => Ty::HashMap(Box::new(Ty::Int), Box::new(Ty::Int)),

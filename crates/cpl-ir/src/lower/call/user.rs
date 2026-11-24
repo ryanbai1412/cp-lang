@@ -23,6 +23,65 @@ impl<'a> Lowerer<'a> {
     }
 
     /// `V(x)`, `V(a, b)` of a product, `V((a, b))`: the position labelled `x`.
+    /// `Map(src)` or `HashMap(src)`: a fresh map holding each `(key, value)` pair `src` walks.
+    pub(in crate::lower) fn map_from(
+        &mut self,
+        hashed: bool,
+        ty: Ty,
+        typed: bool,
+        src: &ast::Expr,
+        span: Span,
+    ) -> Expr {
+        let pair = match self.expr(src, None).ty {
+            Ty::Map(k, v) | Ty::HashMap(k, v) => Some((*k, *v)),
+            other => match other.seq_elem() {
+                Some(Ty::Tuple(kv)) if kv.len() == 2 => Some((kv[0].clone(), kv[1].clone())),
+                _ => None,
+            },
+        };
+        let Some((k_ty, v_ty)) = pair else {
+            return self.err_expr(span);
+        };
+        let ty = match ty {
+            Ty::Map(..) | Ty::HashMap(..) if typed => ty,
+            _ if hashed => Ty::HashMap(Box::new(k_ty.clone()), Box::new(v_ty.clone())),
+            _ => Ty::Map(Box::new(k_ty.clone()), Box::new(v_ty.clone())),
+        };
+        let (Ty::Map(_, want) | Ty::HashMap(_, want)) = &ty else {
+            return self.err_expr(span);
+        };
+        let want = (**want).clone();
+        self.do_expr(Some(&ty), span, |lw, out| {
+            let acc = lw.temp(ty.clone());
+            let empty = lw.mk(ExprKind::Tuple(Vec::new()), ty.clone(), span);
+            out.push(Stmt::Let(acc, Some(empty)));
+            let (iter, elem) = lw.iter(src);
+            let lid = lw.open_loop(None);
+            let slot = lw.temp(elem);
+            let item = |lw: &mut Self, i: usize, t: &Ty| {
+                let e = lw.local(slot, span);
+                lw.mk(ExprKind::Field(Box::new(e), i), t.clone(), span)
+            };
+            let key = item(lw, 0, &k_ty);
+            let value = item(lw, 1, &v_ty);
+            let at = Place {
+                kind: PlaceKind::Local(acc),
+                ty: ty.clone(),
+                span: lw.span(span),
+            };
+            let place = Place {
+                kind: PlaceKind::Index(Box::new(at), vec![key]),
+                ty: want,
+                span: lw.span(span),
+            };
+            lw.cx.loops.pop();
+            let set = Stmt::Assign(place, AssignOp::Set, value);
+            out.push(Stmt::For(lid, slot, iter, Block { stmts: vec![set] }));
+            let res = lw.local(acc, span);
+            out.push(Stmt::Give(res));
+        })
+    }
+
     fn domain_call(&mut self, id: DomainId, name: &str, args: &[ast::Arg], span: Span) -> Expr {
         if let Some(factors) = self.product_domains.get(&id).cloned() {
             if args.len() == factors.len() {
@@ -751,6 +810,15 @@ impl<'a> Lowerer<'a> {
             let ty = self.resolve_ty(&ty);
             if args.is_empty() {
                 return self.mk(ExprKind::Tuple(Vec::new()), ty, span);
+            }
+            if let (1, Ty::Map(..) | Ty::HashMap(..)) = (args.len(), &ty) {
+                return self.map_from(
+                    matches!(ty, Ty::HashMap(..)),
+                    ty,
+                    !types.is_empty(),
+                    &args[0].value,
+                    span,
+                );
             }
             if args.len() == 1 && matches!(name, "List" | "Set" | "HashSet") {
                 let seq = self.expr(&args[0].value, None);
