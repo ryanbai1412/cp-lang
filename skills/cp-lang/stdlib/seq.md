@@ -261,8 +261,6 @@ Fields: `k: Int,`.
 - `fn pop_while<T>(mut self: List<T>, ok: T -> Bool) -> List<T>` — \(O(\mathit{popped})\)
 - `fn clone<T>(self: T) -> T` — \(O(n)\) for a value of size \(n\), allocates for heap values; \(O(n)\), allocates.
 - `fn take_all<T>(mut self: List<T>) -> List<T>` — \(O(1)\); Move all elements out of `self` in \(O(1)\), leaving it empty.
-- `fn insert<T>(mut self: List<T>, i: Int, x: T)` — \(O(n - i)\); Insert `x` at index `i` (`0 <= i <= self.len`), shifting elements `i..` right by one.; traps: when `i` is not in `0..=self.len`
-- `fn remove<T>(mut self: List<T>, i: Int) -> T` — \(O(n - i)\); \(O(n)\).; traps: when `i` is not in `0..self.len`
 - `fn drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S>` — \(O(1)\); traps: when `k < 0`
 - `fn take<S: Indexed>(self: S, k: Int) -> Slice<S>` — \(O(1)\); traps: when `k < 0`

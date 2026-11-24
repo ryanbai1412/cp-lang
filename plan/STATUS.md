@@ -18,7 +18,7 @@ Authority: handbook leads design; spec/ is its downstream exhaustive form.
 | [perf](domains/perf/README.md) | 19 | 3 | 0 |
 | [site](domains/site/README.md) | 17 | 0 | 3 |
 | [spec](domains/spec/README.md) | 21 | 0 | 0 |
-| [stdlib](domains/stdlib/README.md) | 19 | 9 | 6 |
+| [stdlib](domains/stdlib/README.md) | 19 | 7 | 6 |
 | [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
 | [tools](domains/tools/README.md) | 18 | 11 | 0 |
 
@@ -326,6 +326,9 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 | all | 189 | 161 | 21 | 6 | 0 | 3 | 10 |
 
 ## Skipped process (`Skipped:` trailers per lane per day)
+
+Process costing more than 10% of a change is skipped with a trailer
+(`handbook/process/handbook-and-rfcs.md`); this counts them.
 
 Process costing more than 10% of a change is skipped with a trailer
 (`handbook/process/handbook-and-rfcs.md`); this counts them.

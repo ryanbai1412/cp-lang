@@ -23,7 +23,7 @@ The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear
 - `fn mobius_table(self) -> List<Int>` — \(O(n)\); The Mobius function of every `0..=n`, with `mu[0] == 0` and `mu[1] == 1`.
 - `fn div_count_table(self) -> List<Int>` — \(O(n)\); The number of positive divisors of every `0..=n`, with `d[0] == 0`.
 - `fn div_sum_table(self) -> List<Int>` — \(O(n)\); The sum of the positive divisors of every `0..=n`, with `sigma[0] == 0`.; traps: when a sum overflows `Int`
-- `fn divisors(self, x: Int) -> yields Int` — \(O(\log x)\) to start, \(O(1)\) per divisor; The positive divisors of `x` in `1..=n`, built from the factorization, with no allocation.; traps: when `x` is outside `1..=n`
+- `fn divisors(self, x: Int) -> yields Int` — \(O(1)\) to start, \(O(\log x)\) amortized per divisor; The positive divisors of `x` in `1..=n`, built from the factorization, with no allocation.; traps: when `x` is outside `1..=n`
 
 ## `enum Sign: Neg`
 

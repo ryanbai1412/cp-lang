@@ -43,7 +43,7 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 
 \(O(1)\) per arc read: `g.weighted(f)`, the arcs of `g` with `.w` read as `f(a)` (or `f(u, a)`), `.to` and `.e` passed through.
 
-## `struct Graph<V: Domain, A: Target<V>>`
+## `struct Graph<V: Domain, A: Target<V> = V>`
 
 \(O(n + m)\) memory and build.
 
@@ -51,7 +51,6 @@ A graph whose arcs carry edge ids: bridges, two-edge components, edge blocks.
 - `fn undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..), B: Target<V>>(edges: S, keep: EdgeArc<V, E, R> -> B = a => a) -> Graph<V, B>` — \(O(n + m)\) time and memory, plus `2m` calls of `keep`; A graph with two arcs per edge of `edges`, `u -> v` and `v -> u`, both carrying the same `e`.
 - `fn of(arcs: Seq<(from: V, arc: A)>) -> Graph<V, A>` — \(O(n + m)\); A graph from `(from, arc)` pairs: `arc` is stored as one of `from`'s arcs.
 - `fn at(self, u: V) -> lends Slice<A>` — \(O(1)\); `g[u]`: the arcs out of `u` as an `Indexed` view, without copying.
-- `fn out(self, u: V) -> yields A` — \(O(1)\) to make, \(O(1)\) per arc; The arcs out of `u`, lazily: the `Next` implementation.
 - `fn matrix<W: Ord>(self) -> [V, V]?W where A: Weighted<W>` — \(O(n^2 + m)\) time, \(O(n^2)\) memory; The weight matrix: `d[u, v]` is the least `.w` over the arcs `u -> v`, `None` without one.
 - `fn deg(self, u: V) -> Int` — \(O(1)\); The number of arcs out of `u`.
 - `fn next(self, u: V) -> yields V` — \(O(1)\) per vertex yielded; Where `u`'s arcs lead: `out(u)` mapped to `.to`, repeats kept.

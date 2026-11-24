@@ -4,7 +4,7 @@
 
 Random numbers from a seed: the same seed gives the same numbers in `cpl run` and in the built C++. `Rng(seed)` is a splitmix64 stream: \(O(1)\) per draw.
 
-Import: `use std.rand.{...}`.
+In prelude (no `use` needed): `shuffle`.
 
 ## `struct Rng(s: U64)`
 
@@ -17,6 +17,10 @@ Import: `use std.rand.{...}`.
 - `fn shuffle<S: IndexedMut>(mut self, mut a: S)` — \(O(n)\); Shuffle `a` in place, uniformly (Fisher-Yates).
 - `fn perm<D>(mut self) -> [D]D` — \(O(n)\); A uniformly random permutation of the domain `D`, as a `[D]D`.
 - `fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>` — \(O(\lvert \mathit{from} \rvert)\); `k` elements of `from` at distinct positions, chosen uniformly, in random order.; traps: when `k` is not in `0..=from.len`
+
+## Functions
+
+- `fn shuffle<S: IndexedMut>(mut a: S)` — \(O(n)\); Shuffle `a` in place, uniformly (Fisher-Yates), drawing from the program's `rand` stream.
 
 ## Example
 

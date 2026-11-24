@@ -21,6 +21,19 @@ An append-only node pool for persistent structures, held by the user: `alloc` re
 
 Opaque version handle for `PersistentSegTree`.
 
+## `trait Versioned<D, T>`
+
+A store of versions read one position at a time: `PersistentSegTree`, `PersistentLazySegTree` and `PersistentArray`.
+
+## `struct VersionWithin<S: Versioned<D, T>, D: Domain, T>(store: S, v: Version<S>)`
+
+One version of a `Versioned` store read through it, from `v.within(store)`.
+
+- `@get fn len(self) -> Int` — \(O(1)\); The number of positions, `D.count`.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether `D` has no position.
+- `fn each(self) -> yields T` — \(O(\lvert D \rvert \log \lvert D \rvert)\); Visit the value at every position.; traps: when `store` did not make this version
+- `@get fn items(self) -> yields (D, T)` — \(O(\lvert D \rvert \log \lvert D \rvert)\); Visit every position with its value.; traps: when `store` did not make this version
+
 ## `struct PersistentSegTree<D, T: Sub>(m: Monoid<T>)`
 
 Path-copying persistent segment tree over a domain `D` and monoid `Monoid<T>`.
