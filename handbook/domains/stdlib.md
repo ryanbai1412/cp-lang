@@ -263,7 +263,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Errors from a std call point at the user's call, never into std | diagnostics whose primary span is in `std/` | rule `errors/R3`; `crates/cpl-cli/tests/std_spans.rs` (every `pub fn` called with wrong shapes; no span inside std) |
 | Trap messages name the user's call and values | trap messages that show std internals | `missing` (same suite, traps half) |
 | Traces show std values by their meaning, not their fields | std types whose trace shows internals | `crates/cpl-cli/tests/trace_goldens.rs` per program |
-| Stress can generate every std input type | std types with no generator | `cpl-stress` `readable_shapes::stress_generates_every_std_input_type` |
+| Stress can generate every std input type | std types with no generator | `crates/cpl-stress/tests/readable_shapes.rs` (`stress_generates_every_std_input_type`) |
 
 ### No privilege and stable (J10)
 
