@@ -80,6 +80,16 @@ pub fn rank_checked(
     }
 }
 
+/// Whether `after` has an error of a kind `before` doesn't and no fix
+/// repairs, so a fix guessed rather than repaired: `press` read as `cross`
+/// trades an unknown name for type errors. `s.size()` read as `s.len()` is
+/// one step on, since the next round drops the `()`.
+fn adds_a_kind(before: &[Diagnostic], after: &[Diagnostic]) -> bool {
+    after
+        .iter()
+        .any(|e| e.fixes.is_empty() && !before.iter().any(|b| b.code == e.code))
+}
+
 /// The errors the front end reports for `text` as `path`.
 pub fn errors_in(db: &mut cpl_check::Session, path: &str, text: &str) -> Vec<Diagnostic> {
     db.set_file(path, text);
@@ -109,7 +119,34 @@ pub fn apply_error_fixes_in(
     for _ in 0..8 {
         let mut errors = errors_in(db, path, &text);
         rank_checked(db, path, &text, &mut errors, &mut budget);
-        let (next, n) = cpl_diag::apply_fixes(&text, &errors);
+        // Syntax first: a file that doesn't parse was never type checked,
+        // so what fixing it uncovers is not a new mistake. Once it parses,
+        // every fix is checked.
+        let syntax = cpl_syntax::parse_file(&text).diagnostics;
+        let in_syntax =
+            |e: &Diagnostic| syntax.iter().any(|s| s.code == e.code && s.span == e.span);
+        let syntax_round = errors.iter().any(|e| in_syntax(e) && !e.fixes.is_empty());
+        if syntax_round {
+            for error in errors.iter_mut().filter(|e| !in_syntax(e)) {
+                error.fixes.clear();
+            }
+        }
+        let (mut next, mut n) = cpl_diag::apply_fixes(&text, &errors);
+        if n > 0 && !syntax_round && adds_a_kind(&errors, &errors_in(db, path, &next)) {
+            // Some fix traded its error for another kind; keep the rest.
+            for error in errors.iter_mut().filter(|e| !e.fixes.is_empty()) {
+                let alone = Diagnostic {
+                    fixes: error.fixes[..1].to_vec(),
+                    ..error.clone()
+                };
+                let (fixed, _) = cpl_diag::apply_fixes(&text, std::slice::from_ref(&alone));
+                if budget == 0 || adds_a_kind(&[alone], &errors_in(db, path, &fixed)) {
+                    error.fixes.clear();
+                }
+                budget = budget.saturating_sub(1);
+            }
+            (next, n) = cpl_diag::apply_fixes(&text, &errors);
+        }
         if n == 0 || next == text {
             return (text, applied, errors);
         }
@@ -176,5 +213,22 @@ mod tests {
         assert_eq!(errors[0].fixes[0].title, "insert zz");
         rank_checked(&mut db, "a.cp", text, &mut errors, &mut MAX_CHECKS.clone());
         assert_eq!(errors[0].fixes[0].title, "insert 1");
+    }
+
+    #[test]
+    fn a_fix_that_trades_its_error_for_another_kind_is_not_applied() {
+        // `press` is near `cross` (std.geometry), which takes two points.
+        let text = "fn f(two: [Char]) -> Int = press(two)\nprint(f(['a']))\n";
+        let (fixed, applied, left) =
+            apply_error_fixes_in(&mut cpl_check::Session::new(), "a.cp", text);
+        assert_eq!(applied, 1, "{fixed}");
+        assert!(
+            fixed.contains("two: List<Char>") && fixed.contains("press(two)"),
+            "{fixed}"
+        );
+        assert!(
+            left.iter().all(|e| e.code == codes::UNRESOLVED_NAME),
+            "{left:?}"
+        );
     }
 }
