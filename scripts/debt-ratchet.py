@@ -1700,10 +1700,14 @@ def std_shadowed(root: Path) -> list[str]:
     off the decision-266 floor: (1) a fn the lowering string-matches by name whose receiver a
     built-in arm can catch (a free fn, or a `self` that is a type parameter, list, string, map,
     set, range or array); (2) a type the checker, IR, interpreter or emitter names in a string
-    literal, whose methods it may answer too."""
+    literal, whose methods it may answer too; (3) a fn the checker's known-call arms
+    (`crates/cpl-check/src/check/known.rs`) type or check by name instead of its signature."""
     floor = _builtin_floor(root)
     arms = set(ir_builtin_names(root))
     named = _compiler_strings(root)
+    known = root / "crates/cpl-check/src/check/known.rs"
+    checked = set(re.findall(r'^\s*\(\s*"(\w+)"', known.read_text(encoding="utf-8"), re.M)) \
+        if known.is_file() else set()
     out: set[str] = set()
     for p in sorted((root / "std").glob("*.cp")):
         for line in _lines(p):
@@ -1715,6 +1719,8 @@ def std_shadowed(root: Path) -> list[str]:
                 if not indent and name in named and name not in floor:
                     out.add(name)
                 continue
+            if not indent and name in checked and name not in floor:
+                out.add(name)
             if name not in arms or name in floor:
                 continue
             if indent:

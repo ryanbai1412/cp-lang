@@ -106,7 +106,8 @@ a.items           // (i, a[i]) pairs with a's own indices
 | `Keyed<D, T>` | `Seq` + `s.items` walks `(key, x)`; keys survive `filter` | everything `Indexed`, `s.rev`, `s.filter(p)`, `s.take_while(p)`, `Map`, `g.keyed()`, `g.keyed(by: f)` (R07.3.2) |
 | `Sized` | \(O(1)\) `s.len` | collections, ranges, `Indexed` views, sets, maps (R07.3.3) |
 | `Bidir<T>` | `s.rev` walks backwards; `s.last` is \(O(1)\) | everything `Indexed`, sorted sets, deques, `filter` over a `Bidir` (R07.3.4) |
-| `Indexed<D, T>` | `Keyed` + `Sized` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices (`a[r]`, `take`/`drop`, `windows`, `chunks`, `runs`, `split`), `.map(f)`, `zip(a, b)`; not `.rev` or `filter` (R07.3.5) |
+| `Positional<T>` | `Seq` + `Sized` + `s.nth(k)`, the element `k` steps into the walk, in \(O(1)\) | everything `Indexed`, `s.rev` of an `Indexed`, a domain (R07.3.7) |
+| `Indexed<D, T>` | `Keyed` + `Positional` + `Bidir` + `s[i]` for `i: D` in \(O(1)\), `s.keys: Range<D>` | `[D]T`, `List<T>` and `Str` (`D = Int`), ranges, slices (`a[r]`, `take`/`drop`, `windows`, `chunks`, `runs`, `split`), `.map(f)`, `zip(a, b)`; not `.rev` or `filter` (R07.3.5) |
 | `IndexedMut<D, T>` | `Indexed` + `s[i]` is a place: `sort()`, `swap`, slice assignment | `[D]T`, `List`, `Str`, `mut` slices (R07.3.6) |
 
 **Cost rule.** Views are \(O(1)\) to make and allocate nothing. A
@@ -284,8 +285,8 @@ for d in divisors(n):
   This is ordinary library code; any user generator can do it. (R07.6.3)
 - **No lockstep.** Two generators can't be walked in step, because each
   wants to own the loop. Materialize one (`List(g)`), or zip indexed
-  sequences. `zip`'s first argument is `Indexed` and keys the pairs; each
-  later one is `Indexed` or the `.rev` of an `Indexed`, read by walk
+  sequences. `zip`'s first argument keys the pairs; each later one is
+  `Positional` (an `Indexed`, the `.rev` of one, or a domain), read by walk
   position, so `zip(a, a.rev)` pairs each element with its mirror. (R07.6.4)
 
 ## Adapters (each makes a view: \(O(1)\), lazy)

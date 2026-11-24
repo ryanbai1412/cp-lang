@@ -602,7 +602,7 @@ pub fn cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T):
 /// order: position by position, stopping at the shorter
 /// traps: never
 /// example: `zip([1, 2, 3], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U):
+pub fn zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U):
     for i in 0..min(a.len, b.len): yield (a.nth(i), b.nth(i))
 
 /// The first and second halves of each pair, as two lists: the inverse of `zip`.
@@ -1293,8 +1293,15 @@ pub trait Bidir<T>: Seq<T>:
     /// Walks the sequence from its end.
     fn iter_rev(self) -> yields T
 
+/// A sized sequence read in \(O(1)\) by walk position: `s.nth(k)` is the element `k` steps into
+/// the walk. Every `Indexed` is one, and so is the `.rev` of one, which is what `zip`'s later
+/// arguments need (R07.6.4).
+pub trait Positional<T>: Seq<T> + Sized:
+    /// The element `k` steps into the walk, 0-based; traps unless `0 <= k < len`.
+    fn nth(self, k: Int) -> T
+
 /// A keyed, sized, two-way sequence read in \(O(1)\) at any key; `take`/`drop` give a slice.
-pub trait Indexed<D, T>: Keyed<D, T> + Sized + Bidir<T>:
+pub trait Indexed<D, T>: Keyed<D, T> + Positional<T> + Bidir<T>:
     type Taken = Slice<Self>
     /// The element at key `i`.
     fn at(self, i: D) -> T
@@ -1353,6 +1360,9 @@ impl Sized for Mapped<S: Sized, T, U>:
 impl Bidir<U> for Mapped<S: Bidir<T>, T, U>:
     fn iter_rev(self) -> yields U:
         for x in src.rev: yield f(x)
+
+impl Positional<U> for Mapped<S: Indexed<D, T>, T, U>:
+    fn nth(self, k: Int) -> U = f(src.nth(k))
 
 impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
     fn at(self, i: D) -> U = f(src.at(i))
@@ -1414,6 +1424,9 @@ pub struct Rev<S>():
     /// example: `List([1, 2, 3].rev.drop_last(1)) == [3, 2]`
     pub fn drop_last(self, k: Int = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
 
+impl Positional<T> for Rev<S: Indexed<D, T>>:
+    fn nth(self, k: Int) -> T = src.nth(src.len - 1 - k)
+
 /// \(O(1)\) to make. The view `s.items`: `(key, element)` pairs in `s`'s order.
 pub struct Items<S>(
     /// \(O(1)\). The source sequence whose items this view walks.
@@ -1438,6 +1451,11 @@ impl Keyed<D, (D, T)> for Items<S: Indexed<D, T>>:
 impl Bidir<(D, T)> for Items<S: Indexed<D, T>>:
     fn iter_rev(self) -> yields (D, T):
         for k in src.keys.rev: yield (k, src.at(k))
+
+impl Positional<(D, T)> for Items<S: Indexed<D, T>>:
+    fn nth(self, k: Int) -> (D, T):
+        let i = src.keys[k]
+        (i, src.at(i))
 
 impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
     fn at(self, i: D) -> (D, T) = (i, src.at(i))
@@ -1829,7 +1847,7 @@ pub fn with_next<S: Seq, T>(self: S) -> yields (T, ?T):
 /// order: position by position
 /// traps: when `a.len != b.len`
 /// example: `zip_exact([1, 2], "ab").collect() == [(1, 'a'), (2, 'b')]`
-pub fn zip_exact<A: Indexed<K, T>, B: Indexed<L, U>, K, L, T, U>(a: A, b: B) -> yields (T, U):
+pub fn zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U):
     assert a.len == b.len
     for i in 0..a.len: yield (a.nth(i), b.nth(i))
 

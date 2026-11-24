@@ -4,6 +4,17 @@
 
 use super::*;
 
+impl GenArg {
+    /// What a key dimension binds a key generic to: its domain, or `Int` for a plain index.
+    pub(super) fn of_key(dim: Dim) -> Option<GenArg> {
+        match dim {
+            Dim::Pos(d) => Some(GenArg::Domain(d)),
+            Dim::Int | Dim::IntFrom(_) => Some(GenArg::Ty(Ty::Int)),
+            _ => None,
+        }
+    }
+}
+
 impl<'a> Lowerer<'a> {
     /// Binds the names an impl's bounds leave open from the types its target
     /// bound: `K` and `T` in `Z<A: Indexed<K, T>>` are `A`'s key and element.
@@ -32,12 +43,12 @@ impl<'a> Lowerer<'a> {
                 };
                 let trait_name = name.text.as_str();
                 let (key, elem) = match trait_name {
-                    "Seq" | "Bidir" | "Sized" => (None, args.first()),
+                    "Seq" | "Bidir" | "Sized" | "Positional" => (None, args.first()),
                     "Keyed" | "Indexed" | "IndexedMut" => (args.first(), args.get(1)),
                     _ => continue,
                 };
                 let builtin = match trait_name {
-                    "Indexed" | "Bidir" => seq.is_indexed(),
+                    "Indexed" | "Bidir" | "Positional" => seq.is_indexed(),
                     "IndexedMut" => seq.is_indexed_mut(),
                     _ => seq.is_seq(),
                 };

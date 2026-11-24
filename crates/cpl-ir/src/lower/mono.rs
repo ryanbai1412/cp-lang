@@ -1617,7 +1617,7 @@ impl<'a> Lowerer<'a> {
                         // `A: Indexed<K, U>` names its element `U`, not `T`.
                         let is_seq_bound = b.traits.iter().any(|tr| {
                             matches!(&tr.kind, ast::TypeKind::Named { name, args }
-                                if matches!(name.text.as_str(), "Seq" | "Keyed" | "Bidir" | "Indexed" | "IndexedMut")
+                                if matches!(name.text.as_str(), "Seq" | "Keyed" | "Bidir" | "Positional" | "Indexed" | "IndexedMut")
                                     && args.last().is_none_or(|a| ty_mentions(a, "T")))
                         });
                         if !is_seq_bound {
@@ -1706,14 +1706,8 @@ impl<'a> Lowerer<'a> {
                     _ => None,
                 }
             });
-            match key {
-                Some(Dim::Pos(d)) => {
-                    inferred.insert("D".to_string(), GenArg::Domain(d));
-                }
-                Some(Dim::Int | Dim::IntFrom(_)) => {
-                    inferred.insert("D".to_string(), GenArg::Ty(Ty::Int));
-                }
-                _ => {}
+            if let Some(arg) = key.and_then(GenArg::of_key) {
+                inferred.insert("D".to_string(), arg);
             }
         }
 
@@ -1729,7 +1723,8 @@ impl<'a> Lowerer<'a> {
                 let ast::TypeKind::Named { name, args: targs } = &tr.kind else {
                     continue;
                 };
-                if !matches!(name.text.as_str(), "Keyed" | "Indexed" | "IndexedMut") {
+                let named = name.text.as_str();
+                if !matches!(named, "Keyed" | "Indexed" | "IndexedMut" | "Positional") {
                     continue;
                 }
                 let free = |t: Option<&ast::Type>| match t.map(|t| &t.kind) {
@@ -1742,15 +1737,13 @@ impl<'a> Lowerer<'a> {
                     }
                     _ => None,
                 };
-                let (k, t) = (free(targs.first()), free(targs.get(1)));
-                match (k, key) {
-                    (Some(k), Some(Dim::Pos(d))) => {
-                        inferred.insert(k, GenArg::Domain(d));
-                    }
-                    (Some(k), Some(Dim::Int | Dim::IntFrom(_))) => {
-                        inferred.insert(k, GenArg::Ty(Ty::Int));
-                    }
-                    _ => {}
+                let (k, t) = if named == "Positional" {
+                    (None, free(targs.first()))
+                } else {
+                    (free(targs.first()), free(targs.get(1)))
+                };
+                if let (Some(k), Some(arg)) = (k, key.and_then(GenArg::of_key)) {
+                    inferred.insert(k, arg);
                 }
                 if let (Some(t), Some(elem)) = (t, elem.clone()) {
                     inferred.insert(t, GenArg::Ty(elem));

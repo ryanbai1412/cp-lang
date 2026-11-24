@@ -8893,4 +8893,8 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** The two tests have opposite polarity, so a rename alone is a silent wrong answer; ports and `regress.py`'s `cpl fix` migration had to rewrite it by hand (cf2285D).
 - **Reverse.** Drop the matcher; the help goes back to naming `bsearch`.
 
-## 543. (reserved, unknown)
+## 543. `Positional<T>` is the walk-position read `zip`'s later arguments take (stdlib, 2026-11-24)
+
+- **Call.** `Positional<T>: Seq<T> + Sized` gives `nth(k)`, the element `k` steps into the walk (R07.3.7). `Indexed<D, T>` is `Keyed + Positional + Bidir`, `Rev<S: Indexed>` is `Positional` by reading `nth` from the end, and a domain is one too. `zip` and `zip_exact` bound their later argument `Positional<U>` (R07.6.4). `std_shadowed` also counts the checker's known-call arms (`check/known.rs`), and goes to 62: `Positional`, a core trait the checker names as it names `Indexed`, and `zip`, whose arm stays only for the domain-mismatch error (R04b.1.3) until a same-key bound can state it (asked of Core).
+- **Why.** R07.6.4 reads the later arguments by walk position, and the checker granted that only by quietly rewriting their `Indexed` bound to "Indexed (or its .rev)". A named trait says it in the signature. `Rev` keeps its keys, as its doc says, so it is `Positional` rather than an `Indexed` with reversed keys.
+- **Reverse.** Delete `Positional`, bound `zip`'s later arguments `Indexed` again, and drop known.rs from `std_shadowed`.

@@ -1594,10 +1594,11 @@ impl<'a> Checker<'a> {
                 "Ord" => stack.push("Eq".into()),
                 "IndexedMut" => stack.push("Indexed".into()),
                 "Indexed" => {
-                    stack.push("Sized".into());
+                    stack.push("Positional".into());
                     stack.push("Bidir".into());
                     stack.push("Keyed".into());
                 }
+                "Positional" => stack.push("Sized".into()),
                 "Sized" | "Bidir" | "Keyed" => stack.push("Seq".into()),
                 _ => {}
             }
@@ -1674,6 +1675,7 @@ impl<'a> Checker<'a> {
             "Seq" => ty.is_seq() || self.walks_by_each(ty),
             "Sized" => ty.is_sized(),
             "Indexed" => ty.is_indexed(),
+            "Positional" => ty.rev_source().unwrap_or(ty).is_indexed(),
             super::views::INDEXED_BY_WALK => ty.rev_source().unwrap_or(ty).is_indexed(),
             "Bidir" => ty.is_bidir(),
             "Keyed" => ty.is_keyed(),

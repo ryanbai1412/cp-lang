@@ -150,7 +150,7 @@ impl Ty {
             Ty::Named { name, args }
                 if matches!(
                     name.as_str(),
-                    "Range" | "Seq" | "Iter" | "Gen" | "Filter" | "Zip"
+                    "Range" | "Seq" | "Positional" | "Iter" | "Gen" | "Filter" | "Zip"
                 ) && args.len() == 1 =>
             {
                 Some(args[0].clone())
@@ -247,6 +247,7 @@ impl Ty {
             "Bidir" => self.is_bidir(),
             "Keyed" => self.is_keyed(),
             "Indexed" => self.is_indexed(),
+            "Positional" => self.rev_source().unwrap_or(self).is_indexed(),
             "IndexedMut" => self.is_indexed_mut(),
             _ => false,
         }
@@ -400,6 +401,11 @@ impl Ty {
             }
             (a, Ty::Named { name, args }) if name == "Indexed" && args.len() == 2 => {
                 a.is_indexed() && a.seq_elem().is_some_and(|e| e.fits_in(&args[1], number))
+            }
+            // `Positional<T>`: an `Indexed` or the `.rev` of one, read by walk position.
+            (a, Ty::Named { name, args }) if name == "Positional" && args.len() == 1 => {
+                a.rev_source().unwrap_or(a).is_indexed()
+                    && a.seq_elem().is_some_and(|e| e.fits_in(&args[0], number))
             }
             // A `.rev` view passes where its source's type is written; only
             // a bound sees that it is not `Indexed`.

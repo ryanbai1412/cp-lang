@@ -204,6 +204,7 @@ use std.segtree.{SegTree}
 use std.window.{Sweep, Undo, Undoing, Window, track, undoing, window_fold}
 use std.seq.{
     Compressed,
+    Positional,
     Rev,
     RingSlice,
     Slice,
