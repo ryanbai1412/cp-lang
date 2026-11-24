@@ -278,17 +278,16 @@ impl<'a> Lowerer<'a> {
                             value: idx.clone(),
                         })
                         .collect();
-                    if let Some(fn_id) = self.own_method(sid, "get") {
-                        return self.method_call(fn_id, Some((base, base_expr)), &ast_args, span);
-                    }
-                    if let Some(&gfn_id) = self.structs[sid].gen_methods.get("get") {
-                        return self.call_gen_fn(
-                            gfn_id,
-                            Vec::new(),
-                            Some(Arg::Value(base_expr)),
-                            &ast_args,
-                            span,
-                        );
+                    // A place written through is the lending `at` the checker read it as.
+                    if self.checked_at(e.span) != Some(true) {
+                        if let Some(fn_id) = self.own_method(sid, "get") {
+                            let recv = Some((&**base, base_expr));
+                            return self.method_call(fn_id, recv, &ast_args, span);
+                        }
+                        if let Some(&gfn_id) = self.structs[sid].gen_methods.get("get") {
+                            let recv = Some(Arg::Value(base_expr));
+                            return self.call_gen_fn(gfn_id, Vec::new(), recv, &ast_args, span);
+                        }
                     }
                     if let Some(call) = self.struct_at(sid, base, indices) {
                         return self.expr(&call, hint);

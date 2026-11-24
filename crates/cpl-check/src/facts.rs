@@ -72,6 +72,10 @@ pub struct ExprFacts {
     pub imported_types: Vec<(Span, crate::Resolved)>,
     /// The ends of each range type written with both: `x + 1..=n`.
     pub ranges: Vec<(Span, RangeEnds)>,
+    /// Whether each `s[k]` on a struct is its `at` (true) or its `get`: `get` for a read, the
+    /// lending `at` for a place written through (R05.6.3). Lowering reads it here rather
+    /// than choosing again.
+    pub accessors: Vec<(Span, bool)>,
 }
 
 /// The end expressions of a written range type, by span.
@@ -93,7 +97,7 @@ impl ExprFacts {
             .map(|(_, ty)| ty)
     }
 
-    pub(crate) fn mark(&self) -> [usize; 6] {
+    pub(crate) fn mark(&self) -> [usize; 7] {
         let (t, c) = (self.types.len(), self.calls.len());
         let rows = self.past_rows.len();
         [
@@ -103,17 +107,19 @@ impl ExprFacts {
             self.module_members.len(),
             rows,
             self.unresolved.len(),
+            self.accessors.len(),
         ]
     }
 
     /// Forgets what was recorded since `mark`, as a quiet probe does.
-    pub(crate) fn truncate(&mut self, [t, c, i, m, r, u]: [usize; 6]) {
+    pub(crate) fn truncate(&mut self, [t, c, i, m, r, u, a]: [usize; 7]) {
         self.types.truncate(t);
         self.calls.truncate(c);
         self.instantiations.truncate(i);
         self.module_members.truncate(m);
         self.past_rows.truncate(r);
         self.unresolved.truncate(u);
+        self.accessors.truncate(a);
     }
 }
 

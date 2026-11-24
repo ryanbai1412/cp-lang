@@ -44,8 +44,8 @@ impl<'a> Lowerer<'a> {
         Some(place)
     }
 
-    /// The place a `mut` argument names; a receiver goes through
-    /// [`Self::mut_receiver`].
+    /// The place a `mut` argument names, the lent slot itself under a `lends mut` call;
+    /// a receiver goes through [`Self::mut_receiver`].
     pub(in crate::lower) fn mut_arg(
         &mut self,
         value: &ast::Expr,
@@ -54,6 +54,8 @@ impl<'a> Lowerer<'a> {
     ) -> Place {
         if param == "self" {
             self.mut_receiver(value, method)
+        } else if let Some(place) = self.lent_receiver(value) {
+            place
         } else {
             self.place(value)
         }

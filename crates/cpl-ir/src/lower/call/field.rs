@@ -1120,12 +1120,17 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// What the checker found in the item being lowered.
+    pub(in crate::lower) fn item_check(&self) -> Option<&'a cpl_check::ItemCheck> {
+        let items = &self.mods[self.cur_mod].items;
+        let at = items.binary_search_by_key(&self.offset, |i| i.offset);
+        Some(&items[at.ok()?].check)
+    }
+
     /// Whether the checker sent `x.name(..)` past the built-in member of the
     /// name, whose parameters can't take the call's arguments.
     pub(in crate::lower) fn past_builtin_row(&self, name: Span) -> bool {
-        let items = &self.mods[self.cur_mod].items;
-        (items.binary_search_by_key(&self.offset, |i| i.offset).ok())
-            .is_some_and(|at| items[at].check.exprs.past_rows.contains(&name))
+        (self.item_check()).is_some_and(|c| c.exprs.past_rows.contains(&name))
     }
 
     /// The module of the fn the checker resolved `base.name(..)` to, `""`
@@ -1136,11 +1141,7 @@ impl<'a> Lowerer<'a> {
         base: &ast::Expr,
         span: Span,
     ) -> Option<String> {
-        let items = &self.mods[self.cur_mod].items;
-        let item = &items[items
-            .binary_search_by_key(&self.offset, |i| i.offset)
-            .ok()?];
-        let (_, found) = (item.check.resolved.iter())
+        let (_, found) = (self.item_check()?.resolved.iter())
             .filter(|(at, r)| at.start >= base.span.end && at.end <= span.end && r.name == name)
             .filter(|(_, r)| r.owner.is_none())
             .min_by_key(|(at, _)| at.start)?;

@@ -4,23 +4,26 @@
 use super::*;
 use cpl_syntax::ast::{self, Expr, ExprKind};
 
-/// The `s[k]` along a place's path, `a[i]` of `a[i].kids[0]` and the target itself.
-pub(super) fn lent_path(mut e: &Expr) -> Vec<Span> {
-    let mut out = Vec::new();
-    loop {
-        match &e.kind {
-            ExprKind::Index { base, .. } => {
-                out.push(e.span);
-                e = base;
+impl Checker<'_> {
+    /// Marks each `s[k]` on the path of `e` (`a[i].kids[j]`) as written through, giving
+    /// the ones it newly marked.
+    pub(super) fn lend_path(&mut self, mut e: &Expr) -> Vec<Span> {
+        let mut out = Vec::new();
+        loop {
+            match &e.kind {
+                ExprKind::Index { base, .. } => {
+                    if self.lent_places.insert(e.span) {
+                        out.push(e.span);
+                    }
+                    e = base;
+                }
+                ExprKind::Field { base, .. } => e = base,
+                ExprKind::Paren(inner) => e = inner,
+                _ => return out,
             }
-            ExprKind::Field { base, .. } => e = base,
-            ExprKind::Paren(inner) => e = inner,
-            _ => return out,
         }
     }
-}
 
-impl Checker<'_> {
     /// Whether calling `name` on a `base_ty` changes it: a `mut self` method.
     pub(super) fn changes_self(&mut self, base_ty: &Ty, name: &str) -> bool {
         let members = match base_ty {
@@ -35,20 +38,22 @@ impl Checker<'_> {
         }
     }
 
-    /// `a[i].c.bump(1)`: a `mut self` call's receiver is a place, so each `s[k]`
-    /// on its path is written through (R05.6.3).
-    pub(super) fn lent_receiver(&mut self, callee: &Expr) {
+    /// `a[i].c.bump(1)`, `inc(mut a[i].c)`: a `mut self` call's receiver and a `mut`
+    /// argument are places, so each `s[k]` on their paths is written through (R05.6.3).
+    pub(super) fn lent_receiver(&mut self, callee: &Expr, args: &[ast::Arg]) {
+        for arg in args.iter().filter(|a| a.mutable) {
+            self.lend_path(&arg.value);
+        }
         let ExprKind::Field { base, name } = &callee.kind else {
             return;
         };
-        let path: Vec<Span> = (lent_path(base).into_iter())
-            .filter(|s| self.lent_places.insert(*s))
-            .collect();
+        let path = self.lend_path(base);
         if path.is_empty() {
             return;
         }
+        // `p[0].kids.swap(0, 1)`: a built-in row that changes its receiver is one too.
         let base_ty = self.quietly(|c| c.infer(base));
-        if !self.changes_self(&base_ty, &name.text) {
+        if !self.call_mutator(&base_ty, &name.text, args) {
             for s in path {
                 self.lent_places.remove(&s);
             }
@@ -131,6 +136,7 @@ impl Checker<'_> {
             i += 1;
             i <= resolved || !(*span == index.span && r.name == method && r.owner.is_some())
         });
+        self.exprs.accessors.push((expr.span, method == "at"));
         Some(ty)
     }
 }

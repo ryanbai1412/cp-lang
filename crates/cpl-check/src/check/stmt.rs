@@ -1307,7 +1307,7 @@ impl<'a> Checker<'a> {
                 if *op == AssignOp::Set && matches!(target.kind, ExprKind::Name(_)) {
                     self.assigning_name = Some(target.span);
                 }
-                self.lent_places.extend(super::index_at::lent_path(target));
+                self.lend_path(target);
                 let target_ty = self.assign_target(target);
                 let prev_bounds_range = self.expected_bounds_range;
                 self.expected_bounds_range |= Self::expects_bounds_range(&target_ty);

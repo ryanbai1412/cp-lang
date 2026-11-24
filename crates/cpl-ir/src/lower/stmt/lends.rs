@@ -167,6 +167,9 @@ impl<'a> Lowerer<'a> {
                     return None;
                 };
                 self.structs[sid].projections.get("at")?;
+                if self.checked_at(e.span) == Some(false) {
+                    return None;
+                }
                 at = self.struct_at(sid, base, indices)?;
                 &at
             }
@@ -183,6 +186,15 @@ impl<'a> Lowerer<'a> {
         let alias = format!("lent#{}", e.span.start);
         self.cx.mut_aliases.insert(alias.clone(), slot);
         Some(alias)
+    }
+
+    /// Whether the checker read the `s[k]` at `span` through its `at` (a place written
+    /// through) or its `get`, so lowering never picks one the checker did not.
+    pub(in crate::lower) fn checked_at(&self, span: Span) -> Option<bool> {
+        (self.item_check()?.exprs.accessors.iter())
+            .rev()
+            .find(|(s, _)| *s == span)
+            .map(|(_, m)| *m)
     }
 
     pub(super) fn free_lends_mut_fn(&self, name: &str) -> Option<(u32, &'a ast::FnDecl)> {

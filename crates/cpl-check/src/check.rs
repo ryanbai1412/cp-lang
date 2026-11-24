@@ -237,7 +237,7 @@ pub struct GlobalRef {
 /// What `Checker::quietly` puts back after its probe.
 struct Hushed {
     lens: [usize; 8],
-    exprs: [usize; 6],
+    exprs: [usize; 7],
     moved: crate::names::NameMap<Span>,
     lambda_params: Vec<(Span, Vec<Ty>)>,
     chosen: Vec<(Span, Resolved)>,
