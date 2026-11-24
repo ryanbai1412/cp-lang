@@ -514,13 +514,22 @@ def port_domains(text):
         m = DOMAIN_LINE.match(code.strip()) or STRUCT_LINE.match(code.strip())
         if m: domains[m.group(1)] = m.group(2)
     return domains
+def logical_lines(text):
+    """The code lines of `text` without comments, a line that leaves a bracket open
+    joined with the ones that close it: `let t = Rooted(\n    read<T>(),\n)` is one line."""
+    out, depth = [], 0
+    for line in text.split("\n"):
+        code = line.split("//")[0].rstrip()
+        out.append(out.pop() + " " + code.strip() if depth > 0 else code)
+        depth = max(0, depth + sum(code.count(c) for c in "([{") - sum(code.count(c) for c in ")]}"))
+    return out
 def port_ranges(text):
     """name (a field as name.field, a positional one as name.0) -> (lo, hi) text of each
     ranged read in the port: `let x: T = read()`, or a `read<T>()` bound by `let`/`for`
-    anywhere on its line (`let xs = read<[n]T>().sorted()`, `for a in read<[m]T>():`)."""
+    anywhere in its statement, wrapped over lines or not (`let xs = read<[n]T>().sorted()`,
+    `for a in read<[m]T>():`)."""
     domains, out = port_domains(text), {}
-    for line in text.split("\n"):
-        line = line.split("//")[0].rstrip()
+    for line in logical_lines(text):
         m, b = READ_LINE.match(line), READ_BINDER.match(line)
         if m:
             pat, t = (m.group(1) or m.group(3)).strip(), m.group(2) or m.group(4)

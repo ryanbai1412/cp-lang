@@ -469,6 +469,11 @@ class BoundsTest(unittest.TestCase):
                                  "for a in read<[0..m]1..=n>():\n    print(a)\nlet z = unread<1..=3>()\n")
         self.assertEqual(got, {"xs.x": ("1", "n"), "xs.y": ("1", "m"), "a": ("1", "n")})
 
+    def test_a_read_fmt_wrapped_over_lines_is_checked(self):
+        got = corpus.port_ranges("let trie = Rooted(\n    Graph.undirected(read<[k - 1](u: 1..=k, c: 1..=9)>()),\n"
+                                 "    root: 1,\n)\nlet z: 1..=3 = read()\n")
+        self.assertEqual(got, {"trie.u": ("1", "k"), "trie.c": ("1", "9"), "z": ("1", "3")})
+
     def test_an_unnamed_tuple_has_positional_fields_the_header_can_state_whole(self):
         port = "domain Col = 1..=w\ntype Cell = (Col, 0..n)\nlet s: [q](1..=3, Col) = read()\nlet c: Cell = read()\n"
         self.assertEqual(corpus.port_ranges(port), {"s.0": ("1", "3"), "s.1": ("1", "w"),
