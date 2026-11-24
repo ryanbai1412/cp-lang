@@ -1460,10 +1460,11 @@ fn a_library_keeps_its_prelude_imports() {
 
 #[test]
 fn dropping_a_prelude_import_keeps_its_comment() {
-    let src = "use std.geometry.{Pt, dot}  // WISH F1\nuse std.mod.{Mod}  // a note\nlet x = 1\n";
+    let src =
+        "use std.geometry.{Pt, convex_hull}  // WISH F1\nuse std.mod.{Mod}  // a note\nlet x = 1\n";
     assert_eq!(
         fixed(src),
-        "use std.geometry.{dot}  // WISH F1\n// a note\nlet x = 1\n"
+        "use std.geometry.{convex_hull}  // WISH F1\n// a note\nlet x = 1\n"
     );
 }
 
