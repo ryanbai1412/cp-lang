@@ -1459,7 +1459,18 @@ impl<'a> Checker<'a> {
                         if let Some(mut place) = self.place(base) {
                             place.steps.clear();
                             let mutable = projection.mutable;
-                            return vec![("lent view", place, !mutable, mutable)];
+                            let mut out = vec![("lent view", place, !mutable, mutable)];
+                            for (arg, source) in args.iter().zip(&projection.sources) {
+                                let arg_ty = self.quietly(|c| c.infer(&arg.value));
+                                let lent = arg.mutable || self.is_heap_type(&arg_ty);
+                                if let (true, Some(_)) = (lent, source) {
+                                    if let Some(mut place) = self.place(&arg.value) {
+                                        place.steps.clear();
+                                        out.push(("lent view", place, !arg.mutable, arg.mutable));
+                                    }
+                                }
+                            }
+                            return out;
                         }
                     }
                 }

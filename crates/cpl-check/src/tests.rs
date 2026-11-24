@@ -1132,6 +1132,35 @@ fn a_let_bound_element_lends_only_that_element() {
 }
 
 #[test]
+fn a_lent_struct_holds_every_variable_it_was_made_from() {
+    // `ms.within(mar)` lends `mar` as well as `ms`, and `grow(mut a)` changes
+    // `a` as an assignment would.
+    let within = |body: &str| {
+        check(&format!(
+            "use std.persistent.{{PArena, PMultiset}}\ndomain V = 0..10\nvar mar = PArena<PMultiset<V>>()\nvar ms = PMultiset<V>.empty()\nms = ms.with(mut mar, V(1))\nlet w = ms.within(mar)\n{body}"
+        ))
+    };
+    assert_eq!(
+        within("print(w.len)\nmar = PArena<PMultiset<V>>()\n"),
+        vec![]
+    );
+    let grow = |body: &str| {
+        check(&format!(
+            "struct H: xs: List<Int>\nfn wrap(xs: List<Int>) -> lends H = H(xs)\nfn grow(mut xs: List<Int>): xs.push(1)\nvar a = [1, 2]\nlet h = wrap(a)\n{body}"
+        ))
+    };
+    assert_eq!(grow("print(h.xs.len)\ngrow(mut a)\n"), vec![]);
+    for diags in [
+        within("mar = PArena<PMultiset<V>>()\nprint(w.len)\n"),
+        within("ms = ms.with(mut mar, V(2))\nprint(w.len)\n"),
+        grow("grow(mut a)\nprint(h.xs.len)\n"),
+    ] {
+        assert!(!diags.is_empty(), "a change while lent is an error");
+        assert!(diags.iter().all(|d| d.code.0 == "E0602"), "{diags:#?}");
+    }
+}
+
+#[test]
 fn a_let_bound_slice_keeps_its_array_lent_until_its_last_use() {
     let lent = |body: &str| check(&format!("{ARRAY}{body}"));
     assert_eq!(

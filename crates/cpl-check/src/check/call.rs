@@ -313,6 +313,10 @@ impl<'a> Checker<'a> {
         self.lambda_params.truncate(given);
         self.empty_collection(call, callee, args);
         self.lent_together(args);
+        // `f(mut a)` may change `a` as an assignment to it would.
+        for arg in args.iter().filter(|a| a.mutable) {
+            self.check_access(&arg.value, true);
+        }
         self.call_effects(call, callee, args);
         self.sort_key_uses(callee, args);
         self.debug_changes(callee, args);

@@ -772,11 +772,22 @@ impl<'a> Checker<'a> {
                         }
                         _ => None,
                     };
+                    let named = |p: &ast::Param| {
+                        lends.sources.is_empty()
+                            || lends.sources.iter().any(|s| s.text == p.name.text)
+                    };
+                    let sources = f
+                        .params
+                        .iter()
+                        .filter(|p| p.name.text != "self")
+                        .map(|p| named(p).then(|| p.name.text.clone()))
+                        .collect();
                     Some(crate::def::Projection {
                         name: f.name.text.clone(),
                         mutable: lends.mutable,
                         lent: self.text(lends.ty.span).to_string(),
                         law,
+                        sources,
                     })
                 }
                 _ => None,
