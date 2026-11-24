@@ -1,6 +1,7 @@
 //! How range loops are written in C++.
 
 use super::cpp;
+use crate::tests::body;
 
 #[test]
 fn an_inclusive_loop_to_a_bound_below_int_max_is_a_plain_loop() {
@@ -148,4 +149,33 @@ fn a_max_plus_row_is_one_branch_free_pass_on_an_avx2_judge_only() {
     assert!(fast.contains("cpl::keep_max_plus(c.data(), "), "{fast}");
     let plain = crate::emit_for(&program, "t.cp", None, &crate::Target::default());
     assert!(!plain.contains("keep_max_plus"), "{plain}");
+}
+
+#[test]
+fn a_grids_keys_walk_one_loop_per_axis_and_divide_nothing() {
+    let source = concat!(
+        "let n: 1..=1500 = read()\n",
+        "domain Row = 0..n\n",
+        "domain Col = 0..n\n",
+        "let a: [Row, Col]1..=9 = read()\n",
+        "var s = 0\n",
+        "for p in a.keys:\n",
+        "    if p.1.ord == 2: continue\n",
+        "    let (r, c) = p\n",
+        "    s += p.0.ord * a[p] + r.ord - c.ord\n",
+        "print(s)\n",
+    );
+    let body = body(source);
+    assert!(
+        body.contains("< Row_len; t") && body.contains("< Col_len; t"),
+        "{body}"
+    );
+    assert!(
+        !body.contains("cpl::divn") && !body.contains("cpl::ediv"),
+        "{body}"
+    );
+    assert!(
+        !body.contains("cpl::modn") && !body.contains("cpl::emod") && !body.contains('%'),
+        "{body}"
+    );
 }

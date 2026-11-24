@@ -311,6 +311,9 @@ impl<'a> Lowerer<'a> {
         span: Span,
         out: &mut Vec<Stmt>,
     ) -> Vec<Expr> {
+        if let Some(parts) = self.loop_parts_of(&val) {
+            return parts;
+        }
         let factors = self.product_domains[&id].clone();
         let held = self.hold(val, out);
         let mut ord = self.cast(Cast::Ord, held, Ty::Int);
@@ -397,6 +400,9 @@ impl<'a> Lowerer<'a> {
         idx: usize,
         span: Span,
     ) -> Expr {
+        if let Some(mut parts) = self.loop_parts_of(&val) {
+            return parts.swap_remove(idx);
+        }
         let factors = self.product_domains[&id].clone();
         let mut ord = self.cast(Cast::Ord, val, Ty::Int);
         for (_, f) in &factors[idx + 1..] {
@@ -416,5 +422,13 @@ impl<'a> Lowerer<'a> {
             );
         }
         self.product_factor_from_ord(&factors[idx].1, ord, span)
+    }
+
+    /// The factors of a position a product loop binds, which its loops walk.
+    fn loop_parts_of(&self, val: &Expr) -> Option<Vec<Expr>> {
+        match &val.kind {
+            ExprKind::Local(slot) => self.cx.product_parts.get(slot).cloned(),
+            _ => None,
+        }
     }
 }

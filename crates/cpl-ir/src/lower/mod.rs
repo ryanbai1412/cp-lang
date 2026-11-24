@@ -477,6 +477,11 @@ struct FnCx {
     /// The outermost loop a `break` out of a nested loop's innermost
     /// one leaves, for one source loop lowered as several.
     break_out: HashMap<LoopId, LoopId>,
+    /// The factors `nested_for` is about to give the position it binds.
+    loop_parts: Option<Vec<Expr>>,
+    /// A loop's product position, by slot: the factors its nested loops walk,
+    /// so `p.0` reads a loop variable instead of dividing.
+    product_parts: HashMap<Slot, Vec<Expr>>,
     /// A loop with a trailing `else:` (decision 125): its break target's
     /// `Bool` flag, `true` unless a `break` targets that loop.
     loop_else: HashMap<LoopId, Slot>,
