@@ -365,11 +365,15 @@ fn methods_in(std: Std) -> Vec<(Vec<ast::Name>, ast::Name)> {
             found.push((path.clone(), bare(name), is_todo));
         }
     }
-    // A `todo` body gives way to a module that has the method.
-    let done = |name: &str| found.iter().any(|(_, n, t)| n.text == name && !t);
+    // A `todo` body gives way to another module that has the method.
+    let done = |path: &[ast::Name], name: &str| {
+        found
+            .iter()
+            .any(|(p, n, t)| n.text == name && !t && p.as_slice() != path)
+    };
     found
         .iter()
-        .filter(|(_, name, is_todo)| !is_todo || !done(&name.text))
+        .filter(|(path, name, is_todo)| !is_todo || !done(path, &name.text))
         .map(|(path, name, _)| (path.clone(), name.clone()))
         .collect()
 }
