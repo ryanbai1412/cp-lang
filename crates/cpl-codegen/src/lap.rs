@@ -24,7 +24,7 @@ impl<'p> Emitter<'p> {
         if !nested {
             return None;
         }
-        let before = self.call_value(id, args, false)?;
+        let before = self.call_value(id, args)?;
         let after = self.canon(&before);
         (reductions(&after) < reductions(&before) && self.all_fit(&after)).then_some(())?;
         let _ = e;
@@ -44,15 +44,16 @@ impl<'p> Emitter<'p> {
     }
 
     /// The value `id(args)` computes with the arguments put in; a nested call
-    /// of such a fn is put in too. `None` unless every argument only reads.
-    fn call_value(&self, id: usize, args: &[Arg], inner: bool) -> Option<Expr> {
+    /// of such a fn is put in too, at any depth. `None` unless every other
+    /// argument only reads.
+    fn call_value(&self, id: usize, args: &[Arg]) -> Option<Expr> {
         let (lets, ret) = self.value_body(id)?;
         let params = self.program.fns[id].params.len();
         let mut vals: Vec<Option<Expr>> = vec![None; self.program.fns[id].locals.len()];
         for (slot, arg) in args.iter().enumerate().take(params) {
             let Arg::Value(v) = arg else { return None };
             vals[slot] = Some(match &v.kind {
-                ExprKind::Call(g, a) if !inner => self.call_value(*g, a, true)?,
+                ExprKind::Call(g, a) => self.call_value(*g, a)?,
                 _ if reads_only(v) => v.clone(),
                 _ => return None,
             });
@@ -135,7 +136,8 @@ impl<'p> Emitter<'p> {
     }
 
     /// `a % n` over the terms of `a` that change it: a term `n` or `-n` goes,
-    /// and a term `t % n` is `t`. `orig` stays when that is not a sum `>= 0`.
+    /// and a term `t % n` with `t >= 0` is `t`. `orig` stays when that is not
+    /// a sum `>= 0`.
     fn fold_rem(&self, a: &Expr, n: i64, orig: &Expr) -> Expr {
         let mut terms = Vec::new();
         flatten(a, true, &mut terms);
@@ -143,7 +145,9 @@ impl<'p> Emitter<'p> {
             .into_iter()
             .filter(|(_, t)| const_of(t) != Some(n))
             .map(|(plus, t)| match &t.kind {
-                ExprKind::Binary(BinOp::Rem, x, m) if const_of(m) == Some(n) => {
+                ExprKind::Binary(BinOp::Rem, x, m)
+                    if const_of(m) == Some(n) && self.bounds(x).is_some_and(|(lo, _)| lo >= 0) =>
+                {
                     (plus, (**x).clone())
                 }
                 _ => (plus, t),

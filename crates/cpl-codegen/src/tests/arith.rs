@@ -368,6 +368,28 @@ fn a_residue_sum_of_products_reduces_once() {
 }
 
 #[test]
+fn a_chain_of_residue_adds_over_a_product_and_a_new_reduces_once() {
+    let body = body(concat!(
+        "use std.mod.{Mod}\ntype Z = Mod<998_244_353>\nlet n: 1..=100 = read()\n",
+        "let a: List<Int> = [read() for _ in 0..n]\nvar acc = Z.new(1)\nlet c = Z.new(31)\n",
+        "let shift = Z.new(n + 1)\nfor i in 0..n: acc = acc * c + Z.new(a[i]) + shift\nprint(acc)\n",
+    ));
+    let line = body
+        .lines()
+        .find(|l| l.trim_start().starts_with("acc = ") && !l.contains("_new(1)"))
+        .unwrap_or_else(|| panic!("the kernel line:\n{body}"));
+    assert!(
+        !line.contains("_add(")
+            && !line.contains("_mul(")
+            && !line.contains("_new(")
+            && !line.contains('?'),
+        "{line}"
+    );
+    // The fused `%` and `a[i]`'s own reduction, which its unknown sign keeps.
+    assert_eq!(line.matches(" 998244353)").count(), 2, "{line}");
+}
+
+#[test]
 fn a_residue_matrix_product_sums_unreduced_and_reduces_per_run() {
     let out = cpp("use std.mod.{Mod}
 use std.matrix.{Mat}
