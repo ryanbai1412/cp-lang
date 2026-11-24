@@ -131,6 +131,16 @@ fn the_libraries_ports_and_passing_tests_check_clean() {
             failures.push(out.stderr);
         }
     }
+    /// The `corpus/lib/scout/*.cp` proposals that currently pass `cpl check` (ratchet: only grow).
+    const SCOUT_LIB: &[&str] = &["connectivity.cp", "wide.cp"];
+    for file in SCOUT_LIB {
+        let path = root().join(format!("corpus/lib/scout/{file}"));
+        checked += 1;
+        let out = check(&path);
+        if out.code != 0 {
+            failures.push(out.stderr);
+        }
+    }
     for (dir, nested) in [
         ("crates/cpl-cli/tests/cases/lend", false),
         ("crates/cpl-cli/tests/cases/ergo", false),

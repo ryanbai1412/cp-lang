@@ -170,7 +170,7 @@ fn bridges_and_parallel_edges():
     // 0-1-2 triangle, bridge 2-3, double edge 3-4
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (3, 4)]
     let edges = [E] e => (u: V(raw[e.ord].0), v: V(raw[e.ord].1))
-    let g = Graph<V, E>.undirected(edges)
+    let g = Graph<V, (to: V, e: E)>.undirected(edges)
     let (C, comp) = two_edge_components<V>(u => g.out(u))
     assert C.count == 2
     assert comp[V(0)] == comp[V(1)] and comp[V(1)] == comp[V(2)]
@@ -185,7 +185,7 @@ fn cut_vertices_with_root_and_leaf():
     // bowtie: 0-1-2-0 and 2-3-4-2; only vertex 2 is an articulation point
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (4, 2)]
     let edges = [E] e => (u: V(raw[e.ord].0), v: V(raw[e.ord].1))
-    let g = Graph<V, E>.undirected(edges)
+    let g = Graph<V, (to: V, e: E)>.undirected(edges)
     let cut = articulation_points<V>(u => g.out(u))
     assert [cut[v] for v in V] == [false, false, true, false, false]
 
@@ -197,7 +197,7 @@ fn coloring_and_bipartite_dsu_rollback():
         u: V([(0, 1), (1, 2), (2, 3)][e.ord].0),
         v: V([(0, 1), (1, 2), (2, 3)][e.ord].1),
     )
-    let g = Graph<V, E>.undirected(edges)
+    let g = Graph<V, (to: V, e: E)>.undirected(edges)
     let col = two_color<V>(u => g.out(u))!
     assert col[V(0)] != col[V(1)] and col[V(1)] != col[V(2)] and col[V(2)] != col[V(3)]
 
@@ -221,7 +221,7 @@ fn bcc_sizes():
     // 0-1-2 triangle, bridge 2-3, triangle 3-4-5
     let raw = [(0, 1), (1, 2), (2, 0), (2, 3), (3, 4), (4, 5), (5, 3)]
     let edges = [E] e => (u: V(raw[e.ord].0), v: V(raw[e.ord].1))
-    let g = Graph<V, E>.undirected(edges)
+    let g = Graph<V, (to: V, e: E)>.undirected(edges)
     let blocks = biconnected_components<V>(u => g.out(u))
     var sizes = [b.len for b in blocks]
     sizes.sort()
