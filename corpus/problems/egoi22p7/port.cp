@@ -3,121 +3,99 @@
 //   whether pins i and j are joined in design a; if not, it creates a new design: a plus wire
 //   (i, j). Using at most max_ops = 1350 calls, describe any design whose connectivity equals
 //   design 0's.
-// Solution: divide and conquer over pin ranges as a segment tree; each node keeps a design in
-//   which its whole range is joined. To merge halves, start from the right child's design and
-//   take one pin per known component of the left half: if Connected says no, keep the new
-//   design; if yes, the pin is joined in design 0 to a right component not yet matched, found by
-//   descending the right child's subtree with one query per level (subranges with only matched
-//   components are skipped). A Dsu records the joins; O(n log n) queries.
-// Embeds the local persistent-DSU grader from stdin (n, m, then m hidden edges) and runs
-// the D&C segment tree solver with generation-stamped Marks<Pin> (O(1) clear).
-// Prints the query count and the reconstructed spanning forest edges.
+// Solution: divide and conquer over pin ranges; each range gets a design in which the whole
+//   range is joined. To join two halves, start from the right half's design and take one pin
+//   per known component of the left half: if Connected says no, keep the new design; if yes,
+//   the pin is joined in design 0 to a right component not yet matched, found by descending
+//   the right half's ranges with one query per level (skipping a half whose components are
+//   all matched). A Dsu records the joins; O(n log n) queries.
+// Stdin protocol (the grader embedded, as the accepted C++ builds it with LOCAL): n, m, then
+//   the m hidden wires. Prints the query count, then the described design's wires.
+// Bounds: n: 1..=200; wires.i, wires.j: 1..=n
 // original: corpus/submissions/5203797.cpp
 
-fn main_solve():
-    let n: Int = read()
-    let m: Int = read()
-    domain Pin = 0..n
+let n: 1..=200 = read()
+let m: Int = read()
+domain Pin = 1..=n
+let wires: [m](i: Pin, j: Pin) = read()
 
-    // Local grader: persistent list of DSU parent arrays
-    var g_par: List<List<Int>> = []
-    var init_p: List<Int> = [-1 for i in 0..n]
-    g_par.push(init_p)
+// The grader: design a is designs[a], design 0 holds the hidden wires.
+var designs: List<Dsu<Pin>> = [Dsu<Pin>()]
+for w in wires: designs[0].unite(w.i, w.j)
+var queries = 0
 
-    fn g_find(ver: Int, x: Int) -> Int:
-        var u = x
-        while g_par[ver][u] >= 0: u = g_par[ver][u]
-        return u
+fn connected(a: Int, i: Pin, j: Pin) -> Int:
+    queries += 1
+    if designs[a].same(i, j): return a
+    var wired = designs[a]
+    wired.unite(i, j)
+    designs.push(wired)
+    designs.len - 1
 
-    fn g_unite(ver: Int, a: Int, b: Int):
-        var u = g_find(ver, a)
-        var v = g_find(ver, b)
-        if u == v: return
-        if g_par[ver][u] < g_par[ver][v]:
-            swap(mut u, mut v)
-        g_par[ver][v] += g_par[ver][u]
-        g_par[ver][u] = v
+// The solver.
+type Span = (lo: Int, hi: Int)  // the pins lo..=hi
+fn halves(s: Span) -> (Span, Span):
+    let mid = s.lo + (s.hi - s.lo) / 2
+    ((s.lo, mid), (mid + 1, s.hi))
 
-    for _ in 0..m:
-        let u: Int = read()
-        let v: Int = read()
-        g_unite(0, u - 1, v - 1)
+var joins = Dsu<Pin>()
+var design = Map<Span, Int>()  // a design joining the whole span
+var rep = Map<Span, Pin>()
 
-    var queries = 0
-    fn query_conn(a: Int, u: Pin, v: Pin) -> Int:
-        queries += 1
-        if g_find(a, u.idx) == g_find(a, v.idx): return a
-        var copy: List<Int> = g_par[a].collect()
-        let nv = g_par.len
-        g_par.push(copy)
-        g_unite(nv, u.idx, v.idx)
-        return nv
+fn among(pins: List<Pin>, p: Pin) -> Bool = pins.any(a => joins.same(a, p))
 
-    // Solver state: DSU + D&C segment tree + generation-stamped Marks<Pin>
-    var dsu = Dsu<Pin>()
-    var ver = [0..4 * n + 5] _ => 0
-    var rep = [0..4 * n + 5] _ => Pin(0)
-    var mark_l: [Pin]Int = 0
-    var mark_r: [Pin]Int = 0
-    var gen = 0
+// The pin of s that x is wired to in design 0, outside the components of `matched`.
+fn partner(s: Span, x: Pin, matched: List<Pin>) -> Pin:
+    if s.lo == s.hi: return Pin(s.lo)
+    let (left, right) = halves(s)
+    let open = (h: Span) => (h.lo..=h.hi).any(i => not among(matched, Pin(i)))
+    if not open(left): return partner(right, x, matched)
+    if not open(right): return partner(left, x, matched)
+    let d = design[left]
+    if connected(d, x, rep[left]) == d: partner(left, x, matched) else: partner(right, x, matched)
 
-    fn find_match(o: Int, l: Int, r: Int, x: Pin) -> Pin:
-        if l == r: return Pin(l)
-        let mid = (l + r) / 2
-        let lc = o * 2
-        let rc = lc + 1
-        var has_l = false
-        for i in l..=mid:
-            if mark_r[dsu.find(Pin(i))] != gen:
-                has_l = true
-                break
-        if not has_l: return find_match(rc, mid + 1, r, x)
-        var has_r = false
-        for i in mid + 1..=r:
-            if mark_r[dsu.find(Pin(i))] != gen:
-                has_r = true
-                break
-        if not has_r: return find_match(lc, l, mid, x)
-        if query_conn(ver[lc], x, rep[lc]) == ver[lc]:
-            return find_match(lc, l, mid, x)
-        return find_match(rc, mid + 1, r, x)
+fn build(s: Span):
+    if s.lo == s.hi:
+        design[s] = 0
+        rep[s] = Pin(s.lo)
+        return
+    let (left, right) = halves(s)
+    build(left)
+    build(right)
+    var d = design[right]
+    var seen: List<Pin> = []
+    var matched: List<Pin> = []
+    for i in left.lo..=left.hi:
+        let p = Pin(i)
+        if among(seen, p): continue
+        seen.push(p)
+        let wired = connected(d, p, rep[right])
+        if wired != d:
+            d = wired
+        else:
+            let q = partner(right, p, matched)
+            matched.push(q)
+            joins.unite(p, q)
+    design[s] = d
+    rep[s] = rep[left]
 
-    fn build(o: Int, l: Int, r: Int):
-        if l == r:
-            ver[o] = 0
-            rep[o] = Pin(l)
-            return
-        let mid = (l + r) / 2
-        let lc = o * 2
-        let rc = lc + 1
-        build(lc, l, mid)
-        build(rc, mid + 1, r)
-        gen += 1
-        ver[o] = ver[rc]
-        for i in l..=mid:
-            let p = Pin(i)
-            let rp = dsu.find(p)
-            if mark_l[rp] == gen: continue
-            mark_l[rp] = gen
-            let cv = query_conn(ver[o], p, rep[rc])
-            if cv != ver[o]:
-                ver[o] = cv
-                continue
-            let rv = find_match(rc, mid + 1, r, p)
-            dsu.unite(p, rv)
-            let nr = dsu.find(p)
-            mark_l[nr] = gen
-            mark_r[nr] = gen
-        rep[o] = rep[lc]
+build((Pin.first!.label, Pin.last!.label))
+let described = [(joins.find(p), p) for p in Pin if joins.find(p) != p]
+print(queries)
+print(described.len)
+for (a, b) in described: print(a, b)
 
-    build(1, 0, n - 1)
-    var edges: List<(Int, Int)> = []
-    for i in Pin:
-        let p = dsu.find(i)
-        if p != i: edges.push((p.idx + 1, i.idx + 1))
-    print(queries)
-    print(edges.len)
-    for e in edges:
-        print(e.0, e.1)
-
-main_solve()
+@check
+fn check():  // any design with design 0's connectivity, in at most 1350 queries
+    let used: Int = read_output()
+    assert used <= 1350
+    let k: Int = read_output()
+    var hidden = Dsu<Pin>()
+    for w in wires: hidden.unite(w.i, w.j)
+    var built = Dsu<Pin>()
+    for _ in 0..k:
+        let a: Pin = read_output()
+        let b: Pin = read_output()
+        built.unite(a, b)
+    for p in Pin:
+        for q in Pin: assert built.same(p, q) == hidden.same(p, q)
