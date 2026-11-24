@@ -263,7 +263,11 @@ pub struct SortedBag<K>:
     /// empty: `var b = SortedBag<Int>(); b.pop_first() == None`
     /// traps: never
     /// example: `var b = SortedBag.of([3, 1, 1]); b.pop_first() == Some(1) and b.count(1) == 1`
-    @lint(pop_min_loop, from: "let x = self.first!\nself.remove(x)", to: "let x = self.pop_first()!")
+    @lint(
+        pop_min_loop,
+        from: "let x = self.first!\nself.remove(x)",
+        to: "let x = self.pop_first()!",
+    )
     pub fn pop_first(mut self) -> ?K:
         let x = self.first
         if x == None: return None
@@ -1239,7 +1243,11 @@ pub struct SortedSet<K>:
     /// empty: `var s = SortedSet<Int>(); s.pop_first() == None`
     /// traps: never
     /// example: `var s = SortedSet.of([4, 1]); s.pop_first() == Some(1) and s.to_list() == [4]`
-    @lint(pop_min_loop, from: "let x = self.first!\nself.remove(x)", to: "let x = self.pop_first()!")
+    @lint(
+        pop_min_loop,
+        from: "let x = self.first!\nself.remove(x)",
+        to: "let x = self.pop_first()!",
+    )
     pub fn pop_first(mut self) -> ?K = bag.pop_first()
 
     /// Remove and return the largest key, or `None`.
@@ -2717,6 +2725,18 @@ fn leaf_fills(b: SortedBag<Int>) -> List<Int>:
     out
 
 @test
+fn first_and_last_true_find_every_cut_across_leaves():
+    for m in [100, 300, 1000]:
+        let b = SortedBag.of([i * 37 % 1009 for i in 0..m])
+        let ks = b.to_list()
+        for i in 0..ks.len:
+            let k = ks[i]
+            assert b.first_true(x => x >= k) == Some(k)
+            assert b.last_true(x => x <= k) == Some(k)
+            assert b.first_true(x => x > k) == (if i + 1 < ks.len: Some(ks[i + 1]) else: None)
+            assert b.last_true(x => x < k) == (if i > 0: Some(ks[i - 1]) else: None)
+
+@test
 fn an_underfull_leaf_merges_into_a_sibling_that_fits_else_evens_out():
     for (more, gone, want) in [
         (33..41, 0..9, [32]),
@@ -2836,6 +2856,7 @@ pub struct SortedRange<K>:
     /// order: descending
     /// traps: never
     /// example: `SortedSet.of([1, 3, 7]).range(..7).rev.collect() == [3, 1]`
+    /// example: `let b = SortedBag.of([1, 3, 3, 7]); [x for x in b.range(2..).rev] == [7, 3, 3]`
     @get pub fn rev(self) -> yields K = bag.range_each_rev(lo, hi, hi_inc)
 
 /// `push(x)` adds one copy of `x` and `pop(x)` removes one.
