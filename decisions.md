@@ -8616,3 +8616,9 @@ Reverse: drop `walk_in_key_order` in `cpl-codegen/src/show.rs`; a printed hash t
 - **Call.** `crates/cpl-cli/tests/interactive_corpus.rs` runs each corpus problem's `port.cp` against its `interactor.py`. Three problems are listed instead, which adds 3 skip-list entries: `KNOWN_NO_JUDGE` has ioi13p4 (an ideal sketch, not run) and ioi18p1 (a grader task with no `interactor.py`), and `KNOWN_OTHER_PROTOCOL` has egoi22p3, whose `port.cp` prints YES/NO for an offline checker, so its `spec.cp` is run instead. A listed port that starts satisfying its judge fails the test until its line is removed.
 - **Why.** The 25 judged problems are guarded now; the three need a port or a judge, not a tools change.
 - **Reverse.** Delete `interactive_corpus.rs`.
+
+## 468. The browser compiler fetches std module text on first use; the cap keeps the headroom (site, 2026-11-24)
+
+- **Call.** `scripts/build-wasm.sh` builds with `lazy-std` by default (`--embed-std` opts out): `cpl.wasm` carries std's outline plus `prelude` and `mod`, and `web/lib/cpl.ts` fetches `/wasm/std/<module>.cp` the first time `stdNeeded` names it, once per page. Node scripts that load the wasm give every module up front (`web/scripts/give-std.mjs`). `cpl.wasm` went from 1,883,306 to 1,762,047 B gz locally; the cap stays at 1,875,000 rather than being lowered to the new size.
+- **Why.** The cap was tripping about hourly from ordinary compiler and std growth (decisions 440, 446), and the browser shipped all 42 modules' text (~172 KB gz) though a program uses a few. A program using `std.sparse` now downloads its modules (a few KB) on first Run. Leaving the cap where it is gives the lanes ~110 KB of headroom; the over-1-KB warning still names each growth range.
+- **Reverse.** Build with `--embed-std` (or drop the default in `build-wasm.sh`); `cpl.ts`'s loop is a no-op on such a build.

@@ -43,5 +43,23 @@ await page.getByRole('button', { name: 'Run' }).click();
 await status.filter({ hasText: '115' }).waitFor({ timeout: 30000 }).catch(() => fail('Run does not recover once cpl.wasm loads'));
 console.log('wasm down: Run says so, and the next Run after it loads works');
 
+// A std module's text is fetched on its first use; when that fails Run says
+// which module, and the next Run after it loads works.
+await page.route('**/wasm/std/*.cp', (r) => r.abort());
+await page.goto(base + '/play');
+await page.locator('.cm-content').first().click();
+await page.keyboard.press('Control+A');
+await page.keyboard.insertText('use std.sparse.{SparseTable}\nprint(SparseTable(min, [3, 1, 4]).fold(0..3))\n');
+await page.getByRole('button', { name: 'Run' }).click();
+const stdError = page.getByText(/can't load std\.\w+/).first();
+await stdError.waitFor({ timeout: 30000 }).catch(() => fail('Run with std unreachable does not say which module failed to load'));
+console.log(`std down: Run shows ${JSON.stringify((await stdError.innerText()).trim().slice(0, 200))}`);
+await page.unroute('**/wasm/std/*.cp');
+await page.getByRole('button', { name: 'Run' }).click();
+await page
+  .waitForFunction(() => /\nOutput\n+1\n*$/.test(document.body.innerText), null, { timeout: 30000 })
+  .catch(() => fail('Run does not recover once std loads'));
+console.log('std down: Run names the module, and the next Run after it loads works');
+
 if (errors.length) fail(`page errors: ${errors.join('; ')}`);
 process.exit(0);

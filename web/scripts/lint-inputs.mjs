@@ -8,7 +8,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
 const { load, BUILD_WASM } = await import(pathToFileURL(join(web, 'public/wasm/cpl.js')));
-const cpl = await load(BUILD_WASM);
+const { giveStd } = await import('./give-std.mjs');
+const cpl = giveStd(await load(BUILD_WASM));
 export const reads = (src) => /\bread\w*\s*(\(|<|::)/.test(src);
 
 const inputs = {};

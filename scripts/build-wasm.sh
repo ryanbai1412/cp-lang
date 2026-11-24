@@ -8,8 +8,10 @@
 #   scripts/build-wasm.sh --out DIR  build into DIR
 #   scripts/build-wasm.sh --names DIR  cpl.wasm only, keeping function names
 #                                    (for web/scripts/wasm-size.mjs --why)
-#   scripts/build-wasm.sh --lazy-std   carry only std's prelude and mod; the
-#                                    page gives the rest (provideStd)
+#   scripts/build-wasm.sh --embed-std  carry every std module's text; by
+#                                    default only prelude and mod, and the
+#                                    caller gives the rest from <out>/std/
+#                                    (stdNeeded, provideStd)
 #
 # Needs the wasm32 target once: rustup target add wasm32-unknown-unknown
 set -euo pipefail
@@ -19,14 +21,14 @@ out="$root/dist/wasm"
 smoke=false
 names=false
 strip=true
-features=()
+features=(--features lazy-std)
 while [ $# -gt 0 ]; do
     case "$1" in
         --smoke) smoke=true ;;
-        --lazy-std) features=(--features lazy-std) ;;
+        --embed-std) features=() ;;
         --out) out="$(realpath -m "${2:?--out needs a directory}")"; shift ;;
         --names) names=true; out="$(realpath -m "${2:?--names needs a directory}")"; shift ;;
-        -h | --help) sed -n '2,13s/^# \{0,1\}//p' "$0"; exit 0 ;;
+        -h | --help) sed -n '2,16s/^# \{0,1\}//p' "$0"; exit 0 ;;
         *) echo "build-wasm: unknown argument \`$1\`" >&2; exit 2 ;;
     esac
     shift
@@ -82,7 +84,7 @@ cp "$built" "$out/cpl.wasm"
 build
 cp "$built" "$out/cpl-build.wasm"
 cp "$root"/crates/cpl-wasm/js/* "$out/"
-# std module texts, which a --lazy-std cpl.wasm fetches on first use.
+# std module texts, which the page gives cpl.wasm on first use.
 mkdir -p "$out/std"
 cp "$root"/std/*.cp "$out/std/"
 

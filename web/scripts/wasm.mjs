@@ -4,7 +4,7 @@
 // size against the cap), and its types
 // into lib/cpl-types.ts so the site cannot drift from the compiler's API.
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -52,6 +52,8 @@ if (why) {
 }
 mkdirSync(join(web, 'public/wasm'), { recursive: true });
 for (const f of files) copyFileSync(join(dist, f), join(web, 'public/wasm', f));
+// The std module texts the page fetches the first time a program uses one.
+cpSync(join(dist, 'std'), join(web, 'public/wasm/std'), { recursive: true });
 writeFileSync(
   join(web, 'lib/cpl-types.ts'),
   readFileSync(join(repo, 'crates/cpl-wasm/js/cpl.d.ts'), 'utf8').replace(/^export (class|function|const) /gm, 'export declare $1 '),

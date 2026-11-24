@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 
 const [file, options, dir] = process.argv.slice(2);
+const { giveStd } = await import('./give-std.mjs');
 const { load } = await import(join(dir, 'cpl.js'));
-const wasm = await load(readFileSync(join(dir, 'cpl-build.wasm')));
+const wasm = giveStd(await load(readFileSync(join(dir, 'cpl-build.wasm'))));
 process.stdout.write(JSON.stringify(wasm.stress(readFileSync(file, 'utf8'), { ...JSON.parse(options), name: basename(file) })));

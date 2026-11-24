@@ -30,8 +30,13 @@ cpSync(join(dir, 'buy.tests', trace), join(web, 'public/trace-demo.html'));
 const compiler = `<script>
 let cplWorker;
 globalThis.CpCompiler = {
-  call: async (method, ...args) =>
-    (await (cplWorker ??= import("/wasm/cpl.js").then((m) => m.spawn({ timeoutMs: 10000 }))))[method](...args),
+  call: async (method, ...args) => {
+    const cpl = await (cplWorker ??= import("/wasm/cpl.js").then((m) => m.spawn({ timeoutMs: 10000 })));
+    if (typeof args[0] === "string")
+      for (let need = await cpl.stdNeeded(args[0]); need.length; need = await cpl.stdNeeded(args[0]))
+        for (const m of need) await cpl.provideStd(m, await (await fetch("/wasm/std/" + m + ".cp")).text());
+    return cpl[method](...args);
+  },
 };
 </script>`;
 const viewer = readFileSync(join(repo, 'tools/trace/index.html'), 'utf8');

@@ -4,8 +4,9 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parentPort, workerData } from 'node:worker_threads';
 
+const { giveStd } = await import('./give-std.mjs');
 const { load } = await import(join(workerData.dir, 'cpl.js'));
-const wasm = await load(readFileSync(join(workerData.dir, 'cpl-build.wasm')));
+const wasm = giveStd(await load(readFileSync(join(workerData.dir, 'cpl-build.wasm'))));
 parentPort.on('message', ({ source, stdin, run }) => {
   try {
     const cpp = wasm.build(source, { name: 'main.cp' }).cpp;
