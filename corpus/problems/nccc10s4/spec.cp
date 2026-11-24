@@ -9,7 +9,6 @@
 //   itself, and it closes when the last line runs into the start. The first side lies on the
 //   first line and runs forwards, so each polygon counts once. Exponential in n, fine for 12.
 // original: corpus/submissions/4225209.cpp
-use std.geometry.{cross}
 type Coord = -2000..=2000
 struct Line(at: Pt, d: Pt)
 struct Corner(x: Int, y: Int, w: Int)  // (x / w, y / w) with w > 0 and gcd 1: one triple per point
