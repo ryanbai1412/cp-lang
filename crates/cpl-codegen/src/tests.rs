@@ -1200,3 +1200,17 @@ fn a_recursive_fns_branch_past_its_last_call_has_its_own_frame() {
     );
     assert!(!fn_text(&out, "flat(ll n) {").contains("noinline"), "{out}");
 }
+
+#[test]
+fn a_record_spread_of_a_local_reads_its_fields_without_a_lambda() {
+    let cpp = cpp(concat!(
+        "let n: 1..=3 = read()\n",
+        "let rs = [(u: n, v: n + 1, w: 5), (u: 2, v: 1, w: 7)]\n",
+        "var out = List<(to: Int, e: Int, w: Int)>()\n",
+        "for e in 0..rs.len:\n",
+        "    let r = rs[e]\n",
+        "    out.push((to: r.v, e: e, ..r without (u, v)))\n",
+        "print(out)\n",
+    ));
+    assert!(!cpp.contains("[&]()"), "{cpp}");
+}

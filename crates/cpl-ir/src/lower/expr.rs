@@ -626,20 +626,32 @@ impl<'a> Lowerer<'a> {
                 let b = self.expr(base, None);
                 match b.ty.clone() {
                     Ty::Record(fs) => {
-                        let slot = self.temp(b.ty.clone());
-                        let mut stmts = vec![Stmt::Let(slot, Some(b))];
+                        // A base that is a plain read is read once per kept field, with no
+                        // temporary; anything else is bound once first.
+                        let plain = is_plain_read(&b) && kept_vals.iter().all(is_plain_read);
+                        let mut stmts = Vec::new();
+                        let base = if plain {
+                            b
+                        } else {
+                            let slot = self.temp(b.ty.clone());
+                            stmts.push(Stmt::Let(slot, Some(b)));
+                            self.local(slot, span)
+                        };
                         for (idx, (fname, fty)) in fs.into_iter().enumerate() {
                             if removed.iter().any(|r| r.text == fname) {
                                 continue;
                             }
-                            let base_ref = self.local(slot, span);
-                            kept_vals.push(self.mk_field(base_ref, idx, fty.clone(), span));
+                            kept_vals.push(self.mk_field(base.clone(), idx, fty.clone(), span));
                             kept_tys.push((fname, fty));
                         }
                         let out_ty = Ty::Record(kept_tys);
                         let res = self.mk(ExprKind::Tuple(kept_vals), out_ty.clone(), span);
-                        stmts.push_give(res);
-                        self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
+                        if stmts.is_empty() {
+                            res
+                        } else {
+                            stmts.push_give(res);
+                            self.mk(ExprKind::Do(Block { stmts }), out_ty, span)
+                        }
                     }
                     _ if kept_tys.is_empty() => b,
                     _ => {
@@ -758,4 +770,13 @@ pub(in crate::lower) fn nested_arity(ty: &Ty, n: usize) -> Option<usize> {
     };
     let sym = matches!(dims.as_slice(), [Dim::Sym(_)]);
     (!sym && dims.len() < n && n <= dims.len() + inner.len()).then_some(dims.len())
+}
+
+/// A read of a local or a field of one: evaluating it again gives the same value and does nothing.
+fn is_plain_read(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Local(_) | ExprKind::Int(_) | ExprKind::Bool(_) => true,
+        ExprKind::Field(base, _) => is_plain_read(base),
+        _ => false,
+    }
 }
