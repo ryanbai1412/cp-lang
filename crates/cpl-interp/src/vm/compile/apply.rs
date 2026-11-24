@@ -134,8 +134,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         desc: Option<&'p Expr>,
         expr: &'p Expr,
     ) -> u16 {
-        let desc: Vec<&'p Expr> = desc.into_iter().collect();
-        self.compile_view(ViewOp::Sort(place, by), place, &desc, true, expr)
+        self.compile_view(ViewOp::Sort(place, by), place, desc.as_slice(), true, expr)
     }
 
     /// `expr` into a fresh value register by `Op::ApplyV`, when it applies
