@@ -61,3 +61,21 @@ def header(text: str) -> list[str]:
 def header_values(text: str, key: str) -> list[str]:
     tag = key + ":"
     return [l[2:].strip()[len(tag):].strip() for l in header(text) if l[2:].strip().startswith(tag)]
+
+
+def sync(out: pathlib.Path, want: dict[str, str], apply: bool, gate: str, glob: str = "*.cp") -> list[Problem]:
+    """Make `out`'s `glob` files exactly `want` (name -> text) when `apply`;
+    otherwise one problem per missing, extra or differing file."""
+    have = {p.name: read(p) for p in out.glob(glob)} if out.exists() else {}
+    rel = out.relative_to(ROOT).as_posix() if out.is_relative_to(ROOT) else str(out)
+    if not apply:
+        return [Problem(f"{rel}/{name}", f"stale; run: uv run scripts/spec-gate.py {gate} --write")
+                for name in sorted(set(want) ^ set(have) | {k for k in want if have.get(k) != want[k]})]
+    out.mkdir(parents=True, exist_ok=True)
+    for name in set(have) - set(want):
+        (out / name).unlink()
+    for name, text in want.items():
+        if have.get(name) != text:
+            (out / name).parent.mkdir(parents=True, exist_ok=True)
+            write(out / name, text)
+    return []

@@ -106,6 +106,17 @@ class GatesTest(unittest.TestCase):
         with Tree(files):
             self.assertEqual([p.where for p in run("tool-rules")], ["spec/tools/a.md:2"])
 
+    def test_widths(self):
+        from specgate import widths
+        self.assertEqual(widths.exact("div", -7, 2), -4)
+        self.assertEqual(widths.wrap(2**63), -2**63)
+        with Tree({"spec/conformance/widths/old.cp": "x"}) as t:
+            self.assertEqual(len(run("widths")), len(widths.cases()) + 1)
+            self.assertEqual(run("widths", "--write"), [])
+            self.assertFalse((t.conf / "widths/old.cp").exists())
+            self.assertIn("print(id(1) + id(2))", t.read("spec/conformance/widths/add-in-range.cp"))
+            self.assertEqual(run("widths"), [])
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:

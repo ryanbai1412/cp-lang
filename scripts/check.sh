@@ -623,7 +623,7 @@ uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is sta
 
 step "conformance matrix: generated cases current, every cell a case or n/a"
 uv run scripts/conformance-matrix.py --check || fail "matrix gate failed; see above"
-uv run scripts/conformance-widths.py --check || fail "spec/conformance/widths/ is stale; run scripts/conformance-widths.py"
+uv run --quiet python scripts/spec-gate.py widths || fail "spec/conformance/widths/ is stale; run: uv run scripts/spec-gate.py widths --write"
 uv run scripts/conformance-ownership.py --check || fail "spec/conformance/ownership/ is stale; run scripts/conformance-ownership.py"
 uv run --quiet python scripts/spec-gate.py xref || fail "a rule id names no rule in spec/core; see above"
 uv run --quiet python scripts/spec-gate.py changelog || fail "a spelling the spec removes has no changelog line; see above"

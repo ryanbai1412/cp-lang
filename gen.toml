@@ -146,8 +146,8 @@ tier = "pre-commit"
 name = "widths"
 files = ["spec/conformance/widths/*.cp"]
 inputs = []
-write = ["scripts/conformance-widths.py"]
-check = ["scripts/conformance-widths.py", "--check"]
+write = ["scripts/spec-gate.py", "widths", "--write"]
+check = ["scripts/spec-gate.py", "widths"]
 tier = "pre-commit"
 
 [[gen]]
