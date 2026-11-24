@@ -268,7 +268,13 @@ impl Checker<'_> {
                         let what = if verb == "has" { "field" } else { "parameter" };
                         let message = cpl_diag::msgs::check::HAS_NO_WHAT_NAMED
                             .at(&[&callee, &what, &name.text]);
-                        let code = if callee == "Fenwick" && name.text == "act" {
+                        // `act:` is what a lazy structure takes (`SegTree(op, a, act:)`);
+                        // another type given one is asked for a specialization it lacks.
+                        let lazy_ask = name.text == "act"
+                            && self
+                                .type_def(callee)
+                                .is_some_and(|d| matches!(*d, Def::Struct { .. }));
+                        let code = if lazy_ask {
                             codes::LAW_UNSUPPORTED_SPECIALIZATION
                         } else {
                             codes::UNKNOWN_ARG_NAME

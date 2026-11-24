@@ -89,7 +89,7 @@ numbers and layout; `W` warnings; `L` lints; `R` runtime traps.
 | E0702 | overload_by_type | two `f` with the same labels |
 | E0703 | bare_op_tuple | `(+, max)` is not an operation; write `each(+, max)` or `Semiring(max, +)` |
 | E0704 | row_missing_field | the record lacks field `w` required by `(w: W, ..)` |
-| E0705 | law_unsupported_specialization | `Fenwick` takes no `act:`; use `SegTree(op, a, act:)` |
+| E0705 | law_unsupported_specialization | `Fenwick` (or any type without an `act` parameter) takes no `act:`; use `SegTree(op, a, act:)` |
 | E0706 | empty_fold_no_identity | folding with `Op` gives `?T`; unwrap or pass a `Monoid` |
 | E0801 | context_not_constant | `with` needs a compile-time value; for a runtime modulus use `type Z = Mod(p)` |
 | E0802 | with_not_first | a bare `with` line must come first in its block |
