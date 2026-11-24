@@ -233,8 +233,17 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     assert!(cpp.contains("splitmix64"), "{cpp}");
     assert!(cpp.contains("steady_clock"), "{cpp}");
     // Fingerprinted slots at a load of at most 3/4, sized exactly, freeing the old table as a rehash walks it.
+    // A load of 2/3 measured no faster on bench/containers/hash_reserve_probe and slower on
+    // hash_str_grow and hash_antihash, which grow 1.4x the memory.
     assert!(
         cpp.contains("n + (n + 2) / 3") && cpp.contains("release_pages"),
+        "{cpp}"
+    );
+    // The state bytes are an array of their own, which stays in cache while the entries miss:
+    // a state packed into each Int entry pads it to 24 B, and a group's 8 states before its 8
+    // entries measured slower on hash_reserve_probe.
+    assert!(
+        cpp.contains("uint8_t* st = nullptr; E* e = nullptr;"),
         "{cpp}"
     );
     // Whatever the entry, so a Map<Str, _> doesn't hold both tables whole.

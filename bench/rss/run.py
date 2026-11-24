@@ -44,6 +44,8 @@ CASES = {
     "zero_fill": lambda: "5\n",  # 160 MB of cells, one touched
     "sort_records": lambda: ints(1_000_000, 2),  # sort(by:) a field of 1e6 (Int, Int)
     "sort_pairs": lambda: ints(400_000, 2),  # sort() 4e5 (Int, Int)
+    "hash_counter": lambda: "3375000\n",
+    "hash_str_grow": lambda: "300000\n",
 }
 
 
