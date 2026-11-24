@@ -54,7 +54,6 @@ build() {
     cargo build -p cpl-wasm --target "$target" --profile wasm \
         --config 'profile.wasm.inherits="release"' \
         --config 'profile.wasm.opt-level="z"' \
-        --config 'profile.wasm.package.cpl-interp.opt-level="s"' \
         --config 'profile.wasm.lto=true' \
         --config 'profile.wasm.codegen-units=1' \
         --config 'profile.wasm.panic="abort"' \

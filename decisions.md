@@ -8490,3 +8490,9 @@ Revised (2026-11-23): a twentieth left the browser's 5 s limit at 250 ms a candi
 - **Call.** A trap in a `@check` fn or `@interactor` is that helper's own bug when it is an index, overflow, range, `None`, `todo` or stack trap (codes `R01*`, `R02*`, `R03*`, `R0402`, `R06*`): stress reports `checker RE` or `interactor RE` with the trap, says the run can't be judged, and saves no case. A failed `assert`, a `false` from a `-> Bool` check and solution output that doesn't read as declared still reject the solution as `WA`. A failing `@gen` fn's error carries its trap text.
 - **Why.** A broken checker read as a wrong answer, and its case was saved as a solution regression (use case stress/U30).
 - **Reverse.** Drop `Verdict::JudgeError` and `judge_bug` in `crates/cpl-stress/src/judge.rs`, and the checker match in `engine.rs`.
+
+## 446. The interpreter in `cpl.wasm` is built for size, like the rest (site, 2026-11-24)
+
+- **Call.** `scripts/build-wasm.sh` no longer builds `cpl-interp` at `opt-level = "s"`; it gets the profile's `"z"`. `wasm-size.mjs` prints a GitHub warning, not a failure, when a main run grows `cpl.wasm` by more than 1 KB gzipped; the cap stays the only gate.
+- **Why.** `cpl.wasm` was 18 KB gzipped over its cap and growing about 20 KB an hour. `"z"` on the interpreter takes 29 KB off (1,877,296 to 1,848,333 at gzip -9). It costs about 15% of browser run time (the gate's 865 programs in 7.7 s, was 6.7 s; `abc476g` stress 10.4 s for 30 cases, was 9.1 s; nothing new is too slow) and lets a program recurse deeper (762 frames of a plain recursion, was 679). "s" on any other crate makes the file larger: `cpl-ir` +106 KB, `cpl-check` +66 KB, `cpl-lint` +41 KB.
+- **Reverse.** Put the `cpl-interp` `opt-level="s"` line back in `scripts/build-wasm.sh` if browser run time matters more than download bytes, and raise the cap to match.

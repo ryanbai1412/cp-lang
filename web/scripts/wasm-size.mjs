@@ -24,7 +24,8 @@ import { gzipSync } from 'node:zlib';
 // commit that deletes the tree-walker lowers it to the new size plus slack.
 // Building the interpreter at "s" cut it to 1,804,697; the in-browser TLE
 // shrink (55e93f978) brought it to 1,841,845; 66 feature commits over
-// 0d43fd76e..654c50c92 brought it to 1,862,540 in CI (decision 440).
+// 0d43fd76e..654c50c92 brought it to 1,862,540 in CI (decision 440);
+// building the interpreter at "z" like the rest took 29 KB off (decision 446).
 const cap = 1_875_000;
 const repo = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 const args = process.argv.slice(2);
@@ -138,6 +139,8 @@ if (history) {
     const d = gz - +wasGz;
     const delta = `wasm-size: ${d >= 0 ? '+' : ''}${n(d)} bytes gzipped since ${was.slice(0, 9)} (git log ${was.slice(0, 9)}..${head.slice(0, 9)})`;
     console.log(delta);
+    // A warning, not a failure: the cap is the only gate (decision 446).
+    if (d > 1000 && process.env.GITHUB_ACTIONS) console.log(`::warning title=cpl.wasm grew::${delta}`);
     if (process.env.GITHUB_STEP_SUMMARY) writeFileSync(process.env.GITHUB_STEP_SUMMARY, `${delta}\n`, { flag: 'a' });
   }
   mkdirSync(dirname(history), { recursive: true });
