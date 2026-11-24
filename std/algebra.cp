@@ -129,7 +129,7 @@ pub struct Action<T, F>(
     pub compose: (F, F) -> F,
     pub apply: (F, T, Int) -> T,
     pub over: Monoid<T>,
-    pub commutes: Bool = false,
+    pub commutes: Bool,
     pub replaces: ?(F -> Bool) = None,
     pub compose_in: ?((mut F, F) -> ()) = None,
 ):
@@ -459,7 +459,7 @@ impl<D> Add for MaxSubAt<D>:
     fn add(a, b) = MaxSubAt.join(a, b)
 
 fn wider_best<D>(s: Int, r: Range<D>, t: Int, q: Range<D>) -> Bool =
-    (s, r.r.ord - r.l.ord, q.l.ord) > (t, q.r.ord - q.l.ord, r.l.ord)
+    cmp((s, r.r.ord - r.l.ord, q.l.ord), (t, q.r.ord - q.l.ord, r.l.ord)) == Ordering.Greater
 
 /// \(O(1)\) construction. Associative operation without an identity, for non-empty folds
 /// (`SparseTable`, `DisjointSparseTable`, `SegTree.try_fold`).
@@ -931,3 +931,74 @@ fn compose_onto_matches_compose_with_and_without_compose_in():
             plain.compose_onto(mut k, f)
             assert k == comp(f, g)
 
+
+struct Larger
+
+impl Op<Int> for Larger:
+    fn op(self, a: Int, b: Int) -> Int = max(a, b)
+
+impl Commutative<Int> for Larger
+impl Idempotent<Int> for Larger
+impl Selective<Int> for Larger
+
+fn capped(a: Int, b: Int) -> Int:
+    assert a * b <= 100, "an op pow did not need"
+    a * b
+
+@test
+fn laws_hold_checks_every_kind_of_operation():
+    let xs = [-7, -1, 0, 2, 5]
+    assert laws_hold(Monoid<Int>.of(+).commutative(), xs)
+    assert laws_hold(Semigroup<Int>((a, b) => max(a, b)), xs)
+    assert laws_hold(Group<Int>.of(+), xs) and laws_hold(Group<Int>.of(^), xs)
+    assert laws_hold(Larger(), xs)
+    assert laws_hold(Action<Int, Int>.of(add, +), T: xs, F: xs)
+    assert same(2, 2) and not same(2, 3)
+
+@test
+fn stock_actions_compose_and_apply():
+    let f3 = [(1, 0), (2, 3), (-1, 5)]
+    assert laws_hold(Action<Int, (Int, Int)>.of(affine, +), T: [-3, 0, 4], F: f3)
+    let add_sum = Action<Int, Int>.of(add, +)
+    assert add_sum.compose(2, 5) == 7 and add_sum.apply(2, 10, 3) == 16 and add_sum.commutes
+    let add_max = Action<Int, Int>.of(add, max)
+    assert add_max.compose(2, 5) == 7 and add_max.apply(2, 10, 3) == 12 and add_max.commutes
+    assert Action<Int, ?Int>.of(assign, +).apply(Some(4), 10, 3) == 12
+    let aff = Action<Int, (Int, Int)>.of(affine, +)
+    assert aff.compose((3, 5), (2, 1)) == (6, 8) and aff.apply((3, 5), 10, 3) == 45
+    let keep: ?Int = None
+    let aa = Action<Int, (set: ?Int, add: Int)>.of(assign_add, +)
+    assert aa.apply((set: Some(4), add: 1), 10, 3) == 15 and aa.apply((set: keep, add: 2), 10, 3) == 16
+    assert aa.compose((set: keep, add: 2), (set: Some(4), add: 1)) == (set: Some(4), add: 3)
+    let am = Action<Int, (set: ?Int, add: Int)>.of(assign_add, max)
+    assert am.apply((set: Some(4), add: 1), 10, 3) == 5 and am.apply((set: keep, add: 2), 10, 3) == 12
+    assert am.compose((set: keep, add: 2), (set: Some(4), add: 1)) == (set: Some(4), add: 3)
+
+@test
+fn pow_squares_only_while_bits_remain():
+    assert pow(10, 2, op: Monoid<Int>(1, capped)) == 100
+
+@test
+fn max_sub_scales_every_part():
+    let s = (MaxSub.of(3) + MaxSub.of(-5) + MaxSub.of(2)).scale(3)
+    assert s.best == 9 and s.total == 0 and s.pre == 9 and s.suf == 6
+
+@test
+fn assign_actions_replace_and_never_commute():
+    let xs = [-3, 0, 4]
+    let keep: ?Int = None
+    let fs = [keep, Some(2), Some(5)]
+    let gs = [(set: keep, add: 0), (set: keep, add: 3), (set: Some(2), add: 1), (set: Some(5), add: 0)]
+    let sum_set = Action<Int, ?Int>.of(assign, +)
+    let max_set = Action<Int, ?Int>.of(assign, max)
+    let sum_set_add = Action<Int, (set: ?Int, add: Int)>.of(assign_add, +)
+    let max_set_add = Action<Int, (set: ?Int, add: Int)>.of(assign_add, max)
+    assert laws_hold(sum_set, T: xs, F: fs) and laws_hold(max_set, T: xs, F: fs)
+    assert laws_hold(sum_set_add, T: xs, F: gs) and laws_hold(max_set_add, T: xs, F: gs)
+    assert not sum_set.commutes and not max_set.commutes
+    assert not sum_set_add.commutes and not max_set_add.commutes
+    let sets = max_set.replaces!
+    assert sets(Some(2)) and not sets(keep)
+    let set_adds = max_set_add.replaces!
+    assert set_adds((set: Some(2), add: 0)) and not set_adds((set: keep, add: 3))
+    assert not Action<Int, Int>(apply: (d, x, span) => x + d * span).commutes
