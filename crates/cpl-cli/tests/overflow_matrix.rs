@@ -231,3 +231,79 @@ fn every_int_op_through_every_place_traps_in_interp_and_native() {
         wrong.join("\n")
     );
 }
+
+/// `min=`, `max=`, `+=` and `*=` on an absent key start it the same way
+/// whatever the value's range, and a start outside the range traps, in the
+/// interpreter and in the native `-DLOCAL` build alike.
+#[test]
+fn an_absent_key_folds_the_same_whatever_the_value_range() {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join("overflow-absent");
+    std::fs::create_dir_all(&dir).unwrap();
+    let mut wrong = Vec::new();
+    for (k, value) in ["Int", "R"].into_iter().enumerate() {
+        let program = format!(
+            "let case: Int = read()\nlet v: Int = read()\ntype R = 100..=1000\n\
+             struct Q:\n    var h: HashMap<Int, {value}>\n\
+             var m: Map<Int, {value}> = Map()\nvar h: HashMap<Int, {value}> = HashMap()\nvar q = Q([])\n\
+             if case == 0:\n    m[1] min= v\n    h[1] max= v\n    q.h[1] min= v\n    m[2] += v\n    h[2] *= v\n    q.h[2] max= v\n\
+             \x20   print(m[1], h[1], q.h[1], m[2], h[2], q.h[2])\n\
+             if case == 1: m[1] min= v * 2000\n\
+             if case == 2: q.h[1] max= v * 2000\n"
+        );
+        let path = dir.join(format!("absent{k}.cp"));
+        std::fs::write(&path, &program).unwrap();
+        let path = path.to_string_lossy().into_owned();
+        let built = cpl_cli::run(&["build", &path, "-o", "-"]);
+        assert_eq!(built.code, 0, "{}", built.stderr);
+        let binary = native(&built.stdout, &dir, k);
+        for (case, ranged_traps) in [(0, false), (1, true), (2, true)] {
+            let input = format!("{case} 500\n");
+            let traps = ranged_traps && value == "R";
+            let interp = cpl_cli::run_with_input(&["run", &path], input.as_bytes());
+            let mut child = Command::new(&binary)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()
+                .unwrap();
+            child
+                .stdin
+                .take()
+                .unwrap()
+                .write_all(input.as_bytes())
+                .unwrap();
+            let ran = child.wait_with_output().unwrap();
+            let want = if case == 0 {
+                "500 500 500 500 500 500\n"
+            } else {
+                ""
+            };
+            let stderr = String::from_utf8_lossy(&ran.stderr);
+            let got = [
+                (
+                    i32::from(interp.code),
+                    String::from_utf8_lossy(&interp.stdout).into_owned(),
+                    interp.stderr.clone(),
+                ),
+                (
+                    ran.status.code().unwrap_or(-1),
+                    String::from_utf8_lossy(&ran.stdout).into_owned(),
+                    stderr.into_owned(),
+                ),
+            ];
+            for (engine, (code, out, err)) in ["interp", "native"].into_iter().zip(got) {
+                let ok = if traps {
+                    code == 3 && err.contains("outside") && out.is_empty()
+                } else {
+                    code == 0 && out == want
+                };
+                if !ok {
+                    wrong.push(format!(
+                        "{value} case {case}: {engine} exits {code} printing {out:?} with {err}"
+                    ));
+                }
+            }
+        }
+    }
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}

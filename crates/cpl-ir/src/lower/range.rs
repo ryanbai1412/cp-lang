@@ -1265,8 +1265,9 @@ impl<'a> Lowerer<'a> {
                 let checked = self.check_range(value, &bounds, span);
                 out.push(Stmt::Assign(place, AssignOp::Set, checked));
             }
-            // `m[k] += d` starts an absent key at zero, so write first and check what it holds.
-            AssignOp::Binary(_) if matches!(&place.kind, PlaceKind::Index(base, _) if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..))) =>
+            // `m[k] += d` starts an absent key at zero and `m[k] min= v` at `v`, so write first
+            // and check what it holds.
+            AssignOp::Binary(_) | AssignOp::Max | AssignOp::Min if matches!(&place.kind, PlaceKind::Index(base, _) if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..))) =>
             {
                 let held = self.check_range(super::stmt::place_to_expr(&place), &bounds, span);
                 out.push(Stmt::Assign(place, op, value));
