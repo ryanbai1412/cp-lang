@@ -16,5 +16,5 @@ let a: [0..n]1..=10 ** 9 = read()
 let b: [0..n]1..=10 ** 9 = read()
 let segs = sorted([(lo: min(a[i], b[i]), hi: max(a[i], b[i])) for i in 0..n])
 let tot = sum(p.hi - p.lo for p in segs)
-let min_loss = segs.adjacent.map((p, q) => max(0, 2 * (q.lo - p.hi))).min()!
+let min_loss = min(max(0, 2 * (q.lo - p.hi)) for (p, q) in segs.adjacent)!
 print(tot + min_loss)

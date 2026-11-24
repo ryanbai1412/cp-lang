@@ -30,7 +30,7 @@ fn first_bad(xs: [Pos]Int) -> [Pos]Int:
     let suf = cur.rev.scan(min)
     [Pos] i => suf[i.l]
 
-let bad_r = first_bad([Pos] i => a[i])
+let bad_r = first_bad(a)
 let bad_l_rev = first_bad([Pos] i => a[Pos(n - 1 - i.ord)])
 let bad_l = [Pos] i => n - 1 - bad_l_rev[Pos(n - 1 - i.ord)]
 
