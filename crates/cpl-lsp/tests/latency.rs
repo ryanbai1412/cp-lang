@@ -244,7 +244,9 @@ fn round_trip(server: &mut Server, message: &Value) -> (Vec<String>, Duration, D
     (replies, first, first + rest)
 }
 
-fn lsp_latency(lines: usize) {
+/// The requests on a `lines`-line program: opening fresh copies of it when
+/// `opens`, typing into it when `types`.
+fn lsp_latency(lines: usize, opens: bool, types: bool) {
     let src = program(lines);
     let actual = src.lines().count();
     let at = edit_point(&src);
@@ -268,7 +270,7 @@ fn lsp_latency(lines: usize) {
     };
     // Each copy is a new document, so each open checks the whole file.
     let (mut opened, mut settled) = (Samples(Vec::new()), Samples(Vec::new()));
-    for copy in 0..9 {
+    for copy in 0..if opens { 9 } else { 0 } {
         let uri = format!("file:///bench/copy_{copy}.cp");
         let (replies, took, all) = round_trip(&mut server, &open(&uri));
         // The checker's diagnostics: any error would mean the program is wrong.
@@ -280,13 +282,18 @@ fn lsp_latency(lines: usize) {
         opened.0.push(took);
         settled.0.push(all);
     }
-    report(
-        "lsp: open file, first diagnostics",
-        actual,
-        &mut opened,
-        LSP_BUDGET,
-    );
-    inform("lsp: open file, lints and proofs too", actual, &mut settled);
+    if opens {
+        report(
+            "lsp: open file, first diagnostics",
+            actual,
+            &mut opened,
+            LSP_BUDGET,
+        );
+        inform("lsp: open file, lints and proofs too", actual, &mut settled);
+    }
+    if !types {
+        return;
+    }
     round_trip(&mut server, &open(URI));
 
     // Type an expression one character at a time, with a hover in between.
@@ -456,8 +463,19 @@ fn front_end_check_is_under_50_ms() {
 
 #[test]
 fn lsp_requests_are_under_100_ms() {
-    lsp_latency(500);
-    lsp_latency(5000);
+    lsp_latency(500, true, true);
+}
+
+/// The 5000-line program's opens and keystrokes are two tests: each is a
+/// whole file's deferred lints and proofs per sample.
+#[test]
+fn lsp_opens_of_5000_lines_are_under_100_ms() {
+    lsp_latency(5000, true, false);
+}
+
+#[test]
+fn lsp_keystrokes_in_5000_lines_are_under_100_ms() {
+    lsp_latency(5000, false, true);
 }
 
 #[test]

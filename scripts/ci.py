@@ -48,6 +48,8 @@ SLOW_SHARDED_TESTS = ("every_port_compiles_with_every_judges_flags",)
 # in a job that never fails the workflow (--timing); --full runs them too (ci/R34).
 WALL_CLOCK_TESTS = (
     "lsp_requests_are_under_100_ms",
+    "lsp_opens_of_5000_lines_are_under_100_ms",
+    "lsp_keystrokes_in_5000_lines_are_under_100_ms",
     "keystrokes_on_the_largest_ports_and_a_broken_file_are_within_budget_at_p95",
     "largest_corpus_file_diagnostics_hover_and_completion_p95_under_100ms",
     "the_checks_of_a_typical_function_fit_the_budget",
