@@ -36,5 +36,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "peel on the reversed Graph finds doomed cities; MaxHeap(by:) of records; buckets for in-edges; [edges.keys]Bool for a list-keyed table."
+ "notes": "peel on the reversed Graph finds doomed cities; MaxHeap(by:) of records; buckets for in-edges; [edges.keys]Bool for a list-keyed table.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 9,
+  "sha": "eea73599ba78e88ece6378660d4f677956cdba81"
+ }
 }
