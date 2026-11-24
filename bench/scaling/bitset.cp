@@ -25,7 +25,7 @@ for i in 0..6 * n:
     acc += b.len // timed: bitset.Bitset.len
     acc += b.count // timed: bitset.Bitset.count
     if b.is_empty: acc += 1 // timed: bitset.Bitset.is_empty
-for i in 0..2 * n:
+for i in 0..4 * n:
     let d = D(i * 13 % n)
     var c = b.complement()
     acc += Bitset<D>().len // timed: bitset.Bitset.new
@@ -48,7 +48,7 @@ for i in 0..2 * n:
     c.union_shifted(b, i % 70) // timed: bitset.Bitset.union_shifted
     acc += (hi.next(D(0)) ?? d).ord // timed: bitset.Bitset.next
     acc += c.len
-for i in 0..n / 2:
+for i in 0..2 * n:
     let d = D(i * 13 % n)
     var c = b.complement()
     acc += b.complement().len // timed: bitset.Bitset.complement

@@ -25,7 +25,7 @@ for i in 0..6 * n:
     acc += b.len // timed: bitset.DynBitset.len
     acc += b.cap // timed: bitset.DynBitset.cap
     if b.is_empty: acc += 1 // timed: bitset.DynBitset.is_empty
-for i in 0..2 * n:
+for i in 0..4 * n:
     var c = DynBitset.full(n)
     acc += DynBitset(n).len // timed: bitset.DynBitset.new
     acc += DynBitset.full(n).len // timed: bitset.DynBitset.full
@@ -36,7 +36,7 @@ for i in 0..2 * n:
     acc += lo.prev(n - 1) ?? 0 // timed: bitset.DynBitset.prev
     if b.meets(none): acc += 1 // timed: bitset.DynBitset.meets
     acc += c.len
-for i in 0..n / 4:
+for i in 0..2 * n:
     var c = DynBitset.full(n)
     c.resize(n - i % 2) // timed: bitset.DynBitset.resize
     c.resize(n)
