@@ -638,9 +638,8 @@ impl<'a> Checker<'a> {
 
     /// `@cpp("...")` anywhere but as a fn's whole body.
     fn cpp_outside_body(&mut self, at: Span) -> Ty {
-        let message =
-            "`@cpp(\"...\")` is a fn's whole body: `fn f(a: Int) -> Int = @cpp(\"return a;\")`";
-        self.error(codes::UNSUPPORTED, at, message.to_string());
+        let message = cpl_diag::msgs::check::CPP_FN_S_WHOLE.at(&[]);
+        self.report(at, message);
         Ty::Error
     }
 

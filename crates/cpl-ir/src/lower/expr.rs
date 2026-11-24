@@ -664,21 +664,19 @@ impl<'a> Lowerer<'a> {
                         return;
                     }
                     other => {
-                        let msg = format!(
-                            "`with` updates fields of a struct or record, not `{}`",
-                            lw.show(other)
-                        );
-                        lw.error(codes::TYPE_MISMATCH, span, msg);
+                        let msg =
+                            cpl_diag::msgs::ir::WITH_UPDATES_FIELDS_STRUCT.at(&[&lw.show(other)]);
+                        lw.report(span, msg);
                         out.push(Stmt::Give(lw.err_expr(span)));
                         return;
                     }
                 };
                 for (name, _) in updates {
                     if !fields.iter().any(|(f, _)| f == &name.text) {
-                        lw.error(
-                            codes::UNKNOWN_FIELD,
+                        lw.report(
                             name.span,
-                            format!("`{}` has no field `{}`", lw.show(&ty), name.text),
+                            cpl_diag::msgs::ir::UNKNOWN_FIELD_HAS_NO_FIELD
+                                .at(&[&lw.show(&ty), &name.text]),
                         );
                     }
                 }

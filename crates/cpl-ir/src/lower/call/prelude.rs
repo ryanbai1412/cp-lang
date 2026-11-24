@@ -95,8 +95,8 @@ impl<'a> Lowerer<'a> {
                         }
                         Some(arg_name) => {
                             let message =
-                                format!("`print` has no argument named `{}`", arg_name.text);
-                            self.error(codes::UNKNOWN_ARG_NAME, arg_name.span, message);
+                                cpl_diag::msgs::ir::PRINT_HAS_NO_ARGUMENT.at(&[&arg_name.text]);
+                            self.report(arg_name.span, message);
                         }
                         None => values.push((self.expr(&arg.value, None), arg.value.span)),
                     }
@@ -347,9 +347,8 @@ impl<'a> Lowerer<'a> {
                 match self.spec_of(want) {
                     Some(spec) => self.read_with_args(spec, args, span),
                     None => {
-                        let message =
-                            format!("`read()` can't tell how much a `{}` is", self.show(want));
-                        self.error(codes::TYPE_MISMATCH, span, message);
+                        let message = cpl_diag::msgs::ir::READ_CAN_T_TELL.at(&[&self.show(want)]);
+                        self.report(span, message);
                         self.help(
                             "declare the variable with its full type: `let a: [n]Int = read()`",
                         );

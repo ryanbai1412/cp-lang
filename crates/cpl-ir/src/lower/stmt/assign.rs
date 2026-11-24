@@ -422,19 +422,20 @@ impl<'a> Lowerer<'a> {
                         "min="
                     };
                     let message = match &place.ty {
-                        Ty::Array { dims, .. } if dims.len() > 1 => format!(
-                            "`{word}` works on one row at a time, not on a whole grid; write `g[r, ..] {word} h[r, ..]` in a loop over the rows"
-                        ),
-                        Ty::Array { elem, .. } | Ty::List(elem) if matches!(**elem, Ty::Opt(_)) => format!(
-                            "`{word}` on whole rows needs cells with an order, and a `{}` cell may be `none`; write `a[i] {word} b[i]` in a loop over the cells, which skips a `none`",
-                            self.show(elem)
-                        ),
-                        _ => format!(
-                            "`max=` and `min=` need values with an order, not `{}`",
-                            self.show(&place.ty)
-                        ),
+                        Ty::Array { dims, .. } if dims.len() > 1 => {
+                            cpl_diag::msgs::ir::WORKS_ONE_ROW_AT.at(&[&word, &word])
+                        }
+                        Ty::Array { elem, .. } | Ty::List(elem) if matches!(**elem, Ty::Opt(_)) => {
+                            cpl_diag::msgs::ir::WHOLE_ROWS_NEEDS_CELLS.at(&[
+                                &word,
+                                &self.show(elem),
+                                &word,
+                            ])
+                        }
+                        _ => cpl_diag::msgs::ir::BAD_OPERANDS_MAX_AND_MIN_NEED
+                            .at(&[&self.show(&place.ty)]),
                     };
-                    self.error(codes::BAD_OPERANDS, span, message);
+                    self.report(span, message);
                 }
                 let op = if op == ast::AssignOp::Max {
                     AssignOp::Max

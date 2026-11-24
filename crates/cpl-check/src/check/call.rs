@@ -1194,9 +1194,8 @@ impl<'a> Checker<'a> {
                     && !matches!(&*elem, Ty::Named { name, .. } if name == "List") =>
             {
                 let shown = Ty::Array { index, elem }.to_string();
-                let message =
-                    format!("`.out(v)` reads a table of neighbour lists, not a `{shown}`");
-                if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+                let message = cpl_diag::msgs::check::OUT_V_READS_TABLE.at(&[&shown]);
+                if let Some(diag) = self.report(name.span, message) {
                     diag.help = Some("index it: `a[v]`".to_string());
                 }
                 Some(Ty::Error)

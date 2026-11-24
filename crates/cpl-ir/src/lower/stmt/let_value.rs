@@ -362,19 +362,13 @@ impl<'a> Lowerer<'a> {
                         let Some(cells) = written(len) else { continue };
                         if cells != count as i64 {
                             let message = if lens.len() == 1 {
-                                format!(
-                                    "this array has {}, but the list gives {}",
-                                    plural(cells, "cell"),
-                                    plural(count as i64, "value"),
-                                )
+                                cpl_diag::msgs::ir::TYPE_MISMATCH_THIS_ARRAY_HAS_BUT
+                                    .at(&[&plural(cells, "cell"), &plural(count as i64, "value")])
                             } else {
-                                format!(
-                                    "this index has {}, but the list gives {}",
-                                    plural(cells, "cell"),
-                                    plural(count as i64, "value")
-                                )
+                                cpl_diag::msgs::ir::INDEX_HAS_BUT_LIST
+                                    .at(&[&plural(cells, "cell"), &plural(count as i64, "value")])
                             };
-                            self.error(codes::TYPE_MISMATCH, init.span, message);
+                            self.report(init.span, message);
                             return Some(self.err_expr(init.span));
                         }
                     }

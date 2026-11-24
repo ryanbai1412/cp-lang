@@ -57,9 +57,8 @@ impl<'a> Checker<'a> {
             .find(|(v, _, _)| v == root)
             .cloned()
         {
-            let message =
-                format!("`{root}` can't be modified while `@memo` fn `{fn_name}` captures it");
-            if let Some(diag) = self.error(codes::BAD_MEMO, span, message) {
+            let message = cpl_diag::msgs::check::CAN_T_MODIFIED_WHILE.at(&[&root, &fn_name]);
+            if let Some(diag) = self.report(span, message) {
                 diag.labels.push(cpl_diag::Label {
                     span: memo_span,
                     message: format!("`{fn_name}` is memoized here and reads `{root}`"),

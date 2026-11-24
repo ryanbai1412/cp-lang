@@ -112,14 +112,14 @@ impl<'a> Checker<'a> {
         let shown = self.quote(target.span);
         let message = match type_head(target) {
             _ if shown.contains('.') => {
-                format!("`impl {shown}:` adds inherent methods outside `{shown}`'s module")
+                cpl_diag::msgs::check::IMPL_ADDS_INHERENT_METHODS.at(&[&shown, &shown])
             }
-            Some(head) if !self.env.declared().contains(&head) => format!(
-                "`impl {shown}:` adds inherent methods to `{head}`, which is declared outside this module"
-            ),
+            Some(head) if !self.env.declared().contains(&head) => {
+                cpl_diag::msgs::check::IMPL_ADDS_INHERENT_METHODS_2.at(&[&shown, &head])
+            }
             _ => return,
         };
-        if let Some(diag) = self.error(codes::UNSUPPORTED, target.span, message) {
+        if let Some(diag) = self.report(target.span, message) {
             diag.help = Some(format!(
                 "move the methods into the type's module, or declare a trait and `impl` it for `{shown}`"
             ));

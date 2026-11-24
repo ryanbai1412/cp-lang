@@ -340,8 +340,8 @@ impl<'a> Checker<'a> {
         let opt = key.name.as_ref().map(|n| n.text.as_str()).unwrap_or("by");
         let role = if opt == "cmp" { "comparator" } else { "key" };
         let message =
-            format!("the {role} of `{root}.sort({opt}:)` {what} while `{root}` is being sorted");
-        if let Some(diag) = self.error(codes::USED_WHILE_LENT, key.value.span, message) {
+            cpl_diag::msgs::check::SORT_WHILE_BEING_SORTED.at(&[&role, &root, &opt, &what, &root]);
+        if let Some(diag) = self.report(key.value.span, message) {
             diag.help = Some(format!(
                 "sort a copy, whose key may use the list: `{root} = {root}.sorted(by: ..)`"
             ));

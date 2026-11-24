@@ -997,13 +997,9 @@ impl<'a> Checker<'a> {
                     matches!(self.fns.last().map(|(_, r, _, _)| r), Some(Ty::Optional(_)));
                 if !in_opt_fn {
                     if let Some(try_span) = expr.bare_try() {
-                        let message =
-                            "`?` cannot be used directly in a condition; write `(... ?? false)`"
-                                .to_string();
+                        let message = cpl_diag::msgs::check::CANNOT_USED_DIRECTLY_CONDITION.at(&[]);
                         let replacement = format!("({}) ?? false", self.quote(expr.span));
-                        if let Some(diag) =
-                            self.error(codes::QUESTION_IN_CONDITION, try_span, message)
-                        {
+                        if let Some(diag) = self.report(try_span, message) {
                             diag.fixes.push(cpl_diag::Fix {
                                 title: "treat `None` as false".to_string(),
                                 edits: vec![(expr.span, replacement)],
@@ -1022,13 +1018,9 @@ impl<'a> Checker<'a> {
                     matches!(self.fns.last().map(|(_, r, _, _)| r), Some(Ty::Optional(_)));
                 if !in_opt_fn {
                     if let Some(try_span) = test.bare_try() {
-                        let message =
-                            "`?` cannot be used directly in a condition; write `(... ?? false)`"
-                                .to_string();
+                        let message = cpl_diag::msgs::check::CANNOT_USED_DIRECTLY_CONDITION.at(&[]);
                         let replacement = format!("({}) ?? false", self.quote(test.span));
-                        if let Some(diag) =
-                            self.error(codes::QUESTION_IN_CONDITION, try_span, message)
-                        {
+                        if let Some(diag) = self.report(try_span, message) {
                             diag.fixes.push(cpl_diag::Fix {
                                 title: "treat `None` as false".to_string(),
                                 edits: vec![(test.span, replacement)],

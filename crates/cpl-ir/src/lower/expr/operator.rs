@@ -19,8 +19,8 @@ impl<'a> Lowerer<'a> {
                     Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Error => value,
                     _ => {
                         let message =
-                            format!("`+` can't be applied to a `{}`", self.show(&value.ty));
-                        self.error(codes::BAD_OPERANDS, span, message);
+                            cpl_diag::msgs::ir::CAN_T_APPLIED.at(&[&self.show(&value.ty)]);
+                        self.report(span, message);
                         self.err_expr(span)
                     }
                 }
@@ -45,8 +45,8 @@ impl<'a> Lowerer<'a> {
                             );
                         }
                         let message =
-                            format!("`-` can't be applied to a `{}`", self.show(&value.ty));
-                        self.error(codes::BAD_OPERANDS, span, message);
+                            cpl_diag::msgs::ir::CAN_T_APPLIED_2.at(&[&self.show(&value.ty)]);
+                        self.report(span, message);
                         self.err_expr(span)
                     }
                     (_, Ty::Error) => value,
@@ -61,8 +61,8 @@ impl<'a> Lowerer<'a> {
                     }
                     _ => {
                         let message =
-                            format!("`-` can't be applied to a `{}`", self.show(&value.ty));
-                        self.error(codes::BAD_OPERANDS, span, message);
+                            cpl_diag::msgs::ir::CAN_T_APPLIED_2.at(&[&self.show(&value.ty)]);
+                        self.report(span, message);
                         self.err_expr(span)
                     }
                 }

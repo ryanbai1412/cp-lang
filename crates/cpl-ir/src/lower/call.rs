@@ -602,9 +602,9 @@ impl<'a> Lowerer<'a> {
                     Some(tag) => self.variant(id, tag, args, span),
                     None if self.unit_enum(id) => self.enum_seq(base, id, name, Some(args), span),
                     None => {
-                        let message =
-                            format!("`{}` has no variant `{}`", self.enums[id].name, name.text);
-                        self.error(codes::UNKNOWN_FIELD, name.span, message);
+                        let message = cpl_diag::msgs::ir::HAS_NO_VARIANT
+                            .at(&[&self.enums[id].name, &name.text]);
+                        self.report(name.span, message);
                         self.err_expr(span)
                     }
                 };
@@ -651,9 +651,9 @@ impl<'a> Lowerer<'a> {
                     {
                         Some(tag) => self.variant(id, tag, args, span),
                         None => {
-                            let message =
-                                format!("`{}` has no variant `{}`", self.enums[id].name, name.text);
-                            self.error(codes::UNKNOWN_FIELD, name.span, message);
+                            let message = cpl_diag::msgs::ir::HAS_NO_VARIANT
+                                .at(&[&self.enums[id].name, &name.text]);
+                            self.report(name.span, message);
                             self.err_expr(span)
                         }
                     };

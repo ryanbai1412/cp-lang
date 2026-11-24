@@ -262,9 +262,8 @@ impl<'a> Lowerer<'a> {
         }
         let shown = self.show(l);
         let Ty::Opt(inner) = l else {
-            let message =
-                format!("a range's ends are `Int`s or positions of one domain, not `{shown}`s");
-            return self.error(codes::TYPE_MISMATCH, span, message);
+            let message = cpl_diag::msgs::ir::RANGE_S_ENDS_ARE.at(&[&shown]);
+            return self.report(span, message);
         };
         self.report(span, msgs::ir::TYPE_MISMATCH_A_RANGE_S_ENDS.at(&[&shown]));
         let (Some(lo), Some(hi)) = (lo, hi) else {

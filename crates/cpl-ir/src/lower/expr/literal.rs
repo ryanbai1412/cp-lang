@@ -76,9 +76,8 @@ impl<'a> Lowerer<'a> {
         match text.chars().find(|c| !c.is_ascii()) {
             None => Some(text.as_bytes().to_vec()),
             Some(c) => {
-                let message =
-                    format!("`{c}` is not ASCII: a `Char` is one byte and a `Str` is a byte array");
-                self.error(codes::NON_ASCII, span, message);
+                let message = cpl_diag::msgs::ir::NOT_ASCII_CHAR_ONE.at(&[&c]);
+                self.report(span, message);
                 self.help("only ASCII can be written in a literal; other bytes come from input");
                 None
             }
@@ -133,9 +132,8 @@ impl<'a> Lowerer<'a> {
                         (Ty::Int, None, ast::FmtKind::Bin) => (value, NumKind::Bin),
                         (Ty::Int, None, _) => (value, NumKind::Dec),
                         (Ty::Float, None, _) => {
-                            let message =
-                                format!("`{written}` does not say how many decimals an F64 gets");
-                            self.error(codes::TYPE_MISMATCH, e.span, message);
+                            let message = cpl_diag::msgs::ir::DOES_NOT_SAY_HOW.at(&[&written]);
+                            self.report(e.span, message);
                             self.help(help);
                             continue;
                         }

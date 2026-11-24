@@ -120,11 +120,11 @@ impl Checker<'_> {
                 let name = self.quote(rhs.span);
                 let inline = matches!(rhs.kind, ExprKind::Field { .. });
                 let message = if inline {
-                    format!("`{o}` takes a {ret}, but `{name}` is a method that returns one")
+                    cpl_diag::msgs::check::TAKES_BUT_METHOD_THAT.at(&[&o, &ret, &name])
                 } else {
-                    format!("`{o}` takes a {ret}, but `{name}` holds a method, not its result")
+                    cpl_diag::msgs::check::TAKES_BUT_HOLDS_METHOD.at(&[&o, &ret, &name])
                 };
-                if let Some(diag) = self.error(codes::TYPE_MISMATCH, op_span, message) {
+                if let Some(diag) = self.report(op_span, message) {
                     if inline {
                         diag.help = Some(habits::NO_OPERATOR_IMPL.say(&[&ret, &name]));
                         let end = Span::new(rhs.span.end, rhs.span.end);
@@ -137,8 +137,8 @@ impl Checker<'_> {
             }
         }
         let message =
-            format!("`{o}` needs `impl {trait_name}<{right}> for {owner}`, and there is none");
-        if let Some(diag) = self.error(codes::MISSING_IMPL, op_span, message) {
+            cpl_diag::msgs::check::NEEDS_IMPL_THERE_NONE.at(&[&o, &trait_name, &right, &owner]);
+        if let Some(diag) = self.report(op_span, message) {
             diag.help = Some(habits::NO_OPERATOR_IMPL_3.say(&[
                 &trait_name,
                 &right,
@@ -924,9 +924,8 @@ impl Checker<'_> {
             return true;
         }
         if name.text == "bsearch_first" {
-            let message =
-                "`.bsearch_first(...)` was removed; use `.first_true(...)` or `.bsearch(...)`";
-            self.error(codes::REMOVED_SYNTAX, name.span, message.to_string());
+            let message = cpl_diag::msgs::check::BSEARCH_FIRST_WAS_REMOVED.at(&[]);
+            self.report(name.span, message);
             return true;
         }
         // `p.first`, `p.second`: C++'s pair, where a tuple numbers its parts.
@@ -1828,8 +1827,8 @@ impl Checker<'_> {
         let each: Vec<String> = (e.variants.iter().zip(&tags.args))
             .map(|(v, tag)| format!("@tag({}) {}", self.quote(tag.value.span), v.name.text))
             .collect();
-        let message = "an enum-level `@tags(...)` was removed; write `@tag(..)` on each variant";
-        let Some(diag) = self.error(codes::REMOVED_SYNTAX, tags.span, message.to_string()) else {
+        let message = cpl_diag::msgs::check::ENUM_LEVEL_TAGS_WAS.at(&[]);
+        let Some(diag) = self.report(tags.span, message) else {
             return;
         };
         if each.len() == e.variants.len() && tags.args.len() == each.len() {

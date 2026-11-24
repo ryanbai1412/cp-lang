@@ -209,9 +209,9 @@ impl<'a> Checker<'a> {
             };
             if let Some(other) = idx_owner {
                 if other != base_name {
-                    let message =
-                        format!("`{base_name}` is indexed by `{base_name}.Idx`, not `{other}.Idx`");
-                    self.error(codes::WRONG_DOMAIN, idx_expr.span, message);
+                    let message = cpl_diag::msgs::check::INDEXED_IDX_NOT_IDX
+                        .at(&[&base_name, &base_name, &other]);
+                    self.report(idx_expr.span, message);
                 }
             }
         }
@@ -501,14 +501,15 @@ impl<'a> Checker<'a> {
                     };
                     // A step that was not bound, clamped or asserted.
                     if let Some(may) = self.unhandled_step(got, want, index_expr) {
-                        let message =
-                            format!("`{}` is a {got}: it {may}", self.quote(index_expr.span));
+                        let message = cpl_diag::msgs::check::MSG.at(&[
+                            &self.quote(index_expr.span),
+                            &got,
+                            &may,
+                        ]);
                         let help = self.step_help(index_expr);
                         let origin =
                             self.origin(index_expr, &format!("declared as {}", got.with_article()));
-                        if let Some(diag) =
-                            self.error(codes::WRONG_DOMAIN, index_expr.span, message)
-                        {
+                        if let Some(diag) = self.report(index_expr.span, message) {
                             diag.help = Some(help);
                             diag.labels.extend(origin);
                         }
@@ -623,9 +624,8 @@ impl Checker<'_> {
             return false;
         }
         let shown = self.quote(base.span);
-        let message =
-            format!("`{shown}` is a filtered sequence: it can be walked, but not indexed");
-        if let Some(diag) = self.error(codes::NOT_INDEXABLE, base.span, message) {
+        let message = cpl_diag::msgs::check::FILTERED_SEQUENCE_CAN_WALKED.at(&[&shown]);
+        if let Some(diag) = self.report(base.span, message) {
             diag.help = Some(format!("collect it first: `{shown}.collect()[i]`"));
         }
         true

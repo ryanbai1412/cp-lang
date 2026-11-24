@@ -125,12 +125,12 @@ impl<'a> Checker<'a> {
             format!("in {vlo}..={vhi}")
         };
         let message = if shown == is {
-            format!("`{shown}` is outside the range type `{text}`")
+            cpl_diag::msgs::check::OUTSIDE_RANGE_TYPE.at(&[&shown, &text])
         } else {
-            format!("`{shown}` is {is}, outside the range type `{text}`")
+            cpl_diag::msgs::check::OUTSIDE_RANGE_TYPE_2.at(&[&shown, &is, &text])
         };
         let text = text.clone();
-        if let Some(diag) = self.error(codes::RANGE_STORE_CONST, value.span, message) {
+        if let Some(diag) = self.report(value.span, message) {
             diag.help = Some(format!(
                 "store a value in `{text}`, or widen the declared type"
             ));
@@ -209,9 +209,9 @@ impl<'a> Checker<'a> {
         }
         let lower = name.to_lowercase();
         let message =
-            format!("`{keyword} {name}`: values are lowercase; `{name}` would read as a type");
+            cpl_diag::msgs::check::VALUES_ARE_LOWERCASE_WOULD.at(&[&keyword, &name, &name]);
         let fix = self.const_fix(keyword, pat.span, init);
-        if let Some(diag) = self.error(codes::VALUE_NAME_CASE, pat.span, message) {
+        if let Some(diag) = self.report(pat.span, message) {
             diag.help = Some(format!("rename it `{lower}`, or write `const {name}`"));
             diag.fixes.extend(fix);
         }
@@ -849,11 +849,8 @@ impl<'a> Checker<'a> {
                         }
                     } else if is_bare_read {
                         let name = self.quote(pat.span);
-                        let message =
-                            "`read()` needs a type annotation to know what to read".to_string();
-                        if let Some(diag) =
-                            self.error(codes::INFERENCE_NEEDS_ANNOTATION, pat.span, message)
-                        {
+                        let message = cpl_diag::msgs::check::READ_NEEDS_TYPE_ANNOTATION.at(&[]);
+                        if let Some(diag) = self.report(pat.span, message) {
                             diag.help = Some(format!("write `{keyword} {name}: Int = read()`"));
                         }
                     }
@@ -1478,11 +1475,9 @@ impl<'a> Checker<'a> {
                         ..
                     }
                 ) {
-                    if let Some(diag) = self.error(
-                        codes::EXPECTED_EXPR,
+                    if let Some(diag) = self.report(
                         iter.span,
-                        "a bare `..` means all of a dimension, so it only goes inside `[...]`"
-                            .to_string(),
+                        cpl_diag::msgs::check::BARE_MEANS_ALL_DIMENSION.at(&[]),
                     ) {
                         diag.help =
                             Some("name what to walk: `for x in D` or `for i in 0..n`".into());

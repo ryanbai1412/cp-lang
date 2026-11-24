@@ -56,8 +56,8 @@ impl<'a> Lowerer<'a> {
     ) -> (Vec<Expr>, Ty) {
         let one = |lw: &mut Self, want: &Ty| -> Vec<Expr> {
             if indices.len() != 1 {
-                let message = format!("this takes 1 index, but {} were given", indices.len());
-                lw.error(codes::WRONG_ARG_COUNT, span, message);
+                let message = cpl_diag::msgs::ir::TAKES_1_INDEX_BUT.at(&[&indices.len()]);
+                lw.report(span, message);
                 return vec![lw.err_expr(span)];
             }
             vec![lw.expect(&indices[0], want)]

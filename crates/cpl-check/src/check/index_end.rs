@@ -127,9 +127,8 @@ impl Checker<'_> {
             }
         }
         let (pre, k) = (self.quote(base.span), self.quote(index.span));
-        let message =
-            format!("`{pre}[{k}]`: an `Int` index into a cut table can't say position or cut");
-        if let Some(diag) = self.error(codes::INT_INDEX_ON_CUT_TABLE, index.span, message) {
+        let message = cpl_diag::msgs::check::INT_INDEX_INTO_CUT.at(&[&pre, &k]);
+        if let Some(diag) = self.report(index.span, message) {
             let next = match index.kind {
                 ExprKind::Int(n) => (n + 1).to_string(),
                 _ => format!("{k} + 1"),

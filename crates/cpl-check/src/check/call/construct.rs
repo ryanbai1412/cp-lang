@@ -31,8 +31,8 @@ impl Checker<'_> {
                 if self.local(n).is_none() && n.starts_with(|c: char| c.is_ascii_uppercase()) {
                     if let Some((name, _)) = own.filter(|(name, _)| n != name) {
                         let message =
-                            format!("`fields({n})` here names the type it builds, `{name}`");
-                        self.error(codes::TYPE_MISMATCH, v.value.span, message);
+                            cpl_diag::msgs::check::FIELDS_HERE_NAMES_TYPE.at(&[&n, &name]);
+                        self.report(v.value.span, message);
                     }
                     continue;
                 }
@@ -51,9 +51,8 @@ impl Checker<'_> {
             shapes.push(reflected.ok().flatten());
         }
         if !clause.conds.is_empty() {
-            let message =
-                "a `fields` constructor gives every field a value, so it has no `if`".to_string();
-            self.error(codes::UNSUPPORTED, clause.iter.span, message);
+            let message = cpl_diag::msgs::check::FIELDS_CONSTRUCTOR_GIVES_EVERY.at(&[]);
+            self.report(clause.iter.span, message);
         }
         if shapes.is_empty() && !matches!(clause.pat.kind, PatternKind::Wildcard) {
             if let Some(d) = self.report(

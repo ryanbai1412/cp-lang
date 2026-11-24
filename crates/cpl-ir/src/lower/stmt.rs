@@ -1230,10 +1230,12 @@ impl<'a> Lowerer<'a> {
                 };
                 let Some(index) = found else {
                     let message = match label {
-                        Some(label) => format!("no enclosing loop is labeled `{}`", label.text),
-                        None => format!("`{word}` outside a loop"),
+                        Some(label) => {
+                            cpl_diag::msgs::ir::NO_ENCLOSING_LOOP_LABELED.at(&[&label.text])
+                        }
+                        None => cpl_diag::msgs::ir::OUTSIDE_LOOP.at(&[&word]),
                     };
-                    self.error(codes::UNRESOLVED_NAME, stmt.span, message);
+                    self.report(stmt.span, message);
                     return;
                 };
                 if self.cx.dos.last().is_some_and(|frame| index < frame.loops) {

@@ -66,9 +66,8 @@ impl Checker<'_> {
         let w = self.quote(base.span);
         let rev = self.keyed_view(base).is_some_and(|keyed| keyed.rev);
         if rev || self.view_kind(base) == Some("reverse view") {
-            let message =
-                format!("`{w}` walks backwards, out of key order, so it can't be indexed");
-            if let Some(diag) = self.error(codes::NOT_INDEXABLE, base.span, message) {
+            let message = cpl_diag::msgs::check::WALKS_BACKWARDS_OUT_KEY.at(&[&w]);
+            if let Some(diag) = self.report(base.span, message) {
                 diag.help = Some(format!(
                     "write `{w}.nth(k)` for the `k`th element it walks, or index the source by its key"
                 ));

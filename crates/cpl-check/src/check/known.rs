@@ -615,18 +615,16 @@ impl Checker<'_> {
         }
         let snippet = self.quote(expr.span);
         let message = match ty {
-            Ty::Bool if piece => format!(
-                "`{snippet}` has type `Bool`, which does not implement `Show`; write `{{yes({snippet})}}`"
-            ),
-            Ty::Bool => format!(
-                "`{snippet}` has type `Bool`, which does not implement `Show`; use `print(yes({snippet}))`"
-            ),
-            _ => format!("`{snippet}` has type `{ty}`, which does not implement `Show`"),
+            Ty::Bool if piece => {
+                cpl_diag::msgs::check::HAS_TYPE_BOOL_WHICH.at(&[&snippet, &snippet])
+            }
+            Ty::Bool => cpl_diag::msgs::check::HAS_TYPE_BOOL_WHICH_2.at(&[&snippet, &snippet]),
+            _ => cpl_diag::msgs::check::HAS_TYPE_WHICH_DOES.at(&[&snippet, &ty]),
         };
         let help = optional_print_help(ty, &snippet);
         let span = expr.span;
         let text = self.src[span.start as usize..span.end as usize].to_string();
-        if let Some(diag) = self.error(codes::MISSING_IMPL, span, message) {
+        if let Some(diag) = self.report(span, message) {
             diag.help = help;
             if matches!(ty, Ty::Bool) {
                 diag.fix(format!("write `yes({text})`"), span, format!("yes({text})"));
@@ -670,9 +668,8 @@ impl Checker<'_> {
         };
         if v.unsigned_abs() > 1 << 53 && (v as f64) as i128 != v {
             let text = self.quote(at.span);
-            let message =
-                format!("`{text}` is not exactly an F64; write `F64({text})` to round it");
-            if let Some(diag) = self.error(codes::TYPE_MISMATCH, at.span, message) {
+            let message = cpl_diag::msgs::check::NOT_EXACTLY_F64_WRITE.at(&[&text, &text]);
+            if let Some(diag) = self.report(at.span, message) {
                 diag.fix(
                     format!("write `F64({text})`"),
                     at.span,

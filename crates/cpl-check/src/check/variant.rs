@@ -98,10 +98,9 @@ impl<'a> Checker<'a> {
         let [a, b, ..] = enums.as_slice() else {
             return;
         };
-        let message =
-            format!("`{name}` is a variant of both `{a}` and `{b}`, and nothing here says which");
+        let message = cpl_diag::msgs::check::VARIANT_BOTH_NOTHING_HERE.at(&[&name, &a, &b]);
         let help = format!("write `{a}.{name}`, or give the `let` a type: `let x: {a} = {name}`");
-        if let Some(diag) = self.error(codes::UNRESOLVED_NAME, span, message) {
+        if let Some(diag) = self.report(span, message) {
             diag.help = Some(help);
         }
     }

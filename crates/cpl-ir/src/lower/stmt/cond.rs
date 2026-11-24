@@ -452,9 +452,9 @@ impl<'a> Lowerer<'a> {
                     if let Some(info) = self.sum_enums.get(&d).cloned() {
                         let Some(tag) = info.variants.iter().position(|(v, _)| *v == name.text)
                         else {
-                            let message =
-                                format!("`{}` has no variant `{}`", self.domains[d], name.text);
-                            self.error(codes::UNKNOWN_FIELD, name.span, message);
+                            let message = cpl_diag::msgs::ir::HAS_NO_VARIANT
+                                .at(&[&self.domains[d], &name.text]);
+                            self.report(name.span, message);
                             return None;
                         };
                         let factors = &info.variants[tag].1;
@@ -491,8 +491,8 @@ impl<'a> Lowerer<'a> {
                 let variants = &self.enums[id].variants;
                 let Some(tag) = variants.iter().position(|(v, _)| *v == name.text) else {
                     let message =
-                        format!("`{}` has no variant `{}`", self.enums[id].name, name.text);
-                    self.error(codes::UNKNOWN_FIELD, name.span, message);
+                        cpl_diag::msgs::ir::HAS_NO_VARIANT.at(&[&self.enums[id].name, &name.text]);
+                    self.report(name.span, message);
                     return None;
                 };
                 let fields = variants[tag].1.clone();

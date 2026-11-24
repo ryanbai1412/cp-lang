@@ -420,11 +420,9 @@ impl<'a> Lowerer<'a> {
                     closed,
                 } = iter
                 else {
-                    self.error(
-                        codes::TYPE_MISMATCH,
+                    self.report(
                         span,
-                        "`by` steps a range of numbers written out, as in `(lo..hi).rev by 2`"
-                            .to_string(),
+                        cpl_diag::msgs::ir::STEPS_RANGE_NUMBERS_WRITTEN.at(&[]),
                     );
                     return (iter, ty);
                 };

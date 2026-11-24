@@ -326,17 +326,15 @@ impl<'a> Checker<'a> {
         };
         if let Some(after) = after {
             if receiver.is_some_and(|p| !p.mutable) {
-                let message =
-                    format!("code after the `lend` changes `self`, so `{name}` takes `mut self`");
-                self.error(codes::BAD_PROJECTION, after.span, message);
+                let message = cpl_diag::msgs::check::CODE_AFTER_LEND_CHANGES.at(&[&name]);
+                self.report(after.span, message);
             }
         }
         self.lends.lend_at = lend_at;
         let span = lend_at.unwrap_or(place.span);
         if mutable && !lends.mutable {
-            let message =
-                format!("`{name}` is declared `lends` without `mut`, so it can't `lend mut`");
-            if let Some(diag) = self.error(codes::BAD_PROJECTION, span, message) {
+            let message = cpl_diag::msgs::check::DECLARED_LENDS_WITHOUT_MUT.at(&[&name]);
+            if let Some(diag) = self.report(span, message) {
                 diag.help = Some("declare it `lends mut`".into());
             }
         } else if !mutable && lends.mutable {
@@ -368,11 +366,9 @@ impl<'a> Checker<'a> {
     /// statements.
     pub(crate) fn lend_in_place(&mut self, stmt: &Stmt) {
         if self.lends.lend_at != Some(stmt.span) && !self.lends.lend_reported {
-            self.error(
-                codes::BAD_PROJECTION,
+            self.report(
                 stmt.span,
-                "`lend` is a statement of a projection's body (`fn name(self, ...) lends T`), and only there"
-                    .to_string(),
+                cpl_diag::msgs::check::LEND_STATEMENT_PROJECTION_S.at(&[]),
             );
         }
     }

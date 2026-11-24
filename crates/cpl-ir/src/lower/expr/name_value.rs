@@ -222,13 +222,11 @@ impl<'a> Lowerer<'a> {
                 if self.tail_names.contains(name) {
                     let gen = matches!(self.aside, Some(Aside::Gen(_)));
                     let message = if gen {
-                        format!(
-                            "`{name}` is read from the input, which a `@gen` fn is there to make"
-                        )
+                        cpl_diag::msgs::ir::READ_FROM_INPUT_WHICH.at(&[&name])
                     } else {
-                        format!("`{name}` is the solution's own work: a brute or a checker shares only the input")
+                        cpl_diag::msgs::ir::SOLUTION_S_OWN_WORK.at(&[&name])
                     };
-                    self.error(codes::UNRESOLVED_NAME, span, message);
+                    self.report(span, message);
                     self.help(if gen {
                         "a `@gen` fn shares only `const`s and fns with the file; pick the value with `rand(lo, hi)` and print it"
                     } else {

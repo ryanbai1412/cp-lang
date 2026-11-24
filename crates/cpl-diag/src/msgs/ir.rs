@@ -177,4 +177,26 @@ super::msgs! {
     TYPE_MISMATCH_TAKES_A_SEQUENCE_S = TYPE_MISMATCH, "`.{}` takes a sequence's {}, and `{}` is one number";
     UNSUPPORTED_YIELD_OUTSIDE_A_GENERATOR = UNSUPPORTED, "`yield` outside a generator";
     UNSUPPORTED_A_BLOCK_LOCAL_GENERATOR = UNSUPPORTED, "a block-local generator can't capture `{}` here";
+    RANGE_S_ENDS_ARE = TYPE_MISMATCH, "a range's ends are `Int`s or positions of one domain, not `{}`s";
+    WITH_UPDATES_FIELDS_STRUCT = TYPE_MISMATCH, "`with` updates fields of a struct or record, not `{}`";
+    NO_ENCLOSING_LOOP_LABELED = UNRESOLVED_NAME, "no enclosing loop is labeled `{}`";
+    OUTSIDE_LOOP = UNRESOLVED_NAME, "`{}` outside a loop";
+    GEN_FN_TAKES_NOTHING = WRONG_ARG_COUNT, "a `@gen` fn takes nothing, or one `size: Int`: how large a case to print";
+    HAS_NO_VARIANT = UNKNOWN_FIELD, "`{}` has no variant `{}`";
+    WORKS_ONE_ROW_AT = BAD_OPERANDS, "`{}` works on one row at a time, not on a whole grid; write `g[r, ..] {} h[r, ..]` in a loop over the rows";
+    WHOLE_ROWS_NEEDS_CELLS = BAD_OPERANDS, "`{}` on whole rows needs cells with an order, and a `{}` cell may be `none`; write `a[i] {} b[i]` in a loop over the cells, which skips a `none`";
+    INDEX_HAS_BUT_LIST = TYPE_MISMATCH, "this index has {}, but the list gives {}";
+    PRINT_HAS_NO_ARGUMENT = UNKNOWN_ARG_NAME, "`print` has no argument named `{}`";
+    READ_CAN_T_TELL = TYPE_MISMATCH, "`read()` can't tell how much a `{}` is";
+    PARAMETER_MUT_FN_CHANGES = ASSIGN_TO_LET, "this parameter is `mut`: the fn changes what it is given";
+    CHANGES_PASS_WITH_MUT = MISSING_MUT_AT_CALL, "`{}` changes `{}`, so pass it with `mut`";
+    NOT_ASCII_CHAR_ONE = NON_ASCII, "`{}` is not ASCII: a `Char` is one byte and a `Str` is a byte array";
+    DOES_NOT_SAY_HOW = TYPE_MISMATCH, "`{}` does not say how many decimals an F64 gets";
+    TAKES_1_INDEX_BUT = WRONG_ARG_COUNT, "this takes 1 index, but {} were given";
+    STEPS_RANGE_NUMBERS_WRITTEN = TYPE_MISMATCH, "`by` steps a range of numbers written out, as in `(lo..hi).rev by 2`";
+    INTERVAL_F64_S_WRITTEN = TYPE_MISMATCH, "an interval of `F64`s is written `lo..hi`, not `..=`";
+    CAN_T_APPLIED = BAD_OPERANDS, "`+` can't be applied to a `{}`";
+    CAN_T_APPLIED_2 = BAD_OPERANDS, "`-` can't be applied to a `{}`";
+    READ_FROM_INPUT_WHICH = UNRESOLVED_NAME, "`{}` is read from the input, which a `@gen` fn is there to make";
+    SOLUTION_S_OWN_WORK = UNRESOLVED_NAME, "`{}` is the solution's own work: a brute or a checker shares only the input";
 }

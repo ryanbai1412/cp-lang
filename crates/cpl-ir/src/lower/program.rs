@@ -464,9 +464,8 @@ impl<'a> Lowerer<'a> {
                     span: Span::default(),
                 })],
                 (Some(_), _) => {
-                    let message =
-                        "a `@gen` fn takes nothing, or one `size: Int`: how large a case to print";
-                    self.error(codes::WRONG_ARG_COUNT, at, message.to_string());
+                    let message = cpl_diag::msgs::ir::GEN_FN_TAKES_NOTHING.at(&[]);
+                    self.report(at, message);
                     Vec::new()
                 }
                 (None, _) => {

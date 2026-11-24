@@ -153,8 +153,8 @@ impl<'a> Lowerer<'a> {
                     span,
                 ),
                 (Ty::Float, Ty::Float) => {
-                    let message = "an interval of `F64`s is written `lo..hi`, not `..=`";
-                    self.error(codes::TYPE_MISMATCH, span, message.to_string());
+                    let message = cpl_diag::msgs::ir::INTERVAL_F64_S_WRITTEN.at(&[]);
+                    self.report(span, message);
                     self.help("a real interval has no last element, so `..` and `..=` are the same set to a search");
                     self.err_expr(span)
                 }

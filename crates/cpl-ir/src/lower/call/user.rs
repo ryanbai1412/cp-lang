@@ -276,9 +276,8 @@ impl<'a> Lowerer<'a> {
                     Arg::Mut(place)
                 }
                 (Some(Ty::Mut(_)), false) => {
-                    let message =
-                        "this parameter is `mut`: the fn changes what it is given".to_string();
-                    self.error(codes::ASSIGN_TO_LET, arg.value.span, message);
+                    let message = cpl_diag::msgs::ir::PARAMETER_MUT_FN_CHANGES.at(&[]);
+                    self.report(arg.value.span, message);
                     self.help("write `mut` before it, as for a top-level fn");
                     Arg::Value(self.err_expr(arg.value.span))
                 }
@@ -1357,8 +1356,8 @@ impl<'a> Lowerer<'a> {
                 Some(arg) if param.mutable => {
                     if !arg.mutable {
                         let message =
-                            format!("`{name}` changes `{}`, so pass it with `mut`", param.name);
-                        self.error(codes::MISSING_MUT_AT_CALL, arg.value.span, message);
+                            cpl_diag::msgs::ir::CHANGES_PASS_WITH_MUT.at(&[&name, &param.name]);
+                        self.report(arg.value.span, message);
                         self.temporary_mut_help(&arg.value);
                         ok = false;
                     }

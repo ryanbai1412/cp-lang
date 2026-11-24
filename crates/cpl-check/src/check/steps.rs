@@ -282,9 +282,8 @@ impl Checker<'_> {
     }
 
     pub(super) fn with_not_first(&mut self, span: Span) {
-        let message =
-            "a bare `with` line comes first in its block; indent what it covers under `with ...:`";
-        if let Some(diag) = self.error(codes::WITH_NOT_FIRST, span, message.to_string()) {
+        let message = cpl_diag::msgs::check::WITH_NOT_FIRST.at(&[]);
+        if let Some(diag) = self.report(span, message) {
             diag.help = Some(super::advice::WITH_FIRST_HELP.into());
         }
     }

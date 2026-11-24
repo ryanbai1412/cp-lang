@@ -132,8 +132,8 @@ impl<'a> Checker<'a> {
                     }
                     None => {
                         let message =
-                            format!("module `{alias}` has no public name `{}`", name.text);
-                        self.error(codes::UNRESOLVED_NAME, name.span, message);
+                            cpl_diag::msgs::check::MODULE_HAS_NO_PUBLIC.at(&[&alias, &name.text]);
+                        self.report(name.span, message);
                         Ty::Error
                     }
                 };
@@ -528,10 +528,8 @@ impl<'a> Checker<'a> {
             return Ty::Error;
         }
         if name.text == "enumerate" && base_ty.is_seq() {
-            let message =
-                "no `enumerate` on sequences; CP Lang spells index-element pairs `.items`"
-                    .to_string();
-            if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+            let message = cpl_diag::msgs::check::NO_ENUMERATE_SEQUENCES_CP.at(&[]);
+            if let Some(diag) = self.report(name.span, message) {
                 diag.help = Some("use `.items`: `for (i, x) in xs.items:`".to_string());
             }
             return Ty::Error;
@@ -790,9 +788,8 @@ impl<'a> Checker<'a> {
                     return Ty::Int;
                 }
                 if type_name == "Gen" && name.text == "next" {
-                    let message =
-                        format!("{base_ty} has no method `next`; walk a generator with `for`");
-                    self.error(codes::UNKNOWN_FIELD, name.span, message);
+                    let message = cpl_diag::msgs::check::HAS_NO_METHOD_NEXT.at(&[&base_ty]);
+                    self.report(name.span, message);
                     return Ty::Error;
                 }
                 if matches!(type_name.as_str(), "List" | "Str" | "Map" | "Set")
