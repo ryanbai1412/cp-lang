@@ -18,8 +18,9 @@ let a: [0..n]Int = read()
 var stack: List<(val: Int, starts: List<Int>)> = []
 var ans = 0
 for (i, x) in a.items:
-    while let top = stack.last and top.val >= x: stack.pop()
-    var starts = [i + 1] + (stack.last.map(t => t.starts) ?? [0])
+    while stack.len > 0 and stack[stack.len - 1].val >= x: stack.pop()
+    var starts = [i + 1]
+    if stack.len > 0: starts.extend(stack[stack.len - 1].starts) else: starts.push(0)
     for l in 2..=3 if l < starts.len:
         let below = (0..stack.len).first_true(k => stack[k].val >= ceil_div(x, l)) ?? stack.len
         let keep = min(starts.len - l, if below > 0: stack[below - 1].starts.len else: 1)
