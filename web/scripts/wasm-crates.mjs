@@ -299,3 +299,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href &
   console.log(`wasm-crates: ${DATA} is ${gz.toLocaleString('en-US')} B gzipped, within its budget of ${budgets[DATA].toLocaleString('en-US')}`
     + (touched.length ? `; ${touched.join(', ')} within theirs${held.length ? ' or no larger than in the parent' : ''}` : ''));
 }
+
+// What `wasm-size.mjs --why` breaks down: the names build it was given, so an A/B of
+// two builds compares them; a fresh build of the checkout only when it was given none.
+export const whyWasm = (names, { exists, read, build }) => (names && exists(names) ? read(names) : build());

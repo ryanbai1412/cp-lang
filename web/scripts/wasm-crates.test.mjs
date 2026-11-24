@@ -2,7 +2,7 @@ import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { budgetFor, checkBudgets, checkSortCopies, crateOf, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, checkSortCopies, crateOf, DATA, dataOverBudget, lowered, lowerTo, ownerOf, ratchet, owners, readCharters, sortCopies, touchedOverBudget, whyWasm } from './wasm-crates.mjs';
 
 const charters = {
   compiler: '| Kind | Metric |\n| Describes | `crates/cpl-syntax`, `crates/cpl-check`, `crates/cpl-interp` |\n',
@@ -126,4 +126,13 @@ test('every crate in cpl.wasm has a charter that describes it', () => {
   const budgets = JSON.parse(readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'wasm-crate-budgets.json'), 'utf8'));
   const unowned = Object.keys(budgets).filter((c) => ownerOf(c, map) === null);
   expect(unowned).toEqual([]);
+});
+
+test('--why breaks down the WASM_NAMES build it is given, building only without one', () => {
+  const built = [];
+  const io = { exists: (f) => f === 'a.wasm', read: (f) => `read ${f}`, build: () => (built.push(1), 'fresh') };
+  expect(whyWasm('a.wasm', io)).toBe('read a.wasm');
+  expect(built).toEqual([]);
+  expect(whyWasm(undefined, io)).toBe('fresh');
+  expect(whyWasm('missing.wasm', io)).toBe('fresh');
 });

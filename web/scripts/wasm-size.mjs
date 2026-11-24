@@ -5,7 +5,8 @@
 // explain and stress) loads on first use and is reported, not capped.
 //
 //   node scripts/wasm-size.mjs [dist/wasm/cpl.wasm]
-//   node scripts/wasm-size.mjs --why   the crates cpl.wasm's bytes come from
+//   node scripts/wasm-size.mjs --why   the crates cpl.wasm's bytes come from (WASM_NAMES's
+//                                      build when set, else a fresh names build)
 //   node scripts/wasm-size.mjs --update-budgets   rewrite each crate's budget
 //
 // With WASM_NAMES=<cpl.wasm built by scripts/build-wasm.sh --names>, it also
@@ -23,7 +24,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
-import { budgetFor, checkBudgets, checkSortCopies, contributors, functionNames, owners, readCharters, sortCopies, sortCopiesFile } from './wasm-crates.mjs';
+import { budgetFor, checkBudgets, checkSortCopies, contributors, functionNames, owners, readCharters, sortCopies, sortCopiesFile, whyWasm } from './wasm-crates.mjs';
 import { sizeDelta } from './wasm-delta.mjs';
 
 // A shrink-only ratchet: after each cut, lower the cap to the new size plus
@@ -44,15 +45,20 @@ const file = args.find((a) => !a.startsWith('--')) ?? join(repo, 'dist/wasm/cpl.
 const n = (x) => x.toLocaleString('en-US');
 
 function explain() {
-  const out = mkdtempSync(join(tmpdir(), 'wasm-why-'));
-  console.error('wasm-size: building cpl.wasm with function names to see what is in it');
-  try {
+  const build = () => {
+    const out = mkdtempSync(join(tmpdir(), 'wasm-why-'));
+    console.error('wasm-size: building cpl.wasm with function names to see what is in it');
     execFileSync(join(repo, 'scripts/build-wasm.sh'), ['--names', out], { stdio: 'pipe' });
+    return readFileSync(join(out, 'cpl.wasm'));
+  };
+  let wasm;
+  try {
+    wasm = whyWasm(process.env.WASM_NAMES, { exists: existsSync, read: readFileSync, build });
   } catch (error) {
     console.error(String(error.stderr ?? error));
     return;
   }
-  const rows = contributors(readFileSync(join(out, 'cpl.wasm')));
+  const rows = contributors(wasm);
   const total = rows.reduce((s, [, b]) => s + b, 0);
   console.error('wasm-size: bytes by crate (raw, and gzipped on its own):');
   for (const [c, b, g] of rows.slice(0, 15)) console.error(`  ${n(b).padStart(10)}  ${((100 * b) / total).toFixed(1).padStart(5)}%  ${n(g).padStart(9)} gz  ${c}`);
