@@ -425,7 +425,12 @@ coci10c7p4
 coci11c4p4
 coci12c1p4
 coci13c1p3
+coci20c6p1
+coci20c6p2
+coci20c6p3
+coci20c6p5
 coci21c1p1
+coci21c1p2
 coci21c1p5
 coci21c2p1
 coci21c2p2

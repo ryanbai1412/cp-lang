@@ -6,9 +6,10 @@
 // Solution: give each word an id on first sight (a hash map) and build the weighted digraph;
 //   run Dijkstra from a for each query: O(q (n + m) log n).
 // original: corpus/submissions/4188022.cpp
+// Bounds: n, m: 1..=1000
 use std.marks.{Interner}
 
-let (n, m): (Int, Int) = read()
+let (n, m): (1..=1000, 1..=1000) = read()
 domain V = 0..n
 var ids = Interner<Str>()
 
@@ -17,10 +18,10 @@ fn id(name: Str) -> V:
 
 var out: [V]List<(to: V, w: Int)> = []
 for _ in 0..m:
-    let (a, b, time): (Str, Str, Int) = read()
+    let (a, b, time): (Str, Str, 1..=1e9) = read()
     out[id(a)].push((to: id(b), w: time))
 
-let q: Int = read()
+let q: 1..=1000 = read()
 for _ in 0..q:
     let (a, b): (Str, Str) = read()
     let dist = dijkstra(out, from: [(id(a), 0)])

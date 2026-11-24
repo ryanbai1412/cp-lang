@@ -5,11 +5,10 @@
 //   print the bolded picture.
 // Solution: copy the picture and, for each '#' of the original, also mark the cells to
 //   its right, below and below-right (bounds checked with at). O(nm).
-// Runnable on proto/cpc today.
 // original: corpus/submissions/4188008.cpp
-// Bounds: n, m: 1..=100
-let n: 1..=100 = read()
-let m: 1..=100 = read()
+// Bounds: n, m: 2..=100
+let n: 2..=100 = read()
+let m: 2..=100 = read()
 domain Row = 0..n
 domain Col = 0..m
 let g: [Row, Col]Char = read()

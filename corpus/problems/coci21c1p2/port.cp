@@ -3,34 +3,26 @@
 // Problem: n <= 350 pebbles in a row, red (C) or blue (P), at least 2k - 1 red. Two players
 //   alternately take a pebble from either end; whoever first holds k red loses. Print DA if the
 //   first player can force a win, else NE.
-// Solution: the pebbles left are a range l..r, so reds taken so far come from prefix sums and the
-//   state is (l, r, reds of the player to move); the other's reds follow. Memoized win/lose
-//   recursion over taking either end: O(n^2 k) states, O(1) each.
-let (n, k): (Int, Int) = read()
-let s: Str = read()
+// Solution: the pebbles left lie between two cuts, so the reds taken so far come from prefix
+//   sums and the state is (cuts, reds of the player to move); the other's reds follow. A
+//   memoized win/lose recursion over taking either end: O(n^2 k) states, O(1) each.
+// Bounds: n, k: 1..=350
+let n: 1..=350 = read()
+let k: 1..=350 = read()
+domain Pebble = 0..n
+let s: [Pebble]Char = read()
+domain Held = 0..=k
+let reds = prefix([Pebble] i => Int(s[i] == 'C'))
 
-var pref = List.filled(n + 1, 0)
-for i in 0..n:
-    let add = Int(s[i] == 'C')
-    pref[i + 1] = pref[i] + add
-let tot = pref[n]
-
-let stride_r = n + 1
-let stride_k = k + 1
-var memo = List.filled((n + 1) * stride_r * stride_k, -1)
-
-fn cell(l: Int, r: Int, my_red: Int) -> Int = (l * stride_r + r) * stride_k + my_red
-
-fn win(l: Int, r: Int, my_red: Int) -> Bool:
-    let taken = tot - (pref[r + 1] - pref[l])
-    let opp_red = taken - my_red
-    if opp_red >= k: return true
-    if my_red >= k: return false
+// The player to move faces the pebbles between lo and hi and holds `mine` reds; the other
+// reds taken so far are the other player's.
+@memo(array)
+fn wins(lo: Pebble.cuts, hi: Pebble.cuts, mine: Held) -> Bool:
+    let theirs = reds.all - reds.fold(lo..hi) - mine.ord
+    if theirs >= k: return true
+    if mine.ord >= k: return false
+    let (Some(l), Some(r)) = (lo.r, hi.l) else: return false
     if l > r: return false
-    let c = cell(l, r, my_red)
-    if memo[c] != -1: return memo[c] == 1
-    let res = (not win(l + 1, r, opp_red)) or (not win(l, r - 1, opp_red))
-    memo[c] = Int(res)
-    res
+    not wins(l.r, hi, Held(theirs)) or not wins(lo, r.l, Held(theirs))
 
-print(if win(0, n - 1, 0): "DA" else: "NE")
+print(if wins(Pebble.cuts.first!, Pebble.cuts.last!, Held(0)): "DA" else: "NE")
