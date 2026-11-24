@@ -8,7 +8,7 @@
 //   is met once per pair of them (as a side, both ways, or as a diagonal), so each meeting adds
 //   back 2/c mod the prime, (c - 1) in all. O(min(N, M) + K^2).
 // original: corpus/submissions/5445692.cpp
-// Bounds: n, m: 1..=1e6; k: 0..=2000
+// Bounds: n, m: 1..=1e6; k: 0..=2000; gone.x: 0..=n; gone.y: 0..=m
 type Z = Mod<100_000_007>
 
 let (n, m, k): (1..=1e6, 1..=1e6, 0..=2000) = read()
