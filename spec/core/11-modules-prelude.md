@@ -35,8 +35,7 @@ chapters' main tables (decision 150), so a contestant never writes a
 
 ## 11.2 `use`
 
-<!-- spec-only: `lib.` imports need a cp.toml library root -->
-```
+```cp
 use std.segtree                  // the stdlib: `segtree.SegTree`
 use std.graph.{dijkstra, Paths}
 use lib.treap                    // the contestant's library root, from cp.toml

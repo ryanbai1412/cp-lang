@@ -8846,6 +8846,14 @@ Reserved for call 5, which landed as decision 519.
 - **Why.** A counter must count raw totals; one that a test attribute can silence lets debt hide by moving a helper up the file.
 - **Reverse.** Stop `_ungated_lines` at the first `#[cfg(test)]` again and lower those five baselines.
 
-## 531. (reserved, content)
+## 531. Every spec code block is a case; the marker set is closed (spec, 2026-11-24)
 
-## 532. (reserved, content)
+- **Call.** `cpl-conform spec-blocks` reads every fence in `spec/core`, `spec/lib`, `spec/tools` and `handbook/language`. A `cp` fence compiles and runs, alone or after a `<!-- given: ... -->` prelude; `<!-- rejects: E#### -->` must fail with that code; `<!-- signatures: std/x.cp -->` and `<!-- excerpt: std/x.cp -->` must match the std text. Any other language must be one of `cpp`, `ebnf`, `text`, `toml`, `sh`, `console`, `json`. An untagged fence, an unknown language and a `spec-only:` marker are errors, and a failing block is a plain failure on the scoreboard (decision 527).
+- **Why.** A `spec-only` reason was a written-down excuse that let a stale example rot unseen: 92 of them hid examples of APIs that had moved or never existed. A closed set leaves nothing to excuse, and the board counts raw failures.
+- **Reverse.** Restore the `Marker::SpecOnly` arm in `crates/cpl-conform/src/spec_blocks.rs` and score it as a skip.
+
+## 532. `dfs` skips a vertex's arcs with `prune:` (stdlib, 2026-11-24)
+
+- **Call.** `dfs(g, from:, seen:, prune: f)` does not expand the arcs of a `v` with `f(v)`; it still yields `Enter(v)` and `Exit(v)`. `step.prune()` is gone from the spec.
+- **Why.** `Visit` is a plain enum, so `step.prune()` had no body to call, and the spec example could not run. A predicate is visible at the call and costs one call per entered vertex.
+- **Reverse.** Drop `prune:` and `dfs_arcs` from `std/graph.cp` and give `Visit` a steering handle.

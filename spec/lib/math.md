@@ -111,14 +111,14 @@ for the same mathematical operation, the cost is visible in the name or type:
 `Sieve(n).factor(x)` is \(O(\log x)\) after \(O(n)\) setup, and standalone
 `factor(x)` is \(O(\sqrt{x})\) for `x <= 1e6` and \(O(x^{1/4} \log x)\) expected above.
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/math.cp -->
 ```cp
 // Divisibility, division, and exact combinatorics
 fn gcd(a: Int, b: Int) -> Int  // O(log min(|a|, |b|)); >= 0, gcd(0,0) = 0
 fn lcm(a: Int, b: Int) -> Int  // O(log min(|a|, |b|)); >= 0, traps on overflow
 fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int)
 // O(log min(|a|, |b|)); a*x + b*y == g >= 0
-fn ceil_div(a: Int, b: Int) -> Int           // O(1); b != 0
+fn ceil_div(self: Int, b: Int) -> Int           // O(1); b != 0
 fn divmod(self: Int, d: Int) -> (Int, Int)   // O(1); Euclidean (self / d, self % d), 0 <= r < |d|, d != 0
 fn fixed(num: Int, den: Int, k: Int) -> Str  // O(k); exact integer decimal formatting
 fn choose(n: Int, k: Int) -> Int             // O(min(k, n - k)); 0 outside 0..=n
@@ -126,10 +126,6 @@ fn choose2(n: Int) -> Int                    // O(1); n * (n - 1) / 2, 0 for n <
 
 // Bit and digit helpers
 fn bit_len(x: Int) -> Int                          // O(1); 0 for x == 0; in the prelude
-fn popcount(x: Int) -> Int                         // O(1); core builtin, 1 bits of the 64-bit pattern
-fn ctz(x: Int) -> Int                              // O(1); core builtin, trailing zero bits, x != 0
-fn bit_width(x: Int) -> Int                        // O(1); core builtin, same as bit_len
-fn bit_ceil(x: Int) -> Int                         // O(1); core builtin, least power of 2 >= x
 fn digits(self: Int, base: Int = 10) -> List<Int>  // O(log_base x); lowest digit first
 @get fn sign(self: Int) -> Sign                    // O(1); Neg, Zero or Pos
 fn bit(self: Int, i: Int) -> Bool                  // O(1); bit 0 is lowest
@@ -152,8 +148,8 @@ fn floor_sum(n: Int, m: Int, a: Int, b: Int) -> Int  // O(log m); sum_{i in 0..n
 // Primality and factorization (single-input)
 fn is_prime(x: Int) -> Bool            // O(log^2 x); deterministic Miller-Rabin, all Int
 fn factor(x: Int) -> List<(Int, Int)>  // O(sqrt x) <= 1e6, O(x^(1/4) log x) expected above
-fn divisors(x: Int) -> List<Int>       // O(sqrt x); sorted
-fn divisors_from_factors(fs: List<(Int, Int)>) -> List<Int>
+fn divisors(self: Int) -> List<Int>    // O(sqrt x); sorted
+fn divisors_from_factors(factors: List<(Int, Int)>) -> List<Int>
 // O(d(x) log d(x)); sorted divisors from factors
 fn phi(x: Int) -> Int  // O(sqrt x); Euler's totient
 
@@ -190,7 +186,7 @@ on the `Mod` type (`let comb = Comb<Z>(limit)`) so the modulus is written once.
 An `Int` operand of `+`, `-` or `*` beside a `Mod<P>` converts to it
 (`z * k`, `k + z`, `ans * comb.fact(n)`); two different moduli never mix.
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/mod.cp -->
 ```cp
 struct Mod<P>(v: 0..P):
     let MOD = P
@@ -204,7 +200,7 @@ struct Mod<P>(v: 0..P):
     // ModComb (see the std.mod stub)
     // impls: Add, Sub, Neg, Mul, Div, Pow, Show
 
-struct Comb<M>:
+struct Comb<M: Add + Sub + Mul>:
     fn new(limit: Int = 0) -> Comb<M>          // O(limit) time and memory; exact size
     fn fact(self, n: Int) -> M                 // O(1) amortized; 0 for n >= M.MOD
     fn inv_fact(self, n: Int) -> M             // O(1) amortized; 0 <= n < M.MOD
@@ -239,7 +235,7 @@ Performance notes from the corpus (`cf2135e2`, `cf2150g`, `cf2066d2`,
 `examples/local-lib/math/poly.cp` into a clean, generic stdlib module and
 adds cyclic convolution and bitwise transforms.
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/ntt.cp -->
 ```cp
 // Number-theoretic transform and polynomial convolution
 fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)
@@ -248,14 +244,7 @@ fn ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false
 // 469762049, 167772161, 754974721) and primitive_root(P) for any other
 // NTT-friendly prime P.
 
-fn convolve<T, O, R>(
-    a: List<T>,
-    b: List<T>,
-    on: O = +,                 // ^ | & subset gcd lcm
-    over: R = Semiring(+, *),  // Semiring(min, +) needs shape:
-    shape: ?Curved = None,     // Both | Right | Neither
-    cyclic: Bool = false,
-) -> List<T>
+fn convolve<T: Add + Sub + Mul, O, R>(a: List<T>, b: List<T>, on: O = +, over: R = Semiring(+, *), shape: ?Curved = None, cyclic: Bool = false, ) -> List<T>
 // The value type picks the algorithm: NTT for an NTT-prime Mod<P>, three
 // primes and CRT for any other Mod (runtime moduli too) or Int (exact when
 // every output fits), FFT for F64. Bitwise `on:` needs equal powers of two.
@@ -279,19 +268,18 @@ argument that can go out of sync with `a.len`.
 `Mat<T>` stores entries in a single flat row-major `List<T>` of length
 `n * m` so multiplication and elimination stay cache-friendly.
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/matrix.cp -->
 ```cp
-struct Mat<T>(n: Int, m: Int, a: List<T>):
-    fn zero(n: Int, m: Int = n) -> Mat<T>       // O(n m)
+struct Mat<T>
+    fn zeros(rows: Int, cols: Int) -> Mat<T>    // O(n m)
     fn identity(n: Int) -> Mat<T>               // O(n^2)
     fn of(rows: List<List<T>>) -> Mat<T>        // O(n m)
-    fn get(self, i: Int, j: Int) -> T           // O(1)
-    fn at(self, i: Int, j: Int) -> lends mut T  // O(1); writable cell: m.at(i, j) += x
-    fn pow(self, e: Int) -> Mat<T>              // O(n^3 log e); square matrix, e >= 0
-    fn apply(self, v: List<T>) -> List<T>       // O(n m); A * v
+    fn get(self, r: Int, c: Int) -> T           // O(1)
+    fn at(self, r: Int, c: Int) -> lends mut T  // O(1); writable cell: m.at(i, j) += x
+    fn pow(a, e: Int) -> Mat<T>              // O(n^3 log e); square matrix, e >= 0
+    fn mul_vec(self, v: List<T>) -> List<T>     // O(n m); A * v
     fn transpose(self) -> Mat<T>                // O(n m)
-    fn rows(self) -> List<List<T>>              // O(n m)
-    fn product(n: Int) -> Monoid<Mat<T>>        // O(n^2); monoid for SegTree<D, Mat<T>>
+    fn product<S>(n: Int, over: S = Semiring(+, *)) -> Monoid<Mat<T>>  // O(n^2); monoid for SegTree<D, Mat<T>>
     // impls: Add, Sub, Neg, Mul (ikj order, skipping zero entries)
 
     // Gaussian elimination over a field (Mod<P> with prime P, F64, ...); an ordered T
@@ -299,7 +287,7 @@ struct Mat<T>(n: Int, m: Int, a: List<T>):
     fn det(self, eps: ?T = None) -> T                       // O(n^3); square matrix
     fn rank(self, eps: ?T = None) -> Int                    // O(n m min(n, m))
     fn solve(self, b: List<T>, eps: ?T = None) -> ?List<T>  // O(n m min(n, m)); one solution or None
-    fn solve_space(self, b: List<T>, eps: ?T = None) -> ?(x0: List<T>, basis: List<List<T>>)
+    fn solve_space(self, b: List<T>, eps: ?T = None) -> ?(List<T>, List<List<T>>)
     // O(n m min(n, m)); particular + nullspace
     fn inverse(self, eps: ?T = None) -> ?Mat<T>  // O(n^3); square matrix, None if singular
 
@@ -311,7 +299,7 @@ struct XorBasis:
     fn reduce(self, x: Int) -> Int          // O(62); min x ^ s over s in span
     fn contains(self, x: Int) -> Bool       // O(62); reduce(x) == 0
     fn max_xor(self, init: Int = 0) -> Int  // O(62); max init ^ s over s in span
-    fn min_xor(self, init: Int) -> Int      // O(62); alias for reduce(init)
+    fn min_xor(self, init: Int = 0) -> Int      // O(62); alias for reduce(init)
     fn kth(self, k: Int) -> ?Int            // O(62^2); k-th smallest in span (0-indexed)
     fn merge(mut self, o: XorBasis)         // O(rank * 62); union of spans
     fn monoid() -> Monoid<XorBasis>         // O(1); for SegTree<D, XorBasis>
@@ -334,7 +322,7 @@ returning a `List<Mod<P>>` of length `n`, with `n == 0` returning `[]`) and
 requires an NTT-friendly prime `P` (`P - 1` divisible by a power of two at
 least `2 * bit_ceil(n)`).
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/poly.cp -->
 ```cp
 fn deriv<P>(a: List<Mod<P>>) -> List<Mod<P>>
 // O(a.len) time and memory; formal derivative a'(x), length max(0, a.len - 1)

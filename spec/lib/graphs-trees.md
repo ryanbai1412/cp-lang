@@ -20,15 +20,20 @@ directly. Decision 146 records the design and its reasons.
 
 ## Graphs
 
-<!-- spec-only: fragment over the input's `n`, `m`, a vertex `u` and a `relax` -->
+<!-- given:
+  let (n, m) = (4, 3)
+  var best = 0
+  fn relax<T>(to: T, w: Int):
+      best = max(best, w) -->
 ```python
 domain V = 1..=n
 domain E = 0..m
 let edges = read<[E](u: V, v: V, w: 1..=1e9)>()
 let g = Graph.undirected(edges)       // or .directed; immutable CSR, O(n + m)
 
+let u = V.first!
 for a in g[u]: relax(a.to, a.w)       // arcs out of u, input order; a is (to, e, w)
-g.deg(u)                              // O(1)
+print(g.deg(u))                       // O(1)
 ```
 
 | Form | Meaning | Cost |
@@ -58,12 +63,15 @@ replaced by `to` and `e`, `EdgeArc<V, E, R> = (to: V, e: E, ..R without (u,
 v))`, so `a.w` reads the arc you are already on (the `adj[u].push_back({v,
 w})` layout). `keep:` narrows or computes:
 
-<!-- spec-only: fragment over the `edges` read above; call forms, not a program -->
+<!-- given:
+  domain V = 0..4
+  domain E = 0..3
+  let edges: [E](u: V, v: V, w: 1..=1e9) = [(u: V(0), v: V(1), w: 3), (u: V(1), v: V(2), w: 4), (u: V(1), v: V(3), w: 5)] -->
 ```python
-Graph.undirected(edges)                                 // (to, e, w): 12 bytes at these widths
-Graph.undirected(edges, keep: a => (to: a.to, w: a.w))  // no e: not Edged, 8 bytes
-Graph.directed(edges, keep: a => (to: a.to))            // bare targets
-Graph.undirected(edges, keep: a => (to: a.to, e: a.e, fwd: a.to == edges[a.e].v))
+let g = Graph.undirected(edges)                                 // (to, e, w): 12 bytes at these widths
+let gw = Graph.undirected(edges, keep: a => (to: a.to, w: a.w))  // no e: not Edged, 8 bytes
+let gt = Graph.directed(edges, keep: a => (to: a.to))            // bare targets
+let gf = Graph.undirected(edges, keep: a => (to: a.to, e: a.e, fwd: a.to == edges[a.e].v))
 ```
 
 `keep` runs once per stored arc at build (2m times for undirected), and
@@ -96,15 +104,15 @@ what to generate and shrink.
 
 ### Traits
 
-<!-- spec-only: excerpt of std -->
-```python
+<!-- signatures: std/graph.cp -->
+```cp
 pub trait Next<V>:
     type Arc: Target<V>
     fn out(self, u: V) -> yields Self.Arc
 
-pub trait Target<V>:   @get fn to(self) -> V    // a plain vertex is its own target
-pub trait Weighted<W>: @get fn w(self) -> W
-pub trait Edged<E>:    @get fn e(self) -> E
+trait Target<V>    // a plain vertex is its own target
+trait Weighted<W>
+trait Edged<E>
 
 pub trait WeightedNext<V, W> = Next<V> where Self.Arc: Weighted<W>
 pub trait EdgedNext<V, E>    = Next<V> where Self.Arc: Edged<E>
@@ -115,9 +123,9 @@ is a `@get`); a named struct opts in with a bodiless `impl Weighted<Int>
 for Road`. Signatures use inline bounds and take the weakest capability
 they use:
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/graph.cp -->
 ```python
-pub fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>, until: ?V = None)
+fn dijkstra<V, W, G: WeightedNext<V, W>, M>(g: G, from: Seq<(V, W)>, step: M = (+), until: ?V = None, hashed: Bool = false, ) -> Paths<V, W, G.Arc>
 ```
 
 | Takes | Algorithms |
@@ -139,16 +147,26 @@ call with no `from:` (`components`, `scc`) takes it from the lambda's annotated
 parameter, `(p: (R, C)) => p.adj4`. A k-parameter lambda unpacks a
 tuple vertex: `(v, k) => ...` over `(V, K)` states (R06.1.4).
 
-<!-- spec-only: fragment over an unnamed graph and grid; call forms, not a program -->
+<!-- given:
+  domain V = 0..4
+  domain E = 0..3
+  domain R = 0..3
+  domain C = 0..3
+  let edges: [E](u: V, v: V, w: 1..=9) = [(u: V(0), v: V(1), w: 4), (u: V(1), v: V(2), w: 2), (u: V(1), v: V(3), w: 6)]
+  let g = Graph.undirected(edges)
+  let banned: [E]Bool = false
+  let grid: [R, C]Char = '.'
+  let (s, mid, K, start) = (V(0), 3, 2, (R(0), C(0)))
+  domain Coupon = 0..=K -->
 ```python
-dijkstra(u => g.out(u).filter(a => not banned[a.e]), from: [(s, 0)])  // arcs keep .w, .e
-bfs(u => g.out(u).filter(a => a.w <= mid), from: [s])              // binary search on the answer
-bfs(c => c.adj4.filter(c => grid[c] != '#'), from: [start])      // implicit grid
-dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])                 // reweight; keeps .to, .e
-dijkstra((v, k) => chain(                                          // state space (vertex, coupons)
+let p1 = dijkstra(u => g.out(u).filter(a => not banned[a.e]), from: [(s, 0)])  // arcs keep .w, .e
+let p2 = bfs(u => g.out(u).filter(a => a.w <= mid), from: [s])              // binary search on the answer
+let p3 = bfs(c => c.adj4.filter(c => grid[c] != '#'), from: [start])      // implicit grid
+let p4 = dijkstra(g.weighted(a => 2 * a.w), from: [(s, 0)])                 // reweight; keeps .to, .e
+let p5 = dijkstra((v, k) => chain(                                          // state space (vertex, coupons)
     g.out(v).map(a => (to: (a.to, k), w: a.w)),
-    g.out(v).filter(_ => k < K).map(a => (to: (a.to, k + 1), w: a.w / 2)),
-), from: [((s, 0), 0)])
+    g.out(v).filter(_ => k < Coupon.last!).map(a => (to: (a.to, k.next!), w: a.w / 2)),
+), from: [((s, Coupon.first!), 0)])
 ```
 
 - `filter` keeps the arc type, so a filtered graph is still `Weighted` and
@@ -203,16 +221,16 @@ if not floyd_warshall(mut d): print("NEGATIVE CYCLE")
   var done: [V]Bool = false
   fn seen_enough(v: V) -> Bool = false -->
 ```python
-for step in dfs(g, from: [s]):
+for step in dfs(g, from: [s], prune: seen_enough):   // seen_enough(v) skips v's arcs
     match step:
-        Enter(v, _) => if seen_enough(v): step.prune()
+        Enter(_, _) => ()
         Exit(v, _) => done[v] = true
         Again(_, _) => ()
 ```
 
 `dfs` yields `Enter(v, via:)`, `Exit(v, via:)` (`via` the discovering arc,
 `None` at a source) and `Again(from, via)`, takes an optional shared
-`seen: mut [V]Bool`, and supports `step.prune()` after `Enter`, `break`
+`seen: mut [V]Bool`, and takes `prune: f` to skip the arcs of each `v` with `f(v)`, `break`
 and `return` (round 2's generators). A DFS tree with edge
 classification is `g.dfs_tree(root)`.
 
@@ -297,13 +315,19 @@ Recursion stays available and natural (`for c in t.children(v): mine.absorb(go(c
 every heavy chain is contiguous. `t.pos(v): t.Pre`; another tree's `Pre`
 doesn't mix.
 
-<!-- spec-only: fragment over a tree `t` and its values `val` -->
+<!-- given:
+  domain V = 0..4
+  let g = Graph.undirected([(V(0), V(1)), (V(1), V(2)), (V(1), V(3))])
+  let t = Rooted(g, root: V(0))
+  let val: [V]Int = [V] v => v.ord * 2
+  let (a, b, v, x) = (V(2), V(3), V(1), 5)
+  var lazy = SegTree(max, t.reorder(val), act: add) -->
 ```python
 var seg = SegTree(max, t.reorder(val))     // [t.Pre]T
-seg.fold(t.sub(v))                         // subtree query: one range
-t.fold_path(a, b, seg)                     // path query: O(log n) ranges (HLD)
-t.apply_path(a, b, lazy, x)
-for r in t.chains(a, b): ...               // the ranges themselves, when you need them
+print(seg.fold(t.sub(v)))                  // subtree query: one range
+print(t.fold_path(a, b, seg))              // path query: O(log n) ranges (HLD)
+t.apply_path(a, b, mut lazy, x)
+for c in t.chains(a, b): print(c.range.len)    // the ranges themselves, when you need them
 ```
 
 | Form | Meaning | Cost |

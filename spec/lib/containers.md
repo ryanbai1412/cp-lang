@@ -63,7 +63,7 @@ Contestants reach for ordered balanced trees for four distinct jobs:
 Builtin `Set<T>` and `Map<K, V>` cover basic ordered sets/maps (lowering to
 `std::set`/`std::map`, or salted `std::unordered_*` when order is never
 observed; `for (k, v) in m` walks a map's entries in key order), but they do not carry subtree sizes, cannot answer `rank`/`nth`/
-`bsearch_first`/`bsearch_last`, and are not multisets. `std.bag` owns the augmented ordered
+`first_true`/`last_true`, and are not multisets. `std.bag` owns the augmented ordered
 containers: `SortedBag<K>` (multiset with rank, cursors, monotone search, and
 recycled nodes) and `SortedSet<K>` / `SortedMap<K, V>` when distinct keys
 with order statistics and cursors are needed.
@@ -229,15 +229,15 @@ Every container follows `plan/STDLIB.md` §2:
 
 ### 2.1 `std.bitset`
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/bitset.cp -->
 ```cp
 struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
     fn new() -> Bitset<D>                       // O(K / 64)
     fn full() -> Bitset<D>                      // O(K / 64)
     fn from(a: [D]Bool) -> Bitset<D>            // O(K)
     fn contains(self, i: D) -> Bool             // O(1)
-    fn add(mut self, i: D)                      // O(1)
-    fn remove(mut self, i: D)                   // O(1)
+    fn add(mut self, i: D) -> Bool              // O(1)
+    fn remove(mut self, i: D) -> Bool           // O(1)
     fn toggle(mut self, i: D)                   // O(1)
     fn with(self, i: D) -> Bitset<D>            // O(K / 64), non-mutating copy
     fn without(self, i: D) -> Bitset<D>         // O(K / 64), non-mutating copy
@@ -245,8 +245,8 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
     @get fn len(self) -> Int                    // O(K / 64)
     @get fn count(self) -> Int                  // O(K / 64)
     @get fn is_empty(self) -> Bool              // O(K / 64), early exit
-    @get fn first(self) -> ?D                   // O(K / 64)
-    @get fn last(self) -> ?D                    // O(K / 64)
+    fn first(self) -> ?D                        // O(K / 64)
+    fn last(self) -> ?Int                    // O(K / 64)
     fn next(self, i: D) -> ?D                   // O(K / 64), first >= i
     fn prev(self, i: D) -> ?D                   // O(K / 64), last < i
     fn count_below(self, i: D) -> Int           // O(K / 64), count < i
@@ -268,7 +268,7 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
     // O(K * sqrt(sum) / 64); binary-carry knapsack over 0..D.count
 ```
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/bitset.cp -->
 ```cp
 struct BitTrie<W>                                           // multiset of 0..2^W, a count per node
     fn new() -> BitTrie<W>                                  // O(1)
@@ -291,14 +291,14 @@ agrees with brute-force 0/1 subset sums on random small weight multisets.
 > Superseded in part: decision 103 replaces `first_ge`/`first_gt`/`last_le`/
 > `last_lt`/`count_range` with `range(r)` views, and the monotone searches are
 > `first_true`/`last_true` (decision 137, `core/04-indices.md`), not
-> `bsearch_first`/`bsearch_last`. `drain(r)` is `drain_range(r)`.
+> `first_true`/`last_true`. `drain(r)` is `drain_range(r)`.
 
 `SortedBag<K>` is backed by a randomized treap over flat arrays with a recycled
 free list (eliminating memory leaks on erase, fixing `cf2066e.md` #2) and parent
 pointers so a `BagCursor` steps to `prev` / `next` in \(O(1)\) amortized (fixing
 `cf2066e.md` #1). Each node stores `(key, pri, cnt, sub, left, right, parent)`.
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/bag.cp -->
 ```cp
 struct BagCursor(id: Int)  // opaque handle into a SortedBag
 
@@ -320,15 +320,14 @@ struct SortedBag<K>                              // O(log n) ops, O(distinct) me
     @get fn last(self) -> ?K                     // O(log n)
     fn pop_first(mut self) -> ?K                 // O(log n)
     fn pop_last(mut self) -> ?K                  // O(log n)
-    fn first_ge(self, k: K) -> ?K                // O(log n)
-    fn first_gt(self, k: K) -> ?K                // O(log n)
-    fn last_le(self, k: K) -> ?K                 // O(log n)
-    fn last_lt(self, k: K) -> ?K                 // O(log n)
+    fn first_ge(self, k: K) -> ?(K, V)                // O(log n)
+    fn first_gt(self, k: K) -> ?(K, V)                // O(log n)
+    fn last_le(self, k: K) -> ?(K, V)                 // O(log n)
+    fn last_lt(self, k: K) -> ?(K, V)                 // O(log n)
     fn rank(self, k: K) -> Int                   // O(log n), count strictly < k
-    fn count_range(self, lo: K, hi: K) -> Int    // O(log n), count in [lo, hi)
     fn nth(self, i: Int) -> ?K                   // O(log n), 0-based
-    fn bsearch_first(self, ok: K -> Bool) -> ?K  // O(log n), monotone ok
-    fn bsearch_last(self, ok: K -> Bool) -> ?K   // O(log n), monotone ok
+    fn first_true(self, ok: K -> Bool) -> ?K     // O(log n), monotone ok
+    fn last_true(self, ok: K -> Bool) -> ?K      // O(log n), monotone ok
     // Cursor navigation: O(log n) to locate, O(1) amortized to step
     fn cursor_first(self) -> ?BagCursor                  // O(log n)
     fn cursor_last(self) -> ?BagCursor                   // O(log n)
@@ -348,7 +347,7 @@ struct SortedBag<K>                              // O(log n) ops, O(distinct) me
 
 `SortedSet<K>` wraps the same treap invariant with uniqueness (`add(x) -> Bool`
 is false if already present) and exposes the exact same `first_ge`/`first_gt`/
-`range(r)` views, `rank`, `nth`, `bsearch_first`/`bsearch_last`, cursors, and
+`range(r)` views, `rank`, `nth`, `first_true`/`last_true`, cursors, and
 `each`/`each_rev`. This directly solves `cf2262b.md` (collapsing `Set<I>`,
 `Map<Int, I>`, and `Fenwick<I, Int>` into one `SortedSet<I>`).
 
@@ -372,12 +371,12 @@ stores a `Map<Int, (hi: Int, val: T)>` keyed by `lo.ord` — every position in
 `0..D.count` belongs to exactly one entry, and adjacent entries have distinct
 values.
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/interval.cp -->
 ```cp
 struct IntervalMap<D, T>                                // O(runs) memory; amortized O(log runs)
     fn new(init: T) -> IntervalMap<D, T>                // O(1); whole domain has value init
     fn from(a: [D]T) -> IntervalMap<D, T>               // O(D.count); compresses maximal runs
-    fn at(self, i: D) -> T                              // O(log runs)
+    fn get(self, i: D) -> T                             // O(log runs)
     fn run_at(self, i: D) -> (range: Range<D>, val: T)  // O(log runs)
     fn assign(mut self, r: Range<D>, val: T, on_old: (Range<D>, T) -> () = (_, _) => ())
     // Amortized O((1 + overwritten) log runs); returns overwritten runs
@@ -405,17 +404,17 @@ never have equal `val`; the runs partition `D` with no gaps or overlaps.
 
 Already ships `Mark`, `Dsu<V>`, `DsuOf<V, T>`, and `ParityDsu<V>`. Additions:
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/dsu.cp -->
 ```cp
 // Existing: Mark, Dsu<V>, DsuOf<V, T>, ParityDsu<V>
 // New in std.dsu:
 struct PotentialDsu<V, W = Int>                   // O(alpha(n)), O(log n) after mark
     fn new<G>(op: G = (+)) -> PotentialDsu<V, W>  // O(n); op: +, ^, or a commutative Group<W>
-    fn find(mut self, v: V) -> (root: V, pot: W)  // pot(v) - pot(root)
+    fn find(self, v: V) -> (root: V, offset: W)   // pot(v) - pot(root)
     fn unite(mut self, a: V, b: V, diff: W) -> Bool
     // Records pot(b) - pot(a) == diff; false on contradiction
-    fn diff(mut self, a: V, b: V) -> ?Int  // pot(b) - pot(a), or None
-    fn same(mut self, a: V, b: V) -> Bool
+    fn diff(self, a: V, b: V) -> ?W        // pot(b) - pot(a), or None
+    fn same(self, a: V, b: V) -> Bool
     fn size(mut self, v: V) -> Int
     @get fn components(self) -> Int
     @get fn consistent(self) -> Bool
@@ -441,76 +440,71 @@ snapshots across random `set`/`mark`/`undo_to` sequences.
 
 > Superseded: see the note in 1.4 and `std/heap.cp`.
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/heap.cp -->
 ```cp
-    // Existing: MinHeap<T>, MaxHeap<T>
-    // Added to MinHeap<T> and MaxHeap<T>:
-    fn of(xs: List<T>) -> MinHeap<T>  // O(n) Floyd heapify
-    fn of(xs: List<T>) -> MaxHeap<T>  // O(n) Floyd heapify
+    // Existing: Heap<T> (smallest first, or by `by:`), MaxHeap<T>
+    fn of<K>(xs: List<T>, by: ?(T -> K) = None) -> Heap<T>  // O(n) Floyd heapify
+    fn of(xs: List<T>) -> MaxHeap<T>                        // O(n) Floyd heapify
 
 // New in std.heap:
-struct ErasableMinHeap<T>                    // O(log n) amortized; two heaps
-    fn new() -> ErasableMinHeap<T>           // O(1)
+struct ErasableHeap<T>                                 // O(log n) amortized; two heaps
+    fn new<K>(by: ?(T -> K) = None) -> ErasableHeap<T>  // O(1); largest first with `by:`
     @get fn len(self) -> Int                 // O(1)
     @get fn is_empty(self) -> Bool           // O(1)
     fn clear(mut self)                       // O(1)
-    fn take(mut self) -> ErasableMinHeap<T>  // O(1)
+    fn take(mut self) -> ErasableHeap<T>     // O(1)
     fn push(mut self, x: T)                  // O(log n)
     fn remove(mut self, x: T)                // O(log n); x must be present
     fn peek(mut self) -> ?T                  // O(log n) amortized
     fn pop(mut self) -> ?T                   // O(log n) amortized
 
-struct ErasableMaxHeap<T>  // same surface, largest first
-
-struct IndexedMinHeap<D, T>                  // O(log n) push/set/remove/pop
-    fn new() -> IndexedMinHeap<D, T>         // O(D.count)
+struct IndexedHeap<D, K>                     // O(log n) set/remove/pop, smallest key first
+    fn new() -> IndexedHeap<D, K>            // O(D.count)
     @get fn len(self) -> Int                 // O(1)
     @get fn is_empty(self) -> Bool           // O(1)
     fn clear(mut self)                       // O(len)
-    fn contains(self, k: D) -> Bool          // O(1)
-    fn get(self, k: D) -> ?T                 // O(1)
-    fn set(mut self, k: D, val: T)           // O(log n); insert or update
-    fn remove(mut self, k: D) -> ?T          // O(log n)
-    @get fn peek(self) -> ?(key: D, val: T)  // O(1)
-    fn pop(mut self) -> ?(key: D, val: T)    // O(log n)
-
-struct IndexedMaxHeap<D, T>  // same surface, largest first
+    fn contains(self, v: D) -> Bool          // O(1)
+    fn get(self, v: D) -> ?K                 // O(1)
+    fn set(mut self, v: D, k: K)           // O(log n); insert or update
+    fn decrease(mut self, v: D, k: K) -> Bool  // O(log n); false when k is not smaller
+    fn increase(mut self, v: D, k: K) -> Bool  // O(log n); false when k is not larger
+    fn remove(mut self, v: D) -> ?K          // O(log n)
+    @get fn peek(self) -> ?(D, K)            // O(1)
+    fn pop(mut self) -> ?(D, K)              // O(log n)
 ```
 
-Note on `ErasableMinHeap.peek`: takes `mut self` because purging lazy-deleted
+Note on `ErasableHeap.peek`: takes `mut self` because purging lazy-deleted
 tops mutates the internal heaps; its doc states this explicitly.
 
-Laws: `MinHeap.of(xs)` pops elements in the exact order of `sorted(xs)`;
-`ErasableMinHeap` matches a sorted multiset on random push/remove/peek/pop;
-`IndexedMinHeap<D, T>` matches a `[D]?T` array scanned for minimum on random
+Laws: `Heap.of(xs)` pops elements in the exact order of `sorted(xs)`;
+`ErasableHeap` matches a sorted multiset on random push/remove/peek/pop;
+`IndexedHeap<D, K>` matches a `[D]?K` array scanned for minimum on random
 `set`/`remove`/`pop`.
 
 ### 2.6 `std.deque`
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/deque.cp std/window.cp -->
 ```cp
 // Existing: Deque<T> (add set(mut self, i: Int, x: T) and to_list(self) -> List<T>)
-// Promoted from examples/local-lib/ds/ (sliding min/max is `Window(op)`, §8 of ops-ranges):
-struct TwoStackFold<T>                   // O(1) amortized queue monoid fold
-    fn new<M>(op: M) -> TwoStackFold<T>  // op is a Monoid or bare op
-    @get fn len(self) -> Int             // O(1)
-    @get fn is_empty(self) -> Bool       // O(1)
-    fn clear(mut self)                   // O(1)
-    fn push(mut self, x: T)              // O(1)
-    fn pop(mut self) -> ?T               // O(1) amortized
-    @get fn fold(self) -> T              // O(1)
+// The queue monoid fold is std.window's `Window(op)` (sliding min/max, §8 of ops-ranges):
+struct Window<T, M>(op: M)             // O(1) amortized queue monoid fold, two stacks
+    fn new(op: M) -> Window<T, M>      // op is a Monoid or bare op
+    @get fn len(self) -> Int           // O(1)
+    fn push(mut self, x: T)            // O(1)
+    fn pop(mut self, x: T)             // O(1) amortized; x is the oldest
+    @get fn all(self) -> ?T            // O(1); the fold, None when empty
 ```
 
 ### 2.7 `std.marks` and `std.seq.Compressed`
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/marks.cp std/seq.cp -->
 ```cp
 // Existing in std.marks: Marks<D>
 // New in std.marks:
 struct MarkMap<D, T>                     // O(1) get/set/remove/clear
-    fn new(default: T) -> MarkMap<D, T>  // O(D.count) once
+    fn new(default_val: T) -> MarkMap<D, T>  // O(D.count) once
     fn get(self, v: D) -> ?T             // O(1); None when unset
-    fn set(mut self, v: D, x: T)         // O(1)
+    fn set(mut self, v: D, val: T)       // O(1)
     fn contains(self, v: D) -> Bool      // O(1)
     fn remove(mut self, v: D) -> ?T      // O(1); the old value
     fn clear(mut self)                   // O(1) epoch bump
@@ -523,15 +517,14 @@ struct Interner<K>                  // online key <-> 0..len id
     @get fn is_empty(self) -> Bool  // O(1)
     fn id(mut self, k: K) -> Int    // O(1) expected (HashMap)
     fn get(self, k: K) -> ?Int      // O(log n)
-    fn key(self, idx: Int) -> K     // O(1)
-    @get fn keys(self) -> List<K>   // O(1)
+    fn key(self, i: Int) -> K     // O(1)
 
-    // Additions to std.seq.Compressed<D, T>:
-    fn try_index_of(self, val: T) -> ?D       // O(log n)
-    fn contains(self, val: T) -> Bool         // O(log n)
-    fn first_gt(self, val: T) -> ?D           // O(log n)
-    fn last_lt(self, val: T) -> ?D            // O(log n)
-    fn range(self, lo: T, hi: T) -> Range<D>  // O(log n); compressed [lo, hi)
+// In std.seq:
+struct Compressed<D, T>(vals: [D]T)
+    fn try_index_of(self, val: T) -> ?D  // O(log n)
+    fn contains(self, val: T) -> Bool    // O(log n)
+    fn first_gt(self, val: T) -> ?D      // O(log n)
+    fn last_lt(self, val: T) -> ?D       // O(log n)
 ```
 
 ### 2.8 `std.hashmap` (open-addressing flat hash tables for `Int` keys)
@@ -542,7 +535,7 @@ or `HashSet<T>` only to require hashing whatever the program observes, and
 then walking one has no defined order. `std.hashmap` adds an explicit open-addressing table for `Int`
 keys when constant factor and memory matter:
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/hashmap.cp -->
 ```cp
 struct FlatMap<V>                                        // O(1) expected; open addressing
     fn new(default_val: V, cap: Int = 16) -> FlatMap<V>  // O(cap)
@@ -596,7 +589,7 @@ tree or array (`PersistentSegTree`, `PersistentLazySegTree`,
 declares, and each write returns a `Version<S>` that names the structure type
 `S`, so a version of one structure type is rejected by another's methods.
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/persistent.cp std/dsu.cp -->
 ```cp
 struct PArena<T>                       // append-only node pool
     fn new(cap: Int = 0) -> PArena<T>  // O(cap)
@@ -615,7 +608,7 @@ struct PMultiset<D>                                                             
     fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int  // O(log |D|)
     // ==: O(1) by size and a 64-bit sum of fixed per-key weights
 
-struct Version<S>  // a version of tree or array type S; only S takes it
+struct Version<S>(root: Int)  // a version of tree or array type S; only S takes it
 
 struct PersistentDsu<V>                                                         // one version of a union-find (std.dsu)
     fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>                      // O(n) time, 2n - 1 nodes
@@ -778,7 +771,13 @@ distinct final values reachable by filling `?`. After the first `?`, each later
 `?` contributes an optional half-gap whose total sum is `<= m`, so `subset_sums`
 computes all reachable sums in \(O(m \sqrt{m} / 64)\) without manual binary carries.
 
-<!-- spec-only: excerpt of the port; m, half_gaps, end_f, Pos, p0, p1 and Z come from its earlier lines -->
+<!-- given:
+  let m = 6
+  domain Pos = 0..14
+  let half_gaps: List<Int> = [1, 2, 3]
+  let end_f: [Pos]Int = [Pos] i => i.ord * 3
+  let (p0, p1) = (0, 1)
+  type Z = Mod<998244353> -->
 ```cp
 // Half-gaps sum to at most m, so binary-carry bitset subset_sums finds every
 // reachable offset in O(m sqrt(m) / 64) with zero manual carry bookkeeping.
@@ -791,21 +790,25 @@ for i in reach.each():
 print(sum(Z(v) for v in cool))
 ```
 
-### 3.4 `cf2262b`: Prefix Maxima Champions (`SortedSet` with `bsearch_first` + `range(r).len`)
+### 3.4 `cf2262b`: Prefix Maxima Champions (`SortedSet` with `first_true` + `range(r).len`)
 
 Problem: reverse removals into insertions; maintain prefix maxima and count how
 many prefix maxima are eaten by champions. `SortedSet<I>` holds the prefix
 maxima in one structure, answering both the monotone value search
-(`bsearch_first`) and range count (`range(r).len`) in \(O(\log n)\).
+(`first_true`) and range count (`range(r).len`) in \(O(\log n)\).
 
-<!-- spec-only: fragment over the solution's `I`, `a`, `total`, `c` and `stop` -->
+<!-- given:
+  domain I = 0..5
+  let a: [I]Int = [3, 1, 4, 1, 5]
+  let total = Prefix(a)
+  let (c, stop) = (I(1), I.cuts.last!) -->
 ```cp
 // Prefix maxima increase in both position and value, so one SortedSet<I>
-// answers both "first maximum > s" (bsearch_first) and "how many in c..stop"
+// answers both "first maximum > s" (first_true) and "how many in c..stop"
 // (range(c.l..stop).len), replacing three structures kept in sync by hand.
 var tops = SortedSet<I>()
-let s = total.sum(c.l..stop)
-let reach = if let q = tops.bsearch_first(q => a[q] > s): q.l else: I.end
+let s = total.fold(c.l..stop)
+let reach = if let q = tops.first_true(q => a[q] > s): q.l else: I.end
 let eaten = tops.range(c.l..stop).len - 1
 ```
 
@@ -816,7 +819,11 @@ graphs A and B (`n, q <= 4e5`). Two `Dsu<V>` instances share the `Mark`
 protocol (`mark()` / `undo_to(snap)`), switching cleanly from \(O(alpha(n))\) to
 \(O(\log n)\) rollback on the first mark.
 
-<!-- spec-only: fragment over the solution's `V`, `T`, `Edge` and `ans` -->
+<!-- given:
+  domain V = 0..4
+  domain T = 0..4
+  struct Edge(on: Range<T>, in_a: Bool, x: V, y: V)
+  var ans: [T]Int = 0 -->
 ```cp
 var (a, ab) = (Dsu<V>(), Dsu<V>())
 fn solve(span: Range<T>, live: List<Edge>):
@@ -830,9 +837,9 @@ fn solve(span: Range<T>, live: List<Edge>):
             rest.push(e)
     if span.len == 1: ans[span.first!] = a.components - ab.components
     else:
-        let m = span.mid!
-        solve(span.start..m.r, rest)
-        solve(m.r..span.end, rest)
+        let m = span.mid
+        solve(span.start..m, rest)
+        solve(m..span.end, rest)
     a.undo_to(snap.0)
     ab.undo_to(snap.1)
 ```

@@ -49,22 +49,26 @@ def top_level_parts(s, angle=False):
 
 
 def std_params():
-    params = defaultdict(set)
+    """Parameter names per std fn name: (any fn, top-level fns only). A bare call `f(...)` can
+    only reach a top-level fn; a method of the same name (`Mod.read`) is not what it calls."""
+    params, top = defaultdict(set), defaultdict(set)
     for path in glob.glob(os.path.join(ROOT, "std/*.cp")):
         text = open(path).read()
-        for m in re.finditer(r"\bfn\s+(\w+)\s*(<[^(]*>)?\s*\(", text):
+        for m in re.finditer(r"^([ \t]*)[^\n]*?\bfn\s+(\w+)\s*(<[^(\n]*>)?\s*\(", text, re.M):
             inner = balanced(text, m.end() - 1)
             if inner is None:
                 continue
-            names = params[m.group(1)]
-            names.add("")
+            names = {""}
             for p in top_level_parts(inner, angle=True):
                 if p.strip().startswith(".."):
                     names.add("*")  # a variadic `..xs` takes any name (R06.1.5, decision 324)
                 n = re.match(r"(?:mut\s+)?(\w+)\s*[:=]", p)
                 if n:
                     names.add(n.group(1))
-    return params
+            params[m.group(2)] |= names
+            if not m.group(1):
+                top[m.group(2)] |= names
+    return params, top
 
 
 def blocks(path):
@@ -82,7 +86,7 @@ def blocks(path):
 
 
 def mismatches():
-    params = std_params()
+    any_fn, top = std_params()
     out = set()
     for path in sorted(glob.glob(os.path.join(ROOT, "spec/core/*.md")) + glob.glob(os.path.join(ROOT, "spec/lib/*.md"))):
         rel = os.path.relpath(path, os.path.join(ROOT, "spec"))
@@ -90,6 +94,7 @@ def mismatches():
             code = re.sub(r"//[^\n]*", "", body)
             for m in re.finditer(r"(\.?)\b(\w+)\s*\(", code):
                 name = m.group(2)
+                params = any_fn if m.group(1) else top
                 if name not in params or re.search(r"\b(fn|law)\s+$", code[: m.start()][-8:]):
                     continue
                 inner = balanced(code, m.end() - 1)

@@ -106,7 +106,11 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
   target takes the right side, a `None` right side changes nothing. With
   lifted arithmetic this is "skip unreachable states": (R02.4.6)
 
-  ```
+  <!-- given:
+    domain V = 0..4
+    var dist: [V]?Int = [V].filled(None)
+    let (u, v, w) = (V.first!, V.last!, 5) -->
+  ```cp
   dist[v] min= dist[u] + w          // dist[u] none: nothing happens
   ```
 
@@ -150,7 +154,8 @@ keep source positions, as for every sequence (`04b-keys.md`). (R02.3.1)
 
 ## 2.6 Structs
 
-```
+<!-- given: domain V = 0..4 -->
+```cp
 struct Edge: u: V, v: V, w: Int
 
 struct Tally:
@@ -193,7 +198,8 @@ struct Tally:
 
 ## 2.7 Enums
 
-```
+<!-- given: domain V = 0..4 -->
+```cp
 enum Dir = L | R | U | D            // payload-free: an index type
 enum Ev:
     Add(v: V)
@@ -245,11 +251,13 @@ enum Ev:
 
 A binding can introduce a type whose identity is the binding:
 
-<!-- spec-only: fragment: `t` and `c` come from the surrounding text -->
-```
+<!-- given:
+  domain W = 0..3
+  let t = Graph.undirected([(W.first!, W.last!)]) -->
+```cp
 domain V = 1..=read<1..=2e5>()
-let (domain Piece, piece_of) = t.components(without: c)
-type Z = Mod(read<Prime>())         // runtime modulus
+let (domain Piece, piece_of) = components(t)
+type Z = Mod(read<2..=1e9 + 7>())   // runtime modulus
 ```
 
 - Two fresh types are never equal, even from the same expression. (R02.9.1)

@@ -81,7 +81,14 @@ How they relate:
   itself; a program names each in a signature through the prelude
   (decision 509). (R07.2.18)
 
-<!-- spec-only: expression tour, one form per line -->
+<!-- given:
+  domain V = 0..6
+  let a: [V]Int = 1
+  let s = "abcdefg"
+  let (l, r) = (V(1), V(4))
+  let (x, k) = (0, 1)
+  fn f(x: Int) -> Int = x + 1
+  fn p(x: Int) -> Bool = x > 0 -->
 ```python
 a[l..=r]          // view of a over l..=r; a[l..=r][i] is a[i], i must be in l..=r
 s[2..5]           // keeps keys: s[2..5][3] is s[3]; s[2..5].nth(0) is s[2]
@@ -114,13 +121,20 @@ index names the same element everywhere it is valid.** A slice narrows the
 valid keys and never renames them, for domain arrays, `List` and `Str`
 alike, so an index taken from a view is valid on the source.
 
-<!-- spec-only: expression tour with a `...` body -->
+<!-- given:
+  domain V = 0..6
+  let a: [V]Int = 1
+  let s = "abcdefg"
+  let (l, r) = (V(1), V(4))
+  let (x, k) = (0, 1)
+  fn f(x: Int) -> Int = x + 1
+  fn p(x: Int) -> Bool = x > 0 -->
 ```python
 let w = a[l..=r]
 let best = w.argmax()!                   // a position of a, usable anywhere
-for (i, x) in w.items: ...               // i runs l..=r, not 0..
+for (i, x) in w.items: todo              // i runs l..=r, not 0..
 s[2..5][3]                               // s[3]; s[2..5][0] is E0305: 0 isn't a key
-w.first!, w.nth(k)                       // first element; k steps from the start
+(w.first!, w.nth(k))                     // first element; k steps from the start
 let t = w.rebase                         // O(1) view keyed by a fresh 0..w.len domain t.Idx
 ```
 
@@ -190,7 +204,14 @@ A view is a plain library struct built from a lent source: a reference plus the 
 end cuts as Ints. Direction and adapters are in the type, so nothing is
 decided at run time and nothing allocates.
 
-<!-- spec-only: lowering sketch: each line's comment is its C++ shape -->
+<!-- given:
+  domain V = 0..6
+  let a: [V]Int = 1
+  let s = "abcdefg"
+  let (l, r) = (V(1), V(4))
+  let (x, k) = (0, 1)
+  fn f(x: Int) -> Int = x + 1
+  fn p(x: Int) -> Bool = x > 0 -->
 ```python
 a[l..=r]                  // Slice{src: &a, lo: Int(l.l), hi: Int(r.r)}
 a[l..=r].rev.map(f)       // Mapped<Rev<Slice<[V]T>>, F>, F the lambda's own type
@@ -294,12 +315,24 @@ cost isn't \(O(1)\) to make.
 
 ## Making containers
 
-<!-- spec-only: expression tour, one form per line -->
+<!-- given:
+  domain V = 0..6
+  let a: [V]Int = 1
+  let n = 5
+  fn g(v: V) -> Int = 1
+  let s = [3, 1, 2]
+  let cs = "abc"
+  let (l, r) = (V(1), V(4))
+  let (x, k) = (0, 1)
+  fn f(x: Int) -> Int = x + 1
+  fn p(x: Int) -> Bool = x > 0 -->
 ```python
 [f(x) for x in s if p(x)]      // List<U>; reserves exactly when there's no filter
-[V] v => f(v)                  // [V]U, filled by f
+[V] v => g(v)                  // [V]U, filled by g
 s.filter(p).map(f).collect()   // end of a chain: the type the context expects, else List
-List(s)   Set(s)   Str(s)      // conversions of anything that isn't a chain: List(0..n)
+List(s)                        // conversions of anything that isn't a chain: List(0..n)
+Set(s)
+Str(cs)
 [1..=n]                       // a one-element list holding a range; the list 1..n is List(1..=n)
 ```
 
@@ -349,7 +382,14 @@ positions. `argmin`/`argmax` are kept as the named form of the first
 line below, with the same `ties:` option (first by default); there are no
 `first_at` or `order` twins:
 
-<!-- spec-only: expression tour, one form per line -->
+<!-- given:
+  domain V = 0..6
+  let a: [V]Int = 1
+  let s = "abcdefg"
+  let (l, r) = (V(1), V(4))
+  let (x, k) = (0, 1)
+  fn f(x: Int) -> Int = x + 1
+  fn p(x: Int) -> Bool = x > 0 -->
 ```python
 a.keys.min(by: i => a[i])!         // argmin, first on ties
 a.keys.find(i => a[i] > x)         // first position with a[i] > x, ?D
@@ -360,16 +400,20 @@ a[l..r].keys.max(by: i => a[i])!   // argmax inside a piece, still a position of
 ## Scans are prefix sums over cuts
 
 `a.scan(op)` gives a `Prefix<D, T>`: n + 1 exclusive folds indexed by `D`'s
-cuts (`xs.scan(+).cut(k)` folds the first `k`; `xs.scan(+)[k]` with an `Int` `k` is E0320). Walking backwards gives suffix folds, indexed by the same cuts:
+cuts (`xs.scan(+).cut(k)` folds the first `k`; `xs.scan(+)[k]` with an `Int` `k` is E0320). `a.rev` walks out of key order, so it has no `scan` (decision 496); `pre.suffix(c)` reads a `+` fold right of cut `c`, and `Prefix.of_rev_scan` folds any op from the right, indexed by the same cuts:
 
-<!-- spec-only: expression tour, one form per line -->
+<!-- given:
+  domain V = 0..6
+  let a: [V]Int = 1
+  let r = V(1)..=V(3)
+  let v = V(2) -->
 ```python
 let pre = a.scan(+)        // pre[c]: fold of everything left of cut c
-let suf = a.rev.scan(+)    // suf[c]: fold of everything right of cut c
+let suf = Prefix<V, Int>.of_rev_scan(a, max, None)   // suf[c]: max of everything right of cut c
 pre[r.r] - pre[r.l]        // any range r
 pre[v]                     // a position: the fold through v, same as pre[v.r]
 Prefix(a).fold(r)          // same, as the `Prefix` struct (`+` only)
-pre[v.l] + a[v] + suf[v.r] // the whole array, split at position v
+pre[v.l] + a[v] + pre.suffix(v.r) // the whole array, split at position v
 ```
 
 A `Prefix` takes both kinds of index and the types keep them apart: a cut

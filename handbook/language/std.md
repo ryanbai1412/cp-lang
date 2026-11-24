@@ -50,7 +50,7 @@ shrink.
 
 Every public fn's doc gives a one-line summary, then labelled lines:
 
-<!-- spec-only: signature -->
+<!-- signatures: std/seq.cp -->
 ```cp
 /// The key of the least element: `[3, 1, 2].argmin()` is `Some(1)`.
 ///
@@ -59,7 +59,7 @@ Every public fn's doc gives a one-line summary, then labelled lines:
 /// ties: the first in key order
 /// traps: never
 /// example: `[3, 1, 2].argmin() == Some(1)`
-pub fn argmin<S: Keyed, K, T: Ord>(self: S) -> ?K
+fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties
 ```
 
 `cost:` is part of the contract. `traps:` lists every input that stops the

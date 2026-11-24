@@ -133,18 +133,23 @@ while let x = rest.first:
 **Comparing pieces (A2, rule 3).** Pairing is by walk order, so the offsets
 don't matter.
 
-<!-- spec-only: fragment with a `...` body -->
+<!-- given:
+  let s = "abcabc"
+  let (i, j, k) = (0, 3, 2) -->
 ```python
-if s[i..i + k] == s[j..j + k]: ...
+if s[i..i + k] == s[j..j + k]: todo
 let lcp = zip(s[i..], s[j..]).take_while((x, y) => x == y).count()
 ```
 
 **Relative reads.**
 
-<!-- spec-only: expression tour, one form per line -->
+<!-- given:
+  let s = "abcabc"
+  let (l, k) = (1, 2)
+  let w = s[1..4] -->
 ```python
 s[l..].nth(k)        // the k-th character from l; same as s[l + k]
-w.first!, w.last!    // the ends of a non-empty piece
+(w.first!, w.last!)  // the ends of a non-empty piece
 ```
 
 **Grids (F1).** A row keeps the column domain and a column keeps the row
@@ -154,9 +159,13 @@ by `C` and `g.cols[c]` is `g[.., c]`. Both are \(O(1)\) getters with no `()`
 (`g.rows()` is E0304), are `Indexed`, `Sized` and `Bidir`, and lend `g` like
 any view (R05.8.3). (R04b.1.12)
 
-<!-- spec-only: fragment with a `...` body -->
+<!-- given:
+  domain Row = 0..2
+  domain Col = 0..3
+  let grid = [Row, Col].filled('.')
+  let (r, c) = (Row.first!, Col.last!) -->
 ```python
-for (c, x) in grid[r].items: ...         // c: Col
+for (c, x) in grid[r].items: todo        // c: Col
 let col = grid[.., c]                    // [Row]T view
 ```
 
@@ -216,39 +225,47 @@ costs a library author nothing.
 
 **Position queries return keys.**
 
-<!-- spec-only: excerpt of std; the docs suite runs its examples -->
+<!-- signatures: std/seq.cp -->
 ```python
 /// O(n). A key of the largest element, the first on ties; `None` when empty.
-pub fn argmax<K, T: Ord>(self: [K]T) -> ?K = self.keys.max(by: k => self[k])
+pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D
+```
 
+<!-- signatures: std/strings.cp -->
+```python
 /// O(n·|p|). The first key where `p` starts, valid on the source of a slice.
-pub fn search<S: Indexed<K, Char>, K, P>(self: S, p: P) -> ?K = todo
+pub fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K
 ```
 
 **Per-element tables are keyed like the input.** The algorithm runs on
 offsets through `nth`, and `rekey` hands the table back in the caller's
 keys.
 
-<!-- spec-only: excerpt of std; the docs suite runs its examples -->
+<!-- excerpt: std/strings.cp -->
 ```python
 /// O(n). `z[i]` is the longest common prefix of `s[i..]` and `s`, keyed by `s.keys`.
-pub fn z_function<K, T: Eq>(s: [K]T) -> [K]Int =
+pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int:
     let n = s.len
-    var z = [0..n]0
-    var (l, r) = (0, 0)
+    var z = List.filled(n, 0)
+    if n > 0: z[0] = n
+    var l = 0
+    var r = 0
     for i in 1..n:
-        if i < r: z[i] = min(r - i, z[i - l])
-        while i + z[i] < n and s.nth(z[i]) == s.nth(i + z[i]): z[i] += 1
-        if i + z[i] > r: (l, r) = (i, i + z[i])
+        var k = if i < r: min(r - i, z[i - l]) else: 0
+        while i + k < n and s.nth(k) == s.nth(i + k): k += 1
+        z[i] = k
+        if i + k > r:
+            l = i
+            r = i + k
     z.rekey(s.keys)
 ```
 
 **Prefix tables use the input's cuts,** so `a[l..r].scan(+)[c]` takes a cut
 `c` of `a`:
 
-<!-- spec-only: excerpt of std; the docs suite runs its examples -->
+<!-- signatures: std/prefix.cp -->
 ```python
-pub fn scan<K, T>(self: [K]T, f: (T, T) -> T, from: ?T = None) -> Prefix<K, T> = todo
+pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> Prefix<D, T>
 ```
 
 **Getting a domain from what you were given (rule 7).**

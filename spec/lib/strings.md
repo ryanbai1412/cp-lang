@@ -148,18 +148,18 @@ are named arguments (`bases:`). Container-like structures follow `plan/STDLIB.md
 
 ### 3.1 `Str` and `Char` helpers
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/strings.cp -->
 ```cp
 fn repeat(self: Str, n: Int) -> Str                                     // O(n * self.len)
-fn starts_with(self: Str, p: Str, at: Int = 0) -> Bool                  // O(p.len)
-fn ends_with(self: Str, p: Str) -> Bool                                 // O(p.len)
-fn search<S: Indexed, K, P>(self: S, p: P) -> ?K                        // O(self.len + p.len)
-fn rsearch<S: Indexed, K, P>(self: S, p: P) -> ?K                       // O(self.len + p.len)
+fn starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool                  // O(p.len)
+fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool                                 // O(p.len)
+fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K                        // O(self.len + p.len)
+fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K                       // O(self.len + p.len)
 @get fn lower(self: Char) -> Char                                       // O(1)
 @get fn upper(self: Char) -> Char                                       // O(1)
 @get fn digit(self: Char) -> Int                                        // O(1); traps outside '0'..'9'
 fn is_palindrome<S: Indexed>(s: S) -> Bool                              // O(n)
-fn common_prefix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int  // O(min)
+fn common_prefix_len<A: Indexed, B: Seq>(self: A, other: B) -> Int  // O(min)
 fn common_suffix_len<A: Indexed, B: Indexed>(self: A, other: B) -> Int  // O(min)
 ```
 
@@ -170,11 +170,11 @@ Laws:
 
 ### 3.2 Pattern matching, borders, periods, and Lyndon words
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/strings.cp -->
 ```cp
 fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int            // O(n)
 fn prefix_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]Int       // O(n)
-fn find_all<S: Indexed, P: Indexed, K>(self: S, pat: P) -> yields K  // O(|self| + |pat|)
+fn find_all<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self: S, pat: P) -> yields K  // O(|self| + |pat|)
 fn period<S: Indexed>(s: S) -> Int                                   // O(n)
 fn borders<S: Indexed>(s: S) -> yields Int                           // O(n); longest first
 fn prefix_matches<S: Indexed<K, T>, P: Indexed<J, T>, K, J, T: Eq>(self: S, pat: P) -> [K]Int
@@ -183,7 +183,7 @@ fn overlap<A: Indexed, B: Indexed>(a: A, b: B) -> Int
 // O(|a| + |b|); longest suffix of a that is a prefix of b
 fn lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>
 // O(n) Duval; start keys of the unique non-increasing Lyndon factors
-fn min_rotation<S: Indexed, K>(s: S) -> ?K  // start key; None on empty
+fn min_rotation<S: Indexed<K, T>, K, T>(s: S) -> ?K  // start key; None on empty
 // O(n) Duval/Booth; start index of the lexicographically least cyclic shift
 fn lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>
 // O(n log n) Bannai runs theorem; all maximal periodic repetitions
@@ -208,9 +208,9 @@ Laws:
 
 ### 3.3 Palindromes
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/strings.cp -->
 ```cp
-struct Palindromes(odd: List<Int>, even: List<Int>):
+struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0):
     fn is_palindrome<R>(self, r: R) -> Bool  // O(1); Range<Int> or Range<D>
     fn count(self) -> Int                    // O(n); total palindromic substrings
     fn longest(self) -> (l: Int, r: Int)     // O(n); longest palindromic range
@@ -244,7 +244,7 @@ Laws:
 
 ### 3.4 Rolling hashing
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/strings.cp -->
 ```cp
 struct HashVal(h1: Int, h2: Int):
     @get fn hash_token(self) -> Int  // O(1)
@@ -253,8 +253,7 @@ trait Hashable:
     @get fn hash_token(self) -> Int = Int(self)
 
 struct RollingHash:
-    fn new<S>(seq: S, bases: ?(Int, Int) = None) -> RollingHash      // O(n)
-    fn with_bases<S>(seq: S, bases: (Int, Int)) -> RollingHash       // O(n)
+    fn new<S: Seq>(seq: S, bases: ?(Int, Int) = None) -> RollingHash  // O(n)
     @get fn len(self) -> Int                                         // O(1)
     @get fn all(self) -> HashVal                                     // O(1)
     fn slice(self, l: Int, r: Int) -> HashVal                        // O(1)
@@ -263,7 +262,7 @@ struct RollingHash:
     fn lcp(self, a: Int, b: Int, of: ?RollingHash = None) -> Int     // O(log n); `of:` puts `b` in another hash
     fn lcs(self, a: Int, b: Int) -> Int                              // O(log n)
 
-struct Hash2D<R, C>:
+struct Hash2D<R, C>(bases: (Int, Int)):
     fn new(code: (R, C) -> Int, bases: ?(Int, Int) = None) -> Hash2D<R, C>  // O(R * C)
     fn rect(self, rows: Range<R>, cols: Range<C>) -> HashVal                // O(1)
 ```
@@ -280,17 +279,17 @@ Laws:
 
 ### 3.5 Suffix structures
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/strings.cp -->
 ```cp
 fn suffix_array<S: Indexed>(s: S) -> SuffixArray  // the `SuffixArray` below; `.sa`, `.lcp` (Kasai)
 
-struct SuffixArray<T>:
+struct SuffixArray:
     s: List<T>
     sa: List<Int>
     rank: List<Int>
     lcp: List<Int>
 
-    fn new<S: Indexed>(s: S) -> SuffixArray<T>             // O(n log n) build (SA-IS + Kasai + RMQ)
+    fn new<S: Indexed>(s: S) -> SuffixArray                // O(n log n) build (SA-IS + Kasai + RMQ)
     @get fn len(self) -> Int                               // O(1)
     fn lcp_between(self, i: Int, j: Int) -> Int            // O(1)
     fn rank_range<P: Indexed>(self, pat: P) -> Range<Int>  // O(|pat| log n); rank range lo..hi
@@ -331,7 +330,7 @@ Laws:
 
 ### 3.6 Tries and Aho-Corasick
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/strings.cp -->
 ```cp
 struct Trie<A>:
     fn new() -> Trie<A>                              // O(|A|)

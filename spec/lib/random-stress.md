@@ -20,13 +20,16 @@ archived `design/spec/30-stress.md`, `plan/50-debugging.md`; decision
 `gen<T>(...)` generates any `Read` type within its contract, so the reads
 are the input spec:
 
-```
-gen(1..=8)                         // an Int
-gen<[V]1..=1e9>()                  // an array over a fresh domain
-gen<Str of "ab">(len: 1..=10)
-gen<Graph<V, (to: V, w: 1..=9)>>(simple: true, connected: true)
-gen<Rooted<V>>(shape: random)      // also path, star, caterpillar, binary
-gen<Perm<V>>()
+<!-- given: domain V = 0..5 -->
+```cp
+@gen fn input():
+    let n = gen(1..=8)                                  // an Int
+    let a = gen<[V]1..=1e9>()                           // an array over a domain
+    let s = gen<Str of "ab">(len: 1..=10)
+    let g = gen<Graph<V, (to: V, w: 1..=9)>>(simple: true, connected: true)
+    let t = gen<Rooted<V>>(shape: random)               // also path, star, caterpillar, binary
+    let p = gen<Perm<V>>()
+    print(n)
 ```
 
 - Constraints types cannot state go in `@gen fn input()`, which prints
@@ -40,11 +43,12 @@ gen<Perm<V>>()
 
 ## Alternatives
 
-```
+<!-- given: fn count(xs: List<Int>) -> Int = xs.len -->
+```cp
 @alt(count, n: ..=8)
-fn count_slow(xs: List<Int>) -> Int: ...
+fn count_slow(xs: List<Int>) -> Int: todo
 @alt(program, n: ..=10)            // a whole-program brute
-fn brute(): ...
+fn brute(): todo
 ```
 
 - `@alt(f, caps)` marks another implementation of `f`; stress compares

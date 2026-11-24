@@ -156,7 +156,8 @@ of a use, so two `?Edge`s always agree on layout. (R03.2.1, permits)
 value.** It writes `None` into that field and leaves the others
 undefined. So a struct of `Int`s has a niche because `Int` has one: (R03.2.2)
 
-```
+<!-- given: domain V = 0..4 -->
+```cp
 struct Edge: to: V, w: Int          // 4 + 8 -> 16 B (padded)
 var best: [V]?Edge = [V].filled(None)   // 16 B per slot, not 24
 var span: ?(lo: Int, hi: Int) = None    // 16 B: None lives in lo
@@ -299,7 +300,7 @@ from the constant form. (R03.5.1)
 
 ## 6. Examples
 
-```
+```cp
 let n = read<1..=2e5>()
 domain V = 0..n
 let a = read<[V]1..=1e9>()           // 4 B per element

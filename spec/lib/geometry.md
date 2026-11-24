@@ -115,7 +115,7 @@ callers never lose point IDs or build `(p: Pt, id: Int)` wrapper structs:
 
 ### 3.1 Exact integer points and vectors
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/geometry.cp -->
 ```cp
 struct Pt(x: Int, y: Int)         // Add, Sub, Neg, Eq, Ord (x, y), Hash, Read, Show ("x y")
     @get fn norm2(self) -> Int    // O(1); x*x + y*y
@@ -123,13 +123,11 @@ struct Pt(x: Int, y: Int)         // Add, Sub, Neg, Eq, Ord (x, y), Hash, Read, 
     @get fn perp(self) -> Pt      // O(1); 90 deg CCW: Pt(-y, x)
     @get fn perp_cw(self) -> Pt   // O(1); 90 deg CW: Pt(y, -x)
     @get fn angle(self) -> F64    // O(1); atan2(y, x) in [-pi, pi]
-    @get fn unit_dir(self) -> Pt  // O(log min(|x|, |y|)); reduced by gcd, Pt(0, 0) for zero
+    fn unit_dir(self) -> Pt       // O(log min(|x|, |y|)); reduced by gcd, Pt(0, 0) for zero
     @get fn to_vec(self) -> Vec   // O(1); Vec(F64(x), F64(y))
-    fn scale(self, k: Int) -> Pt  // O(1); Pt(x * k, y * k)
-    fn dot(self, o: Pt) -> Int    // O(1)
-    fn cross(self, o: Pt) -> Int  // O(1)
     fn dist2(self, o: Pt) -> Int  // O(1)
     fn dist(self, o: Pt) -> F64   // O(1)
+    fn manhattan(self, o: Pt) -> Int  // O(1); |x - o.x| + |y - o.y|
 
 fn dot(a: Pt, b: Pt) -> Int          // O(1); safe for |coords| <= 2e9
 fn cross(a: Pt, b: Pt) -> Int        // O(1); safe for |coords| <= 2e9
@@ -137,18 +135,17 @@ fn dot128(a: Pt, b: Pt) -> I128      // O(1); safe for all Int
 fn cross128(a: Pt, b: Pt) -> I128    // O(1); safe for all Int
 fn dist2(a: Pt, b: Pt) -> Int        // O(1); (a - b).norm2
 fn dist(a: Pt, b: Pt) -> F64         // O(1); (a - b).len
-fn manhattan(a: Pt, b: Pt) -> Int    // O(1); |a.x - b.x| + |a.y - b.y|
 fn turn(a: Pt, b: Pt, c: Pt) -> Int  // O(1), I128; 1 CCW, -1 CW, 0 collinear
 fn same_dir(a: Pt, b: Pt) -> Bool    // O(1), I128; parallel and same ray
 ```
 
 ### 3.2 Angular sorting
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/geometry.cp -->
 ```cp
 struct ByAngle(p: Pt)                          // Ord: CCW in [0, 2*pi) from +x; zero first; I128
 struct ByAngleFrom(base: Pt, p: Pt)            // Ord: CCW in [base, base + 2*pi); zero first; I128
-fn angle_less(base: Pt, a: Pt, b: Pt) -> Bool  // O(1), I128; a precedes b CCW from base
+fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool  // O(1), I128; a precedes b CCW from base
 ```
 
 `ByAngle` works directly with `sort(mut dirs, by: ByAngle)` and around an
@@ -158,9 +155,9 @@ wrapping the array twice.
 
 ### 3.3 Segments
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/geometry.cp -->
 ```cp
-fn on_segment(p: Pt, a: Pt, b: Pt) -> Bool
+fn on_segment(p: Pt, a: Pt, b: Pt, strict: Bool = false) -> Bool
 // O(1), I128; true iff p lies on the closed segment [a, b]
 fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool
 // O(1), I128; closed segments share a point, or proper interior crossing when strict: true
@@ -168,11 +165,11 @@ fn segments_meet(a: Pt, b: Pt, c: Pt, d: Pt, strict: Bool = false) -> Bool
 
 ### 3.4 Convex hulls, chains, and Minkowski sums
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/geometry.cp -->
 ```cp
-fn lower_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>
+fn lower_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>
 // O(n) time, O(n) space; precondition: pts sorted by (x, y); lower chain left-to-right
-fn upper_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>
+fn upper_hull(sorted_pts: List<Pt>, collinear: Bool = false) -> List<Pt>
 // O(n) time, O(n) space; precondition: pts sorted by (x, y); upper chain left-to-right
 fn convex_hull(pts: List<Pt>, collinear: Bool = false) -> List<Pt>
 // O(n log n) time, O(n) space; CCW from lowest-leftmost point, deduplicated
@@ -190,7 +187,7 @@ essential for \(O(n \log n)\) divide-and-conquer hulls (such as `ucup4s25e`).
 
 ### 3.5 Polygons and rotating calipers
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/geometry.cp -->
 ```cp
 fn area2(poly: List<Pt>) -> Int
 // O(n); twice signed area (+ CCW, - CW)
@@ -211,7 +208,7 @@ fn min_bounding_box(hull: List<Pt>) -> (area: F64, perimeter: F64)
 
 ### 3.6 Closest pair
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/geometry.cp -->
 ```cp
 fn closest_pair2(pts: List<Pt>) -> Int
 // O(n log n) time, O(n) space; min squared distance among pts (requires pts.len >= 2)
@@ -221,7 +218,7 @@ fn closest_pair<D>(pts: [D]Pt) -> (a: D, b: D, dist2: Int)
 
 ### 3.7 Careful floating-point geometry and half-plane intersection
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/geometry.cp -->
 ```cp
 const PI: F64 = 3.14159265358979323846
 
@@ -235,8 +232,7 @@ struct Vec(x: F64, y: F64)         // Add, Sub, Neg; intentionally no Show
     @get fn perp(self) -> Vec      // O(1); Vec(-y, x)
     @get fn perp_cw(self) -> Vec   // O(1); Vec(y, -x)
     @get fn angle(self) -> F64     // O(1); atan2(y, x) in [-pi, pi]
-    fn scale(self, k: F64) -> Vec  // O(1); Vec(x * k, y * k)
-    fn div(self, k: F64) -> Vec    // O(1); Vec(x / k, y / k)
+    fn div(a, k)    // O(1); Vec(x / k, y / k)
     fn dot(self, o: Vec) -> F64    // O(1)
     fn cross(self, o: Vec) -> F64  // O(1)
     fn dist2(self, o: Vec) -> F64  // O(1)
@@ -252,22 +248,15 @@ fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec
 // O(1); intersection of lines ab and cd, None if parallel
 fn polygon_cut(poly: List<Vec>, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
 // O(n); Sutherland-Hodgman clip to left half-plane of directed line a -> b
-fn circle_line_intersect(c: Vec, r: F64, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
+fn circle_line_intersect(circle: Circle, a: Vec, b: Vec, eps: F64 = 1e-9) -> List<Vec>
 // O(1); 0, 1, or 2 intersection points of circle (c, r) with line ab
-fn circle_intersect(c1: Vec, r1: F64, c2: Vec, r2: F64, eps: F64 = 1e-9) -> List<Vec>
+fn circle_intersect(a: Circle, b: Circle, eps: F64 = 1e-9) -> List<Vec>
 // O(1); 0, 1, or 2 intersection points of two circles
-fn circle_tangents(center: Vec, r: F64, p: Vec, eps: F64 = 1e-9) -> List<Vec>
+fn circle_tangents(circle: Circle, p: Vec, eps: F64 = 1e-9) -> List<Vec>
 // O(1); 0, 1, or 2 tangent points from p to circle (center, r)
-fn circle_circle_tangents(
-    c1: Vec,
-    r1: F64,
-    c2: Vec,
-    r2: F64,
-    inner: Bool = false,
-    eps: F64 = 1e-9,
-) -> List<(Vec, Vec)>
+fn circle_circle_tangents(a: Circle, b: Circle, inner: Bool = false, eps: F64 = 1e-9, ) -> List<(Vec, Vec)>
 // O(1); 0, 1, or 2 outer (or inner when inner: true) common tangent segments (on c1, on c2)
-fn circles_union_area(circles: List<(c: Vec, r: F64)>, eps: F64 = 1e-9) -> F64
+fn circles_union_area(circles: List<Circle>, eps: F64 = 1e-9) -> F64
 // O(n^2 log n); total area of the union of disks via Green's theorem arc sweep
 fn circumcenter(a: Vec, b: Vec, c: Vec, eps: F64 = 1e-9) -> ?Vec
 // O(1); circumcenter of triangle abc, None if collinear
@@ -277,7 +266,7 @@ struct HalfPlane(p: Vec, dir: Vec)                     // left side of ray p + t
     fn from_line(a: F64, b: F64, c: F64) -> HalfPlane  // O(1); keep a*x + b*y + c >= 0
     fn side(self, q: Vec) -> F64                       // O(1); dir.cross(q - p)
 
-fn half_plane_intersect(planes: List<HalfPlane>, eps: F64 = 1e-9) -> List<Vec>
+fn half_plane_intersect(planes: List<HalfPlane>, bound: ?F64 = None, eps: F64 = 1e-9, ) -> List<Vec>
 // O(n log n) time, O(n) space; CCW vertices of bounded intersection (empty if empty).
 // Add a bounding box of four half-planes if the region may be unbounded.
 ```
@@ -605,52 +594,73 @@ Totals: **16 have**, **16 new**, **10 out** (42 topics).
 
 Language powers needed to write the full `std.geometry` spec without special cases or copies:
 
-1. **Trigonometric intrinsics (`sin`, `cos`, `acos`, `asin`)** (`decisions.md` §1.5; today only `atan2` exists).
+1. **Trigonometric intrinsics (`sin`, `cos`, `acos`, `asin`)** (`decisions.md` §1.5; landed: `sin`, `cos` and `Vec.from_angle` are in std).
    - **Signatures:** `Vec.from_angle(rad: F64) -> Vec`, `Vec3.rot(self, axis: Vec3, rad: F64) -> Vec3`, `sphere_dist(a: Vec3, b: Vec3, r: F64 = 1.0) -> F64`.
    - **Smallest example:**
-     <!-- spec-only: signatures and costs, not a program -->
+     <!-- given:
+       use std.geometry.{Vec, PI}
+       let v = Vec(1.0, 0.0) -->
      ```cp
      let q = v.rot(by: Vec.from_angle(PI / 3.0))
      ```
 2. **Protocols with associated types (`Indexed<Item = T>` / `Seq<Item = T>`).**
    - **Signatures:** Generalizing read-only sequence inputs from `List<Pt>` / `List<Vec>` to `S: Indexed<Item = Pt>` / `S: Indexed<Item = Vec>` across `area2`, `area2_128`, `locate`, `locate_convex`, `lower_hull`, `upper_hull`, `convex_hull`, `minkowski_sum`, `minkowski_upper`, `minkowski_lower`, `hull_extreme`, `hull_tangents`, `hull_width`, `hull_line_intersect`, `diameter2`, `min_bounding_box`, `closest_pair2`, `polygon_area`, `polygon_cut`, `polygon_centroid`, `polygon_kernel`, `polygon_triangulate`, `circle_polygon_area`, `pick_interior`, `pick_boundary`.
    - **Smallest example:**
-     <!-- spec-only: signatures and costs, not a program -->
+     <!-- given:
+       use std.geometry.{Pt, upper_hull}
+       domain D = 0..4
+       let pref: [D]Pt = [D] i => Pt(i.ord, i.ord * i.ord)
+       let (lo, md) = (D.cuts.first!, D.cuts.nth(2)) -->
+     <!-- rejects: E0302 -->
      ```cp
      let left = upper_hull(pref[lo..md])   // zero-copy slice of [D]Pt or List<Pt>
      ```
 3. **Range-parameterized structs with defaults (`struct Pt<R = Int>(x: R, y: R)`).**
    - **Signatures:** `Pt<R = Int>`, `Pt3<R = Int>` (packing `Pt<-1e9..=1e9>` into 8 bytes and carrying coordinate bounds for compile-time overflow proofs on `dot`/`cross`/`dist2`).
    - **Smallest example:**
-     <!-- spec-only: signatures and costs, not a program -->
+     <!-- given:
+       domain V = 0..3 -->
+     <!-- rejects: E0303 -->
      ```cp
      let p: [V]Pt<1..=100> = read()
      ```
 4. **Wide multiplication intrinsic (`mulhi` / exact 256-bit sign)** (`plan/STDLIB.md` §3 `[new, core lane]`).
    - **Signatures:** `delaunay<D>(pts: [D]Pt) -> List<(D, D, D)>`, `voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec>` (exact degree-4 `incircle` determinant reaches `1.92e38` for `|coords| <= 1e9`, exceeding `I128.MAX = 1.70e38`).
    - **Smallest example:**
-     <!-- spec-only: signatures and costs, not a program -->
+     <!-- given:
+       use std.geometry.{Pt, delaunay}
+       domain D = 0..3
+       let pts: [D]Pt = [Pt(0, 0), Pt(1, 0), Pt(0, 1)] -->
      ```cp
      let tris = delaunay(pts)   // exact incircle for |x|, |y| <= 1e9
      ```
 5. **Public `Read` protocol (`impl Read for T`).**
    - **Signatures:** `impl Read for Vec`, `impl Read for Pt3`, `impl Read for Vec3`, `impl Read for Circle`, `impl Read for HalfPlane`, `impl Read for Rect` (today only `Pt` has compiler-assisted `Read`).
    - **Smallest example:**
-     <!-- spec-only: signatures and costs, not a program -->
+     <!-- given:
+       use std.geometry.{Circle}
+       domain C = 0..2 -->
      ```cp
      let cs: [C]Circle = read()
      ```
 6. **Half-open cut-range conversion (`Range<D.bounds>` -> `Range<D>`, decision 124).**
    - **Signatures:** `Rect(x: Range<Int>, y: Range<Int>)` and passing `poly[j..i]` (with `j, i: D.bounds`) into `area2`, `upper_hull`, `lower_hull`, `locate`.
    - **Smallest example:**
-     <!-- spec-only: signatures and costs, not a program -->
+     <!-- given:
+       use std.geometry.{Pt, area2}
+       domain D = 0..4
+       let poly: [D]Pt = [Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]
+       let (j, i) = (D.cuts.first!, D.cuts.last!) -->
+     <!-- rejects: E0302 -->
      ```cp
      let a = area2(poly[j..i])
      ```
 7. **User-defined optional niches (`?Vec`, `?Pt`, `?Circle`, `?Rect`, `?Plane3`).**
    - **Signatures:** `line_intersect(...) -> ?Vec`, `circumcenter(...) -> ?Vec`, `ray_hits_segment(...) -> ?Vec`, `Circle.through(...) -> ?Circle`, `incenter(...) -> ?Circle`, `Rect.intersect(...) -> ?Rect`, `OnlineHull.extreme(...) -> ?Pt`, `Plane3.through(...) -> ?Plane3`, `line_plane_intersect(...) -> ?Vec3` (avoids an extra 8-byte discriminant word; e.g. NaN-niche keeps `?Vec` at 16 B instead of 24 B).
    - **Smallest example:**
-     <!-- spec-only: signatures and costs, not a program -->
+     <!-- given:
+       use std.geometry.{Vec, line_intersect}
+       let (a, b, c, d) = (Vec(0.0, 0.0), Vec(2.0, 2.0), Vec(0.0, 2.0), Vec(2.0, 0.0)) -->
      ```cp
      let hit: ?Vec = line_intersect(a, b, c, d)
      ```

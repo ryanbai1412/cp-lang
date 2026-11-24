@@ -39,12 +39,17 @@ commutative? idempotent?) lives in comments, so a sparse table built on
 
 ## The model
 
-```cp-fragment
+<!-- given:
+  struct Frac: p: Int, q: Int
+  impl Eq for Frac:
+      fn eq(a, b) = a.p * b.q == b.p * a.q
+  let a = [3, 1, 2] -->
+```cp
 trait Ord(Eq):
     fn cmp(self, other: Self) -> Ordering
 impl Ord for Frac:
     fn cmp(self, o: Frac) -> Ordering = (self.p * o.q).cmp(o.p * self.q)
-fn argmax<S: Keyed + Seq, K: Ord>(s: S, by: S.Item -> K = id) -> ?S.Key
+fn argmax<S: Keyed + Seq, K: Ord>(s: S, by: S.Item -> K = x => x) -> ?S.Key = todo
 let st = SegTree(max, a)        // the operation is a value; its laws are known
 ```
 

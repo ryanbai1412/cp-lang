@@ -13,13 +13,20 @@ cuts, `D.cuts`. A **range** is a contiguous run of positions, and its two
 ends are cuts. Arrays are `[D]T`, indexed only by `D`, so a vertex never
 indexes an edge array and a cut never indexes a position array.
 
-<!-- spec-only: declaration tour over `n`, `xs`, `Row` and `Col` from the text -->
-```python
+<!-- given:
+  let n = 5
+  let l = 3
+  let xs = [5, 3, 5]
+  domain Row = 0..2
+  domain Col = 0..3
+  domain Comp = 0..=n
+  domain Used = 0..l -->
+```cp
 domain V = 1..=n                       // positions 1..n
 domain Pos = 0..n                      // positions 0..n-1; Pos.cuts is cuts 0..=n
 let (domain C, comp) = compress(xs)    // fresh domain from a computation
 domain Cell = (Row, Col)               // product: [Cell]T and [Row, Col]T are one 2-D array type
-domain State = (comps: 0..=n, used: 0..l)  // named factors: s.comps, State.at((c, u)) -> ?State
+domain State = (comps: Comp, used: Used)    // named factors: s.comps, State.at((c, u)) -> ?State
 enum Dir = N | E | S | W               // a fieldless enum is a domain too: [Dir]Int
 domain Letter = 'a'..='z'              // so is a Char range: Letter(c), [Letter]Int
 ```
@@ -157,11 +164,21 @@ Cuts `j` and `i` bound a piece of the array: the positions between them. So
 a half-open range literal with cut ends, written where a `Range<V>` is
 expected, builds that `Range<V>` directly:
 
-<!-- spec-only: fragment: `dp`, `cost` and `i` come from the text -->
-```python
+<!-- given:
+  domain V = 0..5
+  let i = V.cuts.last!
+  let j = V.cuts.first!
+  var dp: [V.cuts]Int = 0
+  fn cost(r: Range<V>) -> Int = r.len
+  let a = [V].filled(1)
+  let pre = a.scan(+)
+  let seg = SegTree(+, a) -->
+```cp
 for j in ..i:                        // ..i: no Range<V> expected, so cuts
     dp[i] min= dp[j] + cost(j..i)    // cost takes Range<V>: j..i is the piece
-pre.fold(j..i)   a[j..i]   seg.fold(j..i)       // same: these take Range<V>
+pre.fold(j..i)                       // same: these take Range<V>
+a[j..i]
+seg.fold(j..i)
 ```
 
 This is **not a conversion and there is no implicit `Into`.** It decides what
@@ -349,15 +366,28 @@ sentinel end when nothing qualifies (looks like a real answer).
 
 ## Arrays over domains
 
-<!-- spec-only: expression tour, one form per line -->
-```python
+<!-- given:
+  domain V = 0..5
+  domain Pos = 0..5
+  domain Row = 0..2
+  domain Col = 0..3
+  let g = Graph.undirected([(V.first!, V.last!)])
+  let grid = [Row, Col].filled(0)
+  fn f(x: Int) -> Int = x + 1
+  let (l, r) = (Pos.first!, Pos.last!)
+  let (i, j) = (Pos.cuts.last!, Pos.cuts.first!) -->
+```cp
 var dist: [V]?Int = None                 // fill
 let deg = [V] v => g.deg(v)              // build from a fn
 let a: [Pos]Int = read()                 // read n values
-pre[i] - pre[j]       pre.fold(j..i)      // prefix sums are indexed by cuts
+let pre = a.scan(+)
+pre[i] - pre[j]                          // prefix sums are indexed by cuts
+pre.fold(j..i)
 a[l..=r]                                 // a slice view, O(1), lent
-a.keys  a.items  a.map(f)                // V, (V, T), [V]U
-grid[r]                                  // a row view of [Row, Col]T
+a.keys                                   // V
+a.items                                  // (V, T)
+a.map(f)                                 // [V]U
+grid[Row.first!]                         // a row view of [Row, Col]T
 ```
 
 ## Empty domains

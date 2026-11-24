@@ -13,7 +13,7 @@ suites:
   conformance     spec/conformance/**/*.cp cases
   corpus          corpus/problems/<id>/spec.cp on tests/*.in vs *.ans
   docs            /// example: lines in std/*.cp
-  spec-blocks     fenced cp blocks in spec/core, spec/lib and handbook/language
+  spec-blocks     fenced cp blocks in spec/core, spec/lib, spec/tools and handbook/language
   diff            interpreter vs g++ -O2 -std=c++17 differential, with
                   side-effect variants of corpus ports (variant/*)
   rewrites        corpus programs print the same after `cpl fix` (#fix)

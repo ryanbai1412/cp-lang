@@ -112,16 +112,16 @@ step by calling `state.push(a[r])` and `state.pop(a[l])`. They return one
 piece per right end as its positions, `[D]Range<D>` (`minimal`:
 `[D]?Range<D>`), like `spans`; `a[w]` reads the piece.
 
-<!-- spec-only: signatures and costs, not a program -->
-```python
+<!-- signatures: std/window.cp std/seq.cp -->
+```cp
 pub trait Track<T>:
     fn push(mut self, x: T)       // x joins at the right end
     fn pop(mut self, x: T)        // x leaves at the left end (the oldest)
 
 pub enum Anchor = Start | End
 
-pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
-                                  anchor: Anchor = Anchor.End) -> [D]Range<D>
+pub fn maximal<D, T, St>(self: [D]T, state: St, ok: St -> Bool,
+                         anchor: Anchor = Anchor.End) -> [D]Range<D>
 ```
 
 `Track` implementations that already exist:
@@ -134,12 +134,17 @@ pub fn maximal<D, T, S: Track<T>>(self: [D]T, mut state: S, ok: S -> Bool,
 | `track(s, add:, remove:)` (a `Tracked`) over any structure `s` | your two closures on `mut s` | a predicate on `t.state` |
 | `undoing(s, add:)` (an `Undoing`) over any `Undo` (`mark`/`undo_to`: rollback `Dsu`, `ParityDsu`, `RollbackArray`) | apply / queue-undo: each element re-applied \(O(\log n)\) times amortized | `u => not u.state.consistent` |
 
-<!-- spec-only: fragment over a sequence `a` and its bounds `K`, `k`, `S` -->
+<!-- given:
+  domain I = 0..6
+  domain C = 0..3
+  let a: [I]C = [I] i => C(i.ord % 3)
+  let w: [I]Int = [I] i => i.ord + 1
+  let (K, k, S) = (6, 2, 5) -->
 ```python
-let longest = a.maximal(Window(+), ok: w => (w.all ?? 0) <= K).max(by: .len)!
+let longest = w.maximal(Window(+), ok: s => (s.all ?? 0) <= K).max(by: .len)!
 let atmost_k = a.maximal(Counter<C>(), ok: c => c.len <= k)
 let count = atmost_k.map(.len).sum()           // subarrays with <= k distinct
-let shortest = a.minimal(Window(+), ok: w => (w.all ?? 0) >= S).present().min(by: .len)
+let shortest = w.minimal(Window(+), ok: s => (s.all ?? 0) >= S).present().min(by: .len)
 ```
 
 - **The promise is checked where it is cheap.** Hereditary and upward
@@ -244,10 +249,14 @@ piece (at most n elements) ending there that is `ok`. They walk two laps,
 so they cost \(O(n)\) pushes and pops. Problems about "everything except
 `l..=r`" become a ring window from `r` round to `l`:
 
-<!-- spec-only: fragment over the problem's `street`, `m` and `q` -->
+<!-- given:
+  domain V = 0..4
+  domain Street = 0..5
+  let street: [Street](V, V) = [(V(0), V(1)), (V(1), V(2)), (V(2), V(0)), (V(2), V(3)), (V(3), V(0))]
+  let (m, q) = (Street.count, 2) -->
 ```python
 // BOI 2020 Joker: do the streets outside l..=r still hold an odd cycle?
-let dsu = undoing(ParityDsu<V>(), add: (mut d, e) => d.unite(e.0, e.1))
+let dsu = undoing(ParityDsu<V>(), add: (mut d, e: (V, V)) => d.unite(e.0, e.1))
 let odd = street.ring.minimal(dsu, ok: u => not u.state.consistent)
 for (l, r) in read<[q](Street, Street)>():
     let open = m - (l..=r).len

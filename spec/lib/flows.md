@@ -70,7 +70,7 @@ capacity changes.
 One module, `std.flow`. Two network types that share `Arc`, and free
 functions for everything whose input is a table or an edge list.
 
-<!-- spec-only: signatures and costs, not a program -->
+<!-- signatures: std/flow.cp -->
 ```cp
 struct Arc(id: 0..2_147_483_648)
     @get fn rev(self) -> Arc  // O(1)
@@ -278,12 +278,12 @@ here that the core does not have yet.
 ```cp
 // The gcd of all pairwise max flows is the gcd of the Gomory–Hu tree's
 // weights. If it is not 1, one colour; otherwise Gallai's parity split.
-@!multitest
+use std.flow.{gomory_hu}
 domain V = read(1..=50)
 let m: 0..=choose2(V.count) = read()
 let edges = read<[m](u: V, v: V, w: 1..=1e6)>()
-if gomory_hu(edges).map(e => e.w).fold(gcd) != 1: return answer([V.all])
-// ... even_split as in design/EXEMPLARS-PORTS.md
+let g = gomory_hu(edges).map(e => e.w).fold(gcd) ?? 0
+print(if g != 1: "one colour" else: "parity split")  // the split as in design/EXEMPLARS-PORTS.md
 ```
 
 The port reimplemented Gusfield: a parent array, `n - 1` resets, a
@@ -293,10 +293,15 @@ says it.
 
 ### cf2062g: G. Permutation Factory
 
+<!-- given:
+  domain I = 0..4
+  let p: [I]Int = [I] i => (i.ord * 3) % 4
+  let q: [I]Int = [I] i => (i.ord * 5 + 1) % 4 -->
 ```cp
+use std.flow.{min_weight_matching}
 // Half the minimum Manhattan matching between points (i, p[i]) and
 // (j, q[j]) is a lower bound and is achieved by sorting in two stages.
-let (_, mate) = min_weight_matching<I, I>((i, j) => i.dist(j) + p[i].dist(q[j]))
+let (_, mate) = min_weight_matching<I, I>((i, j) => abs(i.ord - j.ord) + abs(p[i] - q[j]))
 ```
 
 The objective is a minimum; it is written as one. The port negated every
@@ -316,7 +321,7 @@ let pairs: [Pair](u: Item, v: Item, w: 0..=1e9) = read()
 domain Node = Item + Pair
 fn profit(v: Node) -> Int = match v: Item(i) => -cost[i], Pair(e) => pairs[e].w
 let needs = Graph.directed(
-    [(u: Node(i), v: Node(e)) for e in Pair for i in [pairs[e].u, pairs[e].v]]
+    [(Node(i), Node(e)) for e in Pair for i in [pairs[e].u, pairs[e].v]]
 )
 print(max_closure(before: needs, profit: profit).value)
 ```
@@ -330,6 +335,8 @@ reduction, re-derived. `max_closure` names it, and its `take` answers the
 ### cf863F: F. Almost Permutation (convex costs)
 
 ```cp
+use std.flow.{CostFlow}
+
 // Each position takes one value in [lo, hi]; the k-th use of a value costs
 // 2k - 1, so total cost is sum cnt^2. Min-cost flow of n units.
 domain Pos = read(1..=50)
@@ -341,14 +348,16 @@ for _ in 0..read<0..=100>():
     for x in l..=r:
         if t == 1: lo[x] = max(lo[x], v) else: hi[x] = min(hi[x], v)
 
-domain Node = Pos + Val + labels("S", "T")
+domain End = 0..2
+domain Node = Pos + Val + End
+let (src, sink) = (Node(End.nth(0)), Node(End.nth(1)))
 var net = CostFlow<Node>()
 for x in Pos:
-    net.add(Node.S, Node(x), 1, cost: 0)
+    net.add(src, Node(x), 1, cost: 0)
     for v in lo[x]..=hi[x]: net.add(Node(x), Node(v), 1, cost: 0)
 for v in Val:
-    for k in 1..=Pos.count: net.add(Node(v), Node.T, 1, cost: 2 * k - 1)
-let (flow, cost) = net.min_cost_flow(Node.S, Node.T)
+    for k in 1..=Pos.count: net.add(Node(v), sink, 1, cost: 2 * k - 1)
+let (flow, cost) = net.min_cost_flow(src, sink)
 print(if flow == Pos.count: cost else: -1)
 ```
 
@@ -357,10 +366,17 @@ user code because it is the model.
 
 ### SDOI 2017 Ball Dance (assignment inside a binary search)
 
+<!-- given:
+  domain Boy = 0..3
+  domain Girl = 0..3
+  let a: [Boy, Girl]Int = [Boy, Girl] (i, j) => i.ord + j.ord + 1
+  let b: [Boy, Girl]Int = [Boy, Girl] (i, j) => 1
+  let (SCALE, hi) = (1000, 10_000) -->
 ```cp
+use std.flow.{max_weight_matching}
 // sum a / sum b >= r iff the best assignment of a - r b is >= 0.
-let ok = r => max_weight_matching<Boy, Girl>((i, j) => a[i][j] * SCALE - r * b[i][j]).total >= 0
-print(partition_point(0..=hi, ok) - 1)
+let ok = (r: Int) => max_weight_matching<Boy, Girl>((i, j) => a[i, j] * SCALE - r * b[i, j]).total >= 0
+print((0..=hi).last_true(ok)!)
 ```
 
 The solver takes the weight as a closure, so the search re-solves without

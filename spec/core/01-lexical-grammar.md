@@ -40,7 +40,8 @@ text. (R01.1.1)
 
 Blocks are indentation-based and opened by a line ending in `:`.
 
-```
+<!-- given: struct P: x: Int, y: Int -->
+```cp
 fn dist(a: P, b: P) -> Int:
     abs(a.x - b.x) + abs(a.y - b.y)
 ```
@@ -62,7 +63,11 @@ fn dist(a: P, b: P) -> Int:
   comment-only lines between are skipped, as they are for blocks. This is how
   method chains and fallbacks wrap without brackets: (R01.2.4)
 
-  ```
+  <!-- given:
+    let xs = [3, 1, 2]
+    fn p(x: Int) -> Bool = x > 1
+    fn f(x: Int) -> Int = 2 * x -->
+  ```cp
   let best = xs.filter(p)
       .map(f)
       .max() ?? 0
@@ -262,25 +267,43 @@ So `-x ** 2` is `-(x ** 2)`, `not a == b` is `not (a == b)`, and
 
 ## 1.7 Control flow
 
-<!-- spec-only: syntax tour with `...` placeholder bodies -->
-```
+<!-- given:
+  domain V = 0..4
+  domain Row = 0..3
+  domain Col = 0..3
+  let (c, d) = (true, false)
+  let (a, b, e) = (1, 2, 3)
+  let (i, k) = (1, 1)
+  let m = HashMap<Int, Int>()
+  var q = [1, 2].to_list()
+  var h = Heap<(Int, V)>()
+  fn ok(i: V, j: V) -> Bool = i < j
+  let g = [Row, Col].filled('.')
+  enum Ev:
+      Add(l: V, r: V)
+      Ask(i: V)
+  let op: Ev = Ask(V.first!)
+  var st = [V].filled(0)
+  enum Dir = L | R | U | D
+  let dir = Dir.L -->
+```cp
 if c: a elif d: b else: e           // inline form is an expression
 (if c: a else: b) >> i              // it binds loosest: `else:` takes the rest unless parenthesized
-if let v = m.get(k), v > 0: ...     // header binders, comma conditions
-while let x = q.pop(): ...
-while let (d, u) = h.pop(): ...   // any pattern binds, tuples included
-for v in V: ...
-for i in V, j in V.after(i) if ok(i, j): ...   // clauses nest; `if` filters each element as it comes, after earlier bodies ran
-'outer: for r in R:
-    for c in C:
+if let v = m.get(k), v > 0: todo    // header binders, comma conditions
+while let x = q.pop(): todo
+while let (d, u) = h.pop(): todo    // any pattern binds, tuples included
+for v in V: todo
+for i in V, j in V.after(i) if ok(i, j): todo   // clauses nest; `if` filters each element as it comes, after earlier bodies ran
+'outer: for r in Row:
+    for c in Col:
         if g[r, c] == '#': break 'outer
 else:
     print("none")                   // loop else: runs when no break
 match op:
-    Add(l, r) => st.apply(l..r, 1)
+    Add(l, r) => st[l] += 1
     Ask(i) =>
         print(st[i])
-match d: L => -1, R => 1            // one-line match
+match dir: L => -1, R => 1, U => 0, D => 0   // one-line match
 ```
 
 - `if let` / `while let` bind in headers; `x is pat` (with `and cond`) is
@@ -340,14 +363,22 @@ match d: L => -1, R => 1            // one-line match
 
 ## 1.9 Items
 
-<!-- spec-only: syntax tour over undeclared names and `todo` bodies -->
-```
+<!-- given:
+  let n = 5
+  const P = 998244353
+  struct Mat: v: Int
+  struct MatMul
+  impl Op<Mat> for MatMul:
+      fn op(self, a: Mat, b: Mat) -> Mat = Mat(v: a.v * b.v) -->
+```cp
 use std.segtree.{SegTree}                 // imports; prelude is implicit
-pub fn f<T: Ord>(xs: [D]T, by: T -> K = id) -> ?D = todo
+pub fn f<D, T: Ord, K>(xs: [D]T, by: T -> K = x => x) -> ?D = todo
+domain V = 1..=n                          // a fresh index type
 struct Edge: u: V, v: V, w: Int           // one-line struct
 struct Tally:
     var top = 0                           // var fields may change
-    total: Int = 0
+    var total: Int = 0
+    name: Str = ""                        // a fixed field
     fn add(mut self, x: Int):
         self.top max= x
         self.total += x
@@ -355,14 +386,15 @@ enum Dir = L | R | U | D
 enum Ev:
     Add(v: V)
     Ask(l: V, r: V)
-trait Monoid<T>(Op<T>):
+trait Unit<T>(Op<T>):
     @get fn id(self) -> T
     law left_id(x: T) = self.op(self.id, x) == x
-impl Monoid<Mat> for MatMul: ...
-type Grid = [R, C]Char
-domain V = 1..=n                          // a fresh index type
-@memo(array) fn ways(i: V.cuts) -> Mod<P>: ...
-mod geometry: ...                         // inline module
+impl Unit<Mat> for MatMul:
+    @get fn id(self) -> Mat = Mat(v: 1)
+type Grid = [V, V]Char
+@memo(array) fn ways(i: V.cuts) -> Mod<P>: todo
+mod geometry:                             // inline module
+    fn area() -> Int = 0
 extern fn ask(i: Int) -> Int              // provided by the judge
 ```
 
@@ -380,7 +412,6 @@ statements is an `if_stmt`: the `NL` before `else` is optional when the
 whole statement fits on one line. A further condition is `elif c:`; `else if` is E0503, whose fix writes `elif`. (R01.10.4) In a type position, `[D]` is followed by
 a type, so `[V]-1e9..=1e9` is a range type whose ends may be signed.
 
-<!-- spec-only: grammar, not CP code -->
 ```ebnf
 file        := (directive | item)*
 directive   := '@!' NAME call_args? NL

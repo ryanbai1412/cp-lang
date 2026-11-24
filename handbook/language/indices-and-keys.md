@@ -330,7 +330,7 @@ print(w[11])
 
 The identity rule's loud failure, a key from before the copy:
 
-```cp-fragment
+```cp
 let a = [10, 20, 30, 40]
 let c = List(a[2..])
 print(c[2])                              // traps R0101: c has keys 0 and 1

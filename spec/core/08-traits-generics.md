@@ -16,18 +16,23 @@ declare traits, laws and impls exactly as the stdlib does
 
 ## 8.1 Traits and impls
 
-<!-- spec-only: the prelude's own trait declarations -->
-```
-trait Ord(Eq):
-    fn cmp(self, other: Self) -> Ordering
-
+<!-- signatures: std/graph.cp -->
+```cp
 trait Next<V>:
     type Arc: Target<V>
-    fn out(self, u: V) -> yields Arc
+    fn out(self, u: V) -> yields Self.Arc
+```
 
-trait Monoid<T>(Op<T>):
-    fn id(self) -> T
-    law left_id(x: T) = self.op(self.id, x) == x
+A user library declares its own the same way:
+
+<!-- given: struct Frac: p: Int, q: Int -->
+```cp
+trait Rank(Eq):
+    fn rank(self, other: Self) -> Ordering
+
+trait Unit<T>(Op<T>):
+    fn unit(self) -> T
+    law left_unit(x: T) = self.op(self.unit(), x) == x
 
 impl Ord for Frac:
     fn cmp(self, o: Frac) -> Ordering = (self.p * o.q).cmp(o.p * self.q)
@@ -92,11 +97,11 @@ impl Ord for Frac:
 
 ## 8.2 Generics
 
-<!-- spec-only: signatures only -->
-```
-fn argmax<S: Keyed + Seq, K: Ord>(s: S, by: S.Item -> K = id) -> ?S.Key
-fn dijkstra<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>) -> Paths<V, W, g.Arc>
-fn f<domain I, domain J>(a: [I, J]Int)
+<!-- given: use std.graph.{WeightedNext, Paths} -->
+```cp
+fn best<S: Indexed<K, T>, K, T, B: Ord>(s: S, by: T -> B = x => x) -> ?K = todo
+fn shortest<V, W>(g: WeightedNext<V, W>, from: Seq<(V, W)>) -> Paths<V, W, g.Arc> = todo
+fn f<domain I, domain J>(a: [I, J]Int) = todo
 struct Pair<A, B = Int>: a: A, b: B
 ```
 
@@ -127,12 +132,11 @@ struct Pair<A, B = Int>: a: A, b: B
 
 ## 8.3 Laws
 
-<!-- spec-only: the prelude's own trait declarations -->
-```
+<!-- signatures: std/algebra.cp -->
+```cp
 trait Op<T>:
     fn op(self, a: T, b: T) -> T
-    law assoc(a: T, b: T, c: T) = self.op(self.op(a, b), c) == self.op(a, self.op(b, c))
-trait Commutative<T>(Op<T>):
+trait Commutative<T>: Op<T>:
     law comm(a: T, b: T) = self.op(a, b) == self.op(b, a)
 ```
 
@@ -147,10 +151,11 @@ trait Commutative<T>(Op<T>):
 
 ## 8.4 Record row types (trial)
 
-<!-- spec-only: a std signature and a record-update fragment -->
-```
-fn undirected<V, R: (u: V, v: V, ..)>(n: V.count, edges: Seq<R>)
-    -> Graph<V, (to: V, ..R without (u, v))>
+<!-- given:
+  domain V = 0..3
+  let (a, u) = ((to: V(0), w: 5), V(1)) -->
+```cp
+fn arcs<V, R: (u: V, v: V, ..)>(edges: List<R>) -> List<(to: V, ..R without (u, v))> = todo
 let a2 = (..a, to: u)                 // record update
 ```
 

@@ -65,7 +65,8 @@ grow(mut a)  // `mut` at both ends: you see who writes a
 print(a.len)
 ```
 
-```cp-fragment
+<!-- rejects: E0602 -->
+```cp
 domain V = 0..8
 var a: [V]Int = 0
 let w = a[V(2)..V(5)]        // w is a view: a lend of a
@@ -214,11 +215,12 @@ print(window(a, V(3)).sum())
   relaxed by decision 144 so a lent value can sit in a `var`, field or
   container that dies no later than its sources. The case that forced it:
 
-```cp-fragment
+```cp
 domain V = 1..=4
 let ws: [V]Int = [V] v => 5 - Int(v)
-var st = SegTree((x, y) => if ws[x] <= ws[y]: x else: y, [V] v => v)
-st[V.first!] = V.first!
+let pick = (x: V, y: V) => if ws[x] <= ws[y]: x else: y
+var st = SegTree(pick.opt(), [V] v => Some(v))
+st[V.first!] = Some(V.first!)
 ```
 
 `st` holds a closure that reads `ws`, so `st` is lent from `ws`. It is
@@ -251,7 +253,8 @@ What is not allowed is keeping a lent value anywhere that outlives a
 source: returning it without `lends`, storing it through a parameter, or
 storing it in a top-level `var` from a fn (R05.7.8 to R05.7.10).
 
-```cp-fragment
+<!-- rejects: E0603 -->
+```cp
 var rows = [[1, 2], [3]]
 var best = List<Int>()
 for r in rows:
@@ -352,7 +355,7 @@ f(mut a, 0, 2)
 print(a[0], a[2])
 ```
 
-```cp-fragment
+```cp
 domain V = 1..=4
 fn paint(mut x: [V]Int, mut y: [V]Int):
     for k in x.keys: x[k] = 1
@@ -390,7 +393,8 @@ inc()
 print(cnt)
 ```
 
-```cp-fragment
+<!-- rejects: E0602 -->
+```cp
 var xs = [3, 1, 2]
 xs.sort(by: x => xs.len - x)
 // error E0602: sort holds xs `mut` for the call, and the closure reads xs
@@ -434,7 +438,8 @@ print(depth.max()!)
 A closure that captures local state is lent (R05.10.2), so it can't be
 returned past that state:
 
-```cp-fragment
+<!-- rejects: E0603 -->
+```cp
 fn counter() -> (() -> Int):
     var c = 0
     () => c                  // error E0603: the lambda captures local c

@@ -40,12 +40,16 @@ indexable by walk position, which is easy to confuse with the source index.
 
 ## The model
 
-```cp-fragment
+<!-- given:
+  domain I = 0..6
+  let a: [I]Int = [I] i => Int(i) % 3
+  let (l, r, k) = (I(1), I(4), 3) -->
+```cp
 let w = a[l..=r]                  // a view: O(1), keeps a's keys
 let i = w.keys.max(by: k => a[k])! // a key of a, usable as a[i]
 let pre = a.scan(+)                // pre[c] folds left of cut c
-for x in a.rev: ...                // walks backwards; a.rev[k] is an error, a.rev.nth(k) isn't
-let longest = a.maximal(Window(+), ok: w => (w.all ?? 0) <= k).max(by: r => r.len)!
+for x in a.rev: print(x)           // walks backwards; a.rev[k] is an error, a.rev.nth(k) isn't
+let longest = a.maximal(Window(+), ok: win => (win.all ?? 0) <= k).max(by: p => p.len)!
 ```
 
 What a contestant holds in their head:
@@ -161,11 +165,12 @@ traps naming `w.keys`. In review, `a.rev[0]` and `r[0]` on a run were
 read as "the first element" every time, so the literal case is rejected
 before it can trap (R07.4.5):
 
-```cp-fragment
+<!-- rejects: E0305 -->
+```cp
 let a = [10, 20, 30, 40]
-let w = a[1..]
-print(w.nth(0), w.first!)  // 20 20: positional on any view
-print(w[1])                // error E0305: write `w.nth(1)`, or `a[1]` for key 1
+let w = a.rev
+print(w.nth(0), w.first!)  // 40 40: positional on any view
+print(w[0])                // error E0305: write `w.nth(0)`, or `a[0]` for key 0
 ```
 
 ### Laziness is explicit; allocation has a name (R07.1.3, R07.1.7, decision 140)
@@ -357,7 +362,7 @@ let pre = a.scan(+)
 let v = V(3)
 print(pre[v], pre[v.l], pre[v.r])
 let p = [3, 1, 4].scan(+)
-print(p[0], p[2], p[3])
+print(p.cut(0), p.cut(2), p.cut(3))
 ```
 
 Folds on generators and filters, and a range's own closed-form sum:
@@ -382,7 +387,7 @@ for r in a.runs(by: x => x): print(r.keys.first!, r.len)
 ```cp
 let a = [2, 1, 3, 1, 1, 4]
 let k = 4
-let longest = a.maximal(Window(+), ok: w => (w.all ?? 0) <= k).max(by: r => r.len)!
+let longest = a.maximal(Window(+), ok: win => (win.all ?? 0) <= k).max(by: p => p.len)!
 print(longest.len, a[longest].sum())
 ```
 

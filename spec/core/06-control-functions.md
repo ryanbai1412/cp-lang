@@ -17,11 +17,13 @@ is a generator (`yields`), consumed by a plain `for`, so `break`,
 
 ## 6.1 Functions
 
-<!-- spec-only: signature tour with a `...` body -->
-```
+<!-- given:
+  domain V = 0..4
+  struct P: x: Int, y: Int -->
+```cp
 fn dist(a: P, b: P) -> Int = abs(a.x - b.x) + abs(a.y - b.y)
 fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
-    ...
+    todo
 ```
 
 - One-line `= expr` or a block whose last expression is the value.
@@ -62,18 +64,25 @@ fn solve(n: Int, mut seen: [V]Bool; limit: Int = 10) -> ?Int:
 Nested `fn`s and lambdas are the same thing for every rule; they differ
 only in spelling (decision 144):
 
-<!-- spec-only: lambda tour over names from the text -->
-```
+<!-- given:
+  domain V = 0..4
+  struct P: x: Int, y: Int
+  let g = Graph.undirected([(V.first!, V.last!)])
+  var seen: [V]Bool = false
+  var xs = [P(1, 2), P(3, 4)].to_list()
+  var cnt = [0, 0, 0].to_list()
+  fn key(p: P) -> (Int, Int) = (p.x, p.y) -->
+```cp
 fn go(v: V):                          // nested fn: recursion by name
     seen[v] = true
     for u in g.next(v) if not seen[u]: go(u)
 
-let fact = n => if n == 0: 1 else: n * fact(n - 1)   // recursive lambda
+let fact = (n: Int) -> Int => if n == 0: 1 else: n * fact(n - 1)   // recursive lambda
 xs.sort(by: p => (p.x, desc(p.y)))
-on_remove: (v, a) => cnt[a] -= 1      // body may be an assignment
-by: x =>                              // block lambda
+let drop = (v: Int, a: Int) => cnt[a] -= 1   // body may be an assignment
+xs.sort(by: x =>                      // block lambda
     let k = key(x)
-    (k.0, -k.1)
+    (k.0, -k.1))
 ```
 
 - **Captures act as call-time arguments.** A closure holds no lend
@@ -97,14 +106,14 @@ by: x =>                              // block lambda
 
 A generator is a function that pushes elements to its caller's loop body:
 
-<!-- spec-only: tour with a `...` loop body -->
-```
+<!-- given: let n = 12 -->
+```cp
 fn divisors(n: Int) -> yields Int:
     for d in 1..=isqrt(n) if n % d == 0:
         yield d
         if d * d != n: yield n / d
 
-for d in divisors(n): ...
+for d in divisors(n): todo
 let s = divisors(n).filter(d => d % 2 == 0).sum()
 ```
 

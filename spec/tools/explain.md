@@ -4,7 +4,7 @@ Status: draft for 0.3.0. The report every implicit choice owes the
 contestant (AGENTS.md "nothing secret under the hood"). Its content is
 defined by `core/13-lowering.md` §13.6; the LSP shows the same data.
 
-```
+```text
 $ cpl explain d dist
 dist: [V]?Int
   element  8 B, None = Int.MIN

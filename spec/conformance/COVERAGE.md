@@ -1009,40 +1009,77 @@ holds the declarations the block takes from the prose; `spec-blocks`
 prepends it.
 
 - 00-overview.md: 1 blocks, 1 with a case, 0 spec-only, 0 neither
-- 01-lexical-grammar.md: 5 blocks, 1 with a case, 3 spec-only, 1 neither
-  - line 106: `let var const fn struct enum domain type use pub if elif els`
-- 02-values-types.md: 3 blocks, 2 with a case, 1 spec-only, 0 neither
+- 01-lexical-grammar.md: 5 blocks, 1 with a case, 0 spec-only, 4 neither
+  - line 111: `let var const fn struct enum domain type use pub if elif els`
+  - line 289: `if c: a elif d: b else: e`
+  - line 373: `use std.segtree.{SegTree}`
+  - line 415: `file := (directive | item)*`
+- 02-values-types.md: 3 blocks, 2 with a case, 0 spec-only, 1 neither
+  - line 257: `domain V = 1..=read<1..=2e5>()`
 - 03-numbers-layout.md: 2 blocks, 2 with a case, 0 spec-only, 0 neither
-- 04-indices.md: 8 blocks, 1 with a case, 3 spec-only, 4 neither
-  - line 59: `struct Two(a: Int, b: Int)`
-  - line 210: `for j in ..i:`
-  - line 308: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
-  - line 329: `fn inversions(r: Range<Pos>) -> Int:`
-- 04b-keys.md: 13 blocks, 3 with a case, 6 spec-only, 4 neither
+- 04-indices.md: 8 blocks, 1 with a case, 0 spec-only, 7 neither
+  - line 24: `domain V = 1..=n`
+  - line 66: `struct Two(a: Int, b: Int)`
+  - line 176: `for j in ..i:`
+  - line 227: `for j in ..i:`
+  - line 325: `let k = (0..=n).last_true(k => cost(k) <= budget) ?? -1`
+  - line 346: `fn inversions(r: Range<Pos>) -> Int:`
+  - line 379: `var dist: [V]?Int = None`
+- 04b-keys.md: 14 blocks, 3 with a case, 0 spec-only, 11 neither
   - line 72: `fn solve(r: Range<V>) -> Int:`
   - line 100: `let z = z_function(s[l..])`
   - line 114: `for (i, x) in a[l..=r].items:`
-  - line 171: `let t = s[l..r].rebase`
-- 05-ownership.md: 56 blocks, 44 with a case, 2 spec-only, 10 neither
-  - line 105: `var xs = [1, 2]`
-  - line 180: `struct Holder: xs: List<Int>`
-  - line 308: `let ws = read<[V]Int>()`
-  - line 535: `let d = build_dsu(edges)`
-  - line 657: `var xs = [1, 2]`
-  - line 666: `var xs = [1, 2]`
-  - line 863: `let ws = read<[V]Int>()`
-  - line 872: `var xs = [3, 1, 2]`
-  - line 911: `var seen: [V]Bool = false`
-  - line 978: `var xs = [1, 2]`
-- 06-control-functions.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
-- 07-sequences.md: 7 blocks, 0 with a case, 6 spec-only, 1 neither
-  - line 239: `fn divisors(n: Int) -> yields Int:`
-- 08-traits-generics.md: 4 blocks, 0 with a case, 4 spec-only, 0 neither
-- 09-contexts-checks.md: 3 blocks, 0 with a case, 3 spec-only, 0 neither
-- 10-io.md: 3 blocks, 1 with a case, 2 spec-only, 0 neither
-- 11-modules-prelude.md: 1 blocks, 0 with a case, 1 spec-only, 0 neither
+  - line 139: `if s[i..i + k] == s[j..j + k]: todo`
+  - line 150: `s[l..].nth(k)`
+  - line 167: `for (c, x) in grid[r].items: todo`
+  - line 180: `let t = s[l..r].rebase`
+  - line 229: `pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => `
+  - line 235: `pub fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?`
+  - line 245: `pub fn z_function<S: Indexed<K, T>, K, T: Eq>(s: S) -> [K]In`
+  - line 267: `pub fn scan<D, T, M>(self: [D]T, f: M, from: ?T = None) -> P`
+- 05-ownership.md: 56 blocks, 44 with a case, 0 spec-only, 12 neither
+  - line 84: `let walk = dfs(g, from: [s], seen: mut seen)`
+  - line 110: `var xs = [1, 2]`
+  - line 185: `struct Holder: xs: List<Int>`
+  - line 242: `fn window(xs: [V]Int, l: V) -> lends [V]Int = xs[l..]`
+  - line 315: `let ws = read<[V]Int>()`
+  - line 543: `let d = build_dsu(edges)`
+  - line 665: `var xs = [1, 2]`
+  - line 674: `var xs = [1, 2]`
+  - line 871: `let ws = read<[V]Int>()`
+  - line 881: `var xs = [3, 1, 2]`
+  - line 920: `var seen: [V]Bool = false`
+  - line 987: `var xs = [1, 2]`
+- 06-control-functions.md: 3 blocks, 0 with a case, 0 spec-only, 3 neither
+  - line 23: `fn dist(a: P, b: P) -> Int = abs(a.x - b.x) + abs(a.y - b.y)`
+  - line 75: `fn go(v: V):`
+  - line 110: `fn divisors(n: Int) -> yields Int:`
+- 07-sequences.md: 7 blocks, 0 with a case, 0 spec-only, 7 neither
+  - line 92: `a[l..=r]`
+  - line 132: `let w = a[l..=r]`
+  - line 215: `a[l..=r]`
+  - line 260: `fn divisors(n: Int) -> yields Int:`
+  - line 329: `[f(x) for x in s if p(x)]`
+  - line 393: `a.keys.min(by: i => a[i])!`
+  - line 410: `let pre = a.scan(+)`
+- 08-traits-generics.md: 5 blocks, 0 with a case, 0 spec-only, 5 neither
+  - line 20: `trait Next<V>:`
+  - line 29: `trait Rank(Eq):`
+  - line 101: `fn best<S: Indexed<K, T>, K, T, B: Ord>(s: S, by: T -> B = x`
+  - line 136: `trait Op<T>:`
+  - line 157: `fn arcs<V, R: (u: V, v: V, ..)>(edges: List<R>) -> List<(to:`
+- 09-contexts-checks.md: 3 blocks, 0 with a case, 0 spec-only, 3 neither
+  - line 26: `pub context io:`
+  - line 37: `fn solve():`
+  - line 127: `with checks(ranges: on, overflow: on, bounds: on):`
+- 10-io.md: 4 blocks, 1 with a case, 0 spec-only, 3 neither
+  - line 52: `let n: 1..=2e5 = read()`
+  - line 174: `let n: Int = read(base: 1)`
+  - line 182: `fn read_all<T>(until: ?(T -> Bool) = None) -> List<T>`
+- 11-modules-prelude.md: 1 blocks, 0 with a case, 0 spec-only, 1 neither
+  - line 38: `use std.segtree`
 
-20 of 109 blocks have neither a case nor a spec-only reason.
+57 of 112 blocks have neither a case nor a spec-only reason.
 
 ## Standard library
 
@@ -1050,8 +1087,8 @@ Every `pub` item in `std`, counted as covered when a conformance
 case names it. `/// example:` lines are also run by the `docs` suite of
 `cpl-conform`; this list is about whole-program cases (edges, traps).
 
-- **algebra** (57/66 named by a case)
-  - uncovered: `Desc`, `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
+- **algebra** (58/69 named by a case)
+  - uncovered: `Monoid.commutative`, `Comm`, `Desc`, `Reversible`, `HasId`, `HasInv`, `Idempotent`, `AddAction`, `AssignAction`, `AffineAction`, `FlipAction`
 - **bag** (157/164 named by a case)
   - uncovered: `BagCursor`, `SortedBag.count_of`, `SortedBag.next_cursor`, `SortedBag.prev_cursor`, `SortedBag.entries`, `SortedBag.entries_rev`, `SortedRange`
 - **beats** (24/25 named by a case)
@@ -1112,7 +1149,7 @@ case names it. `/// example:` lines are also run by the `docs` suite of
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2281 of 2391 std items are named by a case.
+2282 of 2394 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

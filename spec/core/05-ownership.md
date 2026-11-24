@@ -75,14 +75,19 @@ may never outlive the variable (R8). That is the whole checker.
   the captured variable's name: it can't move while they live, and they
   can't outlive it.
 
-<!-- spec-only: fragment: `g`, `x` and `walk2`'s `...` body come from the text -->
+<!-- given:
+  domain V = 0..8
+  let g = Graph.undirected([(V.first!, V.last!)])
+  let (s, x) = (V.first!, V.last!)
+  var seen: [V]Bool = false -->
+<!-- rejects: E0602 -->
 ```python
 let walk = dfs(g, from: [s], seen: mut seen)   // seen lent `mut` from here...
-print(seen[x])                   // error: seen is lent to walk
+print(yes(seen[x]))              // error: seen is lent to walk
 let n = walk.count()             // ...to here
 
-fn walk2() -> yields V: ...      // same DFS, using seen as a capture
-print(seen[x])                   // fine: walk2 touches seen only while it runs
+fn walk2() -> yields V: todo     // same DFS, using seen as a capture
+print(yes(seen[x]))              // fine: walk2 touches seen only while it runs
 let n2 = walk2().count()
 ```
 
@@ -233,11 +238,13 @@ holds nothing of `t`.
 
 A fn whose result borrows from its arguments declares it:
 
-<!-- spec-only: signatures only -->
+<!-- given: domain V = 0..8 -->
 ```python
 fn window(xs: [V]Int, l: V) -> lends [V]Int = xs[l..]       // read lend
-pub fn at(mut self, i: D) -> lends mut T                    // a writable place
-fn pick(a: List<Int>, b: List<Int>) -> lends(a) List<Int> // borrows only a
+struct Cell<D, T>:
+    var a: [D]T
+    pub fn at(mut self, i: D) -> lends mut T = self.a[i]  // a writable place
+fn pick(a: List<Int>, b: List<Int>) -> lends(a) List<Int> = a   // borrows only a
 ```
 
 - **Meaning.** The result is a lent value whose sources are every
@@ -307,7 +314,8 @@ sources or a block nested inside it, and after them. It may never be:
   domain V = 0..8 -->
 ```python
 let ws = read<[V]Int>()
-var st = SegTree((i, j) => if ws[i] <= ws[j]: i else: j, [V] v => v)   // fine: st dies before ws
+let pick = (i: V, j: V) => if ws[i] <= ws[j]: i else: j
+var st = SegTree(pick.opt(), [V] v => Some(v))   // fine: st dies before ws
 ```
 <!-- given:
   var rows = [[1, 2], [3]]
@@ -862,8 +870,9 @@ fn adder(k: Int) -> (Int -> Int) = x => x + k
   let i = V(1) -->
 ```python
 let ws = read<[V]Int>()
-var st = SegTree((x, y) => if ws[x] <= ws[y]: x else: y, [V] v => v)
-st[i] = i
+let pick = (x: V, y: V) => if ws[x] <= ws[y]: x else: y
+var st = SegTree(pick.opt(), [V] v => Some(v))
+st[i] = Some(i)
 ```
 <details><summary>Answer</summary>Yes. <code>st</code> is lent from <code>ws</code> and declared after it in the same block (R8). (<code>SegTree</code>'s element type here is <code>V</code>.)</details>
 

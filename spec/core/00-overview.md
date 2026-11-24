@@ -39,7 +39,7 @@ to the chapter that defines it.
 
 ## A small program
 
-```
+```cp
 domain V = 1..=read<1..=2e5>()
 let m = read<0..=2e5>()
 let g = Graph.undirected(read<[m](u: V, v: V, w: 1..=1e9)>())

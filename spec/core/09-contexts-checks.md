@@ -22,23 +22,24 @@ answer, never undefined behaviour.
 A context is a library-declared record of compile-time values with
 defaults. It replaces a flag per feature with one mechanism:
 
-<!-- spec-only: the prelude's `io` context declaration -->
-```
-context io:
-    base: 0 | 1 = 0
+<!-- excerpt: std/io.cp -->
+```cp
+pub context io:
+    base: 0..=1 = 0
     sep: Str = " "
-    answers: (Str, Str) = profile.answers
-    precision: ?Int = profile.precision
+    answers: (Str, Str) = ("YES", "NO")
+    precision: ?Int = None
 ```
 
 Any block sets one:
 
-<!-- spec-only: fragment over `A` with a `...` body -->
-```
-with io(base: 1)                  // bare line at the top of a block: the rest of it
-with checks(bounds: off):         // block form
-    for x in A: ...
-read(base: 0)                     // a call argument beats every context
+<!-- given: let xs = [1, 2, 3] -->
+```cp
+fn solve():
+    with io(base: 1)              // bare line at the top of a block: the rest of it
+    with checks(bounds: off):     // block form
+        for x in xs: todo
+    let n: Int = read(base: 0)    // a call argument beats every context
 ```
 
 - Precedence: call argument, then the innermost `with`, then outer ones,
@@ -123,14 +124,13 @@ checked builds and, like other checks, skipped in release unless
 
 ## 9.4 Turning checks on and off
 
-<!-- spec-only: tour with `...` bodies -->
-```
+```cp
 with checks(ranges: on, overflow: on, bounds: on):   // also in release
-    ...
+    todo
 with checks(overflow: off):                          // also in checked builds
-    ...
+    todo
 unchecked:                                           // every check off, every build
-    ...
+    todo
 ```
 
 - `with checks(...: on)` keeps those checks in release for a block or

@@ -133,6 +133,9 @@ domain `B` (at most 64 members, one `U64`): set algebra `s | t`, `s & t`, `s - t
 last) and `s.supersets`. `Int(s)` is the mask and `print(s)` writes it (decision 291). `for s in B.subsets` walks the
 masks in increasing order, so every subset comes before its supersets.
 
+<!-- given:
+  domain Group = 0..4
+  let score: [Group.subsets]Int = [Group.subsets] s => s.len * 3 -->
 ```python
 var best: [Group.subsets]?Int = None
 best[Subset<Group>.empty] = 0
@@ -145,10 +148,14 @@ sum-over-subsets transforms, \(O(2^n \cdot n)\); with `op` inverse, `unfold_*`.
 
 ### Top-down: `@memo fn`
 
-<!-- spec-only: fragment over a digit DP's `Pos`, `digit` and `k` -->
+<!-- given:
+  type M = Mod<998244353>
+  domain Pos = 0..18
+  let digit: [Pos]0..=9 = [Pos] i => i.ord % 10
+  let k = 7 -->
 ```python
-@memo(array) fn ways(i: Pos.cuts, tight: Bool, sum: 0..=9 * 18) -> Mod:
-    if i == Pos.cuts.last!: return Mod(sum % k == 0)
+@memo(array) fn ways(i: Pos.cuts, tight: Bool, sum: 0..=9 * 18) -> M:
+    if i == Pos.cuts.last!: return M(if sum % k == 0: 1 else: 0)
     let hi = if tight: digit[i.r!] else: 9
     (0..=hi).map(d => ways(i.next!, tight and d == hi, sum + d)).sum()
 ```
@@ -180,7 +187,7 @@ brute in `cpl stress`.
 
 | Form | Plain DP it replaces | Cost |
 |---|---|---|
-| `monotone_minima(rows, cols, f)` | `row i: min over c of f(i, c)`, argmin monotone in `i` (D&C opt) → `[R]?(val, at)` | \(O((n + m) \log n)\) calls |
+| `monotone_minima(rows, cols, f)` | `row i: min over c of f(i, c)`, argmin monotone in `i` (D&C opt) → `List<?(val, at)>` | \(O((n + m) \log n)\) calls |
 | `smawk(rows, cols, f)` | same, `f` totally monotone (Monge) | \(O(n + m)\) calls |
 | `knuth(n, cost)` | `dp[i][j] = min over splits + cost(i, j)` with Knuth's condition → `(n + 1)²` table | \(O(n^2)\) |
 | `split_best(groups, range:, best:)` | values of a family of ranges, best first: each pop re-queues the two pieces around the chosen position (k largest subarray sums) | \(O(k \log(n + k))\) `best` calls |
@@ -194,9 +201,13 @@ brute in `cpl stress`.
 
 D&C optimisation as a library call, the same layer cf868f writes by hand:
 
+<!-- given:
+  use std.dp.{monotone_minima}
+  domain Cut = 0..=6
+  fn cost(r: Range<Int>) -> Int = r.len * r.len -->
 ```python
-fn layer(prev: [Cut]?Int) -> [Cut]?Int =
-    monotone_minima(Cut.range, Cut.range, (i, j) => if j <= i: prev[j] + cost(j..i)).map(.val)
+fn layer(prev: [Cut]?Int) -> List<?Int> =
+    monotone_minima(Cut.count, Cut.count, (i, j) => if j <= i and prev[Cut.nth(j)] != None: Some(prev[Cut.nth(j)]! + cost(j..i)) else: None).map(r => r.map(x => x.val)).collect()
 ```
 
 (`if` without `else` is `None` when false: the expression form of a

@@ -59,7 +59,6 @@ spec/lib/math.md: choose
 spec/lib/math.md: crt
 spec/lib/math.md: crt_all
 spec/lib/math.md: deriv
-spec/lib/math.md: det_real
 spec/lib/math.md: divisors_from_factors
 spec/lib/math.md: exp
 spec/lib/math.md: ext_gcd
@@ -68,7 +67,6 @@ spec/lib/math.md: floor_sum
 spec/lib/math.md: integral
 spec/lib/math.md: inv
 spec/lib/math.md: inv_mod
-spec/lib/math.md: inverse_real
 spec/lib/math.md: is_prime
 spec/lib/math.md: log
 spec/lib/math.md: mod_log
@@ -76,9 +74,7 @@ spec/lib/math.md: mod_sqrt
 spec/lib/math.md: mul_mod
 spec/lib/math.md: ntt
 spec/lib/math.md: primitive_root
-spec/lib/math.md: rank_real
 spec/lib/math.md: sieve_multiplicative
-spec/lib/math.md: solve_real
 spec/lib/math.md: sos
 spec/lib/math.md: splitmix64
 spec/lib/math.md: sqrt

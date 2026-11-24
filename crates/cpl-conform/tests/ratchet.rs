@@ -220,7 +220,7 @@ fn spec_blocks_markers_above_a_fence() {
     use cpl_conform::spec_blocks::{extract_marked_blocks, Marker};
     let md = "<!-- spec-only: a tour -->\n```cp\nf(...)\n```\n\n<!-- given:\n  let n = 3\n  let a = [1, 2] -->\n```cp\nprint(n)\n```\n<!-- spec-only: not adjacent -->\n\n```cp\nprint(1)\n```\n";
     let blocks = extract_marked_blocks(md);
-    assert_eq!(blocks[0].1, Marker::SpecOnly("a tour".into()));
+    assert!(matches!(&blocks[0].1, Marker::Invalid(why) if why.contains("spec-only")));
     assert_eq!(
         blocks[1].1,
         Marker::Given("let n = 3\nlet a = [1, 2]".into())
@@ -234,12 +234,60 @@ fn spec_blocks_markers_above_a_fence() {
     let md = "1. item\n\n   <!-- spec-only: listed -->\n   ```cp\n   let q = 1\n     q\n   ```\n";
     let blocks = extract_marked_blocks(md);
     assert_eq!(blocks[0].0, "let q = 1\n  q\n");
-    assert_eq!(blocks[0].1, Marker::SpecOnly("listed".into()));
+    assert!(matches!(&blocks[0].1, Marker::Invalid(_)));
     let md = "<!-- given: let a = [1] -->\n<!-- rejects: E0603 -->\n```cp\nf(a)\n```\n";
     assert_eq!(
         extract_marked_blocks(md)[0].1,
         Marker::GivenRejects("let a = [1]".into(), "E0603".into())
     );
+}
+
+#[test]
+fn spec_blocks_std_markers() {
+    use cpl_conform::spec_blocks::{
+        excerpt_unmet, extract_marked_blocks, signatures_unmet, Marker,
+    };
+    let md = "<!-- signatures: std/heap.cp std/bag.cp -->\n```cp\nfn f()\n```\n<!-- excerpt: std/io.cp -->\n```cp\nx\n```\n";
+    let blocks = extract_marked_blocks(md);
+    assert_eq!(
+        blocks[0].1,
+        Marker::Signatures("std/heap.cp std/bag.cp".into())
+    );
+    assert_eq!(blocks[1].1, Marker::Excerpt("std/io.cp".into()));
+    let std = "/// doc\npub fn scan<D, T>(\n    self: [D]T,\n    from: ?T = None,\n) -> Prefix<D, T> =\n    todo\npub struct Pt(pub x: Int, y: Int)\n";
+    assert_eq!(
+        signatures_unmet(
+            "fn scan<D, T>(self: [D]T, from: ?T = None) -> Prefix<D, T>\nstruct Pt(x: Int, y: Int)",
+            std
+        ),
+        None
+    );
+    let why = signatures_unmet("fn scan<D>(self: [D]Int) -> Int", std).unwrap();
+    assert!(why.contains("std has `fn scan<D, T>("), "{why}");
+    assert!(signatures_unmet("// nothing", std).is_some());
+    assert_eq!(
+        excerpt_unmet("pub struct Pt(pub x: Int, y: Int)  // a point", std),
+        None
+    );
+    assert!(excerpt_unmet("pub struct Pt(pub x: Int, y: Int)\npub fn scan<D, T>(", std).is_some());
+}
+
+#[test]
+fn spec_blocks_fences_are_closed() {
+    use cpl_conform::spec_blocks::{extract_marked_blocks, Marker};
+    for md in [
+        "```\nx\n```\n",
+        "```rust\nx\n```\n",
+        "<!-- given: let a = 1 -->\n```cpp\nx\n```\n",
+    ] {
+        let blocks = extract_marked_blocks(md);
+        assert!(
+            matches!(&blocks[0].1, Marker::Invalid(_)),
+            "{md}: {:?}",
+            blocks[0].1
+        );
+    }
+    assert!(extract_marked_blocks("```cpp\nint x;\n```\n").is_empty());
 }
 
 #[test]

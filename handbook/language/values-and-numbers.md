@@ -73,7 +73,8 @@ the one surprising case, using a moved value, is a compile error that
 names `.clone()`. The full model is in
 [ownership.md](ownership.md).
 
-```cp-fragment
+<!-- rejects: E0608 -->
+```cp
 struct Bag: xs: List<Int>
 let a = [1, 2]
 let b = Bag(a)               // a moves into the Bag
@@ -154,7 +155,8 @@ print(s)
 `U8` and friends are not types; the error says to write the range
 (R03.1.5):
 
-```cp-fragment
+<!-- rejects: E0901 -->
+```cp
 let a: [4]U8 = [1, 2, 3, 4]             // error E0901: write 0..=255
 ```
 

@@ -41,7 +41,8 @@ lambda was written.
 
 ## The model
 
-```cp-fragment
+<!-- given: let (n, lim) = (36, 10) -->
+```cp
 fn divisors(n: Int) -> yields Int:
     for d in 1..=isqrt(n) if n % d == 0:
         yield d

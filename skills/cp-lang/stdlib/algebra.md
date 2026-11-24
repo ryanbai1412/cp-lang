@@ -19,6 +19,13 @@ An associative operation with an identity: the pair `(id, op)`, written `Monoid<
 
 - `fn of<M>(m: M) -> Monoid<T>` — \(O(1)\); The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its identity: zero for `+`, `^`, `\|` and `gcd`, one for `*`, all bits for `&`, and for `min` / `max` the far end of `T` (`None` on a `?T`).; traps: never (an operator without a known identity is a compile-time error)
 - `fn monoid(self) -> Monoid<T>` — \(O(1)\); A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a bare operator.
+- `fn commutative(self) -> Comm<T>` — \(O(1)\); `self` with the law `op(a, b) == op(b, a)` stated, so folds may reorder and lazy tags skip push-down; `cpl stress` samples the law like any other.
+
+## `struct Comm<T>(pub m: Monoid<T>)`
+
+A monoid whose `op(a, b) == op(b, a)` is stated; [`Monoid.commutative`] makes one.
+
+- `fn monoid(self) -> Monoid<T>` — \(O(1)\); The monoid underneath, for [`Monoid.of`].
 
 ## `struct Action<T, F>(pub id: F, pub compose: (F, F) -> F, pub apply: (F, T, Int) -> T, pub over: Monoid<T>, pub commutes: Bool = false)`
 
