@@ -8,6 +8,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[path = "support/parallel.rs"]
+mod parallel;
+
 fn dir() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/diagnostics")
 }
@@ -312,22 +315,13 @@ fn every_golden_fix_names_something_that_exists() {
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("golden-fixes-exist");
     let _ = fs::remove_dir_all(&scratch);
     fs::create_dir_all(&scratch).unwrap();
-    let cpl = |args: &[&str]| {
-        let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .args(args)
-            .current_dir(&scratch)
-            .output()
-            .expect("cpl starts");
-        String::from_utf8_lossy(&out.stdout).to_string()
-    };
+    let cpl = |args: &[&str]| String::from_utf8_lossy(&cpl_cli::run(args).stdout).to_string();
     let unknown = |json: &str| {
         ["E0201", "E0203", "E0207"]
             .iter()
             .map(|c| json.matches(&format!("\"code\":\"{c}\"")).count())
             .sum::<usize>()
     };
-    let mut wrong = Vec::new();
-    let mut fixed = 0;
     let mut files: Vec<PathBuf> = fs::read_dir(dir())
         .unwrap()
         .flatten()
@@ -335,20 +329,25 @@ fn every_golden_fix_names_something_that_exists() {
         .filter(|p| p.extension().is_some_and(|e| e == "cp"))
         .collect();
     files.sort();
-    for file in files {
+    // In process on every core: a `cpl` per golden and step was most of the time.
+    let each = parallel::parallel(&files, |file| {
         let name = file.file_name().unwrap().to_string_lossy().to_string();
-        fs::copy(&file, scratch.join(&name)).unwrap();
-        let before = unknown(&cpl(&["check", "--json", &name]));
-        if cpl(&["fix", "--json", &name]).contains("\"applied\":0,") {
-            continue;
+        let copy = scratch.join(&name);
+        fs::copy(file, &copy).unwrap();
+        let copy = copy.to_str().unwrap();
+        let before = unknown(&cpl(&["check", "--json", copy]));
+        if cpl(&["fix", "--json", copy]).contains("\"applied\":0,") {
+            return None;
         }
-        let after = cpl(&["check", "--json", &name]);
-        fixed += 1;
+        let after = cpl(&["check", "--json", copy]);
         if unknown(&after) > before {
-            let text = fs::read_to_string(scratch.join(&name)).unwrap();
-            wrong.push(format!("{name}: after `cpl fix`\n{text}\n{after}"));
+            let text = fs::read_to_string(copy).unwrap();
+            return Some(Some(format!("{name}: after `cpl fix`\n{text}\n{after}")));
         }
-    }
+        Some(None)
+    });
+    let fixed = each.iter().flatten().count();
+    let wrong: Vec<String> = each.into_iter().flatten().flatten().collect();
     assert!(
         fixed >= 20,
         "only {fixed} goldens checked; the scan is broken"
