@@ -37,6 +37,18 @@ def aho_words(n, m):
     return f"{n} {m}\n" + "\n".join(sorted(seen)) + "\n" + "\n".join(texts) + "\n"
 
 
+def edges(n):
+    """`n`, then n lines `u v w` with u, v in 1..=n and w in 1..=1000."""
+    lines = (f"{i * 7919 % n + 1} {i * 104729 % n + 1} {i % 1000 + 1}" for i in range(n))
+    return f"{n}\n" + "\n".join(lines) + "\n"
+
+
+def table(r, c):
+    """`r c`, then an r x c table of numbers in 0..=500."""
+    rows = (" ".join(str((i * c + j) * 7919 % 501) for j in range(c)) for i in range(r))
+    return f"{r} {c}\n" + "\n".join(rows) + "\n"
+
+
 def gen(problem):
     """corpus/problems/`problem`/gen.py --max's input."""
     script = os.path.join(ROOT, "corpus", "problems", problem, "gen.py")
@@ -63,6 +75,10 @@ CASES = {
     "sieve": lambda: "10000000\n",  # primality only: no smallest-factor table
     "enum_grid": lambda: "4000\n",  # 16e6 cells: 16 MB at a byte, 64 MB at four
     "max_k": lambda: ints(500_000),  # the 30 largest of 5e5: O(k) beside the array (cf2165c)
+    "print_narrow": lambda: "4000000\n",  # a List<0..=536_870_911> printed whole: 16 MB at 4 B (cf2201b)
+    "edge_records": lambda: edges(3_000_000),  # 3e6 read (u, v, w) at 12 B, not 24 (coci21c4p4)
+    "runtime_bound": lambda: "4000000\n",  # List<1..=n> and [0..n]0..=n at 4 B (dmopc21c5p4, cf2187f1)
+    "read_table": lambda: table(3000, 3000),  # [0..r, 0..c]0..=500 = read(): 18 MB at 2 B (apio09p1)
     "merge_sorted": lambda: f"1000000\n{' '.join(str(3 * i) for i in range(10**6))}\n{' '.join(str(3 * i + 1) for i in range(10**6))}\n",  # two sorted 1e6 arrays walked merged: no third list (cf2262c)
     # sort() 4e5 (Int, Bool, Int) events, noi19p1's sweep
     "sort_tuples": lambda: "200000\n" + "".join(f"{i * 7919 % 1001} {i * 104729 % 1001}\n" for i in range(200_000)),
