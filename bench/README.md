@@ -92,7 +92,8 @@ exact stdout match, and emitted C++ byte counts): `modint` arithmetic,
 `ntt` convolution (`n = 262,144`), linear `sieve` (`n = 5,000,000` with
 `phi_table` + `mobius_table`), `matpow` (`80 x 80` `Mod` matrix to `10^18`),
 `crt` (`1,000,000` calls), `comb` (`limit = 2,000,000`, `5,000,000`
-`choose` queries), and `std.poly` `polypow` / `polycompose` (`n = 100,001`)
+`choose` queries), `combinv` (`25,000,000` `Comb.inv(k)` lookups, `k <= 5,000`,
+against a hand-hoisted `1 / k` table), and `std.poly` `polypow` / `polycompose` (`n = 100,001`)
 against ecnerwala's `ps_pow_monic` / `ps_compose` (C++20). Results and codegen profiling notes live in
 `spec/lib/math.md` and `research/frictions/bench-math.md`.
 

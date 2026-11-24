@@ -169,6 +169,7 @@ pub struct Comb<M: Add + Sub + Mul>:
     @cache f: List<M>
     @cache g: List<M>
     @cache d: List<M>
+    @cache iv: List<M>
 
     /// Precompute factorials and inverse factorials up to `limit` for `M = Mod<P>`, `P` prime.
     ///
@@ -185,7 +186,7 @@ pub struct Comb<M: Add + Sub + Mul>:
         while q * q <= p:
             assert p % q != 0, "`Comb` needs a prime modulus"
             q += 1
-        let c = Comb<M>([M(1)], [M(1)], [M(1), M(0)])
+        let c = Comb<M>([M(1)], [M(1)], [M(1), M(0)], [])
         c.grow(limit)
         c
 
@@ -234,15 +235,24 @@ pub struct Comb<M: Add + Sub + Mul>:
         self.ensure(n)
         g[n]
 
-    /// `1 / i`, for `1 <= i < M.MOD`, from the factorials: `(i - 1)! / i!`.
+    /// `1 / i`, for `1 <= i < M.MOD`: one load from a table of `(i - 1)! / i!`, built from the
+    /// factorials on the first call and kept as long as they are.
     ///
     /// cost: \(O(1)\) amortized
     /// traps: when `i` is outside `1..M.MOD`
     /// example: `type Z = Mod<7>; Comb<Z>().inv(3) == Z(5)`
     pub fn inv(self, i: Int) -> M:
         assert 1 <= i < M.MOD, "`inv(i)` needs `i` in `1..M.MOD`"
+        if i >= iv.len: self.grow_inv(i)
+        iv[i]
+
+    // `iv[k] = (k - 1)! / k!` for every `k < f.len`: one load per `inv`, and a Comb that never
+    // calls `inv` keeps no third table.
+    fn grow_inv(self, i: Int):
         self.ensure(i)
-        g[i] * f[i - 1]
+        let have = iv.len
+        iv.reserve(f.len)
+        for k in have..f.len: iv.push(if k == 0: M(0) else: g[k] * f[k - 1])
 
     fn choose_lucas(self, n: Int, k: Int) -> M:
         let p = M.MOD
@@ -555,6 +565,16 @@ fn inv_is_one_over_i():
     let c = Comb<Z>()
     for i in 1..200: assert c.inv(i) * Z(i) == Z(1)
     assert c.inv(1) == Z(1)
+
+@test
+fn inv_keeps_up_as_the_factorials_grow():
+    type Z = Mod<998_244_353>
+    let c = Comb<Z>()
+    assert c.inv(2) * Z(2) == Z(1)
+    assert c.fact(3000) != Z(0)
+    for i in [2999, 3000, 1, 1500]: assert c.inv(i) * Z(i) == Z(1)
+    let d = Comb<Z>(10)
+    for i in (1..5000).rev: assert d.inv(i) * Z(i) == Z(1)
 
 @test
 fn comb_multinomial():

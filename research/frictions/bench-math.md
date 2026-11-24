@@ -15,6 +15,17 @@ Three rows remain slightly above 1.10x (`crt` 1.17x, `comb` 1.15x, `sieve` 1.11x
 - **Status:** resolved (non-brace line counting in `inline_hint`, multi-store `NonNeg` fixed-point in `Facts::sign`, and 32-bit fast path in `cpl::ediv`; `crt` dropped from `1.17x` to `0.86x`)
 - **Area:** codegen
 
+## `Comb.inv` paid a mulmod and an in-line cache fill on every lookup
+
+- **Where:** `bench/math/combinv.cp` (`0.076s` vs `0.061s` C++, `1.23x`) and `corpus/problems/cf2138d/port.cp` (`0.159s` vs `orig.cpp` `0.111s`, `1.43x`, best of 15 at `gen.py --max`), where `span_expect` calls `comb.inv` 25M times.
+- **What felt wrong:** `inv(i)` was `ensure(i)` then `g[i] * f[i - 1]`, and g++ laid the inlined `grow` out on the hot path; a table alone, with the fill still in line, stayed at `0.142s`.
+- **Goal it hurts:** performance
+- **Ideal code:** `comb.inv(k)` in the loop, as written.
+- **General fix:** `Comb` keeps a `1 / i` table, built from the factorials on the first `inv` (a `Comb` that never calls `inv` keeps no third table). Codegen marks a branch whose body only calls a read-`self` method that grows `@cache` fields as `__builtin_expect(..., 0)`, so every cache fill is out of line. `combinv` is now `0.96x`; cf2138d is `0.126s` (`1.13x`), against about `0.113s` for a hand-hoisted `[comb.inv(k) for k in 0..=q]`.
+- **Severity:** medium
+- **Status:** resolved
+- **Area:** stdlib, codegen
+
 ## `Comb.choose` pays lazy-grow check on every query
 
 - **Where:** `bench/math/comb.cp` (`0.081s` vs `0.071s` C++, `1.15x`, down from `1.58x`).
@@ -58,6 +69,7 @@ Three rows remain slightly above 1.10x (`crt` 1.17x, `comb` 1.15x, `sieve` 1.11x
 | `matpow` | 0.042s | 0.043s | 0.98x | 7,760 B |
 | `crt` | 0.068s | 0.080s | 0.86x | 6,508 B |
 | `comb` | 0.081s | 0.071s | 1.15x | 10,132 B |
+| `combinv` | 0.064s | 0.066s | 0.96x | 9,779 B |
 | `polypow` | 0.281s | 0.317s | 0.89x | 28,652 B |
 | `polycompose` | 0.542s | 0.536s | 1.01x | 29,338 B |
 

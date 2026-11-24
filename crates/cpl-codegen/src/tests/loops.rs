@@ -227,3 +227,23 @@ fn a_cache_fill_is_the_unlikely_branch() {
     );
     assert_eq!(out.matches("__builtin_expect(n").count(), 1, "{out}");
 }
+
+#[test]
+fn comb_inv_in_a_loop_is_one_load_with_no_mulmod() {
+    let out = cpp(
+        "type Z = Mod<1_000_000_007>\nlet c = Comb<Z>()\nlet n: 1..=5000 = read()\n\
+         var acc = Z(0)\nfor i in 1..=n: acc += c.inv(i)\nprint(acc)\n",
+    );
+    let (at, _) = out
+        .match_indices("_inv(Comb")
+        .find(|(i, _)| !out[..*i].ends_with("_grow"))
+        .expect("Comb.inv is emitted");
+    let inv = &out[at..at + out[at..].find("\n}\n").expect("its body ends")];
+    assert!(inv.contains("if (__builtin_expect("), "{inv}");
+    let ret = inv.lines().find(|l| l.contains("return ")).unwrap_or("");
+    assert!(
+        ret.contains("self.iv[i]") || ret.contains("cpl::at(self.iv, i)"),
+        "{inv}"
+    );
+    assert!(!inv.contains(" % ") && !inv.contains("_mul("), "{inv}");
+}
