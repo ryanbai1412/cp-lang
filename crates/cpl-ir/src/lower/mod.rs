@@ -796,6 +796,8 @@ struct Lowerer<'a> {
     self_struct: Option<StructId>,
     /// The trait fns a law being lowered names unqualified (`LawInfo::trait_fns`).
     law_fns: Vec<String>,
+    /// A trait default copied into an impl: the trait's fns, which its body calls unqualified.
+    default_trait_fns: HashMap<FnId, Vec<String>>,
     /// Start of the item being lowered; its spans are relative to it.
     offset: u32,
     /// Declared types shown as their source writes them, innermost last.
@@ -934,6 +936,7 @@ impl<'a> Lowerer<'a> {
             call_hint: (None, None),
             self_struct: None,
             law_fns: Vec::new(),
+            default_trait_fns: HashMap::new(),
             offset: 0,
             asked_at: report::Asked::default(),
             sig_param_at: HashMap::new(),

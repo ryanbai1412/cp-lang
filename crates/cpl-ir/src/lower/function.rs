@@ -40,6 +40,8 @@ impl<'a> Lowerer<'a> {
         let saved_offset = std::mem::replace(&mut self.offset, self.sigs[id].offset);
         let saved_env = std::mem::replace(&mut self.gen_env, self.sigs[id].env.clone());
         let saved_self = std::mem::replace(&mut self.self_struct, self.sigs[id].owner);
+        let own_fns = self.default_trait_fns.get(&id).cloned().unwrap_or_default();
+        let saved_law_fns = std::mem::replace(&mut self.law_fns, own_fns);
         let saved_asked = std::mem::replace(&mut self.asked_at, self.sigs[id].asked_at.clone());
         let saved_fn = self.growth.cur.replace(id);
 
@@ -386,6 +388,7 @@ impl<'a> Lowerer<'a> {
         self.offset = saved_offset;
         self.gen_env = saved_env;
         self.self_struct = saved_self;
+        self.law_fns = saved_law_fns;
         self.asked_at = saved_asked;
         self.growth.cur = saved_fn;
         if self.domains.len() > dom_start {

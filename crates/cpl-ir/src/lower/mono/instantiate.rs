@@ -515,12 +515,15 @@ impl<'a> Lowerer<'a> {
                     let t_offset = self.traits[tid].offset;
                     let t_methods = self.traits[tid].methods.clone();
                     let t_env = self.default_fn_env(tid, &imp_trait_args, imp_body, &env);
+                    let t_fns: Vec<String> =
+                        t_methods.iter().map(|m| m.name.text.clone()).collect();
                     for m in t_methods {
                         if !matches!(m.body, ast::FnBody::None)
                             && !self.structs[sid].methods.contains_key(&m.name.text)
                         {
                             let fn_id =
                                 self.declare_fn_in(m, t_mod, t_offset, Some(sid), t_env.clone());
+                            self.default_trait_fns.insert(fn_id, t_fns.clone());
                             self.resolve_fn_sig(fn_id, Some(tname.as_str()));
                             self.structs[sid].methods.insert(m.name.text.clone(), fn_id);
                             let key = (tname.clone(), m.name.text.clone());
