@@ -100,6 +100,36 @@ fn bundle(root: &Path, out: &Path, folder: &str, prefix: &str, track: bool) {
     std::fs::write(out.join(format!("{prefix}_index.rs")), index).expect("a writable OUT_DIR");
     std::fs::write(out.join(format!("{prefix}_names.rs")), std_names(&modules))
         .expect("a writable OUT_DIR");
+    std::fs::write(out.join(format!("{prefix}_calls.rs")), std_calls(&modules))
+        .expect("a writable OUT_DIR");
+}
+
+/// How often std's own text, its doc examples included, writes `.name`:
+/// the `std_calls` table, by name, of the names written at least twice.
+fn std_calls(modules: &[(String, PathBuf)]) -> String {
+    let mut counts: std::collections::BTreeMap<String, u32> = Default::default();
+    for (_, path) in modules {
+        let text = std::fs::read_to_string(path).expect("a readable module");
+        let bytes = text.as_bytes();
+        for (at, _) in text.match_indices('.') {
+            if at > 0 && bytes[at - 1] == b'.' {
+                continue;
+            }
+            let name: String = text[at + 1..]
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if name.starts_with(|c: char| c.is_ascii_lowercase() || c == '_') {
+                *counts.entry(name).or_default() += 1;
+            }
+        }
+    }
+    let mut table = String::from("&[\n");
+    for (name, count) in counts.iter().filter(|(_, n)| **n >= 2) {
+        writeln!(table, "    ({name:?}, {count}),").expect("writing to a string");
+    }
+    table.push_str("]\n");
+    table
 }
 
 /// `text` with each `@test` fn blanked to empty lines. A program that

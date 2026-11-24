@@ -221,6 +221,15 @@ pub(crate) fn std_modules() -> &'static [(&'static str, &'static str)] {
     modules()
 }
 
+/// How often std's own text writes `.name`, a method's name: how common
+/// a member is, for ordering completion.
+pub fn std_calls(name: &str) -> u32 {
+    const CALLS: &[(&str, u32)] = include!(concat!(env!("OUT_DIR"), "/std_calls.rs"));
+    CALLS
+        .binary_search_by(|(known, _)| (*known).cmp(name))
+        .map_or(0, |at| CALLS[at].1)
+}
+
 /// Every module of the standard library, by name, with its
 /// `std_files::outline`: what the scans of std's declarations read, so
 /// they need no module's whole text.
