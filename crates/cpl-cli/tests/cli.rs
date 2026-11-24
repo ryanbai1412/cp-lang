@@ -1362,6 +1362,55 @@ fn a_million_calls_deep_run_in_the_built_cpp_on_an_8_mb_stack() {
     assert_eq!(String::from_utf8_lossy(&run.stdout), "1000000 999999\n");
 }
 
+/// An accepted C++ keeping 64 MB on the stack (noi10p2's 5670502.cpp)
+/// crashes on a shell's 8 MB: every program `cpl test` and `cpl stress`
+/// start gets the stack a judge gives, the hard cap.
+#[test]
+fn programs_started_by_test_and_stress_get_the_hard_stack_cap() {
+    if Command::new("g++").arg("--version").output().is_err() {
+        return;
+    }
+    let big = b"#include <cstdio>\n#include <cstring>\nint main() {\n    volatile char a[64 << 20];\n    memset((char *)a, 1, sizeof a);\n    int n;\n    if (scanf(\"%d\", &n) != 1) return 1;\n    printf(\"%d\\n\", n + a[n]);\n}\n";
+    let path = scratch("big-stack", "big.cpp", big);
+    let dir = path.parent().unwrap();
+    std::fs::write(
+        dir.join("solve.cp"),
+        "let n: 0..=9 = read()\nprint(n + 1)\n",
+    )
+    .unwrap();
+    let tests = dir.join("big.tests");
+    std::fs::create_dir_all(&tests).unwrap();
+    std::fs::write(tests.join("1.in"), "4\n").unwrap();
+    std::fs::write(tests.join("1.ans"), "5\n").unwrap();
+    let cpl_bin = env!("CARGO_BIN_EXE_cpl");
+    let on_8_mb = |args: &[&std::ffi::OsStr]| {
+        Command::new("sh")
+            .arg("-c")
+            .arg("ulimit -S -s 8192 && exec \"$@\"")
+            .arg("sh")
+            .arg(cpl_bin)
+            .args(args)
+            .output()
+            .unwrap()
+    };
+    let tested = on_8_mb(&[
+        "test".as_ref(),
+        path.as_os_str(),
+        "--tests".as_ref(),
+        tests.as_os_str(),
+    ]);
+    assert!(tested.status.success(), "{tested:?}");
+    let stressed = on_8_mb(&[
+        "stress".as_ref(),
+        dir.join("solve.cp").as_os_str(),
+        "--brute".as_ref(),
+        path.as_os_str(),
+        "--cases".as_ref(),
+        "5".as_ref(),
+    ]);
+    assert!(stressed.status.success(), "{stressed:?}");
+}
+
 #[test]
 fn a_judge_without_threads_gets_a_plain_main_and_a_warning() {
     let path = scratch("judge-threads", "a.cp", b"// judge: olympiad\nprint(1)\n");

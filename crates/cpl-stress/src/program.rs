@@ -478,27 +478,48 @@ fn interpreted(
     Ok(argv)
 }
 
-/// The `ulimit -s` programs started from here get.
-fn current_stack() -> Option<String> {
-    static STACK: std::sync::OnceLock<Option<String>> = std::sync::OnceLock::new();
-    STACK
+/// This process's `ulimit -s`, then its hard cap (`ulimit -Hs`); `None` off Unix.
+fn stacks() -> Option<&'static (String, String)> {
+    static STACKS: std::sync::OnceLock<Option<(String, String)>> = std::sync::OnceLock::new();
+    STACKS
         .get_or_init(|| {
+            if cfg!(not(unix)) {
+                return None;
+            }
             // Linux says it without a shell.
             if let Ok(limits) = std::fs::read_to_string("/proc/self/limits") {
-                let soft = limits
+                let line = limits
                     .lines()
-                    .find_map(|line| line.strip_prefix("Max stack size"))?
-                    .split_whitespace()
-                    .next()?;
-                return Some(match soft.parse::<u64>() {
+                    .find_map(|line| line.strip_prefix("Max stack size"))?;
+                let kb = |limit: &str| match limit.parse::<u64>() {
                     Ok(bytes) => (bytes >> 10).to_string(),
-                    Err(_) => soft.to_string(),
-                });
+                    Err(_) => limit.to_string(),
+                };
+                let mut limits = line.split_whitespace().map(kb);
+                return Some((limits.next()?, limits.next()?));
             }
-            let out = Command::new("sh").args(["-c", "ulimit -s"]).output().ok()?;
-            Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
+            let out = Command::new("sh")
+                .args(["-c", "ulimit -s; ulimit -Hs"])
+                .output()
+                .ok()?;
+            let text = String::from_utf8_lossy(&out.stdout).into_owned();
+            let mut lines = text.lines().map(|line| line.trim().to_string());
+            Some((lines.next()?, lines.next()?))
         })
-        .clone()
+        .as_ref()
+}
+
+/// The `ulimit -s` programs started from here get: the hard cap.
+fn current_stack() -> Option<String> {
+    stacks().map(|(_, hard)| hard.clone())
+}
+
+/// The stack [`Program::to_command`] raises a program's to, when this
+/// process's own is below the hard cap.
+fn raised_stack() -> Option<&'static str> {
+    stacks()
+        .filter(|(soft, hard)| soft != hard)
+        .map(|(_, hard)| hard.as_str())
 }
 
 /// The interpreter and its arguments a script's first line names:
@@ -735,9 +756,25 @@ impl Program {
         program
     }
 
+    /// The one way a program is started from here: the solution, brute,
+    /// generator, checker and interactor alike. It gets the stack judges
+    /// give, the hard cap (`unlimited` where allowed), not this shell's
+    /// 8 MB, so an accepted C++ keeping big arrays on the stack runs.
     pub(crate) fn to_command(&self) -> Command {
-        let mut command = Command::new(&self.argv[0]);
-        command.args(&self.argv[1..]);
+        let mut command = match raised_stack() {
+            Some(stack) => {
+                let mut command = Command::new("sh");
+                command
+                    .args(["-c", "ulimit -s \"$0\" 2>/dev/null; exec \"$@\"", stack])
+                    .args(&self.argv);
+                command
+            }
+            None => {
+                let mut command = Command::new(&self.argv[0]);
+                command.args(&self.argv[1..]);
+                command
+            }
+        };
         command.envs(self.env.iter().map(|(key, value)| (key, value)));
         // Its own process group, so a time limit stops what it started too.
         #[cfg(unix)]
