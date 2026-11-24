@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Hidden case for YAC 6 P3: `gen.py SEED [MAXSIDE]` prints `N M`, then `A B C D` (distinct cells).
+"""Hidden case for YAC 6 P3: `gen.py SEED [MAXSIDE] | --max` (a 1e9 x 1e9 grid) prints `N M`, then `A B C D` (distinct cells).
 
 tests/NN.case are hidden cases; NN.in / NN.ans are transcripts of spec.cp against them:
 `interactor.py tests/NN.case --log-in tests/NN.in --log-out tests/NN.ans -- cpl run spec.cp`."""
 import random, sys
 
+MAX = sys.argv[1] == "--max"
+if MAX:
+    sys.argv[1:] = ["0"]
 g = random.Random(int(sys.argv[1]))
 side = max(2, int(sys.argv[2])) if len(sys.argv) > 2 else 10**9
 pick = lambda: g.randint(1, side) if g.random() < 0.7 else g.randint(1, min(side, 6))
@@ -14,6 +17,8 @@ while True:
         m = 1  # subtask 1
     if g.random() < 0.15:
         n, m = (side, side) if g.random() < 0.5 else (n, side)
+    if MAX:
+        n = m = side
     if n * m >= 2:
         break
 

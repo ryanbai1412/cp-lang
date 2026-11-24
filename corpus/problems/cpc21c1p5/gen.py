@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
-# usage: gen.py seed size; prints a hidden case for tests/interactor.py (n <= 500, coordinates 1..=1e9)
+# usage: gen.py seed size | --max (n = 500 distinct rectangles over 1..=1e9); prints a hidden case for tests/interactor.py (n <= 500, coordinates 1..=1e9)
 import random, sys
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "500"]
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 n = 500 if size >= 500 else r.randint(1, max(1, min(size, 500)))
