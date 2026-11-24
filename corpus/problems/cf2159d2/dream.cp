@@ -13,14 +13,14 @@ let n: Int = read()
 let a: [0..n]Int = read()
 
 var stack: List<(val: Int, starts: List<Int>)> = []
-let ans = sum for (i, x) in a.items:
-    stack.pop_while(top => top.val >= x)
-    var starts = [i + 1] + (stack.last?.starts ?? [0])
+var ans = 0
+for (i, x) in a.items:
+    while let top = stack.last and top.val >= x: stack.pop()
+    var starts = [i + 1] + (stack.last.map(t => t.starts) ?? [0])
     for l in 2..=3 if l < starts.len:
-        let prev = stack.before(
-            stack.partition_point(t => t.val < ceil_div(x, l))
-        ).last?.starts ?? [0]
-        starts = starts[..l] + zip_min(starts[l..], prev)
+        let below = stack.partition_point(t => t.val >= ceil_div(x, l))
+        let prev = stack[..below].last.map(t => t.starts) ?? [0]
+        starts = starts[..l] + [min(u, v) for (u, v) in zip(starts[l..], prev)]
     stack.push((x, starts))
-    starts.sum()
+    ans += starts.sum()
 print(ans)
