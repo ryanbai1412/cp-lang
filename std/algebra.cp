@@ -245,6 +245,13 @@ impl Reversible for MaxSub:
 pub struct Semigroup<T>(pub op: (T, T) -> T):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
 
+    /// \(O(1)\). The op on `?T` with `None` as identity: a `Monoid` any structure takes.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `fold(Semigroup((a: Int, b: Int) => a - b).opt(), [Some(5), Some(2)]) == Some(3)`
+    pub fn opt(self) -> Monoid<?T> = op.opt()
+
 /// \(O(1)\) construction. Associative operation with identity and inverse (`inv`),
 /// for generalized Fenwick trees and difference structures.
 pub struct Group<T>(pub id: T, pub op: (T, T) -> T, pub inv: T -> T):
@@ -598,3 +605,12 @@ pub const affine: AffineAction = AffineAction()
 
 /// Stock action: swap the two halves of a `Flip<T>` value.
 pub const flip: FlipAction = FlipAction()
+
+/// \(O(1)\). The op lifted to `?T` with `None` as its identity, so any associative op (a closure,
+/// a `Semigroup`) becomes a `Monoid` whose folds say "nothing here" as `None` (ops-ranges.md section 2).
+///
+/// cost: \(O(1)\) to make; each call is one `op` call or none
+/// traps: never
+/// example: `let f = (a: Int, b: Int) => a * 10 + b; fold(f.opt(), [Some(1), None, Some(2)]) == Some(12)`
+pub fn opt<T>(self: (T, T) -> T) -> Monoid<?T> =
+    Monoid(None, (a: ?T, b: ?T) => if let x = a: (if let y = b: Some(self(x, y)) else: a) else: b)
