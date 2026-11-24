@@ -563,7 +563,12 @@ def run_out(exe, data):
 
 
 def accepted_cpps(pkg):
-    out = [pkg.orig] if pkg.orig else []
+    """orig.cpp alone when the package has one: it is the reference the answers
+    come from, and an AC submission may cover only the judge's narrower data.
+    Otherwise every AC C++ submission."""
+    if pkg.orig:
+        return [pkg.orig]
+    out = []
     for s in pkg.read_meta().get("submissions", []):
         f = s.get("file") or ""
         p = Path(ROOT, f)
@@ -608,8 +613,11 @@ def check_package(pkg, ctx):
             exes = [e for e in map(built, srcs) if e]
             for i, case in enumerate(pkg.cases(), 1) if len(exes) > 1 else ():
                 data = pkg.case_input(case).encode()
-                outs = {tuple(tokens(o)) for o in (run_out(e, data) for e in exes) if o is not None}
-                if len(outs) > 1:
+                outs = {e: run_out(e, data) for e in exes}
+                if len({tuple(tokens(o)) for o in outs.values() if o is not None}) > 1:
+                    # A reference whose output changes on a rerun (seeded from the clock) can't say.
+                    outs = {e: o for e, o in outs.items() if o is not None and tokens(run_out(e, data) or b"") == tokens(o)}
+                if len({tuple(tokens(o)) for o in outs.values()}) > 1:
                     found.append(f"needs-checker {pkg.id} {i}")
                     break
     return found

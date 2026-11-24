@@ -470,6 +470,31 @@ class StaticModesTest(Corpus):
         self.assertEqual(corpus.check_package(pkg, self.ctx("")), ["no-reference p1 -"])
 
 
+    def test_orig_cpp_alone_is_the_reference(self):
+        sub = self.root / "narrow.cpp"
+        sub.write_text("int main(){}\n")
+        meta = '{"submissions": [{"file": "%s", "result": "AC"}]}' % sub
+        pkg = corpus.Package.at(self.package("p1", orig_cpp="int main(){}\n", meta_json=meta))
+        self.assertEqual(corpus.accepted_cpps(pkg), [pkg.orig])
+        pkg2 = corpus.Package.at(self.package("p2", meta_json=meta))
+        self.assertEqual(corpus.accepted_cpps(pkg2), [sub])
+
+    def test_a_reference_that_changes_on_a_rerun_does_not_ask_for_a_checker(self):
+        refs = [self.root / "a.cpp", self.root / "b.cpp", self.root / "c.cpp"]
+        for r in refs:
+            r.write_text("int main(){}\n")
+        pkg = corpus.Package.at(self.package("p1", tests_toml='[[case]]\ninput = "1"\n', meta_json="{}"))
+        flips = iter([b"no", b"yes"] * 4)
+        outs = {"a": lambda: b"yes", "b": lambda: next(flips), "c": lambda: b"yes"}
+        ctx = self.ctx("")
+        ctx.run = True
+        with mock.patch.object(corpus, "accepted_cpps", return_value=refs), \
+                mock.patch.object(corpus, "built", side_effect=lambda src: src.stem), \
+                mock.patch.object(corpus, "run_out", side_effect=lambda e, d: outs[e]()):
+            self.assertEqual(corpus.check_package(pkg, ctx), [])
+            outs["c"] = lambda: b"no"
+            self.assertEqual(corpus.check_package(pkg, ctx), ["needs-checker p1 1"])
+
 class SeedTest(Corpus):
     def setUp(self):
         super().setUp()
