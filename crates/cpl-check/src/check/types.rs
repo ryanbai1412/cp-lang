@@ -318,6 +318,8 @@ impl<'a> Checker<'a> {
                 }
             }
             return match head_ty {
+                // `D.cuts` over a generic domain: lowering knows which one.
+                Ty::Param(_) if matches!(member, "cuts" | "subsets" | "ranges") => Ty::Unknown,
                 Ty::Param(p) => Ty::Assoc {
                     of: Box::new(Ty::Param(p)),
                     name: member.to_string(),
