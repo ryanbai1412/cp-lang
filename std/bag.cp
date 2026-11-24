@@ -30,12 +30,9 @@ const BAG_OPS = ["none", "add", "remove", "clear"]
 pub struct SortedBag<K>:
     var keys: List<K>
     var ws: List<Int>
-    var fill: List<Int>
-    var nxt: List<Int>
-    var prv: List<Int>
-    var kix: List<Int>
+    // Per node: fill, next leaf, previous leaf, and its block in `kids` (or -1).
+    var meta: List<Int>
     var kids: List<Int>
-    var free: List<Int>
     var root: Int
     var height: Int
     var live: Int
@@ -44,6 +41,7 @@ pub struct SortedBag<K>:
     var last_op: Int
     var head: Int
     var tail: Int
+    var free: Int
     var pay: Bool
     var got: Int
 
@@ -57,16 +55,13 @@ pub struct SortedBag<K>:
         [],
         [],
         [],
-        [],
-        [],
-        [],
-        [],
         -1,
         0,
         0,
         0,
         0,
         0,
+        -1,
         -1,
         -1,
         false,
@@ -119,12 +114,9 @@ pub struct SortedBag<K>:
     pub fn clear(mut self):
         keys.clear()
         ws.clear()
-        fill.clear()
-        nxt.clear()
-        prv.clear()
-        kix.clear()
+        meta.clear()
         kids.clear()
-        free.clear()
+        free = -1
         root = -1
         height = 0
         live = 0
@@ -231,7 +223,7 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).last == Some(3)`
     @get pub fn last(self) -> ?K = if tail >= 0: Some(
-        keys[tail * BAG_B + fill[tail] - 1]
+        keys[tail * BAG_B + self.fill(tail) - 1]
     ) else: None
 
     /// Remove and return one copy of the smallest element, or `None` when empty.
@@ -348,7 +340,10 @@ pub struct SortedBag<K>:
     fn range_len(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> Int:
         if let a = lo:
             if let b = hi:
-                return self.below_diff(x => if lo_inc: x < a else: not (a < x), x => if hi_inc: not (b < x) else: x < b)
+                return self.below_diff(
+                    x => if lo_inc: x < a else: not (a < x),
+                    x => if hi_inc: not (b < x) else: x < b,
+                )
         let cnt_hi = if let b = hi:
             if hi_inc: self.rank_le(b) else: self.rank(b)
         else:
@@ -732,23 +727,24 @@ pub struct SortedBag<K>:
         t
 
     fn kid(self, n: Int, i: Int) -> Int:
-        unchecked: return kids[kix[n] * BAG_B + i]
+        unchecked: return kids[self.kix(n) * BAG_B + i]
 
     // Copy entry `i` of node `a` to entry `j` of node `b`; an `inner` entry carries a child too.
     fn mv(mut self, a: Int, i: Int, b: Int, j: Int, inner: Bool):
         keys[b * BAG_B + j] = keys[a * BAG_B + i]
         ws[b * BAG_B + j] = ws[a * BAG_B + i]
-        if inner or pay: kids[kix[b] * BAG_B + j] = kids[kix[a] * BAG_B + i]
+        if inner or pay: kids[self.kix(b) * BAG_B + j] = kids[self.kix(a) * BAG_B + i]
 
     fn put(mut self, s: Int, x: K, w: Int, k: Int):
         keys[s] = x
         ws[s] = w
-        if k >= 0: kids[kix[s / BAG_B] * BAG_B + s % BAG_B] = k
+        if k >= 0: kids[self.kix(s / BAG_B) * BAG_B + s % BAG_B] = k
 
     fn node(mut self, x: K, inner: Bool) -> Int:
-        var u = fill.len
-        if let f = free.pop():
-            u = f
+        var u = meta.len / 4
+        if free >= 0:
+            u = free
+            free = self.nxt(u)
         else:
             // The first node grows slot by slot, so a small bag holds only its keys; any
             // later node gets all its slots, after the last one is filled out.
@@ -756,25 +752,30 @@ pub struct SortedBag<K>:
                 while keys.len < u * BAG_B + BAG_B:
                     keys.push(x)
                     ws.push(0)
-            fill.push(0)
-            nxt.push(-1)
-            prv.push(-1)
-            kix.push(-1)
-        fill[u] = 0
-        nxt[u] = -1
-        prv[u] = -1
-        if (inner or pay) and kix[u] < 0:
-            kix[u] = kids.len / BAG_B
+            for v in [0, -1, -1, -1]: meta.push(v)
+        meta[4 * u] = 0
+        meta[4 * u + 1] = -1
+        meta[4 * u + 2] = -1
+        if (inner or pay) and self.kix(u) < 0:
+            meta[4 * u + 3] = kids.len / BAG_B
             for _ in 0..BAG_B: kids.push(-1)
         u
 
-    fn weight(self, n: Int) -> Int = slot_sum(ws, n * BAG_B, fill[n])
+    fn fill(self, n: Int) -> Int = meta[4 * n]
 
-    // The first `i` in `a..fill[n]` whose key fails `go`; the keys passing `go` form a prefix.
+    fn nxt(self, n: Int) -> Int = meta[4 * n + 1]
+
+    fn prv(self, n: Int) -> Int = meta[4 * n + 2]
+
+    fn kix(self, n: Int) -> Int = meta[4 * n + 3]
+
+    fn weight(self, n: Int) -> Int = slot_sum(ws, n * BAG_B, self.fill(n))
+
+    // The first `i` in `a..` the fill of `n` whose key fails `go`; the keys passing `go` form a prefix.
     fn at(self, n: Int, a: Int, x: K, upper: Bool) -> Int:
         var l = a
         var r = 0
-        r = fill[n]
+        r = self.fill(n)
         while l < r:
             let m = (l + r) / 2
             let k = keys[n * BAG_B + m]
@@ -784,7 +785,7 @@ pub struct SortedBag<K>:
     fn pos(self, n: Int, a: Int, go: K -> Bool) -> Int:
         var l = a
         var r = 0
-        r = fill[n]
+        r = self.fill(n)
         while l < r:
             let m = (l + r) / 2
             let k = keys[n * BAG_B + m]
@@ -794,7 +795,7 @@ pub struct SortedBag<K>:
     // Make room for an entry at `p` of node `n`, splitting a full node in half; returns the
     // new right half (or -1) and the slot to fill.
     fn room(mut self, n: Int, inner: Bool, p: Int, x: K) -> (Int, Int):
-        let f = fill[n]
+        let f = self.fill(n)
         if f < BAG_B:
             if keys.len == n * BAG_B + f:
                 keys.push(x)
@@ -803,17 +804,17 @@ pub struct SortedBag<K>:
             while i > p:
                 self.mv(n, i - 1, n, i, inner)
                 i -= 1
-            fill[n] = f + 1
+            meta[4 * n] = f + 1
             return (-1, n * BAG_B + p)
         let m = self.node(x, inner)
         let h = BAG_B / 2
         for i in h..BAG_B: self.mv(n, i, m, i - h, inner)
-        fill[n] = h
-        fill[m] = BAG_B - h
-        nxt[m] = nxt[n]
-        prv[m] = n
-        if nxt[n] >= 0: prv[nxt[n]] = m
-        nxt[n] = m
+        meta[4 * n] = h
+        meta[4 * m] = BAG_B - h
+        meta[4 * m + 1] = self.nxt(n)
+        meta[4 * m + 2] = n
+        if self.nxt(n) >= 0: meta[4 * (self.nxt(n)) + 2] = m
+        meta[4 * n + 1] = m
         if not inner and tail == n: tail = m
         let (_, s) = if p <= h: self.room(n, inner, p, x) else: self.room(m, inner, p - h, x)
         return (m, s)
@@ -825,7 +826,7 @@ pub struct SortedBag<K>:
             let p = self.at(n, 0, x, false)
             let s = n * BAG_B + p
             var hit = false
-            if p < fill[n]:
+            if p < self.fill(n):
                 let y = keys[s]
                 hit = not x < y
             if hit:
@@ -866,7 +867,7 @@ pub struct SortedBag<K>:
         if r == -2: return false
         if r >= 0:
             let nr = self.node(x, true)
-            fill[nr] = 1
+            meta[4 * nr] = 1
             let k = keys[root * BAG_B]
             self.put(nr * BAG_B, k, total + c, root)
             root = nr
@@ -877,32 +878,33 @@ pub struct SortedBag<K>:
         true
 
     fn drop(mut self, n: Int, p: Int, inner: Bool):
-        for i in p + 1..fill[n]: self.mv(n, i, n, i - 1, inner)
-        fill[n] -= 1
+        for i in p + 1..self.fill(n): self.mv(n, i, n, i - 1, inner)
+        meta[4 * n] -= 1
 
     // Child `i` of inner node `n` fell below a quarter full: merge it with a neighbour, or move
     // entries over one at a time until the two are even.
     fn fix(mut self, n: Int, i: Int, inner: Bool):
-        let a = if i + 1 < fill[n]: i else: i - 1
+        let a = if i + 1 < self.fill(n): i else: i - 1
         let x = self.kid(n, a)
         let y = self.kid(n, a + 1)
         let s = n * BAG_B + a
-        if fill[x] + fill[y] <= BAG_B:
-            for j in 0..fill[y]: self.mv(y, j, x, fill[x] + j, inner)
-            fill[x] += fill[y]
+        if self.fill(x) + self.fill(y) <= BAG_B:
+            for j in 0..self.fill(y): self.mv(y, j, x, self.fill(x) + j, inner)
+            meta[4 * x] += self.fill(y)
             ws[s] += ws[s + 1]
-            nxt[x] = nxt[y]
-            if nxt[y] >= 0: prv[nxt[y]] = x
+            meta[4 * x + 1] = self.nxt(y)
+            if self.nxt(y) >= 0: meta[4 * (self.nxt(y)) + 2] = x
             if not inner and tail == y: tail = x
-            free.push(y)
+            meta[4 * y + 1] = free
+            free = y
             self.drop(n, a + 1, true)
             return
-        while fill[x] + 1 < fill[y] or fill[y] + 1 < fill[x]:
-            let l = fill[x] > fill[y]
+        while self.fill(x) + 1 < self.fill(y) or self.fill(y) + 1 < self.fill(x):
+            let l = self.fill(x) > self.fill(y)
             let a = if l: x else: y
             let b = if l: y else: x
-            let p = if l: fill[x] - 1 else: 0
-            let q = if l: 0 else: fill[x]
+            let p = if l: self.fill(x) - 1 else: 0
+            let q = if l: 0 else: self.fill(x)
             let k = keys[a * BAG_B + p]
             let _ = self.room(b, inner, q, k)
             self.mv(a, p, b, q, inner)
@@ -917,7 +919,7 @@ pub struct SortedBag<K>:
         if h == 0:
             let p = self.at(n, 0, x, false)
             let s = n * BAG_B + p
-            if p >= fill[n]: return 0
+            if p >= self.fill(n): return 0
             let y = keys[s]
             if x < y: return 0
             if not all and ws[s] > 1:
@@ -931,7 +933,7 @@ pub struct SortedBag<K>:
         let u = self.kid(n, i)
         let rem = self.del(u, h - 1, x, all)
         ws[n * BAG_B + i] -= rem
-        if rem > 0 and fill[u] < BAG_B / 4 and fill[n] > 1: self.fix(n, i, h > 1)
+        if rem > 0 and self.fill(u) < BAG_B / 4 and self.fill(n) > 1: self.fix(n, i, h > 1)
         return rem
 
     fn erase(mut self, x: K, all: Bool) -> Int:
@@ -940,11 +942,12 @@ pub struct SortedBag<K>:
         if rem == 0: return 0
         total -= rem
         self.changed(BAG_REMOVE)
-        while height > 0 and fill[root] == 1:
-            free.push(root)
+        while height > 0 and self.fill(root) == 1:
+            meta[4 * root + 1] = free
+            free = root
             root = self.kid(root, 0)
             height -= 1
-        if fill[root] == 0:
+        if self.fill(root) == 0:
             // An emptied bag gives its nodes back, as `std::set` frees each node it erases.
             let (st, p) = (stamp, pay)
             self = SortedBag<K>.new()
@@ -960,7 +963,7 @@ pub struct SortedBag<K>:
     // The slot of the least key (the greatest when `last`), or -1.
     fn edge(self, last: Bool) -> Int:
         if root < 0: return -1
-        return if last: tail * BAG_B + fill[tail] - 1 else: head * BAG_B
+        return if last: tail * BAG_B + self.fill(tail) - 1 else: head * BAG_B
 
     // The slot after `s` in key order (before it when `back`), or -1.
     fn step(self, s: Int, back: Bool) -> Int:
@@ -968,10 +971,10 @@ pub struct SortedBag<K>:
         let p = s - l * BAG_B
         if back:
             if p > 0: return s - 1
-            let q = prv[l]
-            return if q >= 0: q * BAG_B + fill[q] - 1 else: -1
-        if p + 1 < fill[l]: return s + 1
-        return if nxt[l] >= 0: nxt[l] * BAG_B else: -1
+            let q = self.prv(l)
+            return if q >= 0: q * BAG_B + self.fill(q) - 1 else: -1
+        if p + 1 < self.fill(l): return s + 1
+        return if self.nxt(l) >= 0: self.nxt(l) * BAG_B else: -1
 
     // The slot of the first key passing monotone `ok` (false, then true), or -1.
     fn first_where(self, ok: K -> Bool) -> Int:
@@ -979,7 +982,7 @@ pub struct SortedBag<K>:
         var n = root
         for _ in 0..height: n = self.kid(n, self.pos(n, 1, k => not ok(k)) - 1)
         let p = self.pos(n, 0, k => not ok(k))
-        let s = if p < fill[n]: n * BAG_B + p else: self.step(n * BAG_B + p - 1, false)
+        let s = if p < self.fill(n): n * BAG_B + p else: self.step(n * BAG_B + p - 1, false)
         if s < 0: return -1
         let k = keys[s]
         return if ok(k): s else: -1
@@ -1039,7 +1042,7 @@ pub struct SortedBag<K>:
     fn vid(self, s: Int) -> Int = self.kid(s / BAG_B, s % BAG_B)
 
     fn set_vid(mut self, s: Int, v: Int):
-        kids[kix[s / BAG_B] * BAG_B + s % BAG_B] = v
+        kids[self.kix(s / BAG_B) * BAG_B + s % BAG_B] = v
 
     fn cursor(self, s: Int) -> ?BagCursor = if s >= 0: Some(BagCursor(s, stamp)) else: None
 
@@ -1052,12 +1055,8 @@ pub struct SortedBag<K>:
         let mine = SortedBag(
             keys.take(),
             ws.take(),
-            fill.take(),
-            nxt.take(),
-            prv.take(),
-            kix.take(),
+            meta.take(),
             kids.take(),
-            free.take(),
             root,
             height,
             live,
@@ -1066,17 +1065,15 @@ pub struct SortedBag<K>:
             last_op,
             head,
             tail,
+            free,
             pay,
             got,
         )
         keys = o.keys.take()
         ws = o.ws.take()
-        fill = o.fill.take()
-        nxt = o.nxt.take()
-        prv = o.prv.take()
-        kix = o.kix.take()
+        meta = o.meta.take()
         kids = o.kids.take()
-        free = o.free.take()
+        free = o.free
         root = o.root
         height = o.height
         live = o.live
@@ -1829,7 +1826,7 @@ pub struct AugSortedBag<K, T>:
     fn node_fold(self, n: Int, h: Int) -> T:
         var acc = id
         unchecked:
-            for j in 0..bag.fill[n]: acc = op(acc, self.part(n, h, j))
+            for j in 0..bag.fill(n): acc = op(acc, self.part(n, h, j))
         acc
 
     fn route(self, n: Int, x: K) -> Int = bag.at(n, 1, x, true) - 1
@@ -1840,10 +1837,10 @@ pub struct AugSortedBag<K, T>:
         if bag.root < 0: return false
         var n = bag.root
         unchecked:
-            if grow and bag.fill[n] >= BAG_B: return true
+            if grow and bag.fill(n) >= BAG_B: return true
             for _ in 0..bag.height:
                 n = bag.kid(n, self.route(n, x))
-                if (if grow: bag.fill[n] >= BAG_B else: bag.fill[n] <= BAG_B / 4): return true
+                if (if grow: bag.fill(n) >= BAG_B else: bag.fill(n) <= BAG_B / 4): return true
         false
 
     // Refold the path to `x` below node `n` at height `h`, with its neighbours when `wide`.
@@ -1855,13 +1852,13 @@ pub struct AugSortedBag<K, T>:
                 if i > 0:
                     let l = bag.kid(n, i - 1)
                     agg[l] = self.node_fold(l, h - 1)
-                if i + 1 < bag.fill[n]:
+                if i + 1 < bag.fill(n):
                     let r = bag.kid(n, i + 1)
                     agg[r] = self.node_fold(r, h - 1)
         agg[n] = self.node_fold(n, h)
 
     fn refold(mut self, x: K, wide: Bool):
-        while agg.len < bag.fill.len: agg.push(id)
+        while agg.len < bag.meta.len / 4: agg.push(id)
         if bag.root >= 0: self.refold_at(bag.root, bag.height, x, wide)
 
     // The fold of the keys `< x` (`<= x` with `le`) under node `n0` at height `h0`.
@@ -1883,9 +1880,9 @@ pub struct AugSortedBag<K, T>:
         unchecked:
             for h in (1..=h0).rev:
                 let i = self.route(n, x)
-                for j in (i + 1..bag.fill[n]).rev: acc = op(self.part(n, h, j), acc)
+                for j in (i + 1..bag.fill(n)).rev: acc = op(self.part(n, h, j), acc)
                 n = bag.kid(n, i)
-            for j in (bag.at(n, 0, x, gt)..bag.fill[n]).rev: acc = op(self.part(n, 0, j), acc)
+            for j in (bag.at(n, 0, x, gt)..bag.fill(n)).rev: acc = op(self.part(n, 0, j), acc)
         acc
 
     /// Create an empty `AugSortedBag<K, T>` with associative `op`, identity `id`, and key map `leaf`.
@@ -1893,11 +1890,12 @@ pub struct AugSortedBag<K, T>:
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.all == 0`
-    pub fn new(
-        op: (T, T) -> T,
-        id: T,
-        leaf: K -> T,
-    ) -> AugSortedBag<K, T> = AugSortedBag<K, T>(bag: SortedBag<K>.new(), op:, id:, leaf:)
+    pub fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedBag<K, T> = AugSortedBag<K, T>(
+        bag: SortedBag<K>.new(),
+        op:,
+        id:,
+        leaf:,
+    )
 
     /// Preallocate treap node pool for at least `cap` elements.
     ///
@@ -2000,7 +1998,12 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.fold_lt(5) == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_lt(3) == 1`
-    pub fn fold_lt(self, hi: K) -> T = if bag.root < 0: id else: self.prefix(bag.root, bag.height, hi, false)
+    pub fn fold_lt(self, hi: K) -> T = if bag.root < 0: id else: self.prefix(
+        bag.root,
+        bag.height,
+        hi,
+        false,
+    )
 
     /// Fold elements with key `<= hi`.
     ///
@@ -2008,7 +2011,12 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.fold_le(5) == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_le(3) == 7`
-    pub fn fold_le(self, hi: K) -> T = if bag.root < 0: id else: self.prefix(bag.root, bag.height, hi, true)
+    pub fn fold_le(self, hi: K) -> T = if bag.root < 0: id else: self.prefix(
+        bag.root,
+        bag.height,
+        hi,
+        true,
+    )
 
     /// Fold elements with key `>= lo`.
     ///
@@ -2016,7 +2024,12 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.fold_ge(0) == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_ge(2) == 6`
-    pub fn fold_ge(self, lo: K) -> T = if bag.root < 0: id else: self.suffix(bag.root, bag.height, lo, false)
+    pub fn fold_ge(self, lo: K) -> T = if bag.root < 0: id else: self.suffix(
+        bag.root,
+        bag.height,
+        lo,
+        false,
+    )
 
     /// Fold elements with key `> lo`.
     ///
@@ -2024,7 +2037,12 @@ pub struct AugSortedBag<K, T>:
     /// empty: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.fold_gt(0) == 0`
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.add(3); b.add(1); b.add(3); b.fold_gt(1) == 6 and b.fold_gt(3) == 0`
-    pub fn fold_gt(self, lo: K) -> T = if bag.root < 0: id else: self.suffix(bag.root, bag.height, lo, true)
+    pub fn fold_gt(self, lo: K) -> T = if bag.root < 0: id else: self.suffix(
+        bag.root,
+        bag.height,
+        lo,
+        true,
+    )
 
     /// Fold the elements with key in `keys`, in ascending key order, one `leaf(k)` per copy;
     /// the one fold for any ordered range (`a..b`, `a..=b`, `..b`, `a..`), as `range(r)` is on
@@ -2061,7 +2079,10 @@ pub struct AugSortedBag<K, T>:
                 n = bag.kid(n, i)
                 h -= 1
             var acc = id
-            for k in bag.at(n, 0, lo, false)..bag.at(n, 0, hi, false): acc = op(acc, self.part(n, 0, k))
+            for k in bag.at(n, 0, lo, false)..bag.at(n, 0, hi, false): acc = op(
+                acc,
+                self.part(n, 0, k),
+            )
             return acc
 
     /// Yield all elements in ascending order.
@@ -2871,7 +2892,10 @@ fn slot_sum(ws: List<Int>, a: Int, f: Int) -> Int = sum(ws[a + i] for i in 0..f)
 
 const AFF_MOD = 1_000_003
 
-fn aff(f: (Int, Int), g: (Int, Int)) -> (Int, Int) = (f.0 * g.0 % AFF_MOD, (f.1 * g.0 + g.1) % AFF_MOD)
+fn aff(f: (Int, Int), g: (Int, Int)) -> (Int, Int) = (
+    f.0 * g.0 % AFF_MOD,
+    (f.1 * g.0 + g.1) % AFF_MOD,
+)
 
 fn aff_fold(have: List<Int>, ok: Int -> Bool) -> (Int, Int):
     var acc = (1, 0)
