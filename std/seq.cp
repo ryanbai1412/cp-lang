@@ -1547,7 +1547,14 @@ impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
 /// `s[2..5][3]` is `s[3]` and `s[2..5][0]` traps. `w.first`, `w.nth(k)` and `w.rebase()` give
 /// offsets. Writable through a `var` source; the source's length can't change while it is alive.
 /// See `spec/core/04b-keys.md`.
-pub struct Slice<S>():
+pub struct Slice<S>(
+    /// The sequence the slice was cut from, lent: frozen while the slice is alive.
+    src: S,
+    /// The position in `src` of the slice's first element.
+    lo: Int,
+    /// The position in `src` just past the slice's last element; `lo <= hi <= src.len`.
+    hi: Int,
+):
     /// \(O(1)\). The slice's keys: a sub-range of the source's keys.
     ///
     /// cost: \(O(1)\)
