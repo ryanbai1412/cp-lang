@@ -9,10 +9,10 @@
 //   shared block (a vertex's own blocks join after its children, unchecked). Length 0 tests
 //   whether a distant pair exists. O(S log S log S) expected.
 // original: corpus/submissions/4899354.cpp
-// Bounds: parent: 1..=n
+// Bounds: n: 1..=20000; parent: V
 use std.strings.{HashVal}
 
-let n: Int = read()
+let n: 1..=20000 = read()
 domain V = 1..=n
 var kids: [V]List<V> = [V] v => []
 for v in 2..=n:

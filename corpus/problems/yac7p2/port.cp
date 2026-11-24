@@ -4,103 +4,33 @@
 //   least two side-adjacent cells; print the grid, or -1 if impossible. T, n, m <= 100.
 // Solution: consecutive integers are coprime, so number the cells along a Hamiltonian path whose
 //   two ends also touch a coprime cell; a 1 x m grid fails at its ends (one neighbour). With an
-//   even side (made the height, transposing if needed) a snake closes into a cycle back next to
-//   cell 1. With both sides odd, an open path ends at (1, 1), next to 1 and next to 2 (n*m is
-//   odd). O(nm) per test.
+//   even side (made the height, transposing if needed) row 0, a snake over columns 1.. and
+//   column 0 back up close a cycle, so n*m sits next to 1. With both sides odd the path runs
+//   along row 0, down the last column, snakes the columns down to 2, then zigzags columns 0-1
+//   up to (1, 1), which is next to 2 at (0, 1) while n*m is odd. O(nm) per test.
 // original: corpus/submissions/5705152.cpp
-// Bounds: t: 1..=100_000; n, m: 1..=1000
+// Bounds: t, n, m: 1..=100
 
-let t: 1..=100_000 = read()
+// the cells of an h x w grid (h even, or both odd), w >= 2, in path order from (0, 0)
+fn tour(h: Int, w: Int) -> List<(Int, Int)>:
+    let top = [(0, c) for c in 0..w]
+    if h % 2 == 0:
+        let snake = [(r, if r % 2 == 1: w - k else: k) for r in 1..h for k in 1..w]
+        return List(chain(top, snake, [(r, 0) for r in (1..h).rev]))
+    let side = [(r, w - 1) for r in 1..h]
+    let snake = [(if (w - c) % 2 == 0: h - k else: k, c) for c in (2..w - 1).rev for k in 1..h]
+    let zigzag = [(r, if r % 2 == 0: 1 - k else: k) for r in (1..h).rev for k in 0..2]
+    List(chain(top, side, snake, zigzag))
 
-var cell: List<Int> = []
-var w = 0
-var cx = 0
-var cy = 0
-var ind = 0
-
-// walk cnt cells in direction (dx, dy), numbering each one
-fn go(dx: Int, dy: Int, cnt: Int):
-    for _ in 0..cnt:
-        cx += dx
-        cy += dy
-        ind += 1
-        cell[cx * w + cy] = ind
-
-fn right(c: Int):
-    go(0, 1, c)
-fn left(c: Int):
-    go(0, -1, c)
-fn down(c: Int):
-    go(1, 0, c)
-fn up(c: Int):
-    go(-1, 0, c)
-
-// h even: snake through columns 1.., come home along column 0
-fn tour_even(h: Int):
-    right(w - 1)
-    var i = 3
-    while i < h:
-        down(1)
-        left(w - 2)
-        down(1)
-        right(w - 2)
-        i += 2
-    down(1)
-    left(w - 1)
-    up(h - 2)
-
-// h and w odd: the original's open path
-fn tour_odd(h: Int):
-    right(w - 1)
-    down(h - 1)
-    var i = w - 3
-    while i > 1:
-        left(1)
-        up(h - 2)
-        left(1)
-        down(h - 2)
-        i -= 2
-    left(1)
-    i = h - 2
-    while i >= 3:
-        left(1)
-        up(1)
-        right(1)
-        up(1)
-        i -= 2
-    left(1)
-    up(1)
-    right(1)
-
+let t: 1..=100 = read()
 for _ in 0..t:
-    let n: 1..=1000 = read()
-    let m: 1..=1000 = read()
+    let (n, m): (1..=100, 1..=100) = read()
     if n == 1 or m == 1:
         print(-1)
-    else:
-        // an even side must be the height; transpose when only m is even
-        let flip = n % 2 == 1 and m % 2 == 0
-        var h = n
-        w = m
-        if flip:
-            h = m
-            w = n
-        cell.clear()
-        for _ in 0..h * w:
-            cell.push(0)
-        cell[0] = 1
-        cx = 0
-        cy = 0
-        ind = 1
-        if h % 2 == 0:
-            tour_even(h)
-        else:
-            tour_odd(h)
-        for i in 0..n:
-            var row: List<Int> = []
-            for j in 0..m:
-                if flip:
-                    row.push(cell[j * w + i])
-                else:
-                    row.push(cell[i * w + j])
-            print(row)
+        continue
+    // an even side must be the height
+    let flip = n % 2 == 1 and m % 2 == 0
+    let (h, w) = if flip: (m, n) else: (n, m)
+    var number: [0..h, 0..w]Int = 0
+    for (i, (r, c)) in tour(h, w).items: number[r, c] = i + 1
+    for i in 0..n: print([if flip: number[j, i] else: number[i, j] for j in 0..m])

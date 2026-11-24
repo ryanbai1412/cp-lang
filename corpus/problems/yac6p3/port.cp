@@ -6,28 +6,33 @@
 // Solution: the four corners give min(x + y), min(y - x), min(x - y) and max(x + y) over the
 //   two cells. Either the min-sum cell also has the min y - x (the other then has the max sum
 //   and the min x - y) or the pairing is crossed; a fifth query at the first pairing's
-//   candidate cell tells which, and each cell follows from its sum and difference. O(1).
-// As it builds today: the four candidate cells are plain numbers checked by hand (K16).
-// original: corpus/submissions/5149597.cpp; judge: yac6p3_judge.py
+//   min-sum cell, when it is a grid cell, tells which. Each cell follows from its sum and
+//   difference. O(1).
+// original: corpus/submissions/5149597.cpp; judge: interactor.py
 // Bounds: n, m: 1..=1e9
 let n: 1..=1e9 = read()
 let m: 1..=1e9 = read()
 domain X = 1..=n
 domain Y = 1..=m
+type Cell = (X, Y)
 
-fn near(x: X, y: Y) -> Int:
-    let d: 0..=2e9 = ask("?", x, y)
+fn near(c: Cell) -> Int:
+    let d: 0..=2e9 = ask("?", c.0, c.1)
     d
 
-let a = near(X.first!, Y.first!) + 2
-let b = near(X.last!, Y.first!) - n + 1
-let c = near(X.first!, Y.last!) - m + 1
-let d = n + m - near(X.last!, Y.last!)
+// the grid cell with x + y = sum and x - y = diff, if there is one
+fn cell(sum: Int, diff: Int) -> ?Cell:
+    if (sum + diff) % 2 != 0: return None
+    if let x = X.at((sum + diff) / 2), let y = Y.at((sum - diff) / 2): Some((x, y)) else: None
 
-var lower_pair = false
-let y = (a + b) / 2
-let x = a - y
-if (a + b) % 2 == 0 and 1 <= x <= n and 1 <= y <= m:
-    if near(X(x), Y(y)) == 0: lower_pair = true
-if lower_pair: print("!", x, y, d - (d - c) / 2, (d - c) / 2)
-else: print("!", (a + c) / 2, a - (a + c) / 2, (d - b) / 2, d - (d - b) / 2)
+let low_sum = near((X.first!, Y.first!)) + 2
+let low_y_minus_x = near((X.last!, Y.first!)) - n + 1
+let low_x_minus_y = near((X.first!, Y.last!)) - m + 1
+let high_sum = n + m - near((X.last!, Y.last!))
+
+let (p, q) =
+    if let first = cell(low_sum, -low_y_minus_x), near(first) == 0:
+        (first, cell(high_sum, low_x_minus_y)!)
+    else:
+        (cell(low_sum, low_x_minus_y)!, cell(high_sum, -low_y_minus_x)!)
+print("!", p.0, p.1, q.0, q.1)
