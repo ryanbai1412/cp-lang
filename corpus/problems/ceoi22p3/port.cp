@@ -1,4 +1,5 @@
 // Source: CEOI 2022 P3 (Prize), https://dmoj.ca/problem/ceoi22p3
+// limits: 20000 ms, 1024 MB
 // Problem: interactive. Two rooted trees on the same 2 <= N <= 1e6 labels with hidden edge
 //   weights 1..=2000. Print 2 <= K <= 1e5 chosen labels on one line, ask Q questions (a, b),
 //   each answered by the distances of a and b to their LCA in both trees; then answer
