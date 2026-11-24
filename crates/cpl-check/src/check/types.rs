@@ -210,10 +210,7 @@ impl<'a> Checker<'a> {
                 ret: Box::new(self.resolve_type(ret)),
             },
             TypeKind::Mut(inner) => self.resolve_type(inner),
-            TypeKind::Yields(elem) => Ty::Named {
-                name: "Gen".into(),
-                args: vec![self.resolve_type(elem)],
-            },
+            TypeKind::Yields(elem) => Ty::named1("Gen", self.resolve_type(elem)),
             TypeKind::DomainBinder(name) => Ty::Domain(name.text.clone()),
             TypeKind::ConstrainedStr { len, .. } => self.bounded_str(len.as_deref()),
             TypeKind::Row(fields) => {
@@ -371,10 +368,7 @@ impl<'a> Checker<'a> {
                     Ty::Error
                 }
                 // `V.ranges`: its cells are the non-empty ranges of `V`.
-                Ty::Pos(domain) if member == "ranges" => Ty::Named {
-                    name: "Range".into(),
-                    args: vec![Ty::Pos(domain)],
-                },
+                Ty::Pos(domain) if member == "ranges" => Ty::named1("Range", Ty::Pos(domain)),
                 Ty::Pos(domain) => Ty::Pos(format!("{domain}.{member}")),
                 Ty::Named { name: owner, .. } => match self.owned_member(&owner, member) {
                     Some(Ty::Domain(domain)) => Ty::Pos(domain),

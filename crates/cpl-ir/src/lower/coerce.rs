@@ -435,12 +435,7 @@ impl<'a> Lowerer<'a> {
                                 arr_slot,
                                 lw.mk(ExprKind::Fill(vec![dim_spec], None), dst_ty.clone(), span),
                             );
-                            let idx_ty = match dim {
-                                Dim::Pos(d) => Ty::Pos(d),
-                                Dim::Bound(d) => Ty::Bound(d),
-                                Dim::Enum(e) => Ty::Enum(e),
-                                Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-                            };
+                            let idx_ty = dim.index_ty();
                             let idx_slot = lw.temp(idx_ty.clone());
                             let idx_expr = lw.local(idx_slot, span);
                             let sref = src.clone();

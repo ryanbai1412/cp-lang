@@ -80,7 +80,8 @@ impl Checker<'_> {
         let Some(keyed) = self.keyed_view(base) else {
             return;
         };
-        if let Ty::Array { index, .. } = self.infer_quietly(base) {
+        let base_ty = self.infer_quietly(base);
+        if let Ty::Array { index, .. } = self.as_row(&base_ty) {
             if let [Ty::Domain(d) | Ty::Pos(d)] = index.as_slice() {
                 if let Some(diag) = self.report(
                     indices[0].span,
@@ -208,7 +209,7 @@ impl Checker<'_> {
             return None;
         }
         let ty = self.infer_quietly(base);
-        let seq = ty == Ty::Str || matches!(&ty, Ty::Named { name, .. } if name == "List");
+        let seq = ty == Ty::Str || ty.is_named("List");
         seq.then(|| show(base))
     }
 
@@ -571,8 +572,7 @@ impl Checker<'_> {
             }
         }
         let ty = self.infer_quietly(call);
-        matches!(&ty, Ty::Str | Ty::Array { .. })
-            || matches!(&ty, Ty::Named { name, .. } if name == "List")
+        matches!(&ty, Ty::Str | Ty::Array { .. }) || ty.is_named("List")
     }
 }
 

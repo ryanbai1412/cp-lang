@@ -3010,6 +3010,15 @@ for k in s.keys: print(s[k])
 """
 out = "4\n1\n5"
 
+[case."IndexedMut/Slice/at"]
+code = """
+var a = [3, 1, 4, 1, 5]
+a[1..4][3] = 9
+a[1..4][1] += 10
+print(a)
+"""
+out = "3 11 4 9 5"
+
 [case."Indexed/Slice/keys"]
 code = """
 let a = [3, 1, 4, 1, 5]

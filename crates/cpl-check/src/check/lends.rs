@@ -1645,7 +1645,7 @@ impl<'a> Checker<'a> {
                 }
                 // Generator call: holds all non-copy or `mut` args.
                 let ret_ty = self.infer_quietly(e);
-                if matches!(&ret_ty, Ty::Named { name, .. } if name == "Gen") {
+                if ret_ty.is_named("Gen") {
                     let mut out = Vec::new();
                     for arg in args {
                         let is_mut = arg.mutable;

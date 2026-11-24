@@ -940,3 +940,23 @@ fn an_extension_is_offered_exactly_where_the_checker_takes_its_receiver() {
     }
     assert!(taken >= 2, "{taken}");
 }
+
+#[test]
+fn a_range_index_is_a_slice_in_every_tool() {
+    let src = "let xs = [1, 2, 3]\nlet s = xs[1..]\nprint(s.";
+    let items = completions(&format!("{src}|)"));
+    let shown = labels(&items);
+    assert!(
+        shown.contains(&"len") && !shown.contains(&"push"),
+        "{shown:?}"
+    );
+    let len = ask_at("textDocument/hover", &format!("{src}len|)"));
+    let len = len.at(&["contents", "value"]).as_str().unwrap_or("");
+    assert!(len.contains("elements in the slice"), "{len}");
+    let s = ask_at(
+        "textDocument/hover",
+        "let xs = [1, 2, 3]\nlet s| = xs[1..]\nprint(s)",
+    );
+    let s = s.at(&["contents", "value"]).as_str().unwrap_or("");
+    assert!(s.contains("s: Slice<List<Int>>"), "{s}");
+}

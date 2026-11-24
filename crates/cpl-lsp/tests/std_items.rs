@@ -863,8 +863,8 @@ fn own_member_uses(
                 let offset = (head.len() + u - shift + 1) as u32;
                 let def = session.definition_location("/w/example.cp", offset);
                 examined.insert(at + open + u);
-                // `[5, 6, 7][1..].to_list()` takes the `Slice` syntax builds, which the
-                // checker reads as its source: a copy's own `SliceMine` can't take it.
+                // `[5, 6, 7][1..].to_list()` takes the `Slice` syntax builds (R07.4.17),
+                // std's own: a copy's `SliceMine` can't take it.
                 let dot = offset - 2;
                 let facts = session.facts("/w/example.cp");
                 let receiver = (facts.iter())
@@ -877,9 +877,11 @@ fn own_member_uses(
                     let ty = decl.split_once("self: ")?.1;
                     Some(ty[..ty.find(|c: char| !is_word(c as u8)).unwrap_or(ty.len())].to_string())
                 });
+                let indexed = code[..u - 1].ends_with(']');
                 let built = takes.is_some_and(|t| {
                     names.contains(&t.as_str())
-                        && !matches!(&receiver, Some(cpl_check::Ty::Named { name, .. }) if *name == t)
+                        && (indexed
+                            || !matches!(&receiver, Some(cpl_check::Ty::Named { name, .. }) if *name == t))
                 });
                 if !built && def.is_some_and(|d| d.path.ends_with(&format!("/{module}.cp"))) {
                     own.insert(at + open + u);

@@ -86,7 +86,7 @@ impl<'a> Lowerer<'a> {
                 }
             }
             (ty, "at") if let Some(elem) = ty.seq_elem().filter(|_| Self::keyed_view(ty)) => {
-                match self.one_arg("at", args, &Ty::Int, span) {
+                match self.one_arg("at", args, &ty.key_ty(), span) {
                     Some(at) => {
                         let view = self.hold_view(value, span);
                         self.key_index(view, at, elem, span)
@@ -304,12 +304,7 @@ impl<'a> Lowerer<'a> {
                 match self.positional_any(method, args, 2, span) {
                     Some(exprs) => {
                         let idx_ty = match &ty {
-                            Ty::Array { dims, .. } if dims.len() == 1 => match dims[0] {
-                                Dim::Pos(d) => Ty::Pos(d),
-                                Dim::Bound(d) => Ty::Bound(d),
-                                Dim::Enum(e) => Ty::Enum(e),
-                                Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-                            },
+                            Ty::Array { dims, .. } if dims.len() == 1 => dims[0].index_ty(),
                             _ => Ty::Int,
                         };
                         let a = self.expr_as(exprs[0], &idx_ty);

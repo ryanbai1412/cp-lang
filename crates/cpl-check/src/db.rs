@@ -649,6 +649,9 @@ impl Database {
                     // std.seq is where `contains` and those `Seq` impls live.
                     dot_ident_tokens.insert("contains");
                 }
+                if walks::some_index(tokens) {
+                    ident_tokens.insert("Slice");
+                }
                 note_idents(&text, tokens, &mut ident_tokens, &mut dot_ident_tokens);
             }
             // A built-in method's declared return type is used where the method is:
@@ -1103,9 +1106,10 @@ impl Database {
                 if def_index >= index || warned.contains(&r.name.as_str()) {
                     continue;
                 }
-                let gen_typed = checks[def_index].hovers.iter().any(|h| {
-                    h.name == r.name && matches!(&h.ty, Ty::Named { name, .. } if name == "Gen")
-                });
+                let gen_typed = checks[def_index]
+                    .hovers
+                    .iter()
+                    .any(|h| h.name == r.name && h.ty.is_named("Gen"));
                 let Some((code, what)) = rewalk_kind(&items, &checks, def_index, gen_typed) else {
                     continue;
                 };

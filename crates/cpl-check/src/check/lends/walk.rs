@@ -141,7 +141,7 @@ impl Checker<'_> {
         else {
             return false;
         };
-        if *lends || matches!(&**ret, Ty::Named { name, .. } if name == "Gen") {
+        if *lends || ret.is_named("Gen") {
             return true;
         }
         // A result of the parameter's own type (`clone(self: S) -> S`) is a

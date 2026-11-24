@@ -351,14 +351,7 @@ impl<'a> Lowerer<'a> {
                             let base = lw.hold(base_expr, out);
                             let ats: Vec<Slot> = whole
                                 .iter()
-                                .map(|&axis| {
-                                    lw.temp(match dims[axis] {
-                                        Dim::Pos(d) => Ty::Pos(d),
-                                        Dim::Bound(d) => Ty::Bound(d),
-                                        Dim::Enum(e) => Ty::Enum(e),
-                                        Dim::Sym(_) | Dim::Int | Dim::IntFrom(_) => Ty::Int,
-                                    })
-                                })
+                                .map(|&axis| lw.temp(dims[axis].index_ty()))
                                 .collect();
                             lw.whole_axes = ats.clone();
                             let (cell, ty) = lw.index_args(&base.ty, indices, span);

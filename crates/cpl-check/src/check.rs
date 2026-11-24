@@ -1716,7 +1716,7 @@ pub(crate) fn spec_member_typo(
 ) -> Option<String> {
     use crate::builtins::{builtin_members, Receiver, BUILTIN_MEMBERS};
     // A generator has only what std declares on sequences (R07.1.1).
-    if matches!(base, Ty::Named { name, .. } if name == "Gen") {
+    if base.is_named("Gen") {
         let methods = prelude::spec_receiver_method_names();
         return closest(name, methods.iter().map(String::as_str));
     }
@@ -1746,7 +1746,7 @@ pub(crate) fn spec_member_typo(
         .map(|m| m.name);
     // A list or string is offered only what it has: its own members and
     // the std methods on any receiver, never another struct's (`unite`).
-    let range = matches!(base, Ty::Named { name, .. } if name == "Range");
+    let range = base.is_named("Range");
     if receiver.is_some() && !range {
         let methods = prelude::spec_receiver_method_names();
         return closest(

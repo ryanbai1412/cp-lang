@@ -55,3 +55,15 @@ fn walks_a_range(tokens: &[Token], from: usize) -> bool {
     }
     false
 }
+
+/// Whether `tokens` index a value (`xs[..]`): a range index gives std's
+/// `Slice` (R07.4.17), so the file then loads it as if it named it.
+pub(super) fn some_index(tokens: &[Token]) -> bool {
+    tokens.windows(2).any(|w| {
+        w[1].kind == TokenKind::LBracket
+            && matches!(
+                w[0].kind,
+                TokenKind::Ident | TokenKind::RParen | TokenKind::RBracket | TokenKind::Str
+            )
+    })
+}

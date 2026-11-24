@@ -229,7 +229,12 @@ impl<'a> Checker<'a> {
                 _ => Ty::Int,
             },
             _ if left.is_numeric() && right.is_numeric() => Ty::Float,
-            BinOp::Add if left == Ty::Str && right == Ty::Str => Ty::Str,
+            BinOp::Add
+                if left.slice_source().unwrap_or(&left) == &Ty::Str
+                    && right.slice_source().unwrap_or(&right) == &Ty::Str =>
+            {
+                Ty::Str
+            }
             // `xs + view`: a struct view joins as the list its walk yields (R04a.2.3).
             BinOp::Add
                 if let (Some(le), Ty::Named { .. }) = (seq_concat_elem(&left), &right)
@@ -242,15 +247,9 @@ impl<'a> Checker<'a> {
                 if let (Some(le), Some(re)) = (seq_concat_elem(&left), seq_concat_elem(&right)) =>
             {
                 if le == re || re.is_vague() {
-                    Ty::Named {
-                        name: "List".into(),
-                        args: vec![le.clone()],
-                    }
+                    Ty::list(le.clone())
                 } else if le.is_vague() {
-                    Ty::Named {
-                        name: "List".into(),
-                        args: vec![re.clone()],
-                    }
+                    Ty::list(re.clone())
                 } else {
                     Ty::Unknown
                 }
@@ -506,8 +505,7 @@ impl Checker<'_> {
         // `a.last += 1`: `last` is no place, which lowering reports and fixes.
         if let ExprKind::Field { base, name } = &target.kind {
             let base_ty = self.infer_quietly(base);
-            let listed = matches!(&base_ty, Ty::Array { .. })
-                || matches!(&base_ty, Ty::Named { name, .. } if name == "List");
+            let listed = matches!(&base_ty, Ty::Array { .. }) || base_ty.is_named("List");
             if name.text == "last" && listed {
                 return;
             }
@@ -547,7 +545,11 @@ impl Checker<'_> {
 }
 
 pub(super) fn seq_concat_elem(ty: &Ty) -> Option<&Ty> {
-    match ty.rev_source().unwrap_or(ty) {
+    let mut ty = ty;
+    while let Some(source) = ty.view_source() {
+        ty = source;
+    }
+    match ty {
         Ty::Named { name, args }
             if matches!(name.as_str(), "List" | "ListView") && args.len() == 1 =>
         {

@@ -11,6 +11,24 @@ mod construct;
 mod declared_ret;
 
 impl<'a> Checker<'a> {
+    /// Drops each trait another in `traits` implies: `IndexedMut<K, T>`
+    /// beside `Indexed<K, T>` keeps the subtrait, whose `at` is the one.
+    pub(crate) fn drop_implied(&mut self, traits: &mut Vec<String>) {
+        let head = |t: &str| t.split('<').next().unwrap_or(t).to_string();
+        let mut i = traits.len();
+        while i > 0 {
+            i -= 1;
+            let me = head(&traits[i]);
+            let implied = traits.iter().any(|t| {
+                let h = head(t);
+                h != me && self.trait_implies(&h, &me)
+            });
+            if implied {
+                traits.remove(i);
+            }
+        }
+    }
+
     /// Whether `e` writes or reads in O(1): a number, a character, a tuple of
     /// them, or a string of fixed text around them.
     pub(crate) fn fixed_size(&mut self, e: &Expr) -> bool {
@@ -525,10 +543,7 @@ impl<'a> Checker<'a> {
         }
         self.infer(&count.value);
         let elem = self.infer(&value.value).widen();
-        Some(Ty::Named {
-            name: "List".into(),
-            args: vec![elem],
-        })
+        Some(Ty::list(elem))
     }
 
     /// Records `call` as a call of `type_name`'s projection `name`, if it has one.
@@ -626,10 +641,7 @@ impl<'a> Checker<'a> {
                 }
             }
             _ => {
-                let want = Ty::Named {
-                    name: "Range".into(),
-                    args: vec![k_ty.clone()],
-                };
+                let want = Ty::named1("Range", k_ty.clone());
                 let got = self.infer(arg);
                 if !matches!(got, Ty::Error | Ty::Unknown) {
                     self.expect_fits(&got, &want, arg, &|c, g, w| {
@@ -1131,10 +1143,7 @@ impl<'a> Checker<'a> {
                     if let [arg] = args {
                         self.fn_value_takes("filter", &arg.value, 1);
                     }
-                    return Some(Ty::Named {
-                        name: "Filter".into(),
-                        args: vec![elem],
-                    });
+                    return Some(Ty::named1("Filter", elem));
                 }
                 "sorted" => {
                     return Some(Ty::list(elem));
