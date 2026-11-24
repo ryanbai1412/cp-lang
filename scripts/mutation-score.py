@@ -62,7 +62,9 @@ def below(s: dict, least: float | None) -> int:
 
 
 def mutants_command(package: str, out: Path, jobs: str, test_packages: list[str],
-                    nextest: bool = False, profile: str | None = None) -> list[str]:
+                    nextest: bool = False, profile: str | None = None,
+                    files: list[str] = (), tests: list[str] = (),
+                    extra: list[str] = ()) -> list[str]:
     """The cargo-mutants run. It keeps the baseline: skipping it turns a test
     already red on the tree into a caught mutant each, and a 100% score.
     Under nextest a caught mutant ends at its first failing test, so a crate
@@ -74,6 +76,11 @@ def mutants_command(package: str, out: Path, jobs: str, test_packages: list[str]
         cmd += ["--test-tool", "nextest"]
     if profile:
         cmd += ["--profile", profile]
+    for file in files:
+        cmd += ["-f", file]
+    cmd += extra
+    if tests:
+        cmd += ["--", *(arg for test in tests for arg in ("--test", test))]
     return cmd
 
 
@@ -89,6 +96,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--nextest", action="store_true",
                         help="run tests with nextest, which stops at the first failure")
     parser.add_argument("--profile", help="cargo profile to build tests in, e.g. ci")
+    parser.add_argument("-f", "--file", action="append", default=[],
+                        help="only mutate this source file, e.g. crates/cpl-cli/src/dap.rs")
+    parser.add_argument("--test", action="append", default=[],
+                        help="only run this test target, e.g. dap")
     parser.add_argument("--report", type=Path, help="only score a finished run in DIR")
     parser.add_argument("--min", type=float, help="exit 1 when the score is below this, e.g. 0.98")
     args = parser.parse_args(argv)
@@ -97,16 +108,15 @@ def main(argv: list[str] | None = None) -> int:
     if not args.package:
         parser.error("-p/--package is required unless --report is given")
     out = args.output or Path(tempfile.mkdtemp(prefix=f"mutants-{args.package}-"))
-    cmd = mutants_command(args.package, out, args.jobs, args.test_package,
-                          args.nextest, args.profile)
-    if args.shard:
-        cmd += ["--shard", args.shard]
+    extra = ["--shard", args.shard] if args.shard else []
     if args.since:
         diff = out / "in.diff"
         out.mkdir(parents=True, exist_ok=True)
         diff.write_text(subprocess.run(["git", "diff", args.since, "--", f"crates/{args.package}/src"],
                                        cwd=ROOT, capture_output=True, text=True, check=True).stdout)
-        cmd += ["--in-diff", str(diff)]
+        extra += ["--in-diff", str(diff)]
+    cmd = mutants_command(args.package, out, args.jobs, args.test_package,
+                          args.nextest, args.profile, args.file, args.test, extra)
     subprocess.run(cmd, cwd=ROOT)
     return report(out, args.min)
 
