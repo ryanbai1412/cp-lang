@@ -1,8 +1,8 @@
 //! One case judged. Each program a case needs runs behind its own
-//! [`Runner`] (a built process, or the VM in the browser), and
-//! [`Roles::judge`] is the one place a case's verdict is picked.
+//! [`Runner`] (a built process, or the VM in the browser); [`Roles::judge`]
+//! runs them and `judge.rs` picks the verdict from what they did.
 
-use crate::judge::{first_difference, Launch, Verdict};
+use crate::judge::{Launch, Verdict};
 use crate::program::Outcome;
 use crate::run::StressError;
 use crate::runner::Runner;
@@ -173,14 +173,8 @@ impl Roles {
                 Ran {
                     stop: Some(stop), ..
                 } => {
-                    let why = match stop {
-                        Verdict::RuntimeError(why) => why,
-                        _ => "it ran past ten times the time limit".to_string(),
-                    };
-                    let failed =
-                        Failed::new(Verdict::BruteError(why), String::new(), String::new());
                     return Ok(Judgement {
-                        wrong: Some(failed),
+                        wrong: Some(crate::judge::brute_failed(stop)),
                         solution: None,
                     });
                 }
@@ -192,7 +186,7 @@ impl Roles {
             let talked = interactor.talk(&self.solution, *launch, input, limit)?;
             let solution = Some(talked.solution.clone());
             return Ok(Judgement {
-                wrong: interaction(talked, expected.unwrap_or_default()),
+                wrong: crate::judge::interaction(talked, expected.unwrap_or_default()),
                 solution,
             });
         }
@@ -201,18 +195,7 @@ impl Roles {
             Some(checker) => Some(checker.check(input, &ran.out, expected.as_deref(), limit)?),
             None => None,
         };
-        let verdict = ran.stop.clone().or(match ruling {
-            Some(Ruling::Accepted) => None,
-            Some(Ruling::Rejected(said)) => Some(Verdict::Wrong(match said {
-                Some(said) => format!("checker: {said}"),
-                None => "the checker rejected the output".to_string(),
-            })),
-            Some(Ruling::Broke(trap)) => Some(Verdict::JudgeError("checker", trap)),
-            // With no expected output, a token judge accepts any clean run.
-            None => (expected.as_deref())
-                .and_then(|expected| first_difference(expected, &ran.out))
-                .map(Verdict::Wrong),
-        });
+        let verdict = crate::judge::ruled(ran.stop.clone(), ruling, expected.as_deref(), &ran.out);
         let wrong = match verdict {
             Some(verdict) => Some(Failed::new(
                 verdict,
@@ -237,49 +220,6 @@ impl Roles {
             .cost
             .and_then(|outcome| crate::judge::recheck(&outcome, got)))
     }
-}
-
-/// What an interactive run is called. The time limit comes first; an
-/// interactor left with nothing to read after the solution failed (say,
-/// over its query limit) only follows from that failure.
-fn interaction(talked: Talked, expected: String) -> Wrong {
-    let Talked {
-        solution,
-        ruling,
-        transcript,
-        trap,
-        solution_trap,
-    } = talked;
-    let starved = |said: &Option<String>| {
-        said.as_deref()
-            .is_some_and(|said| said.starts_with("the solution's output ended"))
-    };
-    let verdict = match (&solution.stop, &ruling) {
-        (Some(Verdict::TimeLimit), _) => Verdict::TimeLimit,
-        // The interactor accepted; a crash after the last answer still counts.
-        (stop, Ruling::Accepted) => stop.clone().unwrap_or(Verdict::Accepted),
-        (Some(stop), Ruling::Rejected(said)) if starved(said) => stop.clone(),
-        (_, Ruling::Broke(why)) => Verdict::JudgeError("interactor", why.clone()),
-        (_, Ruling::Rejected(said)) => Verdict::Wrong(match said {
-            Some(said) => format!("interactor: {said}"),
-            None => "the interactor rejected the run".to_string(),
-        }),
-    };
-    if verdict.accepted() {
-        return None;
-    }
-    Some(Failed {
-        expected,
-        got: solution.out,
-        transcript: Some(transcript),
-        trap: match verdict {
-            Verdict::JudgeError(..) => trap,
-            Verdict::RuntimeError(_) => solution_trap,
-            _ => None,
-        },
-        verdict,
-        ruling: Some(ruling),
-    })
 }
 
 #[cfg(test)]

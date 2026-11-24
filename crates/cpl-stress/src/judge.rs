@@ -9,7 +9,7 @@
 //! - `interactor <input>` talks to the solution over stdin and stdout and
 //!   exits 0 to accept.
 
-use crate::case::{judge_limit, Ran, Roles, Ruling, Side, Talked, Transcript};
+use crate::case::{judge_limit, Failed, Ran, Roles, Ruling, Side, Talked, Transcript, Wrong};
 use crate::program::{Exit, Outcome, Program};
 use crate::runner::Runner;
 use cpl_syntax::ast::StmtKind;
@@ -950,6 +950,80 @@ fn talked(ruling: Ruling, outcome: Outcome) -> (Talked, Outcome) {
         solution_trap: None,
     };
     (talked, outcome)
+}
+
+/// A brute that stopped: no case can be judged against it.
+pub(crate) fn brute_failed(stop: Verdict) -> Failed {
+    let why = match stop {
+        Verdict::RuntimeError(why) => why,
+        _ => "it ran past ten times the time limit".to_string(),
+    };
+    Failed::new(Verdict::BruteError(why), String::new(), String::new())
+}
+
+/// A run's verdict: how it stopped, else what the checker said of it, else
+/// how its output differs from `expected`; `None` when it passed.
+pub(crate) fn ruled(
+    stop: Option<Verdict>,
+    ruling: Option<Ruling>,
+    expected: Option<&str>,
+    out: &str,
+) -> Option<Verdict> {
+    stop.or(match ruling {
+        Some(Ruling::Accepted) => None,
+        Some(Ruling::Rejected(said)) => Some(Verdict::Wrong(match said {
+            Some(said) => format!("checker: {said}"),
+            None => "the checker rejected the output".to_string(),
+        })),
+        Some(Ruling::Broke(trap)) => Some(Verdict::JudgeError("checker", trap)),
+        // With no expected output, a token judge accepts any clean run.
+        None => expected
+            .and_then(|expected| first_difference(expected, out))
+            .map(Verdict::Wrong),
+    })
+}
+
+/// What an interactive run is called. The time limit comes first; an
+/// interactor left with nothing to read after the solution failed (say,
+/// over its query limit) only follows from that failure.
+pub(crate) fn interaction(talked: Talked, expected: String) -> Wrong {
+    let Talked {
+        solution,
+        ruling,
+        transcript,
+        trap,
+        solution_trap,
+    } = talked;
+    let starved = |said: &Option<String>| {
+        said.as_deref()
+            .is_some_and(|said| said.starts_with("the solution's output ended"))
+    };
+    let verdict = match (&solution.stop, &ruling) {
+        (Some(Verdict::TimeLimit), _) => Verdict::TimeLimit,
+        // The interactor accepted; a crash after the last answer still counts.
+        (stop, Ruling::Accepted) => stop.clone().unwrap_or(Verdict::Accepted),
+        (Some(stop), Ruling::Rejected(said)) if starved(said) => stop.clone(),
+        (_, Ruling::Broke(why)) => Verdict::JudgeError("interactor", why.clone()),
+        (_, Ruling::Rejected(said)) => Verdict::Wrong(match said {
+            Some(said) => format!("interactor: {said}"),
+            None => "the interactor rejected the run".to_string(),
+        }),
+    };
+    if verdict.accepted() {
+        return None;
+    }
+    Some(Failed {
+        expected,
+        got: solution.out,
+        transcript: Some(transcript),
+        trap: match verdict {
+            Verdict::JudgeError(..) => trap,
+            Verdict::RuntimeError(_) => solution_trap,
+            _ => None,
+        },
+        verdict,
+        ruling: Some(ruling),
+    })
 }
 
 #[cfg(test)]
