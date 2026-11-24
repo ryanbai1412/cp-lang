@@ -112,10 +112,23 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        let final_args: Vec<GenArg> = gen_names
-            .iter()
-            .map(|g| inferred.get(g).cloned().unwrap_or(GenArg::Ty(Ty::Int)))
-            .collect();
+        let mut final_args = Vec::with_capacity(gen_names.len());
+        for (i, g) in gen_names.iter().enumerate() {
+            let arg = match (inferred.get(g), decl.generic_defaults.get(i)) {
+                (Some(a), _) => a.clone(),
+                (None, Some(Some(def_ty))) => {
+                    let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+                    let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
+                    let arg = self.resolve_gen_arg(def_ty);
+                    self.gen_env = saved_env;
+                    self.cur_mod = saved_mod;
+                    inferred.insert(g.clone(), arg.clone());
+                    arg
+                }
+                (None, _) => GenArg::Ty(Ty::Int),
+            };
+            final_args.push(arg);
+        }
         let sid = self.instantiate_struct(gid, final_args);
         if let Some(&fn_id) = self.structs[sid].methods.get(&name.text) {
             return self.method_call(fn_id, None, args, span);

@@ -145,7 +145,7 @@ pub type Digraph<V, E> = [E](u: V, v: V)
 /// A fixed graph in compressed sparse row form: n + 1 offsets and one arcs
 /// list, the arcs of each vertex contiguous and in input order. Immutable; a
 /// graph that grows is a `[V]List` of arcs, which is already a `Next`.
-pub struct Graph<V: Domain, A: Target<V>>:
+pub struct Graph<V: Domain, A: Target<V> = V>:
     pub start: [V.cuts]Int
     pub arcs: List<A>
 
@@ -253,17 +253,6 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; let g = Graph.directed(es); g[0].len == 2 and g[1].len == 0`
     pub fn at(self, u: V) -> lends Slice<A> = arcs[start[u.ord]..start[u.ord + 1]]
-
-    /// The arcs out of `u`, lazily: the `Next` implementation.
-    ///
-    /// cost: \(O(1)\) to make, \(O(1)\) per arc
-    /// order: input order
-    /// traps: never
-    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
-    pub fn out(self, u: V) -> yields A:
-        unchecked:
-            for i in start[u.ord]..start[u.ord + 1]:
-                yield arcs[i]
 
     /// The weight matrix: `d[u, v]` is the least `.w` over the arcs `u -> v`, `None` without
     /// one. The diagonal holds the least loop weight, or `None`; `floyd_warshall` starts it at
@@ -460,6 +449,20 @@ pub struct Graph<V: Domain, A: Target<V>>:
                 src[tstart[arcs[i].to.ord]] = i
         let tarcs = src.map(i => reversed_arc(arcs[i], from[i])).collect()
         Graph<V, A>(start: tstart, arcs: tarcs)
+
+impl Next<V> for Graph<V, A>:
+    type Arc = A
+
+    /// The arcs out of `u`, lazily: the `Next` implementation.
+    ///
+    /// cost: \(O(1)\) to make, \(O(1)\) per arc
+    /// order: input order
+    /// traps: never
+    /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 2), (u: 0, v: 1)]; Graph.directed(es).out(0).collect() == [(to: 2, e: 0), (to: 1, e: 1)]`
+    fn out(self, u: V) -> yields A:
+        unchecked:
+            for i in start[u.ord]..start[u.ord + 1]:
+                yield arcs[i]
 
 /// Kahn's peeling: repeatedly removes a vertex with no arcs left coming in, and returns the
 /// vertices in removal order.
@@ -3953,6 +3956,20 @@ impl Show for Reweighted<V, E, A, W>:
             for a in r.out(u):
                 if not out.is_empty: out += " "
                 out += "{u}->{a.to}:{a.w}"
+        if out.is_empty: return "no arcs"
+        out
+
+impl Show for Only<V: Domain, G: Next<V>>:
+    /// Every kept arc as `u->v`, space-separated in vertex then arc order; `no arcs` for none.
+    ///
+    /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; "{g.only(keep: v => v != 1)}" == "0->2"`
+    fn show(o):
+        var out = ""
+        for i in 0..V.count:
+            let u = V(i)
+            for a in o.out(u):
+                if not out.is_empty: out += " "
+                out += "{u}->{a.to}"
         if out.is_empty: return "no arcs"
         out
 

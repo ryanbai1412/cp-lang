@@ -1717,14 +1717,7 @@ impl<'a> Checker<'a> {
                 Ty::Record(fields) => fields.iter().any(|(n, _)| n == "w"),
                 _ => false,
             },
-            "Next" | "WeightedNext" | "EdgedNext" => match ty {
-                Ty::Array { .. } | Ty::Fn { .. } => true,
-                Ty::Named { name, .. } => matches!(
-                    name.as_str(),
-                    "Graph" | "RevGraph" | "FilteredGraph" | "Adj"
-                ),
-                _ => false,
-            },
+            "Next" | "WeightedNext" | "EdgedNext" => matches!(ty, Ty::Array { .. } | Ty::Fn { .. }),
             _ => match ty {
                 Ty::Record(fields) => self.meets_by_shape(fields, trait_name),
                 _ => false,

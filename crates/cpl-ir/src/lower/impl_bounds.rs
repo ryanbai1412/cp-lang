@@ -79,6 +79,42 @@ impl<'a> Lowerer<'a> {
         true
     }
 
+    /// The generic env impl `idx` binds when its head names the struct `sid`:
+    /// `impl Next<V> for Graph<V, A>` on `Graph<X, Y>` binds `V = X`, `A = Y`.
+    pub(super) fn struct_impl_env(&self, idx: usize, sid: StructId) -> Option<GenEnv> {
+        let (m, target) = (self.impls[idx].mod_id, self.impls[idx].target);
+        let ast::TypeKind::Named {
+            name: head,
+            args: targs,
+        } = &target.kind
+        else {
+            return None;
+        };
+        let origin = self.structs[sid].origin_gen.as_ref();
+        let fits = match self.mod_syms[m].get(&head.text).copied() {
+            Some(Sym::Struct(id)) => id == sid,
+            Some(Sym::GenStruct(g)) => origin.is_some_and(|(o, _)| *o == g),
+            _ => false,
+        };
+        if !fits {
+            return None;
+        }
+        let open = self.impl_params(m, target);
+        let mut env = self.structs[sid].env.clone();
+        let given = origin.map_or(&[][..], |(_, a)| &a[..]);
+        for (targ, arg) in targs.iter().zip(given) {
+            match &targ.kind {
+                ast::TypeKind::Named { name, args }
+                    if args.is_empty() && open.contains(&name.text) =>
+                {
+                    env.insert(name.text.clone(), arg.clone());
+                }
+                _ => {}
+            }
+        }
+        Some(env)
+    }
+
     /// The args `ty`'s impl of the trait `name` gives it: `Arr<E>`, with
     /// `impl<D: Domain> Versioned<D, Int> for Arr<D>`, gives `[E, Int]`.
     /// The bound's args that `env` already fixes: `T` in `A: Acts<T, F>` once `xs` gave it.
@@ -123,44 +159,14 @@ impl<'a> Lowerer<'a> {
         let Ty::Struct(sid) = *ty else {
             return None;
         };
-        let origin = self.structs[sid].origin_gen.clone();
         for idx in 0..self.impls.len() {
             if self.impls[idx].trait_name.as_deref() != Some(name) {
                 continue;
             }
-            let (m, offset, target) = (
-                self.impls[idx].mod_id,
-                self.impls[idx].offset,
-                self.impls[idx].target,
-            );
-            let ast::TypeKind::Named {
-                name: head,
-                args: targs,
-            } = &target.kind
-            else {
+            let Some(mut env) = self.struct_impl_env(idx, sid) else {
                 continue;
             };
-            let fits = match self.mod_syms[m].get(&head.text).copied() {
-                Some(Sym::Struct(id)) => id == sid,
-                Some(Sym::GenStruct(g)) => origin.as_ref().is_some_and(|(o, _)| *o == g),
-                _ => false,
-            };
-            if !fits {
-                continue;
-            }
-            let open = self.impl_params(m, target);
-            let mut env = self.structs[sid].env.clone();
-            let given = origin.as_ref().map_or(&[][..], |(_, a)| &a[..]);
-            for (targ, arg) in targs.iter().zip(given) {
-                match &targ.kind {
-                    ast::TypeKind::Named { name, args }
-                        if args.is_empty() && open.contains(&name.text) =>
-                    {
-                        env.insert(name.text.clone(), arg.clone());
-                    }
-                    _ => {}
-                }
-            }
+            let (m, offset) = (self.impls[idx].mod_id, self.impls[idx].offset);
             let trait_args = self.impls[idx].trait_args.clone();
             let open = self.open_impl_params(idx, &env);
             for (t, k) in trait_args.iter().zip(known) {
