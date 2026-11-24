@@ -515,6 +515,23 @@ pub struct MongePath<N, K: Add>(nodes: List<N>, cost: (N, N) -> K):
     @get pub fn len(self) -> Int:
         if reached > 1: reached else: 1
 
+    /// Never: the first node is reached before any `next()`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `not MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)).is_empty`
+    @get pub fn is_empty(self) -> Bool = false
+
+    /// \(O(\mathit{len})\). Visit `(i, val(i))` for every node reached so far.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)).items.collect() == [(0, 0)]`
+    /// order: increasing node index
+    /// traps: never
+    /// example: `var p = MongePath([0, 1, 2], (a, b) => (b - a) * (b - a)); p.next(); p.next(); p.items.collect() == [(0, 0), (1, 1), (2, 2)]`
+    @get pub fn items(self) -> yields (Int, K):
+        for i in 0..self.len: yield (i, self.val(i))
+
 fn smawk_rec(rows: List<Int>, cols: List<Int>, f: (Int, Int) -> Int, mut at: List<Int>):
     if rows.is_empty: return
     var kept: List<Int> = []
@@ -650,6 +667,25 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
     /// example: `var h = MonotoneHull<()>(min); h.add(Line(2, 0)); h.add(Line(-1, 3)); h.len == 2`
     @get pub fn len(self) -> Int:
         ks.len
+
+    /// Whether the hull has no line.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var h = MonotoneHull<()>(min); let e = h.is_empty; h.add(Line(2, 0)); e and not h.is_empty`
+    @get pub fn is_empty(self) -> Bool = ks.len == 0
+
+    /// \(O(\mathit{len})\). Visit the kept lines with their tags; dominated lines are gone.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `MonotoneHull<()>(min).items.collect() == []`
+    /// order: the order they were added, so slope order
+    /// traps: never
+    /// example: `var h = MonotoneHull<Int>(min); h.add(Line(2, 0), tag: 1); h.add(Line(-1, 3), tag: 2); h.items.collect() == [(Line(2, 0), 1), (Line(-1, 3), 2)]`
+    @get pub fn items(self) -> yields (Line, P):
+        let s = self.sign()
+        for i in 0..ks.len: yield (Line(s * ks[i], s * ms[i]), tags[i])
+
     /// Remove every line and reset the `at_next` pointer, keeping `pick`.
     ///
     /// cost: \(O(1)\)
@@ -818,6 +854,37 @@ pub struct LineContainer(pick: (Int, Int) -> Int = min):
     /// traps: never
     /// example: `var c = LineContainer(max); c.add(Line(1, 0)); c.add(Line(-1, 4)); c.len == 2`
     @get pub fn len(self) -> Int = count
+
+    /// Whether no line is kept.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var c = LineContainer(max); let e = c.is_empty; c.add(Line(1, 0)); e and not c.is_empty`
+    @get pub fn is_empty(self) -> Bool = count == 0
+
+    /// \(O(\mathit{len})\). Visit the kept lines; dominated lines are gone.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `LineContainer(max).each().collect() == []`
+    /// order: ascending slope
+    /// traps: never
+    /// example: `var c = LineContainer(min); c.add(Line(-1, 4)); c.add(Line(1, 0)); c.each().collect() == [Line(-1, 4), Line(1, 0)]`
+    pub fn each(self) -> yields Line:
+        // In-order is ascending stored slope; `min` stores negated lines, so it walks back.
+        var order: List<Int> = []
+        var stack: List<Int> = []
+        var t = root
+        while t >= 0 or stack.len > 0:
+            while t >= 0:
+                stack.push(t)
+                t = ls[t]
+            let u = stack.pop()!
+            order.push(u)
+            t = rs[u]
+        let sg = self.sign()
+        for j in 0..order.len:
+            let u = if sg < 0: order[order.len - 1 - j] else: order[j]
+            yield Line(sg * ks[u], sg * ms[u])
 
 /// The length of the longest increasing subsequence ending at each position, compared by `by`;
 /// `strict: false` allows equal neighbours (non-decreasing). `xs.lis_ends().max()` is the LIS
@@ -1051,3 +1118,45 @@ fn monge_paths_match_the_quadratic_dp():
             best.push((0..i).map(j => best[j] + w(j, i)).min()!)
         assert got.val == best
         for i in 1..n: assert best[got.prev[i]] + w(got.prev[i], i) == best[i]
+
+@test
+fn hulls_and_monge_path_walk_and_show():
+    var p = MongePath([0, 1, 3], (a, b) => (b - a) * (b - a))
+    p.next()
+    p.next()
+    assert [v for (_, v) in p.items] == [0, 1, 5] and "{p}" == "0 1 5" and not p.is_empty
+    var h = MonotoneHull<()>(min)
+    h.add(Line(2, 0))
+    h.add(Line(0, 5))
+    h.add(Line(-1, 3))
+    assert [l for (l, _) in h.items] == [Line(2, 0), Line(-1, 3)] and "{h}" == "2x + 0, -1x + 3"
+    var c = LineContainer(max)
+    for l in [Line(-1, 4), Line(0, 0), Line(1, 0)]: c.add(l)
+    assert c.each().collect() == [Line(-1, 4), Line(1, 0)] and "{c}" == "-1x + 4, 1x + 0"
+    var d = LineContainer(min)
+    for l in [Line(1, 0), Line(-1, 4), Line(0, 9)]: d.add(l)
+    assert d.each().collect() == [Line(-1, 4), Line(1, 0)]
+
+impl Show for MongePath<N, K>:
+    fn show(v):
+        var out = ""
+        for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for MonotoneHull<P>:
+    fn show(v):
+        var out = ""
+        for (l, _) in v.items:
+            if not out.is_empty: out += ", "
+            out += "{l.k}x + {l.m}"
+        out
+
+impl Show for LineContainer:
+    fn show(v):
+        var out = ""
+        for l in v.each():
+            if not out.is_empty: out += ", "
+            out += "{l.k}x + {l.m}"
+        out

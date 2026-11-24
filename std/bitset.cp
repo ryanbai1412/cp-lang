@@ -1066,6 +1066,17 @@ pub struct XorTrie:
     /// example: `var t = XorTrie(3); t.add(5); t.remove(5); t.is_empty`
     @get pub fn is_empty(self) -> Bool = _cnt[0] == 0
 
+    /// \(O(\mathit{bits})\) per element. Visit every stored value as it reads now, with the
+    /// `xor_all` mask applied, one per copy.
+    ///
+    /// cost: \(O(\mathit{bits})\) per element
+    /// empty: `XorTrie(3).each().collect() == []`
+    /// order: ascending value, each value repeated by its count
+    /// traps: never
+    /// example: `var t = XorTrie(3); t.add(5); t.add(1); t.add(5); t.xor_all(1); t.each().collect() == [0, 4, 4]`
+    pub fn each(self) -> yields Int:
+        for k in 0.._cnt[0]: yield self.kth_xor(0, k)!
+
     /// Insert one copy of `x`. `x` is stored as given, after any earlier `xor_all`: the mask applies
     /// only to elements already present.
     ///
@@ -1285,6 +1296,25 @@ pub struct BitTrie<W>:
     /// example: `BitTrie<3>.new().is_empty and not BitTrie<3>.of(0).is_empty`
     @get pub fn is_empty(self) -> Bool = nodes[0].cnt == 0
 
+    /// \(O(\mathit{nodes} + \mathit{len})\). Visit every stored value, one per copy.
+    ///
+    /// cost: \(O(\mathit{nodes} + \mathit{len})\)
+    /// empty: `BitTrie<3>.new().each().collect() == []`
+    /// order: ascending value, each value repeated by its count
+    /// traps: never
+    /// example: `var t = BitTrie<3>.of(5); t.add(1); t.add(5); t.each().collect() == [1, 5, 5]`
+    pub fn each(self) -> yields Int:
+        // A node with copies and no child is a full-width leaf.
+        var stack = [(node: 0, value: 0)]
+        while let top = stack.pop():
+            let n = nodes[top.node]
+            if n.cnt == 0: continue
+            if n.kid[0] == None and n.kid[1] == None:
+                for _ in 0..n.cnt: yield top.value
+                continue
+            for side in [1, 0]:
+                if let c = n.kid[side]: stack.push((node: c, value: top.value * 2 + side))
+
     /// Insert one copy of `x`.
     ///
     /// cost: \(O(W)\) time, up to `W` new nodes
@@ -1378,6 +1408,17 @@ impl Sub for Bitset<D>:
 
 /// Index of the highest set bit in non-zero `x` (0..64).
 fn msb(x: U64) -> Int = bit_width(x) - 1
+
+@test
+fn bit_tries_walk_ascending_and_show():
+    var x = XorTrie(3)
+    for v in [5, 1, 5, 6]: x.add(v)
+    assert x.each().collect() == [1, 5, 5, 6] and "{x}" == "1 5 5 6"
+    x.xor_all(3)
+    assert x.each().collect() == [2, 5, 6, 6]
+    var b = BitTrie<3>.new()
+    for v in [5, 1, 5, 6, 0, 7]: b.add(v)
+    assert b.each().collect() == [0, 1, 5, 5, 6, 7] and "{b}" == "0 1 5 5 6 7"
 
 impl Show for Bitset<D>:
     fn show(a):
@@ -1546,4 +1587,20 @@ impl Show for DynBitset:
         for v in a.each():
             if not out.is_empty: out += " "
             out += "{v}"
+        out
+
+impl Show for XorTrie:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for BitTrie<W>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
         out

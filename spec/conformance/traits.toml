@@ -1660,3 +1660,108 @@ code = """
 print([1, 2, 3].ring.span(2, 2))
 """
 out = "2 0"
+
+[case."Show/SortedMap/show"]
+code = """
+var m: SortedMap<Int, Str> = SortedMap()
+m.set(3, "c")
+m.set(1, "a")
+print(m)
+"""
+out = "1=a, 3=c"
+
+[case."Show/AugSortedBag/show"]
+code = """
+use std.bag.{AugSortedBag}
+var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k)
+for x in [3, 1, 3]: b.add(x)
+print(b)
+"""
+out = "1 3 3"
+
+[case."Show/AugSortedSet/show"]
+code = """
+use std.bag.{AugSortedSet}
+var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k)
+for x in [3, 1, 3]: s.add(x)
+print(s)
+"""
+out = "1 3"
+
+[case."Show/BucketCount/show"]
+code = """
+use std.bag.{BucketCount}
+var c = BucketCount(0..10)
+c.add(7, 2)
+c.add(3)
+print(c)
+"""
+out = "3 7 7"
+
+[case."Show/SortedRange/show"]
+code = """
+print(SortedBag.of([1, 3, 3, 7]).range(2..))
+"""
+out = "3 3 7"
+
+[case."Show/XorTrie/show"]
+code = """
+use std.bitset.{XorTrie}
+var t = XorTrie(3)
+t.add(5)
+t.add(1)
+t.xor_all(1)
+print(t)
+"""
+out = "0 4"
+
+[case."Show/BitTrie/show"]
+code = """
+use std.bitset.{BitTrie}
+var t = BitTrie<3>.of(5)
+t.add(1)
+t.add(5)
+print(t)
+"""
+out = "1 5 5"
+
+[case."Show/MongePath/show"]
+code = """
+use std.dp.{MongePath}
+var p = MongePath([0, 1, 3], (a, b) => (b - a) * (b - a))
+p.next()
+p.next()
+print(p)
+"""
+out = "0 1 5"
+
+[case."Show/MonotoneHull/show"]
+code = """
+use std.dp.{MonotoneHull, Line}
+var h = MonotoneHull<()>(min)
+h.add(Line(2, 0))
+h.add(Line(-1, 3))
+print(h)
+"""
+out = "2x + 0, -1x + 3"
+
+[case."Show/LineContainer/show"]
+code = """
+use std.dp.{LineContainer, Line}
+var c = LineContainer(max)
+c.add(Line(1, 0))
+c.add(Line(-1, 4))
+print(c)
+"""
+out = "-1x + 4, 1x + 0"
+
+[case."Show/Matching/show"]
+code = """
+use std.flow.{Matching}
+var m = Matching<0..2, 0..2>()
+m.add(0, 1)
+m.add(1, 0)
+m.augment_all()
+print(m)
+"""
+out = "0-1, 1-0"

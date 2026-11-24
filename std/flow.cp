@@ -2000,6 +2000,25 @@ pub struct Matching<L, R>:
     /// traps: never
     /// example: `var m = Matching<0..2, 0..2>(); m.add(1, 0); m.augment(1); m.len == 1`
     @get pub fn len(self) -> Int = size
+
+    /// Whether no pair is matched.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var m = Matching<0..2, 0..2>(); let e = m.is_empty; m.add(1, 0); m.augment(1); e and not m.is_empty`
+    @get pub fn is_empty(self) -> Bool = size == 0
+
+    /// \(O(\lvert L \rvert)\). Visit the matched pairs `(l, mate(l)!)`.
+    ///
+    /// cost: \(O(\lvert L \rvert)\)
+    /// empty: `Matching<0..2, 0..2>().items.collect() == []`
+    /// order: increasing `l`
+    /// traps: never
+    /// example: `var m = Matching<0..2, 0..2>(); m.add(0, 1); m.add(1, 0); m.augment_all(); m.items.collect() == [(0, 1), (1, 0)]`
+    @get pub fn items(self) -> yields (L, R):
+        for l in L:
+            if let r = mate[l]: yield (l, r)
+
     /// The König vertex cover of the current matching, built as in
     /// [`min_vertex_cover`](min_vertex_cover); a minimum cover when the matching is maximum.
     ///
@@ -2584,3 +2603,23 @@ fn min_cost_circulations_match_brute_force():
                 net[es[e].u] -= r.flow[e]
                 net[es[e].v] += r.flow[e]
             for v in V: assert net[v] == 0
+
+@test
+fn matching_walks_pairs_and_shows():
+    var m = Matching<0..3, 0..3>()
+    assert m.is_empty and "{m}" == ""
+    m.add(0, 0)
+    m.add(1, 0)
+    m.add(1, 2)
+    m.add(2, 2)
+    assert m.augment_all() == 2
+    assert m.items.collect().len == 2 and not m.is_empty
+    for (l, r) in m.items: assert m.mate(l) == Some(r)
+
+impl Show for Matching<L, R>:
+    fn show(v):
+        var out = ""
+        for (l, r) in v.items:
+            if not out.is_empty: out += ", "
+            out += "{l}-{r}"
+        out

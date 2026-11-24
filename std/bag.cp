@@ -2257,6 +2257,19 @@ pub struct BucketCount:
     @get pub fn is_empty(self) -> Bool:
         total == 0
 
+    /// Visit every stored copy, skipping empty blocks.
+    ///
+    /// cost: \(O(\sqrt{N})\) per block holding a copy, plus \(O(\sqrt{N} + \mathit{len})\)
+    /// empty: `BucketCount(0..10).each().collect() == []`
+    /// order: ascending value, each value repeated by its count
+    /// traps: never
+    /// example: `var b = BucketCount(0..10); b.add(7, 2); b.add(3); b.each().collect() == [3, 7, 7]`
+    pub fn each(self) -> yields Int:
+        for k in 0..blk.len:
+            if blk[k] == 0: continue
+            for i in k * bs..min((k + 1) * bs, cnt.len):
+                for _ in 0..cnt[i]: yield lo + i
+
     /// \(O(r.\mathit{len})\). Reset all counts to zero.
     ///
     /// cost: \(O(r.\mathit{len})\)
@@ -2536,6 +2549,25 @@ impl Track<K> for SortedBag<K>:
     fn pop(mut self, x: K):
         self.remove(x)
 
+@test
+fn bag_family_walks_and_shows():
+    var m: SortedMap<Int, Str> = SortedMap()
+    m.set(3, "c")
+    m.set(1, "a")
+    assert "{m}" == "1=a, 3=c"
+    var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k)
+    for x in [3, 1, 3]: b.add(x)
+    assert "{b}" == "1 3 3"
+    var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k)
+    for x in [3, 1, 3]: s.add(x)
+    assert "{s}" == "1 3"
+    var c = BucketCount(0..30)
+    for x in [29, 0, 7, 7, 15]: c.add(x)
+    assert c.each().collect() == [0, 7, 7, 15, 29] and "{c}" == "0 7 7 15 29"
+    c.remove(7, 2)
+    assert c.each().collect() == [0, 15, 29]
+    assert "{SortedBag.of([1, 3, 3, 7]).range(2..)}" == "3 3 7"
+
 impl Show for SortedBag<K>:
     fn show(b):
         var out = ""
@@ -2548,6 +2580,46 @@ impl Show for SortedSet<K>:
     fn show(s):
         var out = ""
         for x in s.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for SortedMap<K, V>:
+    fn show(v):
+        var out = ""
+        for (k, x) in v.items:
+            if not out.is_empty: out += ", "
+            out += "{k}={x}"
+        out
+
+impl Show for AugSortedBag<K, T>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for AugSortedSet<K, T>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for BucketCount:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
+impl Show for SortedRange<K>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
             if not out.is_empty: out += " "
             out += "{x}"
         out

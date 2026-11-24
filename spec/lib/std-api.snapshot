@@ -80,6 +80,7 @@ std/bag.cp: BucketCount.add(mut self, x: Int, delta: Int = 1)
 std/bag.cp: BucketCount.clear(mut self)
 std/bag.cp: BucketCount.count(self, x: Int) -> Int
 std/bag.cp: BucketCount.count_lt(self, x: Int) -> Int
+std/bag.cp: BucketCount.each(self) -> yields Int
 std/bag.cp: BucketCount.is_empty(self) -> Bool
 std/bag.cp: BucketCount.kth(self, k: Int) -> Int
 std/bag.cp: BucketCount.len(self) -> Int
@@ -221,6 +222,7 @@ std/beats.cp: HistoricBeatsSegTree.sum(mut self, r: Range<D>) -> Int
 std/bitset.cp: BitTrie.absorb(mut self, mut other: BitTrie<W>)
 std/bitset.cp: BitTrie.add(mut self, x: Int)
 std/bitset.cp: BitTrie.count(self, x: Int) -> Int
+std/bitset.cp: BitTrie.each(self) -> yields Int
 std/bitset.cp: BitTrie.is_empty(self) -> Bool
 std/bitset.cp: BitTrie.len(self) -> Int
 std/bitset.cp: BitTrie.new() -> BitTrie<W>
@@ -306,6 +308,7 @@ std/bitset.cp: XorTrie.clear(mut self)
 std/bitset.cp: XorTrie.contains(self, x: Int) -> Bool
 std/bitset.cp: XorTrie.count(self, x: Int) -> Int
 std/bitset.cp: XorTrie.count_xor_less(self, x: Int, limit: Int) -> Int
+std/bitset.cp: XorTrie.each(self) -> yields Int
 std/bitset.cp: XorTrie.is_empty(self) -> Bool
 std/bitset.cp: XorTrie.kth_xor(self, x: Int, k: Int) -> ?Int
 std/bitset.cp: XorTrie.len(self) -> Int
@@ -369,8 +372,12 @@ std/dp.cp: LiChao.new(pick: (K, K) -> K, over: Range<Int>) -> LiChao<L, K>
 std/dp.cp: Line.at(self, x: Int) -> Int
 std/dp.cp: LineContainer.add(mut self, line: Line)
 std/dp.cp: LineContainer.at(self, x: Int) -> ?Int
+std/dp.cp: LineContainer.each(self) -> yields Line
+std/dp.cp: LineContainer.is_empty(self) -> Bool
 std/dp.cp: LineContainer.len(self) -> Int
 std/dp.cp: LineContainer.line_at(self, x: Int) -> ?Line
+std/dp.cp: MongePath.is_empty(self) -> Bool
+std/dp.cp: MongePath.items(self) -> yields (Int, K)
 std/dp.cp: MongePath.len(self) -> Int
 std/dp.cp: MongePath.next(mut self) -> (val: K, prev: Int)
 std/dp.cp: MongePath.val(self, i: Int) -> K
@@ -379,6 +386,8 @@ std/dp.cp: MonotoneHull.at(self, x: Int) -> ?Int
 std/dp.cp: MonotoneHull.at_next(mut self, x: Int) -> ?Int
 std/dp.cp: MonotoneHull.best_next(mut self, x: Int) -> ?(val: Int, tag: P)
 std/dp.cp: MonotoneHull.clear(mut self)
+std/dp.cp: MonotoneHull.is_empty(self) -> Bool
+std/dp.cp: MonotoneHull.items(self) -> yields (Line, P)
 std/dp.cp: MonotoneHull.len(self) -> Int
 std/dp.cp: Step.prune(mut self)
 std/dp.cp: aliens<L: Add + Sub + Mul>(k: Int, solve: L -> (val: L, count: Int), lambdas: ?Range<L> = None) -> L
@@ -523,6 +532,8 @@ std/flow.cp: Matching.augment(mut self, from: L) -> Bool
 std/flow.cp: Matching.augment_all(mut self) -> Int
 std/flow.cp: Matching.back(self, r: R) -> ?L
 std/flow.cp: Matching.cover(self) -> (left: [L]Bool, right: [R]Bool)
+std/flow.cp: Matching.is_empty(self) -> Bool
+std/flow.cp: Matching.items(self) -> yields (L, R)
 std/flow.cp: Matching.len(self) -> Int
 std/flow.cp: Matching.mate(self, l: L) -> ?R
 std/flow.cp: Matching.new() -> Matching<L, R>
