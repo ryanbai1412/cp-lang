@@ -3,6 +3,8 @@
 //! the interpreter's implementation and the C++ it emits. The compiler
 //! matches [`Prim`] values, never the names libraries give them.
 
+pub mod cpp;
+
 /// One primitive of the table. Its index in [`Prim::ALL`] is its stable number.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
 pub enum Prim {

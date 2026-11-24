@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 cpl-diag.workspace = true
 cpl-ir.workspace = true
+cpl-rt.workspace = true
 
 [dev-dependencies]
 cpl-check.workspace = true

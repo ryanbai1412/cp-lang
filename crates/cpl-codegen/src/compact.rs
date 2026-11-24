@@ -4,6 +4,7 @@
 //! runtime's own definitions. Each works
 //! a line at a time, so a part of the file shrinks as it does in the file.
 
+use cpl_rt::cpp::TYPE_TEMPLATES;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Two characters that read as one token when nothing is between them.
@@ -244,24 +245,6 @@ const FOUND_BY_NAME: &[&str] = &[
     "begin", "end", "swap", "get", "size", "data", "hash", "main",
 ];
 
-/// Library templates of types alone, which `template<class...T>using`
-/// can stand for wherever they are written with their arguments.
-const STD_TEMPLATES: &[&str] = &[
-    "vector",
-    "optional",
-    "tuple",
-    "pair",
-    "set",
-    "map",
-    "multiset",
-    "multimap",
-    "deque",
-    "function",
-    "unordered_map",
-    "unordered_set",
-    "priority_queue",
-];
-
 /// Library names a `using std::x;` can bring in, so the file writes them
 /// bare where it writes no other `x`.
 const STD_NAMES: &[&str] = &[
@@ -385,7 +368,7 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
             }
             if after_std {
                 keep.insert(t);
-                if STD_TEMPLATES.contains(&t) && tokens.get(i + 1).map(|t| t.1) == Some("<") {
+                if TYPE_TEMPLATES.contains(&t) && tokens.get(i + 1).map(|t| t.1) == Some("<") {
                     *templates.entry(t).or_default() += 1;
                 }
             } else if numbered(t) || owned.contains(t) || TYPEDEFS.contains(&t) {

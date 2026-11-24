@@ -211,7 +211,7 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-ir` | the IR, lowering, monomorphization, facts (absorbing `prover`), passes, layout; lowers an `@intrinsic` call to its `cpl-rt` primitive |
 | `cpl-rt` | the intrinsics table: Rust and C++ for each primitive, in one place (decision 573); depends on nothing |
 | `cpl-interp` | the one interpreter: register VM, event stream, traces, replay, profiler; WASM build; reads `CPL_VM_STATS` with `cpl-env`; runs `@intrinsic` primitives and words their traps through `cpl-rt` |
-| `cpl-codegen` | C++ emitter, runtime tree-shaking, judge profiles |
+| `cpl-codegen` | C++ emitter, runtime tree-shaking, judge profiles; reads the C++ library names it writes from `cpl-rt` |
 | `cpl-diag` | diagnostic model and renderers; its JSON shape is printed with `cpl-json`. `plain` turns doc text's LaTeX math and intra-doc links into terminal text for hover, the CLI and lint (`cpl_doc::plain` re-exports it) |
 | `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge/dap`; `cpl run --live` waits on file changes with `cpl-wait`; reads its `CPL_*` settings with `cpl-env` |
 | `cpl-fmt`, `cpl-lint`, `cpl-doc`, `cpl-stress`, `cpl-judge` | tools over `cpl-check` queries ; `cpl-fmt` and `cpl-lint` read their `cp.toml` tables through `cpl-config`; `cpl-lint` prints its registry (`cpl lint --list --json`) with `cpl-json`; `cpl-stress` runs `cpl-lint` so a clean report can name the bound lints whose witnesses its small cases miss, and waits on its programs with `cpl-wait`; `cpl-stress` and `cpl-judge` read their cache settings with `cpl-env` |

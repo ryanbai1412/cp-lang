@@ -6,26 +6,8 @@
 //! integers, token for token, so the file means what it meant.
 
 use crate::compact::{needs_space, tokens};
+use cpl_rt::cpp::CLASS_TEMPLATES;
 use std::collections::{BTreeMap, BTreeSet};
-
-/// The `std` class templates a type a span names can be: `std::min<ll>` is
-/// a fn, never a type.
-const STD_TYPES: &[&str] = &[
-    "array",
-    "bitset",
-    "deque",
-    "function",
-    "map",
-    "multiset",
-    "optional",
-    "pair",
-    "set",
-    "string",
-    "tuple",
-    "unordered_map",
-    "unordered_set",
-    "vector",
-];
 
 const BUILTIN_TYPES: &[&str] = &[
     "bool", "char", "int", "ll", "ull", "double", "size_t", "int8_t", "int16_t", "int32_t",
@@ -532,7 +514,7 @@ pub(crate) fn called(text: &str, calls: &BTreeMap<String, String>) -> String {
 
 /// The whole types `toks` names, each by the token it starts at: where it
 /// ends and its text. A type is a name `types` has, `cpl::` one, or a
-/// `std::` class template in [`STD_TYPES`], with its `<..>` arguments, a
+/// `std::` class template in [`CLASS_TEMPLATES`], with its `<..>` arguments, a
 /// `const` before and `&`s or `*`s after, on one line and not qualified
 /// further (`std::numeric_limits<ll>::max` is a fn).
 fn type_spans(toks: &[Tok], types: &BTreeSet<&str>) -> BTreeMap<usize, (usize, String)> {
@@ -543,7 +525,7 @@ fn type_spans(toks: &[Tok], types: &BTreeSet<&str>) -> BTreeMap<usize, (usize, S
         let start = i;
         let mut j = i + usize::from(first.text == "const");
         let core = match (text(j), text(j + 1), text(j + 2), text(j + 3)) {
-            ("std", ":", ":", w) if STD_TYPES.contains(&w) => Some(j + 3),
+            ("std", ":", ":", w) if CLASS_TEMPLATES.contains(&w) => Some(j + 3),
             ("cpl", ":", ":", w) if types.contains(w) => Some(j + 3),
             (w, ..) if types.contains(w) && !matches!(text(j.wrapping_sub(1)), ":") => Some(j),
             _ => None,

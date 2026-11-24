@@ -71,7 +71,7 @@ pub(crate) fn stream_fix(src: &str, name: &str, span: Span) -> Option<(Span, Str
             let mut ops: Vec<&str> = rest.strip_prefix(" << ")?.split(" << ").collect();
             // `cout << fixed << setprecision(9) << x`: `{x:.9f}`.
             let digits = match ops.as_slice() {
-                ["fixed", p, ..] => p
+                [f, p, ..] if *f == cpl_rt::cpp::FIXED => p
                     .strip_prefix("setprecision(")
                     .and_then(|d| d.strip_suffix(')'))
                     .filter(|d| !d.is_empty() && d.bytes().all(|b| b.is_ascii_digit())),

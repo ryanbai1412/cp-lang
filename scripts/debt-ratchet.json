@@ -45,6 +45,7 @@
     "cpl-cli -> cpl-wait",
     "cpl-codegen -> cpl-diag",
     "cpl-codegen -> cpl-ir",
+    "cpl-codegen -> cpl-rt",
     "cpl-conform -> cpl-check",
     "cpl-conform -> cpl-codegen",
     "cpl-conform -> cpl-contest",

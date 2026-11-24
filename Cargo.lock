@@ -57,6 +57,7 @@ dependencies = [
  "cpl-check",
  "cpl-diag",
  "cpl-ir",
+ "cpl-rt",
 ]
 
 [[package]]
