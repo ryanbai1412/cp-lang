@@ -34,5 +34,16 @@ class NewFailures(unittest.TestCase):
         self.assertEqual(conform_staged.new_failures("b/ok.cp", OUT, False), [])
 
 
+class Flake(unittest.TestCase):
+    def test_a_verdict_that_changes_between_runs_is_a_flake(self):
+        passed = "conformance     1/1    pass (1 pass)\n"
+        got = conform_staged.flake("a/wrong.cp", OUT, passed)
+        self.assertEqual(got, ["  a/wrong.cp: fail: flaky, fail then pass on the same build"])
+
+    def test_the_same_verdict_twice_is_no_flake(self):
+        self.assertEqual(conform_staged.flake("a/wrong.cp", OUT, OUT), [])
+        self.assertEqual(conform_staged.flake("b/ok.cp", OUT, OUT), [])
+
+
 if __name__ == "__main__":
     unittest.main()
