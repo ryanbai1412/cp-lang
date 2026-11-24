@@ -20,11 +20,15 @@
   {"id": "5705442", "language": "CPP17", "result": "MLE", "time": 8.612664028, "memory_kb": 286164.0, "file": "corpus/submissions/5705442.cpp"},
   {"id": "5705443", "language": "CPP17", "result": "TLE", "time": 12.191603381, "memory_kb": 286248.0, "file": "corpus/submissions/5705443.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/yac7p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted submission (ten RTE, six TLE, one MLE). orig.cpp is a written reference: offline, steps >= sqrt(N) applied cell by cell and each smaller step swept alone over a residue-major layout with block tags; it matches the statement sample and a naive simulation on 500 random inputs and on the --max input."
 }
