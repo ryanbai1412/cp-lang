@@ -6,53 +6,38 @@
 //   cover but never turns back, and stops at the end of a track. Print, ascending, every
 //   station where it can stop. n, m <= 2e5.
 // Solution: rightward stops are the right ends of tracks reachable from x, where a track is
-//   reachable if it covers some position in [x, r] of a reachable track. A DFS over tracks
-//   sweeps each position once with path-compressed skip pointers `nxt`, adding the tracks that
-//   start there. Leftward stops are the same on the mirrored line. O((n + m) log n).
+//   reachable if it covers some station in [x, r] of a reachable track. Riding a track sweeps
+//   its stations not yet swept, found with an IntervalSet's `next_gap`, and boards the tracks
+//   that start there, so each station is swept once. Leftward stops are the same on the
+//   mirrored line. O((n + m) log n).
 // original: corpus/submissions/5556659.cpp
-let (n, m, start1): (Int, Int, Int) = read()
-var ivs: List<(l: Int, r: Int)> = []
-for _ in 0..m:
-    let (l, r): (Int, Int) = read()
-    ivs.push((l: l - 1, r: r - 1))
+use std.interval.{IntervalSet}
 
-// Right endpoints reachable from `start` by riding intervals rightwards.
-fn reach(start: Int, iv: List<(l: Int, r: Int)>) -> List<Bool>:
-    var starts_at: List<List<Int>> = [[] for _ in 0..n]
-    for i in 0..m: starts_at[iv[i].l].push(i)
-    // nxt[x]: smallest unswept position >= x (path-compressed skip pointers).
-    var nxt: List<Int> = [x for x in 0..n + 1]
-    var seen = List.filled(m, false)
-    var hit = List.filled(n, false)
-    var stack: List<Int> = []
-    for i in 0..m:
-        if iv[i].l <= start < iv[i].r:
-            seen[i] = true
-            stack.push(i)
-    while stack.len > 0:
-        let i = stack.pop()
-        hit[iv[i].r] = true
-        var x = max(start, iv[i].l)
-        while true:
-            var root = x
-            while nxt[root] != root: root = nxt[root]
-            while nxt[x] != root:
-                let y = nxt[x]
-                nxt[x] = root
-                x = y
-            x = root
-            if x > iv[i].r: break
-            nxt[x] = x + 1
-            for j in starts_at[x]:
-                if not seen[j]:
-                    seen[j] = true
-                    stack.push(j)
-    hit[start] = false
-    return hit
+let (n, m): (2..=200_000, 1..=200_000) = read()
+domain Station = 1..=n
+let x: Station = read()
+domain Track = 0..m
+let tracks: [Track](l: Station, r: Station) = read()
 
-let start = start1 - 1
-let right = reach(start, ivs)
-var mirrored: List<(l: Int, r: Int)> = [(l: n - 1 - iv.r, r: n - 1 - iv.l) for iv in ivs]
-let left = reach(n - 1 - start, mirrored)
-for x in 0..n:
-    if right[x] or left[n - 1 - x]: print(x + 1)
+fn mirror(s: Station) -> Station = Station.nth(Station.count - 1 - s.ord)
+
+/// Where a train from `x` riding only toward higher stations of `line` can stop.
+fn stops(x: Station, line: [Track](l: Station, r: Station)) -> [Station]Bool:
+    let starting = line.map(.l).buckets()
+    var swept = IntervalSet<Station>()
+    var stop: [Station]Bool = false
+    var riding = [t for t in Track if line[t].l <= x < line[t].r]
+    while let t = riding.pop():
+        let (l, r) = line[t]
+        stop[r] = true
+        var from = max(x, l)
+        while let s = swept.next_gap(from) and s <= r:
+            swept.add(s..=s)
+            riding.extend(starting[s])
+            from = s
+    stop[x] = false
+    stop
+
+let right = stops(x, tracks)
+let left = stops(mirror(x), [Track] t => (l: mirror(tracks[t].r), r: mirror(tracks[t].l)))
+print([s for s in Station if right[s] or left[mirror(s)]])
