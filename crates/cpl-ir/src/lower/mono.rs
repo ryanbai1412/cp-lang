@@ -2110,40 +2110,8 @@ impl<'a> Lowerer<'a> {
                         }
                     }
                 }
-                if let ast::TypeKind::Fn {
-                    params: fparams,
-                    ret: fret,
-                } = &pty.kind
-                {
-                    // Check if all parameter types of this lambda can now be resolved.
-                    let mut p_tys = Vec::new();
-                    let mut all_known = fparams.len() == lparams.len();
-                    if all_known {
-                        let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
-                        let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
-                        let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
-                        for fp in fparams {
-                            if self.ast_ty_has_unbound(fp, &gen_names, &inferred) {
-                                all_known = false;
-                                break;
-                            }
-                            let pt = match self.resolve_ty(fp) {
-                                Ty::Mut(inner) => *inner,
-                                other => other,
-                            };
-                            p_tys.push(pt);
-                        }
-                        self.cur_mod = saved_mod;
-                        self.offset = saved_offset;
-                        self.gen_env = saved_env;
-                    }
-                    if all_known {
-                        // Probe return type of the lambda body.
-                        if let Some(ret_ty) = self.probe_lambda_ret(lparams, &p_tys, lbody) {
-                            self.unify_ast_ty(fret, &ret_ty, tpl_mod, &gen_names, &mut inferred);
-                        }
-                    }
-                }
+                let tpl = (tpl_mod, tpl_offset);
+                self.unify_lambda_ret(pty, lparams, lbody, tpl, &gen_names, &mut inferred, false);
             }
             if inferred.len() == before {
                 // Only after ready lambdas have had a chance to infer `T` (e.g. `init: V -> T`),
@@ -2161,6 +2129,24 @@ impl<'a> Lowerer<'a> {
                             inferred.insert(g.clone(), GenArg::Ty(ety));
                         }
                     }
+                }
+                if inferred.len() == before {
+                    if let (Some(ret_ast), Some(want)) = (
+                        decl.ret.as_ref(),
+                        hint.as_ref().filter(|t| **t != Ty::Error),
+                    ) {
+                        self.unify_ast_ty(ret_ast, want, tpl_mod, &gen_names, &mut inferred);
+                    }
+                }
+                if inferred.len() == before {
+                    let tpl = (tpl_mod, tpl_offset);
+                    self.bind_from_lambda_results(
+                        &ast_params,
+                        &matched,
+                        tpl,
+                        &gen_names,
+                        &mut inferred,
+                    );
                 }
                 if inferred.len() == before {
                     break;
@@ -2886,7 +2872,12 @@ impl<'a> Lowerer<'a> {
             })
     }
 
-    fn ast_ty_has_unbound(&self, ty: &ast::Type, gen_names: &[String], env: &GenEnv) -> bool {
+    pub(super) fn ast_ty_has_unbound(
+        &self,
+        ty: &ast::Type,
+        gen_names: &[String],
+        env: &GenEnv,
+    ) -> bool {
         match &ty.kind {
             ast::TypeKind::Named { name, args } => {
                 if args.is_empty()

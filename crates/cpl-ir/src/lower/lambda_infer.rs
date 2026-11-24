@@ -215,6 +215,82 @@ impl<'a> Lowerer<'a> {
         self.diags.truncate(diag_len);
         (probed.ty != Ty::Error).then_some(probed.ty)
     }
+
+    /// With nothing else to bind from, each lambda argument reads its body with a bare unbound
+    /// parameter type as `Int`, so its result can bind that generic.
+    pub(super) fn bind_from_lambda_results(
+        &mut self,
+        params: &[&ast::Param],
+        matched: &[Option<&ast::Arg>],
+        tpl: (ModId, u32),
+        gen_names: &[String],
+        inferred: &mut GenEnv,
+    ) {
+        let before = inferred.len();
+        for (param, arg) in params.iter().zip(matched) {
+            let (Some(pty), Some(arg)) = (param.ty.as_ref(), arg) else {
+                continue;
+            };
+            if let ast::ExprKind::Lambda { params, body, .. } = &arg.value.kind {
+                if inferred.len() == before {
+                    let pty = unwrap_optional(pty);
+                    self.unify_lambda_ret(pty, params, body, tpl, gen_names, inferred, true);
+                }
+            }
+        }
+    }
+
+    /// `f: (A, B) -> R` given a lambda: once its parameter types are known, `R` is what its body
+    /// gives back. With `provisional`, a bare parameter type nothing else binds (`L` in
+    /// `solve: L -> (val: L, count: Int)`) is read as `Int`, the type it would default to, so
+    /// the body can say what `L` is.
+    #[allow(clippy::too_many_arguments)]
+    pub(super) fn unify_lambda_ret(
+        &mut self,
+        pty: &ast::Type,
+        lparams: &[ast::Pattern],
+        lbody: &ast::Expr,
+        (tpl_mod, tpl_offset): (ModId, u32),
+        gen_names: &[String],
+        inferred: &mut GenEnv,
+        provisional: bool,
+    ) {
+        let ast::TypeKind::Fn {
+            params: fparams,
+            ret: fret,
+        } = &pty.kind
+        else {
+            return;
+        };
+        if fparams.len() != lparams.len() {
+            return;
+        }
+        let saved_mod = std::mem::replace(&mut self.cur_mod, tpl_mod);
+        let saved_offset = std::mem::replace(&mut self.offset, tpl_offset);
+        let saved_env = std::mem::replace(&mut self.gen_env, inferred.clone());
+        let mut p_tys = Vec::new();
+        for fp in fparams {
+            if !self.ast_ty_has_unbound(fp, gen_names, inferred) {
+                p_tys.push(match self.resolve_ty(fp) {
+                    Ty::Mut(inner) => *inner,
+                    other => other,
+                });
+            } else if provisional && bare_name(fp).is_some() {
+                p_tys.push(Ty::Int);
+            } else {
+                break;
+            }
+        }
+        self.cur_mod = saved_mod;
+        self.offset = saved_offset;
+        self.gen_env = saved_env;
+        if p_tys.len() != fparams.len() {
+            return;
+        }
+        if let Some(ret_ty) = self.probe_lambda_ret(lparams, &p_tys, lbody) {
+            self.unify_ast_ty(fret, &ret_ty, tpl_mod, gen_names, inferred);
+        }
+    }
 }
 
 /// `by: ?(T -> K) = None` infers from a lambda as `by: T -> K` does.

@@ -1,0 +1,5 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"nodes":{"name":"nodes","type":"List\u003cInt>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":3,"label":"let nodes = [0, 1, 2, 3]","stage":"main","values":{"stdout":[],"nodes":[0,1,2,3]},"locals":{},"frames":[{"fn":"main","line":3}]},
+{"id":1,"line":4,"label":"print → 3","stage":"main","values":{"stdout":["3"],"nodes":[0,1,2,3]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":4}]},
+{"id":2,"line":5,"label":"print → 3","stage":"main","values":{"stdout":["3","3"],"nodes":[0,1,2,3]},"locals":{},"checkpoint":"print 2","frames":[{"fn":"main","line":5}]},
+{"id":3,"line":5,"label":"the program ended","stage":"main","values":{"stdout":["3","3"],"nodes":[0,1,2,3]},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":5}]}]}}}
+stderr:
