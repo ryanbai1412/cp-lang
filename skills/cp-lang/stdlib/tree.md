@@ -41,6 +41,7 @@ A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre
 - `fn is_anc(self, a: V, b: V) -> Bool` — \(O(1)\); Whether `a` is an ancestor of `b`; a vertex is its own ancestor.
 - `fn lower(self, u: V, v: V) -> V` — \(O(1)\); The child end of the tree edge between `u` and `v`, in either order.; traps: when `u` and `v` are not joined by a tree edge
 - `fn lca(self, a: V, b: V) -> V` — \(O(\log n)\); The lowest common ancestor of `a` and `b`, by heavy-path climbing.; traps: when `a` and `b` are in different trees of a forest
+- `fn median(self, a: V, b: V, c: V) -> V` — \(O(\log n)\); The median of `a`, `b` and `c`: the one vertex on all three paths between them, which is the deepest of their pairwise lowest common ancestors.; traps: when the three are not all in one tree of a forest
 - `fn dist(self, a: V, b: V) -> Int` — \(O(\log n)\); The length of the path between `a` and `b`: its number of edges, or the total of its edge lengths in a tree built from `Weighted` arcs.; traps: when `a` and `b` are in different trees of a forest
 - `fn path(self, a: V, b: V) -> List<V>` — \(O(\log n + \lvert \mathit{path} \rvert)\); The simple path of vertices from `a` to `b`, both included.; traps: when `a` and `b` are in different trees of a forest
 - `fn diameter(self) -> (len: Int, u: V, v: V)` — \(O(n)\); A longest simple path in the tree holding `t.root`: `(len, u, v)` with `t.dist(u, v) == len` as large as it gets, found in one bottom-up sweep that joins, at each vertex, its two deepest child branches.

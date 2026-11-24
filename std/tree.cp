@@ -625,6 +625,17 @@ pub struct Rooted<V, Pre>:
             x = par[top[x]]!
         if dep[x] < dep[y]: x else: y
 
+    /// The median of `a`, `b` and `c`: the one vertex on all three paths between them, which is
+    /// the deepest of their pairwise lowest common ancestors.
+    ///
+    /// cost: \(O(\log n)\)
+    /// traps: when the three are not all in one tree of a forest
+    /// example: `domain V = 0..5; let adj: [V]List<V> = [[1, 2], [0, 3, 4], [0], [1], [1]]; let t = Rooted(adj, root: 0); t.median(3, 4, 2) == 1 and t.median(3, 3, 2) == 3`
+    pub fn median(self, a: V, b: V, c: V) -> V:
+        let (x, y, z) = (self.lca(a, b), self.lca(a, c), self.lca(b, c))
+        if dep[x] >= dep[y] and dep[x] >= dep[z]: return x
+        if dep[y] >= dep[z]: y else: z
+
     /// The length of the path between `a` and `b`: its number of edges, or the total of its edge
     /// lengths in a tree built from `Weighted` arcs.
     ///
