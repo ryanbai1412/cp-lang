@@ -955,7 +955,8 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
             let j = sorted_lms[k]
             var diff = vec[i] != vec[j]
             if not diff:
-                var (a, b) = (i + 1, j + 1)
+                var a = i + 1
+                var b = j + 1
                 while true:
                     if vec[a] != vec[b]:
                         diff = true
@@ -981,7 +982,8 @@ fn sa_is(vec: List<Int>, alpha: Int) -> List<Int>:
 
 // The first position in the sorted `a` whose value is not below `x`.
 fn lower_in<T: Ord>(a: List<T>, x: T) -> Int:
-    var (lo, hi) = (0, a.len)
+    var lo = 0
+    var hi = a.len
     unchecked:
         while lo < hi:
             let mid = (lo + hi) >> 1
@@ -991,7 +993,7 @@ fn lower_in<T: Ord>(a: List<T>, x: T) -> Int:
 fn sa_order<S: Indexed>(s: S) -> List<Int>:
     with lint(unproven_list_index: allow)
     let n = s.len
-    if n <= 1: return [i for i in 0..n]
+    if n == 0: return []
     var vec = List.filled(n + 1, 0)
     var alpha = 0
     // up to 256 distinct values: keep them sorted with the id each got on first sight
