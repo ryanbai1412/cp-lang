@@ -681,6 +681,16 @@ pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.deg(0) == 2 and g.deg(2) == 0`
 pub fn deg<V, A>(self: [V]List<A>, u: V) -> Int = self[u].len
 
+/// Where `u`'s arcs lead in an adjacency list, as `Graph.next` is for a `Graph`: each entry's
+/// target, repeats kept.
+///
+/// cost: \(O(1)\) per vertex yielded
+/// order: list order
+/// traps: never
+/// example: `domain V = 0..3; let g: [V]List<V> = [[2, 1], [2], []]; g.next(0).collect() == [2, 1] and g.next(2).count() == 0`
+pub fn next<V, A: Target<V>>(self: [V]List<A>, u: V) -> yields V:
+    for a in self[u]: yield a.to
+
 /// True when the adjacency list has an arc `u -> v`, as `Graph.has` is for a `Graph`. A scan
 /// of `u`'s list, not a lookup.
 ///
