@@ -175,7 +175,7 @@
   "idioms_evidenced_unlinted": 0,
   "bench_lists": 0,
   "unwrap_input": 0,
-  "unsupported_sites": 34,
+  "unsupported_sites": 14,
   "lsp_string_types": 0,
   "lint_post_filters": 0,
   "known_lists": 0,
