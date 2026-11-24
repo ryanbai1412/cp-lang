@@ -116,7 +116,8 @@ fn explain_lists_no_fn_field_of_a_struct_the_file_omits() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
     assert!(!out.contains("struct Unused"), "{out}");
     let explained = crate::explain_closures(&program);
@@ -137,7 +138,8 @@ fn explain_lists_a_fn_that_returns_a_closure() {
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let out = crate::emit(&program, "t.cp", None);
     let explained = crate::explain_closures(&program);
     let listed = explained.iter().any(|e| {

@@ -95,7 +95,7 @@ fn reads(module: &str, name: &str, ty: &str) -> Option<(String, cpl_ir::Program)
     if analysis.diagnostics.iter().any(error) || cpl_ir::check(&analysis).iter().any(error) {
         return None;
     }
-    Some((src, cpl_ir::lower(&analysis).ok()?))
+    Some((src, cpl_ir::lower(&analysis, &cpl_check::OwnFacts).ok()?))
 }
 
 /// `module.ty: why` when stress can't make an input the program reads.

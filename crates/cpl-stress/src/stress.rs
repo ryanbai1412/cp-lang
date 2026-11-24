@@ -182,13 +182,13 @@ impl Stress {
         if let (Some(analysis), false) = (analysis, external_judge) {
             if let Some((checker_fn, _)) = cpl_ir::checker(analysis) {
                 checker = Some(lowered(
-                    cpl_ir::lower_checker(analysis, &checker_fn),
+                    cpl_ir::lower_checker(analysis, &cpl_check::OwnFacts, &checker_fn),
                     name,
                     source,
                 )?);
             } else if let Some(judge) = cpl_ir::interactor(analysis) {
                 interactor = Some(lowered(
-                    cpl_ir::lower_judge(analysis, &judge),
+                    cpl_ir::lower_judge(analysis, &cpl_check::OwnFacts, &judge),
                     name,
                     source,
                 )?);
@@ -217,10 +217,14 @@ impl Stress {
         let roles = match native {
             None => {
                 let analysis = analyzed()?;
-                let fast = lowered(cpl_ir::lower_sampling_laws(analysis), name, source)?;
+                let fast = lowered(
+                    cpl_ir::lower_sampling_laws(analysis, &cpl_check::OwnFacts),
+                    name,
+                    source,
+                )?;
                 let brute = match (&own_brute, &part_brute) {
                     (Some((brute_fn, _)), _) => Some(lowered(
-                        cpl_ir::lower_brute(analysis, brute_fn),
+                        cpl_ir::lower_brute(analysis, &cpl_check::OwnFacts, brute_fn),
                         name,
                         source,
                     )?),
@@ -230,7 +234,11 @@ impl Stress {
                         let swapped_analysis = (db.analyze(&bname)).ok_or_else(|| {
                             Unbuilt::Said(format!("could not analyze part brute of {name}"))
                         })?;
-                        Some(lowered(cpl_ir::lower(&swapped_analysis), &bname, swapped)?)
+                        Some(lowered(
+                            cpl_ir::lower(&swapped_analysis, &cpl_check::OwnFacts),
+                            &bname,
+                            swapped,
+                        )?)
                     }
                     (None, None) => None,
                 };
@@ -307,7 +315,11 @@ impl Stress {
             }
             (None, Some((gen_fn, _)), None) => {
                 let analysis = analyzed()?;
-                let program = lowered(cpl_ir::lower_gen(analysis, gen_fn, size), name, source)?;
+                let program = lowered(
+                    cpl_ir::lower_gen(analysis, &cpl_check::OwnFacts, gen_fn, size),
+                    name,
+                    source,
+                )?;
                 Inputs::Gen(Drawing {
                     gen: vm(program),
                     limit: options.limit,

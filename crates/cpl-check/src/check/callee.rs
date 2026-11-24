@@ -128,7 +128,10 @@ impl Checker<'_> {
     /// as a lambda param's `T`, as the call binds them. A name the code here
     /// declares itself stays its own.
     fn settle_recorded(&mut self, call: &Expr, bindings: &Bindings) {
-        if bindings.iter().any(|(name, _)| self.generics.contains(name)) {
+        if bindings
+            .iter()
+            .any(|(name, _)| self.generics.contains(name))
+        {
             return;
         }
         let from = self.call_types_from.min(self.exprs.types.len());

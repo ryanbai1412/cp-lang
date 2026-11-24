@@ -9,7 +9,7 @@ impl<'a> Lowerer<'a> {
     /// would be: generic params through the instance's env, domains and
     /// structs by name.
     pub(in crate::lower) fn checked_ty(&mut self, e: &ast::Expr) -> Option<Ty> {
-        let facts = std::sync::Arc::clone(self.mods[self.cur_mod].facts());
+        let facts = self.checked_facts();
         let checked = facts.type_of(e.span.shift(self.offset))?;
         if let Checked::Pos(name) = checked {
             if let Some(d) = self.inline_product_named(name, e.span) {
@@ -25,6 +25,26 @@ impl<'a> Lowerer<'a> {
 }
 
 impl Lowerer<'_> {
+    /// The checker's facts for the module being lowered, its bodies' too
+    /// when the caller had them checked.
+    fn checked_facts(&mut self) -> std::sync::Arc<cpl_check::Facts> {
+        let m = self.cur_mod;
+        if self.mod_facts.len() <= m {
+            self.mod_facts.resize(self.mods.len().max(m + 1), None);
+        }
+        if let Some(facts) = &self.mod_facts[m] {
+            return facts.clone();
+        }
+        let module = self.mods[m];
+        let path = (self.mods.iter())
+            .flat_map(|a| a.modules())
+            .find(|i| std::ptr::eq(&*i.analysis, module))
+            .map(|i| i.path.as_str());
+        let facts = self.facts.facts_of(path, module);
+        self.mod_facts[m] = Some(facts.clone());
+        facts
+    }
+
     /// The inline product domain a checker's `(R, C)` names.
     fn inline_product_named(&mut self, name: &str, at: Span) -> Option<DomainId> {
         let inner = name.strip_prefix('(')?.strip_suffix(')')?;
@@ -55,7 +75,11 @@ fn written(ty: &Checked, at: Span) -> Option<ast::Type> {
         name: name(text),
         args,
     };
-    let all = |tys: &[Checked]| tys.iter().map(|t| written(t, at)).collect::<Option<Vec<_>>>();
+    let all = |tys: &[Checked]| {
+        tys.iter()
+            .map(|t| written(t, at))
+            .collect::<Option<Vec<_>>>()
+    };
     let kind = match ty {
         Checked::Int | Checked::Range { .. } => named("Int", Vec::new()),
         Checked::I128 => named("I128", Vec::new()),

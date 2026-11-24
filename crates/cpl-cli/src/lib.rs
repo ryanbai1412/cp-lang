@@ -795,21 +795,24 @@ fn compile_text(path: &str, text: String, side: Side, stderr: &mut String) -> Re
         *stderr += &format!("cpl: `{path}` declares no `{what}` fn\n");
         EXIT_USAGE
     };
+    let facts = with_db(|db| db.imported_facts(&analysis));
     let lowered = match side {
-        Side::Solution => cpl_ir::lower(&analysis).and_then(|program| {
+        Side::Solution => cpl_ir::lower(&analysis, &facts).and_then(|program| {
             let judge = match cpl_ir::interactor(&analysis) {
-                Some(name) => Some((name.clone(), cpl_ir::lower_judge(&analysis, &name)?)),
+                Some(name) => Some((name.clone(), cpl_ir::lower_judge(&analysis, &facts, &name)?)),
                 None => None,
             };
             Ok((program, judge))
         }),
         Side::Brute => match cpl_ir::brute(&analysis) {
-            Some((name, _)) => cpl_ir::lower_brute(&analysis, &name).map(|program| (program, None)),
+            Some((name, _)) => {
+                cpl_ir::lower_brute(&analysis, &facts, &name).map(|program| (program, None))
+            }
             None => return Err(missing("@alt(program)", stderr)),
         },
         Side::Checker => match cpl_ir::checker(&analysis) {
             Some((name, _)) => {
-                cpl_ir::lower_checker(&analysis, &name).map(|program| (program, None))
+                cpl_ir::lower_checker(&analysis, &facts, &name).map(|program| (program, None))
             }
             None => return Err(missing("@check", stderr)),
         },

@@ -233,6 +233,9 @@ struct FileState {
     /// only. A file can be both, and each importer must get this one
     /// whoever asked first.
     module: Option<Arc<Analysis>>,
+    /// Every body of the file checked, as facts: what lowering reads of a
+    /// module it imports. Forgotten with the analyses.
+    module_facts: Option<Arc<crate::Facts>>,
     /// Read by the module loader, not given by `set_file`: the loader may
     /// replace its text.
     loaded: bool,
@@ -242,6 +245,7 @@ impl FileState {
     fn forget(&mut self) {
         self.program = None;
         self.module = None;
+        self.module_facts = None;
     }
 }
 
@@ -374,6 +378,7 @@ impl Database {
                         text,
                         program: None,
                         module: None,
+                        module_facts: None,
                         loaded,
                     },
                 );
@@ -834,7 +839,10 @@ impl Database {
         let scope = Arc::new(scope);
         let items = Arc::new(items);
 
-        let checks: Vec<Arc<ItemCheck>> = {
+        let checks: Vec<Arc<ItemCheck>> = if imported_module {
+            let empty = Arc::new(ItemCheck::default());
+            vec![empty; items.len()]
+        } else {
             let mut ctx = FileCtx {
                 db: self,
                 file: id,
@@ -852,20 +860,7 @@ impl Database {
                 vars: None,
                 impl_names: None,
             };
-            let checks: Vec<Arc<ItemCheck>> = (0..items.len()).map(|i| ctx.check_item(i)).collect();
-            // A module's own findings are its author's; its importer sees its facts.
-            if imported_module {
-                (checks.into_iter())
-                    .map(|c| {
-                        Arc::new(ItemCheck {
-                            exprs: c.exprs.clone(),
-                            ..ItemCheck::default()
-                        })
-                    })
-                    .collect()
-            } else {
-                checks
-            }
+            (0..items.len()).map(|i| ctx.check_item(i)).collect()
         };
 
         // Diagnostics, one per root cause: the lexer's first, then each

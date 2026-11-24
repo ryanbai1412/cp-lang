@@ -175,6 +175,28 @@ impl Session {
         self.db.body_facts(path, at)
     }
 
+    /// Every module `analysis` imports, at any depth, with its bodies
+    /// checked: what lowering reads. Each module is checked once per
+    /// revision.
+    pub fn imported_facts(&mut self, analysis: &Analysis) -> crate::ImportedFacts {
+        let mut out = std::collections::HashMap::new();
+        let imports = |a: &Analysis| -> Vec<(String, Arc<Analysis>)> {
+            (a.modules().iter())
+                .map(|m| (m.path.clone(), m.analysis.clone()))
+                .collect()
+        };
+        let mut queue = imports(analysis);
+        while let Some((path, module)) = queue.pop() {
+            if out.contains_key(&path) {
+                continue;
+            }
+            let facts = (self.db.module_facts(&path)).unwrap_or_else(|| Arc::clone(module.facts()));
+            out.insert(path, facts);
+            queue.extend(imports(&module));
+        }
+        crate::ImportedFacts(out)
+    }
+
     /// The file's diagnostics, from its memoised analysis.
     pub fn diagnostics(&mut self, path: &str) -> Vec<Diagnostic> {
         self.analysis(path)

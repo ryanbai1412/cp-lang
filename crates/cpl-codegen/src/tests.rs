@@ -24,14 +24,18 @@ pub(crate) fn cpp(source: &str) -> String {
         "{:?}",
         analysis.diagnostics
     );
-    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let program = cpl_ir::lower(&analysis, &cpl_check::OwnFacts).expect("lowers");
     emit(&program, "t.cp", Some(source))
 }
 
 pub(crate) fn lower(source: &str) -> cpl_ir::Program {
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
-    cpl_ir::lower(&db.analyze("t.cp").expect("the file was just set")).expect("lowers")
+    cpl_ir::lower(
+        &db.analyze("t.cp").expect("the file was just set"),
+        &cpl_check::OwnFacts,
+    )
+    .expect("lowers")
 }
 
 /// The statements of the program: the C++ after the runtime it leans on.
@@ -207,8 +211,11 @@ fn without_its_source_the_file_says_so_and_is_otherwise_the_same() {
     let source = "let n: Int = read()\nprint(n + 1)\n";
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
-    let program =
-        cpl_ir::lower(&db.analyze("t.cp").expect("the file was just set")).expect("lowers");
+    let program = cpl_ir::lower(
+        &db.analyze("t.cp").expect("the file was just set"),
+        &cpl_check::OwnFacts,
+    )
+    .expect("lowers");
     let (with, without) = (
         emit(&program, "t.cp", Some(source)),
         emit(&program, "t.cp", None),
@@ -782,7 +789,8 @@ fn the_program_runs_with_the_profile_stack() {
     assert!(!cpp.contains("mallopt"), "{cpp}");
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", source);
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let windows = crate::Target {
         windows: true,
         ..crate::Target::default()
@@ -805,7 +813,8 @@ fn the_program_runs_with_the_profile_stack() {
 fn a_judge_without_threads_has_main_run_the_program() {
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", "print(1)\n");
-    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let program =
+        cpl_ir::lower(&db.analyze("t.cp").expect("set"), &cpl_check::OwnFacts).expect("lowers");
     let target = crate::Target {
         thread_stack: None,
         ..crate::Target::default()

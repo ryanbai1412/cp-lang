@@ -663,3 +663,33 @@ mod tests {
         assert_eq!(facts.instantiation(at("f(p.twice())")), None);
     }
 }
+
+/// Where lowering reads what the checker found in a module's bodies.
+pub trait FactsSource {
+    /// The facts of `module`, imported at `path` (`None` for the root).
+    fn facts_of(&self, path: Option<&str>, module: &Analysis) -> std::sync::Arc<Facts>;
+}
+
+/// Each module's own facts: an import's bodies are unchecked, so they say
+/// nothing about them.
+pub struct OwnFacts;
+
+impl FactsSource for OwnFacts {
+    fn facts_of(&self, _: Option<&str>, module: &Analysis) -> std::sync::Arc<Facts> {
+        std::sync::Arc::clone(module.facts())
+    }
+}
+
+/// Every imported module with its bodies checked, by path
+/// ([`crate::Session::imported_facts`]).
+#[derive(Default)]
+pub struct ImportedFacts(pub(crate) std::collections::HashMap<String, std::sync::Arc<Facts>>);
+
+impl FactsSource for ImportedFacts {
+    fn facts_of(&self, path: Option<&str>, module: &Analysis) -> std::sync::Arc<Facts> {
+        match path.and_then(|p| self.0.get(p)) {
+            Some(facts) => std::sync::Arc::clone(facts),
+            None => std::sync::Arc::clone(module.facts()),
+        }
+    }
+}
