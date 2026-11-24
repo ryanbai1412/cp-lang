@@ -224,6 +224,9 @@ inline void need_input() {
 // not one. `in[in.size()]` is '\\0', so a digit scan stops there unchecked.
 inline bool digit(char c) { return (unsigned char)(c - '0') <= 9; }
 inline void need_digit(bool end = false) { if (end ? in_at < in.size() && !is_space(in[in_at]) : !digit(in[in_at])) fail(\"the input has something else where a number was expected\"); }
+// A whole number that began at `start` and is too big for its type, named as
+// `cpl run` names it.
+[[noreturn]] inline void too_big(size_t start, const char* type) { fail((\"`\" + in.substr(start, in_at - start) + \"` does not fit in \" + type).c_str()); }
 ",
     },
     // `s.parse<T>()` reads from `s` as if it were the input. With it in the
@@ -254,13 +257,18 @@ inline bool at_eof() { skip_space(); return in_at >= in.size(); }
         code: "\
 inline ll read_int() {
     need_input();
+    size_t start = in_at;
     bool negative = false;
     if (in[in_at] == '-' || in[in_at] == '+') negative = in[in_at++] == '-';
     need_digit();
-    ll x = 0;  // built downward, so -2^63 reads without overflow
-    while (digit(in[in_at])) x = x * 10 - (in[in_at++] - '0');
+    // Built downward, so -2^63 is in reach; a digit that would pass it stops
+    // the build before the multiply overflows.
+    const ll lo = -0x7fffffffffffffffLL - 1;
+    ll x = 0;
+    bool fits = true;
+    while (digit(in[in_at])) { ll d = in[in_at++] - '0'; if (x < (lo + d) / 10) fits = false; else if (fits) x = x * 10 - d; }
     need_digit(true);
-    if (x == (-0x7fffffffffffffffLL - 1)) fail(\"a number in the input does not fit in an `Int`\");
+    if (!fits || x == lo) too_big(start, \"an `Int`\");
     return negative ? x : -x;
 }
 ",
@@ -312,12 +320,16 @@ inline bool read_bool() { ll x = read_int(); if (x != 0 && x != 1) fail(\"a Bool
         code: "\
 inline __int128 read_i128() {
     need_input();
+    size_t start = in_at;
     bool negative = false;
     if (in[in_at] == '-' || in[in_at] == '+') negative = in[in_at++] == '-';
     need_digit();
+    const __int128 lo = -(((__int128)1 << 126) - 1) * 2 - 2;
     __int128 x = 0;
-    while (digit(in[in_at])) x = x * 10 - (in[in_at++] - '0');
+    bool fits = true;
+    while (digit(in[in_at])) { int d = in[in_at++] - '0'; if (x < (lo + d) / 10) fits = false; else if (fits) x = x * 10 - d; }
     need_digit(true);
+    if (!fits || (!negative && x == lo)) too_big(start, \"an `I128`\");
     return negative ? x : -x;
 }
 ",
@@ -328,11 +340,14 @@ inline __int128 read_i128() {
         code: "\
 inline unsigned long long read_u64() {
     need_input();
+    size_t start = in_at;
     if (in[in_at] == '+') in_at++;
     need_digit();
     unsigned long long x = 0;
-    while (digit(in[in_at])) x = x * 10 + (unsigned long long)(in[in_at++] - '0');
+    bool fits = true;
+    while (digit(in[in_at])) { unsigned d = in[in_at++] - '0'; if (x > (~0ULL - d) / 10) fits = false; else if (fits) x = x * 10 + d; }
     need_digit(true);
+    if (!fits) too_big(start, \"a `U64`\");
     return x;
 }
 ",
