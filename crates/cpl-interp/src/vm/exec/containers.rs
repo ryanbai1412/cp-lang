@@ -103,15 +103,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     1i64 << shift
                 };
             }
-            Op::PopcountI { dst, src } => {
-                regs_i[dst as usize] = i64::from((regs_i[src as usize] as u64).count_ones());
-            }
-            Op::CtzI { dst, src } => {
-                regs_i[dst as usize] = i64::from((regs_i[src as usize] as u64).trailing_zeros());
-            }
-            Op::ClzI { dst, src } => {
-                regs_i[dst as usize] = i64::from((regs_i[src as usize] as u64).leading_zeros());
-            }
             Op::MinMaxGArr1SmallTuple {
                 gid,
                 r_i,

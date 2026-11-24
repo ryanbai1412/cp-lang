@@ -1483,6 +1483,77 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         return trap(spans[cur_pc], "internal: expected list");
                     }
                 }
+                Op::LoadFieldList1I {
+                    dst,
+                    obj_v,
+                    field,
+                    r_i,
+                } => {
+                    let idx = regs_i[r_i as usize];
+                    if let Value::Tuple(TupleVal::Boxed(fs)) = &regs_v[obj_v as usize] {
+                        if let Value::List(list) = &fs[field as usize] {
+                            if idx < 0 || (idx as usize) >= list.len() {
+                                return trap(
+                                    spans[cur_pc],
+                                    format!(
+                                        "index {idx} is outside a list of length {}",
+                                        list.len()
+                                    ),
+                                );
+                            }
+                            regs_i[dst as usize] =
+                                ScalarKind::unbox_val(&list.get_unchecked_val(idx as usize));
+                        } else {
+                            return trap(spans[cur_pc], "internal: expected list field");
+                        }
+                    } else {
+                        return trap(spans[cur_pc], "internal: expected struct");
+                    }
+                }
+                Op::FieldListLen { dst, obj_v, field } => {
+                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => match &fs[field as usize] {
+                            Value::List(list) => list.len() as i64,
+                            _ => 0,
+                        },
+                        _ => 0,
+                    };
+                }
+                Op::PopcountI { dst, src } => {
+                    regs_i[dst as usize] = i64::from((regs_i[src as usize] as u64).count_ones());
+                }
+                Op::CtzI { dst, src } => {
+                    regs_i[dst as usize] =
+                        i64::from((regs_i[src as usize] as u64).trailing_zeros());
+                }
+                Op::ClzI { dst, src } => {
+                    regs_i[dst as usize] = i64::from((regs_i[src as usize] as u64).leading_zeros());
+                }
+                Op::BinU64 { dst, a, b, op } => {
+                    regs_i[dst as usize] =
+                        exec_bin_u64(regs_i[a as usize], regs_i[b as usize], op, spans[cur_pc])?;
+                }
+                Op::BitAndU64 { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize] & regs_i[b as usize];
+                }
+                Op::BitOrU64 { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize] | regs_i[b as usize];
+                }
+                Op::BitXorU64 { dst, a, b } => {
+                    regs_i[dst as usize] = regs_i[a as usize] ^ regs_i[b as usize];
+                }
+                Op::FieldI { dst, obj_v, field } => {
+                    regs_i[dst as usize] = match &regs_v[obj_v as usize] {
+                        Value::Tuple(TupleVal::Boxed(fs)) => {
+                            ScalarKind::unbox_val(&fs[field as usize])
+                        }
+                        Value::Tuple(TupleVal::OneInt(v)) => *v,
+                        _ => 0,
+                    };
+                    if obj_v as usize >= chunk.num_local_v {
+                        regs_v[obj_v as usize] = Value::Unit;
+                    }
+                }
                 Op::LoadLList1I { dst, list_v, r_i } => {
                     let idx = regs_i[r_i as usize];
                     match &regs_v[list_v as usize] {
@@ -1745,11 +1816,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         fed: &mut Option<&mut FedCtx<'_, 'p>>,
     ) -> Res<Option<ExecExit>> {
         match op {
-            Op::FieldI { .. }
-            | Op::FieldOptI { .. }
+            Op::FieldOptI { .. }
             | Op::FieldV { .. }
-            | Op::LoadFieldList1I { .. }
-            | Op::FieldListLen { .. }
             | Op::LoadFieldArr1I { .. }
             | Op::FieldArrLen { .. }
             | Op::StrGetI { .. }
@@ -1797,9 +1865,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::RangeHiI { .. }
             | Op::RangeBoundsI { .. }
             | Op::BitCeilI { .. }
-            | Op::PopcountI { .. }
-            | Op::CtzI { .. }
-            | Op::ClzI { .. }
             | Op::MinMaxGArr1SmallTuple { .. }
             | Op::MinMaxLArr1SmallTuple { .. }
             | Op::ListPushGArr1I { .. }

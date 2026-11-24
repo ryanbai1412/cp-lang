@@ -417,14 +417,27 @@ pub(super) fn place_root_mut<'a>(
     }
 }
 
-#[cfg_attr(target_arch = "wasm32", inline(never))]
+/// `U64` arithmetic: the wrapping ops and in-range shifts inline into the
+/// dispatch loop, the rest (division, powers, traps) stay out of line.
+#[cfg_attr(not(target_arch = "wasm32"), inline)]
 pub(super) fn exec_bin_u64(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> {
-    let av = a_raw as u64;
-    let bv = b_raw as u64;
+    let (av, bv) = (a_raw as u64, b_raw as u64);
     let out = match op {
         BinOp::Add => av.wrapping_add(bv),
         BinOp::Sub => av.wrapping_sub(bv),
         BinOp::Mul => av.wrapping_mul(bv),
+        BinOp::Shl if bv < 64 => av << bv,
+        BinOp::Shr if bv < 64 => av >> bv,
+        _ => return exec_bin_u64_rest(a_raw, b_raw, op, span),
+    };
+    Ok(out as i64)
+}
+
+#[inline(never)]
+fn exec_bin_u64_rest(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res<i64> {
+    let av = a_raw as u64;
+    let bv = b_raw as u64;
+    let out = match op {
         BinOp::Div => {
             if bv == 0 {
                 return release::div_zero(span, format!("division by zero: `{av} / 0`"));

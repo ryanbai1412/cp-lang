@@ -183,6 +183,7 @@ impl Cells {
         }
     }
 
+    #[cfg_attr(not(target_family = "wasm"), inline)]
     pub fn len(&self) -> usize {
         match self {
             Cells::Int(v) | Cells::OneIntStruct(v) => v.len(),

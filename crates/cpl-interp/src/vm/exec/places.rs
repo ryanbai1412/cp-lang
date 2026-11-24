@@ -66,21 +66,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     _ => 0,
                 };
             }
-            Op::BinU64 { dst, a, b, op } => {
-                regs_i[dst as usize] =
-                    exec_bin_u64(regs_i[a as usize], regs_i[b as usize], op, spans[cur_pc])?;
-            }
             Op::NegU64 { dst, a } => {
                 regs_i[dst as usize] = (regs_i[a as usize] as u64).wrapping_neg() as i64;
-            }
-            Op::BitAndU64 { dst, a, b } => {
-                regs_i[dst as usize] = regs_i[a as usize] & regs_i[b as usize];
-            }
-            Op::BitOrU64 { dst, a, b } => {
-                regs_i[dst as usize] = regs_i[a as usize] | regs_i[b as usize];
-            }
-            Op::BitXorU64 { dst, a, b } => {
-                regs_i[dst as usize] = regs_i[a as usize] ^ regs_i[b as usize];
             }
             Op::BitNotI { dst, a } => {
                 regs_i[dst as usize] = !regs_i[a as usize];

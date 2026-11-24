@@ -1102,3 +1102,4 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
 - 2026-11-24: fixed the wasm build broken by da5d3c23d: a traced fed
   loop pushed its host chunk as `*const Chunk` where `fed_hosts` holds
   `*const ()`; it is cast as the fallback host's push already was.
+- VM-expr: a WaveletMatrix rank's word ops run in the dispatch loop: `LoadFieldList1I`, `FieldListLen`, `FieldI`, `PopcountI`/`CtzI`/`ClzI` and the `U64` ops move from the out-of-line dispatchers into `exec_chunk_core`, the wrapping `U64` ops and in-range shifts inline, and `Cells::len` inlines natively. ioi14p6 --max 22.2 -> 17.5 s (C++ 1.8 s); cpl_interp wasm unchanged. Regression: `inline_bit_leaf`.
