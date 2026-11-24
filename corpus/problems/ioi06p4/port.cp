@@ -8,15 +8,15 @@
 //   at l or r; it returns the next city (cw(r) or ccw(l)) from which the rest can be finished.
 //   Try every start, then follow the choices. O(c^2) states, O(1) each.
 // original: corpus/submissions/5032736.cpp
-// Bounds: n: 1..=1000; m: 0..=n * (n - 1) / 2; deals.a, deals.b: 1..=n
+// Bounds: n: 1..=1000; m: 0..=n * (n - 1) / 2; a, b: 1..=n
 let n: 1..=1000 = read()
 let m: 0..=n * (n - 1) / 2 = read()
 domain City = 1..=n
-let deals: [m](a: City, b: City) = read()
-
-var trade: [City, City]Bool = false
-for (a, b) in deals:
-    for (x, y) in [(a, b), (b, a)]: trade[x, y] = true
+var deal: [City, City]Bool = false  // keyed low city first
+for _ in 0..m:
+    let (a, b): (City, City) = read()
+    deal[min(a, b), max(a, b)] = true
+fn trade(x: City, y: City) -> Bool = deal[min(x, y), max(x, y)]
 
 fn cw(c: City) -> City: City.at(c + 1) ?? City.first!
 fn ccw(c: City) -> City: City.at(c - 1) ?? City.last!
@@ -26,27 +26,26 @@ fn ccw(c: City) -> City: City.at(c - 1) ?? City.last!
 // clockwise to r is visited and the route stands at l or r. Where does it go
 // next? None if it is stuck.
 @memo
-fn finish(l: City, r: City, at_r: Bool) -> ?City:
+fn can_finish(l: City, r: City, at_r: Bool) -> Bool:
     let here = if at_r: r else: l
     let right = cw(r)
     let left = ccw(l)
-    if right == l: return here  // everything is visited
-    if trade[here, right] and finish(l, right, true) != None: return right
-    if trade[here, left] and finish(left, r, false) != None: return left
-    None
+    if right == l: return true  // everything is visited
+    (trade(here, right) and can_finish(l, right, true)) or
+        (trade(here, left) and can_finish(left, r, false))
 
 fn route() -> ?List<City>:
     for start in City:
-        if finish(start, start, false) != None:
+        if can_finish(start, start, false):
             var path = [start]
             var l = start
             var r = start
             var at_r = false
             while cw(r) != l:
-                let to = finish(l, r, at_r)!
-                at_r = to == cw(r)
-                if at_r: r = to else: l = to
-                path.push(to)
+                let here = if at_r: r else: l
+                at_r = trade(here, cw(r)) and can_finish(l, cw(r), true)
+                if at_r: r = cw(r) else: l = ccw(l)
+                path.push(if at_r: r else: l)
             return path
     None
 
