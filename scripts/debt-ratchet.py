@@ -3133,7 +3133,7 @@ def unexplained_bumps(root: Path, baseline: dict, ref: str = "origin/main") -> l
                if cap > old_allow.get(rel, 0)]
     if "rs_near_cap" in old and set(baseline.get("rs_near_cap", [])) - set(old["rs_near_cap"]) - set(old_allow):
         raised.append(("rs_near_cap", "rs_near_cap"))
-    zero = [n for n, _ in raised if n in COUNTERS and int(old.get(n, 1)) == 0]
+    zero = [n for n, _ in raised if n in COUNTERS and old.get(n, 1) == 0]
     if zero:
         return [f"{n}: reached 0 on {ref}; a counter at 0 is never raised" for n in zero]
     if not raised:

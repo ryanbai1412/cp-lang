@@ -861,6 +861,17 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.unexplained_bumps(root, {"lint_std_names": 1}, ref="HEAD"),
                              ["lint_std_names: reached 0 on HEAD; a counter at 0 is never raised"])
 
+    def test_a_file_entering_the_near_cap_list_is_a_raise(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "scripts/debt-ratchet.json", json.dumps({"rs_near_cap": ["a.rs"]}))
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            subprocess.run(["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "x"],
+                           cwd=root, check=True, env=dr._git_env())
+            bumps = dr.unexplained_bumps(root, {"rs_near_cap": ["a.rs", "b.rs"]}, ref="HEAD")
+            self.assertEqual([b.split(":")[0] for b in bumps], ["rs_near_cap"])
+
     def test_site_rederived_and_browser_lsp_gaps(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
