@@ -199,6 +199,26 @@ pub(crate) fn mentions_any(program: &Program, e: &Expr, slot: usize) -> bool {
     mentions(program, &[Stmt::Give(e.clone())], slot).any
 }
 
+/// Whether every read of the local `slot` in `e` leaves the path `fields`
+/// at a different field (`s.b` beside `s.a`), so it reads none of it.
+pub(crate) fn reads_apart(e: &Expr, slot: usize, fields: &[usize]) -> bool {
+    let (mut reads, mut apart, mut closure) = (0, 0, false);
+    walk::deep_expr(e, &mut |e| match &e.kind {
+        ExprKind::Local(s) if *s == slot => reads += 1,
+        ExprKind::Field(base, f) => {
+            apart += usize::from(field_path(base).is_some_and(|(s, at)| {
+                s == slot
+                    && at.len() < fields.len()
+                    && fields.starts_with(&at)
+                    && fields[at.len()] != *f
+            }));
+        }
+        ExprKind::Closure(_) => closure = true,
+        _ => {}
+    });
+    !closure && reads == apart
+}
+
 /// The statements of `rest` (those after a `let` of `slot`) while `slot`
 /// lives: up to the last one that mentions it.
 pub(crate) fn live<'s>(program: &Program, rest: &'s [Stmt], slot: usize) -> &'s [Stmt] {

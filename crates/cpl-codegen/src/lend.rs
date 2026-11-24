@@ -1277,10 +1277,11 @@ impl Emitter<'_> {
             && !self.ref_bound.contains(&slot)
             && !item.ty.is_scalar()
             && !matches!(item.ty, Ty::Fn(..))
-            && !items
-                .iter()
-                .enumerate()
-                .any(|(j, other)| j != idx && crate::uses::mentions_any(self.program, other, slot))
+            && !items.iter().enumerate().any(|(j, other)| {
+                j != idx
+                    && crate::uses::mentions_any(self.program, other, slot)
+                    && !crate::uses::reads_apart(other, slot, &field_prefix(item))
+            })
     }
 
     /// `std::move(text)` when `dies`.
@@ -1376,6 +1377,21 @@ fn owned_root(e: &Expr) -> Option<usize> {
         ExprKind::Local(s) => Some(*s),
         ExprKind::Field(base, _) | ExprKind::Index(base, _) => owned_root(base),
         _ => None,
+    }
+}
+
+/// The fields `e` follows from its root before any index: `s.a[0].b` is `[a]`.
+fn field_prefix(e: &Expr) -> Vec<usize> {
+    match &e.kind {
+        ExprKind::Field(base, f) => {
+            let mut fields = field_prefix(base);
+            if path_of(base).is_some() {
+                fields.push(*f);
+            }
+            fields
+        }
+        ExprKind::Index(base, _) => field_prefix(base),
+        _ => Vec::new(),
     }
 }
 

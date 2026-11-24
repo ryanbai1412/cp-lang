@@ -393,12 +393,18 @@ fn a_returned_literal_moves_the_parts_of_a_dead_local() {
         "fn g() -> S:\n    let st = [(1, [0 for _ in 0..10])]\n    S(st[0].1)\n",
         "fn h() -> List<Int>:\n    var s = S([0 for _ in 0..10])\n    s.a.push(1)\n    s.a\n",
         "fn kept(s: S) -> S = S(s.a)\n",
+        "struct U:\n    pub a: List<Int>\n    pub b: List<Int>\n",
+        "fn both() -> U:\n    var u = U([0 for _ in 0..10], [1 for _ in 0..10])\n    u.a[0] = 5\n    U(u.a, u.b)\n",
         "fn twice() -> T:\n    var s = S([0 for _ in 0..10])\n    s.a.push(1)\n    T(s.a, s.a.len)\n",
-        "print(f().a.len, g().a.len, h().len, kept(f()).a.len, twice().a.len + twice().n)\n",
+        "print(f().a.len, g().a.len, h().len, kept(f()).a.len, twice().a.len + twice().n, both().b.len)\n",
     ));
     assert!(out.contains("return S{std::move(s.a)};"), "{out}");
     assert!(out.contains("return S{std::move(std::get<1>("), "{out}");
     assert!(out.contains("return std::move(s.a);"), "{out}");
+    assert!(
+        out.contains("return U{std::move(u.a), std::move(u.b)};"),
+        "{out}"
+    );
     assert!(
         out.contains("return S{s.a};"),
         "a parameter is the caller's: {out}"
