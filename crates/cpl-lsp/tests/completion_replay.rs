@@ -226,9 +226,9 @@ fn completion_offers_what_each_hill_climb_port_types_next() {
             (true, Kind::Member) => 4,
             (true, Kind::Scope) => 8,
         };
-        let sampled = sites(&src)
-            .into_iter()
-            .filter(|&(start, end, kind)| sampled(pid, &src, start, end) % step(kind) == 0);
+        let sampled = sites(&src).into_iter().filter(|&(start, end, kind)| {
+            sampled(pid, &src, start, end).is_multiple_of(step(kind))
+        });
         for (version, (start, end, kind)) in (2..).zip(sampled) {
             let keep = if kind == Kind::Scope { 1 } else { 0 };
             let cursor = start + keep;
