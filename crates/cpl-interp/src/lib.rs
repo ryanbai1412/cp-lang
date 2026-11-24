@@ -1930,10 +1930,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             | ExprKind::Variant(..)
             | ExprKind::IsVariant(..)
             | ExprKind::Payload(..) => {
-                let mut vals = Vec::new();
-                for operand in apply::operands(e) {
-                    vals.push(self.eval(operand)?);
-                }
+                let vals = self.eval_operands(e)?;
                 self.apply(e, vals)?
             }
             ExprKind::Index(base, indices) => self.index(base, indices, span)?,

@@ -226,9 +226,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             }
             Op::ToList { dst, src_v } => {
                 regs_v[dst as usize] = match &regs_v[src_v as usize] {
-                    Value::Array(arr) => {
-                        Value::List(Rc::new(crate::value::Cells::from(arr.to_values())))
-                    }
+                    Value::Array(arr) => Value::List(Rc::new(arr.data.clone())),
                     Value::List(items) => Value::List(Rc::new((**items).clone())),
                     Value::ListView(view) => {
                         Value::List(Rc::new(crate::value::Cells::from(view.to_vec())))

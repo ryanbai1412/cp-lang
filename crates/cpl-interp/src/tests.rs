@@ -1679,3 +1679,16 @@ fn a_release_run_does_what_the_judge_build_does() {
         .1
         .is_some_and(|m| m.starts_with("integer overflow")));
 }
+
+#[test]
+fn a_packed_list_sorts_packed() {
+    use crate::value::{Cells, Value};
+    let ints = Cells::from([3, 1, 2].map(Value::Int).to_vec());
+    let up = crate::sort::sorted_packed(&ints, &cpl_ir::Ty::Int, false).unwrap();
+    assert!(matches!(&up, Cells::Int(v) if v == &[1, 2, 3]));
+    let down = crate::sort::sorted_packed(&ints, &cpl_ir::Ty::Int, true).unwrap();
+    assert!(matches!(&down, Cells::Int(v) if v == &[3, 2, 1]));
+    // A type with an order of its own sorts through it.
+    let opt = cpl_ir::Ty::Opt(Box::new(cpl_ir::Ty::Int));
+    assert!(crate::sort::sorted_packed(&ints, &opt, false).is_none());
+}

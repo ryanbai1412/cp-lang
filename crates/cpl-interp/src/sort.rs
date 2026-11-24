@@ -7,6 +7,28 @@ use super::*;
 /// The longest run a sort orders by insertion before it merges.
 const SORT_RUN: usize = 7;
 
+/// `cells` sorted, when they are packed scalars whose type orders them as numbers: no
+/// cell is boxed and equal cells cannot be told apart, so the order is the stable sort's.
+pub(crate) fn sorted_packed(cells: &value::Cells, ty: &Ty, desc: bool) -> Option<value::Cells> {
+    let custom = matches!(
+        ty,
+        Ty::Struct(_) | Ty::Tuple(_) | Ty::Record(_) | Ty::List(_) | Ty::Opt(_)
+    );
+    let scalar = matches!(
+        cells,
+        value::Cells::Int(_) | value::Cells::Bool(_) | value::Cells::Char(_)
+    );
+    if custom || !scalar {
+        return None;
+    }
+    let mut sorted = cells.clone();
+    sorted.sort_unstable();
+    if desc {
+        sorted.reverse();
+    }
+    Some(sorted)
+}
+
 impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     pub(crate) fn merge_sort_ty(
         &mut self,
