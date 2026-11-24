@@ -2,7 +2,8 @@
 //! own `read()`s accept (`debugging/R10` in
 //! `handbook/guidelines/debugging-checklist.md`): each program in `tests/programs`
 //! and each corpus problem runs on a few generated cases, and none may stop
-//! on a read. Interactive programs read the judge's replies, so they are
+//! on a read. Interactive programs (a package with an `interactor.py`, a
+//! `Wire()` or an `@interactor`) read the judge's replies, so they are
 //! left to the interactor suites.
 
 use std::io::Write;
@@ -72,7 +73,8 @@ fn shard_of(programs: &[PathBuf], shard: usize) -> Vec<&PathBuf> {
 /// The cases checked on `program`, and the first one its reader rejected.
 fn check(program: &Path) -> (usize, Option<String>) {
     let src = std::fs::read_to_string(program).unwrap();
-    if src.contains("Wire()") || src.contains("@interactor") {
+    let judged = program.with_file_name("interactor.py").exists();
+    if judged || src.contains("Wire()") || src.contains("@interactor") {
         return (0, None);
     }
     let Ok(spec) = InputSpec::from_source(&src) else {
