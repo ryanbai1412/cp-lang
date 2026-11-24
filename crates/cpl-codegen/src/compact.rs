@@ -92,11 +92,16 @@ pub(crate) fn tokens(line: &str) -> Option<Vec<(bool, &str)>> {
 
 /// Whether `b` written right after `a` would read as other tokens.
 pub(crate) fn needs_space(a: &str, b: &str) -> bool {
-    let (x, y) = (*a.as_bytes().last().unwrap(), b.as_bytes()[0]);
+    let (Some(&first), Some(&x), [y, after @ ..]) =
+        (a.as_bytes().first(), a.as_bytes().last(), b.as_bytes())
+    else {
+        return false;
+    };
+    let y = *y;
     let quote = |c: u8| c == b'"' || c == b'\'';
     (word(x) || quote(x)) && (word(y) || quote(y))
-        || a.as_bytes()[0].is_ascii_digit() && y == b'.'
-        || y == b'.' && b.len() > 1 && b.as_bytes()[1].is_ascii_digit()
+        || first.is_ascii_digit() && y == b'.'
+        || y == b'.' && after.first().is_some_and(u8::is_ascii_digit)
         || JOINED.iter().any(|j| j.as_bytes() == [x, y])
 }
 
@@ -272,6 +277,21 @@ const KEYWORDS: &[&str] = &[
     "do", "if", "or", "and", "asm", "for", "int", "new", "not", "try", "xor",
 ];
 
+/// The `i`th short name: `Q0` .. `Qz`, then `Q00` .. `Qzz`, and so on.
+fn short_name(mut i: usize) -> String {
+    const DIGITS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
+    let mut rest = Vec::new();
+    loop {
+        rest.push(char::from(DIGITS[i % 36]));
+        i /= 36;
+        if i == 0 {
+            break;
+        }
+        i -= 1;
+    }
+    std::iter::once('Q').chain(rest.into_iter().rev()).collect()
+}
+
 /// Short names for the numbered names in `cpp` and the runtime's, the most bytes saved
 /// first: `Q0`, `Qa`, ..., then three characters. A name written after
 /// `std::` or on a preprocessor line keeps its name.
@@ -372,30 +392,16 @@ pub(crate) fn short_names(cpp: &str) -> BTreeMap<String, String> {
             .filter(|(name, n)| n * (name.len() - 3) > 48),
     );
     names.sort_by(|(a, n), (b, m)| (m * b.len()).cmp(&(n * a.len())).then(a.cmp(b)));
-    const DIGITS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
-    let mut fresh = (0..).map(|i: usize| {
-        let mut name = vec![b'Q'];
-        let mut i = i;
-        let mut rest = Vec::new();
-        loop {
-            rest.push(DIGITS[i % 36]);
-            i /= 36;
-            if i == 0 {
-                break;
-            }
-            i -= 1;
-        }
-        name.extend(rest.iter().rev());
-        String::from_utf8(name).unwrap()
-    });
+    let mut fresh = 0;
     let mut rename = BTreeMap::new();
     let mut next = None;
     for (name, _) in names {
-        let short = next.take().unwrap_or_else(|| {
-            fresh
-                .by_ref()
-                .find(|s| !taken.contains(s.as_str()) && !KEYWORDS.contains(&s.as_str()))
-                .unwrap()
+        let short = next.take().unwrap_or_else(|| loop {
+            let s = short_name(fresh);
+            fresh += 1;
+            if !taken.contains(s.as_str()) && !KEYWORDS.contains(&s.as_str()) {
+                break s;
+            }
         });
         // A name no longer than the next short one keeps its own.
         if short.len() >= name.len() {
@@ -441,6 +447,22 @@ mod tests {
             bare("auto s = u8\"a b\" \"c\";\nchar c = ' ';\nauto d = 1.5e-3 .f;\n"),
             "auto s=u8\"a b\" \"c\";\nchar c=' ';\nauto d=1.5e-3 .f;\n"
         );
+    }
+
+    #[test]
+    fn an_empty_side_never_needs_a_space() {
+        assert!(needs_space("a", "b"));
+        assert!(!needs_space("", "b"));
+        assert!(!needs_space("a", ""));
+    }
+
+    #[test]
+    fn short_names_count_up_through_every_length() {
+        let names: Vec<String> = [0, 35, 36, 36 + 36 * 36 - 1, 36 + 36 * 36]
+            .into_iter()
+            .map(short_name)
+            .collect();
+        assert_eq!(names, ["Q0", "Qz", "Q00", "Qzz", "Q000"]);
     }
 
     #[test]
