@@ -7,13 +7,15 @@ use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
 /// A removed call and how it is written now. In `to`, `{0}`, `{1}`, .. are the positional
 /// arguments, `{self}` is a method's receiver and `{named}` the named arguments, each written
-/// `, name: value`.
+/// `, name: value` (without the first `, ` right after `(`). `kept` is a named argument whose
+/// default the new spelling dropped, written when the call doesn't give it.
 pub(crate) struct Removed {
     pub name: &'static str,
     pub method: bool,
     pub arity: usize,
     pub to: &'static str,
     pub why: &'static str,
+    pub kept: Option<(&'static str, &'static str)>,
 }
 
 pub(crate) const REMOVED: &[Removed] = &[
@@ -23,6 +25,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         arity: 2,
         to: "{1}.rev.scan({0})",
         why: "a suffix fold is the scan of the reversed view (R07.4.16)",
+        kept: None,
     },
     Removed {
         name: "bsearch_real",
@@ -30,6 +33,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         arity: 3,
         to: "({0}..{1}).bsearch({2}{named})",
         why: "a real binary search is a method of its range",
+        kept: None,
     },
     Removed {
         name: "ternary_max_real",
@@ -37,6 +41,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         arity: 3,
         to: "({0}..{1}).peak(by: {2}{named})",
         why: "the peak of a unimodal function is a method of its range",
+        kept: None,
     },
     Removed {
         name: "ternary_min_real",
@@ -44,6 +49,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         arity: 3,
         to: "({0}..{1}).valley(by: {2}{named})",
         why: "the valley of a unimodal function is a method of its range",
+        kept: None,
     },
     Removed {
         name: "skip_while",
@@ -51,6 +57,71 @@ pub(crate) const REMOVED: &[Removed] = &[
         arity: 1,
         to: "{self}.drop_while({0})",
         why: "`skip_while` is spelled `drop_while`",
+        kept: None,
+    },
+    Removed {
+        name: "det_real",
+        method: false,
+        arity: 1,
+        to: "{0}.det({named})",
+        why: "an elimination over `F64` is `Mat.det` with `eps:`",
+        kept: Some(("eps", "1e-9")),
+    },
+    Removed {
+        name: "det_real",
+        method: false,
+        arity: 2,
+        to: "{0}.det(eps: {1}{named})",
+        why: "an elimination over `F64` is `Mat.det` with `eps:`",
+        kept: None,
+    },
+    Removed {
+        name: "rank_real",
+        method: false,
+        arity: 1,
+        to: "{0}.rank({named})",
+        why: "an elimination over `F64` is `Mat.rank` with `eps:`",
+        kept: Some(("eps", "1e-9")),
+    },
+    Removed {
+        name: "rank_real",
+        method: false,
+        arity: 2,
+        to: "{0}.rank(eps: {1}{named})",
+        why: "an elimination over `F64` is `Mat.rank` with `eps:`",
+        kept: None,
+    },
+    Removed {
+        name: "inverse_real",
+        method: false,
+        arity: 1,
+        to: "{0}.inverse({named})",
+        why: "an elimination over `F64` is `Mat.inverse` with `eps:`",
+        kept: Some(("eps", "1e-9")),
+    },
+    Removed {
+        name: "inverse_real",
+        method: false,
+        arity: 2,
+        to: "{0}.inverse(eps: {1}{named})",
+        why: "an elimination over `F64` is `Mat.inverse` with `eps:`",
+        kept: None,
+    },
+    Removed {
+        name: "solve_real",
+        method: false,
+        arity: 2,
+        to: "{0}.solve({1}{named})",
+        why: "an elimination over `F64` is `Mat.solve` with `eps:`",
+        kept: Some(("eps", "1e-9")),
+    },
+    Removed {
+        name: "solve_real",
+        method: false,
+        arity: 3,
+        to: "{0}.solve({1}, eps: {2}{named})",
+        why: "an elimination over `F64` is `Mat.solve` with `eps:`",
+        kept: None,
     },
 ];
 
@@ -78,6 +149,7 @@ fn fill(
         rest = rest.get(close + 1..).unwrap_or("");
         let hole = match key {
             "self" => receiver,
+            "named" if out.ends_with('(') => Some((named.trim_start_matches(", "), true)),
             "named" => Some((named, true)),
             k => k
                 .parse::<usize>()
@@ -225,12 +297,6 @@ impl Checker<'_> {
                 "everything but `i` folds the scans before and after it (R07.4.16)",
             )
         } else {
-            let Some(row) = REMOVED
-                .iter()
-                .find(|r| r.name == name && r.method == receiver.is_some())
-            else {
-                return false;
-            };
             let positional: Vec<(&str, bool)> = (args.iter())
                 .filter(|a| a.name.is_none())
                 .map(|a| {
@@ -238,18 +304,27 @@ impl Checker<'_> {
                     (t, is_atom(&a.value, t))
                 })
                 .collect();
-            if positional.len() != row.arity {
+            let Some(row) = REMOVED.iter().find(|r| {
+                r.name == name && r.method == receiver.is_some() && r.arity == positional.len()
+            }) else {
                 return false;
-            }
-            let named: String = (args.iter())
-                .filter_map(|a| {
+            };
+            let given = |key: &str| {
+                args.iter()
+                    .any(|a| a.name.as_ref().is_some_and(|n| n.text == key))
+            };
+            let kept = (row.kept.filter(|(key, _)| !given(key)))
+                .map(|(key, value)| format!(", {key}: {value}"));
+            let named: String = kept
+                .into_iter()
+                .chain(args.iter().filter_map(|a| {
                     let n = a.name.as_ref()?;
                     Some(format!(
                         ", {}: {}",
                         self.text(n.span),
                         self.text(a.value.span)
                     ))
-                })
+                }))
                 .collect();
             let receiver = receiver.map(|r| {
                 let t = self.text(r.span);
@@ -383,6 +458,28 @@ mod tests {
         assert_eq!(
             fill(row("skip_while").to, Some(x("xs")), &[x("p")], ""),
             "xs.drop_while(p)"
+        );
+        let det = |arity: usize| {
+            REMOVED
+                .iter()
+                .find(|r| r.name == "det_real" && r.arity == arity)
+                .unwrap()
+        };
+        assert_eq!(
+            fill(det(1).to, None, &[x("m")], ", eps: 1e-9"),
+            "m.det(eps: 1e-9)"
+        );
+        assert_eq!(
+            fill(det(2).to, None, &[x("m"), x("e")], ""),
+            "m.det(eps: e)"
+        );
+        let solve = REMOVED
+            .iter()
+            .find(|r| r.name == "solve_real" && r.arity == 2)
+            .unwrap();
+        assert_eq!(
+            fill(solve.to, None, &[x("m"), x("b")], ", eps: 1e-6"),
+            "m.solve(b, eps: 1e-6)"
         );
         let sum = [x("+"), ("a + b", false)];
         assert_eq!(

@@ -248,6 +248,7 @@ pub struct Mat<T>:
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).det() == Mod<7>(5)`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).det() == Mod<7>(0)`
     /// example: `abs(Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]).det(eps: 1e-9) - 2.0) < 1e-9`
+    /// example: `abs(Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]).det(eps: 1e-9)) < 1e-9`
     pub fn det(self, eps: ?T = None) -> T:
         assert rows == cols, "det requires a square matrix"
         let n = rows
@@ -276,6 +277,7 @@ pub struct Mat<T>:
     /// empty: zero
     /// traps: never for a field `T`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).rank() == 1`
+    /// example: `Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]).rank(eps: 1e-9) == 1`
     /// example: `Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1e-12]]).rank(eps: 1e-9) == 1`
     pub fn rank(self, eps: ?T = None) -> Int:
         let e = eps ?? T.zero
@@ -362,6 +364,8 @@ pub struct Mat<T>:
     /// traps: when `b.len != rows`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).solve([5, 6]) == Some([Mod<7>(3), Mod<7>(1)])`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve([1, 0]) == None`
+    /// example: `let x = Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]).solve([3.0, 7.0], eps: 1e-9)!; abs(x[0] - 1.0) < 1e-9 and abs(x[1] - 1.0) < 1e-9`
+    /// example: `Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]).solve([1.0, 0.0], eps: 1e-9) == None`
     pub fn solve(self, b: List<T>, eps: ?T = None) -> ?List<T>:
         let res = self.solve_space(b, eps)
         if res == None: return None
@@ -375,6 +379,8 @@ pub struct Mat<T>:
     /// traps: when the matrix is not square
     /// example: `let inv = Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).inverse()!; inv.get(0, 0) == Mod<7>(5) and inv.get(1, 1) == Mod<7>(3)`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).inverse() == None`
+    /// example: `let inv = Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]]).inverse(eps: 1e-9)!; abs(inv.get(0, 0) - 1.5) < 1e-9 and abs(inv.get(1, 0) + 2.0) < 1e-9`
+    /// example: `Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]).inverse(eps: 1e-9) == None`
     pub fn inverse(self, eps: ?T = None) -> ?Mat<T>:
         assert rows == cols, "inverse requires a square matrix"
         let n = rows

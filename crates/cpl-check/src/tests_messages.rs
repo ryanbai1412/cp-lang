@@ -340,6 +340,33 @@ fn the_old_optional_spellings_are_removed_with_a_fix_and_none_stays_a_name() {
 }
 
 #[test]
+fn the_real_eliminations_are_fixed_to_mat_methods_keeping_their_eps() {
+    let fixes = |src: &str| -> Vec<String> {
+        check(src)
+            .iter()
+            .filter(|d| d.message.ends_with("was removed from std"))
+            .map(|d| d.fixes[0].edits[0].1.clone())
+            .collect()
+    };
+    let m = "let m = Mat<F64>.from_rows([[2.0, 1.0], [4.0, 3.0]])\n";
+    for (call, fixed) in [
+        ("det_real(m)", "m.det(eps: 1e-9)"),
+        ("rank_real(m, 1e-6)", "m.rank(eps: 1e-6)"),
+        ("inverse_real(m, eps: 1e-3)", "m.inverse(eps: 1e-3)"),
+        (
+            "solve_real(m, [3.0, 7.0])",
+            "m.solve([3.0, 7.0], eps: 1e-9)",
+        ),
+        (
+            "solve_real(m, [3.0, 7.0], 0.5)",
+            "m.solve([3.0, 7.0], eps: 0.5)",
+        ),
+    ] {
+        assert_eq!(fixes(&format!("{m}print({call})\n")), [fixed], "{call}");
+    }
+}
+
+#[test]
 fn walking_a_type_alias_walks_the_aliased_type() {
     let src = "domain R = 0..3\ntype G = Subset<R>\nvar s: [G]Int = 0\nfor g in G: s[g] = g.len\nprint(s[G.empty])\n";
     assert!(check(src).is_empty(), "{:?}", check(src));
