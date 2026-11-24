@@ -32,6 +32,14 @@ struct LoopTargets {
     resumable: Option<LoopReg>,
 }
 
+/// A `break` (`brk`) or `continue` jump at `pc` to loop `to` (`None`: the
+/// innermost), which the loop it names claims when its body is compiled.
+struct LoopJump {
+    to: Option<LoopId>,
+    brk: bool,
+    pc: usize,
+}
+
 /// The jumps a loop body left: where its `break`s and `continue`s go.
 #[derive(Default)]
 struct LoopExits {
@@ -115,6 +123,7 @@ pub(super) struct Compiler<'p, 'f> {
     num_local_v: u16,
     pinned_v: u16,
     loops: Vec<LoopTargets>,
+    jumps: Vec<LoopJump>,
     give_targets: Vec<GiveTarget>,
     cur_fn: Option<FnId>,
     pub(in crate::vm) feed_acc: Option<usize>,
@@ -242,6 +251,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
             num_local_v: next_v,
             pinned_v: next_v,
             loops: Vec::new(),
+            jumps: Vec::new(),
             give_targets: Vec::new(),
             cur_fn,
             feed_acc: None,
@@ -267,6 +277,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
     }
 
     pub(super) fn finish(self) -> Chunk<'p> {
+        debug_assert!(
+            self.jumps.is_empty(),
+            "a `break` or `continue` names no loop"
+        );
         let needs_stack = !self.fallback_stmts.is_empty()
             || !self.fallback_exprs.is_empty()
             || self.applies_sync

@@ -1,6 +1,6 @@
 use super::seq_load::SeqKind;
 use super::sort::sort_key_of;
-use super::{Compiler, GiveTarget, LoopExits, LoopTargets};
+use super::{Compiler, GiveTarget, LoopExits, LoopJump, LoopTargets};
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
 use cpl_diag::Span;
@@ -25,7 +25,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         resumable: Option<LoopReg>,
         stmts: &'p [Stmt],
     ) -> LoopExits {
-        let depth = self.loops.len();
+        let (depth, first_jump) = (self.loops.len(), self.jumps.len());
         self.loops.push(LoopTargets {
             id,
             breaks: Vec::new(),
@@ -38,6 +38,15 @@ impl<'p, 'f> Compiler<'p, 'f> {
         for lt in self.loops.drain(depth..) {
             exits.breaks.extend(lt.breaks);
             exits.continues.extend(lt.continues);
+        }
+        // A jump to a loop further out stays for that loop to claim.
+        let jumps: Vec<LoopJump> = self.jumps.drain(first_jump..).collect();
+        for j in jumps {
+            match j.to {
+                Some(to) if to != id => self.jumps.push(j),
+                _ if j.brk => exits.breaks.push(j.pc),
+                _ => exits.continues.push(j.pc),
+            }
         }
         exits
     }
@@ -941,29 +950,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     self.emit_fallback_stmt(stmt);
                 }
             }
-            Stmt::Break(id) => {
-                let target_pos = match id {
-                    Some(id) => self.loops.iter().rposition(|l| l.id == *id),
-                    None => self.loops.len().checked_sub(1),
-                };
-                if let Some(pos) = target_pos {
-                    let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
-                    self.loops[pos].breaks.push(pc);
-                } else {
-                    self.emit_fallback_stmt(stmt);
-                }
-            }
-            Stmt::Continue(id) => {
-                let target_pos = match id {
-                    Some(id) => self.loops.iter().rposition(|l| l.id == *id),
-                    None => self.loops.len().checked_sub(1),
-                };
-                if let Some(pos) = target_pos {
-                    let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
-                    self.loops[pos].continues.push(pc);
-                } else {
-                    self.emit_fallback_stmt(stmt);
-                }
+            Stmt::Break(to) | Stmt::Continue(to) => {
+                let pc = self.emit(Op::Jmp { target: 0 }, Span::default());
+                let brk = matches!(stmt, Stmt::Break(_));
+                self.jumps.push(LoopJump { to: *to, brk, pc });
             }
             Stmt::Give(e) => {
                 if let Some(target) = self.give_targets.last() {
@@ -1037,20 +1027,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     if let Some((_, jumps)) = &mut self.inline_ret {
                         jumps.push(pc);
                     }
-                } else if self.cur_fn.is_some() {
-                    if let Some((len, kinds)) = self.tuple_ret_of(e) {
-                        let base = self.small_tuple_operand(e, len);
-                        self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
-                    } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
-                        let r = self.compile_expr_i(e);
-                        self.emit(Op::RetI { src: r }, e.span);
-                    } else {
-                        let r = self.compile_expr_v(e);
-                        let r = self.ret_v(r, e.span);
-                        self.emit(Op::RetV { src: r }, e.span);
-                    }
+                } else if self.cur_fn.is_none() {
+                    // The program's own block: its value ends the program.
+                    let _ = self.compile_expr_v(e);
+                    self.emit(Op::RetUnit, e.span);
+                } else if let Some((len, kinds)) = self.tuple_ret_of(e) {
+                    let base = self.small_tuple_operand(e, len);
+                    self.emit(Op::RetSmallTuple { base, len, kinds }, e.span);
+                } else if ScalarKind::of_ty(&e.ty, self.program).is_some() {
+                    let r = self.compile_expr_i(e);
+                    self.emit(Op::RetI { src: r }, e.span);
                 } else {
-                    self.emit_fallback_stmt(stmt);
+                    let r = self.compile_expr_v(e);
+                    let r = self.ret_v(r, e.span);
+                    self.emit(Op::RetV { src: r }, e.span);
                 }
             }
             Stmt::Return(val) => {
