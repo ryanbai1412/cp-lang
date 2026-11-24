@@ -188,10 +188,10 @@ steps_runs=0
 run_pending_steps() {
     [ -s "$pending_steps" ] || return 0
     steps=$(sort -u "$pending_steps" | tr '\n' ',' | sed 's/,$//')
-    # Once more after a lost race, as recheck: every rerun gives main another
-    # window to move, and at its pace one per race livelocked landing (5 tries).
+    # Once, on the first rebased tip: every rerun gives main another window to
+    # move, and at its pace one per lost race cost minutes a try; CI checks the tip.
     steps_runs=$((steps_runs + 1))
-    [ "$steps_runs" -le 2 ] || { echo "land: main moved again; landing on the skipped steps' rerun, CI checks this tip" >&2; return 0; }
+    [ "$steps_runs" -le 1 ] || { echo "land: main moved again; landing on the skipped steps' rerun, CI checks this tip" >&2; return 0; }
     echo "land: running the commit-tier steps the hook's cut skipped: $steps" >&2
     tip=$(git rev-parse HEAD)
     prev=$(trap -p EXIT)
@@ -392,7 +392,7 @@ reruns_due() {
     [ -n "$users" ] && return 0
     [ -z "$rechecked" ] && [ -x .githooks/pre-commit ] &&
         [ -n "$(git diff --name-only "$checked" FETCH_HEAD -- $gate_paths)" ] && return 0
-    [ -s "$pending_steps" ] && [ "$steps_runs" -lt 2 ]
+    [ -s "$pending_steps" ] && [ "$steps_runs" -lt 1 ]
 }
 try=0
 push() {
