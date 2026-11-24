@@ -245,6 +245,26 @@ impl Ty {
         }
     }
 
+    /// True when some part is a position or boundary of domain `d`.
+    pub fn mentions_domain(&self, d: DomainId) -> bool {
+        let dim = |dim: &Dim| *dim == Dim::Pos(d);
+        match self {
+            Ty::Pos(e) | Ty::Bound(e) => *e == d,
+            Ty::Range(t) | Ty::Opt(t) | Ty::List(t) | Ty::Set(t) | Ty::HashSet(t) | Ty::Mut(t) => {
+                t.mentions_domain(d)
+            }
+            Ty::ListView(t, k) | Ty::Keyed(t, k) | Ty::MutView(t, k) => {
+                dim(k) || t.mentions_domain(d)
+            }
+            Ty::Array { dims, elem } => dims.iter().any(dim) || elem.mentions_domain(d),
+            Ty::Tuple(ts) => ts.iter().any(|t| t.mentions_domain(d)),
+            Ty::Record(fs) => fs.iter().any(|(_, t)| t.mentions_domain(d)),
+            Ty::Map(k, v) | Ty::HashMap(k, v) => k.mentions_domain(d) || v.mentions_domain(d),
+            Ty::Fn(ps, r) => ps.iter().any(|t| t.mentions_domain(d)) || r.mentions_domain(d),
+            _ => false,
+        }
+    }
+
     /// True when some part is a fn value, also inside a struct's fields or
     /// an enum's variants.
     pub fn has_fn(&self, program: &Program) -> bool {
