@@ -1263,6 +1263,16 @@ fn a_str_grows_in_place_when_appended_to() {
 }
 
 #[test]
+fn a_yields_fn_no_loop_walks_has_no_callback_form() {
+    let cpp = cpp(
+        "fn squares(n: Int) -> yields Int:\n    for i in 0..n: yield i * i\n\
+         let n: Int = read()\nprint(squares(n).collect().len)\n",
+    );
+    assert!(cpp.contains("squares(n)"), "{cpp}");
+    assert!(!cpp.contains("cpl_each_squares"), "{cpp}");
+}
+
+#[test]
 fn a_yields_loop_whose_body_calls_a_fn_value_runs_as_the_fn_yields() {
     let src = |closure: &str| {
         format!(
