@@ -86,6 +86,9 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
         if filter.is_some_and(|f| !id.contains(f)) {
             continue;
         }
+        if std::fs::read_to_string(&prob.spec_path).is_ok_and(|t| variants::same_as_port(&t)) {
+            continue;
+        }
         let smallest = prob
             .tests
             .into_iter()

@@ -33,3 +33,11 @@ fn build_keeps_only_probes_that_check() {
     assert!(!variant.contains("cpl_probe1_bump"), "{variant}");
     assert!(error_lines(&mut db, "probe.cp", &variant).is_none());
 }
+
+#[test]
+fn a_port_without_probe_sites_is_its_own_variant() {
+    let flat = "let n = 3\nprint(n + 1)\n";
+    assert!(super::same_as_port(flat));
+    let looped = "var s = 0\nfor i in 0..3:\n    s += i\nprint(s)\n";
+    assert!(!super::same_as_port(looped));
+}

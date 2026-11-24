@@ -114,6 +114,13 @@ pub fn probes(text: &str) -> Vec<Probe> {
 }
 
 /// `text` with the `keep` probes inserted, and for each output line the probe it came from.
+/// A port with no probe sites: its variant is the port byte for byte, which
+/// the corpus target already diffs, so it gets no target of its own.
+pub fn same_as_port(text: &str) -> bool {
+    let probes = probes(text);
+    probes.is_empty() && apply(text, &probes, &[]).0 == text
+}
+
 pub fn apply(text: &str, probes: &[Probe], keep: &[bool]) -> (String, Vec<Option<usize>>) {
     let mut out = String::new();
     let mut owner = Vec::new();
