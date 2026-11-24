@@ -53,10 +53,22 @@ fn y_at(val: Int) -> Y:
     let lo = ys.first_ge(val) ?? ys.len
     Y(lo)
 
+// each goose's compressed second coordinate and square edges, looked up once
+let geese = [
+    (
+        key_d: p.key_d,
+        id: p.id,
+        u: p.u,
+        d: p.d,
+        y: y_at(p.v),
+        lo: y_at(p.v - max(p.d, 0)),
+        hi: y_at(p.v + max(p.d, 0)),
+        hi1: y_at(p.v + p.d + 1),
+    ) for p in pts
+].sorted()
+
 var bit = Fenwick<Y, Int>()
 var ans: [P]Int = [P] _ => 0
-
-pts.sort()
 
 fn cdq_query(l: Int, r: Int):
     if r - l <= 1: return
@@ -65,15 +77,13 @@ fn cdq_query(l: Int, r: Int):
     cdq_query(m, r)
     var left: List<(u: Int, y: Y)> = []
     for i in l..m:
-        left.push((u: pts[i].u, y: y_at(pts[i].v)))
+        left.push((u: geese[i].u, y: geese[i].y))
     var right: List<(u: Int, sgn: Int, lo: Y, hi: Y, id: Int)> = []
     for i in m..r:
-        let p = pts[i]
+        let p = geese[i]
         if p.d < 0: continue
-        let lo = y_at(p.v - p.d)
-        let hi = y_at(p.v + p.d)
-        right.push((u: p.u + p.d, sgn: 1, lo:, hi:, id: p.id))
-        right.push((u: p.u - p.d - 1, sgn: -1, lo:, hi:, id: p.id))
+        right.push((u: p.u + p.d, sgn: 1, lo: p.lo, hi: p.hi, id: p.id))
+        right.push((u: p.u - p.d - 1, sgn: -1, lo: p.lo, hi: p.hi, id: p.id))
     left.sort(by: e => e.u)
     right.sort(by: e => e.u)
     var li = 0
@@ -87,7 +97,7 @@ fn cdq_query(l: Int, r: Int):
 
 cdq_query(0, 2 * n)
 
-pts.reverse()
+let rev = geese.rev.collect()
 
 fn cdq_cover(l: Int, r: Int):
     if r - l <= 1: return
@@ -96,16 +106,14 @@ fn cdq_cover(l: Int, r: Int):
     cdq_cover(m, r)
     var left: List<(u: Int, sgn: Int, lo: Y, hi1: Y)> = []
     for i in l..m:
-        let p = pts[i]
+        let p = rev[i]
         if p.d < 0: continue
-        let lo = y_at(p.v - p.d)
-        let hi1 = y_at(p.v + p.d + 1)
-        left.push((u: p.u - p.d, sgn: 1, lo:, hi1:))
-        left.push((u: p.u + p.d + 1, sgn: -1, lo:, hi1:))
+        left.push((u: p.u - p.d, sgn: 1, lo: p.lo, hi1: p.hi1))
+        left.push((u: p.u + p.d + 1, sgn: -1, lo: p.lo, hi1: p.hi1))
     var right: List<(u: Int, y: Y, id: Int)> = []
     for i in m..r:
-        let p = pts[i]
-        right.push((u: p.u, y: y_at(p.v), id: p.id))
+        let p = rev[i]
+        right.push((u: p.u, y: p.y, id: p.id))
     left.sort(by: e => e.u)
     right.sort(by: e => e.u)
     var li = 0
