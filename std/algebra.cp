@@ -15,7 +15,7 @@ use std.math.{gcd}
 /// `Monoid<T>(id, op)` or, naming both, `Monoid<T>(id: e, op: (a, b) => ...)`.
 /// `op(a, b)` folds `a` on the left of `b`, which matters when it does not commute.
 /// The laws are checked by `laws_hold(m, samples)`.
-pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T):
+pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreversed):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
     law ident(a: T) = op(id, a) == a and op(a, id) == a
 
@@ -31,16 +31,16 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T):
     /// example: `Monoid<Int>.of(*).op(3, 4) == 12`
     /// example: `Monoid<?Int>.of(min).id == None`
     pub fn of<M>(m: M) -> Monoid<T>:
-        if same(m, +): return Monoid(T.zero, (a, b) => a + b)
-        if same(m, *): return Monoid(T.one, (a, b) => a * b)
-        if same(m, ^): return Monoid(T.zero, (a, b) => a ^ b)
-        if same(m, |): return Monoid(T.zero, (a, b) => a | b)
-        if same(m, &): return Monoid(T.zero - T.one, (a, b) => a & b)
-        if same(m, max): return Monoid(T.MIN, (a, b) => max(a, b))
-        if same(m, min): return Monoid(T.MAX, (a, b) => min(a, b))
-        if same(m, gcd): return Monoid(T.zero, (a, b) => gcd(a, b))
-        if same(m, or): return Monoid(false, (a, b) => a or b)
-        if same(m, and): return Monoid(true, (a, b) => a and b)
+        if same(m, +): return Monoid(T.zero, (a, b) => a + b, x => x)
+        if same(m, *): return Monoid(T.one, (a, b) => a * b, x => x)
+        if same(m, ^): return Monoid(T.zero, (a, b) => a ^ b, x => x)
+        if same(m, |): return Monoid(T.zero, (a, b) => a | b, x => x)
+        if same(m, &): return Monoid(T.zero - T.one, (a, b) => a & b, x => x)
+        if same(m, max): return Monoid(T.MIN, (a, b) => max(a, b), x => x)
+        if same(m, min): return Monoid(T.MAX, (a, b) => min(a, b), x => x)
+        if same(m, gcd): return Monoid(T.zero, (a, b) => gcd(a, b), x => x)
+        if same(m, or): return Monoid(false, (a, b) => a or b, x => x)
+        if same(m, and): return Monoid(true, (a, b) => a and b, x => x)
         m.monoid()
 
     /// A monoid is its own monoid: what [`Monoid.of`] gives back for anything that is not a
@@ -50,6 +50,15 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T):
     /// traps: never
     /// example: `Monoid<Int>(0, (a, b) => a + b).monoid().op(2, 3) == 5`
     pub fn monoid(self) -> Monoid<T> = self
+
+    /// `x`, a fold of some elements, as the fold of the same elements read backwards: by `rev`,
+    /// which `Monoid.of` gives every stock op (all commutative), `.commutative()` and a
+    /// `Reversible` value's own `monoid()`.
+    ///
+    /// cost: one call of `rev`
+    /// traps: when the monoid was made without `rev:`
+    /// example: `Monoid<Int>.of(+).reversed(5) == 5`
+    pub fn reversed(self, x: T) -> T = rev(x)
 
     /// `self` with the law `op(a, b) == op(b, a)` stated, so folds may reorder and lazy tags
     /// skip push-down; `cpl stress` samples the law like any other.
@@ -68,7 +77,7 @@ pub struct Comm<T>(pub m: Monoid<T>):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `Monoid<Int>(0, (a, b) => a + b).commutative().monoid().id == 0`
-    pub fn monoid(self) -> Monoid<T> = m
+    pub fn monoid(self) -> Monoid<T> = Monoid(m.id, m.op, x => x)
 
 impl<T> Op<T> for Comm<T>:
     type Fold = T
@@ -82,6 +91,10 @@ impl<T> HasId<T> for Comm<T>:
 impl<T> Commutative<T> for Comm<T>
 
 fn same<A, B>(a: A, b: B) -> Bool = a == b
+
+fn unreversed<T>(x: T) -> T:
+    assert false, "this fold is read backwards but its op has no `rev`: pass `rev:` to `Monoid`, use `.commutative()`, or implement `Reversible`"
+    x
 
 /// A lazy update `F` on values `T` folded with `over`. Name every argument, in any order, so
 /// the roles read at the call site:
@@ -199,10 +212,11 @@ impl Show for Desc<T>:
 pub fn desc<T>(x: T) -> Desc<T> = Desc(x)
 
 /// A folded value that can be read from the other end. A fold along a tree path walks some
-/// stretches upwards; `Rooted.fold_path` reverses those with `rev`. A type that does not
-/// implement it is its own reverse, which is right for every commutative operation.
+/// stretches upwards; `Rooted.fold_path` reverses those with its monoid's `rev`, which a
+/// `Reversible` value's `monoid()` passes as `x => x.rev()`. Reversal belongs to the op: a
+/// commutative one (`.commutative()`, every stock op) reverses as the identity.
 pub trait Reversible:
-    fn rev(self) -> Self = self
+    fn rev(self) -> Self
 
 /// `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`; a plain power is `x ** k`.
 ///
@@ -313,7 +327,7 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `MaxSub.monoid().id.try_best == None`
-    pub fn monoid() -> Monoid<MaxSub> = Monoid(MaxSub.zero, (a, b) => MaxSub.join(a, b))
+    pub fn monoid() -> Monoid<MaxSub> = Monoid(MaxSub.zero, (a, b) => MaxSub.join(a, b), x => x.rev())
 
 impl Add for MaxSub:
     fn add(a, b) = MaxSub.join(a, b)
@@ -487,7 +501,7 @@ pub struct MinCount<T>(pub val: T, pub count: Int):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[MinCount.of(v) for v in [3, 1, 1]].fold(MinCount.monoid()).count == 2`
-    pub fn monoid() -> Monoid<MinCount<T>> = Monoid(MinCount.zero, (a, b) => MinCount.join(a, b))
+    pub fn monoid() -> Monoid<MinCount<T>> = Monoid(MinCount.zero, (a, b) => MinCount.join(a, b), x => x)
 
     /// The empty fold, `+`'s identity: the far end of `T` (as `Monoid.of(min)`) with count 0.
     ///
@@ -523,7 +537,7 @@ pub struct MaxCount<T>(pub val: T, pub count: Int):
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[MaxCount.of(v) for v in [3, 1, 3]].fold(MaxCount.monoid()).count == 2`
-    pub fn monoid() -> Monoid<MaxCount<T>> = Monoid(MaxCount.zero, (a, b) => MaxCount.join(a, b))
+    pub fn monoid() -> Monoid<MaxCount<T>> = Monoid(MaxCount.zero, (a, b) => MaxCount.join(a, b), x => x)
 
     /// The empty fold, `+`'s identity: the low end of `T` (as `Monoid.of(max)`) with count 0.
     ///
@@ -647,9 +661,11 @@ impl Reversible for Word:
     fn rev(self) -> Word = Word(Str([s[s.len - 1 - i] for i in 0..s.len]))
 
 @test
-fn plain_values_are_their_own_reverse():
-    assert 5.rev() == 5 and (3, 4).rev() == (3, 4)
-    assert Word("abc").rev() == Word("cba")
+fn a_monoid_reverses_by_its_op():
+    assert Monoid<Int>.of(+).reversed(5) == 5 and Monoid<Int>.of(max).reversed(3) == 3
+    assert Monoid(0, (a, b) => a * 10 + b).commutative().monoid().reversed(7) == 7
+    let digits = Monoid(Word(""), (a, b) => Word(a.s + b.s), x => x.rev())
+    assert digits.reversed(Word("abc")) == Word("cba")
 
 @test
 fn max_sub_monoid_laws_and_kadane():
@@ -675,7 +691,7 @@ fn max_sub_monoid_laws_and_kadane():
     assert got.scale(3).best == want * 3
     let a = MaxSub.of(2) + MaxSub.of(-1) + MaxSub.of(5)
     let b = MaxSub.of(5) + MaxSub.of(-1) + MaxSub.of(2)
-    assert a.rev() == b
+    assert a.rev() == b and MaxSub.monoid().reversed(a) == b
 
 /// \(O(1)\). Three-way ordering result returned by `cmp`.
 pub enum Ordering:

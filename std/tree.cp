@@ -800,7 +800,8 @@ pub struct Rooted<V, Pre, A>:
     /// structure over `t.Pre` with `fold(range)` and a `monoid` (`SegTree`).
     ///
     /// A stretch of the path that climbs is folded top-down by `ds` and then turned round with
-    /// `rev()`: a value that is not its own reverse implements `Reversible`. With `edges`, the
+    /// the monoid's `rev` (`Monoid.reversed`): the identity for a commutative op, `x.rev()` for
+    /// a `Reversible` value. With `edges`, the
     /// value at the lowest common ancestor is left out.
     ///
     /// cost: \(O(\log^2 n)\) with one structure
@@ -812,7 +813,7 @@ pub struct Rooted<V, Pre, A>:
         var acc = m.id
         for c in self.chains(a, b, edges):
             let part = ds.fold(c.range)
-            acc = m.op(acc, if c.rising: part.rev() else: part)
+            acc = m.op(acc, if c.rising: m.reversed(part) else: part)
         acc
 
     /// Applies the update `tag` to every vertex on the path from `a` to `b`, through
@@ -1389,7 +1390,7 @@ fn path_folds_keep_the_order_from_a_to_b():
     domain V = 0..10
     let adj = random_tree(V.first!)
     let r = Rooted(adj, V.first!)
-    let words = Monoid<Word>(id: Word(""), op: (x, y) => Word(x.s + y.s))
+    let words = Monoid<Word>(id: Word(""), op: (x, y) => Word(x.s + y.s), rev: x => x.rev())
     let seg = SegTree(words, r.reorder([V] v => Word(Str(v.ord))))
     for a in V:
         for b in V:
@@ -2096,8 +2097,7 @@ pub struct Lift<V, T>(op: (T, T) -> T, identity: T):
 
 /// A forest that changes: `link` and `cut` edges, re-root anywhere, and fold or set vertex
 /// values along paths, by a link-cut tree (splay trees over preferred paths). Values fold
-/// with `op`; a value that is not its own reverse implements `Reversible`, as for
-/// `Rooted.fold_path`. Every operation is amortized \(O(\log n)\).
+/// with `op`, read backwards by its monoid's `rev` as for `Rooted.fold_path`. Every operation is amortized \(O(\log n)\).
 pub struct LinkCut<V, T>(m: Monoid<T>):
     lc: [V]?V
     rc: [V]?V
@@ -2135,7 +2135,7 @@ pub struct LinkCut<V, T>(m: Monoid<T>):
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
     fn turn(mut self, x: V):
-        let r = agg[x].rev()
+        let r = m.reversed(agg[x])
         agg[x] = r
         flip[x] = not flip[x]
 
@@ -2470,7 +2470,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
         if let p = pa[x]: lc[p] != Some(x) and rc[p] != Some(x) else: true
 
     fn turn(mut self, x: V):
-        let r = agg[x].rev()
+        let r = act.over.reversed(agg[x])
         agg[x] = r
         flip[x] = not flip[x]
 
@@ -2764,7 +2764,7 @@ fn lazy_link_cut_matches_a_brute_forest():
         0,
         (f, g) => f + g,
         (d, x, n) => x + d * n,
-        Monoid<Int>(0, (a, b) => a + b),
+        Monoid<Int>(0, (a, b) => a + b, x => x),
     )
     var lct = LazyLinkCut<V, Int, Int>.new(add, Some(w))
     var adj: [V]List<V> = []

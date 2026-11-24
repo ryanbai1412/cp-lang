@@ -1667,6 +1667,7 @@ impl<'a> Lowerer<'a> {
                     values.push(v);
                 }
                 (None, Some(default)) => {
+                    let sm = std::mem::replace(&mut self.cur_mod, self.structs[id].mod_id);
                     let saved = std::mem::replace(&mut self.offset, self.structs[id].offset);
                     let v = if matches!(ty, Ty::Array { .. }) {
                         self.let_value(Some(&decl.fields[i].ty), Some(default), default.span)
@@ -1682,6 +1683,7 @@ impl<'a> Lowerer<'a> {
                         None => v,
                     };
                     values.push(v);
+                    self.cur_mod = sm;
                     self.offset = saved;
                 }
                 (None, None) => {

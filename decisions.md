@@ -9142,8 +9142,6 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** Two values can't share a node list, so returning or absorbing a treap must copy; the shared pool is how C++ solutions get \(O(\log n)\) split/merge, and it closes the GAPS line on `LazyTreap.split_at`/`append`.
 - **Reverse.** Drop `LazyForest`/`ForestSeq`; put the GAPS line back.
 
-## 599. (reserved, content)
-
 ## 600. (reserved, stdlib)
 
 ## 601. (reserved, unknown)
@@ -9153,3 +9151,19 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Call.** Under R5 (`std-api/R5`) and `Op<T>`'s associated `Fold` (decision 456), `max` and `min` over a bounded `T` (one with `T.MIN`/`T.MAX`: `Int`, a range type, `Char`, `Bool`, decision 580's ends) are monoids with `Fold = T`, identity `T.MIN`/`T.MAX`, and also `Selective<T>`. Over a `T` with no ends (`Str`, a user `Ord` type) they fold `?T`. One impl chooses with `if T: Bounded:` (Core's G7.3 ruling, 2026-11-24 04:22 PST); overlapping impls stay an error. So `SegTree(max)` stays non-optional with unchanged C++, an empty `Window(max).all` over `Int` is `Int.MIN` once `Window.all` is `M.Fold`, and `max.opt()` is the fold that is `None` when empty. This replaces decision 575's `Max.Fold = ?T`.
 - **Why.** Max over a bounded type has an identity, so R5's own rule ("a fold of a monoid is `T`") gives `T`; a `?T` fold would put an unwrap on every `SegTree(max)` and change its C++. `None` on empty stays one call away through `opt()`, the same helper every identity-less op uses.
 - **Reverse.** Give `max`/`min` `Fold = ?T` for every `T` and make `SegTree(max)` fold `?T`.
+## 602. (reserved, stdlib)
+## 599. Reversal belongs to the op: `Monoid(id, op, rev)`, and no value is its own reverse (stdlib, 2026-11-24)
+
+`Reversible` had a default `rev(self) -> Self = self`, and the lowering answered any other
+`x.rev()` by returning `x`. So a path fold over a non-commutative op whose value had no impl
+silently read climbing stretches forwards: wrong answers, no diagnostic. A blanket
+`impl<T> Reversible for T` would keep that hole open. Instead, `Monoid` carries
+`rev: T -> T`. `Monoid.of` gives every stock op (all commutative) `x => x`, and so does
+`Comm.monoid()` (`.commutative()`). A `Reversible` value's `monoid()` passes `x => x.rev()`.
+`fold_path` and the link-cut trees call `m.reversed(x)`. When `rev:` is left out, the
+default is a private std fn that stops with the three fixes: `rev:`, `.commutative()`,
+`impl Reversible`. `Reversible.rev` has no default. One closure per program is
+devirtualized, so `SegTree(+, ..)`'s path fold compiles the identity away. A struct
+field's default now resolves names in the struct's module, as a fn param's default
+already did. Next, a known missing `rev` becomes a compile error through a general
+mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
