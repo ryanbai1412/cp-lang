@@ -80,6 +80,28 @@ pub struct Param {
 }
 
 impl Ty {
+    /// The name the impls for a value of this type are filed under, as
+    /// `impl_target_head` files them: its head, `fn` for every fn type,
+    /// `[D]T` for every table, `tuple` and `?T`.
+    pub fn impl_head(&self) -> Option<&str> {
+        Some(match self {
+            Ty::Named { name, .. } => name,
+            Ty::Int => "Int",
+            Ty::I128 => "I128",
+            Ty::U64 => "U64",
+            Ty::Float => "F64",
+            Ty::Bool => "Bool",
+            Ty::Char => "Char",
+            Ty::Str => "Str",
+            Ty::Fn { .. } => "fn",
+            Ty::Pos(_) | Ty::Domain(_) => "domain",
+            Ty::Array { .. } => "[D]T",
+            Ty::Tuple(_) => "tuple",
+            Ty::Optional(_) => "?T",
+            _ => return None,
+        })
+    }
+
     /// The domain an integer literal labels where this type is wanted (R04.2.18): `V` for a
     /// position, `V.cuts` for a cut (also spelled `Cut<V>`), the cell's for an array of them.
     pub fn literal_domain(&self) -> Option<String> {

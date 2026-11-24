@@ -1606,19 +1606,7 @@ impl<'a> Checker<'a> {
                 .iter()
                 .all(|s| self.implements_trait_inner(ty, s, seen));
         }
-        let impl_key = match ty {
-            Ty::Named { name, .. } => Some(name.as_str()),
-            Ty::Int => Some("Int"),
-            Ty::I128 => Some("I128"),
-            Ty::U64 => Some("U64"),
-            Ty::Float => Some("F64"),
-            Ty::Bool => Some("Bool"),
-            Ty::Char => Some("Char"),
-            Ty::Str => Some("Str"),
-            Ty::Fn { .. } => Some("fn"),
-            Ty::Pos(_) | Ty::Domain(_) => Some("domain"),
-            _ => None,
-        };
+        let impl_key = ty.impl_head();
         if impl_key.is_some_and(|name| self.impl_holds(name, ty, trait_name, seen)) {
             return true;
         }

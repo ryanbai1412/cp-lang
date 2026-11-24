@@ -894,24 +894,26 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
-                self.members_of(type_name).map(|members| {
-                    let bindings = members.bindings(args);
-                    (
-                        members
-                            .fields
-                            .iter()
-                            .find(|f| f.name == name.text)
-                            .map(|f| f.ty.subst(&bindings)),
-                        members.fields.iter().map(|f| f.name.clone()).collect(),
-                        members
-                            .members
-                            .iter()
-                            .map(|(m, ty)| {
-                                (m.clone(), members.member_ty(m, ty, &base_ty, &bindings))
-                            })
-                            .collect::<Vec<_>>(),
-                    )
-                })
+                self.members_of(type_name)
+                    .map(|members| {
+                        let bindings = members.bindings(args);
+                        (
+                            members
+                                .fields
+                                .iter()
+                                .find(|f| f.name == name.text)
+                                .map(|f| f.ty.subst(&bindings)),
+                            members.fields.iter().map(|f| f.name.clone()).collect(),
+                            members
+                                .members
+                                .iter()
+                                .map(|(m, ty)| {
+                                    (m.clone(), members.member_ty(m, ty, &base_ty, &bindings))
+                                })
+                                .collect::<Vec<_>>(),
+                        )
+                    })
+                    .or_else(|| self.head_impl_found(&base_ty, &name.text))
             }
             Ty::Param(param) => {
                 return match self.bound_method(param, &name.text) {
@@ -1127,13 +1129,9 @@ impl<'a> Checker<'a> {
                 self.members_of(type_name)
                     .map(|members| (None, Vec::new(), members.members))
             }
-            // A fn type's impls answer their own members; any other name is a std fn
-            // taking it as `self` (`f.opt()`), resolved once std is loaded.
-            Ty::Fn { .. } => {
-                let methods = self.fn_impl_members(&base_ty);
-                (methods.iter().any(|(m, _)| *m == name.text)).then(|| (None, Vec::new(), methods))
-            }
-            _ => None,
+            // Impls for a fn type, a table or a list answer their own members; any other
+            // name is a std fn taking it as `self` (`f.opt()`), resolved once std is loaded.
+            _ => self.head_impl_found(&base_ty, &name.text),
         };
         let Some((field_ty, field_names, methods)) = found else {
             // An optional has the checker's own members, std's `self: ?T`

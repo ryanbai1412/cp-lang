@@ -6,10 +6,13 @@ use super::*;
 use cpl_diag::msgs;
 use cpl_syntax::ast::{self, TypeKind};
 
-/// The name an impl for `ty` is filed under: its head, or `fn` for every fn type.
+/// The name an impl for `ty` is filed under: its head, or `fn` for every fn type (`Ty::impl_head`).
 pub(crate) fn impl_target_head(ty: &ast::Type) -> Option<String> {
     match &ty.kind {
         TypeKind::Fn { .. } => Some("fn".into()),
+        TypeKind::Array { .. } => Some("[D]T".into()),
+        TypeKind::Tuple(_) => Some("tuple".into()),
+        TypeKind::Optional(_) => Some("?T".into()),
         TypeKind::ItemOf(item) => item.fn_item_type(),
         _ => type_head(ty),
     }

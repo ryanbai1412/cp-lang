@@ -24,18 +24,14 @@ pub(super) fn declared(body: &[Stmt]) -> Vec<(String, Vec<String>, Option<&ast::
         .collect()
 }
 
+/// `x.name` found on `x`'s type: the field's type when it is one, the field names, the methods.
+pub(super) type HeadFound = (Option<Ty>, Vec<String>, Vec<(String, Ty)>);
+
 impl Checker<'_> {
     /// `of.name` for a known `of`: the type the impl for `of` chooses (R08.1.9).
     pub(crate) fn project(&mut self, of: &Ty, name: &str) -> Option<Ty> {
-        let key = match of {
-            Ty::Named { name, .. } => name.clone(),
-            Ty::Int | Ty::I128 | Ty::U64 | Ty::Float | Ty::Bool | Ty::Char | Ty::Str => {
-                of.to_string()
-            }
-            Ty::Fn { .. } => "fn".into(),
-            _ => return None,
-        };
-        for (_, def) in self.env.impls(&key) {
+        let key = of.impl_head()?;
+        for (_, def) in self.env.impls(key) {
             let Def::Impl { target, assoc, .. } = &*def else {
                 continue;
             };
@@ -81,10 +77,14 @@ impl Checker<'_> {
         assoc
     }
 
-    /// The methods impls for fn types give a fn value of type `of`.
-    pub(super) fn fn_impl_members(&mut self, of: &Ty) -> Vec<(String, Ty)> {
+    /// The methods the impls filed under `of`'s head give a value of type `of`, with their
+    /// traits' defaults: a fn type's, a `List<Int>`'s, a `[D]T`'s.
+    fn head_impl_members(&mut self, of: &Ty) -> Vec<(String, Ty)> {
+        let Some(head) = of.impl_head() else {
+            return Vec::new();
+        };
         let mut out = Vec::new();
-        for (trait_name, def) in self.env.impls("fn") {
+        for (trait_name, def) in self.env.impls(head) {
             let Def::Impl {
                 target, methods, ..
             } = &*def
@@ -96,19 +96,24 @@ impl Checker<'_> {
             if !of.fits(&target.subst(&bindings)) {
                 continue;
             }
-            out.extend(methods.iter().map(|(m, t)| (m.clone(), t.subst(&bindings))));
-            // What the impl leaves to its trait's defaults (`f.lift(x)`, `(+).laws`).
-            let tr = trait_name.as_deref().and_then(|t| t.split('<').next());
-            let Some(Def::Trait {
+            let mut found = methods.clone();
+            let tr = (trait_name.as_deref()).and_then(|t| t.split('<').next());
+            if let Some(Def::Trait {
                 methods, generics, ..
-            }) = tr.and_then(|tr| self.type_def(tr)).as_deref().cloned()
-            else {
-                continue;
-            };
-            let inherited = self.trait_members(&methods, &generics, &def);
-            out.extend(inherited.into_iter().map(|(m, t)| (m, t.subst(&bindings))));
+            }) = tr.and_then(|t| self.type_def(t)).as_deref().cloned()
+            {
+                found.extend(self.trait_members(&methods, &generics, &def));
+            }
+            out.extend(found.into_iter().map(|(m, t)| (m, t.subst(&bindings))));
         }
         out
+    }
+
+    /// `x.name` on a value whose type defines no members itself: what its head's impls give,
+    /// when one of them is `name`.
+    pub(super) fn head_impl_found(&mut self, of: &Ty, name: &str) -> Option<HeadFound> {
+        let methods = self.head_impl_members(of);
+        (methods.iter().any(|(m, _)| m == name)).then(|| (None, Vec::new(), methods))
     }
 
     /// Replaces each `M.Fold` whose `M` is now known with the type its impl chooses.

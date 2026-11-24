@@ -33,7 +33,7 @@ impl<'a> Lowerer<'a> {
             .find(|(t, m, _)| t == ty && m == method);
         prim.map(|p| p.2)
             .or_else(|| self.optional_impl_method(ty, method))
-            .or_else(|| self.fn_impl_method(ty, method))
+            .or_else(|| self.head_impl_method(ty, method))
             .or_else(|| self.shape_default_method(ty, method))
     }
 

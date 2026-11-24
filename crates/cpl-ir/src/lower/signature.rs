@@ -152,18 +152,16 @@ impl<'a> Lowerer<'a> {
                 (self.cur_mod, self.offset, self.gen_env) = saved;
                 return Some(found);
             }
-            let Some(env) = self.fn_impl_env(m, target, t) else {
+            let Some(env) = self.impl_env(m, target, t) else {
                 continue;
             };
-            let saved_mod = std::mem::replace(&mut self.cur_mod, m);
-            let saved_offset = std::mem::replace(&mut self.offset, offset);
-            let saved_env = env.map(|env| std::mem::replace(&mut self.gen_env, env));
+            let saved = (
+                std::mem::replace(&mut self.cur_mod, m),
+                std::mem::replace(&mut self.offset, offset),
+                std::mem::replace(&mut self.gen_env, env),
+            );
             let found = (self.resolve_ty(target) == *t).then(|| self.resolve_assoc_src(idx, alias));
-            if let Some(env) = saved_env {
-                self.gen_env = env;
-            }
-            self.cur_mod = saved_mod;
-            self.offset = saved_offset;
+            (self.cur_mod, self.offset, self.gen_env) = saved;
             if found.is_some() {
                 return found;
             }

@@ -42,30 +42,14 @@ impl<'a> Lowerer<'a> {
         out
     }
 
-    /// How a fn-type impl target binds its open names to the fn type `ty`:
-    /// `Some(None)` for a target with none, `None` when it cannot fit `ty`.
-    pub(super) fn fn_impl_env(
-        &self,
-        m: ModId,
-        target: &ast::Type,
-        ty: &Ty,
-    ) -> Option<Option<GenEnv>> {
-        if !matches!(target.kind, ast::TypeKind::Fn { .. }) {
-            return Some(None);
-        }
+    /// How an impl target binds its open names to `ty`, `None` when it cannot fit it.
+    pub(super) fn impl_env(&self, m: ModId, target: &ast::Type, ty: &Ty) -> Option<GenEnv> {
         let params = self.impl_params(m, target);
-        if params.is_empty() {
-            return Some(None);
-        }
-        if !matches!(ty, Ty::Fn(..)) {
-            return None;
-        }
         let mut env = GenEnv::default();
-        self.unify_ast_ty(target, ty, m, &params, &mut env);
-        params
-            .iter()
-            .all(|p| env.contains_key(p))
-            .then_some(Some(env))
+        if !params.is_empty() {
+            self.unify_ast_ty(target, ty, m, &params, &mut env);
+        }
+        params.iter().all(|p| env.contains_key(p)).then_some(env)
     }
 
     /// The fn type a closure passed for `param` takes from a fn-type impl of
@@ -233,10 +217,11 @@ impl<'a> Lowerer<'a> {
         out
     }
 
-    /// `impl<T> Op<T> for (T, T) -> T`: the method for one fn type, made the
-    /// first time a value of that type calls it.
-    pub(super) fn fn_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
-        if !matches!(ty, Ty::Fn(..)) {
+    /// `x.method()` on a value of a non-struct type an impl names, made the first time it is
+    /// called: `impl<T> Op<T> for (T, T) -> T` for a fn, `impl Tot for List<Int>` for a list,
+    /// with the trait's default when the impl writes no `method`.
+    pub(super) fn head_impl_method(&mut self, ty: &Ty, method: &str) -> Option<FnId> {
+        if matches!(ty, Ty::Struct(_) | Ty::Error) {
             return None;
         }
         for idx in 0..self.impls.len() {
@@ -246,38 +231,46 @@ impl<'a> Lowerer<'a> {
                 self.impls[idx].target,
                 self.impls[idx].body,
             );
-            if !matches!(target.kind, ast::TypeKind::Fn { .. }) {
+            let head_fits = match &target.kind {
+                ast::TypeKind::Named { name, args } => {
+                    !self.names_struct_like(m, &name.text)
+                        && !(args.is_empty() && self.impl_params(m, target).contains(&name.text))
+                }
+                ast::TypeKind::Fn { .. } => matches!(ty, Ty::Fn(..)),
+                ast::TypeKind::Tuple(_) => matches!(ty, Ty::Tuple(_)),
+                ast::TypeKind::Array { .. } => matches!(ty, Ty::Array { .. }),
+                _ => false,
+            };
+            if !head_fits || self.domain_blanket_param(idx).is_some() {
                 continue;
             }
-            let Some(Some(env)) = self.fn_impl_env(m, target, ty) else {
+            let Some(env) = self.impl_env(m, target, ty) else {
                 continue;
             };
+            let fits = self.quietly_in(m, offset, env.clone(), |l| l.resolve_ty(target)) == *ty;
+            if !fits {
+                continue;
+            }
             let own = body.stmts.iter().find_map(|item| match &item.kind {
                 ast::StmtKind::Fn(f) if f.name.text == method && f.generics.is_empty() => Some(f),
                 _ => None,
             });
             let Some((f, fm, foff, env)) = (match own {
-                Some(f) => Some((f, m, offset, env.clone())),
-                None => self.impl_trait_default(idx, method, ty, env.clone()),
+                Some(f) => Some((f, m, offset, env)),
+                None => self.impl_trait_default(idx, method, ty, env),
             }) else {
                 continue;
             };
             let saved = (
-                std::mem::replace(&mut self.cur_mod, m),
-                std::mem::replace(&mut self.offset, offset),
-                std::mem::replace(&mut self.gen_env, env.clone()),
+                std::mem::replace(&mut self.cur_mod, fm),
+                std::mem::replace(&mut self.offset, foff),
             );
-            let fits = self.resolve_ty(target) == *ty;
-            self.gen_env = saved.2;
-            if !fits {
-                (self.cur_mod, self.offset) = (saved.0, saved.1);
-                continue;
-            }
             let trait_name = self.impls[idx].trait_name.clone();
             let fn_id = self.declare_fn_in(f, fm, foff, None, env);
             let suffix = self.prim_methods.len();
+            let head = if matches!(ty, Ty::Fn(..)) { "fn" } else { "ty" };
             self.sigs[fn_id].name = format!(
-                "{}_fn_{}_{suffix}",
+                "{}_{head}_{}_{suffix}",
                 trait_name.as_deref().unwrap_or("impl"),
                 f.name.text
             );
@@ -285,7 +278,7 @@ impl<'a> Lowerer<'a> {
             self.prim_methods
                 .push((ty.clone(), method.to_string(), fn_id));
             self.resolve_fn_sig(fn_id, trait_name.as_deref());
-            (self.cur_mod, self.offset) = (saved.0, saved.1);
+            (self.cur_mod, self.offset) = saved;
             return Some(fn_id);
         }
         None
