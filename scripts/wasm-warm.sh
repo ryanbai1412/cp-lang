@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Rule: handbook/guidelines/ci-checklist.md#cir22.
 # A named cpl.wasm (scripts/build-wasm.sh --names) of the tree HEAD has, built
 # nice'd in the background, with that tree recorded beside it, so land.sh holds
 # a change's crates to their wasm budgets without waiting on a build.
