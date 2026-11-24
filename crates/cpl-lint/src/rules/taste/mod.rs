@@ -712,6 +712,7 @@ impl<'a> Taste<'a> {
 
     /// `a[u, v] = e` then `a[v, u] = e`; `g[u].push(v)` then `g[v].push(u)`.
     fn symmetric(&mut self, a: &Stmt, b: &Stmt) {
+        let cells = matches!(a.kind, StmtKind::Assign { .. });
         let mirrored = match (&a.kind, &b.kind) {
             (
                 StmtKind::Assign {
@@ -767,9 +768,11 @@ impl<'a> Taste<'a> {
             self.pair_span(a.span, b.span),
             "one fact written twice, once for each order",
         )
-        .with_help(
-            "keep it in one place: build the graph with `Graph.undirected(..)`, or loop over both orders",
-        );
+        .with_help(if cells {
+            "keep it in one place: key it by `Pair<V>` and build the matrix with `.symmetric(diag: ..)`"
+        } else {
+            "keep it in one place: build the graph with `Graph.undirected(..)`, or loop over both orders"
+        });
         self.push(&SYMMETRIC_WRITE, diag);
     }
 

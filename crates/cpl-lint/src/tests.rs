@@ -799,6 +799,12 @@ fn symmetric_writes_from_noip18p4_and_noi07p1() {
     assert_eq!(taste_codes(pushes), ["L0503"]);
     let cells = "var ways: [0..3, 0..3]Int = 0\nlet (u, v) = (0, 2)\nways[u, v] = 1\nways[v, u] = 1\nprint(ways[0, 2])\n";
     assert_eq!(taste_codes(cells), ["L0503"]);
+    // A matrix is built by `symmetric`, so std's own `symmetric` may mirror.
+    let help = lint(cells, &Config::default())
+        .into_iter()
+        .find_map(|d| (d.code == SYMMETRIC_WRITE.code).then_some(d.help?))
+        .unwrap();
+    assert!(help.contains(".symmetric(diag: ..)"), "{help}");
     let weighted = "var adj: [0..3]List<(Int, Int)> = []\nlet (u, v) = (0, 2)\nadj[u].push((v, 5))\nadj[v].push((u, 5))\nprint(adj[0].len)\n";
     assert_eq!(taste_codes(weighted), ["L0503"]);
     // Different facts, or a self-loop, are not one fact twice.
