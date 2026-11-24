@@ -576,7 +576,7 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
 
     fn covered(self, k: Int, m: Int) -> Bool:
         let (a, b) = (ks.len - 2, ks.len - 1)
-        (m - ms[a]) * (ks[a] - ks[b]) <= (ms[b] - ms[a]) * (ks[a] - k)
+        I128(m - ms[a]) * I128(ks[a] - ks[b]) <= I128(ms[b] - ms[a]) * I128(ks[a] - k)
 
     fn pop_line(mut self):
         let _ = ks.pop()
