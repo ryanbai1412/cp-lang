@@ -55,6 +55,8 @@ SLICES = [
      ["cpl-cli::trace_goldens", "cpl-cli::vm_fallbacks"]),
     ("corpus-warnings", "consumers", ["std/*"],
      ["cpl-lint corpus_tests::corpus_warnings_only_go_down"]),
+    ("ports-check", "content (stdlib)", ["std/*"],
+     ["cpl-cli::corpus the_libraries_ports_and_passing_tests_check_clean"]),
     ("copies", "perf (codegen)", [f"{PACKAGES}/*.cp", "spec/conformance/*.cp", "std/*", "crates/cpl-codegen/*"],
      ["cpl-cli::read_only_copies"]),
 ]
