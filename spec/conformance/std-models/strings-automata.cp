@@ -56,7 +56,7 @@ for k in 0..n:
         trie.clear()
         bag = []
         made = [""]
-        if trie.len != 1 or not trie.is_empty: bad = "op {k}: Trie.clear"
+        if trie.nodes != 1 or trie.len != 0 or not trie.is_empty: bad = "op {k}: Trie.clear"
     elif bag.len == 0 or rng.chance(0.55):
         let v = trie.add(w)
         bag.push(w.clone())
@@ -73,7 +73,7 @@ for k in 0..n:
     let kk = rng.int(0, bag.len)
     let np = bag.filter(x => at(x, 0, q)).count()
     let nc = bag.filter(x => x == q).count()
-    if trie.root != 0 or trie.len != made.len or trie.is_empty != (bag.len == 0): bad = "op {k}: Trie.len/is_empty"
+    if trie.root != 0 or trie.nodes != made.len or trie.len != bag.len or trie.is_empty != (bag.len == 0): bad = "op {k}: Trie.nodes/len/is_empty"
     elif trie.count(q) != nc or trie.contains(q) != (nc > 0) or trie.count_prefix(q) != np: bad = "op {k}: Trie.count({q})"
     elif (trie.find(q) == None) != (np == 0): bad = "op {k}: Trie.find({q})"
     elif np > 0 and (trie.ends_at(trie.find(q)!) != nc or trie.pass_at(trie.find(q)!) != np): bad = "op {k}: Trie.ends_at/pass_at({q})"
