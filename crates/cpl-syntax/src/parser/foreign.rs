@@ -1139,7 +1139,9 @@ impl<'a> Parser<'a> {
             match part {
                 StrPart::Text(t) => pieces.push(StrPiece::Text(unescape(t.text(text)))),
                 StrPart::Expr(h) => {
-                    let arg = args.next().unwrap();
+                    let Some(arg) = args.next() else {
+                        break;
+                    };
                     let inner = h.text(text);
                     let arg_text = self.item_text(arg.span);
                     let plain = arg_text

@@ -87,11 +87,11 @@ impl<'a> Parser<'a> {
             T::LParen if self.at_record_pattern() => self.record_pattern(),
             T::LParen => {
                 self.bump();
-                let mut items = self.comma_list(T::RParen, "the pattern", Self::pattern);
-                if items.len() == 1 {
-                    return items.pop().unwrap();
+                let items = self.comma_list(T::RParen, "the pattern", Self::pattern);
+                match <[_; 1]>::try_from(items) {
+                    Ok([one]) => return one,
+                    Err(items) => PatternKind::Tuple(items),
                 }
-                PatternKind::Tuple(items)
             }
             T::Int | T::Float | T::Str | T::RawStr | T::Char | T::True | T::False | T::Minus => {
                 PatternKind::Literal(Box::new(self.unary()))

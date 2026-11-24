@@ -3,6 +3,9 @@
 use super::*;
 use cpl_diag::msgs::stmt as msg;
 
+/// A `for` clause: its pattern, what it walks, and its `if` filter.
+type ForClause = (Pattern, Expr, Option<(u32, Cond)>);
+
 impl<'a> Parser<'a> {
     /// Parses one statement into `out`. An unexpectedly indented run of
     /// lines is reported once and its statements are kept at this level.
@@ -885,11 +888,12 @@ impl<'a> Parser<'a> {
                         if matches!(&callee.kind, ExprKind::Name(n) if n == "read")
                 )
         });
-        if shared_pats.len() > 1 && init.is_some() && !is_tuple_or_read {
+        let mut pats = shared_pats.into_iter();
+        let first = pats.next();
+        if let Some(first) = first.filter(|_| pats.len() > 0 && init.is_some() && !is_tuple_or_read)
+        {
             let full_span = self.span_from(stmt_start);
-            let mut iter = shared_pats.into_iter();
-            let first = iter.next().unwrap();
-            for next_pat in iter {
+            for next_pat in pats {
                 self.extra_stmts.push(Stmt {
                     kind: StmtKind::Let {
                         mutable,
@@ -1075,105 +1079,121 @@ impl<'a> Parser<'a> {
             ));
             self.bump();
         }
-        let mut clauses = Vec::new();
-        if let Some((pat, iter)) = self.c_for().or_else(|| self.c_range_for()) {
-            clauses.push((pat, iter, None));
-        }
-        let c_style = !clauses.is_empty();
-        if !c_style {
-            loop {
-                let paren = self.paren_for();
-                let mut pat = self.pattern();
-                if matches!(&pat.kind, PatternKind::Name(_)) && self.at(T::Comma) {
-                    pat = self.bare_tuple_pattern(pat, T::In);
+        let c_clause = self.c_for().or_else(|| self.c_range_for());
+        let c_style = c_clause.is_some();
+        let (first, rest) = match c_clause {
+            Some((pat, iter)) => ((pat, iter, None), Vec::new()),
+            None => {
+                let first = self.for_clause();
+                let mut rest = Vec::new();
+                while self.eat(T::Comma) {
+                    rest.push(self.for_clause());
                 }
-                if !self.for_of() {
-                    self.expect_token(T::In, "`in` after the loop variable");
-                }
-                let iter = if self.at(T::Question) {
-                    self.optional_type_iter()
-                } else {
-                    self.expr()
-                };
-                if paren {
-                    self.eat(T::RParen);
-                }
-                // `for x in xs if cond:` runs the body for the `x` that pass:
-                // the body is an `if`.
-                let has_filter = self.eat(T::If)
-                    || (self.at_ident("where") && {
-                        let span = self.span();
-                        self.error(
-                            msg::LOOP_WHERE
-                                .error(span, &[])
-                                .with_help("use `if` to filter a `for` loop")
-                                .with_fix("replace `where` with `if`", span, "if"),
-                        );
-                        self.bump();
-                        true
-                    });
-                let filter = has_filter.then(|| {
-                    let outer = std::mem::replace(&mut self.for_filter, true);
-                    let cond = (self.start(), self.cond());
-                    self.for_filter = outer;
-                    cond
-                });
-                clauses.push((pat, iter, filter));
-                if !self.eat(T::Comma) {
-                    break;
-                }
+                (first, rest)
             }
-        }
+        };
         let body = match c_style && !matches!(self.peek(), T::Colon | T::LBrace) {
             true => self.block("the `for` header"),
             false => self.colon_block("the `for` header"),
         };
-        let mut out_stmt: Option<StmtKind> = None;
-        for (idx, (pat, iter, filter)) in clauses.into_iter().enumerate().rev() {
-            let mut inner_body = if let Some(prev) = out_stmt.take() {
-                let span = body.span;
-                Block {
-                    stmts: vec![Stmt {
-                        kind: prev,
-                        span,
-                        decorators: Vec::new(),
-                        public: false,
-                    }],
-                    span,
-                }
-            } else {
-                body.clone()
-            };
-            if let Some((start, cond)) = filter {
-                let span = self.span_from(start);
-                let test = Expr {
-                    kind: ExprKind::If {
-                        branches: vec![(cond, inner_body)],
-                        otherwise: None,
-                    },
-                    span,
-                };
-                inner_body = Block {
-                    stmts: vec![Stmt {
-                        kind: StmtKind::Expr(test),
-                        span,
-                        decorators: Vec::new(),
-                        public: false,
-                    }],
-                    span,
-                };
-            }
-            let clause_label = if idx == 0 { label.clone() } else { None };
-            let clause_else = if idx == 0 { self.loop_else() } else { None };
-            out_stmt = Some(StmtKind::For {
-                label: clause_label,
-                pat,
-                iter,
-                body: inner_body,
-                else_body: clause_else,
-            });
+        let mut inner: Option<StmtKind> = None;
+        for clause in rest.into_iter().rev() {
+            inner = Some(self.for_clause_stmt(clause, inner, &body, None, |_| None));
         }
-        out_stmt.unwrap()
+        self.for_clause_stmt(first, inner, &body, label, Self::loop_else)
+    }
+
+    /// One `pat in iter [if cond]` clause of a `for` header.
+    fn for_clause(&mut self) -> ForClause {
+        let paren = self.paren_for();
+        let mut pat = self.pattern();
+        if matches!(&pat.kind, PatternKind::Name(_)) && self.at(T::Comma) {
+            pat = self.bare_tuple_pattern(pat, T::In);
+        }
+        if !self.for_of() {
+            self.expect_token(T::In, "`in` after the loop variable");
+        }
+        let iter = if self.at(T::Question) {
+            self.optional_type_iter()
+        } else {
+            self.expr()
+        };
+        if paren {
+            self.eat(T::RParen);
+        }
+        // `for x in xs if cond:` runs the body for the `x` that pass:
+        // the body is an `if`.
+        let has_filter = self.eat(T::If)
+            || (self.at_ident("where") && {
+                let span = self.span();
+                self.error(
+                    msg::LOOP_WHERE
+                        .error(span, &[])
+                        .with_help("use `if` to filter a `for` loop")
+                        .with_fix("replace `where` with `if`", span, "if"),
+                );
+                self.bump();
+                true
+            });
+        let filter = has_filter.then(|| {
+            let outer = std::mem::replace(&mut self.for_filter, true);
+            let cond = (self.start(), self.cond());
+            self.for_filter = outer;
+            cond
+        });
+        (pat, iter, filter)
+    }
+
+    /// The loop for one clause, around `inner` (the next clause's loop) or,
+    /// for the last clause, the body.
+    fn for_clause_stmt(
+        &mut self,
+        (pat, iter, filter): ForClause,
+        inner: Option<StmtKind>,
+        body: &Block,
+        label: Option<Name>,
+        else_body: impl FnOnce(&mut Self) -> Option<Block>,
+    ) -> StmtKind {
+        let mut inner_body = if let Some(prev) = inner {
+            let span = body.span;
+            Block {
+                stmts: vec![Stmt {
+                    kind: prev,
+                    span,
+                    decorators: Vec::new(),
+                    public: false,
+                }],
+                span,
+            }
+        } else {
+            body.clone()
+        };
+        if let Some((start, cond)) = filter {
+            let span = self.span_from(start);
+            let test = Expr {
+                kind: ExprKind::If {
+                    branches: vec![(cond, inner_body)],
+                    otherwise: None,
+                },
+                span,
+            };
+            inner_body = Block {
+                stmts: vec![Stmt {
+                    kind: StmtKind::Expr(test),
+                    span,
+                    decorators: Vec::new(),
+                    public: false,
+                }],
+                span,
+            };
+        }
+        StmtKind::For {
+            label,
+            pat,
+            iter,
+            body: inner_body,
+            else_body: else_body(self),
+        }
     }
 
     /// Optional trailing `else:` on a `for` / `while` loop (decision 125),
@@ -1443,37 +1463,74 @@ impl<'a> Parser<'a> {
                 and: Box::new(self.more_clauses()),
             };
         }
+        /// `x is P and rest` parses as `if let P = x: rest else: false`;
+        /// as a condition it is `let P = x` with `rest` as its `and`.
         fn unwrap_is_cond(expr: Expr) -> Cond {
-            let is_match = matches!(
-                &expr.kind,
+            let span = expr.span;
+            let (branches, otherwise) = match expr.kind {
                 ExprKind::If {
                     branches,
                     otherwise: Some(otherwise),
-                } if branches.len() == 1
-                    && matches!(branches[0].0, Cond::Let { and: None, .. })
-                    && branches[0].1.stmts.len() == 1
-                    && matches!(branches[0].1.stmts[0].kind, StmtKind::Expr(_))
-                    && otherwise.stmts.len() == 1
-                    && matches!(otherwise.stmts[0].kind, StmtKind::Expr(Expr { kind: ExprKind::Bool(false), .. }))
-            );
-            if is_match {
-                let ExprKind::If { mut branches, .. } = expr.kind else {
-                    unreachable!()
-                };
-                let (Cond::Let { pat, value, .. }, mut then) = branches.pop().unwrap() else {
-                    unreachable!()
-                };
-                let StmtKind::Expr(rhs) = then.stmts.pop().unwrap().kind else {
-                    unreachable!()
-                };
-                let and = if matches!(rhs.kind, ExprKind::Bool(true)) {
-                    None
-                } else {
-                    Some(Box::new(unwrap_is_cond(rhs)))
-                };
-                return Cond::Let { pat, value, and };
+                } if matches!(
+                    &otherwise.stmts[..],
+                    [Stmt {
+                        kind: StmtKind::Expr(Expr {
+                            kind: ExprKind::Bool(false),
+                            ..
+                        }),
+                        ..
+                    }]
+                ) =>
+                {
+                    (branches, otherwise)
+                }
+                kind => return Cond::Expr(Expr { kind, span }),
+            };
+            let not_is = |branches| {
+                Cond::Expr(Expr {
+                    kind: ExprKind::If {
+                        branches,
+                        otherwise: Some(otherwise),
+                    },
+                    span,
+                })
+            };
+            let [(cond, then)] = match <[_; 1]>::try_from(branches) {
+                Ok(one) => one,
+                Err(branches) => return not_is(branches),
+            };
+            match (cond, <[_; 1]>::try_from(then.stmts)) {
+                (
+                    Cond::Let {
+                        pat,
+                        value,
+                        and: None,
+                    },
+                    Ok(
+                        [Stmt {
+                            kind: StmtKind::Expr(rhs),
+                            ..
+                        }],
+                    ),
+                ) => {
+                    let and = if matches!(rhs.kind, ExprKind::Bool(true)) {
+                        None
+                    } else {
+                        Some(Box::new(unwrap_is_cond(rhs)))
+                    };
+                    Cond::Let { pat, value, and }
+                }
+                (cond, stmts) => {
+                    let stmts = stmts.map_or_else(|stmts| stmts, Vec::from);
+                    not_is(vec![(
+                        cond,
+                        Block {
+                            stmts,
+                            span: then.span,
+                        },
+                    )])
+                }
             }
-            Cond::Expr(expr)
         }
         unwrap_is_cond(test)
     }

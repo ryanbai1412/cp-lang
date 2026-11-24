@@ -1064,9 +1064,8 @@ impl<'a> Parser<'a> {
 /// `domain E = [m]` declares the counted domain `0..m` (core 10.2).
 fn counted_domain(def: Expr) -> Expr {
     match def.kind {
-        ExprKind::List(mut items) if items.len() == 1 => {
-            let count = items.pop().unwrap();
-            Expr {
+        ExprKind::List(items) => match <[_; 1]>::try_from(items) {
+            Ok([count]) => Expr {
                 kind: ExprKind::Range {
                     lo: Some(Box::new(Expr {
                         kind: ExprKind::Int(0),
@@ -1077,8 +1076,12 @@ fn counted_domain(def: Expr) -> Expr {
                     step: None,
                 },
                 span: def.span,
-            }
-        }
+            },
+            Err(items) => Expr {
+                kind: ExprKind::List(items),
+                ..def
+            },
+        },
         kind => Expr { kind, ..def },
     }
 }

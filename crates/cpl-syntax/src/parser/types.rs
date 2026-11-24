@@ -307,7 +307,7 @@ impl<'a> Parser<'a> {
                             .collect();
                         TypeKind::Record(fields)
                     } else {
-                        let mut tys: Vec<Type> = items
+                        let tys: Vec<Type> = items
                             .into_iter()
                             .map(|item| match item {
                                 Item::Dom(name, span) => Type {
@@ -318,10 +318,10 @@ impl<'a> Parser<'a> {
                                 Item::Named(_, ty) => ty,
                             })
                             .collect();
-                        if tys.len() == 1 {
-                            return tys.pop().unwrap();
+                        match <[_; 1]>::try_from(tys) {
+                            Ok([one]) => return one,
+                            Err(tys) => TypeKind::Tuple(tys),
                         }
-                        TypeKind::Tuple(tys)
                     }
                 } else if self.at(T::Ident) && self.peek_n(1) == T::Colon {
                     let mut fields = Vec::new();
@@ -370,16 +370,17 @@ impl<'a> Parser<'a> {
                         TypeKind::Record(fields)
                     }
                 } else {
-                    let mut items = self.comma_list(T::RParen, "the tuple type", Self::ty);
+                    let items = self.comma_list(T::RParen, "the tuple type", Self::ty);
                     if self.eat(T::Arrow) {
                         TypeKind::Fn {
                             params: items,
                             ret: Box::new(self.ty()),
                         }
-                    } else if items.len() == 1 {
-                        return items.pop().unwrap();
                     } else {
-                        TypeKind::Tuple(items)
+                        match <[_; 1]>::try_from(items) {
+                            Ok([one]) => return one,
+                            Err(items) => TypeKind::Tuple(items),
+                        }
                     }
                 }
             }

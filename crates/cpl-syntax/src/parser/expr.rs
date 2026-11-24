@@ -183,28 +183,25 @@ impl<'a> Parser<'a> {
             let diverges = matches!(rhs.kind, ExprKind::Block(_));
             // The left side is judged by the checker, which knows a step
             // along a domain (`i + 1 ?? I.last`) from a sum.
-            let mixed = [rhs].into_iter().find(|side| {
-                matches!(
-                    side.kind,
-                    ExprKind::Binary {
-                        op: BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem,
-                        ..
-                    }
-                )
-            });
-            if let (Some(side), false) = (mixed, diverges) {
+            let mixed = match &rhs.kind {
+                ExprKind::Binary {
+                    op: op @ (BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem),
+                    lhs: l,
+                    rhs: r,
+                    ..
+                } => Some((rhs, op, l, r)),
+                _ => None,
+            };
+            if let (Some((side, op, l, r)), false) = (mixed, diverges) {
                 let span = side.span;
                 let text = |e: &Expr| {
                     let abs = |p: u32| (p as i64 - self.delta) as usize;
                     self.src[abs(e.span.start)..abs(e.span.end)].to_string()
                 };
-                let help = match &side.kind {
-                    ExprKind::Binary { op, lhs: l, rhs: r, .. } => format!(
-                        "write `({} ?? {}) {} {}` to use whichever is taken, or `{} ?? ({})` for a default that is worked out",
-                        text(lhs), text(l), op.text(), text(r), text(lhs), text(side)
-                    ),
-                    _ => unreachable!("`mixed` is a binary expression"),
-                };
+                let help = format!(
+                    "write `({} ?? {}) {} {}` to use whichever is taken, or `{} ?? ({})` for a default that is worked out",
+                    text(lhs), text(l), op.text(), text(r), text(lhs), text(side)
+                );
                 self.error(
                     msgs::syntax::COALESCE_MIXED
                         .error(span, &[])
@@ -1291,8 +1288,7 @@ impl<'a> Parser<'a> {
                 self.planned(span, &crate::planned::IMPLICIT_MEMBER);
                 ExprKind::Error
             }
-            T::LBrace if self.brace_literal().is_some() => {
-                let brace = self.brace_literal().unwrap();
+            T::LBrace if let Some(brace) = self.brace_literal() => {
                 let (open, at) = (self.span(), self.pos);
                 self.pos = after_group(self.tokens, self.pos);
                 let span = self.span_from(start);
@@ -1453,20 +1449,19 @@ impl<'a> Parser<'a> {
                 self.eat(T::RBracket);
             }
         }
-        if !had_comma
-            && items.len() == 1
+        let fill = !had_comma
             && (matches!(
                 self.peek(),
                 T::Int | T::Float | T::Str | T::Char | T::True | T::False | T::Minus | T::LParen
-            ) || (self.at(T::Ident) && !self.at_ident("where")))
-        {
-            let value = self.expr();
-            return ExprKind::TableFill {
-                domain: Box::new(items.into_iter().next().unwrap()),
-                value: Box::new(value),
-            };
+            ) || (self.at(T::Ident) && !self.at_ident("where")));
+        match <[_; 1]>::try_from(items) {
+            Ok([domain]) if fill => ExprKind::TableFill {
+                domain: Box::new(domain),
+                value: Box::new(self.expr()),
+            },
+            Ok(one) => ExprKind::List(Vec::from(one)),
+            Err(items) => ExprKind::List(items),
         }
-        ExprKind::List(items)
     }
 
     /// `name: value`, `name:` (the variable `name`) or `name: +` (an operator fn).
