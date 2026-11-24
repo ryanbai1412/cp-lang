@@ -556,7 +556,7 @@ pub fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: 
     if rows == 0: return []
     assert cols > 0, "`smawk` needs `cols > 0` when `rows > 0`"
     var at: List<Int> = List.filled(rows, 0)
-    smawk_rec([i for i in 0..rows], [j for j in 0..cols], f, mut at)
+    smawk_rec((0..rows).collect(), (0..cols).collect(), f, mut at)
     [(val: f(i, at[i]), at: at[i]) for i in 0..rows]
 
 /// \(O(1)\) amortized per `add` and per `at_next`, \(O(\log n)\) per `at`.
@@ -1043,7 +1043,7 @@ fn monge_paths_match_the_quadratic_dp():
         for _ in 1..n: p.push(p.last! + rand(0, 9))
         let c = rand(-20, 20)
         fn w(j: Int, i: Int) -> Int = (p[i] - p[j]) * (i - j) + c
-        let got = monge_paths([i for i in 0..n], w)
+        let got = monge_paths((0..n).collect(), w)
         var best = [0]
         for i in 1..n:
             var b = best[0] + w(0, i)

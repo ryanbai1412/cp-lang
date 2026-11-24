@@ -110,7 +110,7 @@ pub struct Mod<P>(pub v: 0..P):
         var pre: List<Mod<P>> = [Mod(1 % P)]
         for x in xs: pre.push(pre.last! * x)
         var out = List.filled(xs.len, Mod(0))
-        var acc = pre[xs.len].inv
+        var acc = pre[xs.len].inv()
         var i = xs.len
         while i > 0:
             i -= 1

@@ -1298,7 +1298,7 @@ pub fn simplex(
         return Some((val: 0.0, x: []))
     let w = n + 2
     var d = List.filled((m + 2) * w, 0.0)
-    var nn = [j for j in 0..n]
+    var nn = (0..n).collect()
     nn.push(-1)
     var bb = [n + i for i in 0..m]
     for i in 0..m:

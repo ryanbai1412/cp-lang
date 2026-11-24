@@ -1,4 +1,5 @@
 //! Number theory on plain `Int`s.
+use std.range.{last_true}
 
 /// The greatest common divisor of `a` and `b`, never negative; `gcd(0, 0) == 0`.
 ///
@@ -10,7 +11,6 @@
 /// example: `gcd(-4, 6) == 2`
 /// example: `gcd(0, -5) == 5`
 /// example: `gcd(0, 0) == 0`
-use std.range.{last_true}
 
 pub fn gcd(a: Int, b: Int) -> Int:
     var (x, y) = (abs(a), abs(b))
@@ -1124,10 +1124,7 @@ pub struct DirichletSum<T: Add + Sub + Mul + Div>:
 pub fn sum_phi(n: Int) -> Int:
     if n <= 0: return 0
     let lim = min(n, du_limit(n))
-    var phi_small = [k for k in 0..=lim]
-    for p in 2..=lim:
-        if phi_small[p] == p:
-            for k in (p..=lim).step(p): phi_small[k] -= phi_small[k] / p
+    let phi_small = Sieve(lim).phi_table()
     var ds = DirichletSum<Int>(
         n,
         phi_small,

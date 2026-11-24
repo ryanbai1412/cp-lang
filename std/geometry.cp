@@ -1318,7 +1318,7 @@ pub fn manhattan_mst<D>(pts: [D]Pt) -> List<(u: D, v: D, w: Int)>:
             xs = ys
             ys = t
         if dir == 2: xs = [-x for x in xs]
-        var order = [i for i in 0..n]
+        var order = (0..n).collect()
         order.sort(by: i => (xs[i], ys[i]))
         var vals = [ys[i] - xs[i] for i in 0..n]
         vals.sort()
@@ -1403,7 +1403,7 @@ pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)>:
     if n < 3: return []
     let area2: I128 = sum(poly[i].cross128(poly[(i + 1) % n]) for i in 0..n)
     assert area2 > 0, "polygon_triangulate: polygon must be counter-clockwise"
-    var rem: List<Int> = [i for i in 0..n]
+    var rem: List<Int> = (0..n).collect()
     var tris: List<(Int, Int, Int)> = []
     while rem.len > 3:
         let m = rem.len
@@ -2869,7 +2869,7 @@ fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
                 k = (walk.at(b, a) + deg - 1) % deg
                 a = b
             raw.push(least_rotation(cyc))
-    var order = [f for f in 0..raw.len]
+    var order = (0..raw.len).collect()
     order.sort(by: f => raw[f])
     var rank = List.filled(raw.len, 0)
     for i in 0..order.len: rank[order[i]] = i
@@ -2972,11 +2972,11 @@ fn sweep_below(
         if ps[u].x < ps[v].x: segs.push((u, v))
         elif ps[v].x < ps[u].x: segs.push((v, u))
     let m = segs.len
-    var by_start = [i for i in 0..m]
+    var by_start = (0..m).collect()
     by_start.sort(by: i => ps[segs[i].0].x)
-    var by_end = [i for i in 0..m]
+    var by_end = (0..m).collect()
     by_end.sort(by: i => ps[segs[i].1].x)
-    var by_x = [i for i in 0..probes.len]
+    var by_x = (0..probes.len).collect()
     by_x.sort(by: i => probes[i].x)
     var live = List.filled(m, false)
     var active = SortedSet<SweepSeg>.new()
@@ -3024,7 +3024,7 @@ pub fn delaunay<D>(pts: [D]Pt) -> List<(D, D, D)>:
 fn delaunay_idx(ps: List<Pt>) -> List<(Int, Int, Int)>:
     with lint(unproven_list_index: allow)
     let n = ps.len
-    var order = [i for i in 0..n]
+    var order = (0..n).collect()
     order.sort(by: i => (ps[i].x, ps[i].y))
     let s = [ps[i] for i in order]
     for i in 1..n: assert s[i] != s[i - 1], "`delaunay` needs distinct points"
@@ -3214,7 +3214,7 @@ fn voronoi_idx(ps: List<Pt>, bound: F64) -> List<List<Vec>>:
             near[u].push(v)
             near[v].push(u)
     if tris.is_empty and n > 1:
-        var order = [i for i in 0..n]
+        var order = (0..n).collect()
         order.sort(by: i => (ps[i].x, ps[i].y))
         for i in 1..n:
             near[order[i - 1]].push(order[i])
@@ -3364,7 +3364,7 @@ fn col3(a: Pt3, b: Pt3, c: Pt3) -> Bool:
 /// example: `convex_hull_3d([Pt3(0, 0, 0), Pt3(1, 0, 0), Pt3(0, 1, 0)]) == []`
 pub fn convex_hull_3d(pts: List<Pt3>) -> List<(Int, Int, Int)>:
     let n = pts.len
-    var order = [i for i in 0..n]
+    var order = (0..n).collect()
     order.sort(by: i => (pts[i].x, pts[i].y, pts[i].z, i))
     var ids: List<Int> = [order[t] for t in 0..n if t == 0 or pts[order[t]] != pts[order[t - 1]]]
     ids.sort()
@@ -3413,7 +3413,7 @@ fn hull3_facets(pts: List<Pt3>, faces: List<(Int, Int, Int)>) -> List<(Int, Int,
     for k in 0..m:
         let (a, b, c) = faces[k]
         for (u, v) in [(a, b), (b, c), (c, a)]: by_edge[u].push((v:, f: k))
-    var up = [k for k in 0..m]
+    var up = (0..m).collect()
     fn find(mut up: List<Int>, x: Int) -> Int:
         var r = x
         while up[r] != r: r = up[r]
@@ -4382,7 +4382,7 @@ fn planar_faces_cover_each_side_once_and_satisfy_euler():
             want.push((v, u))
         want.sort()
         assert sides == want
-        var parent = [i for i in 0..k * k]
+        var parent = (0..k * k).collect()
         fn root(p: List<Int>, x: Int) -> Int = if p[x] == x: x else: root(p, p[x])
         for (u, v) in edges: parent[root(parent, u)] = root(parent, v)
         var used = List.filled(k * k, false)

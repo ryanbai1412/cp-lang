@@ -2490,7 +2490,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
     var ans: [E]?Int = None
     if m == 0: return ans
 
-    var par = [i for i in 0..n]
+    var par = (0..n).collect()
     var sz = [1 for _ in 0..n]
     var hist_u = List<Int>()
     var hist_v = List<Int>()
@@ -2977,10 +2977,10 @@ pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V:
         for v in out[u]:
             let j = dfn[v]
             if j != -1: preds[j].push(i)
-    var sdom = [i for i in 0..m]
+    var sdom = (0..m).collect()
     var idom = [0 for _ in 0..m]
-    var dsu = [i for i in 0..m]
-    var best = [i for i in 0..m]
+    var dsu = (0..m).collect()
+    var best = (0..m).collect()
     var bucket = [List<Int>() for _ in 0..m]
     var u_idx = m - 1
     while u_idx >= 1:
@@ -3062,7 +3062,7 @@ fn clique_rec<V: Ord>(
         return
     if r.len + p.count < best.len: return
     let px = p.bitor(x)
-    var pivot = px.first!
+    var pivot = px.first()!
     for u in px.each():
         if p.bitand(adj[u]).count > p.bitand(adj[pivot]).count: pivot = u
     var pp = p.bitand(adj[pivot].complement())
@@ -3335,7 +3335,7 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
         hist_v_of.push(cur_v.clone())
         hist_orig_e.push(cur_orig.clone())
         if cnt == 0:
-            hist_id.push([i for i in 0..cur_n])
+            hist_id.push((0..cur_n).collect())
             hist_prev_idx.push(List<Int>())
             break
         for i in 0..cur_n:
@@ -3635,9 +3635,9 @@ pub struct IncrementalBridges<V>:
         IncrementalBridges<V>(
             bridges: 0,
             _par: [-1 for _ in 0..n],
-            _cc: [i for i in 0..n],
+            _cc: (0..n).collect(),
             _cc_sz: [1 for _ in 0..n],
-            _ecc: [i for i in 0..n],
+            _ecc: (0..n).collect(),
             _vis: [0 for _ in 0..n],
             _iter: 0,
         )
