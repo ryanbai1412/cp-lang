@@ -541,6 +541,11 @@ class BoundsTest(unittest.TestCase):
                                  "    Ask(s: Str, k: 1..=50)\n    Stop\nlet ops = read<[q]Op>()\n")
         self.assertEqual(got, {"ops.u": ("1", "n"), "ops.v": ("1", "n"), "ops.k": ("1", "50")})
 
+    def test_a_struct_with_methods_is_read_by_its_fields(self):
+        got = corpus.port_ranges("struct Coupon(p: 1..=1e9, t: 1..=4):\n    @get fn key(self) -> Int = p * t\n"
+                                 "let coupons: [0..n]Coupon = read()\n")
+        self.assertEqual(got, {"coupons.p": ("1", "1e9"), "coupons.t": ("1", "4")})
+
     def test_a_read_inside_an_expression_or_a_for_is_checked(self):
         got = corpus.port_ranges("let xs: List<P> = read<[c](x: 1..=n, y: 1..=m)>().sorted()\n"
                                  "for a in read<[0..m]1..=n>():\n    print(a)\nlet z = unread<1..=3>()\n")

@@ -444,7 +444,7 @@ def header_fields(text):
 
 READ_LINE = re.compile(r"^\s*(?:let|var) (?:(.+?): (.+) = read\(\)|([^:=]+?) = read<(.+)>\(\))\s*$")
 DOMAIN_LINE = re.compile(r"^(?:domain|type) (\w+) = (.+?)\s*$")
-STRUCT_LINE = re.compile(r"^struct (\w+)(\(.*\))\s*$")
+STRUCT_LINE = re.compile(r"^struct (\w+)(\(.*\)):?\s*$")
 ENUM_LINE = re.compile(r"^enum (\w+):$")
 ENUM_VARIANT = re.compile(r"^(?:@\w+(?:\([^)]*\))?\s+)*\w+(\(.*\))$")
 READ_RANGE = re.compile(r"^(-?[\w.]+(?:\s*[-+*/^]\s*[\w.]+)*)\s*\.\.(=?)\s*(.+)$")
