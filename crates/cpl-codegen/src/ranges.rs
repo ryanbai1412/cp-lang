@@ -1041,6 +1041,11 @@ impl<'p> Facts<'p> {
                 Some(i64::from(u32::MAX))
             }
             ExprKind::Cast(_, inner) => self.upper_bound(fn_id, inner, depth + 1),
+            // The power of two at or above the argument's bound.
+            ExprKind::Intrinsic(cpl_ir::Prim::BitCeil, a) if a.len() == 1 => {
+                let hi = u64::try_from(self.upper_bound(fn_id, &a[0], depth + 1)?.max(1)).ok()?;
+                i64::try_from(hi.checked_next_power_of_two()?).ok()
+            }
             ExprKind::Call(id, _) => (self.returned(*id)?.iter())
                 .map(|r| self.upper_bound(Some(*id), r, depth + 2))
                 .try_fold(i64::MIN, |hi, r| Some(hi.max(r?))),
@@ -1087,6 +1092,16 @@ impl<'p> Facts<'p> {
     /// steps `i` by one: a length, a domain size, a bounded value, or
     /// less than one of those.
     /// True when `e` is `>= 0` and at most `u32::MAX`.
+    /// Whether `e` is proven inside `lo..=hi`.
+    pub fn proves_within(&self, fn_id: Option<usize>, e: &Expr, lo: i64, hi: i64) -> bool {
+        let lo_ok = match self.sign(fn_id, e) {
+            Sign::Positive => lo <= 1,
+            Sign::NonNeg => lo <= 0,
+            Sign::Unknown => false,
+        };
+        lo_ok && self.upper_bound(fn_id, e, 0).is_some_and(|h| h <= hi)
+    }
+
     pub fn fits_u32(&self, fn_id: Option<usize>, e: &Expr) -> bool {
         self.sign(fn_id, e) != Sign::Unknown
             && self
@@ -1449,6 +1464,7 @@ impl<'p> Facts<'p> {
             },
             ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _) => NonNeg,
             ExprKind::Intrinsic(cpl_ir::Prim::Abs, _) => NonNeg,
+            ExprKind::Intrinsic(cpl_ir::Prim::BitCeil, _) => Positive,
             ExprKind::Builtin(Builtin::WrapAdd | Builtin::WrapMul, a) => {
                 match self.plain_wrap(fn_id, e) {
                     Some(BinOp::Add) => match (of(&a[0]), of(&a[1])) {
