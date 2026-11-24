@@ -336,6 +336,9 @@ Process costing more than 10% of a change is skipped with a trailer
 Process costing more than 10% of a change is skipped with a trailer
 (`handbook/process/handbook-and-rfcs.md`); this counts them.
 
+Process costing more than 10% of a change is skipped with a trailer
+(`handbook/process/handbook-and-rfcs.md`); this counts them.
+
 | Day | Lane | Skipped |
 |---|---|---|
 | 2026-11-24 | tools | 7 |
