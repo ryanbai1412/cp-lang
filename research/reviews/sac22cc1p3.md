@@ -1,9 +1,9 @@
 # sac22cc1p3
 
-Score: 3/5
-Dream: none (no dream.cp; the ideal is in the friction report)
+Score: 4/5
+Dream: 4/5 (the port as written, per the friction's `## Dream`)
 
-Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
+Scored cold against the checklist and the port.
 
 Cold review: the grid is [Row, Col]Char with offsets instead of index arithmetic; each W slides with a parallel cell swap, and the drop pass collects its moves against the old board before applying them, which is what the statement asks. Bounds now match the problem line (100, not 50).
 

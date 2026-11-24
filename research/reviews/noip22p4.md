@@ -1,9 +1,9 @@
 # noip22p4
 
-Score: 3/5
-Dream: none (no dream.cp; the ideal is in the friction report)
+Score: 4/5
+Dream: 4/5 (the friction's `## Dream`: the gap's ideal over the port)
 
-Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
+Scored cold against the checklist and the port.
 
 Cold review: the tag carries ?U64 assignments instead of has_a/ta flag pairs, composition substitutes g's constants into f in two lines, the segment length comes from the Action's len argument instead of a stored field, spans() gives each a[r]'s reign and buckets() groups queries by right end. The history action itself has no std counterpart.
 

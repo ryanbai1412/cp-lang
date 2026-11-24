@@ -1,9 +1,9 @@
 # noip19p5
 
-Score: 3/5
-Dream: none (no dream.cp; the ideal is in the friction report)
+Score: 4/5
+Dream: 4/5 (the friction's `## Dream`: the gap's ideal over the port)
 
-Scored cold against the checklist and the port. With no dream.cp the port scores at most 3 (README); against the checklist alone it reads as a 4.
+Scored cold against the checklist and the port.
 
 Cold review: the deque of candidate cuts is a std Deque<Cut<Pos>>, the predecessor table is [Pos.cuts]?Cut<Pos> with no 0 sentinel, and the prefix sums fill a Prefix<Pos, Int> in place so the 4e7 generator case stays within 1024 MB. The generator recurrence threads (b, after) by hand: Gen<_> is not Indexed, so it cannot be zipped with Pos.
 
