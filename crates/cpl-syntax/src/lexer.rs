@@ -51,6 +51,9 @@ struct Lexer<'a> {
     line_indent: u32,
     /// Lines indented with tabs, reported once per file.
     tab_lines: Vec<Span>,
+    /// Inside C++'s `int main() {`: the body's indent, and where its
+    /// closing `}` line starts and ends.
+    c_main: Option<(u32, usize, usize)>,
 }
 
 pub fn lex(src: &str) -> Lexed {
@@ -64,6 +67,7 @@ pub fn lex(src: &str) -> Lexed {
         layout_blocks: Vec::new(),
         line_indent: 0,
         tab_lines: Vec::new(),
+        c_main: None,
     };
     lx.out.tokens.reserve(src.len() / 3);
     lx.run();
@@ -254,8 +258,18 @@ impl<'a> Lexer<'a> {
             .find('\n')
             .map_or(self.src.len(), |i| self.pos + i);
         let line = self.src[begin..end].trim_end();
-        if begin != self.pos || self.indents.len() > 1 {
+        if let Some((_, close, close_end)) = self.c_main.filter(|m| m.1 == self.pos) {
+            debug_assert_eq!(close, self.pos);
+            self.pos = close_end;
+            self.c_main = None;
+            return true;
+        }
+        let shift = self.c_main.map_or(0, |m| m.0 as usize);
+        if begin + shift != self.pos || self.indents.len() > 1 {
             return false;
+        }
+        if self.c_main_header(begin, end, line) {
+            return true;
         }
         let names = |s: &str| {
             s.split(',').all(|n| {
@@ -270,10 +284,9 @@ impl<'a> Lexer<'a> {
             "cout.tie(",
             "std::cin.tie(",
         ];
-        let io_line = line.ends_with(';')
-            && (line.split(';').map(str::trim).filter(|s| !s.is_empty()))
-                .all(|s| fast_io.iter().any(|p| s.starts_with(p)));
-        if io_line && begin == self.pos {
+        let io_line = (line.split(';').map(str::trim).filter(|s| !s.is_empty()))
+            .all(|s| fast_io.iter().any(|p| s.starts_with(p)));
+        if io_line {
             let span = Span::new(begin as u32, line.len() as u32 + begin as u32);
             let whole = Span::new(begin as u32, (end + 1).min(self.src.len()) as u32);
             self.out.diagnostics.push(
@@ -314,6 +327,68 @@ impl<'a> Lexer<'a> {
             .with_help("remove the line; a std item is brought in with `use std.<module>.{name}`, which `cpl fix` adds")
             .with_fix("remove the line", whole, ""),
         );
+        self.pos = end;
+        true
+    }
+
+    /// C++'s `int main() {` with its body indented and its `}` alone at
+    /// column 0: the body is the program, read one level out.
+    fn c_main_header(&mut self, begin: usize, end: usize, line: &str) -> bool {
+        let head: String = line.trim_end_matches('{').split_whitespace().collect();
+        let mains = [
+            "intmain()",
+            "intmain(void)",
+            "signedmain()",
+            "int32_tmain()",
+        ];
+        if self.c_main.is_some() || !line.ends_with('{') || !mains.contains(&head.as_str()) {
+            return false;
+        }
+        let body = (end + 1).min(self.src.len());
+        let mut starts = Vec::new();
+        let mut at = body;
+        let close = self.src[body..].split_inclusive('\n').find_map(|l| {
+            if l.trim_end() == "}" {
+                return Some(at);
+            }
+            starts.push(at);
+            at += l.len();
+            None
+        });
+        let Some(close) = close else {
+            return false;
+        };
+        let src = self.src;
+        let code = |b: &usize| !src[*b..].trim_start_matches(' ').starts_with(['\n', '\r']);
+        let indent = |b: &usize| src[*b..].bytes().take_while(|&c| c == b' ').count();
+        let lines: Vec<usize> = starts.into_iter().filter(code).collect();
+        let width = lines.iter().map(indent).min().unwrap_or(0);
+        if width == 0 || lines.iter().any(|b| src[b + width..].starts_with('\t')) {
+            return false;
+        }
+        let close_end = close
+            + self.src[close..]
+                .find('\n')
+                .unwrap_or(self.src.len() - close);
+        let span = |from: usize, to: usize| Span::new(from as u32, to as u32);
+        let mut edits = vec![(span(begin, body), String::new())];
+        edits.extend(lines.iter().map(|&b| (span(b, b + width), String::new())));
+        edits.push((
+            span(close, (close_end + 1).min(self.src.len())),
+            String::new(),
+        ));
+        let mut d = Diagnostic::error(
+            codes::REMOVED_SYNTAX,
+            span(begin, begin + line.len()),
+            "CP Lang has no `main`: the file's top-level lines are the program",
+        )
+        .with_help("remove `int main() {` and its `}`, and move the body out one level");
+        d.fixes.push(cpl_diag::Fix {
+            title: "unwrap `main`".into(),
+            edits,
+        });
+        self.out.diagnostics.push(d);
+        self.c_main = Some((width as u32, close, close_end));
         self.pos = end;
         true
     }
@@ -367,7 +442,10 @@ impl<'a> Lexer<'a> {
             self.tab_lines
                 .push(Span::new(start as u32, self.pos as u32));
         }
-        Some(width)
+        match self.c_main {
+            Some((indent, close, _)) if start < close => Some(width.saturating_sub(indent)),
+            _ => Some(width),
+        }
     }
 
     /// Continues a logical line after a trailing binary operator outside
