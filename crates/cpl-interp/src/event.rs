@@ -5,7 +5,9 @@
 
 use crate::trace::{IntWrite, View};
 use cpl_diag::Span;
-use cpl_ir::{Place, Stmt};
+use cpl_ir::Place;
+#[cfg(not(target_family = "wasm"))]
+use cpl_ir::Stmt;
 
 /// One event of a run. A `view` is the run's state when it happened; an
 /// `*Unseen` write comes with no view, for an observer that can take note
@@ -13,9 +15,12 @@ use cpl_ir::{Place, Stmt};
 /// returns true when it did).
 pub(crate) enum Event<'e, 'v> {
     /// A user statement (one of [`cpl_ir::sites::user_stmts`]) starts: the
-    /// step a profiler charges time between.
+    /// step a profiler charges time between. Native only, as the profiler is.
+    #[cfg(not(target_family = "wasm"))]
     Step(&'e Stmt),
     /// The tree-walker ran `stmt`: what deleting it still has to move.
+    /// Native only: `CPL_VM_STATS` is its one reader.
+    #[cfg(not(target_family = "wasm"))]
     Walked(&'e Stmt),
     /// The VM left what `tag` names to the tree-walker, in a loop when `in_loop`.
     /// Native only: `CPL_VM_STATS` is its one reader.
@@ -24,10 +29,11 @@ pub(crate) enum Event<'e, 'v> {
         tag: &'e dyn Fn() -> String,
         in_loop: bool,
     },
-    /// An internal call starts (`true`) or ends; the observer answers true
-    /// when it stops hearing the user's steps itself, false to be taken
-    /// away for the call.
-    Hush(bool),
+    /// An internal call starts; the observer answers true when it stops
+    /// hearing the user's steps itself, false to be taken away for the call.
+    Hush,
+    /// The internal call [`Event::Hush`] started ends.
+    Unhush,
     /// The run is a multitest; its cases come next.
     BeginCases,
     /// The output between two cases.

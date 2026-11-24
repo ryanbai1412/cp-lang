@@ -75,8 +75,8 @@ impl Watch {
     /// Every event but the hot writes [`Observer::on`] takes first.
     fn dispatch(&mut self, event: Event<'_, '_>) -> bool {
         match event {
-            Event::Hush(true) => self.quiet += 1,
-            Event::Hush(false) => self.quiet -= 1,
+            Event::Hush => self.quiet += 1,
+            Event::Unhush => self.quiet -= 1,
             Event::Step(_) => {
                 if let (Some(profiler), 0) = (self.profiler.as_mut(), self.quiet) {
                     profiler.on(event);
@@ -202,12 +202,12 @@ mod tests {
     #[test]
     fn an_internal_call_still_counts_its_fallbacks() {
         let mut watch = watch(None);
-        assert!(watch.on(Event::Hush(true)));
+        assert!(watch.on(Event::Hush));
         watch.on(Event::FellBack {
             tag: &|| "stmt:Expr(Call)".into(),
             in_loop: true,
         });
-        watch.on(Event::Hush(false));
+        watch.on(Event::Unhush);
         watch.on(Event::FellBack {
             tag: &|| "expr:Read".into(),
             in_loop: false,
@@ -221,9 +221,9 @@ mod tests {
         let program = Program::default();
         let mut watch = watch(Some(Profiler::new(&program)));
         assert!(watch.times_steps() && !watch.traces());
-        watch.on(Event::Hush(true));
+        watch.on(Event::Hush);
         assert!(!watch.times_steps());
-        watch.on(Event::Hush(false));
+        watch.on(Event::Unhush);
         assert!(watch.times_steps());
     }
 }

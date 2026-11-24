@@ -87,9 +87,9 @@ impl Observer for Unobserved {
 impl Observer for Tracer {
     fn on(&mut self, event: Event<'_, '_>) -> bool {
         match event {
-            Event::Step(_) | Event::Walked(_) | Event::Hush(_) => return false,
+            Event::Hush | Event::Unhush => return false,
             #[cfg(not(target_family = "wasm"))]
-            Event::FellBack { .. } => return false,
+            Event::Step(_) | Event::Walked(_) | Event::FellBack { .. } => return false,
             Event::BeginCases => self.case = Some(0),
             Event::Divider => self.divider(),
             Event::StartCase(case) => self.start_case(case),
@@ -176,6 +176,9 @@ impl<O: Observer> Interp<'_, '_, O> {
 
     /// A user statement starts (see [`Event::Step`]).
     pub(crate) fn step_event(&mut self, stmt: &Stmt) {
+        #[cfg(target_family = "wasm")]
+        let _ = stmt;
+        #[cfg(not(target_family = "wasm"))]
         if let (true, Some(o)) = (O::ON, self.tracer.as_mut()) {
             o.on(Event::Step(stmt));
         }
@@ -183,6 +186,9 @@ impl<O: Observer> Interp<'_, '_, O> {
 
     /// The tree-walker runs `stmt` (see [`Event::Walked`]).
     pub(crate) fn walked_event(&mut self, stmt: &Stmt) {
+        #[cfg(target_family = "wasm")]
+        let _ = stmt;
+        #[cfg(not(target_family = "wasm"))]
         if let (true, Some(o)) = (O::ON, self.tracer.as_mut()) {
             o.on(Event::Walked(stmt));
             o.on(Event::Step(stmt));
@@ -214,7 +220,7 @@ impl<O: Observer> Interp<'_, '_, O> {
     /// The start of an internal call (see [`Interp::quietly`]): the
     /// observer, when it does not hush itself.
     pub(crate) fn hush(&mut self) -> Option<Box<O>> {
-        match self.tracer.as_mut().map(|o| o.on(Event::Hush(true))) {
+        match self.tracer.as_mut().map(|o| o.on(Event::Hush)) {
             Some(true) => None,
             _ => self.tracer.take(),
         }
@@ -225,7 +231,7 @@ impl<O: Observer> Interp<'_, '_, O> {
         match (taken, self.tracer.as_mut()) {
             (Some(o), _) => self.tracer = Some(o),
             (None, Some(o)) => {
-                o.on(Event::Hush(false));
+                o.on(Event::Unhush);
             }
             (None, None) => {}
         }
