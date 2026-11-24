@@ -1,4 +1,5 @@
 // Source: Codeforces 2261E (What Does the Cow Say?), https://codeforces.com/contest/2261/problem/E
+// limits: 2000 ms, 256 MB
 // Problem: a regular bracket sequence of length n <= 4e5 and k <= n/2. One operation deletes an
 //   adjacent "()" and wraps the rest as "(" + s + ")". Print the most consecutive '(' reachable
 //   with at most k operations. Multitest, sum of n <= 4e5.

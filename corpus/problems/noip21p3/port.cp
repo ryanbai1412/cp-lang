@@ -1,4 +1,5 @@
 // Source: NOIP 2021 T3 (Variance), https://dmoj.ca/problem/noip21p3
+// limits: 1000 ms, 512 MB
 // Problem: a non-decreasing sequence of n <= 1e4 values, 1 <= a[i] <= 600. Any number of times,
 //   replace an inner a[i] by a[i-1] + a[i+1] - a[i]. Print n^2 times the least variance,
 //   which is n * (sum of squares) - (sum)^2.

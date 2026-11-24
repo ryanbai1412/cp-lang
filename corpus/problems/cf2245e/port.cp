@@ -1,4 +1,5 @@
 // Source: Codeforces 2245E (Tom and Jerry), https://codeforces.com/contest/2245/problem/E
+// limits: 2000 ms, 256 MB
 // Problem: a tree on n <= 2e5 vertices. Players alternately pick a simple path that shares no
 //   edge with earlier paths and has an end on the previous path; who cannot move loses. Count
 //   the first paths with which the first player wins. Multitest, sum of n <= 2e5.

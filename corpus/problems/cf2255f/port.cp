@@ -1,5 +1,6 @@
 // Source: Codeforces 2255F (Who Will Witness the End?),
 //   https://codeforces.com/contest/2255/problem/F
+// limits: 2000 ms, 256 MB
 // Problem: n labeled values a[i] mod 998244353, 3 <= n <= 2e5. Over the (n - 1)! circular
 //   orders p (rotations equal, reflections not), sum prod (a[p_i] + a[p_(i+1)]), mod
 //   998244353. Multitest, sum of n <= 2e5.

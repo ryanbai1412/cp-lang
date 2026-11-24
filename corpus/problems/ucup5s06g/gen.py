@@ -1,5 +1,6 @@
 import sys, random
-r = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
+MAX = sys.argv[1] == "--max"  # sums n = 1e5, m = 2e5 in one chain case: answer ~ n^2 / 2
+r = random.Random(0 if MAX else int(sys.argv[1])); S = 10**6 if MAX else int(sys.argv[2])
 # statement: T <= 5e4, 2 <= N <= 1e5, 1 <= M <= min(N(N-1), 2e5), simple digraph (2-cycles allowed),
 # sums of N <= 1e5 and of M <= 2e5
 MAX_N, MAX_M, MAX_T = 100_000, 200_000, 50_000
@@ -25,7 +26,7 @@ if S < 1000:
     for _ in range(5):
         n = r.randint(2, 2 * S + 1); cases.append(case(n, r.randint(1, 3 * S), r.choice(shapes)))
 else:
-    k = r.randrange(5)
+    k = 0 if MAX else r.randrange(5)
     if k == 0: cases = [case(MAX_N, MAX_M, "chain")]
     elif k == 1: cases = [case(MAX_N, MAX_M, "dag")]
     elif k == 2: cases = [case(MAX_N, MAX_M, "mixed")]

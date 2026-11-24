@@ -1,5 +1,6 @@
 // Source: The 5th Universal Cup, Stage 6 (Grand Prix of Hyakumanben), problem G (Source to
 //   Sink), qoj.ac/contest/4617/problem/23675
+// limits: 2000 ms, 1024 MB
 // Problem: a simple directed graph, n <= 1e5 and m <= 2e5 (2-cycles allowed). One operation
 //   picks a vertex of indegree 0 and reverses every edge at it. Print the most operations
 //   possible, or -1 if they can go on forever. Multitest, sums of n <= 1e5 and m <= 2e5.
