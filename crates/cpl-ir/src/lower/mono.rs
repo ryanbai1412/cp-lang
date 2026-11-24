@@ -2234,9 +2234,9 @@ impl<'a> Lowerer<'a> {
                             || (matches!(ty, Ty::Struct(_))
                                 && self.implements(ty, tr_name.text.as_str()))
                     }
-                    // A fn value implements no trait; any other bound, by impl
-                    // or by shape, the checker has verified.
-                    _ => !matches!(ty, Ty::Fn(..)),
+                    // A fn has no order, equality, hash or text; it can be a `Next`.
+                    "Ord" | "Eq" | "Hash" | "Show" => !matches!(ty, Ty::Fn(..)),
+                    _ => true,
                 };
                 if !ok {
                     self.error(

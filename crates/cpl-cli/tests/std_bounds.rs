@@ -1,6 +1,6 @@
 //! Every public std fn whose first parameter is a bounded generic rejects,
 //! with E0606 naming the fn, an argument whose type doesn't meet the bound:
-//! a fn value, which implements none of them, and an optional of a type
+//! a fn value, which has no order, equality, hash or text, and an optional of a type
 //! that does, which must not be unwrapped to fit. A fn taking `self` is
 //! probed in method form too. Probes run through `cpl check`, which lowers
 //! too: method form is checked there, until method lookup by receiver type
