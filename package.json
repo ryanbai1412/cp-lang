@@ -7,6 +7,7 @@
     "web:build": "pnpm --filter cp-lang-web build",
     "web:test": "pnpm --filter cp-lang-web test",
     "vscode:compile": "pnpm --filter cp-lang compile",
-    "vscode:test": "pnpm --filter cp-lang test:unit"
+    "vscode:test": "pnpm --filter cp-lang test:unit",
+    "site:test": "pnpm --filter cp-lang-web site:test"
   }
 }
