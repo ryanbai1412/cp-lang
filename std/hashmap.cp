@@ -531,10 +531,27 @@ fn hash_map_and_set_erase_clear_and_equality():
     hs.clear()
     assert hm.is_empty and hs.is_empty
 
+@test
+fn flat_map_shows_by_key():
+    var m = FlatMap(0)
+    m.set(7, 70)
+    m.set(-2, 5)
+    m.set(3, 30)
+    assert "{m}" == "-2=5, 3=30, 7=70"
+    assert "{FlatMap(0)}" == ""
+
 impl Show for Counter<K, V>:
     fn show(c):
         var out = ""
         for (k, v) in c.items:
             if not out.is_empty: out += ", "
             out += "{k}={v}"
+        out
+
+impl Show for FlatMap<V>:
+    fn show(m):
+        var out = ""
+        for (k, x) in m.items.sorted(by: e => e.0):
+            if not out.is_empty: out += ", "
+            out += "{k}={x}"
         out

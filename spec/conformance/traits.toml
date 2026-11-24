@@ -1900,3 +1900,52 @@ var ar = PArena<DsuNode<V>>()
 print(PersistentDsu<V>.new(mut ar))
 """
 out = "version at node 2"
+
+[case."Show/OnlineHull/show"]
+code = """
+use std.geometry.{OnlineHull, Pt}
+var h = OnlineHull()
+for p in [Pt(0, 4), Pt(4, 0), Pt(0, 0)]: h.add(p)
+print(h.len, yes("{h}" == "{Pt(0, 0)} {Pt(4, 0)} {Pt(0, 4)}"))
+"""
+out = "3 YES"
+
+[case."Show/PointSet/show"]
+code = """
+use std.geometry.{PointSet, Pt}
+var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3)])
+s.remove(1)
+print(s)
+"""
+out = "0 2"
+
+[case."Show/FlatMap/show"]
+code = """
+use std.hashmap.{FlatMap}
+var m = FlatMap(0)
+m.set(7, 70)
+m.set(-2, 5)
+print(m)
+"""
+out = "-2=5, 7=70"
+
+[case."Show/Poly/show"]
+code = """
+use std.poly.{Poly}
+print(Poly<Int>([1, 0, 3]))
+"""
+out = "1 0 3"
+
+[case."Show/Palindromes/show"]
+code = """
+print(manacher("abba"))
+"""
+out = "1/0 1/0 1/2 1/0"
+
+[case."Show/SuffixArray/show"]
+code = """
+use std.strings.{SuffixArray}
+print(SuffixArray.new("banana"))
+"""
+out = "5 3 1 0 4 2"
+

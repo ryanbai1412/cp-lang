@@ -169,6 +169,16 @@ impl Neg for Pt:
 impl Mul<Int> for Pt:
     fn mul(a, k) = Pt(a.x * k, a.y * k)
 
+@test
+fn online_hull_and_point_set_walk_and_show():
+    var h = OnlineHull()
+    for p in [Pt(0, 4), Pt(4, 0), Pt(0, 0), Pt(1, 1)]: h.add(p)
+    assert "{h}" == "{Pt(0, 0)} {Pt(4, 0)} {Pt(0, 4)}"
+    var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3)])
+    assert not s.is_empty and "{s}" == "0 1 2"
+    assert s.drain(0..4, 0..4).sorted() == [0, 2]
+    assert s.each().collect() == [1] and "{s}" == "1"
+
 impl Show for Pt:
     fn show(a) = "{a.x} {a.y}"
 
@@ -2631,6 +2641,24 @@ pub struct PointSet:
     /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5)]); let _ = s.remove(0); s.len == 1`
     @get pub fn len(self) -> Int = live
 
+    /// Whether every point has been removed or drained.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var s = PointSet.of([Pt(1, 1)]); let e = s.is_empty; s.remove(0); s.is_empty and not e`
+    @get pub fn is_empty(self) -> Bool = live == 0
+
+    /// \(O(n)\). Visit the index of every point still in the set.
+    ///
+    /// cost: \(O(n)\), `n` the number of points built
+    /// empty: `PointSet.of([]).each().collect() == []`
+    /// order: increasing index
+    /// traps: never
+    /// example: `var s = PointSet.of([Pt(1, 1), Pt(2, 5), Pt(3, 3)]); s.remove(1); s.each().collect() == [0, 2]`
+    pub fn each(self) -> yields Int:
+        for i in 0..alive.len:
+            if alive[i]: yield i
+
     /// Whether point `i` is still in the set.
     ///
     /// cost: \(O(1)\)
@@ -4461,3 +4489,19 @@ fn least_rotation_starts_at_the_smallest_rotation():
     assert least_rotation([1, 2, 1, 1, 2, 1]) == [1, 1, 2, 1, 1, 2]
     assert least_rotation([2, 2, 2]) == [2, 2, 2]
     assert least_rotation([7]) == [7]
+
+impl Show for OnlineHull:
+    fn show(v):
+        var out = ""
+        for p in v.iter():
+            if not out.is_empty: out += " "
+            out += "{p}"
+        out
+
+impl Show for PointSet:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

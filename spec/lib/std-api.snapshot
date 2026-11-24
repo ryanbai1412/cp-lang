@@ -577,6 +577,8 @@ std/geometry.cp: Plane3.project(self, p: Vec3) -> Vec3
 std/geometry.cp: Plane3.through(a: Vec3, b: Vec3, c: Vec3, eps: F64 = 1e-9) -> ?Plane3
 std/geometry.cp: PointSet.contains(self, i: Int) -> Bool
 std/geometry.cp: PointSet.drain(mut self, x: Range<Int>, y: Range<Int>) -> List<Int>
+std/geometry.cp: PointSet.each(self) -> yields Int
+std/geometry.cp: PointSet.is_empty(self) -> Bool
 std/geometry.cp: PointSet.len(self) -> Int
 std/geometry.cp: PointSet.of(pts: List<Pt>) -> PointSet
 std/geometry.cp: PointSet.remove(mut self, i: Int) -> Bool
@@ -1028,7 +1030,7 @@ std/lazy.cp: LazyTreap.insert(mut self, x: T)
 std/lazy.cp: LazyTreap.insert_at(mut self, pos: Int, x: T)
 std/lazy.cp: LazyTreap.is_empty(self) -> Bool
 std/lazy.cp: LazyTreap.len(self) -> Int
-std/lazy.cp: LazyTreap.new(apply: (T, Int, F) -> T, compose: (F, F) -> F, split: (F, Int) -> (F, F) = (f, _) => (f, f), before: (T, T) -> Bool = (_, _) => false) -> LazyTreap<T, F>
+std/lazy.cp: LazyTreap.new(apply: (T, Int, F) -> T, compose: (F, F) -> F, split: (F, Int) -> (F, F) = (f, _) => (f, f), before: (T, T) -> Bool = (_, _) => false, mirror: (F, Int) -> F = (f, _) => f) -> LazyTreap<T, F>
 std/lazy.cp: LazyTreap.push(mut self, x: T)
 std/lazy.cp: LazyTreap.reserve(mut self, n: Int)
 std/lazy.cp: LazyTreap.reverse(mut self, r: Range<Int>)
@@ -1328,7 +1330,9 @@ std/poly.cp: Poly.exp(self, n: Int) -> Poly<T>
 std/poly.cp: Poly.from_int(v: Int) -> Poly<T>
 std/poly.cp: Poly.integral(self) -> Poly<T>
 std/poly.cp: Poly.inv(self, n: Int) -> Poly<T>
+std/poly.cp: Poly.is_empty(self) -> Bool
 std/poly.cp: Poly.is_zero(self) -> Bool
+std/poly.cp: Poly.items(self) -> yields (Int, T)
 std/poly.cp: Poly.len(self) -> Int
 std/poly.cp: Poly.log(self, n: Int) -> Poly<T>
 std/poly.cp: Poly.new(c: List<T>) -> Poly<T>
@@ -1835,6 +1839,7 @@ std/strings.cp: KmpAutomaton.step(self, state: Int, a: A) -> Int
 std/strings.cp: Palindromes.count(self) -> Int
 std/strings.cp: Palindromes.is_empty(self) -> Bool
 std/strings.cp: Palindromes.is_palindrome<R>(self, r: R) -> Bool
+std/strings.cp: Palindromes.items(self) -> yields (Int, (odd: Int, even: Int))
 std/strings.cp: Palindromes.len(self) -> Int
 std/strings.cp: Palindromes.longest(self) -> (l: Int, r: Int)
 std/strings.cp: Palindromes.longest_at<K>(self, i: K) -> Int
@@ -1882,6 +1887,7 @@ std/strings.cp: RollingHash61.push<T: Hashable>(mut self, x: T)
 std/strings.cp: SuffixArray.compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int
 std/strings.cp: SuffixArray.count<P: Indexed<J, T>, J>(self, pat: P) -> Int
 std/strings.cp: SuffixArray.distinct(self) -> Int
+std/strings.cp: SuffixArray.each(self) -> yields Int
 std/strings.cp: SuffixArray.find_all<P: Indexed<J, T>, J>(self, pat: P) -> yields Int
 std/strings.cp: SuffixArray.is_empty(self) -> Bool
 std/strings.cp: SuffixArray.kth_distinct(self, k: Int) -> ?Range<Int>

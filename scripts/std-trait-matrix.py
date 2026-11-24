@@ -33,7 +33,7 @@ def matrix():
             missing = []
             if not re.search(rf"^impl(?:<[^>]*>)? Show for {name}\b", text, re.M):
                 missing.append("Show")
-            if not re.search(r"pub fn (?:each|iter|items)\(self\)[^\n]*yields", body):
+            if not re.search(r"pub fn (?:each|iter|items)(?:<[^>]*>)?\(self\)[^\n]*yields", body):
                 missing.append("walk")
             if not re.search(r"pub fn is_empty\(self\)", body):
                 missing.append("is_empty")

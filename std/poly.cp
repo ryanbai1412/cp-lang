@@ -766,6 +766,24 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// example: `Poly<Int>([1, 0]).len == 2`
     @get pub fn len(self) -> Int = c.len
 
+    /// Whether no coefficient is stored; `Poly.new([])` is the zero polynomial.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `Poly<Int>([]).is_empty and not Poly<Int>([0]).is_empty`
+    @get pub fn is_empty(self) -> Bool = c.len == 0
+
+    /// \(O(\mathit{len})\). Visit `(i, c[i])` for every stored coefficient, trailing zeros
+    /// included.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `Poly<Int>([]).items.collect() == []`
+    /// order: increasing degree
+    /// traps: never
+    /// example: `Poly<Int>([1, 0, 3]).items.collect() == [(0, 1), (1, 0), (2, 3)]`
+    @get pub fn items(self) -> yields (Int, T):
+        for i in 0..c.len: yield (i, c[i])
+
     /// The degree: the highest index with a nonzero coefficient, `None` for the zero polynomial.
     /// Stored trailing zeros do not count.
     ///
@@ -1577,3 +1595,17 @@ fn poly_pow_matches_repeated_products():
         brute = (brute * a).truncated(n)
     let q = (a.pow(-2, n) * a.pow(2, n)).truncated(n)
     for i in 0..n: assert q.at(i) == (if i == 0: Z(1) else: Z(0))
+
+@test
+fn poly_walks_coefficients_and_shows():
+    let p = Poly<Int>([1, 0, 3])
+    assert p.items.collect() == [(0, 1), (1, 0), (2, 3)] and "{p}" == "1 0 3"
+    assert Poly<Int>([]).is_empty and "{Poly<Int>([])}" == ""
+
+impl Show for Poly<T>:
+    fn show(v):
+        var out = ""
+        for (_, x) in v.items:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

@@ -762,6 +762,17 @@ pub struct Palindromes(pub odd: List<Int>, even: List<Int>, first: Int = 0):
     /// example: `manacher("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = odd.is_empty
 
+    /// \(O(\mathit{len})\). Visit each position `i` (from 0) with `odd[i]` and `even[i]`: the
+    /// number of palindromes centred on element `i` and between elements `i - 1` and `i`.
+    ///
+    /// cost: \(O(\mathit{len})\)
+    /// empty: `manacher("").items.collect() == []`
+    /// order: increasing position
+    /// traps: never
+    /// example: `manacher("abba").items.collect() == [(0, (odd: 1, even: 0)), (1, (odd: 1, even: 0)), (2, (odd: 1, even: 2)), (3, (odd: 1, even: 0))]`
+    @get pub fn items(self) -> yields (Int, (odd: Int, even: Int)):
+        for i in 0..odd.len: yield (i, (odd: odd[i], even: even[i]))
+
     /// The length of the longest odd-length palindrome centred on the element at key `i` of the
     /// sequence the radii were computed for, so a slice is asked in its own keys (R04b.5.6).
     ///
@@ -1095,6 +1106,16 @@ pub struct SuffixArray<T: Ord>:
     /// traps: never
     /// example: `SuffixArray("").is_empty == true`
     @get pub fn is_empty(self) -> Bool = sa.is_empty
+
+    /// \(O(n)\). Visit the suffix starts in rank order: `sa[0]`, `sa[1]`, ...
+    ///
+    /// cost: \(O(n)\)
+    /// empty: `SuffixArray.new("").each().collect() == []`
+    /// order: increasing rank, so the suffixes in sorted order
+    /// traps: never
+    /// example: `SuffixArray.new("banana").each().collect() == [5, 3, 1, 0, 4, 2]`
+    pub fn each(self) -> yields Int:
+        for i in sa: yield i
 
     /// The length of the longest common prefix of the suffixes starting at `i` and `j`. The
     /// empty suffix at `n` is allowed, and `lcp_between(i, i) == n - i`.
@@ -3855,3 +3876,26 @@ fn dynamic_aho_corasick_matches_brute_after_adds_and_removes():
 /// example: `_gen_str("ab", 3, 3).len == 3`
 pub fn _gen_str(alphabet: Str, lo: Int, hi: Int) -> Str =
     Str([alphabet[rand(0, alphabet.len - 1)] for _ in 0..rand(lo, hi)])
+
+@test
+fn palindromes_and_suffix_array_walk_and_show():
+    let p = manacher("abba")
+    assert [r.odd for (_, r) in p.items] == p.odd and "{p}" == "1/0 1/0 1/2 1/0"
+    let sa = SuffixArray.new("banana")
+    assert sa.each().collect() == sa.sa and "{sa}" == "5 3 1 0 4 2"
+
+impl Show for Palindromes:
+    fn show(v):
+        var out = ""
+        for (_, r) in v.items:
+            if not out.is_empty: out += " "
+            out += "{r.odd}/{r.even}"
+        out
+
+impl Show for SuffixArray<T>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
