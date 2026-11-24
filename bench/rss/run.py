@@ -27,8 +27,16 @@ def ints(n):
     return f"{n}\n{body}\n"
 
 
+def gen(problem):
+    """corpus/problems/`problem`/gen.py --max's input."""
+    script = os.path.join(ROOT, "corpus", "problems", problem, "gen.py")
+    return subprocess.run([sys.executable, script, "--max"], check=True,
+                          capture_output=True, text=True).stdout
+
+
 CASES = {
     "read_ints": lambda: ints(8_000_000),  # about 76 MB
+    "read_tree": lambda: gen("aac5p3"),  # about 6.4 MB
     "print_range": lambda: "10000000\n",
     "print_gen": lambda: "10000000\n",
     "print_list_sep": lambda: "10000000\n",
