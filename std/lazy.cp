@@ -406,7 +406,8 @@ struct TreapNode<T, F>:
 /// `compose(new_f, old_f)` applies `old_f` first then `new_f`;
 /// `mirror(f, n)` is `f` re-ranked for a run of `n` elements read backwards (default `f`).
 /// `insert`, `insert_at`, `push`, `apply_range`, `get` are \(O(\log n)\) expected; `apply_all` is \(O(1)\);
-/// `take(k)` is \(O(k + \log n)\); `to_list` is \(O(n)\). Memory is \(O(n)\) in a contiguous node arena;
+/// `take(k)` is \(O(k + \log n)\); `to_list` is \(O(n)\); `split_at` and `splice_back` copy the smaller side.
+/// Memory is \(O(n)\) in a contiguous node arena, compacted once dropped nodes outnumber the live ones;
 /// sizes and priorities are `0..2^31`, so a treap holds fewer than 2^31 elements.
 pub struct LazyTreap<T, F>(
     apply_fn: (T, Int, F) -> T,
@@ -675,7 +676,10 @@ pub struct LazyTreap<T, F>(
         let (a, bc) = self.split_pos(root, pos)
         let (b, c) = self.split_pos(bc, 1)
         root = self.merge(a, c)
-        unchecked: return nodes[b!].val
+        unchecked:
+            let v = nodes[b!].val
+            self.tidy()
+            return v
 
     /// Remove the elements at positions `r`; later elements move down by `r.len`.
     ///
@@ -690,21 +694,40 @@ pub struct LazyTreap<T, F>(
         let (a, bc) = self.split_pos(root, lo)
         let (_, c) = self.split_pos(bc, hi - lo)
         root = self.merge(a, c)
+        self.tidy()
 
     /// Split off the elements at positions `k..len` into a new treap with the same `apply`,
     /// `compose`, `split` and `before`, and return it; `self` keeps positions `0..k`. Pending
-    /// tags travel with the elements they cover.
+    /// tags travel with the elements they cover. The larger side keeps the node arena; the smaller
+    /// side's nodes are copied to a fresh one.
     ///
-    /// cost: \(O(\log n)\) expected
+    /// cost: \(O(\min(k, n - k) + \log n)\) expected amortized
     /// traps: when `k < 0` or `k > len`
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); t.push(2); t.push(3); let u = t.split_at(1); t.to_list() == [1] and u.to_list() == [2, 3]`
     pub fn split_at(mut self, k: Int) -> LazyTreap<T, F>:
         assert 0 <= k <= self.len, "`split_at` position out of range"
         let (a, b) = self.split_pos(root, k)
-        root = a
         var out = LazyTreap(apply_fn, split_fn, compose_fn, before_fn, mirror_fn, [], None, Rng(48))
-        out.root = out.copy_from(self, b)
+        if self.sz_of(b) <= self.sz_of(a):
+            root = a
+            out.root = out.copy_from(self, b)
+        else:
+            swap(mut nodes, mut out.nodes)
+            out.root = b
+            root = self.copy_from(out, a)
+        self.tidy()
+        out.tidy()
         out
+
+    // Copy the live nodes to a fresh arena once dropped ones outnumber them: each drop paid for
+    // the copy of one node, so memory stays O(len) at O(1) amortized per drop.
+    fn tidy(mut self):
+        if nodes.len <= 2 * self.len + 16: return
+        var fresh = LazyTreap(apply_fn, split_fn, compose_fn, before_fn, mirror_fn, [], None, Rng(48))
+        fresh.nodes.reserve(self.len)
+        fresh.root = fresh.copy_from(self, root)
+        swap(mut nodes, mut fresh.nodes)
+        root = fresh.root
 
     fn copy_from(mut self, src: LazyTreap<T, F>, u: ?Int) -> ?Int:
         let i = u ?? return None
@@ -715,18 +738,25 @@ pub struct LazyTreap<T, F>(
         nodes.len - 1
 
     /// Move every element of `other` onto the end of `self`, in order, leaving `other` empty. Both
-    /// treaps must use the same functions; `self`'s are kept.
+    /// treaps must use the same functions; `self`'s are kept. The larger side's node arena is kept;
+    /// the smaller side's nodes are copied into it.
     ///
-    /// cost: \(O(\log n)\) expected
+    /// cost: \(O(\min(n, m) + \log(n + m))\) expected amortized, `m` the length of `other`
     /// empty: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); t.splice_back(mut u); t.to_list() == [1]`
     /// traps: when the total reaches `2^31` elements
     /// example: `var t = LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f); t.push(1); var u = t.split_at(1); u.push(5); t.splice_back(mut u); t.to_list() == [1, 5] and u.is_empty`
     pub fn splice_back(mut self, mut other: LazyTreap<T, F>):
         assert self.len + other.len < TWO_31, "a LazyTreap holds fewer than `2^31` elements"
-        let moved = self.copy_from(other, other.root)
-        root = self.merge(root, moved)
+        if other.len <= self.len:
+            let moved = self.copy_from(other, other.root)
+            root = self.merge(root, moved)
+        else:
+            swap(mut nodes, mut other.nodes)
+            let moved = self.copy_from(other, root)
+            root = self.merge(moved, other.root)
         other.root = None
         other.nodes = []
+        self.tidy()
 
     /// The element at 0-based position `pos` with every pending tag on its path applied. Tags are
     /// pushed down along the path, which is why it takes `mut self`; the sequence does not change.
@@ -1266,6 +1296,37 @@ pub struct SeqFold<T, F = Int>(m: Monoid<T>, act: ?Action<T, F>):
 
 impl Show for SeqFold<T, F>:
     fn show(s) = "{s.len} elements"
+
+@test
+fn lazy_treap_split_splice_and_erase_match_brute_and_keep_the_arena_small():
+    let mk = () => LazyTreap<Int, Int>(apply: (v, _, f) => v + f, compose: (nf, of) => nf + of)
+    var t = mk()
+    var ref: List<Int> = []
+    for i in 0..40:
+        t.push(i)
+        ref.push(i)
+    for _ in 0..120:
+        let k = rand(0, t.len)
+        var u = t.split_at(k)
+        assert t.to_list() == ref[0..k] and u.to_list() == ref[k..]
+        if rand(0, 1) == 0:
+            u.apply_all(1)
+            for j in k..ref.len: ref[j] += 1
+        if u.len > 0:
+            let at = rand(0, u.len - 1)
+            assert u.erase_at(at) == ref.remove(k + at)
+        t.splice_back(mut u)
+        assert u.is_empty and t.to_list() == ref
+        let lo = rand(0, t.len)
+        let hi = rand(lo, min(t.len, lo + 3))
+        t.erase_range(lo..hi)
+        for _ in lo..hi: ref.remove(lo)
+        for _ in 0..4:
+            let x = rand(-9, 9)
+            t.push(x)
+            ref.push(x)
+        assert t.to_list() == ref
+        assert t.nodes.len <= 2 * t.len + 17
 
 @test
 fn lazy_treap_slope_trick_and_implicit_ops_match_brute():

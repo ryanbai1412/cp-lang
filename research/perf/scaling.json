@@ -5824,6 +5824,318 @@
    "n": 2048,
    "ok": true
   },
+  "bench/scaling/lazy.cp::lazy.Flip.of": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.Flip.of",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.Flip.op": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.Flip.op",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.apply": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.apply",
+   "measured": 1.18,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.apply_all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyTreap.apply_all",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.apply_range": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.apply_range",
+   "measured": 1.29,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.erase_at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.erase_at",
+   "measured": 1.29,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.erase_range": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.erase_range",
+   "measured": 1.16,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.get": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.get",
+   "measured": 1.32,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.insert": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.insert",
+   "measured": 1.6,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.insert_at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.insert_at",
+   "measured": 1.18,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyTreap.is_empty",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyTreap.len",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyTreap.new",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.push": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.push",
+   "measured": 1.22,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.reserve": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "lazy.LazyTreap.reserve",
+   "measured": 6.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.reverse": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.reverse",
+   "measured": 1.3,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.splice_back": {
+   "cost": "\\min(n, m) + \\log(n + m)",
+   "documented": 1.13,
+   "fn": "lazy.LazyTreap.splice_back",
+   "measured": 1.32,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.split_at": {
+   "cost": "\\min(k, n - k) + \\log n",
+   "documented": 1.11,
+   "fn": "lazy.LazyTreap.split_at",
+   "measured": 1.3,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.take": {
+   "cost": "k + \\log n",
+   "documented": 1.13,
+   "fn": "lazy.LazyTreap.take",
+   "measured": 1.32,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyTreap.to_list": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "lazy.LazyTreap.to_list",
+   "measured": 5.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.Rope.apply": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.apply",
+   "measured": 1.45,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.Rope.get": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.get",
+   "measured": 1.43,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.Rope.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "lazy.Rope.new",
+   "measured": 4.47,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.Rope.query_path": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.query_path",
+   "measured": 1.44,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.Rope.reverse": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.reverse",
+   "measured": 1.61,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.Rope.set": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.set",
+   "measured": 1.43,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.Rope.to_array": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "lazy.Rope.to_array",
+   "measured": 5.54,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.apply": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.apply",
+   "measured": 1.28,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.fold": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.fold",
+   "measured": 1.58,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.get": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.get",
+   "measured": 1.41,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.insert_at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.insert_at",
+   "measured": 1.7,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.SeqFold.is_empty",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.items": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "lazy.SeqFold.items",
+   "measured": 1.16,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.SeqFold.len",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.new": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "lazy.SeqFold.new",
+   "measured": 4.92,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.push": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.push",
+   "measured": 1.22,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.reverse": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.reverse",
+   "measured": 1.45,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.SeqFold.total": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.SeqFold.total",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.flip_action": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.flip_action",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/link_cut.cp::tree.LazyLinkCut.access": {
    "cost": "\\log n",
    "documented": 1.18,
@@ -13643,45 +13955,6 @@
   "interval.SparseIntervalSet.next_gap",
   "interval.SparseIntervalSet.remove",
   "interval.SparseIntervalSet.runs",
-  "lazy.Flip.of",
-  "lazy.Flip.op",
-  "lazy.LazyTreap.apply",
-  "lazy.LazyTreap.apply_all",
-  "lazy.LazyTreap.apply_range",
-  "lazy.LazyTreap.erase_at",
-  "lazy.LazyTreap.erase_range",
-  "lazy.LazyTreap.get",
-  "lazy.LazyTreap.insert",
-  "lazy.LazyTreap.insert_at",
-  "lazy.LazyTreap.is_empty",
-  "lazy.LazyTreap.len",
-  "lazy.LazyTreap.new",
-  "lazy.LazyTreap.push",
-  "lazy.LazyTreap.reserve",
-  "lazy.LazyTreap.reverse",
-  "lazy.LazyTreap.splice_back",
-  "lazy.LazyTreap.split_at",
-  "lazy.LazyTreap.take",
-  "lazy.LazyTreap.to_list",
-  "lazy.Rope.apply",
-  "lazy.Rope.get",
-  "lazy.Rope.new",
-  "lazy.Rope.query_path",
-  "lazy.Rope.reverse",
-  "lazy.Rope.set",
-  "lazy.Rope.to_array",
-  "lazy.SeqFold.apply",
-  "lazy.SeqFold.fold",
-  "lazy.SeqFold.get",
-  "lazy.SeqFold.insert_at",
-  "lazy.SeqFold.is_empty",
-  "lazy.SeqFold.items",
-  "lazy.SeqFold.len",
-  "lazy.SeqFold.new",
-  "lazy.SeqFold.push",
-  "lazy.SeqFold.reverse",
-  "lazy.SeqFold.total",
-  "lazy.flip_action",
   "marks.Arena.items",
   "marks.Interner.each",
   "marks.MarkMap.items",
