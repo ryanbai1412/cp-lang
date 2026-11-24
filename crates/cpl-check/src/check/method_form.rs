@@ -585,7 +585,13 @@ impl<'a> Checker<'a> {
         }
         // A built-in container's own member, `xs.sorted(..)` on a `List`, is
         // the catalog's to check; a library fn's container result is modelled.
-        if plain_value(&ty) || self.declared_value(&ty) || (!own_member && self.modelled(&ty)) {
+        // A held `xs.windows(k)` is indexed by lowering's pieces (R07.7.9),
+        // more than the stream its fn yields.
+        let pieces = self.pieces_source(call).is_some();
+        if plain_value(&ty)
+            || self.declared_value(&ty)
+            || (!own_member && !pieces && self.modelled(&ty))
+        {
             // The probe's facts went with it, and the caller checks nothing
             // more: check the call for real so its arguments keep their
             // hovers, refs and warnings (a lambda's body).
@@ -784,8 +790,10 @@ impl Checker<'_> {
         let Ty::Named { name, args } = ty else {
             return false;
         };
-        let catalogued =
-            (crate::builtins::BUILTIN_TYPES.iter()).any(|b| b.name == name && b.members.is_some());
+        // A `yields` fn's stream is a `Seq` of its element (R07.3.1).
+        let catalogued = name == "Gen"
+            || (crate::builtins::BUILTIN_TYPES.iter())
+                .any(|b| b.name == name && b.members.is_some());
         catalogued && args.iter().all(|a| self.modelled(a))
     }
 

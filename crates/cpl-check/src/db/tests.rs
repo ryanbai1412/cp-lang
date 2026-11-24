@@ -341,3 +341,13 @@ fn analyze_text_sets_the_file_and_reuses_an_unchanged_analysis() {
         Some("let x: Int = \"no\"\n")
     );
 }
+
+#[test]
+fn a_std_yields_method_and_argmin_are_typed() {
+    let pairs = "let xs: List<Int> = [1, 2, 3]\nfor (a, b) in xs.cyclic_pairs(): print(a + b)\nfor (a, b) in xs.pairs(): print(a * b)\n";
+    assert_eq!(silent_unknowns_of(pairs), (vec![], 0));
+    let sized = "let n: Int = read()\ndomain T = 0..3\nlet b: [n]T = read()\nfor (a, c) in b.cyclic_pairs(): print(min(a, c))\n";
+    assert_eq!(silent_unknowns_of(sized), (vec![], 0));
+    let arg = "domain R = 0..3\nlet t: [R]Int = [R] r => 5 - r.ord\nlet m = t.argmin()!\nprint(t[m])\nlet xs = [3, 1]\nprint(xs.argmax()!)\nlet i: ?R = t.argmax()\nprint(i)\n";
+    assert_eq!(silent_unknowns_of(arg), (vec![], 0));
+}

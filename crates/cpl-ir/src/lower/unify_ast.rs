@@ -101,7 +101,21 @@ impl<'a> Lowerer<'a> {
                     self.unify_ast_ty(&args[0], &Ty::Pos(*d), tpl_mod, gen_names, env);
                 }
                 (_, Ty::Struct(sid)) => {
-                    if let Some((_, actual_args)) = &self.structs[*sid].origin_gen {
+                    // `S: Keyed<D, T>` given `Keys<S, I, T, K>`: the struct's
+                    // impl of the trait says which of its args `D` and `T` are.
+                    if let Some(given) = self.struct_trait_args(&name.text, *sid, args.len()) {
+                        for (pa, actual) in args.iter().zip(given) {
+                            match actual {
+                                Some(GenArg::Ty(t)) => {
+                                    self.unify_ast_ty(pa, &t, tpl_mod, gen_names, env)
+                                }
+                                Some(GenArg::Domain(d)) => {
+                                    self.unify_ast_ty(pa, &Ty::Pos(d), tpl_mod, gen_names, env)
+                                }
+                                _ => {}
+                            }
+                        }
+                    } else if let Some((_, actual_args)) = &self.structs[*sid].origin_gen {
                         if args.len() == 2
                             && matches!(name.text.as_str(), "EdgedNext" | "WeightedNext")
                             && actual_args.len() >= 2
@@ -364,6 +378,28 @@ impl<'a> Lowerer<'a> {
         }
     }
 
+    /// The args struct `sid`'s impl of trait `trait_name` gives it, each
+    /// one its impl names by a bare parameter of the target.
+    fn struct_trait_args(
+        &self,
+        trait_name: &str,
+        sid: StructId,
+        n: usize,
+    ) -> Option<Vec<Option<GenArg>>> {
+        (0..self.impls.len()).find_map(|idx| {
+            let imp = &self.impls[idx];
+            if imp.trait_name.as_deref() != Some(trait_name) || imp.trait_args.len() != n {
+                return None;
+            }
+            let env = self.struct_impl_env(idx, sid)?;
+            Some(
+                (imp.trait_args.iter())
+                    .map(|t| bare_name(t).and_then(|g| env.get(g).cloned()))
+                    .collect(),
+            )
+        })
+    }
+
     /// A trait a record meets through getters, as `Weighted<W>`'s `@get fn w(self) -> W`:
     /// each (parameter index, getter name) whose getter returns that bare parameter, so the
     /// record's field of that name binds it.
@@ -383,5 +419,12 @@ impl<'a> Lowerer<'a> {
                 _ => None,
             })
             .collect()
+    }
+}
+
+fn bare_name(t: &ast::Type) -> Option<&str> {
+    match &t.kind {
+        ast::TypeKind::Named { name, args } if args.is_empty() => Some(&name.text),
+        _ => None,
     }
 }

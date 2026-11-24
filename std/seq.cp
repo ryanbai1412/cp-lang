@@ -3322,7 +3322,7 @@ fn cyclic_pairs_close_the_ring():
 /// traps: never
 /// example: `[3, 9, 2, 9].argmax() == Some(1)`
 /// example: `[3, 9, 2, 9].argmax(ties: Ties.Last) == Some(3)`
-pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
+pub fn argmax<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
     let last = ties == Ties.Last
     var best: ?D = None
     var high: ?K = None
@@ -3341,7 +3341,7 @@ pub fn argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties
 /// traps: never
 /// example: `[3, 1, 1].argmin() == Some(1)`
 /// example: `[3, 1, 1].argmin(ties: Ties.Last) == Some(2)`
-pub fn argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
+pub fn argmin<S: Keyed<D, T>, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D:
     let last = ties == Ties.Last
     var best: ?D = None
     var low: ?K = None
