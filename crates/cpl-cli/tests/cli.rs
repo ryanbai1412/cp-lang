@@ -487,10 +487,8 @@ fn build_drops_the_source_header_before_it_passes_64_kb() {
 
 #[test]
 fn build_refuses_cpp_over_64_kb() {
-    let mut source = String::new();
-    for i in 0..6000 {
-        source += &format!("print({i} + {i})\n");
-    }
+    // One long literal: the C++ is over the limit without checking 6000 lines.
+    let source = format!("print(\"{}\")\n", "x".repeat(70_000));
     let path = scratch("build-big", "big.cp", source.as_bytes());
     let out = cpl(
         &[
