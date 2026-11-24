@@ -886,6 +886,15 @@ pub fn run_with(
                 crate::explain::trap_report(&args.file, &failure.input, false, true)
             }
             crate::Verdict::BruteError(_) => brute_trap(&failure.input, true),
+            crate::Verdict::JudgeError("interactor", _) => match &judge {
+                Judge::Interactor(interactor) => crate::judge::interactor_trap_json(
+                    &fast,
+                    interactor,
+                    &failure.input,
+                    args.options.limit,
+                ),
+                _ => None,
+            },
             crate::Verdict::JudgeError("checker", _) => {
                 std::fs::read_to_string(&args.file).ok().and_then(|text| {
                     crate::explain::checker_trap_in(

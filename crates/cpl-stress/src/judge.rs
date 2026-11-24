@@ -312,6 +312,25 @@ impl Judge {
     }
 }
 
+/// The trap the file's own interactor stops at on `input` against
+/// `solution`, as `cpl check --format json` gives a diagnostic: `cpl
+/// judge` writes it to the file `CPL_JUDGE_DIAGNOSTIC` names (stress/U30).
+pub fn interactor_trap_json(
+    solution: &Program,
+    interactor: &Program,
+    input: &str,
+    limit: Duration,
+) -> Option<String> {
+    let out = Scratch::new("diagnostic", "").ok()?;
+    let mut interactor = interactor.clone();
+    interactor
+        .env
+        .push(("CPL_JUDGE_DIAGNOSTIC".to_string(), out.path().to_string()));
+    interact(solution, &interactor, input, limit).ok()?;
+    let json = std::fs::read_to_string(out.path()).ok()?;
+    Some(json.trim().to_string()).filter(|json| !json.is_empty())
+}
+
 /// Runs a solution against an interactor: each one's stdout is the
 /// other's stdin. The interactor's exit code is the verdict.
 fn interact(

@@ -828,6 +828,12 @@ fn verdict(
     } else if let Err(trap) = &result {
         *stderr += &format!("{}\n", trap.message);
         *stderr += &render_trap(path, text, trap);
+        // Stress reads the trap as `cpl check --format json` gives it.
+        if let Some(file) = std::env::var_os("CPL_JUDGE_DIAGNOSTIC") {
+            let lines = cpl_diag::LineIndex::new(text);
+            let json = cpl_diag::json::diagnostic(&trap.to_diagnostic(path, &lines), &lines);
+            let _ = std::fs::write(file, json.to_string());
+        }
     }
     code
 }

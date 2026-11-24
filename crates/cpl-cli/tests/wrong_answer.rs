@@ -449,7 +449,7 @@ fn a_broken_helper_is_blamed_with_its_trap_not_the_solution() {
         assert!(out.contains("error[R0101]"), "{out}");
         assert!(out.contains("c.cp:"), "{out}");
         assert!(saved(&path).is_empty(), "{out}");
-        if kind == "checker" {
+        {
             let (_, json) = cpl(&[
                 "stress".as_ref(),
                 path.as_os_str(),
@@ -461,7 +461,8 @@ fn a_broken_helper_is_blamed_with_its_trap_not_the_solution() {
                 .nth(1)
                 .unwrap_or_else(|| panic!("{json}"));
             assert!(error.contains("\"code\":\"R0101\""), "{json}");
-            assert!(error.contains("\"line\":9"), "{json}");
+            let line = if kind == "checker" { 9 } else { 11 };
+            assert!(error.contains(&format!("\"line\":{line}")), "{json}");
         }
     }
     let path = scratch("broken-gen");
