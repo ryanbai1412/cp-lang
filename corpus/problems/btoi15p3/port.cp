@@ -8,20 +8,14 @@
 //   list, shorter than L, so some new link leaves the block and covers the edge. O(n).
 // original: corpus/submissions/5640865.cpp
 // Bounds: n: 3..=5e5; edges.u, edges.v: 1..=n
-
 let n: 3..=5e5 = read()
 domain V = 1..=n
-domain E = 0..(n - 1)
+domain E = 0..n - 1
 let edges: [E](u: V, v: V) = read()
-let g = Graph<V, E>.undirected(edges)
+let g = Graph.undirected(edges)
+let tree = Rooted(g, V.find(v => g.deg(v) > 1)!)
 
-var root = V.first!
-for v in V:
-    if g.deg(v) > 1: root = v
-let t = Rooted(u => g.out(u), root)
-
-let leaves: List<V> = [v for v in t.at if g.deg(v) == 1]
-
-let k = leaves.len
-print((k + 1) / 2)
-for i in 0..(k + 1) / 2: print(leaves[i], leaves[i + k / 2])
+let leaves = [v for v in tree.at if g.deg(v) == 1]
+let half = (leaves.len + 1) / 2
+print(half)
+for i in 0..half: print(leaves[i], leaves[i + leaves.len / 2])

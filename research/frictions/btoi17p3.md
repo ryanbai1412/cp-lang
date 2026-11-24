@@ -1,19 +1,9 @@
 # Friction report: btoi17p3
 
-## A method value copies its receiver on every call
+The port now sorts with the method value, `plan.sorted(by: tree.pos)`, as the dream wrote it. Core's method-value fix makes `tree.pos` borrow `tree` rather than copy it per key call. `scripts/corpus.py verify --only max btoi17p3` reports 0 findings.
 
-- **Severity:** high
-- **Status:** open (routed to Core)
-- **Goal it hurts:** the obvious way is the fast way
-- **Area:** codegen
-- **What happened:** `plan.sorted(by: tree.pos)` copied the whole `Rooted`
-  once per key call, so the `--max` case took 7 s against a 1 s limit. The
-  lambda `c => tree.pos(c)` borrows `tree` and runs in 0.02 s.
-- **General fix:** a method value `x.f` lowers like `a => x.f(a)`,
-  borrowing `x` instead of copying it.
+No language gap.
 
-## Dream
+## Measurements
 
-```cp
-let tour = plan.sorted(by: tree.pos)
-```
+gen.py --max: port 0.02 s, accepted C++ 0.10 s, same output.

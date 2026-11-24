@@ -7,25 +7,17 @@
 //   depths with the root at depth 1. For a fixed root, BFS over boss -> report arcs gives every
 //   employee their least depth; skip roots that do not reach everyone. O(n (n + sum k)).
 // original: corpus/submissions/5323961.cpp
-// Bounds: boss: 1..=n
-
-let n: Int = read()
+// Bounds: n: 2..=5000; accepts: 1..=n
+let n: 2..=5000 = read()
 domain P = 1..=n
-var reports: [P]List<(to: P)> = [P] _ => []
-for p in P:
-    let k: Int = read()
-    for _ in 0..k:
-        let boss: P = read()
-        reports[boss].push((to: p))
+let accepts: [P]List<P> = read()
 
-var best: ?Int = None
-for root in P:
+let reports = Graph.of([(from: boss, arc: p) for p in P for boss in accepts[p]])
+
+// Rooted at `root`, everyone's best pay is their depth counting the root as 1.
+fn payroll(root: P) -> ?Int:
     let depth = bfs(reports, [root])
-    var pay = n
-    for p in P:
-        let d = depth[p] else:
-            pay = -1
-            break
-        pay += d
-    if pay >= 0: best = min(best ?? pay, pay)
-print(best!)
+    if P.all(p => depth[p] != None): Some(n + sum(depth[p]! for p in P))
+    else: None
+
+print(min(pay for root in P if let pay = payroll(root))!)
