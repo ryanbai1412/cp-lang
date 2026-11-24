@@ -489,10 +489,12 @@ impl Checker<'_> {
         let params = row_params(row.params);
         let takes_fn = |ty: &str| ty.contains("->") || (ty.len() == 1 && ty != "T");
         let positional = args.iter().filter(|a| a.name.is_none()).count();
-        positional > params.len()
-            || (args.iter()).any(|a| {
-                (a.name.as_ref()).is_some_and(|n| !params.iter().any(|(p, _)| *p == n.text))
-            })
+        if positional > params.len() {
+            self.exprs.past_rows.push(name.span);
+            return true;
+        }
+        (args.iter())
+            .any(|a| (a.name.as_ref()).is_some_and(|n| !params.iter().any(|(p, _)| *p == n.text)))
             || (args.iter().zip(&params)).any(|(a, (_, ty))| {
                 matches!(a.value.kind, ExprKind::Lambda { .. }) && !takes_fn(ty)
             })

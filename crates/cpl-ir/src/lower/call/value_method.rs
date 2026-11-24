@@ -43,6 +43,11 @@ impl<'a> Lowerer<'a> {
                 return self.find_first(range, elem, &test.value, method == "find", span);
             }
         }
+        if self.past_builtin_row(name.span) {
+            if let Some(res) = self.try_ufcs_call(method, base, args, span, Some(recv_mark), hint) {
+                return res;
+            }
+        }
         match (&ty, method) {
             // `s.set(v, on)` is `s.with(v)` when `on` holds and `s.without(v)`
             // when it does not.

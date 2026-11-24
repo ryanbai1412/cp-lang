@@ -1091,6 +1091,14 @@ impl<'a> Lowerer<'a> {
         self.get_sym(name).into_iter().chain(keyed).collect()
     }
 
+    /// Whether the checker sent `x.name(..)` past the built-in member of the
+    /// name, whose parameters can't take the call's arguments.
+    pub(in crate::lower) fn past_builtin_row(&self, name: Span) -> bool {
+        let items = &self.mods[self.cur_mod].items;
+        (items.binary_search_by_key(&self.offset, |i| i.offset).ok())
+            .is_some_and(|at| items[at].check.exprs.past_rows.contains(&name))
+    }
+
     /// The fn the checker resolved `base.name(..)` to: the `Resolved` at
     /// the method's name, the first one after `base` inside `span`.
     pub(in crate::lower) fn resolved_method(
