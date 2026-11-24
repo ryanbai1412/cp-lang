@@ -7,12 +7,12 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3275 (1093 passing). Rules: 609.
+Cases: 3276 (1093 passing). Rules: 609.
 
 ## Summary per chapter
 
 - R01 (01-lexical-grammar.md): 57 rules, 181 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R02 (02-values-types.md): 53 rules, 157 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R02 (02-values-types.md): 53 rules, 158 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R03 (03-numbers-layout.md): 24 rules, 116 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04 (04-indices.md): 73 rules, 190 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04a (04a-identity-vs-offset.md): 39 rules, 55 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -175,7 +175,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R02.7.5 [1+ 0-]: Layout uses niche filling, so `Ev` is 8 bytes with no tag when `V` positions are 4 bytes (...
 - R02.8.1 [3+ 2-]: `[D]T` is a fixed-size array indexed by domain `D` (positions of `D`, never raw `Int`; an ...
 - R02.8.2 [2+ 1-]: `List<T>` grows, is indexed by `0..len` positions, and its slices keep source positions. A...
-- R02.8.3 [5+ 1-]: `[D]T` arrays are built by tables (`[V] v => 0`), typed reads (`read<[V]Int>()`), comprehe...
+- R02.8.3 [6+ 1-]: `[D]T` arrays are built by tables (`[V] v => 0`), typed reads (`read<[V]Int>()`), comprehe...
 - R02.8.4 [1+ 0-]: `xs[i]` on a heap element lends it (`let row = rows[i]`); on a plain element it copies.
 - R02.8.5 [2+ 1-]: Large arrays never live on the C++ stack (chapter 13).
 - R02.9.1 [2+ 1-]: Two fresh types are never equal, even from the same expression.
