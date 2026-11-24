@@ -540,6 +540,7 @@ ioi04p4
 ioi05p1
 ioi05p2
 ioi05p4
+ioi05p6
 ioi06p2
 ioi06p4
 ioi07p1

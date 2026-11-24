@@ -7,8 +7,7 @@
 //   is a memoized Row over j = 0..=k mills in v's subtree: either v ships to `mill`, its children
 //   seeing `mill`, or v builds one and they see v. spread() min-plus merges the children's rows,
 //   O(k^2) per child, so O(n^2 k^2) overall; the answer is Bytetown's spread with k mills.
-// cp: 0.1 8ef64b9+dirty
-// Bounds: n: 2..=100; k: 1..=50
+// Bounds: n: 2..=100; k: 1..=50; rows.trees: 0..=1e4; rows.len: 1..=1e4
 let n: 2..=100 = read()
 let k: 1..=50 = read()
 domain Village = 1..=n
@@ -17,26 +16,7 @@ fn site(v: Village) -> Site = Site.at(v.label)!
 fn village(s: Site) -> ?Village = if s.label == 0: None else: Village.at(s.label)
 type Info = (trees: 0..=1e4, down: Site, len: 1..=1e4)
 
-fn drains(rows: [Village]Info) -> Bool:
-    for v in Village:
-        var s = site(v)
-        var steps = 0
-        while let u = village(s):
-            s = rows[u].down
-            steps += 1
-            if steps > n:
-                return false
-    true
-
-fn random_river() -> [Village]Info:
-    [Village] v => (
-        trees: rand(0, 10000),
-        down: Site.at(rand(0, v.label - 1))!,
-        len: rand(1, 10000),
-    )
-
-let rows: [Village]Info = read(gen: random_river)
-assert drains(rows)
+let rows: [Village]Info = read()
 
 var kids: [Site]List<Village> = []
 for v in Village:
