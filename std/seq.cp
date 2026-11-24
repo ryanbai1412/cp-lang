@@ -205,7 +205,7 @@ pub fn map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U> = Mapped(self
 /// order: reverse source order, source keys
 /// traps: never
 /// example: `[1, 2, 3].rev.collect() == [3, 2, 1]`
-@get pub fn rev<S: Bidir>(self: S) -> Rev<S> = todo
+@get pub fn rev<S: Bidir>(self: S) -> Rev<S> = Rev(self)
 
 /// \(O(1)\). A view of `(key, element)` pairs with the source's own keys.
 ///
@@ -1477,13 +1477,13 @@ impl Indexed<D, U> for Mapped<S: Indexed<D, T>, T, U>:
     @get fn keys(self) -> Range<D> = src.keys
 
 /// \(O(1)\) to make. The view `s.rev`: `s` walked backwards, keys unchanged.
-pub struct Rev<S>():
+pub struct Rev<S>(base: S):
     /// \(O(1)\). The source sequence this view reverses.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `let a = [1, 2]; a.rev.src == a`
-    @get pub fn src(self) -> S = todo
+    @get pub fn src(self) -> S = base
 
     /// \(O(1)\). The element `k` steps into the walk: `a.rev.nth(0)` is `a`'s last.
     ///
@@ -4105,6 +4105,14 @@ fn views_and_trackers_walk_and_show():
     assert w.each().collect() == [2, 0] and "{w}" == "2 0" and not w.is_empty
     let r = [1, 2, 3].ring.span(2, 2)
     assert r.each().collect() == [2, 0] and "{r}" == "2 0" and not r.is_empty
+
+impl Show for Rev<S>:
+    fn show(v):
+        var out = ""
+        for x in v:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
 
 impl Show for Slice<S>:
     fn show(v):
