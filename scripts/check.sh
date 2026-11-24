@@ -632,7 +632,7 @@ uv run scripts/spec-std-signatures.py --check || fail "a spec/lib chapter and st
 uv run --quiet python scripts/spec-gate.py decisions-explained || fail "a decision cited in spec/ has no handbook explanation; see above"
 
 step "conformance traits: every claimed trait method has a case or a gap line"
-uv run scripts/conformance-traits.py --check || fail "trait gate failed; see above"
+uv run --quiet python scripts/spec-gate.py traits || fail "trait gate failed; see above"
 
 step "conformance sigs: named args in spec/core and spec/lib exist in std"
 uv run scripts/conformance-sigs.py --check || fail "sig gate failed; see above"

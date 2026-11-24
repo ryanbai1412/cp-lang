@@ -150,7 +150,7 @@ Every container claims `Show`, `Eq` and `Seq` and has `len` and `is_empty`, unle
 
 - **Why:** printing, comparing and walking should never depend on which container you picked.
 - **Example:** `print(bag)`, `bag == other`, `for x in bag:` all work on `SortedBag`.
-- **Enforced by:** `scripts/conformance-traits.py --check` for claimed traits; `scripts/std-trait-matrix.py` (in `scripts/check.sh`, shrink-only) lists every container missing `Show`, a walk or `is_empty`. A struct opts out with `not a container: <why>` in its doc.
+- **Enforced by:** `scripts/spec-gate.py traits` for claimed traits; `scripts/std-trait-matrix.py` (in `scripts/check.sh`, shrink-only) lists every container missing `Show`, a walk or `is_empty`. A struct opts out with `not a container: <why>` in its doc.
 
 ### R13. Each type's everyday tasks are one call each, with a case
 

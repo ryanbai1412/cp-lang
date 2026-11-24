@@ -1,24 +1,22 @@
-#!/usr/bin/env python3
-# Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """Check that every trait method of every claimer has a conformance case.
 
 Traits come from `pub trait` bodies in std/*.cp and from the core traits
 listed in spec/conformance/traits.toml. Claims come from `impl Trait for
 Type:` lines in std/*.cp and from the core claimers in traits.toml.
 Each (type, trait, method) needs a `[case]` in traits.toml, which becomes
-spec/conformance/traits/<trait>/<type>--<method>.cp. Writing and `--check`
-both fail when a triple has no case; `--check` also fails when a generated
-case is stale.
+spec/conformance/traits/<trait>/<type>--<method>.cp. The gate fails when
+a triple has no case or a generated case is stale; `--write` regenerates.
+Enforces handbook/guidelines/conformance-checklist.md#conformancer5-where-a-rule-covers-a-space-generate-the-cases
 """
-import re
-import sys
-import tomllib
-from pathlib import Path
+from __future__ import annotations
 
-ROOT = Path(__file__).resolve().parent.parent
-CONF = ROOT / "spec" / "conformance"
-STD = ROOT / "std"
-OUT = CONF / "traits"
+import re
+import tomllib
+
+import specgate
+from specgate import Problem
+
+HELP = "every (trait, claimer, method) has a traits.toml case; spec/conformance/traits/ generated (--write regenerates)"
 
 TRAIT = re.compile(r"pub trait (\w+)(<[^>]*>)?(:\s*(.*))?$")
 METHOD = re.compile(r"\s+(?:@get\s+)?fn (\w+)\(")
@@ -27,7 +25,7 @@ IMPL = re.compile(r"impl (\w+)(?:<[^>]*>)? for ([\w<>, \[\]]+):$")
 
 def std_traits():
     traits = {}
-    for f in sorted(STD.glob("*.cp")):
+    for f in sorted((specgate.ROOT / "std").glob("*.cp")):
         name = None
         for line in f.read_text().split("\n"):
             m = TRAIT.match(line)
@@ -54,7 +52,7 @@ PRIVATE_TRAIT = re.compile(r"(?m)^trait (\w+)")
 def std_claims():
     """(type, trait) for every impl in std of a trait users can name, on a public type;
     test-only types and std's private helper traits are skipped."""
-    texts = [f.read_text() for f in sorted(STD.glob("*.cp"))]
+    texts = [f.read_text() for f in sorted((specgate.ROOT / "std").glob("*.cp"))]
     public = {m.group(1) for t in texts for m in PUB_TYPE.finditer(t)}
     private = {m.group(1) for t in texts for m in PRIVATE_TRAIT.finditer(t)}
     claims = set()
@@ -70,12 +68,12 @@ def std_claims():
 
 def triples(data):
     traits = std_traits()
+    out, problems = set(), []
     for t, v in data.get("trait", {}).items():
         if t in traits:
-            raise SystemExit(f"traits.toml: trait {t} is declared in std; drop it here")
+            problems.append(f"traits.toml: trait {t} is declared in std; drop it here")
         traits[t] = v["methods"]
     claims = std_claims() | {(c["type"], c["trait"]) for c in data.get("claim", [])}
-    out, problems = set(), []
     for ty, tr in sorted(claims):
         if tr not in traits:
             problems.append(f"{ty}: claims {tr}, which neither std nor traits.toml declares")
@@ -94,42 +92,22 @@ def case_text(c):
     return "\n".join(head) + "\n" + c["code"].strip("\n") + "\n"
 
 
-def main():
-    data = tomllib.loads((CONF / "traits.toml").read_text())
-    all_t, problems = triples(data)
+def args(p) -> None:
+    p.add_argument("--write", action="store_true")
+
+
+def run(a) -> list[Problem]:
+    conf = specgate.CONFORMANCE
+    data = tomllib.loads((conf / "traits.toml").read_text())
+    all_t, found = triples(data)
+    problems = [Problem("traits.toml", w) for w in found]
     cases = {}
     for key, c in data.get("case", {}).items():
         tr, ty, m = key.split("/")
         if (tr, ty, m) not in all_t:
-            problems.append(f"case {key}: no such claim or method")
-            continue
-        cases[(tr, ty, m)] = c
-    missing = sorted(all_t - set(cases))
-    want = {OUT / tr / f"{ty}--{m}.cp": case_text(c) for (tr, ty, m), c in cases.items()}
-    have = {p: p.read_text() for p in OUT.rglob("*.cp")} if OUT.exists() else {}
-    summary = f"traits: {len(all_t)} methods over claims, {len(cases)} with a case"
-    problems += [f"no case: {'/'.join(t)} (write one in traits.toml)" for t in missing]
-    if "--check" in sys.argv:
-        stale = sorted(str(p.relative_to(ROOT)) for p in set(want) | set(have) if want.get(p) != have.get(p))
-        problems += [f"stale: {s}" for s in stale[:20]]
-        if problems:
-            print("trait gate failed:\n  " + "\n  ".join(problems))
-            print("rerun: uv run scripts/conformance-traits.py")
-            return 1
-        print(summary)
-        return 0
-    if problems:
-        print("\n".join(problems))
-        return 1
-    for p in set(have) - set(want):
-        p.unlink()
-    for p, t in want.items():
-        p.parent.mkdir(parents=True, exist_ok=True)
-        if have.get(p) != t:
-            p.write_text(t)
-    print(summary)
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+            problems.append(Problem(f"traits.toml case {key}", "no such claim or method"))
+        else:
+            cases[(tr, ty, m)] = c
+    problems += [Problem("traits.toml", f"no case: {'/'.join(t)} (write one)") for t in sorted(all_t - set(cases))]
+    want = {f"{tr}/{ty}--{m}.cp": case_text(c) for (tr, ty, m), c in cases.items()}
+    return problems or specgate.sync(conf / "traits", want, a.write, "traits", "**/*.cp")

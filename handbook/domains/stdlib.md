@@ -200,7 +200,7 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 | Traps fire exactly where documented | `traps:` lines with no `trap:` example (`--audit`) | rule `std-docs/R4`; `scripts/std-trap-examples.py` (in `scripts/check.sh`) |
 | Interpreter and C++ agree | `cpl-conform diff` disagreements on std | differential suite `cpl-conform diff`; side-effect variants in `crates/cpl-conform/src/variants.rs` |
 | Prints, walks and hash orders are deterministic | print-order disagreements between engines | `cpl-conform diff` side-effect variants |
-| Every trait method of every claimer works | uncovered (type, trait, method) triples | generated suite `scripts/conformance-traits.py --check`, gap list only shrinks |
+| Every trait method of every claimer works | uncovered (type, trait, method) triples | generated suite `scripts/spec-gate.py traits`, gap list only shrinks |
 | No undefined behaviour in emitted std code | sanitizer failures over std cases | sanitized C++ in `crates/cpl-cli/tests/differential.rs`; `missing` for the full std suite |
 | A bug that escapes is caught next time | escaped std bugs with no row and no case | process: each escape adds its case and names the row that should have caught it |
 | Tests catch real bugs | mutation score of the std suites | `missing` (mutation runs over `std/*.cp`, graded by tech-debt) |
@@ -313,7 +313,7 @@ Probes, run by a reader with only the docs (pass or fail, time, files touched):
 | differential | interpreter and C++ disagreeing | `target/release/cpl-conform diff std-<m>` |
 | doc examples | `example:` lines that fail | `target/release/cpl-conform docs <m>.cp` (the filter is a substring, keep `.cp`) |
 | `cpl-conform all --check` | any suite dropping below the scoreboard | `scripts/check.sh` |
-| `scripts/conformance-traits.py` | trait methods with no case | `uv run scripts/conformance-traits.py --check` |
+| `scripts/spec-gate.py traits` | trait methods with no case | `uv run --quiet python scripts/spec-gate.py traits` |
 | `scripts/conformance-sigs.py` | spec named arguments std lacks | `uv run scripts/conformance-sigs.py --check` |
 | `scripts/conformance-prelude.py` | spec table names missing from the prelude | `uv run scripts/conformance-prelude.py --check` |
 | `scripts/spec-stub.py` | missing doc labels, `@get` members that do work | `python3 scripts/spec-stub.py --check`, `--audit` |

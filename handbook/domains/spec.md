@@ -117,7 +117,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | Every case cites something that exists | cites to unknown rules | gate | `cpl-conform --rules` |
 | Every diagnostic code is reachable | codes with no reject case | ratchet | `scripts/conformance-coverage.py --check` |
 | Feature combinations are tested (index types x consumers) ([conformance/R5](../guidelines/conformance-checklist.md)) | empty matrix cells | generated suite, gate | `scripts/spec-gate.py matrix`, `spec/conformance/matrix.toml` |
-| Every trait method on every claimer is tested ([conformance/R5](../guidelines/conformance-checklist.md)) | trait methods with no case | generated table, ratchet | `scripts/conformance-traits.py --check` |
+| Every trait method on every claimer is tested ([conformance/R5](../guidelines/conformance-checklist.md)) | trait methods with no case | generated table, ratchet | `scripts/spec-gate.py traits` |
 | Chapters and `std` agree on named arguments | named args no std fn takes | gate: zero | `scripts/conformance-sigs.py --check` |
 | What the chapters call is in the prelude | chapter functions missing from the prelude | ratchet | `scripts/conformance-prelude.py --check`, `prelude-gaps.txt` |
 | Chapters and `std` agree on return types and existence (e.g. a chapter naming a type `std` doesn't have) | chapter fns whose return type differs from std's; chapter fns std lacks | gate on top-level fns ([spec-rules/R5](../guidelines/spec-rules-checklist.md)); prelude and stub checks for existence; methods compared only by rebuild rounds | `scripts/spec-std-signatures.py --check`, `scripts/conformance-prelude.py`, `scripts/spec-stub.py` |
@@ -230,7 +230,7 @@ Three probes put the rubric to work:
 | `cpl-conform all --check` | Any case that passed before and fails now | gate step `cpl-conform ratchet` |
 | `scripts/conformance-coverage.py` | Untested rules and codes; writes `COVERAGE.md` | `uv run scripts/conformance-coverage.py --check` |
 | `scripts/spec-gate.py matrix` | Empty feature x consumer cells; generates `spec/conformance/matrix/` | `python3 scripts/spec-gate.py matrix` |
-| `scripts/conformance-traits.py` | Trait methods with no case | `uv run scripts/conformance-traits.py --check` |
+| `scripts/spec-gate.py traits` | Trait methods with no case | `uv run --quiet python scripts/spec-gate.py traits` |
 | `scripts/conformance-sigs.py`, `conformance-prelude.py` | Chapter vs `std` disagreements on named args and prelude names | `uv run scripts/conformance-sigs.py --check` |
 | `scripts/spec-gate.py subset` / `gaps` / `markers` | A stale `SUBSET.md`; a case carrying a `// gap:` line; a diagnostic case that counts lines instead of marking `// <- here` | `uv run scripts/spec-gate.py <gate>` |
 | `scripts/conformance-bugcatch.py` | Past compiler fixes the suite would not have caught | `uv run scripts/conformance-bugcatch.py` |

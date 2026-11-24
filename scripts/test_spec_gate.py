@@ -137,6 +137,16 @@ class GatesTest(unittest.TestCase):
             self.assertEqual(run("ownership", "--write"), [])
             self.assertEqual(run("ownership"), [])
 
+    def test_traits(self):
+        files = {"std/a.cp": "pub trait Shout:\n    fn shout(self) -> Str\n\npub struct Dog(n: Int)\nimpl Shout for Dog:\n    fn shout(self) -> Str = \"woof\"\n",
+                 "spec/conformance/traits.toml": '[case."Shout/Dog/shout"]\ncode = "print(Dog(1).shout())"\nout = "woof"\n'}
+        with Tree(files) as t:
+            self.assertEqual([p.where.split("/")[-1] for p in run("traits")], ["Dog--shout.cp"])
+            self.assertEqual(run("traits", "--write"), [])
+            self.assertEqual(t.read("spec/conformance/traits/Shout/Dog--shout.cp"), '// expect: ok, output "woof"\nprint(Dog(1).shout())\n')
+        with Tree({"std/a.cp": files["std/a.cp"], "spec/conformance/traits.toml": ""}):
+            self.assertEqual([p.what for p in run("traits")], ["no case: Shout/Dog/shout (write one)"])
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:

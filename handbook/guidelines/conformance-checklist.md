@@ -51,7 +51,7 @@ Index types times consumers, every trait method on every type that has it,
 every std signature a chapter names, every type a prelude signature names:
 generate these cases from a table, don't write them by hand. A table shows
 the empty cells. Enforced by `scripts/conformance-matrix.py`,
-`conformance-traits.py`, `conformance-sigs.py` and `conformance-prelude.py`,
+`spec-gate.py traits`, `conformance-sigs.py` and `conformance-prelude.py`,
 each run with `--check`.
 
 ### conformance/R6. Results agree across engines, with and without sanitizers

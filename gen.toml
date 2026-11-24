@@ -69,8 +69,8 @@ tier = "pre-commit"
 name = "traits"
 files = ["spec/conformance/traits/**/*.cp"]
 inputs = ["spec/conformance/traits.toml", "std/*.cp"]
-write = ["scripts/conformance-traits.py"]
-check = ["scripts/conformance-traits.py", "--check"]
+write = ["scripts/spec-gate.py", "traits", "--write"]
+check = ["scripts/spec-gate.py", "traits"]
 tier = "pre-commit"
 
 

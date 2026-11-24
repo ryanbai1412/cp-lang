@@ -72,7 +72,7 @@ target = "0"
 
 [[metric]]
 name = "trait methods without a case"
-command = "uv run scripts/conformance-traits.py --check"
+command = "uv run --quiet python scripts/spec-gate.py traits"
 today = "3 gaps of 118 (std and core claimers; the 3 wait on a range's keys in QUESTIONS.md)"
 target = "0, over std and core claimers"
 

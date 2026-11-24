@@ -1,4 +1,4 @@
-# Trait x claimer x method table; scripts/conformance-traits.py writes one
+# Trait x claimer x method table; scripts/spec-gate.py traits writes one
 # case per [case."Trait/Type/method"] to spec/conformance/traits/<Trait>/.
 # Every claimed method needs a case; the gate fails on one without. Traits declared in std/*.cp are read from there; the core
 # traits std types claim are declared here, with the method the impl writes.
