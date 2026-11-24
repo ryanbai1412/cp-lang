@@ -1,4 +1,5 @@
 // Source: Codeforces 2165E (Rainbow Branch), https://codeforces.com/contest/2165/problem/E
+// limits: 3000 ms, 1024 MB
 // Problem: a tree on n vertices (multitest, sum n <= 3e5). Colour its edges with exactly k
 //   colours, minimising the most colours on any path; print that minimum for every k = 1..n-1.
 // Solution: find f(c), the most colours usable with at most c per path; the answer for k is

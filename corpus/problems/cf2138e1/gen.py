@@ -5,8 +5,11 @@ import sys
 
 
 def main():
-    seed = int(sys.argv[1])
-    size = sys.argv[2] if len(sys.argv) > 2 else "small"
+    if sys.argv[1:] == ["--max"]:
+        seed, size = 2138, "max"
+    else:
+        seed = int(sys.argv[1])
+        size = sys.argv[2] if len(sys.argv) > 2 else "small"
     rng = random.Random(seed)
     if size == "small":
         t = rng.randint(1, 5)

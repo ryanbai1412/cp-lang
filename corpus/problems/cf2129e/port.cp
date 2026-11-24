@@ -1,5 +1,6 @@
 // Source: Codeforces 2129E (Induced Subgraph Queries),
 //   https://codeforces.com/contest/2129/problem/E
+// limits: 5000 ms, 512 MB
 // Problem: a simple undirected graph, n, m <= 1.5e5. Each of q <= 1.5e5 queries (l, r, k): in the
 //   subgraph induced by l..=r, f(u) is the XOR of u's neighbours' labels; print the k-th
 //   smallest f(u) over u in l..=r. Multitest, sums of n, m, q <= 1.5e5.

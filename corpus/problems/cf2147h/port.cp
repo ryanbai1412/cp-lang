@@ -1,4 +1,5 @@
 // Source: Codeforces 2147H (Maxflow GCD Coloring), https://codeforces.com/contest/2147/problem/H
+// limits: 2000 ms, 256 MB
 // Problem: an undirected graph, n <= 50, positive capacities <= 1e6 (sum of n^4 <= 50^4;
 //   multitest). Color the vertices with the fewest colors so that each color's induced subgraph
 //   is good: some d >= 2 divides maxflow(u, v) for all its pairs. Print the coloring.

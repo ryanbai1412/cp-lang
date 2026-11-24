@@ -1,5 +1,6 @@
 // Source: Codeforces 2138E1 (Determinant Construction, Easy Version),
 //   https://codeforces.com/contest/2138/problem/E1
+// limits: 5000 ms, 256 MB
 // Problem: given 0 <= x <= 1e7, print an n x n matrix, n <= 80, with entries in {-1, 0, 1},
 //   at most three nonzero entries in each row and column, and determinant exactly x.
 //   Multitest, t <= 100.
