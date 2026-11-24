@@ -617,16 +617,9 @@ impl<'a> Checker<'a> {
                 Ty::Error
             }
             // A struct with an `Indexed` impl reads piece `i` through its O(1) `at`.
-            ty @ Ty::Named { .. } if self.implements_trait(ty, "Indexed") => self
-                .trait_args_of(ty, "Indexed", 2)
-                .map_or(Ty::Unknown, |args| args[1].clone()),
-            // A walk-only sequence (a generator, or a view with neither `Indexed`
-            // nor `Keyed`) reaches piece `i` by walking, so `[i]` is not O(1).
-            ty @ Ty::Named { name, .. }
-                if matches!(name.as_str(), "Gen" | "Iter")
-                    || (self.implements_trait(ty, "Seq")
-                        && !self.implements_trait(ty, "Keyed")) =>
-            {
+            ty @ Ty::Named { .. } if self.implements_trait(ty, "Indexed") => self.element_ty(ty),
+            // A generator's pieces come by walking, so `[i]` is not O(1).
+            Ty::Named { name, .. } if matches!(name.as_str(), "Gen" | "Iter") => {
                 if let Some(diag) = self.report(
                     expr.span,
                     msgs::check::MISSING_IMPL_HAS_TYPE_WHICH_DOES,
