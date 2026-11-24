@@ -257,11 +257,44 @@ impl<'p> Emitter<'p> {
         if let Some(ExprKind::Closure(cid)) = init.map(|e| &e.kind) {
             if let Some(owners) = self.named_closure_owners(slot, *cid) {
                 self.borrow_closures.insert(*cid);
+                if self.only_a_sort_key(slot) {
+                    // Held for one sort, which only calls it: it lives only
+                    // through those calls, as a key written in place does.
+                    self.call_scoped.insert(*cid);
+                }
                 for (outer, why) in owners {
                     self.capture_owns.insert((*cid, outer), why);
                 }
             }
         }
+    }
+
+    /// Whether `slot` is read once, as the key fn of a sort.
+    fn only_a_sort_key(&self, slot: usize) -> bool {
+        let program = self.program;
+        let blocks: Vec<&Block> = match (self.closure_id, self.fn_id) {
+            (Some(c), _) => vec![&program.closures[c].body],
+            (None, Some(id)) => vec![&program.fns[id].body],
+            (None, None) => vec![&program.setup, &program.main],
+        };
+        let (mut uses, mut keys) = (0usize, 0usize);
+        for block in blocks {
+            walk::deep_exprs(block, &mut |e| match &e.kind {
+                ExprKind::Local(s) if *s == slot => uses += 1,
+                ExprKind::Sort(_, cpl_ir::SortBy::Fn { func, .. }, _) => {
+                    keys += usize::from(matches!(func.kind, ExprKind::Local(s) if s == slot));
+                }
+                ExprKind::Closure(cid) => {
+                    let caps = &program.closures[*cid].captures;
+                    uses += caps
+                        .iter()
+                        .filter(|c| !c.is_global && c.outer == slot)
+                        .count();
+                }
+                _ => {}
+            });
+        }
+        uses == 1 && keys == 1
     }
 
     /// Whether the `let f = closure` of `slot` may borrow its heap captures:
