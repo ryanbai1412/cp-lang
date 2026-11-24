@@ -28,9 +28,9 @@ Fields: `w: List<U64>`, `n: Int`.
 - `fn complement(self) -> Bitset<D>` — \(O(K / 64)\) time and space; The complement of `self` within `D`, matching `Subset<D>.complement`; bits past the last position stay clear.
 - `fn clear(mut self)` — \(O(K / 64)\); Remove every position from the set.
 - `fn any(self, pred: D -> Bool) -> Bool` — \(O(K / 64 + \mathit{visited})\) words scanned and calls of `pred`; True when some position in this set satisfies `pred`.; traps: never (beyond what `pred` traps on)
-- `@get fn len(self) -> Int` — \(O(1)\); The number of positions in the set; the count is kept current by every update.
-- `@get fn count(self) -> Int` — \(O(1)\); The same number as `len`, under the name C++ gives it.
-- `@get fn is_empty(self) -> Bool` — \(O(1)\); Whether the set has no members.
+- `@get fn len(self) -> Int` — \(O(1)\) after single-bit updates, \(O(K / 64)\) after a word-parallel op; The number of positions in the set.
+- `@get fn count(self) -> Int` — as `len`; The same number as `len`, under the name C++ gives it.
+- `@get fn is_empty(self) -> Bool` — \(O(1)\) when `len` is, else \(O(K / 64)\) at worst, stopping at the first nonzero word; Whether the set has no members.
 - `fn first(self) -> ?D` — \(O(K / 64)\); The smallest position in the set, or `None`.
 - `fn find(self, pred: D -> Bool) -> ?D` — \(O(K / 64 + \mathit{visited})\); The smallest position in the set satisfying `pred`, or `None`, as `seq.find`.; traps: never (beyond what `pred` traps on)
 - `fn rfind(self, pred: D -> Bool) -> ?D` — \(O(K / 64 + \mathit{visited})\); The largest position in the set satisfying `pred`, or `None`.; traps: never (beyond what `pred` traps on)
@@ -45,6 +45,7 @@ Fields: `w: List<U64>`, `n: Int`.
 - `fn shifted(self, k: Int) -> Bitset<D>` — \(O(K / 64)\) time and space, for any `k`; A new set with every position `k` places up (down for a negative `k`); positions that leave `D` are dropped.
 - `fn shift_up(mut self, k: Int)` — \(O(K / 64)\); Shift every position `k >= 0` places up in place; bits past `D` drop.; traps: when `k < 0`
 - `fn shift_or(mut self, k: Int)` — \(O(K / 64)\); In-place `self \|= self << k` for `k >= 0`, with zero allocation: the knapsack step "every reachable sum, and every reachable sum plus `k`".; traps: when `k < 0`
+- `fn union_shifted(mut self, o: Bitset<D>, k: Int)` — \(O(K / 64)\); In place, `self \|= o.shifted(k)`: every position `i` of `o` adds `i + k` when it is in `D`, with no temporary set (`k < 0` shifts down).
 - `fn each(self) -> yields D` — \(O(K / 64 + \mathit{len})\) to walk, \(O(1)\) per member amortized; The positions in the set, in increasing order; `for v in b` walks the same sequence.
 - `fn next(self, i: D) -> ?D` — \(O(K / 64)\); The first position in the set at or after `i`, or `None`.
 - `fn prev(self, i: D) -> ?D` — \(O(K / 64)\); The last position in the set at or before `i`, or `None` (the mirror of `next`).
