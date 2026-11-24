@@ -677,8 +677,16 @@ impl Checker<'_> {
         let Some(first) = args.iter().position(untyped) else {
             return;
         };
-        let landed = crate::check::bound_args::arg_params(params, args);
-        for (arg, param) in args.iter().zip(landed).skip(first + 1) {
+        let positional: Vec<&Param> = params.iter().filter(|p| !p.named_only).collect();
+        let mut next = args[..=first].iter().filter(|a| a.name.is_none()).count();
+        for arg in &args[first + 1..] {
+            let param = match &arg.name {
+                Some(n) => params.iter().find(|p| p.name == n.text),
+                None => {
+                    next += 1;
+                    positional.get(next - 1).copied()
+                }
+            };
             let Some(param) = param.filter(|_| !matches!(arg.value.kind, ExprKind::Lambda { .. }))
             else {
                 continue;

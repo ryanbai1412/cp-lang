@@ -302,7 +302,16 @@ impl Checker<'_> {
         args: &[ast::Arg],
         bindings: &mut crate::ty::Bindings,
     ) {
-        for (arg, param) in args.iter().zip(arg_params(params, args)) {
+        let positional: Vec<&crate::ty::Param> = params.iter().filter(|p| !p.named_only).collect();
+        let mut next = 0;
+        for arg in args {
+            let param = match &arg.name {
+                Some(n) => params.iter().find(|p| p.name == n.text),
+                None => {
+                    next += 1;
+                    positional.get(next - 1).copied()
+                }
+            };
             let Some(Ty::Param(m)) = param.map(|p| &p.ty) else {
                 continue;
             };
@@ -337,7 +346,16 @@ impl Checker<'_> {
         let Def::Fn { bounds, .. } = def else {
             return;
         };
-        for (arg, param) in args.iter().zip(arg_params(params, args)) {
+        let positional: Vec<&crate::ty::Param> = params.iter().filter(|p| !p.named_only).collect();
+        let mut next = 0;
+        for arg in args {
+            let param = match &arg.name {
+                Some(n) => params.iter().find(|p| p.name == n.text),
+                None => {
+                    next += 1;
+                    positional.get(next - 1).copied()
+                }
+            };
             let Some(Ty::Param(m)) = param.map(|p| &p.ty) else {
                 continue;
             };
@@ -607,19 +625,4 @@ pub(crate) fn identity_defaults(f: &ast::FnDecl, ty: &Ty) -> Vec<(String, Ty)> {
         }
     }
     out
-}
-
-/// The param each of a call's `args` lands on: by name, else the next
-/// positional one.
-pub(crate) fn arg_params<'p>(
-    params: &'p [crate::ty::Param],
-    args: &[ast::Arg],
-) -> Vec<Option<&'p crate::ty::Param>> {
-    let mut positional = params.iter().filter(|p| !p.named_only);
-    (args.iter())
-        .map(|arg| match &arg.name {
-            Some(n) => params.iter().find(|p| p.name == n.text),
-            None => positional.next(),
-        })
-        .collect()
 }
