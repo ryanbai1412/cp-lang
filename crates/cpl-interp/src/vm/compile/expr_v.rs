@@ -1376,18 +1376,8 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         }
                     }
                 }
-                SlotLoc::V(src_v) => {
-                    self.emit(
-                        Op::UnboxSmallTuple {
-                            dst_base,
-                            len,
-                            src_v,
-                        },
-                        span,
-                    );
-                }
                 _ => {
-                    let src_v = self.emit_fallback_expr_v(expr);
+                    let src_v = self.compile_expr_v(expr);
                     self.emit(
                         Op::UnboxSmallTuple {
                             dst_base,
@@ -1464,54 +1454,35 @@ impl<'p, 'f> Compiler<'p, 'f> {
                             );
                         }
                     }
-                    ExprKind::Local(slot) => {
-                        if let SlotLoc::V(arr_v) = self.slot_loc(*slot) {
-                            let r_i = self.compile_expr_i(&indices[0]);
-                            if indices.len() == 2 {
-                                let r_j = self.compile_expr_i(&indices[1]);
-                                self.emit(
-                                    Op::LoadLArr2SmallTuple {
-                                        dst_base,
-                                        len,
-                                        arr_v,
-                                        r_i,
-                                        r_j,
-                                    },
-                                    span,
-                                );
-                            } else {
-                                self.emit(
-                                    Op::LoadLArr1SmallTuple {
-                                        dst_base,
-                                        len,
-                                        arr_v,
-                                        r_i,
-                                    },
-                                    span,
-                                );
-                            }
-                        } else {
-                            let src_v = self.emit_fallback_expr_v(expr);
+                    _ => {
+                        let arr_v = self.compile_expr_v(base);
+                        let r_i = self.compile_expr_i(&indices[0]);
+                        if indices.len() == 2 {
+                            let r_j = self.compile_expr_i(&indices[1]);
                             self.emit(
-                                Op::UnboxSmallTuple {
+                                Op::LoadLArr2SmallTuple {
                                     dst_base,
                                     len,
-                                    src_v,
+                                    arr_v,
+                                    r_i,
+                                    r_j,
+                                },
+                                span,
+                            );
+                        } else {
+                            self.emit(
+                                Op::LoadLArr1SmallTuple {
+                                    dst_base,
+                                    len,
+                                    arr_v,
+                                    r_i,
                                 },
                                 span,
                             );
                         }
-                    }
-                    _ => {
-                        let src_v = self.emit_fallback_expr_v(expr);
-                        self.emit(
-                            Op::UnboxSmallTuple {
-                                dst_base,
-                                len,
-                                src_v,
-                            },
-                            span,
-                        );
+                        if arr_v >= self.num_local_v {
+                            self.emit(Op::ClearV { reg: arr_v }, span);
+                        }
                     }
                 }
             }
