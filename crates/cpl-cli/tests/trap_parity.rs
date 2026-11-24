@@ -264,3 +264,24 @@ fn a_judge_build_without_traps_divides_by_zero_into_zero() {
     assert_eq!(String::from_utf8_lossy(&out.stdout), "0 0\n");
     assert_eq!(run(Command::new(&bin), "3\n").stdout, b"3 1\n");
 }
+
+#[test]
+fn a_search_that_flips_the_wrong_way_says_so_on_both_engines() {
+    let source = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/wrong_way.cp");
+    let bin = judge_build(&source);
+    let wants = [
+        "but this search wants false then true; for true then false use `last_true`",
+        "but `last: true` wants true then false; drop `last: true` for false then true",
+        "but `bsearch` wants false then true; pass `last: true` for true then false",
+    ];
+    for (which, want) in (1..).zip(wants) {
+        let input = format!("{which} 10\n");
+        let mut interp = Command::new(env!("CARGO_BIN_EXE_cpl"));
+        interp.arg("run").arg(&source);
+        for out in [run(interp, &input), run(Command::new(&bin), &input)] {
+            let err = String::from_utf8_lossy(&out.stderr);
+            assert_eq!(out.status.code(), Some(3), "site {which}: {err}");
+            assert!(err.contains(want), "site {which}: {err}");
+        }
+    }
+}

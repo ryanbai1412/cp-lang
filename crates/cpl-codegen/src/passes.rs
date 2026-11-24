@@ -246,6 +246,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list",
     ),
     pass(
+        "constant-messages",
+        "uses/message.rs",
+        Uses(&["of_binding"]),
+        "a_constant_trap_message_is_built_only_when_the_check_fails",
+    ),
+    pass(
         "niche",
         "niche.rs",
         Uses(&["each_written"]),

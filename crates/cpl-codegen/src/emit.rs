@@ -172,6 +172,8 @@ pub(crate) struct Emitter<'p> {
     /// Per fn, the `fn` and `?fn` slots held as a `cpl::FnRef`: see
     /// [`crate::uses::fn_refs`].
     pub fn_refs: Vec<BTreeSet<usize>>,
+    /// Per fn, the `Str` slots held as a `const char*`: see [`crate::uses::message`].
+    pub messages: Vec<BTreeSet<usize>>,
     /// Struct fields that point to a lent value: see [`crate::lent_fields`].
     pub lent_fields: crate::lent_fields::LentFields,
     /// Set while the call a `return` makes is written: its local arguments
@@ -382,6 +384,7 @@ impl<'p> Emitter<'p> {
             sunk,
             lent_opts: crate::lentopt::lent_opts(program),
             fn_refs: Vec::new(),
+            messages: Vec::new(),
             lent_fields,
             last_use_call: false,
             give_ref: false,
@@ -436,6 +439,7 @@ impl<'p> Emitter<'p> {
             emitter.target.checks != crate::Checks::None,
         );
         emitter.fn_refs = crate::uses::fn_refs::fn_refs(program, &emitter.devirt, &emitter.uses);
+        emitter.messages = crate::uses::message::message_slots(program, &emitter.uses);
         emitter.pushers = feeds.pushers;
         emitter.eager = feeds.eager;
         emitter.feed_scope = feeds.scope;
@@ -759,6 +763,9 @@ impl<'p> Emitter<'p> {
                 let name = &self.names[slot];
                 if self.devirt.param_elidable(id, slot) {
                     return format!("[[maybe_unused]] bool {name}");
+                }
+                if self.messages[id].contains(&slot) {
+                    return format!("[[maybe_unused]] const char* {name}");
                 }
                 if let Some(ti) = self.devirt.template_param_index(id, slot) {
                     return if self.devirt.param_known(id, slot) || !named.contains(&slot) {

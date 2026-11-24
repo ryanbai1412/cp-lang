@@ -92,7 +92,9 @@ impl<'p> Emitter<'p> {
             .enumerate()
             .filter_map(|(slot, arg)| match arg {
                 Arg::Value(value) => {
-                    if self.devirt.param_elidable(id, slot) && self.devirt.skippable_value(value) {
+                    if (self.devirt.param_elidable(id, slot) && self.devirt.skippable_value(value))
+                        || self.messages[id].contains(&slot)
+                    {
                         None
                     } else {
                         match &value.kind {
@@ -165,6 +167,10 @@ impl<'p> Emitter<'p> {
                                 texts.push(text);
                                 continue;
                             }
+                        }
+                        if this.messages[id].contains(&slot) {
+                            texts.push(this.message_text(value));
+                            continue;
                         }
                         let code = match codes.next() {
                             Some(code) => code,
@@ -257,6 +263,22 @@ impl<'p> Emitter<'p> {
         }
         marked.iter().for_each(|m| _ = self.read_in_place.remove(m));
         result
+    }
+
+    /// A constant message as a `const char*` (see [`crate::uses::message`]).
+    pub(crate) fn message_text(&mut self, e: &Expr) -> String {
+        match &e.kind {
+            ExprKind::Str(bytes) => string_literal(bytes),
+            ExprKind::If(c, a, b) => {
+                let c = self.expr(c).text;
+                format!(
+                    "({c} ? {} : {})",
+                    self.message_text(a),
+                    self.message_text(b)
+                )
+            }
+            _ => self.expr(e).text,
+        }
     }
 
     /// True when `value`, an argument of the call a `return` makes, is a

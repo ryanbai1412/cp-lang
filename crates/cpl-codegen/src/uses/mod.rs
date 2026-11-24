@@ -10,6 +10,7 @@
 pub(crate) mod effects;
 pub(crate) mod fn_refs;
 pub(crate) mod loops;
+pub(crate) mod message;
 pub(crate) mod places;
 pub(crate) mod sinks;
 pub(crate) mod split;

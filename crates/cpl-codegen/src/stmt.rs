@@ -629,6 +629,19 @@ impl<'p> Emitter<'p> {
                     self.expr_stmt(init, out)
                 }
             }
+            Stmt::Let(slot, Some(init))
+                if self.closure_id.is_none()
+                    && self
+                        .fn_id
+                        .is_some_and(|id| self.messages[id].contains(slot)) =>
+            {
+                let text = self.message_text(init);
+                let name = self.names[*slot].clone();
+                self.line(
+                    out,
+                    &format!("[[maybe_unused]] const char* {name} = {text};"),
+                );
+            }
             Stmt::Assign(place, op, value) if self.dropped_store(place, *op) => {
                 self.dropped_value(value, out)
             }

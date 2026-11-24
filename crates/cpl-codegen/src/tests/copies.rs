@@ -801,3 +801,24 @@ fn a_struct_param_no_call_can_move_into_is_lent_and_copied_where_written() {
         "a dies at the call, so it moves in:\n{last}"
     );
 }
+
+#[test]
+fn a_constant_trap_message_is_built_only_when_the_check_fails() {
+    // `flip_at` takes its wrong-way message as a `Str`; `bsearch` picks one
+    // of two. Neither call builds a `std::string`; only a failing assert does.
+    let source = concat!(
+        "let n: Int = read()\n",
+        "print((0..n).first_true(x => x * x >= n) ?? -1)\n",
+        "print((0..n).bsearch(x => x * 2 >= n, last: n > 5).r)\n",
+    );
+    let program = super::lower(source);
+    for checks in [crate::Checks::None, crate::Checks::Traps] {
+        let target = crate::Target {
+            checks,
+            ..crate::Target::default()
+        };
+        let cpp = crate::emit_for(&program, "t.cp", None, &target);
+        assert!(cpp.contains("const char* wrong_way"), "{cpp}");
+        assert!(!cpp.contains("std::string(\"`ok`"), "{cpp}");
+    }
+}
