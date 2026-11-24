@@ -779,6 +779,16 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(clean, ["editors/vscode/src/runner.ts:1", "editors/vscode/src/runner.ts:2"])
             self.assertEqual(dr.editor_logic_lines(built), clean)
 
+    def test_editor_logic_lines_read_a_case_key_as_data_and_a_case_arm_as_a_branch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "editors/vscode/src/extension.ts", "\n".join([
+                "exec('run', { case: name });", "const v = { case : name };", "send(args.case);",
+                "switch (kind) {", "    case 'live':", "    case Kind.Error: return;", "}", ""]))
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.editor_logic_lines(root), [f"editors/vscode/src/extension.ts:{i}" for i in (4, 5, 6)])
+
     def test_surface_counters_find_a_second_mechanism(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

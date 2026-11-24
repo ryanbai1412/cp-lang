@@ -2770,7 +2770,8 @@ EDITOR_SOURCE_RE = re.compile(r"^editors/(?!tree-sitter-cp/)(?!.*(?:/tests?/|/sc
 EDITOR_COMMENT = ("//", "/*", "*", "#", ";", "--", '"')
 # In an `EDITOR_GLUE` file a line is client wiring unless it decides or computes:
 # a branch, a loop, a condition, or a search or transform of data (strings blanked).
-EDITOR_DECIDES_RE = re.compile(r"\b(?:if|else|for|while|switch|case|catch|when)\b|\?\?|\?:|&&|\|\||\s\?\s"
+# A `case` that is an object key (`{ case: name }`) or a member (`args.case`) is data.
+EDITOR_DECIDES_RE = re.compile(r"\b(?:if|else|for|while|switch|catch|when)\b|(?<!\.)\bcase\b(?!\s*:)|\?\?|\?:|&&|\|\||\s\?\s"
                                r"|\.(?:map|filter|find|flatMap|sort|reduce|split|replace|match|test|some|every|includes)\("
                                r"|(?<!\.)\b(?:and|or|not|elseif)\b|\bvim\.(?:tbl_\w+|split|startswith)\(|:(?:match|gsub|find|sub)\(")
 EDITOR_IMPL_RE = re.compile(r"^\s*impl\b.*\bfor\b")  # Rust's `impl Trait for Type` is no loop
