@@ -25,6 +25,9 @@ impl Checker<'_> {
                 }
             }
         }
+        if let (true, StmtKind::Fn(f)) = (top_level, &stmt.kind) {
+            self.overload_clash(f);
+        }
         let outer = std::mem::replace(&mut self.rhs_extent, stmt.rhs_extent());
         let ty = self.stmt_body(stmt, top_level);
         self.rhs_extent = outer;

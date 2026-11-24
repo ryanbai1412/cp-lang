@@ -64,26 +64,71 @@ fn more_specific(a: &Option<Ty>, b: &Option<Ty>) -> bool {
         && !instance_of(b, a)
 }
 
+/// A candidate's module, and its `#k` among one module's overloads.
+type Origin = (Option<String>, Option<String>);
+
 impl Checker<'_> {
     /// Every top-level `fn name(self: ..)` in reach, by the name it is
     /// imported under, one per module.
     pub(super) fn method_candidates(&mut self, name: &str) -> Vec<(String, Arc<Def>)> {
-        let mut out: Vec<(String, Arc<Def>, Option<String>)> = Vec::new();
+        let mut out: Vec<(String, Arc<Def>, Origin)> = Vec::new();
         let keys = std::iter::once(name.to_string()).chain(self.env.method_keys(name));
         for key in keys {
             let Some(def) = self.global(&key).filter(|d| takes_self(d)) else {
                 continue;
             };
-            let origin = if self.local_defs.contains_key(&key) {
+            let module = if self.local_defs.contains_key(&key) {
                 None
             } else {
                 self.env.origin(&key)
             };
+            let overload = prelude::overload_part(&key).map(|(_, k)| k.to_string());
+            let origin = (module, overload);
             if !out.iter().any(|(_, _, o)| *o == origin) {
                 out.push((key, def, origin));
             }
         }
         out.into_iter().map(|(k, d, _)| (k, d)).collect()
+    }
+
+    /// R08.1.4: a later `fn name(self: ..)` of this module whose `self` is
+    /// neither more nor less specific than an earlier one's is E0702.
+    pub(super) fn overload_clash(&mut self, f: &ast::FnDecl) {
+        let Some(here) = self.env.item_index() else {
+            return;
+        };
+        let name = &f.name.text;
+        let own: Vec<String> = std::iter::once(name.clone())
+            .chain(self.env.method_keys(name))
+            .filter(|k| {
+                k == name
+                    || prelude::overload_part(k)
+                        .is_some_and(|(_, m)| k.ends_with(&format!(" of {m}")))
+            })
+            .collect();
+        let at = |c: &mut Self, k: &str| c.env.decl_order(k);
+        let Some(mine) = own.iter().find(|k| at(self, k) == Some(here)).cloned() else {
+            return;
+        };
+        let Some(this) = self.global(&mine).map(|d| self_ty(&d)) else {
+            return;
+        };
+        for key in own.iter().filter(|k| **k != mine) {
+            if !at(self, key).is_some_and(|i| i < here) {
+                continue;
+            }
+            let Some(that) = self.global(key).map(|d| self_ty(&d)) else {
+                continue;
+            };
+            if !more_specific(&this, &that) && !more_specific(&that, &this) {
+                self.error(
+                    codes::OVERLOAD_BY_TYPE,
+                    f.name.span,
+                    format!("a second `fn {name}` whose `self` is no more and no less specific than the first one's: fns are not overloaded by their other parameters"),
+                );
+                return;
+            }
+        }
     }
 
     /// Whether `base` can be the `self` of the fn `def`: it fits the

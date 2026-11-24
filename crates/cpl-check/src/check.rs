@@ -117,6 +117,10 @@ pub(crate) trait Env {
     fn decl_order(&mut self, _name: &str) -> Option<usize> {
         None
     }
+    /// The item being checked, in the file's order of items.
+    fn item_index(&mut self) -> Option<usize> {
+        None
+    }
     /// True if this file declares `name` as a struct or enum, even while its
     /// definition is being computed (`struct A: b: ?B` inside `B`'s fields).
     fn declares_type(&mut self, _name: &str) -> bool {
@@ -925,7 +929,10 @@ impl<'a> Checker<'a> {
                 top_level: self.in_fn == 0,
                 in_lambda: self.in_fn == 0 && !self.fns.is_empty(),
             });
-            let module = self.env.origin(name).unwrap_or_default();
+            let mut module = self.env.origin(name).unwrap_or_default();
+            if let Some((_, k)) = prelude::overload_part(name) {
+                module.push_str(k);
+            }
             let resolved = Resolved {
                 module,
                 name: name.into(),

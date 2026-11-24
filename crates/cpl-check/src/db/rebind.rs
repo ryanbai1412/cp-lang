@@ -28,11 +28,33 @@ pub(super) fn top_level_names(
                 Some(_) if rebind::rebinds_itself(item, &decl.name) => {
                     add(names, &decl.name, index)
                 }
+                // R08.1.4: fns of one name that each take a `self` are
+                // overloads, picked by the receiver.
+                Some(&first_idx)
+                    if takes_self(item, &decl.name)
+                        && takes_self(&items[first_idx], &decl.name) =>
+                {
+                    let k = (2..).find(|&k| {
+                        !names.contains_key(&crate::prelude::overload_key(&decl.name, k))
+                    });
+                    names.insert(
+                        crate::prelude::overload_key(&decl.name, k.unwrap_or(2)),
+                        index,
+                    );
+                }
                 Some(_) => duplicates.push((index, decl.clone())),
             }
         }
     }
     duplicates
+}
+
+/// True if `item` is a `fn name` whose first parameter is `self`.
+fn takes_self(item: &ItemSyntax, name: &str) -> bool {
+    item.parsed.stmts.iter().any(|stmt| {
+        matches!(&stmt.kind, ast::StmtKind::Fn(f)
+            if f.name.text == name && f.params.first().is_some_and(|p| p.name.text == "self"))
+    })
 }
 
 /// True if `item` is `let name = name!`.

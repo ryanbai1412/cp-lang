@@ -131,6 +131,29 @@ pub(super) fn add_methods(scope: &mut Scope, index: usize) {
         }
     }
     for (key, name) in found {
+        add_overloads(scope, index, &name);
+        scope.imports.entry(key).or_insert(Import {
+            module: index,
+            name,
+        });
+    }
+}
+
+/// The later `fn name(self: ..)`s of the module at `index`, each under
+/// its own key beside the first: `bsearch of std.range#2` (R08.1.4).
+pub(super) fn add_overloads(scope: &mut Scope, index: usize, name: &str) {
+    let module = &scope.modules[index];
+    let found: Vec<(String, String)> = (2..)
+        .map(|k| (k, crate::prelude::overload_key(name, k)))
+        .take_while(|(_, key)| module.analysis.scope.names.contains_key(key))
+        .map(|(k, key)| {
+            (
+                crate::prelude::method_key(name, &format!("{}#{k}", module.name)),
+                key,
+            )
+        })
+        .collect();
+    for (key, name) in found {
         scope.imports.entry(key).or_insert(Import {
             module: index,
             name,

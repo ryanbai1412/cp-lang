@@ -727,6 +727,7 @@ impl Database {
                 if cycled || !diags.is_empty() {
                     self.cycle_hits = hits_before;
                     scope.modules.truncate(mods_before);
+                    scope.imports.retain(|_, i| i.module < mods_before);
                 } else if let Some(import) = import {
                     scope.imports.insert(key.clone(), import);
                 }
@@ -1337,6 +1338,7 @@ impl Database {
                             name: name.text.clone(),
                         },
                     );
+                    scoping::add_overloads(scope, index, &name.text);
                 }
                 Some(_) => diags.push(
                     Diagnostic::error(
@@ -1786,7 +1788,8 @@ impl FileCtx<'_> {
         }
         let item = self.items[index].clone();
         let revision = self.db.revision;
-        let key = (self.file, item.hash, rebind::base(name).to_string());
+        let base = crate::prelude::overload_part(name).map_or(rebind::base(name), |(n, _)| n);
+        let key = (self.file, item.hash, base.to_string());
         if let Some(memo) = self.db.defs.get_mut(&key) {
             memo.last_used = revision;
             if memo.verified_at == revision {
@@ -1843,7 +1846,7 @@ impl FileCtx<'_> {
             }
             let fingerprint = def.fingerprint();
             let def = Arc::new(def);
-            if def_name == rebind::base(name) {
+            if def_name == base {
                 found = (Some(def.clone()), fingerprint);
             }
             stored.push(def_name.clone());

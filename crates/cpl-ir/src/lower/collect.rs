@@ -222,6 +222,7 @@ impl<'a> Lowerer<'a> {
                 if stmt.decorators.iter().any(|d| d.name.text == "test") && m != 0 {
                     return;
                 }
+                let key = self.overload_key(m, decl);
                 let decl = self.with_implicit_generics(decl, m, None);
                 if !decl.generics.is_empty() || decl.params.iter().any(super::declare::is_opt_mut) {
                     let gfid = self.gen_fns.len();
@@ -232,10 +233,10 @@ impl<'a> Lowerer<'a> {
                         owner_env: HashMap::new(),
                         decl,
                     });
-                    self.mod_syms[m].insert(decl.name.text.clone(), Sym::GenFn(gfid));
+                    self.mod_syms[m].insert(key, Sym::GenFn(gfid));
                 } else {
                     let id = self.declare_fn_in(decl, m, offset, None, HashMap::new());
-                    self.mod_syms[m].insert(decl.name.text.clone(), Sym::Fn(id));
+                    self.mod_syms[m].insert(key, Sym::Fn(id));
                     if stmt.decorators.iter().any(|d| d.name.text == "memo") {
                         self.memo_fns.insert(id);
                         if let Some(table) = memo::into_table(stmt) {
@@ -472,6 +473,26 @@ impl<'a> Lowerer<'a> {
             .filter(|(_, f)| !f.public)
             .map(|(i, _)| i)
             .collect()
+    }
+
+    /// The name module `m` keeps the fn `decl` under: its own, or after a
+    /// first `fn name(self: ..)` of the module, the overload's key the
+    /// checker gives it, `bsearch of #2` (R08.1.4).
+    fn overload_key(&self, m: usize, decl: &ast::FnDecl) -> String {
+        let name = &decl.name.text;
+        let takes_self = |d: &ast::FnDecl| d.params.first().is_some_and(|p| p.name.text == "self");
+        let first = (self.mods[m].items.iter())
+            .flat_map(|item| &item.syntax.parsed.stmts)
+            .find_map(|stmt| match &stmt.kind {
+                ast::StmtKind::Fn(f) if f.name.text == *name => Some(f),
+                _ => None,
+            })
+            .is_some_and(|f| !std::ptr::eq(f, decl) && takes_self(f));
+        if !first || !takes_self(decl) {
+            return name.clone();
+        }
+        let k = (2..).find(|&k| !self.mod_syms[m].contains_key(&cpl_check::overload_key(name, k)));
+        cpl_check::overload_key(name, k.unwrap_or(2))
     }
 
     /// `fn new(next: Next<V>)`: a trait-typed parameter makes the fn generic in

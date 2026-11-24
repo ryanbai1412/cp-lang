@@ -58,6 +58,19 @@ pub fn method_key(name: &str, module: &str) -> String {
     format!("{name} of {module}")
 }
 
+/// The key of the `k`th `fn name(self: ..)` of one module, after the
+/// first (R08.1.4): `bsearch of #2`.
+pub fn overload_key(name: &str, k: usize) -> String {
+    method_key(name, &format!("#{k}"))
+}
+
+/// The name and `#k` of an overload's key, `bsearch of #2` or the
+/// imported `bsearch of std.range#2`.
+pub fn overload_part(key: &str) -> Option<(&str, &str)> {
+    let (name, module) = key.split_once(" of ")?;
+    Some((name, &module[module.find('#')?..]))
+}
+
 /// What the method `name` of the std `module` is imported under: its
 /// `method_key` beside the file's own `name` or another module's.
 pub fn import_key(module: &[ast::Name], name: &str, own: bool) -> String {
