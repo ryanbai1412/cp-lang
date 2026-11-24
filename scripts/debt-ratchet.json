@@ -138,7 +138,7 @@
     "crates/cpl-interp/src/vm/exec/mod.rs"
   ],
   "skip_lists": 34,
-  "dead_code_allows": 6,
+  "dead_code_allows": 0,
   "external_crates": 5,
   "corpus_test_files": 0,
   "corpus_no_max": 0,
@@ -197,7 +197,7 @@
   "site_rederived": 0,
   "browser_lsp_gaps": 0,
   "site_spec_snippets": 1,
-  "allow_attrs": 42,
+  "allow_attrs": 40,
   "std_lint_allows": 0,
   "unsafe_blocks": 25,
   "cpl_env_reads": 0,

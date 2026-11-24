@@ -99,6 +99,9 @@ class DebtRatchetTest(unittest.TestCase):
                 '[[package]]\nname = "shlex"\nversion = "1.3.0"\n'
                 'source = "registry+https://github.com/rust-lang/crates.io-index"\n')
             self.assertEqual(dr.dead_code_allows(root), ["crates/demo/src/lib.rs:1", "crates/demo/src/lib.rs:3"])
+            self.assertIn("dead_code_allows", dr.HARD_ZERO)
+            errs, _, _ = dr.evaluate({"dead_code_allows": 1}, {"dead_code_allows": 1})
+            self.assertTrue(any("allow(dead_code)" in e for e in errs), errs)
             self.assertEqual(dr.external_crates(root), ["shlex 1.3.0"])
 
     def test_measure_counts_accurately(self) -> None:
@@ -117,7 +120,7 @@ class DebtRatchetTest(unittest.TestCase):
             "rs_file_size_allowlist": {"crates/demo/src/big.rs": 25},
             "stdlib_todo": 2,
             "rust_ignore": 1,
-            "dead_code_allows": 1,
+            "unsafe_blocks": 1,
         }
         # Exact match passes with no warnings/errors
         errs, warns, notes = dr.evaluate(baseline, baseline)
@@ -132,7 +135,7 @@ class DebtRatchetTest(unittest.TestCase):
             },
             "stdlib_todo": 3,
             "rust_ignore": 2,
-            "dead_code_allows": 2,
+            "unsafe_blocks": 2,
         }
         errs, warns, _ = dr.evaluate(worse, baseline)
         self.assertEqual(len(errs), 5)
