@@ -12,20 +12,24 @@ let terms: [T](k: -2147483647..=2147483647, p: 1..=2147483647) = read()
 
 // k x^p, with |k| m^p < 2^31: only k = 0 can pair a large p with x > 1
 fn term(t: T, x: Int) -> Int = if terms[t].k == 0: 0 else: terms[t].k * x ** terms[t].p
+let values = [T] t => [term(t, x) for x in 1..=m]
 
 // every value of the sum of k_t x_t^p_t over the terms `ts`
 fn sums(ts: List<T>) -> List<Int>:
     var cur = [0]
     for t in ts:
-        cur = [s + term(t, x) for s in cur for x in 1..=m]
+        cur = [s + v for s in cur for v in values[t]]
     cur
 
 let (left, right) = T.collect().partition(t => Int(t) < n / 2)
-let low = Counter.of(sums(left))
+let left_sums = sums(left)
+var low: Counter<Int, Int> = Counter()
+low.reserve(left_sums.len)
+for s in left_sums: low.add(s, 1)
 
 // the right half's sums one at a time, so only the left half is ever stored
 fn matches(at: Int, s: Int) -> Int:
     if at == right.len: return low[-s]
-    sum(matches(at + 1, s + term(right[at], x)) for x in 1..=m)
+    sum(matches(at + 1, s + v) for v in values[right[at]])
 
 print(matches(0, 0))
