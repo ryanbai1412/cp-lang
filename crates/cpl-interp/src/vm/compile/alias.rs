@@ -70,8 +70,8 @@ impl<'p> Compiler<'p, '_> {
             return false;
         }
         let held = |s: &Slot| self.held.contains(&(*s as u16));
-        (args.iter().zip(&f.locals)).any(|(arg, param)| {
-            if !param.ty.has_fn(self.program) {
+        (args.iter().enumerate()).any(|(i, arg)| {
+            if !f.locals[i].ty.has_fn(self.program) {
                 return false;
             }
             match arg {
