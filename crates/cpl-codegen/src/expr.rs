@@ -677,7 +677,10 @@ impl<'p> Emitter<'p> {
                                 {
                                     return self.expr_with_elem_layout(item, Some(&l)).text;
                                 }
-                                let v = self.braced(item);
+                                let mut v = self.braced(item);
+                                if self.taken_items.contains(&(item as *const Expr)) {
+                                    v = format!("std::move({v})");
+                                }
                                 match struct_id {
                                     Some(s) => self.narrow_field_store(s, idx, &v),
                                     None => v,

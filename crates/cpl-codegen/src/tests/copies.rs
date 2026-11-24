@@ -308,3 +308,19 @@ fn a_local_read_for_the_last_time_moves_into_its_place() {
         "next is read after the store: {read}"
     );
 }
+
+#[test]
+fn a_field_a_literal_reads_before_it_is_reset_moves_in() {
+    let src = |reset: &str| {
+        format!(
+            "struct Box:\n    xs: List<Int> = []\n    k: Int = 0\n\n    fn take(mut self) -> Box:\n        let out = Box(xs, k)\n{reset}        out\n\nvar b = Box(xs: [1, 2, 3], k: 2)\nlet c = b.take()\nprint(c.xs.len, b.xs.len)\n"
+        )
+    };
+    let moved = cpp(&src("        xs = []\n        k = 0\n"));
+    assert!(moved.contains("Box{std::move(self.xs), self.k}"), "{moved}");
+    let kept = cpp(&src("        k = 0\n"));
+    assert!(
+        !kept.contains("std::move(self.xs)"),
+        "xs is never set again: {kept}"
+    );
+}

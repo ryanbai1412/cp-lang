@@ -7,6 +7,7 @@ use crate::emit::{Code, Emitter, COND};
 use crate::uses::effects::{may_touch, Touch};
 use crate::walk;
 use cpl_ir::{Arg, AssignOp, BinOp, Block, Expr, ExprKind, Place, PlaceKind, Stmt, Ty};
+use std::collections::BTreeSet;
 
 /// A container argument that is no place: a temporary C++ destroys at the
 /// end of the statement.
@@ -1104,8 +1105,39 @@ impl Emitter<'_> {
         self.moves_last = crate::uses::last_read(self.program, block, k)
             || self.takes_sunk_param(block, k)
             || self.dies_here(&block.stmts[k]);
+        self.taken_items = self.taken_items(&block.stmts[k], &block.stmts[k + 1..]);
         self.stmt_presized(&block.stmts, k, out);
         self.moves_last = false;
+        self.taken_items.clear();
+    }
+
+    /// The items of `let x = T(a, b.c, ..)` that read a place `rest` sets
+    /// before reading it, which nothing later in the literal reads either:
+    /// moving them in leaves only the value `rest` overwrites.
+    fn taken_items(&self, stmt: &Stmt, rest: &[Stmt]) -> BTreeSet<*const Expr> {
+        let Stmt::Let(_, Some(init)) = stmt else {
+            return BTreeSet::new();
+        };
+        let ExprKind::Tuple(items) = &init.kind else {
+            return BTreeSet::new();
+        };
+        items
+            .iter()
+            .enumerate()
+            .filter(|&(i, item)| {
+                let Some(path) = path_of(item) else {
+                    return false;
+                };
+                !item.ty.is_scalar()
+                    && !matches!(item.ty, Ty::Fn(..))
+                    && !(!path.0 .0 && self.ref_bound.contains(&path.0 .1))
+                    && !items[i + 1..]
+                        .iter()
+                        .any(|later| touches(&Stmt::Expr(later.clone()), &path))
+                    && overwritten_before_read(item, rest)
+            })
+            .map(|(_, item)| item as *const Expr)
+            .collect()
     }
 
     /// A `let` an enclosing statement found reads its source for the last

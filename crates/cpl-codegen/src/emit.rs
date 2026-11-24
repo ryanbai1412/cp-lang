@@ -156,6 +156,10 @@ pub(crate) struct Emitter<'p> {
     /// The statement being written stores a local read for the last time,
     /// or `let`s a variable the next statements set before reading it.
     pub moves_last: bool,
+    /// Items of the struct or tuple a `let` builds that read a place the
+    /// next statements set before reading it (`let out = T(xs); xs = []`):
+    /// each is moved in, not copied.
+    pub taken_items: BTreeSet<*const Expr>,
     pub pushers: BTreeMap<usize, usize>,
     /// Set while the `cpl_each_f` form of a fn is written: the slot of its list.
     pub pushing: Option<usize>,
@@ -275,6 +279,7 @@ impl<'p> Emitter<'p> {
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
             moves_last: false,
+            taken_items: BTreeSet::new(),
             pushers: BTreeMap::new(),
             sinks: BTreeMap::new(),
             sink_pure: BTreeSet::new(),
