@@ -16,8 +16,6 @@ fn main() {
     println!("cargo:rerun-if-changed=src/std_files.rs");
     let out = PathBuf::from(std::env::var_os("OUT_DIR").expect("set by cargo"));
     let std = manifest.join("../../std");
-    // A dev build reads std/ from here at run time (`modules.rs`), so a std
-    // edit rebuilds nothing; release and the browser use the copy put in.
     let wasm = std::env::var("CARGO_CFG_TARGET_ARCH").as_deref() == Ok("wasm32");
     let dev = std::env::var("PROFILE").as_deref() == Ok("debug") && !wasm;
     let source = if dev {
@@ -26,7 +24,9 @@ fn main() {
         PathBuf::new()
     };
     println!("cargo:rustc-env=CPL_STD_SOURCE={}", source.display());
-    bundle(&std, &out, "std", "std", !dev);
+    // The outlines index is built here in every profile, so std/ is tracked
+    // even when a dev build reads the module text at run time.
+    bundle(&std, &out, "std", "std", true);
 }
 
 /// Writes `<prefix>_modules.rs`, the table of every module under `root`,
