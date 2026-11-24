@@ -12,7 +12,11 @@ out="$(mktemp)"
 trap 'rm -f "$out"' EXIT
 timeout "$limit" "$root/scripts/check.sh" --commit 2>&1 | tee "$out"
 status=${PIPESTATUS[0]}
-[ "$status" -eq 124 ] || exit "$status"
+if [ "$status" -ne 124 ]; then
+    # land.sh shows this when a failed hook left nothing to land.
+    [ "$status" -eq 0 ] || tail -40 "$out" >"$(git rev-parse --git-common-dir)/cpl-commit-failed.log"
+    exit "$status"
+fi
 slow=$(grep '^==> ' "$out" | tail -1 | cut -c5-)
 echo "pre-commit: WARNING: the commit tier passed ${limit}s in \`${slow:-setup}\`; allowing the commit, CI runs the rest" >&2
 printf '%s\t%ss\t%s\n' "$(date -u +%FT%TZ)" "$limit" "${slow:-setup}" >>"$(git rev-parse --git-common-dir)/cpl-commit-slow.log"

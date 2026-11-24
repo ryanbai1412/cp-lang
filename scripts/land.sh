@@ -74,8 +74,13 @@ pull
 # Only committed work lands (handbook/guidelines/ci-checklist.md ci/R27): a
 # commit whose hook failed left nothing new, and pushing the regeneration
 # alone would ship generated files without their source.
-[ -n "$(git rev-list FETCH_HEAD..HEAD)" ] ||
-    { echo "land: nothing to land: HEAD is already on main (did the commit or its hook fail?)" >&2; exit 1; }
+failed_log="$(git rev-parse --git-common-dir)/cpl-commit-failed.log"
+if [ -z "$(git rev-list FETCH_HEAD..HEAD)" ]; then
+    echo "land: nothing to land: HEAD is already on main (did the commit or its hook fail?)" >&2
+    [ ! -s "$failed_log" ] || { echo "land: the last failed pre-commit ended:" >&2; tail -15 "$failed_log" >&2; }
+    exit 1
+fi
+rm -f "$failed_log"
 changed=$(git diff --name-only --diff-filter=ACMR FETCH_HEAD HEAD)
 seen="$(git rev-parse --git-dir)/cpl-last-land"
 if [ -s "$seen" ] && git cat-file -e "$(cat "$seen")^{commit}" 2>/dev/null; then
