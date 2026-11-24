@@ -474,6 +474,7 @@ egoi23p5
 egoi23p6
 egoi23p7
 etsr23r1p2
+egoi23p8
 etsr23r1p3
 etsr23r1p4
 etsr23r2p2
