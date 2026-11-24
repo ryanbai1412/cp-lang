@@ -7,10 +7,11 @@
 //   both rows have a 1 matter: each such span updates row i0's cells with its area. Taking
 //   heights from tall to short and pushing row i0's minima down to row i0 + 1 covers every
 //   inner row. O(n^2 m) = O((n m)^1.5).
-// Bounds: n0, m0: 2..=250_000
+// Bounds: n0: 2..=125_000; m0: 2..=250_000 / n0
 
 @!multitest
-let (n0, m0): (2..=250_000, 2..=250_000) = read()
+let n0: 2..=125_000 = read()
+let m0: 2..=250_000 / n0 = read()
 let rows: [0..n0]Str = read()
 let tr = n0 > m0
 let (n, m) = if tr: (m0, n0) else: (n0, m0)

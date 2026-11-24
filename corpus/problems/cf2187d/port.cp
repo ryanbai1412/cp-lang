@@ -18,7 +18,8 @@ let s: Str = read()
 fn step(c: Int, ch: Char) -> Int = if ch == '0': x + c else: y - c
 
 let first_q = s.find('?')
-let head = if let q = first_q: s[..q] else: s
+let cut = first_q ?? s.len
+let head = s[..cut]
 var c0 = 0
 var f = 0
 for ch in head:
