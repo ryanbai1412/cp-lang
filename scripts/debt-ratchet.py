@@ -1558,8 +1558,14 @@ def _compiler_strings(root: Path) -> set[str]:
     """Every identifier-like string literal in the checker, IR, interpreter and emitter, tests aside."""
     found: set[str] = set()
     for base in COMPILER_SRC:
-        for f in sorted((root / base).rglob("*.rs")):
-            if "tests" in f.parts or f.name in ("tests.rs", "test.rs"):
+        files = sorted((root / base).rglob("*.rs"))
+        test_mods: set[Path] = set()
+        for f in files:
+            here = f.parent if f.name in ("lib.rs", "main.rs", "mod.rs") else f.parent / f.stem
+            for name in re.findall(r"#\[cfg\(test\)\]\s*(?:#\[[^\]]*\]\s*)*mod (\w+);", f.read_text(encoding="utf-8")):
+                test_mods.update((here / f"{name}.rs", here / name / "mod.rs"))
+        for f in files:
+            if "tests" in f.parts or f.name in ("tests.rs", "test.rs") or f in test_mods:
                 continue
             text = f.read_text(encoding="utf-8")
             text = text.split("#[cfg(test)]")[0]

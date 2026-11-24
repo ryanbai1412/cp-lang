@@ -920,6 +920,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-check/src/prelude.rs",
                         'fn ty(n: &str) { match n { "Subset" => {}, _ => {} } }\n'
                         '#[cfg(test)]\nmod tests { const X: &str = "Heap"; }\n')
+            self._write(root, "crates/cpl-check/src/lib.rs", "#[cfg(test)]\nmod tests_messages;\n")
+            self._write(root, "crates/cpl-check/src/tests_messages.rs", 'const V: &str = "Vec";\n')
             self._write(root, "plan/domains/tech-debt/architecture/builtin-floor.md",
                         "| Storage | intrinsic | `len` |\n")
             self._write(root, "std/seq.cp",
@@ -931,6 +933,7 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "std/heap.cp",
                         "pub struct Heap<T>():\n    pub fn pop(mut self) -> ?T = None\n"
                         "pub fn pop(self: Heap<Int>) -> Int = 0\n")
+            self._write(root, "std/vec.cp", "pub struct Vec<T>():\n")
             self.assertEqual(dr.std_shadowed(root), ["Subset", "runs", "take"])
 
     def test_ir_builtin_names_reads_tuple_arms(self) -> None:
