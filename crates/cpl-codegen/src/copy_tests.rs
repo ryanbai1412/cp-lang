@@ -176,12 +176,12 @@ fn a_yields_fn_run_as_pushes_reserves_no_list() {
 fn a_view_of_a_temporary_holds_the_temporary() {
     let cpp = cpp(concat!(
         "let n: Int = read()\n",
-        "let v = chain([1, 3, 2], 4..=n).take(n)\n",
+        "let v = [n, 3, 2].sorted().take(n)\n",
         "print(v)\n",
     ));
     let owner = cpp
         .lines()
-        .find(|l| l.contains("std::vector<ll> t") && l.contains("chain"))
+        .find(|l| l.contains("std::vector<ll> t") && l.contains("sorted"))
         .unwrap_or_else(|| panic!("{cpp}"));
     let name = owner.split_whitespace().nth(1).unwrap();
     let call = cpp

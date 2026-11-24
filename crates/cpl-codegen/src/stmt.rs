@@ -371,7 +371,10 @@ impl<'p> Emitter<'p> {
         let ExprKind::Call(callee, _) = &seq.kind else {
             return false;
         };
-        if self.pushing.is_some() || self.closure_id.is_some() {
+        let returns = cpl_ir::pushed::returns(body);
+        // A closure's `return` is not the enclosing fn's, so only a body that
+        // never returns is fed from inside one.
+        if self.pushing.is_some() || (self.closure_id.is_some() && returns) {
             return false;
         }
         let feeds = cpl_ir::pushed::Feeds {
@@ -384,7 +387,6 @@ impl<'p> Emitter<'p> {
         if fed.is_none() {
             return false;
         }
-        let returns = cpl_ir::pushed::returns(body);
         let call = self.expr(seq).text;
         let name = fn_name(&self.program.fns[*callee].name);
         let Some(call) = (call.strip_prefix("::prog::").unwrap_or(&call))

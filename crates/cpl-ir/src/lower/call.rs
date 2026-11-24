@@ -7,6 +7,7 @@ mod collect;
 mod field;
 mod fold;
 mod gen;
+mod gen_take;
 mod io_base;
 mod laws;
 pub(super) use gen::fixed_domain;
@@ -52,6 +53,9 @@ impl<'a> Lowerer<'a> {
         self.intern_inline_product(base, span);
         if let Some(alias) = self.subsets_alias(base) {
             return self.method(whole, &alias, name, args, hint);
+        }
+        if let Some(taken) = self.take_from_generator(base, name, args, span) {
+            return taken;
         }
         // `x.inv()`: a `@get` method reads the same with empty parentheses.
         if args.is_empty() {
