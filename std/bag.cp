@@ -2,21 +2,480 @@
 
 use std.seq.{Track, remove}
 
-/// Read-only handle into a `SortedBag<K>` node, valid until the next mutation.
+/// Read-only handle to one distinct key of a `SortedBag<K>`, valid until the next mutation.
 pub struct BagCursor(id: Int)
 
-struct BagNode<K>:
-    key: K
-    var cnt: Int
-    var sub: Int
-    pri: -2_147_483_648..=2_147_483_647
-    var left: -2_147_483_648..=2_147_483_647
-    var right: -2_147_483_648..=2_147_483_647
-    var par: -2_147_483_648..=2_147_483_647
+// Slots per B+tree node; a node other than the root keeps at least `NODE_MIN` of them.
+const NODE = 32
+const NODE_MIN = 8
 
-/// An ordered multiset (bag) of `K` backed by a randomized treap over a single flat node array
-/// with recycled node slots and parent pointers for \(O(1)\) amortized cursor stepping.
-/// Keeps one node per distinct key with its multiplicity and subtree element count.
+// How many slots of a `KeyTree` node are in use, and a leaf's neighbours (-1 for none).
+struct TreeNode:
+    var size: -2_147_483_648..=2_147_483_647
+    var next: -2_147_483_648..=2_147_483_647
+    var prev: -2_147_483_648..=2_147_483_647
+
+// One stored key: its value and copy count in a leaf, or a separator and its child's element
+// count in an inner node.
+struct Slot<K, V>:
+    var key: K
+    var val: V
+    var cnt: Int
+
+// The B+tree behind `SortedBag`, `SortedSet` and `SortedMap`. Node `u` owns slots
+// `u * NODE .. u * NODE + len_of(u)` of `slots` (and of `kids`, which stays empty while the
+// root is the only node). A leaf slot holds a key, its value and its copy count; an inner slot
+// holds a separator key, its child's element count, and the child in `kids`.
+// Separator `i >= 1` is at most every key of child `i` and above every key of child `i - 1`;
+// separator 0 is never read. Leaves sit at depth `height` and link to their neighbours.
+struct KeyTree<K, V>:
+    var slots: List<Slot<K, V>>
+    var kids: List<-2_147_483_648..=2_147_483_647>
+    var nodes: List<TreeNode>
+    var free: List<-2_147_483_648..=2_147_483_647>
+    var root: Int
+    var height: Int
+    var head: Int
+    var tail: Int
+    var total: Int
+    var live: Int
+
+    fn new() -> KeyTree<K, V> = KeyTree([], [], [], [], -1, 0, -1, -1, 0, 0)
+
+    // Move the tree out in O(1), leaving `self` empty.
+    fn take(mut self) -> KeyTree<K, V>:
+        let out = KeyTree(slots, kids, nodes, free, root, height, head, tail, total, live)
+        slots = []
+        kids = []
+        nodes = []
+        free = []
+        root = -1
+        height = 0
+        head = -1
+        tail = -1
+        total = 0
+        live = 0
+        out
+
+    // While the root leaf is the only node, it is node 0, it owns exactly `slots`, and `nodes`
+    // stays empty; the second node fills `nodes` in.
+    fn len_of(self, u: Int) -> Int:
+        if nodes.len == 0: return slots.len
+        unchecked: return nodes[u].size
+
+    fn next_of(self, u: Int) -> Int:
+        if nodes.len == 0: return -1
+        unchecked: return nodes[u].next
+
+    fn prev_of(self, u: Int) -> Int:
+        if nodes.len == 0: return -1
+        unchecked: return nodes[u].prev
+
+    fn first_id(self) -> Int = if root < 0: -1 else: head * NODE
+
+    fn last_id(self) -> Int:
+        if root < 0: return -1
+        unchecked: return tail * NODE + self.len_of(tail) - 1
+
+    fn after(self, id: Int) -> Int:
+        let u = id / NODE
+        unchecked:
+            if id % NODE + 1 < self.len_of(u): return id + 1
+            let w = self.next_of(u)
+            return if w < 0: -1 else: w * NODE
+
+    fn before(self, id: Int) -> Int:
+        if id % NODE > 0: return id - 1
+        unchecked:
+            let w = self.prev_of(id / NODE)
+            return if w < 0: -1 else: w * NODE + self.len_of(w) - 1
+
+    // How many of node `u`'s first `n` keys are `<= x` (`le`) or `< x`.
+    fn count_keys(self, u: Int, n: Int, x: K, le: Bool) -> Int:
+        var lo = 0
+        var hi = n
+        let base = u * NODE
+        unchecked:
+            if le:
+                while lo < hi:
+                    let m = (lo + hi) / 2
+                    if x < slots[base + m].key: hi = m else: lo = m + 1
+            else:
+                while lo < hi:
+                    let m = (lo + hi) / 2
+                    if slots[base + m].key < x: lo = m + 1 else: hi = m
+        lo
+
+    // The child of inner node `u` whose keys may equal `x`.
+    fn route(self, u: Int, x: K) -> Int:
+        unchecked:
+            let i = self.count_keys(u, self.len_of(u), x, true)
+            return if i > 0: i - 1 else: 0
+
+    // The slot of the first key `> x` (`le`) or `>= x`, or -1.
+    fn seek(self, x: K, le: Bool) -> Int:
+        if root < 0: return -1
+        var u = root
+        unchecked:
+            for _ in 0..height: u = kids[u * NODE + self.route(u, x)]
+            let j = self.count_keys(u, self.len_of(u), x, le)
+            if j < self.len_of(u): return u * NODE + j
+            let w = self.next_of(u)
+            return if w < 0: -1 else: w * NODE
+
+    // The slot of the last key `<= x` (`le`) or `< x`, or -1.
+    fn seek_back(self, x: K, le: Bool) -> Int:
+        let s = self.seek(x, le)
+        if s < 0: self.last_id() else: self.before(s)
+
+    // The slot holding `x`, or -1.
+    fn find(self, x: K) -> Int:
+        let s = self.seek(x, false)
+        unchecked:
+            if s >= 0 and not (x < slots[s].key): return s
+        -1
+
+    // How many elements are `<= x` (`le`) or `< x`.
+    // Each node's element count `w` is known from its parent slot, so a level adds up the
+    // shorter side of the split, and a leaf holding one copy per key adds nothing.
+    fn rank_of(self, x: K, le: Bool) -> Int:
+        if root < 0: return 0
+        var ans = 0
+        var u = root
+        var w = total
+        unchecked:
+            for _ in 0..height:
+                let i = self.route(u, x)
+                ans += self.count_before(u, i, w)
+                w = slots[u * NODE + i].cnt
+                u = kids[u * NODE + i]
+            let n = self.len_of(u)
+            let j = self.count_keys(u, n, x, le)
+            ans += if w == n: j else: self.count_before(u, j, w)
+        ans
+
+    // The elements in the first `i` slots of node `u`, which holds `w` in all.
+    fn count_before(self, u: Int, i: Int, w: Int) -> Int:
+        let base = u * NODE
+        var s = 0
+        unchecked:
+            let n = self.len_of(u)
+            if 2 * i <= n:
+                for j in base..base + i: s += slots[j].cnt
+                return s
+            for j in base + i..base + n: s += slots[j].cnt
+        w - s
+
+    // The slot of the element at 0-based position `i` counting copies, or -1.
+    fn nth_id(self, i: Int) -> Int:
+        if i < 0 or i >= total: return -1
+        var k = i
+        var u = root
+        unchecked:
+            for _ in 0..height:
+                var j = u * NODE
+                while k >= slots[j].cnt:
+                    k -= slots[j].cnt
+                    j += 1
+                u = kids[j]
+            var j = u * NODE
+            while k >= slots[j].cnt:
+                k -= slots[j].cnt
+                j += 1
+            return j
+
+    // The first slot of the subtree under inner slot `s`, one level above height `h`.
+    fn leftmost(self, s: Int, h: Int) -> Int:
+        var u = 0
+        unchecked:
+            u = kids[s]
+            for _ in 0..h: u = kids[u * NODE]
+        u * NODE
+
+    // The first slot whose entry satisfies monotone `ok` (false then true), or -1. Calls `ok`
+    // only on stored entries, a binary search of the children's first entries per level.
+    fn first_true(self, ok: (K, V) -> Bool) -> Int:
+        if root < 0: return -1
+        var fallback = -1
+        var u = root
+        unchecked:
+            for h in (0..height).rev:
+                let base = u * NODE
+                var lo = 0
+                var hi = self.len_of(u)
+                while lo < hi:
+                    let m = (lo + hi) / 2
+                    let f = self.leftmost(base + m, h)
+                    if ok(slots[f].key, slots[f].val): hi = m else: lo = m + 1
+                if lo == 0: return self.leftmost(base, h)
+                if lo < self.len_of(u): fallback = self.leftmost(base + lo, h)
+                u = kids[base + lo - 1]
+            let base = u * NODE
+            var lo = 0
+            var hi = self.len_of(u)
+            while lo < hi:
+                let m = (lo + hi) / 2
+                if ok(slots[base + m].key, slots[base + m].val): hi = m else: lo = m + 1
+            return if lo < self.len_of(u): base + lo else: fallback
+
+    // The last slot whose entry satisfies monotone `ok` (true then false), or -1.
+    fn last_true(self, ok: (K, V) -> Bool) -> Int:
+        if root < 0: return -1
+        var u = root
+        unchecked:
+            for h in (0..height).rev:
+                let base = u * NODE
+                var lo = 0
+                var hi = self.len_of(u)
+                while lo < hi:
+                    let m = (lo + hi) / 2
+                    let f = self.leftmost(base + m, h)
+                    if ok(slots[f].key, slots[f].val): lo = m + 1 else: hi = m
+                if lo == 0: return -1
+                u = kids[base + lo - 1]
+            let base = u * NODE
+            var lo = 0
+            var hi = self.len_of(u)
+            while lo < hi:
+                let m = (lo + hi) / 2
+                if ok(slots[base + m].key, slots[base + m].val): lo = m + 1 else: hi = m
+            return if lo > 0: base + lo - 1 else: -1
+
+    fn reserve(mut self, cap: Int):
+        if cap <= 0: return
+        if nodes.len == 0 and cap <= NODE:
+            slots.reserve(cap)
+            return
+        let n = (cap + NODE_MIN) / (NODE / 2) + 1
+        slots.reserve(n * NODE)
+        kids.reserve(n * NODE)
+        nodes.reserve(n)
+
+    // A fresh node; `x` and `v` fill its slots until they are written. The lone root leaf grows
+    // one slot at a time (`open`), with no `nodes` entry and an empty `kids`, so a small tree
+    // holds only what it stores; all three are filled out when a second node is made.
+    fn alloc(mut self, x: K, v: V) -> Int:
+        unchecked:
+            if let u = free.pop():
+                nodes[u].size = 0
+                nodes[u].next = -1
+                nodes[u].prev = -1
+                return u
+            if nodes.len == 0:
+                if root < 0: return 0
+                nodes.push(TreeNode(slots.len, -1, -1))
+            while slots.len < (nodes.len + 1) * NODE: self.grow(x, v)
+            while kids.len < slots.len: kids.push(-1)
+            nodes.push(TreeNode(0, -1, -1))
+            return nodes.len - 1
+
+    fn grow(mut self, x: K, v: V):
+        slots.push(Slot(x, v, 0))
+
+    // Swap slots `a` and `b` whole, so moving an entry never copies its key or value.
+    fn trade(mut self, a: Int, b: Int):
+        unchecked:
+            slots.swap(a, b)
+            if kids.len > 0: kids.swap(a, b)
+
+    // Open slot `j` of node `u` by shifting the slots after it right.
+    fn open(mut self, u: Int, j: Int, x: K, v: V):
+        let base = u * NODE
+        let n = self.len_of(u)
+        if nodes.len == 0: self.grow(x, v)
+        unchecked:
+            for t in (j..n).rev: self.trade(base + t, base + t + 1)
+            if nodes.len > 0: nodes[u].size += 1
+
+    // Close slot `j` of node `u` by shifting the slots after it left.
+    fn close(mut self, u: Int, j: Int):
+        let base = u * NODE
+        unchecked:
+            for t in j + 1..self.len_of(u): self.trade(base + t - 1, base + t)
+            if nodes.len == 0:
+                let _ = slots.pop()
+            else:
+                nodes[u].size -= 1
+
+    fn weight(self, u: Int) -> Int:
+        var s = 0
+        unchecked:
+            for j in u * NODE..u * NODE + self.len_of(u): s += slots[j].cnt
+        s
+
+    // Move the upper half of full node `u` into a new right sibling and return it.
+    fn split_node(mut self, u: Int, leaf: Bool, x: K, v: V) -> Int:
+        let w = self.alloc(x, v)
+        let half = NODE / 2
+        unchecked:
+            for t in 0..NODE - half: self.trade(w * NODE + t, u * NODE + half + t)
+            nodes[w].size = NODE - half
+            nodes[u].size = half
+            if leaf:
+                nodes[w].next = self.next_of(u)
+                nodes[w].prev = u
+                if self.next_of(u) >= 0: nodes[self.next_of(u)].prev = w else: tail = w
+                nodes[u].next = w
+        w
+
+    // Add `c` copies of `x` under node `u` at height `h`; `mode` 0 adds copies, 1 keeps an
+    // existing key unchanged, 2 overwrites its value. Returns the elements added and the new
+    // right sibling of `u`, or -1.
+    fn insert_at(mut self, u: Int, h: Int, x: K, v: V, c: Int, mode: Int) -> (Int, Int):
+        unchecked:
+            if h == 0:
+                let j = self.count_keys(u, self.len_of(u), x, false)
+                let s = u * NODE + j
+                if j < self.len_of(u) and not (x < slots[s].key):
+                    if mode == 1: return (0, -1)
+                    if mode == 2:
+                        slots[s].val = v
+                        return (0, -1)
+                    slots[s].cnt += c
+                    return (c, -1)
+                live += 1
+                if self.len_of(u) < NODE:
+                    self.put(u, j, x, v, c, -1)
+                    return (c, -1)
+                let w = self.split_node(u, true, x, v)
+                if j <= self.len_of(u): self.put(u, j, x, v, c, -1) else: self.put(w, j - self.len_of(u), x, v, c, -1)
+                return (c, w)
+            let i = self.route(u, x)
+            let s = u * NODE + i
+            let (d, w) = self.insert_at(kids[s], h - 1, x, v, c, mode)
+            slots[s].cnt += d
+            if w < 0: return (d, -1)
+            let wc = self.weight(w)
+            slots[s].cnt -= wc
+            if self.len_of(u) < NODE:
+                self.put(u, i + 1, slots[w * NODE].key, v, wc, w)
+                return (d, -1)
+            let z = self.split_node(u, false, x, v)
+            if i + 1 <= self.len_of(u): self.put(u, i + 1, slots[w * NODE].key, v, wc, w)
+            else: self.put(z, i + 1 - self.len_of(u), slots[w * NODE].key, v, wc, w)
+            return (d, z)
+
+    fn put(mut self, u: Int, j: Int, x: K, v: V, c: Int, kid: Int):
+        self.open(u, j, x, v)
+        let s = u * NODE + j
+        unchecked:
+            slots[s].key = x
+            slots[s].val = v
+            slots[s].cnt = c
+            if kids.len > 0: kids[s] = kid
+
+    // Add `c` copies of `x` with value `v` (see `insert_at` for `mode`); returns the elements added.
+    fn insert(mut self, x: K, v: V, c: Int, mode: Int) -> Int:
+        unchecked:
+            if root < 0:
+                root = self.alloc(x, v)
+                head = root
+                tail = root
+                height = 0
+                self.put(root, 0, x, v, c, -1)
+                live += 1
+                total += c
+                return c
+            let (d, w) = self.insert_at(root, height, x, v, c, mode)
+            total += d
+            if w >= 0:
+                let r = self.alloc(x, v)
+                self.put(r, 0, slots[root * NODE].key, v, total - self.weight(w), root)
+                self.put(r, 1, slots[w * NODE].key, v, self.weight(w), w)
+                root = r
+                height += 1
+            return d
+
+    // Remove one copy of `x` (all copies when `all`) under node `u` at height `h`; returns
+    // how many were removed.
+    fn erase_at(mut self, u: Int, h: Int, x: K, all: Bool) -> Int:
+        unchecked:
+            if h == 0:
+                let j = self.count_keys(u, self.len_of(u), x, false)
+                let s = u * NODE + j
+                if j == self.len_of(u) or x < slots[s].key: return 0
+                if not all and slots[s].cnt > 1:
+                    slots[s].cnt -= 1
+                    return 1
+                let r = slots[s].cnt
+                self.close(u, j)
+                live -= 1
+                return r
+            let i = self.route(u, x)
+            let s = u * NODE + i
+            let r = self.erase_at(kids[s], h - 1, x, all)
+            if r == 0: return 0
+            slots[s].cnt -= r
+            if self.len_of(kids[s]) < NODE_MIN: self.refill(u, i, h - 1)
+            return r
+
+    // Child `i` of inner node `u` (at height `h`) is short: merge it with a sibling, or even
+    // the two out when together they overfill one node.
+    fn refill(mut self, u: Int, i: Int, h: Int):
+        let l = if i + 1 < self.len_of(u): i else: i - 1
+        let ls = u * NODE + l
+        let rs = ls + 1
+        unchecked:
+            let a = kids[ls]
+            let b = kids[rs]
+            let na = self.len_of(a)
+            let nb = self.len_of(b)
+            // Separator 0 of `b` is about to sit past slot 0: give it `b`'s real lower bound.
+            if h > 0: slots[b * NODE].key = slots[rs].key
+            if na + nb <= NODE:
+                for t in 0..nb: self.trade(a * NODE + na + t, b * NODE + t)
+                nodes[a].size = na + nb
+                nodes[b].size = 0
+                slots[ls].cnt += slots[rs].cnt
+                if h == 0:
+                    nodes[a].next = self.next_of(b)
+                    if self.next_of(b) >= 0: nodes[self.next_of(b)].prev = a else: tail = a
+                self.close(u, l + 1)
+                free.push(b)
+                return
+            var moved = 0
+            if na < nb:
+                let k = (nb - na) / 2
+                for t in 0..k:
+                    moved += slots[b * NODE + t].cnt
+                    self.trade(a * NODE + na + t, b * NODE + t)
+                for t in k..nb: self.trade(b * NODE + t - k, b * NODE + t)
+                nodes[a].size = na + k
+                nodes[b].size = nb - k
+                slots[ls].cnt += moved
+                slots[rs].cnt -= moved
+            else:
+                let k = (na - nb) / 2
+                for t in (0..nb).rev: self.trade(b * NODE + t + k, b * NODE + t)
+                for t in 0..k:
+                    moved += slots[a * NODE + na - k + t].cnt
+                    self.trade(b * NODE + t, a * NODE + na - k + t)
+                nodes[a].size = na - k
+                nodes[b].size = nb + k
+                slots[ls].cnt -= moved
+                slots[rs].cnt += moved
+            slots[rs].key = slots[b * NODE].key
+
+    // Remove one copy of `x` (every copy when `all`); returns how many were removed.
+    fn erase(mut self, x: K, all: Bool) -> Int:
+        if root < 0: return 0
+        let r = self.erase_at(root, height, x, all)
+        total -= r
+        unchecked:
+            if height > 0 and self.len_of(root) == 1:
+                free.push(root)
+                root = kids[root * NODE]
+                height -= 1
+            elif height == 0 and self.len_of(root) == 0:
+                if nodes.len > 0: free.push(root)
+                root = -1
+                head = -1
+                tail = -1
+        r
+
+/// An ordered multiset (bag) of `K` backed by a B+tree of 32-slot nodes in flat arrays, with
+/// recycled node slots and linked leaves for \(O(1)\) cursor stepping.
+/// Keeps one leaf slot per distinct key with its multiplicity; inner slots keep subtree element counts.
 /// `add`, `add_many`, `remove`, `remove_all`, `contains`, `count`,
 /// `pop_first`, `pop_last`, `rank`, `nth`, `first_true`, `last_true`, and `cursor_*` are \(O(\log n)\) expected;
 /// `range(r)` returns an \(O(1)\) view whose `.first`, `.last`, `.len`, `.is_empty` are \(O(\log n)\)
@@ -28,20 +487,14 @@ struct BagNode<K>:
 /// Elements are ordered by `K`'s `<`; copies of one key are equal and indistinguishable, so
 /// no method here has a tie to break between them. `n` in every cost is `len`.
 pub struct SortedBag<K>:
-    var nodes: List<BagNode<K>>
-    var free: List<-2_147_483_648..=2_147_483_647>
-    var live: Int
-    var root: Int
-    var rng: U64
-    var lo: ?K
-    var hi: ?K
+    var t: KeyTree<K, ()>
 
     /// Create an empty `SortedBag<K>`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b: SortedBag<Int> = SortedBag(); b.len == 0`
-    pub fn new() -> SortedBag<K> = SortedBag([], [], 0, -1, U64(0x5e3779b97f4a7c15), None, None)
+    pub fn new() -> SortedBag<K> = SortedBag(KeyTree<K, ()>.new())
 
     /// Build a `SortedBag` containing every element of `xs`.
     ///
@@ -53,6 +506,7 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([3, 1, 3]).to_list() == [1, 3, 3]`
     pub fn of(xs: List<K>) -> SortedBag<K>:
         var b = SortedBag<K>.new()
+        b.reserve(xs.len)
         for x in xs: b.add(x)
         b
 
@@ -62,7 +516,7 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).len == 3`
     @get pub fn len(self) -> Int:
-        self.sub_of(root)
+        t.total
 
     /// Number of distinct keys currently in the bag.
     ///
@@ -70,7 +524,7 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).distinct == 2`
     @get pub fn distinct(self) -> Int:
-        live
+        t.live
 
     /// Whether the bag has no elements.
     ///
@@ -78,22 +532,15 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([1]).is_empty == false`
     @get pub fn is_empty(self) -> Bool:
-        root < 0
+        t.root < 0
 
     /// Remove all elements from the bag.
-    ///
-    /// The node array keeps its capacity.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `var b = SortedBag.of([1, 2]); b.clear(); b.len == 0 and b.first == None`
     pub fn clear(mut self):
-        nodes = []
-        free = []
-        live = 0
-        root = -1
-        lo = None
-        hi = None
+        let _ = t.take()
 
     /// Move the bag's contents out in \(O(1)\), leaving `self` empty.
     ///
@@ -101,14 +548,7 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `var b = SortedBag.of([1, 2]); let t = b.take(); b.is_empty and t.to_list() == [1, 2]`
     pub fn take(mut self) -> SortedBag<K>:
-        let out = SortedBag(nodes, free, live, root, rng, lo, hi)
-        nodes = []
-        free = []
-        live = 0
-        root = -1
-        lo = None
-        hi = None
-        out
+        SortedBag(t.take())
 
     /// Insert one copy of `x` into the bag. Always returns `true`.
     ///
@@ -118,20 +558,10 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `var b: SortedBag<Int> = SortedBag(); b.add(3) and b.add(3) and b.count(3) == 2`
     pub fn add(mut self, x: K) -> Bool:
-        let (r, _) = self.insert_at(root, x, 1, false)
-        root = r
-        unchecked:
-            if root >= 0: nodes[root].par = -1
-        self.refresh()
+        let _ = t.insert(x, (), 1, 0)
         true
 
-    fn add_unique(mut self, x: K) -> Bool:
-        let (r, added) = self.insert_at(root, x, 1, true)
-        root = r
-        unchecked:
-            if root >= 0: nodes[root].par = -1
-        self.refresh()
-        added
+    fn add_unique(mut self, x: K) -> Bool = t.insert(x, (), 1, 1) > 0
 
     /// Insert `c >= 0` copies of `x` into the bag.
     ///
@@ -143,24 +573,14 @@ pub struct SortedBag<K>:
     pub fn add_many(mut self, x: K, c: Int):
         assert c >= 0
         if c == 0: return
-        let (r, _) = self.insert_at(root, x, c, false)
-        root = r
-        unchecked:
-            if root >= 0: nodes[root].par = -1
-        self.refresh()
+        let _ = t.insert(x, (), c, 0)
 
     /// Remove one copy of `x` if present; returns `true` if a copy was removed.
     ///
     /// cost: \(O(\log n)\) expected
     /// traps: never
     /// example: `var b = SortedBag.of([2, 2]); b.remove(2) and b.count(2) == 1 and not b.remove(7)`
-    pub fn remove(mut self, x: K) -> Bool:
-        let (r, removed) = self.erase_at(root, x, false)
-        root = r
-        unchecked:
-            if root >= 0: nodes[root].par = -1
-        self.refresh()
-        removed > 0
+    pub fn remove(mut self, x: K) -> Bool = t.erase(x, false) > 0
 
     /// Remove all copies of `x` and return how many were removed.
     ///
@@ -168,13 +588,7 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `var b = SortedBag.of([2, 2, 3]); b.remove_all(2) == 2 and b.to_list() == [3]`
     /// example: `var b = SortedBag.of([3]); b.remove_all(2) == 0`
-    pub fn remove_all(mut self, x: K) -> Int:
-        let (r, removed) = self.erase_at(root, x, true)
-        root = r
-        unchecked:
-            if root >= 0: nodes[root].par = -1
-        self.refresh()
-        removed
+    pub fn remove_all(mut self, x: K) -> Int = t.erase(x, true)
 
     /// Remove one copy of the key at cursor `c`, as `remove(key_of(c))` would.
     ///
@@ -184,7 +598,7 @@ pub struct SortedBag<K>:
     /// traps: never in release (a stale cursor removes an unspecified key); debug traps when the node of `c` has been freed
     /// example: `var b = SortedBag.of([2, 5, 5]); b.remove_at(b.cursor_ge(3)!); b.to_list() == [2, 5]`
     pub fn remove_at(mut self, c: BagCursor):
-        self.remove(nodes[c.id].key)
+        self.remove(t.slots[c.id].key)
 
     /// How many copies of `x` are currently in the bag.
     ///
@@ -193,13 +607,9 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([2, 2, 3]).count(2) == 2`
     /// example: `SortedBag.of([2, 2, 3]).count(4) == 0`
     pub fn count(self, x: K) -> Int:
-        var u = root
-        unchecked:
-            while u >= 0:
-                if x < nodes[u].key: u = nodes[u].left
-                elif nodes[u].key < x: u = nodes[u].right
-                else: return nodes[u].cnt
-        0
+        let s = t.find(x)
+        if s < 0: return 0
+        unchecked: return t.slots[s].cnt
 
     /// Whether at least one copy of `x` is in the bag.
     ///
@@ -218,7 +628,8 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([3, 1, 1]).first == Some(1)`
     @get pub fn first(self) -> ?K:
-        lo
+        if t.root < 0: return None
+        unchecked: return t.slots[t.first_id()].key
 
     /// The largest element, or `None` when empty. \(O(1)\), kept current by every update.
     ///
@@ -228,7 +639,8 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([3, 1, 3]).last == Some(3)`
     @get pub fn last(self) -> ?K:
-        hi
+        if t.root < 0: return None
+        unchecked: return t.slots[t.last_id()].key
 
     /// Remove and return one copy of the smallest element, or `None` when empty.
     ///
@@ -297,31 +709,9 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `SortedBag.of([1, 2, 2, 5]).rank(2) == 1`
     /// example: `SortedBag.of([1, 2, 2, 5]).rank(3) == 3`
-    pub fn rank(self, k: K) -> Int:
-        var ans = 0
-        var u = root
-        unchecked:
-            while u >= 0:
-                if nodes[u].key < k:
-                    let l = nodes[u].left
-                    ans += (if l < 0: 0 else: nodes[l].sub) + nodes[u].cnt
-                    u = nodes[u].right
-                else:
-                    u = nodes[u].left
-        ans
+    pub fn rank(self, k: K) -> Int = t.rank_of(k, false)
 
-    fn rank_le(self, k: K) -> Int:
-        var ans = 0
-        var u = root
-        unchecked:
-            while u >= 0:
-                if not (k < nodes[u].key):
-                    let l = nodes[u].left
-                    ans += (if l < 0: 0 else: nodes[l].sub) + nodes[u].cnt
-                    u = nodes[u].right
-                else:
-                    u = nodes[u].left
-        ans
+    fn rank_le(self, k: K) -> Int = t.rank_of(k, true)
 
     fn lo_ok(self, x: K, lo: ?K, lo_inc: Bool) -> Bool:
         if let a = lo:
@@ -349,59 +739,17 @@ pub struct SortedBag<K>:
         SortedRange(self, Some(r.l), true, Some(r.r), false)
 
     fn range_first(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
-        var ans = -1
+        let s = if let a = lo: t.seek(a, not lo_inc) else: t.first_id()
+        if s < 0: return None
         unchecked:
-            if let a = lo:
-                var u = root
-                if lo_inc:
-                    while u >= 0:
-                        if not (nodes[u].key < a):
-                            ans = u
-                            u = nodes[u].left
-                        else:
-                            u = nodes[u].right
-                else:
-                    while u >= 0:
-                        if a < nodes[u].key:
-                            ans = u
-                            u = nodes[u].left
-                        else:
-                            u = nodes[u].right
-            else:
-                var u = root
-                while u >= 0:
-                    ans = u
-                    u = nodes[u].left
-            if ans < 0: return None
-            let k = nodes[ans].key
+            let k = t.slots[s].key
             return if self.hi_ok(k, hi, hi_inc): k else: None
 
     fn range_last(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> ?K:
-        var ans = -1
+        let s = if let b = hi: t.seek_back(b, hi_inc) else: t.last_id()
+        if s < 0: return None
         unchecked:
-            if let b = hi:
-                var u = root
-                if hi_inc:
-                    while u >= 0:
-                        if not (b < nodes[u].key):
-                            ans = u
-                            u = nodes[u].right
-                        else:
-                            u = nodes[u].left
-                else:
-                    while u >= 0:
-                        if nodes[u].key < b:
-                            ans = u
-                            u = nodes[u].right
-                        else:
-                            u = nodes[u].left
-            else:
-                var u = root
-                while u >= 0:
-                    ans = u
-                    u = nodes[u].right
-            if ans < 0: return None
-            let k = nodes[ans].key
+            let k = t.slots[s].key
             return if self.lo_ok(k, lo, lo_inc): k else: None
 
     fn range_len(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> Int:
@@ -416,28 +764,22 @@ pub struct SortedBag<K>:
         if cnt_hi > cnt_lo: cnt_hi - cnt_lo else: 0
 
     fn range_each(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
-        var cur = if let a = lo:
-            if lo_inc: self.cursor_ge(a) else: self.cursor_gt(a)
-        else:
-            self.cursor_first()
+        var s = if let a = lo: t.seek(a, not lo_inc) else: t.first_id()
         unchecked:
-            while let c = cur:
-                let k = nodes[c.id].key
+            while s >= 0:
+                let k = t.slots[s].key
                 if not self.hi_ok(k, hi, hi_inc): break
-                for _ in 0..nodes[c.id].cnt: yield k
-                cur = self.next_cursor(c)
+                for _ in 0..t.slots[s].cnt: yield k
+                s = t.after(s)
 
     fn range_each_rev(self, lo: ?K, lo_inc: Bool, hi: ?K, hi_inc: Bool) -> yields K:
-        var cur = if let b = hi:
-            if hi_inc: self.cursor_le(b) else: self.cursor_lt(b)
-        else:
-            self.cursor_last()
+        var s = if let b = hi: t.seek_back(b, hi_inc) else: t.last_id()
         unchecked:
-            while let c = cur:
-                let k = nodes[c.id].key
+            while s >= 0:
+                let k = t.slots[s].key
                 if not self.lo_ok(k, lo, lo_inc): break
-                for _ in 0..nodes[c.id].cnt: yield k
-                cur = self.prev_cursor(c)
+                for _ in 0..t.slots[s].cnt: yield k
+                s = t.before(s)
 
     /// 0-indexed `i`-th smallest element (counting duplicates), or `None` if out of bounds.
     ///
@@ -450,21 +792,9 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([5, 2, 2, 1]).nth(2) == Some(2)`
     /// example: `SortedBag.of([5, 2, 2, 1]).nth(4) == None`
     pub fn nth(self, i: Int) -> ?K:
-        if i < 0 or i >= self.len: return None
-        var k = i
-        var u = root
-        unchecked:
-            while u >= 0:
-                let l = nodes[u].left
-                let lsz = if l < 0: 0 else: nodes[l].sub
-                if k < lsz:
-                    u = l
-                elif k < lsz + nodes[u].cnt:
-                    return nodes[u].key
-                else:
-                    k -= lsz + nodes[u].cnt
-                    u = nodes[u].right
-        None
+        let s = t.nth_id(i)
+        if s < 0: return None
+        unchecked: return t.slots[s].key
 
     /// Smallest key where monotone `ok(k)` holds (`false..false, true..true`), or `None`.
     /// Checks monotonicity at the boundary. \(O(\log n)\) expected.
@@ -479,16 +809,9 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([1, 4, 6]).first_true(x => x >= 3) == Some(4)`
     /// example: `SortedBag.of([1, 4, 6]).first_true(x => x > 9) == None`
     pub fn first_true(self, ok: K -> Bool) -> ?K:
-        var best: ?K = None
-        var u = root
-        unchecked:
-            while u >= 0:
-                if ok(nodes[u].key):
-                    best = Some(nodes[u].key)
-                    u = nodes[u].left
-                else:
-                    u = nodes[u].right
-        best
+        let s = t.first_true((k, _) => ok(k))
+        if s < 0: return None
+        unchecked: return t.slots[s].key
 
     /// Largest key where monotone `ok(k)` holds (`true..true, false..false`), or `None`.
     /// Checks monotonicity at the boundary. \(O(\log n)\) expected.
@@ -500,16 +823,9 @@ pub struct SortedBag<K>:
     /// example: `SortedBag.of([1, 4, 6]).last_true(x => x <= 5) == Some(4)`
     /// example: `SortedBag.of([1, 4, 6]).last_true(x => x < 1) == None`
     pub fn last_true(self, ok: K -> Bool) -> ?K:
-        var best: ?K = None
-        var u = root
-        unchecked:
-            while u >= 0:
-                if ok(nodes[u].key):
-                    best = Some(nodes[u].key)
-                    u = nodes[u].right
-                else:
-                    u = nodes[u].left
-        best
+        let s = t.last_true((k, _) => ok(k))
+        if s < 0: return None
+        unchecked: return t.slots[s].key
 
     /// Remove and return the maximal run of elements strictly after `after` (ascending),
     /// strictly before `before` (descending), or from the smallest element (ascending)
@@ -554,12 +870,7 @@ pub struct SortedBag<K>:
     /// empty: `SortedBag<Int>().cursor_first() == None`
     /// traps: never
     /// example: `let b = SortedBag.of([5, 2, 2]); b.key_of(b.cursor_first()!) == 2`
-    pub fn cursor_first(self) -> ?BagCursor:
-        if root < 0: return None
-        var u = root
-        unchecked:
-            while nodes[u].left >= 0: u = nodes[u].left
-        BagCursor(u)
+    pub fn cursor_first(self) -> ?BagCursor = self.cursor(t.first_id())
 
     /// Cursor to the largest key, or `None` when empty.
     ///
@@ -567,12 +878,7 @@ pub struct SortedBag<K>:
     /// empty: `SortedBag<Int>().cursor_last() == None`
     /// traps: never
     /// example: `let b = SortedBag.of([5, 2, 2]); b.key_of(b.cursor_last()!) == 5`
-    pub fn cursor_last(self) -> ?BagCursor:
-        if root < 0: return None
-        var u = root
-        unchecked:
-            while nodes[u].right >= 0: u = nodes[u].right
-        BagCursor(u)
+    pub fn cursor_last(self) -> ?BagCursor = self.cursor(t.last_id())
 
     /// Cursor to exact key `k`, or `None` if absent.
     ///
@@ -580,14 +886,7 @@ pub struct SortedBag<K>:
     /// empty: `SortedBag<Int>().cursor_at(1) == None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.cursor_at(5) != None and b.cursor_at(3) == None`
-    pub fn cursor_at(self, k: K) -> ?BagCursor:
-        var u = root
-        unchecked:
-            while u >= 0:
-                if k < nodes[u].key: u = nodes[u].left
-                elif nodes[u].key < k: u = nodes[u].right
-                else: return BagCursor(u)
-        None
+    pub fn cursor_at(self, k: K) -> ?BagCursor = self.cursor(t.find(k))
 
     /// Cursor to smallest key `>= k`, or `None`.
     ///
@@ -595,17 +894,7 @@ pub struct SortedBag<K>:
     /// empty: `SortedBag<Int>().cursor_ge(1) == None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.key_of(b.cursor_ge(3)!) == 5 and b.cursor_ge(6) == None`
-    pub fn cursor_ge(self, k: K) -> ?BagCursor:
-        var ans = -1
-        var u = root
-        unchecked:
-            while u >= 0:
-                if not (nodes[u].key < k):
-                    ans = u
-                    u = nodes[u].left
-                else:
-                    u = nodes[u].right
-        if ans >= 0: BagCursor(ans) else: None
+    pub fn cursor_ge(self, k: K) -> ?BagCursor = self.cursor(t.seek(k, false))
 
     /// Cursor to smallest key `> k`, or `None`.
     ///
@@ -613,17 +902,7 @@ pub struct SortedBag<K>:
     /// empty: `SortedBag<Int>().cursor_gt(1) == None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.key_of(b.cursor_gt(2)!) == 5 and b.cursor_gt(5) == None`
-    pub fn cursor_gt(self, k: K) -> ?BagCursor:
-        var ans = -1
-        var u = root
-        unchecked:
-            while u >= 0:
-                if k < nodes[u].key:
-                    ans = u
-                    u = nodes[u].left
-                else:
-                    u = nodes[u].right
-        if ans >= 0: BagCursor(ans) else: None
+    pub fn cursor_gt(self, k: K) -> ?BagCursor = self.cursor(t.seek(k, true))
 
     /// Cursor to largest key `<= k`, or `None`.
     ///
@@ -631,17 +910,7 @@ pub struct SortedBag<K>:
     /// empty: `SortedBag<Int>().cursor_le(1) == None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.key_of(b.cursor_le(4)!) == 2 and b.cursor_le(1) == None`
-    pub fn cursor_le(self, k: K) -> ?BagCursor:
-        var ans = -1
-        var u = root
-        unchecked:
-            while u >= 0:
-                if not (k < nodes[u].key):
-                    ans = u
-                    u = nodes[u].right
-                else:
-                    u = nodes[u].left
-        if ans >= 0: BagCursor(ans) else: None
+    pub fn cursor_le(self, k: K) -> ?BagCursor = self.cursor(t.seek_back(k, true))
 
     /// Cursor to largest key `< k`, or `None`.
     ///
@@ -649,17 +918,7 @@ pub struct SortedBag<K>:
     /// empty: `SortedBag<Int>().cursor_lt(1) == None`
     /// traps: never
     /// example: `let b = SortedBag.of([2, 5]); b.key_of(b.cursor_lt(5)!) == 2 and b.cursor_lt(2) == None`
-    pub fn cursor_lt(self, k: K) -> ?BagCursor:
-        var ans = -1
-        var u = root
-        unchecked:
-            while u >= 0:
-                if nodes[u].key < k:
-                    ans = u
-                    u = nodes[u].right
-                else:
-                    u = nodes[u].left
-        if ans >= 0: BagCursor(ans) else: None
+    pub fn cursor_lt(self, k: K) -> ?BagCursor = self.cursor(t.seek_back(k, false))
 
     /// Key stored at cursor `c`.
     ///
@@ -668,14 +927,14 @@ pub struct SortedBag<K>:
     /// cost: \(O(1)\)
     /// traps: never in release (a stale cursor reads an unspecified key); debug traps when the node of `c` has been freed
     /// example: `let b = SortedBag.of([2, 2, 5]); b.key_of(b.cursor_first()!) == 2`
-    pub fn key_of(self, c: BagCursor) -> K = nodes[c.id].key
+    pub fn key_of(self, c: BagCursor) -> K = t.slots[c.id].key
 
     /// Multiplicity stored at cursor `c`.
     ///
     /// cost: \(O(1)\)
     /// traps: never in release (a stale cursor reads an unspecified count); debug traps when the node of `c` has been freed
     /// example: `let b = SortedBag.of([2, 2, 5]); b.count_of(b.cursor_at(2)!) == 2`
-    pub fn count_of(self, c: BagCursor) -> Int = nodes[c.id].cnt
+    pub fn count_of(self, c: BagCursor) -> Int = t.slots[c.id].cnt
 
     /// Cursor to the next larger distinct key, or `None`.
     ///
@@ -685,18 +944,7 @@ pub struct SortedBag<K>:
     /// traps: never in release; debug traps when the node of `c` has been freed
     /// example: `let b = SortedBag.of([2, 2, 5]); b.key_of(b.next_cursor(b.cursor_first()!)!) == 5`
     /// example: `let b = SortedBag.of([2, 5]); b.next_cursor(b.cursor_last()!) == None`
-    pub fn next_cursor(self, c: BagCursor) -> ?BagCursor:
-        var u = c.id
-        unchecked:
-            if nodes[u].right >= 0:
-                u = nodes[u].right
-                while nodes[u].left >= 0: u = nodes[u].left
-                return BagCursor(u)
-            while nodes[u].par >= 0:
-                let p = nodes[u].par
-                if nodes[p].left == u: return BagCursor(p)
-                u = p
-        None
+    pub fn next_cursor(self, c: BagCursor) -> ?BagCursor = self.cursor(t.after(c.id))
 
     /// Cursor to the next smaller distinct key, or `None`.
     ///
@@ -704,18 +952,7 @@ pub struct SortedBag<K>:
     /// traps: never in release; debug traps when the node of `c` has been freed
     /// example: `let b = SortedBag.of([2, 5, 5]); b.key_of(b.prev_cursor(b.cursor_last()!)!) == 2`
     /// example: `let b = SortedBag.of([2, 5]); b.prev_cursor(b.cursor_first()!) == None`
-    pub fn prev_cursor(self, c: BagCursor) -> ?BagCursor:
-        var u = c.id
-        unchecked:
-            if nodes[u].left >= 0:
-                u = nodes[u].left
-                while nodes[u].right >= 0: u = nodes[u].right
-                return BagCursor(u)
-            while nodes[u].par >= 0:
-                let p = nodes[u].par
-                if nodes[p].right == u: return BagCursor(p)
-                u = p
-        None
+    pub fn prev_cursor(self, c: BagCursor) -> ?BagCursor = self.cursor(t.before(c.id))
 
     /// Visit every distinct `(key, count)` in ascending order.
     ///
@@ -726,10 +963,11 @@ pub struct SortedBag<K>:
     /// example: `[e.key for e in SortedBag.of([5, 2, 2]).entries()] == [2, 5]`
     /// example: `[e.count for e in SortedBag.of([5, 2, 2]).entries()] == [2, 1]`
     pub fn entries(self) -> yields (key: K, count: Int):
-        var cur = self.cursor_first()
-        while let c = cur:
-            yield (key: nodes[c.id].key, count: nodes[c.id].cnt)
-            cur = self.next_cursor(c)
+        var s = t.first_id()
+        unchecked:
+            while s >= 0:
+                yield (key: t.slots[s].key, count: t.slots[s].cnt)
+                s = t.after(s)
 
     /// Visit every distinct `(key, count)` in descending order.
     ///
@@ -741,10 +979,11 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `[e.key for e in SortedBag.of([5, 2, 2]).entries_rev()] == [5, 2]`
     pub fn entries_rev(self) -> yields (key: K, count: Int):
-        var cur = self.cursor_last()
-        while let c = cur:
-            yield (key: nodes[c.id].key, count: nodes[c.id].cnt)
-            cur = self.prev_cursor(c)
+        var s = t.last_id()
+        unchecked:
+            while s >= 0:
+                yield (key: t.slots[s].key, count: t.slots[s].cnt)
+                s = t.before(s)
 
     /// Visit every element, duplicates included, in ascending order; `for x in b` uses this.
     ///
@@ -779,39 +1018,34 @@ pub struct SortedBag<K>:
             for _ in 0..c: out.push(k)
         out
 
-    /// Preallocate treap node pool for at least `cap` distinct keys.
+    /// Preallocate node storage for at least `cap` distinct keys.
     ///
     /// cost: \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: never
     /// example: `var b = SortedBag.of([1]); b.reserve(100); b.to_list() == [1]`
-    pub fn reserve(mut self, cap: Int):
-        if cap > 0: nodes.reserve(cap)
+    pub fn reserve(mut self, cap: Int) = t.reserve(cap)
 
     /// Split off and return all elements `>= k`, keeping `< k` in `self`.
     ///
     /// Every copy of a key goes to the same side.
     ///
-    /// The larger side keeps the node array; the smaller side's keys move to a fresh one.
+    /// The larger side keeps its storage; the smaller side's keys move to a fresh one.
     ///
     /// cost: \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys
     /// empty: `var b = SortedBag<Int>(); let hi = b.split_at(3); b.len == 0 and hi.len == 0`
     /// traps: never
     /// example: `var b = SortedBag.of([1, 3, 3, 5]); let hi = b.split_at(3); b.to_list() == [1] and hi.to_list() == [3, 3, 5]`
     pub fn split_at(mut self, k: K) -> SortedBag<K>:
-        let (l, r) = self.split_lt(root, k)
-        unchecked:
-            if l >= 0: nodes[l].par = -1
-            if r >= 0: nodes[r].par = -1
         var out = SortedBag<K>.new()
-        if self.sub_of(l) < self.sub_of(r):
+        if 2 * t.rank_of(k, false) < t.total:
             out = self.take()
-            out.root = r
-            out.move_out(l, mut self)
+            while let x = out.first:
+                if not (x < k): break
+                let _ = t.insert(x, (), out.t.erase(x, true), 0)
         else:
-            root = l
-            self.move_out(r, mut out)
-        self.refresh()
-        out.refresh()
+            while let x = self.last:
+                if x < k: break
+                let _ = out.t.insert(x, (), t.erase(x, true), 0)
         out
 
     /// Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.
@@ -819,25 +1053,20 @@ pub struct SortedBag<K>:
     /// The inverse of `split_at`. The precondition is checked in \(O(1)\) against `self.last` and
     /// `other.first`; either side may be empty.
     ///
-    /// The smaller side's keys move into the larger side's node array, as in `split_at`.
+    /// The smaller side's keys move into the larger side's storage, as in `split_at`.
     ///
     /// cost: \(O(\log n + s \log n)\) expected, `s` the smaller side's distinct keys
     /// traps: when both are non-empty and `self.last >= other.first`
     /// example: `var a = SortedBag.of([1, 2]); a.join(SortedBag.of([4, 4])); a.to_list() == [1, 2, 4, 4]`
     pub fn join(mut self, other: SortedBag<K>):
-        if let a = hi:
-            if let b = other.lo: assert a < b, "`join` needs every key of `self` below every key of `other`"
+        if let a = self.last:
+            if let b = other.first: assert a < b, "`join` needs every key of `self` below every key of `other`"
         var o = other
-        if self.sub_of(root) >= o.sub_of(o.root):
-            o.move_out(o.root, mut self)
-        else:
-            self.move_out(root, mut o)
-            nodes = o.nodes
-            free = o.free
-            live = o.live
-            root = o.root
-            rng = o.rng
-        self.refresh()
+        if t.total < o.t.total:
+            let mine = t.take()
+            t = o.t.take()
+            o.t = mine
+        for (k, c) in o.entries(): let _ = t.insert(k, (), c, 0)
 
     /// Merge all elements of `other` into `self` (small-to-large, emptying `other`).
     ///
@@ -849,28 +1078,16 @@ pub struct SortedBag<K>:
     /// traps: never
     /// example: `var a = SortedBag.of([1, 3]); var b = SortedBag.of([3, 2]); a.absorb(mut b); a.to_list() == [1, 2, 3, 3] and b.is_empty`
     pub fn absorb(mut self, mut other: SortedBag<K>):
-        if self.len < other.len:
-            let (n0, f0, l0, r0, g0, lo0, hi0) = (nodes, free, live, root, rng, lo, hi)
-            nodes = other.nodes
-            free = other.free
-            live = other.live
-            root = other.root
-            rng = other.rng
-            lo = other.lo
-            hi = other.hi
-            other.nodes = n0
-            other.free = f0
-            other.live = l0
-            other.root = r0
-            other.rng = g0
-            other.lo = lo0
-            other.hi = hi0
-        for (k, c) in other.entries(): self.add_many(k, c)
+        if t.total < other.t.total:
+            let mine = t.take()
+            t = other.t.take()
+            other.t = mine
+        for (k, c) in other.entries(): let _ = t.insert(k, (), c, 0)
         other.clear()
 
     /// Sum of all elements (for additive `K`). \(O(1)\) when augmented, \(O(n)\) otherwise.
     ///
-    /// Each copy is added. `BagNode` keeps no subtree sum, so this bag is never augmented and
+    /// Each copy is added. Nodes keep no subtree sum, so this bag is never augmented and
     /// the cost is \(O(n)\); `AugSortedBag` keeps sums.
     ///
     /// cost: \(O(n)\)
@@ -883,136 +1100,7 @@ pub struct SortedBag<K>:
             for _ in 0..c: t = t + k
         t
 
-    fn refresh(mut self):
-        if root < 0:
-            lo = None
-            hi = None
-            return
-        unchecked:
-            var u = root
-            while nodes[u].left >= 0: u = nodes[u].left
-            lo = Some(nodes[u].key)
-            u = root
-            while nodes[u].right >= 0: u = nodes[u].right
-            hi = Some(nodes[u].key)
-
-    fn sub_of(self, t: Int) -> Int:
-        if t < 0: return 0
-        unchecked: return nodes[t].sub
-
-    fn pull(mut self, u: Int):
-        unchecked:
-            let l = nodes[u].left
-            let r = nodes[u].right
-            nodes[u].sub = nodes[u].cnt + (if l < 0: 0 else: nodes[l].sub) + (
-                if r < 0: 0 else: nodes[r].sub
-            )
-            if l >= 0: nodes[l].par = u
-            if r >= 0: nodes[r].par = u
-
-    fn make_node(mut self, x: K, c: Int) -> Int:
-        live += 1
-        rng = rng * U64(6364136223846793005) + U64(1442695040888963407)
-        let p = Int((rng >> 33) & U64(0x7fffffff))
-        unchecked:
-            if let u = free.pop():
-                nodes[u] = BagNode(x, c, c, p, -1, -1, -1)
-                return u
-            nodes.push(BagNode(x, c, c, p, -1, -1, -1))
-            return nodes.len - 1
-
-    // The child of `u` on the right when `right`, else on the left: one body walks either side.
-    fn kid(self, u: Int, right: Bool) -> Int:
-        unchecked: return if right: nodes[u].right else: nodes[u].left
-
-    fn set_kid(mut self, u: Int, right: Bool, v: Int):
-        unchecked:
-            if right: nodes[u].right = v else: nodes[u].left = v
-
-    fn insert_at(mut self, u: Int, x: K, c: Int, unique: Bool) -> (Int, Bool):
-        if u < 0:
-            return (self.make_node(x, c), true)
-        unchecked:
-            let right = nodes[u].key < x
-            if not right and not (x < nodes[u].key):
-                if unique: return (u, false)
-                nodes[u].cnt += c
-                nodes[u].sub += c
-                return (u, true)
-            let old = self.kid(u, right)
-            let (v, added) = self.insert_at(old, x, c, unique)
-            if not added: return (u, false)
-            if v != old:
-                self.set_kid(u, right, v)
-                if nodes[v].pri > nodes[u].pri:
-                    self.set_kid(u, right, self.kid(v, not right))
-                    self.set_kid(v, not right, u)
-                    self.pull(u)
-                    self.pull(v)
-                    return (v, true)
-                nodes[v].par = u
-            nodes[u].sub += c
-            return (u, true)
-
-    fn erase_at(mut self, u: Int, x: K, all: Bool) -> (Int, Int):
-        if u < 0: return (-1, 0)
-        unchecked:
-            let right = nodes[u].key < x
-            if right or x < nodes[u].key:
-                let old = self.kid(u, right)
-                let (v, rem) = self.erase_at(old, x, all)
-                if rem == 0: return (u, 0)
-                if v != old:
-                    self.set_kid(u, right, v)
-                    if v >= 0: nodes[v].par = u
-                nodes[u].sub -= rem
-                return (u, rem)
-            if not all and nodes[u].cnt > 1:
-                nodes[u].cnt -= 1
-                nodes[u].sub -= 1
-                return (u, 1)
-            let rem = nodes[u].cnt
-            let l = nodes[u].left
-            let r = nodes[u].right
-            live -= 1
-            free.push(u)
-            let m = self.merge(l, r)
-            return (m, rem)
-
-    fn merge(mut self, a: Int, b: Int) -> Int:
-        if a < 0: return b
-        if b < 0: return a
-        unchecked:
-            if nodes[a].pri >= nodes[b].pri:
-                nodes[a].right = self.merge(nodes[a].right, b)
-                self.pull(a)
-                return a
-            else:
-                nodes[b].left = self.merge(a, nodes[b].left)
-                self.pull(b)
-                return b
-
-    fn split_lt(mut self, t: Int, k: K) -> (Int, Int):
-        if t < 0: return (-1, -1)
-        unchecked:
-            if nodes[t].key < k:
-                let (a, b) = self.split_lt(nodes[t].right, k)
-                nodes[t].right = a
-                self.pull(t)
-                return (t, b)
-            let (a, b) = self.split_lt(nodes[t].left, k)
-            nodes[t].left = b
-            self.pull(t)
-            return (a, t)
-
-    fn move_out(mut self, t: Int, mut into: SortedBag<K>):
-        if t < 0: return
-        unchecked:
-            self.move_out(nodes[t].left, mut into)
-            into.add_many(nodes[t].key, nodes[t].cnt)
-            live -= 1
-            free.push(t)
-            self.move_out(nodes[t].right, mut into)
+    fn cursor(self, s: Int) -> ?BagCursor = if s >= 0: BagCursor(s) else: None
 
 /// An ordered set of unique keys `K` with order statistics (`rank`, `nth`),
 /// \(O(1)\) key-range views (`range(r)`), and monotone search (`first_true`/`last_true`). Backed by `SortedBag<K>`.
@@ -1037,6 +1125,7 @@ pub struct SortedSet<K>:
     /// example: `SortedSet.of([3, 1, 3]).to_list() == [1, 3]`
     pub fn of(xs: List<K>) -> SortedSet<K>:
         var s = SortedSet<K>.new()
+        s.reserve(xs.len)
         for x in xs: let _ = s.add(x)
         s
 
@@ -1275,7 +1364,7 @@ pub struct SortedSet<K>:
     /// example: `SortedSet.of([3, 1, 2]).to_list() == [1, 2, 3]`
     pub fn to_list(self) -> List<K> = bag.to_list()
 
-    /// Preallocate treap node pool for at least `cap` keys.
+    /// Preallocate node storage for at least `cap` keys.
     ///
     /// cost: \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: never
@@ -1315,20 +1404,17 @@ pub struct SortedSet<K>:
         for (k, _) in other.bag.entries(): let _ = bag.add_unique(k)
         other.bag.clear()
 
-/// Order-statistic ordered map from `K` to `V` backed by a randomized treap.
+/// Order-statistic ordered map from `K` to `V`, keys and values side by side in the `SortedBag` B+tree.
 /// `get`, `set`, `remove`, `rank`, `nth`, `first_ge`/`last_le`, `first_true`/`last_true`, `split_at`, `join` are \(O(\log n)\).
 ///
 /// Entries are ordered by key; keys are distinct, so no lookup has a tie to break. Every
 /// entry-returning method gives `(key, val)`.
 pub struct SortedMap<K, V>:
-    ks: SortedBag<K>
-    vals: HashMap<K, V>
+    var t: KeyTree<K, V>
 
-    fn entry(self, k: ?K) -> ?(K, V) = if let x = k: Some((x, vals.get(x)!)) else: None
-
-    fn at(self, c: ?BagCursor) -> ?(K, V) = if let x = c: Some(
-        (ks.key_of(x), vals.get(ks.key_of(x))!)
-    ) else: None
+    fn entry(self, s: Int) -> ?(K, V):
+        if s < 0: return None
+        unchecked: return (t.slots[s].key, t.slots[s].val)
 
     /// Create an empty `SortedMap<K, V>`.
     ///
@@ -1336,16 +1422,15 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.len == 0`
     pub fn new() -> SortedMap<K, V>:
-        SortedMap(SortedBag<K>.new(), HashMap<K, V>())
+        SortedMap(KeyTree<K, V>.new())
 
-    /// Reserve the key pool and the value table for at least `cap` entries.
+    /// Reserve node storage for at least `cap` entries.
     ///
     /// cost: \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.reserve(100); m.get(1) == Some("a")`
     pub fn reserve(mut self, cap: Int):
-        ks.reserve(cap)
-        vals.reserve(cap)
+        t.reserve(cap)
 
     /// Number of key-value pairs.
     ///
@@ -1353,7 +1438,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(1, "b"); m.len == 1`
     @get pub fn len(self) -> Int:
-        ks.len
+        t.total
 
     /// Whether the map is empty.
     ///
@@ -1361,7 +1446,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.is_empty`
     @get pub fn is_empty(self) -> Bool:
-        ks.is_empty
+        t.root < 0
 
     /// Remove all entries.
     ///
@@ -1369,8 +1454,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.clear(); m.get(1) == None`
     pub fn clear(mut self):
-        ks.clear()
-        vals = HashMap<K, V>()
+        let _ = t.take()
 
     /// Move contents out in \(O(1)\), leaving `self` empty.
     ///
@@ -1378,9 +1462,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); let t = m.take(); m.is_empty and t.get(1) == Some("a")`
     pub fn take(mut self) -> SortedMap<K, V>:
-        let t = SortedMap(ks.take(), vals)
-        vals = HashMap<K, V>()
-        t
+        SortedMap(t.take())
 
     /// Look up `k`, returning `None` if absent.
     ///
@@ -1388,7 +1470,9 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.get(1) == Some("a") and m.get(2) == None`
     pub fn get(self, k: K) -> ?V:
-        vals.get(k)
+        let s = t.find(k)
+        if s < 0: return None
+        unchecked: return t.slots[s].val
 
     /// Whether `k` is present.
     ///
@@ -1396,7 +1480,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.contains(1) and not m.contains(2)`
     pub fn contains(self, k: K) -> Bool:
-        vals.get(k) != None
+        t.find(k) >= 0
 
     /// Insert or overwrite `k -> v` (W8 `IndexSet` backing `m[k] = v`).
     ///
@@ -1404,8 +1488,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m[1] = "a"; m[1] = "b"; m.get(1) == Some("b")`
     pub fn set(mut self, k: K, v: V):
-        if vals.get(k) == None: let _ = ks.add(k)
-        vals[k] = v
+        let _ = t.insert(k, v, 1, 2)
 
     /// Remove `k` and return its previous value, or `None` if absent.
     ///
@@ -1413,10 +1496,8 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.remove(1) == Some("a") and m.remove(1) == None`
     pub fn remove(mut self, k: K) -> ?V:
-        let v = vals.get(k)
-        if v != None:
-            let _ = ks.remove(k)
-            let _ = vals.remove(k)
+        let v = self.get(k)
+        if v != None: let _ = t.erase(k, true)
         v
 
     /// Smallest `(key, val)` pair, or `None` if empty. \(O(1)\), kept current by every update.
@@ -1427,7 +1508,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.first == Some((1, "a"))`
     @get pub fn first(self) -> ?(K, V):
-        self.entry(ks.first)
+        self.entry(t.first_id())
 
     /// Largest `(key, val)` pair, or `None` if empty. \(O(1)\), kept current by every update.
     ///
@@ -1437,7 +1518,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.last == Some((3, "c"))`
     @get pub fn last(self) -> ?(K, V):
-        self.entry(ks.last)
+        self.entry(t.last_id())
 
     /// Remove and return the smallest `(key, val)` pair, or `None`.
     ///
@@ -1446,8 +1527,8 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.pop_first() == Some((1, "a")) and m.len == 1`
     pub fn pop_first(mut self) -> ?(K, V):
-        let e = self.entry(ks.first)
-        if let (k, _) = e: let _ = self.remove(k)
+        let e = self.first
+        if let (k, _) = e: let _ = t.erase(k, true)
         e
 
     /// Remove and return the largest `(key, val)` pair, or `None`.
@@ -1457,8 +1538,8 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.pop_last() == Some((3, "c")) and m.len == 1`
     pub fn pop_last(mut self) -> ?(K, V):
-        let e = self.entry(ks.last)
-        if let (k, _) = e: let _ = self.remove(k)
+        let e = self.last
+        if let (k, _) = e: let _ = t.erase(k, true)
         e
 
     /// Smallest entry with key `>= k`, or `None`.
@@ -1469,7 +1550,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.first_ge(2) == Some((3, "c")) and m.first_ge(3) == Some((3, "c"))`
     pub fn first_ge(self, k: K) -> ?(K, V):
-        self.at(ks.cursor_ge(k))
+        self.entry(t.seek(k, false))
 
     /// Smallest entry with key `> k`, or `None`.
     ///
@@ -1479,7 +1560,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.first_gt(1) == Some((3, "c")) and m.first_gt(3) == None`
     pub fn first_gt(self, k: K) -> ?(K, V):
-        self.at(ks.cursor_gt(k))
+        self.entry(t.seek(k, true))
 
     /// Largest entry with key `<= k`, or `None`.
     ///
@@ -1489,7 +1570,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.last_le(2) == Some((1, "a")) and m.last_le(0) == None`
     pub fn last_le(self, k: K) -> ?(K, V):
-        self.at(ks.cursor_le(k))
+        self.entry(t.seek_back(k, true))
 
     /// Largest entry with key `< k`, or `None`.
     ///
@@ -1499,7 +1580,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.last_lt(3) == Some((1, "a")) and m.last_lt(1) == None`
     pub fn last_lt(self, k: K) -> ?(K, V):
-        self.at(ks.cursor_lt(k))
+        self.entry(t.seek_back(k, false))
 
     /// Number of entries with key strictly less than `k`.
     ///
@@ -1508,7 +1589,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); m.rank(3) == 1 and m.rank(9) == 2`
     pub fn rank(self, k: K) -> Int:
-        ks.rank(k)
+        t.rank_of(k, false)
 
     /// The `i`-th entry in key order (0-based), or `None`.
     ///
@@ -1519,7 +1600,7 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.nth(1) == Some((3, "c")) and m.nth(2) == None`
     pub fn nth(self, i: Int) -> ?(K, V):
-        self.entry(ks.nth(i))
+        self.entry(t.nth_id(i))
 
     /// Smallest entry where monotone `ok(k, v)` becomes true, or `None`.
     ///
@@ -1531,7 +1612,7 @@ pub struct SortedMap<K, V>:
     /// traps: never; an `ok` that is not false-then-true gives an unspecified answer
     /// example: `var m: SortedMap<Int, Int> = SortedMap(); m.set(1, 10); m.set(4, 40); m.set(6, 60); m.first_true((k, v) => v >= 30) == Some((4, 40))`
     pub fn first_true(self, ok: (K, V) -> Bool) -> ?(K, V):
-        self.entry(ks.first_true(k => ok(k, vals.get(k)!)))
+        self.entry(t.first_true(ok))
 
     /// Largest entry where monotone `ok(k, v)` still holds, or `None`.
     ///
@@ -1543,7 +1624,7 @@ pub struct SortedMap<K, V>:
     /// traps: never; an `ok` that is not true-then-false gives an unspecified answer
     /// example: `var m: SortedMap<Int, Int> = SortedMap(); m.set(1, 10); m.set(4, 40); m.set(6, 60); m.last_true((k, v) => k <= 5) == Some((4, 40))`
     pub fn last_true(self, ok: (K, V) -> Bool) -> ?(K, V):
-        self.entry(ks.last_true(k => ok(k, vals.get(k)!)))
+        self.entry(t.last_true(ok))
 
     /// Remove and return entries after `after` (ascending) or before `before` (descending) while `ok` holds.
     ///
@@ -1565,13 +1646,13 @@ pub struct SortedMap<K, V>:
         ), "drain takes either after: or before:, not both"
         var out: List<(K, V)> = []
         while true:
-            let next = if let b = before: ks.range_last(None, false, Some(b), false)
-                elif let a = after: ks.range_first(Some(a), false, None, false)
-                else: ks.first
-            let k = next ?? break
-            if not ok(k, vals.get(k)!): break
-            let _ = ks.remove(k)
-            out.push((k, vals.remove(k)!))
+            let s = if let b = before: t.seek_back(b, false)
+                elif let a = after: t.seek(a, true)
+                else: t.first_id()
+            let (k, v) = self.entry(s) ?? break
+            if not ok(k, v): break
+            let _ = t.erase(k, true)
+            out.push((k, v))
         out
 
     /// Split off and return all entries with key `>= k`.
@@ -1583,10 +1664,19 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.set(3, "c"); let hi = m.split_at(2); m.len == 1 and hi.first == Some((3, "c"))`
     pub fn split_at(mut self, k: K) -> SortedMap<K, V>:
-        let hks = ks.split_at(k)
-        var hv = HashMap<K, V>()
-        for (x, _) in hks.entries(): hv[x] = vals.remove(x)!
-        SortedMap(hks, hv)
+        var out = SortedMap<K, V>.new()
+        if 2 * t.rank_of(k, false) < t.total:
+            out = self.take()
+            while let (x, v) = out.first:
+                if not (x < k): break
+                let _ = out.t.erase(x, true)
+                let _ = t.insert(x, v, 1, 0)
+        else:
+            while let (x, v) = self.last:
+                if x < k: break
+                let _ = t.erase(x, true)
+                let _ = out.t.insert(x, v, 1, 0)
+        out
 
     /// Concatenate `other` onto `self` when every key in `self` is `<` every key in `other`.
     ///
@@ -1597,8 +1687,14 @@ pub struct SortedMap<K, V>:
     /// traps: when both are non-empty and the last key of `self` is `>=` the first key of `other`
     /// example: `var a: SortedMap<Int, Str> = SortedMap(); a.set(1, "a"); var b: SortedMap<Int, Str> = SortedMap(); b.set(3, "c"); a.join(b); a.len == 2`
     pub fn join(mut self, other: SortedMap<K, V>):
-        ks.join(other.ks)
-        for (x, _) in other.ks.entries(): vals[x] = other.vals.get(x)!
+        if let (a, _) = self.last:
+            if let (b, _) = other.first: assert a < b, "`join` needs every key of `self` below every key of `other`"
+        var o = other
+        if t.total < o.t.total:
+            let mine = t.take()
+            t = o.t.take()
+            o.t = mine
+        for (k, v) in o.items: let _ = t.insert(k, v, 1, 0)
 
     /// Merge all entries of `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
     ///
@@ -1613,18 +1709,18 @@ pub struct SortedMap<K, V>:
         var small = other.take()
         var flip = false
         if small.len > self.len:
-            let big = small
-            small = self.take()
-            ks = big.ks
-            vals = big.vals
+            let big = small.t.take()
+            small.t = t.take()
+            t = big
             flip = true
         for (k, v) in small.items:
-            if let old = vals.get(k):
-                if let j = join: vals[k] = if flip: j(v, old) else: j(old, v)
-                elif not flip: vals[k] = v
-            else:
-                let _ = ks.add(k)
-                vals[k] = v
+            let s = t.find(k)
+            if s < 0:
+                let _ = t.insert(k, v, 1, 0)
+                continue
+            unchecked:
+                if let j = join: t.slots[s].val = if flip: j(v, t.slots[s].val) else: j(t.slots[s].val, v)
+                elif not flip: t.slots[s].val = v
 
     /// \(O(1)\) to make. Yields `(key, val)` pairs in ascending key order.
     ///
@@ -1634,7 +1730,11 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.items.collect() == [(1, "a"), (3, "c")]`
     @get pub fn items(self) -> yields (K, V):
-        for k in ks.entries(): yield (k.key, vals.get(k.key)!)
+        var s = t.first_id()
+        unchecked:
+            while s >= 0:
+                yield (t.slots[s].key, t.slots[s].val)
+                s = t.after(s)
 
     /// Yield `(key, val)` pairs in descending key order.
     ///
@@ -1644,7 +1744,11 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.each_rev().collect() == [(3, "c"), (1, "a")]`
     pub fn each_rev(self) -> yields (K, V):
-        for k in ks.entries_rev(): yield (k.key, vals.get(k.key)!)
+        var s = t.last_id()
+        unchecked:
+            while s >= 0:
+                yield (t.slots[s].key, t.slots[s].val)
+                s = t.before(s)
 
     /// The map's keys, in ascending order.
     ///
@@ -1654,7 +1758,11 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.keys.collect() == [1, 3]`
     @get pub fn keys(self) -> yields K:
-        for k in ks.entries(): yield k.key
+        var s = t.first_id()
+        unchecked:
+            while s >= 0:
+                yield t.slots[s].key
+                s = t.after(s)
 
     /// The map's values, in ascending order of their keys.
     ///
@@ -1664,7 +1772,11 @@ pub struct SortedMap<K, V>:
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(3, "c"); m.set(1, "a"); m.values.collect() == ["a", "c"]`
     @get pub fn values(self) -> yields V:
-        for k in ks.entries(): yield vals.get(k.key)!
+        var s = t.first_id()
+        unchecked:
+            while s >= 0:
+                yield t.slots[s].val
+                s = t.after(s)
 
 /// Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 /// Supports \(O(\log n)\) `add`, `remove`, `rank`, `nth`, `fold_lt`, `fold_le`, `fold_ge`, `fold_gt`, `fold_between`, and \(O(1)\) `all`.
@@ -2487,6 +2599,115 @@ fn sorted_set_and_bag_drain_after_before_and_random():
                 assert got == want
             assert [x for x in rs] == xs
 
+// A bag over 0..k against a count table, through enough keys for three B+tree levels: node
+// splits while it grows, borrows and merges while it shrinks to empty, and every query near
+// the 16- and 32-slot node boundaries.
+fn check_bag_against_counts(b: SortedBag<Int>, cnt: List<Int>):
+    var plain: List<Int> = []
+    for x in 0..cnt.len:
+        for _ in 0..cnt[x]: plain.push(x)
+    assert b.len == plain.len and b.to_list() == plain
+    assert b.distinct == cnt.count(c => c > 0)
+    assert b.first == plain.first and b.last == plain.last
+    var walked: List<Int> = []
+    var c = b.cursor_first()
+    while let at = c:
+        walked.push(b.key_of(at))
+        c = b.next_cursor(at)
+    var back: List<Int> = []
+    c = b.cursor_last()
+    while let at = c:
+        back.push(b.key_of(at))
+        c = b.prev_cursor(at)
+    back.reverse()
+    assert walked == back and walked == [x for x in 0..cnt.len if cnt[x] > 0]
+    for i in [0, 1, 15, 16, 17, 31, 32, 33, 47, 48, 63, 64, 65, plain.len / 2, plain.len - 1, plain.len]:
+        assert b.nth(i) == (if 0 <= i < plain.len: Some(plain[i]) else: None)
+    var below = 0
+    for x in 0..cnt.len + 1:
+        if x % 7 == 0 or x == cnt.len:
+            assert b.rank(x) == below
+            assert b.range(x..).first == plain.find(v => v >= x)
+            assert b.range(..x).last == plain.rfind(v => v < x)
+            assert b.first_true(v => v >= x) == plain.find(v => v >= x)
+            assert b.last_true(v => v < x) == plain.rfind(v => v < x)
+            assert b.range(x..x + 40).len == plain.count(v => x <= v < x + 40)
+        if x < cnt.len:
+            assert b.count(x) == cnt[x]
+            below += cnt[x]
+
+@test
+fn sorted_bag_btree_grows_and_shrinks_against_a_count_table():
+    let k = 1500
+    var b = SortedBag<Int>()
+    var cnt = [0 for _ in 0..k]
+    for x in 0..k:
+        b.add((x * 7) % k)
+        cnt[(x * 7) % k] += 1
+    check_bag_against_counts(b, cnt)
+    for step in 0..3000:
+        let x = rand(0, k - 1)
+        if rand(0, 3) == 0:
+            b.add_many(x, 2)
+            cnt[x] += 2
+        else:
+            assert b.remove(x) == (cnt[x] > 0)
+            if cnt[x] > 0: cnt[x] -= 1
+        if step % 1000 == 999: check_bag_against_counts(b, cnt)
+    for x in 0..k:
+        assert b.remove_all(x) == cnt[x]
+        cnt[x] = 0
+        if x % 500 == 0: check_bag_against_counts(b, cnt)
+    assert b.is_empty and b.cursor_first() == None and b.first == None
+    for x in (0..k).rev:
+        b.add(x)
+        cnt[x] = 1
+    check_bag_against_counts(b, cnt)
+    let mid = b.split_at(k / 3)
+    assert b.to_list() == [x for x in 0..k / 3] and mid.to_list() == [x for x in k / 3..k]
+    b.join(mid)
+    check_bag_against_counts(b, cnt)
+    let top = b.split_at(k - 10)
+    assert top.to_list() == [x for x in k - 10..k] and b.len == k - 10
+    b.join(top)
+    check_bag_against_counts(b, cnt)
+
+@test
+fn sorted_map_btree_set_remove_and_walk_against_a_table():
+    let k = 1200
+    var m: SortedMap<Int, Str> = SortedMap()
+    var want: List<?Str> = [None for _ in 0..k]
+    for step in 0..5000:
+        let x = rand(0, k - 1)
+        if rand(0, 2) > 0:
+            m.set(x, "v{step}")
+            want[x] = Some("v{step}")
+        else:
+            assert m.remove(x) == want[x]
+            want[x] = None
+        if step % 1000 == 999:
+            let have = [(x, want[x]!) for x in 0..k if want[x] != None]
+            assert m.items.collect() == have and m.len == have.len
+            assert m.each_rev().collect() == have.reversed()
+            assert m.keys.collect() == [e.0 for e in have] and m.values.collect() == [e.1 for e in have]
+            for i in [0, 15, 16, 31, 32, 33, have.len - 1]:
+                assert m.nth(i) == (if 0 <= i < have.len: Some(have[i]) else: None)
+            for y in 0..k:
+                if y % 37 == 0:
+                    assert m.get(y) == want[y] and m.contains(y) == (want[y] != None)
+                    assert m.first_ge(y) == have.find(e => e.0 >= y)
+                    assert m.last_lt(y) == have.rfind(e => e.0 < y)
+                    assert m.first_true((key, _) => key >= y) == have.find(e => e.0 >= y)
+                    assert m.rank(y) == have.count(e => e.0 < y)
+    let n = m.len
+    let hi = m.split_at(k / 2)
+    assert m.len + hi.len == n and (m.last == None or m.last!.0 < k / 2)
+    m.join(hi)
+    assert m.len == n
+    let drained = m.drain(after: 100, while: (key, _) => key < 400)
+    assert drained == [(x, want[x]!) for x in 101..400 if want[x] != None]
+    assert m.len == n - drained.len
+
 /// The keys of a `SortedBag` or `SortedSet` inside a range, made by `range(r)`. A view: it stores
 /// the bounds and lends the container, and allocates nothing. `for x in s.range(r)` iterates
 /// `each()`. Copies of one key in a `SortedBag` are all inside or all outside, so nothing here
@@ -2633,7 +2854,7 @@ impl Show for SortedRange<K>:
         out
 
 impl Show for BagCursor:
-    /// The node it points at, as `cursor at node i`; read its key with `key_of`.
+    /// The slot it points at, as `cursor at slot i`; read its key with `key_of`.
     ///
-    /// example: `let b = SortedBag.of([5, 2, 2]); "{b.cursor_first()!}" == "cursor at node 1"`
-    fn show(c) = "cursor at node {c.id}"
+    /// example: `let b = SortedBag.of([5, 2, 2]); "{b.cursor_last()!}" == "cursor at slot 1"`
+    fn show(c) = "cursor at slot {c.id}"

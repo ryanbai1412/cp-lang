@@ -8965,7 +8965,11 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Why.** Nine `thread::sleep` polls (four `try_wait` loops, a memory watcher, a g++ backoff, two file watchers, a rate limit) each slept on their own schedule and lagged the event they waited for. A portable blocking file-change wait needs a crate, and external_crates is gated, so the file watch keeps its poll in one module, and the rate limit's sleep is the limit itself.
 - **Reverse.** If a file-notification crate is admitted, replace `files.rs`'s poll with it and drop it from `SLEEP_OWNERS`.
 
-## 558. (reserved, content)
+## 558. `SortedBag` is a B+tree of 32-slot nodes, and `SortedMap` keeps its values in it (stdlib, 2026-11-24)
+
+- **Call.** `SortedBag`, and through it `SortedSet` and `SortedMap`, sits on one private `KeyTree<K, V>` in `std/bag.cp`: a B+tree with 32 slots per node in one flat `slots` list (key, value, count) plus `kids`, separators that bound each child from below, linked leaves, and a floor of 8 slots per non-root node kept by merging or evening out with a sibling. While the root leaf is the only node it holds exactly its keys and keeps no node record or `kids`, so a bag of a few keys costs one allocation. A leaf slot holds a key, its value and its copy count; an inner slot holds its child's element count, so `rank`, `nth` and `range(r).len` stay \(O(\log n)\). A `BagCursor` is a leaf slot, so `key_of`, `count_of` and cursor steps are \(O(1)\). `first_true`/`last_true` call `ok` only on stored entries, the first entry of each child they probe. `SortedMap` stores each value beside its key instead of in a `HashMap` side table. The randomized treap is gone; `AugSortedBag`'s own treap is unchanged. Every public signature and documented cost stays.
+- **Why.** A treap search on etsr23r1p2's max case walked 21.3 nodes on average against 16.4 for `std::set`, each a likely cache miss, and the `SortedMap` side table hashed every key again. On that input the obvious `SortedSet` port went from 0.166 s to 0.111 s (the reference takes 0.105 s), and the `SortedMap` port from 0.187 s to 0.105 s.
+- **Reverse.** Put back the treap `SortedBag` and the `HashMap`-backed `SortedMap` from before this decision, if a workload shows the B+tree's \(O(B)\) slot shifts costing more than its shallower walks save.
 
 ## 560. A `Counter` shows in key order (stdlib, 2026-11-24)
 

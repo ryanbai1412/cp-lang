@@ -2155,7 +2155,7 @@ use std.bag.{SortedBag}
 let b = SortedBag.of([4])
 print(b.cursor_first()!)
 """
-out = "cursor at node 0"
+out = "cursor at slot 0"
 
 [case."Show/IntervalMap/show"]
 code = """
