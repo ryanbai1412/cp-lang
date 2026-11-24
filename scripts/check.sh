@@ -90,7 +90,7 @@ if { [ "$mode" = fast ] || [ "$mode" = land ]; } && [ "${CHECK_NO_CXX_CACHE:-0}"
     export CPL_JUDGE_PROBE_DIR="$target/judge-probes"
     rm -rf "$CPL_JUDGE_PROBE_DIR"
     # Drop binaries no run has used for a week.
-    find "$CPL_CXX_CACHE_DIR" -type f -mtime +7 -delete 2>/dev/null || true
+    [ ! -d "$CPL_CXX_CACHE_DIR" ] || find "$CPL_CXX_CACHE_DIR" -type f -mtime +7 -delete
 fi
 
 # Each step's wall time, so a slow gate shows where its time goes.
@@ -140,7 +140,7 @@ cache_save() {
     uv run --quiet python scripts/check_cache.py save "$cache_dir" "$1" "$manifest"
 }
 
-markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || true)
+markers=$(git grep -nE '^(<{7}|>{7}|\|{7})( |$)' -- ':!*.png' ':!*.gz' || [ $? = 1 ])
 [ -z "$markers" ] || fail "merge conflict markers left in:
 $markers"
 # Every test program has its saved trace: trace_goldens fails without one,
@@ -199,7 +199,7 @@ staged_guard() {
         if grep -E '(^|/)(\.env(\..+)?|id_(rsa|dsa|ecdsa|ed25519)|.+\.(pem|p12|pfx|keystore))$' <<<"$paths"; then
             fail "the files above look like credentials; never commit them"
         fi
-        lines="$(git diff "$range" --diff-filter=ACMR -U0 --no-color | grep -E '^\+[^+]' || true)"
+        lines="$(git diff "$range" --diff-filter=ACMR -U0 --no-color | grep -E '^\+[^+]' || [ $? = 1 ])"
         if grep -oE \
             -e 'gh[pousr]_[A-Za-z0-9]{36,}' \
             -e 'github_pat_[A-Za-z0-9_]{40,}' \
@@ -214,7 +214,7 @@ staged_guard() {
         local top hosts deny
         top="$(git rev-parse --show-toplevel)"
         hosts="$(grep -oE 'https?://[A-Za-z0-9.-]+' <<<"$lines" | sed -E 's#^https?://##' | sort -u \
-            | grep -vxE -f <(grep -v '^#' "$top/scripts/public-hosts.txt") || true)"
+            | grep -vxE -f <(grep -v '^#' "$top/scripts/public-hosts.txt") || [ $? = 1 ])"
         if [ -n "$hosts" ]; then
             echo "$hosts"
             fail "added lines link to the hosts above, which are not in scripts/public-hosts.txt; the history will be public, so remove the links or add a public host to that list"
@@ -333,7 +333,7 @@ if [ "$mode" = land ] || [ "$mode" = commit ]; then
     sel_reason="no base to diff the train against"
     affected=(scripts/affected.py)
     if [ "$mode" = land ]; then
-        land_base="${CHECK_BASE:-$(git rev-parse -q --verify origin/main || true)}"
+        land_base="${CHECK_BASE:-$(git rev-parse -q --verify origin/main || [ $? = 1 ])}"
         [ -z "$land_base" ] || affected+=(--base "$land_base")
     fi
     if [ "$mode" = commit ] || [ -n "$land_base" ]; then
@@ -493,7 +493,10 @@ else
     scoreboard_pid=$!
 fi
 cleanup() {
-    kill ${script_test_pid:+"$script_test_pid"} ${recovery_pid:+"$recovery_pid"} ${scoreboard_pid:+"$scoreboard_pid"} ${fmt_pid:+"$fmt_pid"} ${site_gate_pid:+"$site_gate_pid"} 2>/dev/null || true
+    for pid in ${script_test_pid:-} ${recovery_pid:-} ${scoreboard_pid:-} ${fmt_pid:-} ${site_gate_pid:-}; do
+        # kill exits 1 when the job already finished.
+        if kill -0 "$pid" 2>/dev/null; then kill "$pid" 2>/dev/null || [ $? = 1 ]; fi
+    done
     rm -rf "$lib_logs" "$manifest" "$manifest.reads" ${tmp:+"$tmp"}
 }
 trap cleanup EXIT

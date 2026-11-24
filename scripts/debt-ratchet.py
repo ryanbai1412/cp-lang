@@ -1404,8 +1404,12 @@ def todo_fixme(root: Path) -> list[str]:
 
 
 def web_skip_only(root: Path) -> list[str]:
-    """`.skip(`/`.only(` in web tests: a test that doesn't run, or that stops the rest running."""
-    return _grep_all(root, r"\.(skip|only)\(", "web")
+    """`.skip(`/`.only(` in web tests: a test that doesn't run, or that stops the rest running.
+    Only JS/TS sources: in a `.cp` program `.only(` is the std graph filter."""
+    return _grep_all(root, r"\.(skip|only)\(", *WEB_SCRIPT_PATHS)
+
+
+WEB_SCRIPT_PATHS = tuple(f"web/*.{ext}" for ext in ("ts", "tsx", "js", "jsx", "mjs", "cjs"))
 
 
 def ts_ignore(root: Path) -> list[str]:
@@ -1747,7 +1751,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "own_databases", "module_loaders",
+    "own_databases", "module_loaders", "web_skip_only", "todo_fixme",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
     "stress_hand_json", "lint_dup_helpers", "lint_post_filters",

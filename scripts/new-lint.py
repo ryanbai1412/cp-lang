@@ -88,13 +88,13 @@ def main(argv: list[str] | None = None) -> int:
     os.makedirs(rec)
     with open(os.path.join(rec, "lint.toml"), "w", encoding="utf-8") as fh:
         fh.write(f'code = "{code}"\nlevel = "{a.level}"\ngroup = "{a.group}"\n'
-                 'title = "TODO: a short title"\n'
+                 'title = "<a short title>"\n'
                  f'rule = "{a.rule}"\n'
-                 'summary = "TODO: `what fires`: `what to write`"\n')
+                 'summary = "<`what fires`: `what to write`>"\n')
     for f in FILES:
         open(os.path.join(rec, f), "w", encoding="utf-8").close()
     print(f"{code} {a.name}: spec/lints/{a.name}/ scaffolded")
-    print(f"add to spec/diagnostics.md: | {code} | {a.name} | TODO: fires on |")
+    print(f"add to spec/diagnostics.md: | {code} | {a.name} | <fires on> |")
     return 0
 
 

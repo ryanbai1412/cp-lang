@@ -267,6 +267,16 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "std/bag.cp", "pub struct Counter {}\n")
             self.assertEqual(dr.prelude_privilege(root), ["Counter", "sum"])
 
+    def test_web_skip_only_reads_only_js_and_ts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            self._write(root, "web/tests/a.test.ts", "it.only('x', () => {})\n")
+            self._write(root, "web/lib/b.mjs", "describe.skip('y')\n")
+            self._write(root, "web/content/c.cp", "let g = G.only(v => v > 0)\n")
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(sorted(dr.web_skip_only(root)), ["web/lib/b.mjs:1", "web/tests/a.test.ts:1"])
+
     def test_unrun_script_tests(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
