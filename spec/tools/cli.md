@@ -105,6 +105,9 @@ was there already), the `tests` folder and its `sample_count`.
 record in `spec/lints/` and `spec/checker-lints/` in code order, keyed as
 its `lint.toml` and files are, `null` for a key the record leaves out (a
 checker lint has no `rule`). The site's lint pages read it.
+`cpl stress --list --json` prints `{"decorators"}`: the decorators that
+give a file a judge for `cpl stress`, each with its `@`, in one order.
+The editor's Stress lens and the site's Stress button read the same list.
 `cpl run --format json` prints `{"stdout", "time_ms", "values": [{"line",
 "name", "value"}]}`: what the program printed, how long it ran and the
 top-level `values` it ended with; with `--trace` it prints the trace

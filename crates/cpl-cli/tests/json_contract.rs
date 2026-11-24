@@ -204,6 +204,7 @@ fn every_json_output_has_the_published_keys() {
         ("migrate", &["migrate", "a.cp", "--json"]),
         ("lint", &["lint", "a.cp", "--json"]),
         ("lint --list", &["lint", "--list", "--json"]),
+        ("stress --list", &["stress", "--list", "--json"]),
         ("fmt", &["fmt", "--check", "a.cp", "--json"]),
         ("judge", &["judge", "j.cp", "j.in", "j.right", "--json"]),
         ("judge", &["judge", "j.cp", "j.in", "j.wrong", "--json"]),

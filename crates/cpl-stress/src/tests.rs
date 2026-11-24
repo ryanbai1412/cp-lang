@@ -1534,3 +1534,20 @@ fn each_verdict_names_the_program_whose_trap_explains_it() {
         );
     }
 }
+
+#[test]
+fn every_stress_decorator_gives_the_file_a_judge_and_a_mention_does_not() {
+    for name in crate::STRESS_DECORATORS {
+        let src = format!("let n: 1..=9 = read()\n@{name}\nfn other():\n    print(n)\nprint(n)\n");
+        assert!(crate::stress_targets(&src), "@{name}");
+        let mut db = cpl_check::Session::new();
+        db.set_file("s.cp", src.as_str());
+        let analysis = db.analyze("s.cp").unwrap();
+        let judged = cpl_ir::brute(&analysis).is_some()
+            || cpl_ir::checker(&analysis).is_some()
+            || cpl_ir::interactor(&analysis).is_some();
+        assert!(judged, "@{name} names no judge `cpl stress` runs");
+    }
+    let mentioned = "// @alt, @brute and @interactor\nlet s = \"@check\"\nprint(s)\n";
+    assert!(!crate::stress_targets(mentioned));
+}

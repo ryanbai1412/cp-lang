@@ -45,6 +45,7 @@ options:
                      the shrunk case in the debug interpreter and name the
                      first value they give a variable differently, with its line
   --format json      print the result as JSON, for an editor
+  --list [--json]    print the decorators that give a file a judge, and stop
 ";
 
 /// One checkpoint both the solution and the brute reached on the failing
@@ -459,6 +460,36 @@ fn indent(text: &str) -> String {
     out.join("\n")
 }
 
+/// `cpl stress --list [--json]`: the decorators that give a file a judge.
+fn list_decorators(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
+    // A file `cpl` fills in for the command, or one given, changes nothing.
+    let given: Vec<&str> = (args.iter().map(String::as_str))
+        .filter(|arg| arg.starts_with('-') || *arg == "json")
+        .collect();
+    let json = match given.as_slice() {
+        ["--list"] => false,
+        ["--list", "--json"] | ["--list", "--format", "json"] => true,
+        _ => {
+            let given = given.join(" ");
+            let _ = write!(
+                stderr,
+                "cpl: `--list` takes only `--json`, not `{given}`\n\n{USAGE}"
+            );
+            return 2;
+        }
+    };
+    let names = crate::STRESS_DECORATORS.map(|name| format!("@{name}"));
+    let _ = match json {
+        true => {
+            let list = names.iter().map(|name| name.as_str().into()).collect();
+            let report = cpl_json::obj([("decorators", cpl_json::Value::Array(list))]);
+            writeln!(stdout, "{}", cpl_json::to_string(&report))
+        }
+        false => writeln!(stdout, "{}", names.join("\n")),
+    };
+    0
+}
+
 /// Runs `cpl stress`. Returns the exit code: 0 when every case agreed, 1
 /// when one did not or the run could not start, 2 for a usage error.
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {
@@ -475,6 +506,9 @@ pub fn run_with(
     if args.iter().any(|arg| arg == "-h" || arg == "--help") {
         let _ = write!(stdout, "{USAGE}");
         return 0;
+    }
+    if args.iter().any(|arg| arg == "--list") {
+        return list_decorators(args, stdout, stderr);
     }
     let args = match parse(args) {
         Ok(args) => args,

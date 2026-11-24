@@ -1905,11 +1905,7 @@ fn code_lenses(path: &str, text: &str) -> Vec<(String, Vec<String>)> {
     if has_tests {
         lenses.push(("Test".into(), vec!["test".into(), path.into()]));
     }
-    // `@check` also matches the older `@checker`.
-    if ["@alt", "@check", "@interactor"]
-        .iter()
-        .any(|d| text.contains(d))
-    {
+    if cpl_ir::has_stress_target(text) {
         lenses.push(("Stress".into(), vec!["stress".into(), path.into()]));
     }
     lenses

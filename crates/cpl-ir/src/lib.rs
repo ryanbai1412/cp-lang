@@ -22,6 +22,7 @@ pub const FLOAT_DIGITS: u32 = 10;
 pub mod pushed;
 mod show;
 pub mod sites;
+pub mod stress_target;
 pub mod walk;
 
 pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
@@ -106,6 +107,7 @@ pub use lower::{
     lower_test,
 };
 pub use show::{sep_of, Sep};
+pub use stress_target::{has_stress_target, STRESS_DECORATORS};
 
 use cpl_diag::Span;
 
