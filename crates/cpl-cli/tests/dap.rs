@@ -1117,6 +1117,36 @@ fn restart_past_the_first_window_finds_the_edit_on_screen_and_continue_stops_the
 }
 
 #[test]
+fn step_in_from_entry_and_logic_in_watches() {
+    let (mut dap, _) = launched(
+        "watch_logic",
+        "let x = 2\nprint(x)\n",
+        "\"stopOnEntry\":true",
+    );
+    dap.send("stepIn", Some("{\"threadId\":1}"));
+    let _ = dap.recv_until("\"event\":\"stopped\"");
+    dap.send("stackTrace", Some("{\"threadId\":1}"));
+    let frame = dap.recv_until("\"command\":\"stackTrace\"");
+    assert!(frame.contains("\"line\":2"), "{frame}");
+    for (expr, want) in [
+        ("x <= 2", "true"),
+        ("x <= 1", "false"),
+        ("x == 1 or x == 2", "true"),
+        ("x == 1 || x == 2", "true"),
+        ("x == 2 and x == 1", "false"),
+        ("x == 2 && x == 1", "false"),
+        ("x == 2 and x > 1", "true"),
+    ] {
+        let reply = eval(&mut dap, expr);
+        assert!(
+            reply.contains(&format!("\"result\":\"{want}\"")),
+            "{expr}: {reply}"
+        );
+    }
+    dap.finish();
+}
+
+#[test]
 fn random_dap_requests_stop_where_a_straight_run_says() {
     let path = write_temp(
         "random_dap",
@@ -1134,12 +1164,14 @@ print(acc)
     );
     let p = path.to_str().unwrap().replace('\\', "\\\\");
     let breakpoints = [2u32, 8];
-    let launch = |dap: &mut DapClient, with_breakpoints: bool| {
+    let launch = |dap: &mut DapClient, with_breakpoints: bool, record: &str| {
         dap.send("initialize", Some("{\"adapterID\":\"cp\"}"));
         let _ = dap.recv_until("\"event\":\"initialized\"");
         dap.send(
             "launch",
-            Some(&format!("{{\"program\":\"{p}\",\"stopOnEntry\":true}}")),
+            Some(&format!(
+                "{{\"program\":\"{p}\",\"stopOnEntry\":true{record}}}"
+            )),
         );
         let _ = dap.recv_until("\"command\":\"launch\"");
         if with_breakpoints {
@@ -1182,7 +1214,7 @@ print(acc)
     };
     // The straight run.
     let mut dap = DapClient::spawn();
-    launch(&mut dap, false);
+    launch(&mut dap, false, "");
     let mut straight = vec![state(&mut dap)];
     loop {
         dap.send("stepIn", Some("{\"threadId\":1}"));
@@ -1225,9 +1257,10 @@ print(acc)
         "continue",
         "reverseContinue",
     ];
-    for seed in 1..=4u64 {
+    // Kept whole, and re-traced 2 steps at a time from checkpoints.
+    for (seed, record) in (1..=4u64).flat_map(|s| [(s, ""), (s, ",\"recordSteps\":20")]) {
         let mut dap = DapClient::spawn();
-        launch(&mut dap, true);
+        launch(&mut dap, true, record);
         let (mut k, mut rng, mut done) = (0, seed, Vec::new());
         for _ in 0..40 {
             rng ^= rng << 13;
@@ -1241,7 +1274,7 @@ print(acc)
             assert_eq!(
                 state(&mut dap),
                 straight[next],
-                "seed {seed}: after {done:?} the session should stand at step {next}"
+                "seed {seed}{record}: after {done:?} the session should stand at step {next}"
             );
             k = next;
         }
