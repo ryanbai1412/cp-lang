@@ -1415,6 +1415,9 @@ pub struct Program {
     /// Lists whose every index the lowering has already tested (the flat
     /// tables of `@memo`): a back end may index them unchecked.
     pub raw_lists: Vec<GlobalId>,
+    /// Where each line of the user's file starts, for a back end that
+    /// names a line only when the program runs.
+    pub user_line_starts: Vec<u32>,
 }
 
 impl Program {

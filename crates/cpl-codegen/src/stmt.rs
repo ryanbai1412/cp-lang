@@ -1189,6 +1189,7 @@ impl<'p> Emitter<'p> {
     }
 
     pub fn stmt(&mut self, stmt: &Stmt, out: &mut String) {
+        self.note_site(stmt);
         if let (Some(sites), Some(span)) = (&mut self.sites, stmt.span()) {
             if self.counted.contains(&(stmt as *const Stmt)) {
                 sites.push(span);
@@ -1628,33 +1629,7 @@ impl<'p> Emitter<'p> {
                 line,
                 note,
                 ..
-            } => {
-                self.need("fail");
-                let cond = self.expr(cond).text;
-                let report = match text.as_str() {
-                    "" => String::new(),
-                    // A library fn is emitted once for all its callers, so
-                    // its `line` names only the first; its note says where.
-                    _ if note.is_some() => format!("{}: ", cpl_ir::assert_head(text)),
-                    _ => format!("{} (line {line}): ", cpl_ir::assert_head(text)),
-                };
-                let note = note
-                    .as_ref()
-                    .map_or(String::new(), |n| format!("\nnote: {n}"));
-                let why = match message {
-                    None => string_literal(
-                        format!("{}{note}", report.strip_suffix(": ").unwrap_or(&report))
-                            .as_bytes(),
-                    ),
-                    Some(message) => {
-                        let message = self.expr(message).text;
-                        let report = string_literal(report.as_bytes());
-                        let note = string_literal(note.as_bytes());
-                        format!("(std::string({report}) + {message} + {note}).c_str()")
-                    }
-                };
-                self.line(out, &format!("if (!({cond})) cpl::fail({why});"));
-            }
+            } => self.assert(out, cond, message.as_ref(), text, *line, note.as_deref()),
             Stmt::DefDomain { id, lo, len } => {
                 let d = dom_ident(program, *id);
                 let lo_const = self.facts.const_domain_lo(*id).is_some();

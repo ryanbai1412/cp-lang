@@ -300,9 +300,9 @@ let c = Pair<V>.new(V(1), V(1))
     let (code, err) = build_and_run_cpp(source);
     assert_eq!(code, 3);
     assert!(
-        err.contains("assertion failed: u != v: `Pair` needs two distinct positions")
-            && !err.contains("(line"),
-        "the C++ names no caller's line, not the first one's; got:\n{err}"
+        err.contains("assertion failed: u != v (line 4): `Pair` needs two distinct positions")
+            && err.contains("note: std/pair.cp:"),
+        "the C++ names the call that reached it, not the first one; got:\n{err}"
     );
 }
 

@@ -177,7 +177,6 @@ documented.
 - core-03/memory-over-profile.cp: compiler 2026-11-24T05Z
 - core-04/grid-rows-is-a-getter.cp: compiler 2026-11-24T05Z
 - core-04/keyed-counter-is-not-a-key.cp: compiler 2026-11-24T05Z
-- core-04/library-domain-count-trap-names-sizing-site-release.cp: compiler 2026-11-24T05Z
 - core-04/list-of-domain-array-loses-domain.cp: compiler 2026-11-24T05Z
 - core-04/rebased-str-indexes-from-zero.cp: stdlib 2026-11-24T05Z
 - core-04/runtime-domain-literal-between-traps.cp: compiler 2026-11-24T05Z

@@ -1789,6 +1789,7 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+        let site = self.site_store(id);
         let marked = self.mark_read_in_place(&operands, Some(id), &lent);
         let result = self.sequence(&operands, &e.ty, |this, codes| {
             let mut codes = codes.into_iter();
@@ -1860,6 +1861,7 @@ impl<'p> Emitter<'p> {
                 "::prog::"
             };
             let call = format!("{home}{name}({})", texts.join(", "));
+            ran.extend(site);
             if ran.is_empty() {
                 Code::primary(call)
             } else {

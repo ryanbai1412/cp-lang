@@ -147,6 +147,7 @@ pub(crate) struct Emitter<'p> {
     pub fn_id: Option<usize>,
     /// The closure currently being emitted, if inside a closure body.
     pub closure_id: Option<usize>,
+    pub site: crate::site::Sites,
     pub names: Vec<String>,
     /// Temporaries a view lends from, each written as the local holding it.
     pub pinned: Vec<(*const Expr, String)>,
@@ -276,6 +277,7 @@ impl<'p> Emitter<'p> {
             uses: Default::default(),
             fn_id: None,
             closure_id: None,
+            site: crate::site::Sites::new(program),
             names: Vec::new(),
             pinned: Vec::new(),
             hoisted: BTreeSet::new(),
@@ -1158,39 +1160,10 @@ impl<'p> Emitter<'p> {
         let has_tie = needs_tie && types.contains("cpl_tie");
 
         let mut shared_globals: BTreeSet<usize> = BTreeSet::new();
-        let record_block_globals = |block: &Block, out: &mut BTreeSet<usize>| {
-            crate::walk::deep_stmts(block, &mut |stmt| {
-                if let Stmt::Assign(place, _, _) = stmt {
-                    if let (true, id) = crate::walk::root(place) {
-                        out.insert(id);
-                    }
-                }
-            });
-            crate::walk::deep_exprs(block, &mut |e| match &e.kind {
-                ExprKind::Global(id) => {
-                    out.insert(*id);
-                }
-                ExprKind::Mutate(_, place, _) | ExprKind::Sort(place, _, _) => {
-                    if let (true, id) = crate::walk::root(place) {
-                        out.insert(id);
-                    }
-                }
-                ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
-                    for arg in args {
-                        if let cpl_ir::Arg::Mut(place) = arg {
-                            if let (true, id) = crate::walk::root(place) {
-                                out.insert(id);
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            });
-        };
-        record_block_globals(&program.setup, &mut shared_globals);
+        crate::globals::touched(&program.setup, &mut shared_globals);
         for (id, f) in program.fns.iter().enumerate() {
             if reachable.contains(&id) {
-                record_block_globals(&f.body, &mut shared_globals);
+                crate::globals::touched(&f.body, &mut shared_globals);
             }
         }
         for c in &program.closures {
@@ -1199,7 +1172,7 @@ impl<'p> Emitter<'p> {
                     shared_globals.insert(cap.outer);
                 }
             }
-            record_block_globals(&c.body, &mut shared_globals);
+            crate::globals::touched(&c.body, &mut shared_globals);
         }
         let mut read_in_main: std::collections::HashSet<usize> = std::collections::HashSet::new();
         crate::walk::deep_stmts(&program.main, &mut |stmt| {
