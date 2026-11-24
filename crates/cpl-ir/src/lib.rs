@@ -273,7 +273,7 @@ impl Ty {
         self.has_fn_in(program, &mut Vec::new())
     }
 
-    /// `seen` holds the structs and enums being walked, as in `comparable_in`.
+    /// `seen` holds the structs and enums being walked, as in `equatable_in`.
     fn has_fn_in(&self, program: &Program, seen: &mut Vec<(bool, usize)>) -> bool {
         let any = |ts: Vec<&Ty>, seen: &mut Vec<(bool, usize)>| {
             ts.into_iter().any(|t| t.has_fn_in(program, seen))
@@ -376,28 +376,30 @@ impl Ty {
         )
     }
 
-    /// True when values of this type can be compared with `==` and `<` in C++.
-    pub fn is_comparable(&self, program: &Program) -> bool {
-        self.comparable_in(program, &mut Vec::new())
+    /// True when values of this type can be compared with `==` in C++, and with `<` when
+    /// every part is ordered (a hash table's is not).
+    pub fn is_equatable(&self, program: &Program) -> bool {
+        self.equatable_in(program, &mut Vec::new())
     }
 
     /// `seen` holds the structs and enums being walked: a type that holds itself
-    /// (`kids: List<N>`) is comparable when the rest of it is.
-    fn comparable_in(&self, program: &Program, seen: &mut Vec<(bool, usize)>) -> bool {
+    /// (`kids: List<N>`) is equatable when the rest of it is.
+    fn equatable_in(&self, program: &Program, seen: &mut Vec<(bool, usize)>) -> bool {
         let all = |ts: Vec<&Ty>, seen: &mut Vec<(bool, usize)>| {
-            ts.into_iter().all(|t| t.comparable_in(program, seen))
+            ts.into_iter().all(|t| t.equatable_in(program, seen))
         };
         match self {
-            Ty::Fn(..) | Ty::DomainVal | Ty::HashMap(..) | Ty::HashSet(_) => false,
+            Ty::Fn(..) | Ty::DomainVal => false,
             Ty::Opt(t)
+            | Ty::HashSet(t)
             | Ty::List(t)
             | Ty::ListView(t, _)
             | Ty::Keyed(t, _)
             | Ty::MutView(t, _)
             | Ty::Set(t)
-            | Ty::Range(t) => t.comparable_in(program, seen),
-            Ty::Array { elem, .. } => elem.comparable_in(program, seen),
-            Ty::Map(k, v) => k.comparable_in(program, seen) && v.comparable_in(program, seen),
+            | Ty::Range(t) => t.equatable_in(program, seen),
+            Ty::Array { elem, .. } => elem.equatable_in(program, seen),
+            Ty::Map(k, v) | Ty::HashMap(k, v) => all(vec![k, v], seen),
             Ty::Tuple(ts) => all(ts.iter().collect(), seen),
             Ty::Record(fs) => all(fs.iter().map(|(_, t)| t).collect(), seen),
             Ty::Struct(id) | Ty::Enum(id) => {
