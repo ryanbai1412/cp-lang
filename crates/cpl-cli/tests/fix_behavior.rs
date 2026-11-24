@@ -13,7 +13,6 @@ use std::path::{Path, PathBuf};
 
 #[path = "support/corpus_cases.rs"]
 mod corpus_cases;
-use std::process::{Command, Stdio};
 use std::time::Duration;
 
 const SHARDS: usize = 32;
@@ -118,31 +117,23 @@ fn inputs(src: &Path) -> Vec<Vec<u8>> {
     vec![std::fs::read(src.with_extension("in")).unwrap_or_default()]
 }
 
-/// `(exit status, stdout)` of `cpl run path` on `input`, `None` past the
-/// time limit (a fix must not make a program loop either).
+/// `(exit status, stdout)` of `cpl run path` on `input`, run in process on
+/// a thread of its own; `None` past the time limit (a fix must not make a
+/// program loop either).
 fn run(path: &Path, input: &[u8]) -> Option<(i32, Vec<u8>)> {
-    use std::io::{Read, Write};
-    let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(["run", path.to_str().unwrap()])
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()
-        .unwrap();
-    child.stdin.take().unwrap().write_all(input).unwrap();
-    let mut stdout = child.stdout.take().unwrap();
+    use std::sync::mpsc::RecvTimeoutError;
+    let (path, input) = (path.to_str().unwrap().to_owned(), input.to_vec());
     let (sent, got) = std::sync::mpsc::channel();
     std::thread::spawn(move || {
-        let mut out = Vec::new();
-        let _ = sent.send(stdout.read_to_end(&mut out).map(|_| out));
+        let out = cpl_cli::run_with_input(&["run", &path], &input);
+        let _ = sent.send((i32::from(out.code), out.stdout));
     });
-    let Ok(out) = got.recv_timeout(Duration::from_secs(20)) else {
-        let _ = child.kill();
-        let _ = child.wait();
-        return None;
-    };
-    let status = child.wait().unwrap();
-    Some((status.code().unwrap_or(-1), out.unwrap_or_default()))
+    match got.recv_timeout(Duration::from_secs(20)) {
+        Ok(ran) => Some(ran),
+        Err(RecvTimeoutError::Timeout) => None,
+        // `cpl` panicked: the exit status of a panicking process.
+        Err(RecvTimeoutError::Disconnected) => Some((101, Vec::new())),
+    }
 }
 
 /// What fixing `rel` from `text` to `fixed` changed, when it changed what
@@ -217,10 +208,29 @@ fn shard(n: usize) {
     if !packages.is_empty() {
         corpus_cases::make(&root(), &packages);
     }
-    let mut wrong = Vec::new();
-    for (rel, file, text, fixed) in &edited {
-        wrong.extend(changed(rel, file, text, fixed));
-    }
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let wrong: Vec<String> = std::thread::scope(|scope| {
+        let workers: Vec<_> = (0..threads)
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut wrong = Vec::new();
+                    loop {
+                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some((rel, file, text, fixed)) = edited.get(i) else {
+                            break;
+                        };
+                        wrong.extend(changed(rel, file, text, fixed));
+                    }
+                    wrong
+                })
+            })
+            .collect();
+        workers
+            .into_iter()
+            .flat_map(|w| w.join().unwrap())
+            .collect()
+    });
     let _ = std::fs::remove_dir_all(&scratch);
     assert!(
         wrong.is_empty(),
