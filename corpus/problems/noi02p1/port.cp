@@ -15,8 +15,8 @@ fn front(v: Ship) -> Ship:
     let r = line.find(v).root
     head[r] ?? r
 let t = read<1..=500_000>()
-for cmd in read<[t]Cmd>():
-    match cmd:
+repeat t:
+    match read<Cmd>():
         M(i, j) =>
             let (fi, fj) = (front(i), front(j))
             line.unite(fj, fi, line.size(j))
