@@ -62,8 +62,8 @@ pub fn doc_examples(rel: &str, text: &str) -> Vec<(String, String, bool)> {
             block.push(doc);
             continue;
         }
-        let trimmed = line.trim_start();
-        if trimmed.is_empty() || trimmed.starts_with('@') || trimmed.starts_with("//") {
+        let trimmed = without_decorators(line.trim_start());
+        if trimmed.is_empty() || trimmed.starts_with("//") {
             continue;
         }
         let name = item_name(trimmed);
@@ -106,6 +106,22 @@ pub fn runnable_label(text: &str) -> bool {
 
 /// The name an item header declares: `pub fn up() -> Dir4` is `up`,
 /// `impl Monoid for Sum:` is `Monoid for Sum`.
+/// The header after its leading decorators: `@get pub fn len(self)` is `pub fn len(self)`, and a
+/// decorator on its own line is empty, so the doc above stays with the item below.
+fn without_decorators(mut line: &str) -> &str {
+    while let Some(rest) = line.strip_prefix('@') {
+        let name = rest
+            .find(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .unwrap_or(rest.len());
+        let mut after = &rest[name..];
+        if after.starts_with('(') {
+            after = after.find(')').map_or("", |close| &after[close + 1..]);
+        }
+        line = after.trim_start();
+    }
+    line
+}
+
 fn item_name(header: &str) -> String {
     let mut rest = header.strip_prefix("pub ").unwrap_or(header).trim_start();
     if let Some(after) = rest.strip_prefix("impl") {
@@ -482,6 +498,17 @@ mod tests {
             .map(|(id, _, _)| id)
             .collect();
         assert_eq!(ids, ["seq.cp#View.src:1"]);
+    }
+
+    #[test]
+    fn a_decorated_fn_owns_its_doc_examples() {
+        let text = "struct R:\n    /// example: `1 == 1`\n    @get pub fn len(self) -> Int = 1\n\
+                    \n    /// example: `2 == 2`\n    @word(prefix)\n    pub fn each(self) = 2\n";
+        let ids: Vec<_> = super::doc_examples("bag.cp", text)
+            .into_iter()
+            .map(|(id, _, _)| id)
+            .collect();
+        assert_eq!(ids, ["bag.cp#R.len:1", "bag.cp#R.each:1"]);
     }
 
     #[test]

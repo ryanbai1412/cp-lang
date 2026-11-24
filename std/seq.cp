@@ -1007,7 +1007,7 @@ pub struct Compressed<D, T>(vals: [D]T):
     /// \(O(\mathit{len})\). Visit every compressed index with its value.
     ///
     /// cost: \(O(\mathit{len})\)
-    /// empty: `let e: List<Int> = []; compress(e).1.items.collect() == []`
+    /// empty: `let e: List<Int> = []; let (domain C, xs) = compress(e); xs.items.collect() == []`
     /// order: increasing index, so increasing value
     /// traps: never
     /// example: `let (domain C, xs) = compress([30, 10, 30]); [v for (_, v) in xs.items] == [10, 30]`
