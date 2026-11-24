@@ -218,3 +218,16 @@ fn a_fn_field_read_only_into_a_dropped_local_stores_no_std_function() {
     ));
     assert!(!out.contains("std::function<"), "{out}");
 }
+
+#[test]
+fn a_closure_capturing_a_known_fn_param_calls_it_directly() {
+    let out = cpp("use std.algebra.{fold, opt}
+let cat = (a: Int, b: Int) => a * 10 + b
+let sub = (a: Int, b: Int) => a - b
+print(fold(cat.opt(), [Some(1), None, Some(2)])!, fold(sub.opt(), [Some(5), Some(2)])!)
+");
+    assert!(
+        !out.contains("std::function"),
+        "each `opt()` clone captures one known closure, so its `op` calls it directly:\n{out}"
+    );
+}

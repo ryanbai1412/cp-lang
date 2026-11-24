@@ -68,7 +68,7 @@ const BOUNDS: [Bound; 5] = [
     // map-entry-var-copies, copies-in-two-fns-stay-apart and
     // match-payload-outlives-reassigning-its-scrutinee (twice).
     ("deep_copies", deep_copies, 32),
-    ("std_functions", std_functions, 154),
+    ("std_functions", std_functions, 153),
 ];
 
 /// The `.cp` files one directory down from each root: the corpus

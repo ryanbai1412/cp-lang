@@ -44,13 +44,19 @@ impl Emitter<'_> {
 pub struct Written {
     pub structs: BTreeSet<usize>,
     pub fns: BTreeSet<usize>,
+    pub closures: BTreeSet<usize>,
 }
 
 impl Written {
-    pub(super) fn of(structs: &BTreeSet<usize>, fns: &BTreeSet<usize>) -> Written {
+    pub(super) fn of(
+        structs: &BTreeSet<usize>,
+        fns: &BTreeSet<usize>,
+        closures: &BTreeSet<usize>,
+    ) -> Written {
         Written {
             structs: structs.clone(),
             fns: fns.clone(),
+            closures: closures.clone(),
         }
     }
 }

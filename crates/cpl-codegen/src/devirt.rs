@@ -117,7 +117,7 @@ impl<'p> Devirt<'p> {
             reassigned_params: BTreeSet::new(),
             recursive_fns: recursive_fns(program),
             unread_fields: BTreeSet::new(),
-            unbuilt: unbuilt(program),
+            unbuilt: crate::built::unbuilt(program, None),
             dead_locals: BTreeSet::new(),
             returned: BTreeMap::new(),
             made_by: made_by(program),
@@ -131,6 +131,8 @@ impl<'p> Devirt<'p> {
                 pass.held.insert(Home::Param(id, slot), Held::Many);
             }
         }
+        // Fn globals set once to a captureless closure are known from the start.
+        pass.globals = pass.called_globals();
         while pass.changed {
             pass.changed = false;
             pass.block(None, &program.setup);
@@ -1020,8 +1022,14 @@ impl<'p> Devirt<'p> {
         self.unread_fields.contains(&(struct_id, index))
     }
 
+    /// Count only the struct literals in `fns` and `closures`, the code the
+    /// file writes: a literal in a fn that is never written never runs.
+    pub fn built_only_in(&mut self, fns: &BTreeSet<FnId>, closures: &BTreeSet<ClosureId>) {
+        self.unbuilt = crate::built::unbuilt(self.program, Some((fns, closures)));
+    }
+
     /// Fn field `index` of a struct no expression builds, and so no value
-    /// holds: see [`unbuilt`].
+    /// holds: see [`crate::built::unbuilt`].
     pub fn unbuilt_field(&self, struct_id: usize, index: usize) -> bool {
         self.unbuilt.contains(&struct_id)
             && matches!(self.program.structs[struct_id].fields[index].1, Ty::Fn(..))
@@ -1515,31 +1523,6 @@ fn keeps_fields(e: &Expr) -> bool {
     }
 }
 
-/// The structs with a fn field that no expression of the program builds.
-/// A struct value is only ever made by a literal (every other value of it
-/// is a copy of one), so none of these exists when the program runs.
-fn unbuilt(program: &Program) -> BTreeSet<usize> {
-    let mut unbuilt: BTreeSet<usize> = (0..program.structs.len())
-        .filter(|&s| {
-            program.structs[s]
-                .fields
-                .iter()
-                .any(|f| matches!(f.1, Ty::Fn(..)))
-        })
-        .collect();
-    let mut blocks = vec![&program.setup, &program.main];
-    blocks.extend(program.fns.iter().map(|f| &f.body));
-    blocks.extend(program.closures.iter().map(|c| &c.body));
-    for block in blocks {
-        walk::deep_exprs(block, &mut |e| {
-            if let (ExprKind::Tuple(_), Ty::Struct(s)) = (&e.kind, &e.ty) {
-                unbuilt.remove(s);
-            }
-        });
-    }
-    unbuilt
-}
-
 fn is_fn_or_opt_fn(ty: &Ty) -> bool {
     match ty {
         Ty::Fn(..) => true,
@@ -1557,7 +1540,7 @@ pub(crate) fn skippable(callee: &Expr) -> bool {
 /// still evaluated (`act!.apply(..)` keeps the `act!` check) before the
 /// arguments.
 pub(crate) fn direct_callee(callee: &Expr) -> bool {
-    pure_path(callee) || matches!(callee.kind, ExprKind::Field(..))
+    pure_path(callee) || matches!(callee.kind, ExprKind::Field(..) | ExprKind::Closure(_))
 }
 
 /// The name of closure `cid` as a fn of the emitted program.
@@ -1668,7 +1651,8 @@ pub fn explain_closures(
     program: &Program,
     written: &crate::emit::lowered::Written,
 ) -> Vec<ClosureLowering> {
-    let devirt = Devirt::collect(program);
+    let mut devirt = Devirt::collect(program);
+    devirt.built_only_in(&written.fns, &written.closures);
     let mut out = Vec::new();
 
     for (sid, s) in program.structs.iter().enumerate() {

@@ -1,6 +1,8 @@
 //! Lowering of a checked program to a single C++17 file.
 
 mod bounds;
+mod built;
+mod capfn;
 mod checks;
 mod compact;
 mod devirt;
@@ -179,6 +181,9 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     splice::splice(&mut program);
     unpack::unpack(&mut program);
     optfn::known_options(&mut program);
+    split::split(&mut program);
+    capfn::known_captures(&mut program);
+    // A closure `capfn` freed of its capture can now split its struct.
     split::split(&mut program);
     // A param `optfn` knows is `None` can leave a field only ever `None`.
     prune::prune(&mut program, target.checks != Checks::None);

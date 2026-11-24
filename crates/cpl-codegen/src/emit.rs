@@ -1148,13 +1148,14 @@ impl<'p> Emitter<'p> {
             self.need_ty(&l.ty);
         }
 
+        self.devirt.built_only_in(&reachable, &reachable_closures);
         // The program first, since writing it finds out what it needs.
         let mut types = String::new();
         let mut done = BTreeSet::new();
         for &id in &reachable_structs {
             self.type_def(&Ty::Struct(id), &mut done, &mut types);
         }
-        self.written = lowered::Written::of(&reachable_structs, &reachable);
+        self.written = lowered::Written::of(&reachable_structs, &reachable, &reachable_closures);
         for &id in &reachable_enums {
             self.type_def(&Ty::Enum(id), &mut done, &mut types);
         }

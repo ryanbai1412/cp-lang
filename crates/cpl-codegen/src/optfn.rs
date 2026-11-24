@@ -393,7 +393,7 @@ fn fold_expr(e: &mut Expr) {
 }
 
 /// Calls `f` on every expression in `block`, at any depth, inner first.
-fn exprs_mut(block: &mut Block, f: &mut dyn FnMut(&mut Expr)) {
+pub(crate) fn exprs_mut(block: &mut Block, f: &mut dyn FnMut(&mut Expr)) {
     for stmt in &mut block.stmts {
         walk::stmt_exprs_mut(stmt, &mut |e| expr_mut(e, f));
         walk::stmt_blocks_mut(stmt, &mut |inner| exprs_mut(inner, f));
