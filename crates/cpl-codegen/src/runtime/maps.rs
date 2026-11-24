@@ -67,10 +67,9 @@ struct CpHash {
         return s;
     }
     // Full salted splitmix64 so both prime-mod and power-of-two open-addressing tables stay hack-resistant.
-    size_t operator()(ll x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
-    size_t operator()(int x) const { return (*this)((ll)x); }
-    size_t operator()(u8 x) const { return (*this)((ll)x); }
-    size_t operator()(bool x) const { return (*this)((ll)x); }
+    // Every integer width, signed or not (`Hash61` is a `U64`), hashes as its 64-bit value.
+    template <class I, std::enable_if_t<std::is_integral_v<I>, int> = 0>
+    size_t operator()(I x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
     size_t operator()(double x) const { return (*this)((ll)std::hash<double>()(x)); }
     size_t operator()(const std::string& s) const {
         uint64_t h = salt();
