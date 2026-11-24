@@ -14,11 +14,20 @@ domain Group = 0..3
 // WISH C5: `let before = [Group] g => prefix(s.cyclic, c => c == g.letter)`
 // and `before[g].sum(l..l + len)`; no `prefix` in the prelude, and nothing
 // says "this range wraps around".
-var before: [Group]List<Int> = [Group] _ => [0]
-for i in 0..2 * n:
-    for g in Group:
-        before[g].push(before[g][i] + Int(s[i % n].ord - 'A'.ord == g.ord))
-fn among(g: Group, from: Int, len: Int) -> Int = before[g][from + len] - before[g][from]
+domain Counted = 0..2  // group 2 is what the other two leave
+var before: [Counted, 0..=n]0..=1_000_000 = 0
+for i in 0..n:
+    for g in Counted: before[g, i + 1] = before[g, i] + Int(s[i].ord - 'A'.ord == g.ord)
+fn prefix_of(g: Group, k: 0..=n) -> Int =
+    if let c = Counted.at(g.ord): before[c, k] else: k - before[Counted(0), k] - before[
+        Counted(1),
+        k,
+    ]
+fn upto(
+    g: Group,
+    k: Int,
+) -> Int = if k <= n: prefix_of(g, k) else: prefix_of(g, n) + prefix_of(g, k - n)
+fn among(g: Group, from: Int, len: Int) -> Int = upto(g, from + len) - upto(g, from)
 fn size(g: Group) -> Int = among(g, 0, n)
 
 // fewest swaps when group x sits in a block followed by group y's block
