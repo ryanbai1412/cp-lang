@@ -117,7 +117,7 @@
   "cpp_deep_copies": 36,
   "cpp_std_functions": 144,
   "codegen_effect_guesses": 0,
-  "near_dup_fns": 17,
+  "near_dup_fns": 16,
   "consumer_rederived": 63,
   "rs_near_cap": [
     "crates/cpl-check/src/db.rs",
@@ -183,7 +183,7 @@
   "test_sleeps": 23,
   "ci_retries": 10,
   "hardcoded_codes": 1,
-  "xfail_markers": 51,
+  "xfail_markers": 46,
   "todo_fixme": 3,
   "web_skip_only": 1,
   "ts_ignore": 0,
