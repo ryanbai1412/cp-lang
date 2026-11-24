@@ -208,7 +208,7 @@ print(yes(adj[V(3), V(1)]), missing, after_first)
 
 ## Domain subsets, enum-indexed tables, and sequence operations
 
-Domains compose directly with bitsets (`V.all`, `Bitset<V>`, `adjacency(edges, into: Bitset)`), fieldless enums (`[Sign]T` and `[Sign] x => ...`), domain-typed sequence operations (`partition`, `sort(by:)`, `group(by:)`, `at`, `first(p)`), and paired `Item`/`Cut` ranges via `minmax`:
+Domains compose directly with bitsets (`Bitset<V>`, `Bitset.undirected(edges)`, `.complement()`), fieldless enums (`[Sign]T` and `[Sign] x => ...`), domain-typed sequence operations (`partition`, `sort(by:)`, `group(by:)`, `at`, `first(p)`), and paired `Item`/`Cut` ranges via `minmax`:
 
 ```cp
 enum Sign: neg = -1, zero = 0, pos = 1
@@ -216,8 +216,8 @@ let vals: [Sign]Int = [Sign] s => Int(s) * 10
 
 domain V = 1..=4
 let edges: List<(u: V, v: V)> = [(V(1), V(2)), (V(2), V(3))]
-let adj = adjacency(edges, into: Bitset)
-let rest = V.all - adj[V(2)]
+let adj = Bitset.undirected(edges)
+let rest = adj[V(2)].complement()
 let (evens, odds) = V.partition(v => Int(v) % 2 == 0)
 let first_big = V.first(v => Int(v) > 2)
 print(vals[Sign.neg], rest.len, evens.len, odds.len, first_big!)
