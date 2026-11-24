@@ -15,13 +15,17 @@ let read_at: [n](x: F64, y: F64) = read()  // 0 <= x, y <= 1000, two decimals
 let sheep = [(x: round(s.x * SCALE), y: round(s.y * SCALE)) for s in read_at]
 
 for p in sheep:
-    if sheep.any(q => q.x == p.x and q.y < p.y): continue  // a rival straight below wins everywhere
-    fn cut(q: (x: Int, y: Int)) -> Ratio = Ratio(
-        q.x * q.x + q.y * q.y - p.x * p.x - p.y * p.y,
-        2 * (q.x - p.x),
-    )
-    let lo = ([Ratio(0, 1)] + [cut(q) for q in sheep if q.x < p.x]).max()!
-    let hi = ([Ratio(1000 * SCALE, 1)] + [cut(q) for q in sheep if q.x > p.x]).min()!
-    if lo <= hi: print(
+    var lo = Ratio(0)  // p is nearest on [lo, hi]
+    var hi = Ratio(1000 * SCALE)
+    var open = true
+    for q in sheep:
+        let gap = q.x * q.x + q.y * q.y - p.x * p.x - p.y * p.y
+        if q.x == p.x:
+            if q.y < p.y:  // a rival straight below wins everywhere
+                open = false
+                break
+        elif q.x < p.x: lo = max(lo, Ratio(gap, 2 * (q.x - p.x)))
+        else: hi = min(hi, Ratio(gap, 2 * (q.x - p.x)))
+    if open and lo <= hi: print(
         "The sheep at ({fixed(p.x, SCALE, 2)}, {fixed(p.y, SCALE, 2)}) might be eaten."
     )
