@@ -8982,3 +8982,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Reverse.** Fold `Exp` into an `Int` exponent with a `phi:` argument on `pow_mod`, or rename `shift_saturating` to a `next(k, saturate: true)` option.
 
 ## 564. (reserved, perf)
+
+## 565. (reserved, perf)
