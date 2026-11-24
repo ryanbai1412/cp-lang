@@ -24,6 +24,7 @@ mod compile;
 mod exec;
 mod helpers;
 mod ir;
+mod program;
 mod scalar;
 
 pub(crate) use helpers::stmt_tag;

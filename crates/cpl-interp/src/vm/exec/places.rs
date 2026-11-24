@@ -269,6 +269,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 regs_v[dst as usize] = Value::Float(x.sqrt());
             }
+            Op::DomainValV { dst, dom } => {
+                let (lo, len) = self.domains[dom as usize];
+                regs_v[dst as usize] = Value::DomainVal(lo, len);
+            }
             Op::MakeRangeV { dst, lo, hi, float } => {
                 let (lo, hi) = (&regs_v[lo as usize], &regs_v[hi as usize]);
                 regs_v[dst as usize] = if float {

@@ -718,6 +718,12 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::MakeRange { dst, r_lo, r_hi }, span);
                 dst
             }
+            ExprKind::DomainVal(d) => {
+                let dst = self.alloc_v();
+                let dom = *d as u16;
+                self.emit(Op::DomainValV { dst, dom }, span);
+                dst
+            }
             ExprKind::Range { lo, hi } if matches!(&expr.ty, Ty::Range(inner) if matches!(**inner, Ty::Float | Ty::I128)) =>
             {
                 let float = matches!(&expr.ty, Ty::Range(inner) if **inner == Ty::Float);
