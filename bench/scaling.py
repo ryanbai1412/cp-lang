@@ -14,7 +14,11 @@ for a fn whose cost names a size the case derives from n) or set the base size (
 judge's C++ with a counter per statement, RUNS times at n and at 4n; the
 time per hit of the timed lines (the fastest run) gives the measured growth.
 The documented growth is the `cost:` formula evaluated at 4n over n, every
-symbol but the fixed ones standing for n. A case fails when the measured
+symbol but the fixed ones standing for n; a cost written ``as `fn` ``
+reads that fn's. A callback the fn calls is written on its own line, out
+of the timed one, and marked `// within: <fn>`: a profile charges a
+callback's time to its own line, which counts to the fn's time but not
+to its hits. A case fails when the measured
 growth is over SLACK times the documented one (the fn is slower than its
 docs) or under it by SLACK squared (the docs overstate it).
 
@@ -53,7 +57,22 @@ def std_costs(cpl):
 
     for m in json.loads(out)["modules"]:
         walk(m["items"], m["name"])
+    for name, cost in costs.items():
+        costs[name] = alias(name, cost, costs)
     return costs
+
+
+def alias(name, cost, costs):
+    """A cost written ``as `other` `` (a sibling) or ``as [`Owner.fn`](...)`` (in the same
+    module) reads the other fn's cost."""
+    m = re.match(r"as \[?`([\w.]+)`", cost)
+    if not m or big_o(cost):
+        return cost
+    module, owner = name.split(".")[0], name.rsplit(".", 1)[0]
+    for other in (f"{owner}.{m.group(1)}", f"{module}.{m.group(1)}"):
+        if other in costs and other != name:
+            return alias(other, costs[other], costs)
+    return cost
 
 
 def big_o(cost):
@@ -154,8 +173,10 @@ def header(text):
     return out
 
 
-def per_hit(cpl, case, n, groups, tmp):
-    """fn -> fastest nanoseconds per hit of its timed lines over RUNS runs at size n."""
+def per_hit(cpl, case, n, groups, tmp, within=None):
+    """fn -> fastest nanoseconds per hit of its timed lines over RUNS runs at size n, with the
+    time (not the hits) of its `within` lines."""
+    within = within or {}
     inp = os.path.join(tmp, f"{os.path.basename(case)}.{n}.in")
     with open(inp, "w") as f:
         f.write(f"{n}\n")
@@ -169,6 +190,7 @@ def per_hit(cpl, case, n, groups, tmp):
         for fn, timed in groups.items():
             lines = [by_line[i] for i in timed if i in by_line]
             ns, hits = sum(l["time_ns"] for l in lines), sum(l["hit_count"] for l in lines)
+            ns += sum(by_line[i]["time_ns"] for i in within.get(fn, ()) if i in by_line)
             if not hits:
                 raise RuntimeError(f"no line timing {fn} ran")
             if ns < MIN_NS:
@@ -184,6 +206,17 @@ def timed_lines(text, default):
         m = re.search(r"//\s*timed(?::\s*(\S+))?\s*$", line)
         if m:
             groups.setdefault(m.group(1) or default, set()).add(i)
+    return groups
+
+
+def within_lines(text):
+    """fn -> the line numbers marked `// within: fn`: the body of a callback the fn calls, whose
+    time is the fn's and whose hits are not."""
+    groups = {}
+    for i, line in enumerate(text.splitlines(), 1):
+        m = re.search(r"//\s*within:\s*(\S+)\s*$", line)
+        if m:
+            groups.setdefault(m.group(1), set()).add(i)
     return groups
 
 
@@ -215,8 +248,9 @@ def run_case(cpl, case, costs, tmp):
         except ValueError as e:
             out.append((f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}))
     try:
-        small = per_hit(cpl, case, n, groups, tmp)
-        big = per_hit(cpl, case, 4 * n, groups, tmp)
+        within = within_lines(text)
+        small = per_hit(cpl, case, n, groups, tmp, within)
+        big = per_hit(cpl, case, 4 * n, groups, tmp, within)
     except (RuntimeError, subprocess.TimeoutExpired) as e:
         return out + [(f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}) for fn in documented]
     for fn, (formula, want) in documented.items():

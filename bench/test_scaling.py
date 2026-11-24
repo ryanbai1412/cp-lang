@@ -55,6 +55,15 @@ class Judge(unittest.TestCase):
             self.assertTrue(scaling.judge(measured, documented))
 
 
+class Alias(unittest.TestCase):
+    def test_a_cost_as_another_fn_reads_its_cost(self):
+        costs = {"m.T.f": r"\(O(\log n)\)", "m.T.g": "as `f`", "m.U.h": "as [`T.g`](T.g), plus one call",
+                 "m.T.k": "as `nope`"}
+        self.assertEqual(scaling.alias("m.T.g", costs["m.T.g"], costs), costs["m.T.f"])
+        self.assertEqual(scaling.alias("m.U.h", costs["m.U.h"], costs), costs["m.T.f"])
+        self.assertEqual(scaling.alias("m.T.k", costs["m.T.k"], costs), "as `nope`")
+
+
 class Header(unittest.TestCase):
     def test_the_header_ends_at_the_first_other_line(self):
         text = "// scaling: bag.SortedBag.add\n// fixed: K\n// n: 512\nlet n: Int = read()\n// n: 9\n"
@@ -63,6 +72,10 @@ class Header(unittest.TestCase):
     def test_each_timed_line_names_its_fn_or_takes_the_headers(self):
         text = "// scaling: a.f\nx // timed\ny\nz // timed: b.g\nw // timed: b.g\n"
         self.assertEqual(scaling.timed_lines(text, "a.f"), {"a.f": {2}, "b.g": {4, 5}})
+
+    def test_a_within_line_names_the_fn_its_time_counts_to(self):
+        text = "let f = x => x // within: a.f\nx // timed: a.f\n// within: a.f is prose\n"
+        self.assertEqual(scaling.within_lines(text), {"a.f": {1}})
 
     def test_every_case_times_a_named_fn(self):
         for f in sorted(os.listdir(scaling.CASES)):
