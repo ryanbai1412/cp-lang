@@ -169,6 +169,17 @@ def stress_inputs(pkg):
     return []
 
 
+def package_limits(pkg):
+    """The problem's limits, from its port's `// limits:` line, so a dream is judged as the port is."""
+    if not pkg.port:
+        return []
+    spec = importlib.util.spec_from_file_location("generators", os.path.join(ROOT, "corpus", "generators.py"))
+    gens = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gens)
+    ms, mb = gens.limits(pkg.port)
+    return ["--time-limit", str(ms), "--memory-limit", str(mb)]
+
+
 def judged(pkg, source, inputs, cpl):
     """Run `source` with `cpl test` on `inputs`, answers from the accepted C++
     (none for an interactive package): (all passed, cases run)."""
@@ -189,7 +200,7 @@ def judged(pkg, source, inputs, cpl):
                 Path(cases, f"{i:02}.ans").write_text(r.stdout)
         judge = ["--interactor", str(pkg.interactor)] if pkg.interactor else \
                 ["--checker", str(pkg.checker)] if pkg.checker else []
-        r = subprocess.run([cpl, "test", str(source), "--tests", cases, "--format", "json", *judge],
+        r = subprocess.run([cpl, "test", str(source), "--tests", cases, "--format", "json", *judge, *package_limits(pkg)],
                            cwd=ROOT, capture_output=True, text=True)
         try:
             results = json.loads(r.stdout)["cases"]

@@ -48,41 +48,29 @@ fn best_plan() -> Plan:
         if cand.cost < res.cost: res = cand
     res
 
-let best = best_plan()
-
 // Enumerate the `n` cheapest d-tuples in reverse lex order.
-fn cheapest_tuples(plan: Plan) -> List<List<Int>>:
-    var out: List<List<Int>> = []
-    var cur: List<Int> = [0 for _ in 0..plan.d]
+// Walk the cheapest tuples in order, emitting each layer's jumps as the walk
+// leaves a branch, so no tuple is ever stored.
+fn emit_jumps(plan: Plan) -> List<(Int, Int)>:
+    var layer_ops: [0..plan.d]List<(Int, Int)> = []
+    var next_pos = n
     var lim_w = plan.max_w
     var max_w_left = plan.max_w_cnt
-    fn gen(layer: Int, used_w: Int):
+    fn walk(layer: Int, used_w: Int):
         if layer == plan.d or used_w == lim_w:
             if used_w == plan.max_w:
                 max_w_left -= 1
                 if max_w_left == 0: lim_w -= 1
-            for k in layer..plan.d: cur[k] = 0
-            out.push(copy(cur))
+            next_pos -= 1
             return
+        let start = next_pos
         for c in (0..=lim_w - used_w).rev:
-            cur[layer] = c
-            gen(layer + 1, used_w + c)
-    gen(0, 0)
-    out
+            if next_pos == 0: break
+            if next_pos != start: layer_ops[layer].push((next_pos, start - next_pos))
+            walk(layer + 1, used_w + c)
+    walk(0, 0)
+    [op for layer in layer_ops.rev for op in layer]
 
-domain Pos = 1..=n
-let positions = [p for p in Pos.rev]
-let placed = zip(positions, cheapest_tuples(best))
-
-var layer_ops: [0..best.d]List<(Pos, Int)> = [0..best.d] _ => []
-for cl in 0..best.d:
-    for run in placed.runs(link: (a, b) => a.1[..cl] == b.1[..cl]):
-        let group = run.keys
-        let start = placed[group.first!].0
-        for idx in group if idx > group.first! and placed[idx].1[cl] != placed[idx - 1].1[cl]:
-            let pos = placed[idx].0
-            layer_ops[cl].push((pos, start - pos))
-
-let ops = [op for layer in layer_ops.rev for op in layer]
+let ops = emit_jumps(best_plan())
 print(ops.len)
 for (x, l) in ops: print(x, l)

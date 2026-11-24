@@ -13,12 +13,12 @@
 use std.marks.{Interner}
 
 @!multitest
-let m: 1..=100_000 = read()
+let m: 1..=200_000 = read()
 var verts = Interner<(Int, Int)>()
 var raw_edges: List<(Int, Int)> = []
 
 for _ in 0..m:
-    let (a, b, c): (1..=10 ** 9, 1..=10 ** 9, 1..=10 ** 9) = read()
+    let (a, b, c): (1..=200_000, 1..=200_000, 1..=200_000) = read()
     for (x, y, z) in [(a, b, c), (a, c, b), (b, a, c), (b, c, a), (c, a, b), (c, b, a)]:
         raw_edges.push((verts.id((x, y)), verts.id((y, z))))
 
