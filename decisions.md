@@ -8914,6 +8914,8 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `s.fold(op)` is `T` and takes only an op `Monoid.of` gives an identity for. A plain fn is E0706 with a fix to `s.reduce(f)`, which is `?T`. The seeded fold is `s.fold_from(init, f)`, init first as in Rust and Kotlin, and `cpl fix` rewrites `s.fold(f, init)` and `s.fold(f, init: a)` to it (R07.9.2).
 - **Why.** std states every fold as an ordinary fn, so the compiler's `fold` rows can go. One `fold` couldn't do that: fns are not overloaded (E0702), and the three forms return `T`, `?T` and `Acc`, so no single signature types them.
 - **Reverse.** Give std one `fold` whose result type comes from `op` (a checker power), and drop the `fold` row of the removed-spelling table.
+## 550. (reserved, content)
+
 ## 549. One Rust corpus walker crate, `cpl-corpus` (infra, 2026-11-24)
 
 - **Call.** Rust code lists the problem packages only through `cpl_corpus::{packages, files, package}`, a dependency-free crate every tool and test can reach. `scripts/corpus.py` stays the walker for everything else; `corpus_walkers` counts any other file that lists `corpus/problems` itself.
