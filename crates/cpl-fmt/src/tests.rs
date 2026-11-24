@@ -291,6 +291,31 @@ fn breaks_a_comprehension_and_an_if_else_at_their_clauses() {
 }
 
 #[test]
+fn breaks_a_chain_at_its_operators_before_its_last_operand() {
+    let src = "fn below(a: Int, b: Int, c: Int, d: Int) -> Int:
+    sum(f(i) for i in 0..a) + sum(f(i + a) for i in 0..b) + sum(f(i + b) for i in 0..c) + sum(f(a + b + c + i) for i in 0..=d)
+";
+    let want = "fn below(a: Int, b: Int, c: Int, d: Int) -> Int:
+    sum(f(i) for i in 0..a) +
+        sum(f(i + a) for i in 0..b) +
+        sum(f(i + b) for i in 0..c) +
+        sum(f(a + b + c + i) for i in 0..=d)
+";
+    assert_eq!(fmt(src), want);
+
+    let src = "if lo <= hi: print(\"The sheep at ({fixed(p.x, SCALE, 2)}, {fixed(p.y, SCALE, 2)}) might be eaten, at least.\")\n";
+    let want = "if lo <= hi: print(
+    \"The sheep at ({fixed(p.x, SCALE, 2)}, {fixed(p.y, SCALE, 2)}) might be eaten, at least.\"
+)
+";
+    assert_eq!(
+        fmt(src),
+        want,
+        "a header does not break before its inline body"
+    );
+}
+
+#[test]
 fn keeps_the_rows_of_a_table() {
     let src = "let segs: [0..12]((Int, Int), (Int, Int)) = [
     ((2, 0), (2, 1)), ((2, 1), (2, 2)), ((1, 1), (2, 1)), ((1, 1), (2, 0)),

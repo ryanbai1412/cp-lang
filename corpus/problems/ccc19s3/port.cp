@@ -13,9 +13,8 @@ use std.rand.{Rng}
 domain Ax = 0..3
 type Cell = (Ax, Ax)
 // The rows and columns, each as its three cells in order.
-let lines: List<(Cell, Cell, Cell)> = [((i, Ax(0)), (i, Ax(1)), (i, Ax(2))) for i in Ax] + [
-    ((Ax(0), j), (Ax(1), j), (Ax(2), j)) for j in Ax
-]
+let lines: List<(Cell, Cell, Cell)> = [((i, Ax(0)), (i, Ax(1)), (i, Ax(2))) for i in Ax] +
+    [((Ax(0), j), (Ax(1), j), (Ax(2), j)) for j in Ax]
 
 fn read_cell() -> ?Int:
     let w: Str = read()

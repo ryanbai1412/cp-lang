@@ -29,15 +29,10 @@ fn closes_to<R>(d: [V, V]?Int, over: R, want: [V, V]?Int) -> Bool:
 let widest = Semiring(max, min)
 let narrowest = Semiring(min, max)
 if not (
-    closes_to(wide, widest, wide) and closes_to(narrow, narrowest, narrow) and closes_to(
-        only_fits(wide),
-        widest,
-        wide,
-    ) and closes_to(
-        only_fits(narrow),
-        narrowest,
-        narrow,
-    )
+    closes_to(wide, widest, wide) and
+            closes_to(narrow, narrowest, narrow) and
+            closes_to(only_fits(wide), widest, wide) and
+            closes_to(only_fits(narrow), narrowest, narrow)
 ):
     print("NO")
 else:

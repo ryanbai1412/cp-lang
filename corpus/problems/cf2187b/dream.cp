@@ -35,12 +35,8 @@ for ge_x in [false, true]:
             for sx in [false, true]:
                 for sy in [false, true] if let (w, px, py) = dp[sx, sy]:
                     for (vx, vy) in [(false, false), (false, true), (true, false)]:
-                        if let (nx, dx) = step(sx, ge_x, vx, bx) and let (ny, dy) = step(
-                            sy,
-                            ge_y,
-                            vy,
-                            by,
-                        ):
+                        if let (nx, dx) = step(sx, ge_x, vx, bx) and
+                                let (ny, dy) = step(sy, ge_y, vy, by):
                             ndp[nx, ny] min= (w * 2 + dx + dy, px * 2 + Int(vx), py * 2 + Int(vy))
             dp = ndp
         ans min= dp.min()

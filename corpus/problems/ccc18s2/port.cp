@@ -13,9 +13,8 @@ let given: [I, I]1..=1e9 = read()
 
 fn turned(g: [I, I]Int) -> [I, I]Int = [I, I] (r, c) => g[I(n - 1 - c.ord), r]
 fn increasing(line: [I]Int) -> Bool = line.adjacent.all((a, b) => a < b)
-fn grows(g: [I, I]Int) -> Bool = all(increasing(g[r]) for r in I) and all(
-    increasing(g[.., c]) for c in I
-)
+fn grows(g: [I, I]Int) -> Bool = all(increasing(g[r]) for r in I) and
+    all(increasing(g[.., c]) for c in I)
 
 var g = given
 while not grows(g): g = turned(g)

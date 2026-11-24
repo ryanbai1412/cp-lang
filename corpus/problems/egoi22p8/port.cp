@@ -46,9 +46,7 @@ fn below(card: Int) -> Int:  // least-rotation cards <= card
     sum(with1(i) for i in 0..a) +
         sum(with2(a, i) for i in 0..b) +
         sum(with3(a, b, i) for i in 0..c) +
-        sum(
-        with4(a, b, c, i) for i in 0..=d
-    )
+        sum(with4(a, b, c, i) for i in 0..=d)
 
 fn turned(card: Int, t: Int) -> Int =
     ((card << (7 * t)) | (card >> (BITS - 7 * t))) % (1 << BITS)

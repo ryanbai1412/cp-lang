@@ -32,13 +32,8 @@ repeat m:
     f = [
         sum(
             Z(choose(t, j)) * (
-                falling(a, j + 1) * falling(b, t - j) * f[j] + falling(a, j) * falling(
-                    b,
-                    t - j + 1,
-                ) * at(
-                    f,
-                    Z(a + t - j),
-                )
+                falling(a, j + 1) * falling(b, t - j) * f[j] +
+                    falling(a, j) * falling(b, t - j + 1) * at(f, Z(a + t - j))
             )
             for j in 0..=t
         ) * inv_falling_n[t]

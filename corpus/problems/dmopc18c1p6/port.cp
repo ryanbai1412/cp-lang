@@ -20,9 +20,9 @@ let column_ones = [Col] c => Prefix([Row] r => Int(bits[r, c] == '1'))
 let ones_before: [Col, Row.cuts]Int = [Col, Row.cuts] (c, k) => column_ones[c].at(k)
 
 fn flips(c: Col, a: Row.cuts, s: Row.cuts, b: Row.cuts) -> Int =
-    (ones_before[c, s] - ones_before[c, a]) + (Int(b) - Int(s)) - (
-        ones_before[c, b] - ones_before[c, s]
-    )
+    (ones_before[c, s] - ones_before[c, a]) +
+        (Int(b) - Int(s)) -
+        (ones_before[c, b] - ones_before[c, s])
 
 var fewest: [Row.cuts, Row.cuts]0..=5e4 = 0  // at most n m flips
 for c in Col.rev:

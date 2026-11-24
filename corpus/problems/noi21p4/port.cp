@@ -44,9 +44,8 @@ for i in W:
 
 fn bits_apart(a: Word, i: W) -> Int = sum(popcount(a[c] ^ dict[i, c]) for c in Quarter)
 
-fn hex(digits: Str) -> U64 = U64(digits[..8].parse_int(base: 16)!) << 32 | U64(
-    digits[8..].parse_int(base: 16)!
-)
+fn hex(digits: Str) -> U64 = U64(digits[..8].parse_int(base: 16)!) << 32 |
+    U64(digits[8..].parse_int(base: 16)!)
 
 var flip = false
 repeat m:

@@ -7,10 +7,8 @@ trait Op<T>:
     fn checks(self) -> List<(name: Str, holds: (List<T>, List<Int>) -> Bool)> = [
         (
             name: "assoc",
-            holds: (s: List<T>, p: List<Int>) => op(op(s[p[0]], s[p[1]]), s[p[2]]) == op(
-                s[p[0]],
-                op(s[p[1]], s[p[2]]),
-            ),
+            holds: (s: List<T>, p: List<Int>) => op(op(s[p[0]], s[p[1]]), s[p[2]]) ==
+                op(s[p[0]], op(s[p[1]], s[p[2]])),
         )
     ]
 struct S: x: Int

@@ -14,9 +14,8 @@ let (hawks_won, hawks): (Str, [Game]1..=1e6) = read()
 
 // One team won, and the winner scored strictly more.
 fn rivals(g: Game, h: Game) -> Bool =
-    geese_won[g.ord] != hawks_won[h.ord] and (
-        if geese_won[g.ord] == 'W': geese[g] > hawks[h] else: geese[g] < hawks[h]
-    )
+    geese_won[g.ord] != hawks_won[h.ord] and
+        (if geese_won[g.ord] == 'W': geese[g] > hawks[h] else: geese[g] < hawks[h])
 
 // prev[h], then cur[h]: the most points from the geese games up to g and the first h hawks games
 var prev: [Game.cuts]Int = 0

@@ -33,9 +33,9 @@ fn fits(row: Str, lens: List<Int>) -> [0..=n, 0..=k]Bool:
             // the last cell is white, or block j ends here, right after a white (or the start)
             let blank = row[i - 1] != 'X' and ok[i - 1, j]
             let start = if j > 0: i - lens[j - 1] else: -1
-            let block = start >= 0 and blanks[i] == blanks[start] and (
-                if start == 0: j == 1 else: row[start - 1] != 'X' and ok[start - 1, j - 1]
-            )
+            let block = start >= 0 and
+                blanks[i] == blanks[start] and
+                (if start == 0: j == 1 else: row[start - 1] != 'X' and ok[start - 1, j - 1])
             ok[i, j] = blank or block
     ok
 
@@ -59,7 +59,6 @@ for j in 0..k:
         )
 let can_black = black.finish()
 
-let white = (c: Cell) => row[Int(c)] != 'X' and (0..=k).any(
-    j => before[Int(c), j] and after[n - Int(c) - 1, k - j]
-)
+let white = (c: Cell) => row[Int(c)] != 'X' and
+    (0..=k).any(j => before[Int(c), j] and after[n - Int(c) - 1, k - j])
 print(Str(Cell.map(c => if white(c) and can_black[c] > 0: '?' elif white(c): '_' else: 'X')))

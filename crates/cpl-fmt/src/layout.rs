@@ -623,7 +623,19 @@ impl<'a, 'b> Emitter<'a, 'b> {
             .filter(|_| self.chains && forced.is_none());
         let cont = indent + self.hang;
         if let (Some((pivot, ..)), Some(cuts)) = (pivot, &cuts) {
-            if nodes.iter().enumerate().skip(pivot + 1).any(loose) {
+            // Opening a call in a later operand would cram the operands
+            // before it onto the first line; break at the operators
+            // instead when each operand then fits, but never in a header
+            // before its inline body's `:` or `=>`.
+            let body = nodes[..nodes.len() - 1].iter().rposition(
+                |n| matches!(n, Node::Tok(i) if matches!(self.toks[*i].kind, K::Colon | K::FatArrow)),
+            );
+            let additive = matches!(nodes[cuts[0] - 1], Node::Tok(i) if looseness(self.toks[i].kind) > Some(0));
+            let trailing = cuts[0] <= pivot
+                && additive
+                && body.is_none_or(|b| cuts[0] > b)
+                && self.pieces_fit(nodes, cuts, cont);
+            if trailing || nodes.iter().enumerate().skip(pivot + 1).any(loose) {
                 return self.chain(nodes, indent, cont, cuts);
             }
         }
@@ -640,6 +652,19 @@ impl<'a, 'b> Emitter<'a, 'b> {
         self.broken(open, items, close, indent);
         self.tail = tail;
         self.seq(&nodes[pivot + 1..], indent);
+    }
+
+    /// Whether each piece of `nodes` cut at `cuts` fits flat, the first
+    /// from the current column and the rest at `cont`.
+    fn pieces_fit(&self, nodes: &[Node], cuts: &[usize], cont: usize) -> bool {
+        let mut start = 0;
+        cuts.iter().copied().chain([nodes.len()]).all(|end| {
+            let column = if start == 0 { self.column() } else { cont };
+            let tail = if end == nodes.len() { self.tail } else { 0 };
+            let width = self.flat_width(&nodes[start..end], &mut None);
+            start = end;
+            column + width + tail <= self.width
+        })
     }
 
     /// Where a comprehension or an `if`-`else` expression in brackets

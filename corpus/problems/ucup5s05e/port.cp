@@ -70,9 +70,9 @@ fn answer(c: Pt) -> List<P>:
             for k in j + 1..cands.len:
                 if in_tri(pts[cands[i]], pts[cands[j]], pts[cands[k]], c):
                     return [cands[i], cands[j], cands[k]]
-    if hull.len == 4 and off_diagonal == None and hull_edges.all(
-        e => turn(pts[e.0], pts[e.1], c) > 0
-    ):
+    if hull.len == 4 and
+            off_diagonal == None and
+            hull_edges.all(e => turn(pts[e.0], pts[e.1], c) > 0):
         return hull
     []
 

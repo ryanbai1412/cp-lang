@@ -54,9 +54,9 @@ fn answer(c: Pt) -> List<P>:
     if let s = off_diagonal: cands.push(s)
     if let tri = cands.combinations(3).first(t => in_tri(pts[t[0]], pts[t[1]], pts[t[2]], c)):
         return tri
-    if hull.len == 4 and off_diagonal == None and hull_edges.all(
-        e => turn(pts[e.0], pts[e.1], c) > 0
-    ):
+    if hull.len == 4 and
+            off_diagonal == None and
+            hull_edges.all(e => turn(pts[e.0], pts[e.1], c) > 0):
         return hull
     []
 

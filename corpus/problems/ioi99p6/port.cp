@@ -29,10 +29,8 @@ for left in Col:
         var bottom = 0
         for top in Row:
             bottom max= Int(top)
-            while let r = Row.at(bottom) and max(
-                peak.all ?? hi[r],
-                hi[r],
-            ) - min(pit.all ?? lo[r], lo[r]) <= k:
+            while let r = Row.at(bottom) and
+                    max(peak.all ?? hi[r], hi[r]) - min(pit.all ?? lo[r], lo[r]) <= k:
                 peak.push(hi[r])
                 pit.push(lo[r])
                 bottom += 1

@@ -25,8 +25,6 @@ for r in I.cuts:
         fn cover(k: Cut<I>, x: I) -> Range<I> = min(k, x.l)..max(k, x.r)
         fn corner(rows: Range<I>, cols: Range<I>) -> List<Int>:
             [pre.fold(cover(r, x), cover(c, y)) for x in rows for y in cols]
-        total += matches(corner(..r, ..c), corner(r.., c..)) + matches(
-            corner(..r, c..),
-            corner(r.., ..c),
-        )
+        total += matches(corner(..r, ..c), corner(r.., c..)) +
+            matches(corner(..r, c..), corner(r.., ..c))
 print(total)
