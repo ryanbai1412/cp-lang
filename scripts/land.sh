@@ -234,7 +234,7 @@ if [ -s "$pending_cases" ]; then
         git diff --quiet HEAD -- crates std Cargo.toml Cargo.lock ||
             { echo "land: uncommitted changes under crates/ or std/ would be tested in place of what lands; commit or stash them, then land again" >&2; exit 1; }
         echo "land: running the staged conformance cases the hook's cut skipped: $cases" >&2
-        uv run --quiet python scripts/conform_staged.py --build $cases >&2 ||
+        uv run --quiet python scripts/conform_staged.py --base "$(git rev-parse FETCH_HEAD)" --build $cases >&2 ||
             { echo "land: a staged conformance case fails at the rebased tip; fix it and land again: uv run scripts/conform_staged.py --build $cases" >&2; exit 1; }
     fi
     rm -f "$pending_cases"

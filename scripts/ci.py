@@ -721,7 +721,8 @@ class Tail:
                 raise Failed("unstaged changes under crates/ or std/ would run the staged cases against code this commit"
                              " leaves out (4aaa8b0db); stage them, or stash them with git stash --keep-index")
             self._cargo_build("cpl-cli", "cpl-conform")
-            if self.call([sys.executable, "scripts/conform_staged.py", str(target_dir() / "debug/cpl-conform"), *cases]):
+            if self.call([sys.executable, "scripts/conform_staged.py", "--base", "HEAD",
+                          str(target_dir() / "debug/cpl-conform"), *cases]):
                 raise Failed("a staged conformance case fails; cpl-conform's message above says how to fix it")
         if sel.get("site") == "1" and self.wants("site"):
             self.step("site snippet gate (node web/scripts/gate.mjs)")

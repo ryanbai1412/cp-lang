@@ -3,13 +3,18 @@
 
     scripts/conform_staged.py CPL_CONFORM CASE...
     scripts/conform_staged.py --build CASE...   build cpl-cli and cpl-conform first (land.sh)
+    scripts/conform_staged.py --base REV [--build] ...   a case failing at REV too is main's
 
 A staged case that fails blocks the commit unless HEAD's
 research/scoreboard.json already records it as failing: no new failing case,
 and no marker line in the case (`conformance_failing` counts the board's
 failures, target 0). cpl-conform's message names the fix, e.g. the line to
 mark `// <- here` (conformance/R1, conformance/R3). Each case runs twice, and one whose verdict differs
-between the runs is a flake and blocks too.
+between the runs is a flake and blocks too. With `--base`, a new failure is
+run again at REV (new_reds.py's scratch worktree and target, cached per base
+tree): failing there too, it is printed as "pre-existing red, owner <lane>"
+and logged for the culprit finder, and doesn't refuse (f33d10f7 was refused
+for a case red on main). A base that doesn't build, or lacks the case, refuses.
 """
 import json
 import os
@@ -22,6 +27,7 @@ ROOT = Path(__file__).resolve().parent.parent
 PREFIX = "spec/conformance/"
 BOARD = "research/scoreboard.json"
 FAIL = re.compile(r"^  (\S+\.cp): fail")
+sys.path.insert(0, str(ROOT / "scripts"))
 
 
 def board_failing(board_text):
@@ -63,24 +69,78 @@ def flake(case, first, second):
     return [] if a == b else [f"  {case}: fail: flaky, {a} then {b} on the same build"]
 
 
-def main(argv):
+def base_verdicts(cases, base, run=subprocess.run):
+    """{case: 'fail' | 'pass' | 'absent' | 'unbuilt'} for `cases` at `base`."""
+    import new_reds
+    common = Path(new_reds.git("rev-parse", "--path-format=absolute", "--git-common-dir", cwd=ROOT))
+    cache_file = common / "cpl-base-tests" / f"{new_reds.git('rev-parse', base + '^{tree}', cwd=ROOT)}.json"
+    cache = json.loads(cache_file.read_text()) if cache_file.is_file() else {}
+    todo = [c for c in cases if f"conform:{c}" not in cache]
+    if todo:
+        wt = new_reds.base_checkout(common, base)
+        target = Path(os.environ.get("CPL_BASE_TARGET", str(common / "cpl-base-target")))
+        env = {**os.environ, "CARGO_TARGET_DIR": str(target)}
+        print(f"conform_staged: rerunning {len(todo)} failing case(s) at the base {base[:9]}", file=sys.stderr)
+        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=wt, env=env).returncode:
+            return {c: cache.get(f"conform:{c}", "unbuilt") for c in cases}
+        for c in todo:
+            if not (wt / PREFIX / c).is_file():
+                cache[f"conform:{c}"] = "absent"
+                continue
+            r = run([str(target / "debug" / "cpl-conform"), "conformance", "--verbose", c], cwd=wt, env=env,
+                    capture_output=True, text=True)
+            cache[f"conform:{c}"] = verdict(c, r.stdout + r.stderr)
+        cache_file.parent.mkdir(exist_ok=True)
+        cache_file.write_text(json.dumps(cache, indent=1, sort_keys=True) + "\n")
+    return {c: cache[f"conform:{c}"] for c in cases}
+
+
+def owner(case, base):
+    from culprit import describe
+    import new_reds
+    sha = new_reds.git("log", "-1", "--format=%H", base, "--", PREFIX + case, cwd=ROOT, check=False)
+    return (describe(sha, str(ROOT))[1] if sha else "") or "unknown"
+
+
+def main(argv, run=subprocess.run):
+    base = None
+    if argv[:1] == ["--base"]:
+        base, argv = argv[1], argv[2:]
     if argv[:1] == ["--build"]:
-        if subprocess.run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=ROOT).returncode:
+        if run(["cargo", "build", "-q", "-p", "cpl-cli", "-p", "cpl-conform"], cwd=ROOT).returncode:
             return 1
         target = Path(os.environ.get("CARGO_TARGET_DIR", "target"))
         argv = [str((target if target.is_absolute() else ROOT / target) / "debug" / "cpl-conform"), *argv[1:]]
     conform, paths = argv[0], argv[1:]
     known = board_failing(head_board())
-    bad = []
+    failing, bad = {}, []
     for path in paths:
         if not (ROOT / path).is_file():
             continue
         case = path.removeprefix(PREFIX)
-        runs = [subprocess.run([conform, "conformance", "--verbose", case], cwd=ROOT, capture_output=True, text=True)
+        runs = [run([conform, "conformance", "--verbose", case], cwd=ROOT, capture_output=True, text=True)
                 for _ in range(2)]
         first, second = (r.stdout + r.stderr for r in runs)
-        bad += new_failures(case, first, known)
+        if found := new_failures(case, first, known):
+            failing[case] = found
         bad += flake(case, first, second)
+    if base and failing:
+        rev = subprocess.run(["git", "rev-parse", base], cwd=ROOT, capture_output=True, text=True).stdout.strip() or base
+        at = base_verdicts(sorted(failing), rev, run)
+        old = [c for c in failing if at[c] == "fail"]
+        common = Path(subprocess.run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=ROOT,
+                                     capture_output=True, text=True).stdout.strip() or ROOT / ".git")
+        with open(common / "cpl-preexisting-reds.log", "a") as log:
+            for c in old:
+                who = owner(c, rev)
+                print(f"conform_staged: pre-existing red, owner {who}: {PREFIX}{c} fails at the base {rev[:9]} too; "
+                      "main's culprit job routes it, not refusing", file=sys.stderr)
+                log.write(f"{rev} {who} conform:{c}\n")
+                del failing[c]
+        for c in failing:
+            print(f"conform_staged: NEW red: {PREFIX}{c} is {at[c]} at the base {rev[:9]} and fails with this change",
+                  file=sys.stderr)
+    bad = [line for lines in failing.values() for line in lines] + bad
     if bad:
         print("\n".join(bad))
         print(f"conform_staged: {sum(bool(FAIL.match(l)) for l in bad)} staged case(s) fail that {BOARD} records as passing or new; fix them")

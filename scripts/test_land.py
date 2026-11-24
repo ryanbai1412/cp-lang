@@ -249,7 +249,7 @@ class LandTest(unittest.TestCase):
             pending.write_text(case + "\n")
             r = self.land(ours)
             self.assertEqual(r.returncode, code, r.stderr)
-            self.assertIn(f"cases --build {case}", r.stderr)
+            self.assertRegex(r.stderr, rf"cases --base [0-9a-f]{{40}} --build {case}")  # held to the reds it brings
             self.assertEqual(pending.exists(), code != 0)
             if code:
                 git(ours, "rm", "-q", case)
@@ -688,7 +688,7 @@ exec {shutil.which("git")} "$@"
         self.commit(ours, "a signature")
         r = self.land(ours)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("cases --build spec/conformance/c.cp", r.stderr)
+        self.assertRegex(r.stderr, r"cases --base [0-9a-f]{40} --build spec/conformance/c.cp")
 
     def test_pending_cases_refuse_uncommitted_compiler_changes(self):
         ours = self.clone("ours")

@@ -1,5 +1,7 @@
+import subprocess
 import sys
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -40,6 +42,42 @@ class Flake(unittest.TestCase):
     def test_the_same_verdict_twice_is_no_flake(self):
         self.assertEqual(conform_staged.flake("a/wrong.cp", OUT, OUT), [])
         self.assertEqual(conform_staged.flake("b/ok.cp", OUT, OUT), [])
+
+
+CASE = "std-algebra/reversing-a-fold-with-no-rev-traps.cp"
+RED = f"conformance     0/1    fail (1 fail)\n  {CASE}: fail: wanted a trap\n"
+
+
+class AtBase(unittest.TestCase):
+    """f33d10f7 was refused for a case red on main: land and the hook (both pass --base)
+    refuse only a case that passes at the base."""
+
+    def _main(self, at_base, base=("--base", "HEAD")):
+        run = lambda argv, **_: subprocess.CompletedProcess(argv, 0, RED, "")
+        log = []
+        with mock.patch.object(conform_staged, "base_verdicts", lambda cases, rev, run: {c: at_base for c in cases}), \
+                mock.patch.object(conform_staged, "owner", lambda c, rev: "stdlib"), \
+                mock.patch.object(conform_staged, "head_board", lambda: None), \
+                mock.patch("builtins.open", mock.mock_open()) as opened, \
+                mock.patch("sys.stderr") as err:
+            code = conform_staged.main([*base, "conform", conform_staged.PREFIX + CASE], run=run)
+            log = "".join(c.args[0] for c in err.write.call_args_list)
+        return code, log, opened
+
+    def test_a_case_red_at_the_base_is_main_s(self):
+        code, err, opened = self._main("fail")
+        self.assertEqual(code, 0)
+        self.assertIn(f"pre-existing red, owner stdlib: spec/conformance/{CASE} fails at the base", err)
+        opened().write.assert_called_once()
+
+    def test_a_case_passing_unbuilt_or_absent_at_the_base_refuses(self):
+        for verdict in ("pass", "unbuilt", "absent"):
+            code, err, _ = self._main(verdict)
+            self.assertEqual(code, 1, verdict)
+            self.assertIn(f"NEW red: spec/conformance/{CASE} is {verdict} at the base", err)
+
+    def test_without_a_base_a_new_failure_refuses(self):
+        self.assertEqual(self._main("fail", base=())[0], 1)
 
 
 if __name__ == "__main__":
