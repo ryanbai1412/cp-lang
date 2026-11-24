@@ -10,6 +10,8 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+#[path = "support/parallel.rs"]
+mod parallel;
 #[path = "../src/sha256.rs"]
 mod sha256;
 
@@ -87,28 +89,15 @@ fn a_port_pinned_to_an_old_release_builds_the_same_cpp() {
         String::from_utf8_lossy(&picked.stderr)
     );
     let ports = ports();
-    let chunk = ports.len().div_ceil(4);
-    let got: Vec<String> = std::thread::scope(|s| {
-        let jobs: Vec<_> = ports
-            .chunks(chunk)
-            .map(|part| {
-                let (bin, home) = (&bin, &home);
-                s.spawn(move || {
-                    part.iter()
-                        .map(|(id, path)| {
-                            let out = command(bin, home, &["build", path, "-o", "-"])
-                                .output()
-                                .unwrap();
-                            let code = out.status.code().unwrap_or(-1);
-                            let cpp = sha256::hex(&out.stdout);
-                            let diags = sha256::hex(&out.stderr);
-                            format!("{id} {code} {cpp} {diags}")
-                        })
-                        .collect::<Vec<_>>()
-                })
-            })
-            .collect();
-        jobs.into_iter().flat_map(|j| j.join().unwrap()).collect()
+    // A build per port, so every core runs one.
+    let got: Vec<String> = parallel::parallel(&ports, |(id, path)| {
+        let out = command(&bin, &home, &["build", path, "-o", "-"])
+            .output()
+            .unwrap();
+        let code = out.status.code().unwrap_or(-1);
+        let cpp = sha256::hex(&out.stdout);
+        let diags = sha256::hex(&out.stderr);
+        format!("{id} {code} {cpp} {diags}")
     });
     let record = project().join(format!("{version}.txt"));
     let got = got.join("\n") + "\n";
