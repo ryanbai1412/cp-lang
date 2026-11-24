@@ -910,7 +910,9 @@ pub fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T>:
 pub fn backtrack<S>(start: S, next: S -> yields S) -> yields Step<S>:
     var stack: List<(S, Int)> = [(start, 0)]
     while let (s, d) = stack.pop():
-        yield Step(s, d)
+        let step = Step(s, d, false)
+        yield step
+        if step.pruned: continue
         let kids: List<S> = next(s).collect()
         var i = kids.len - 1
         while i >= 0:
@@ -918,14 +920,21 @@ pub fn backtrack<S>(start: S, next: S -> yields S) -> yields Step<S>:
             i -= 1
 
 /// One state reached by `backtrack`.
-pub struct Step<S>(pub state: S, pub depth: Int):
+pub struct Step<S>(pub state: S, pub depth: Int, pruned: Bool = false):
     /// Skip every state below this one: `backtrack` does not call `next` on it. Has effect only on
     /// the step just yielded, before the `for` body continues.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: with `next` as `x => if x < 4: [2 * x, 2 * x + 1] else: []`, a `for s in backtrack(1, next)` body that calls `s.prune()` when `s.state == 2` sees the states `[1, 2, 3, 6, 7]`
-    pub fn prune(self) = todo
+    /// ```cp
+    /// var seen: List<Int> = []
+    /// for s in backtrack(1, x => if x < 4: [2 * x, 2 * x + 1] else: []):
+    ///     seen.push(s.state)
+    ///     if s.state == 2: s.prune()
+    /// seen == [1, 2, 3, 6, 7]
+    /// ```
+    pub fn prune(mut self):
+        pruned = true
 
 @test
 fn li_chao_matches_a_scan_over_lines_and_segments():
