@@ -125,6 +125,7 @@ std/bag.cp: SortedBag.range(self, r: Range<K>) -> lends SortedRange<K>
 std/bag.cp: SortedBag.rank(self, k: K) -> Int
 std/bag.cp: SortedBag.remove(mut self, x: K) -> Bool
 std/bag.cp: SortedBag.remove_all(mut self, x: K) -> Int
+std/bag.cp: SortedBag.remove_at(mut self, c: BagCursor)
 std/bag.cp: SortedBag.reserve(mut self, cap: Int)
 std/bag.cp: SortedBag.split_at(mut self, k: K) -> SortedBag<K>
 std/bag.cp: SortedBag.sum(self) -> K
@@ -1233,6 +1234,7 @@ std/ntt.cp: RelaxedConvolve.push(mut self, ai: Mod<P>, bi: Mod<P>) -> Mod<P>
 std/ntt.cp: SemiRelaxedConvolve.new(b: List<Mod<P>>) -> SemiRelaxedConvolve<P>
 std/ntt.cp: SemiRelaxedConvolve.push(mut self, ai: Mod<P>) -> Mod<P>
 std/ntt.cp: convolve<T: Add + Sub + Mul, O, R>(a: List<T>, b: List<T>, on: O = +, over: R = Semiring(+, *), shape: ?Curved = None, cyclic: Bool = false) -> List<T>
+std/ntt.cp: convolve_2d<P>(a: List<List<Mod<P>>>, b: List<List<Mod<P>>>) -> List<List<Mod<P>>>
 std/ntt.cp: convolve_all<P>(polys: List<List<Mod<P>>>) -> List<Mod<P>>
 std/ntt.cp: fwht<S: IndexedMut, T>(mut a: S, inverse: Bool = false)
 std/ntt.cp: ntt<P>(mut a: List<Mod<P>>, inverse: Bool = false, bit_reversed: Bool = false)
@@ -1313,6 +1315,7 @@ std/poly.cp: SubproductTree.interpolate(self, ys: List<Mod<P>>) -> List<Mod<P>>
 std/poly.cp: SubproductTree.new(xs: List<Mod<P>>, keep: Int = -1) -> SubproductTree<P>
 std/poly.cp: bell_table<P>(n: Int) -> List<Mod<P>>
 std/poly.cp: bernoulli_table<P>(n: Int) -> List<Mod<P>>
+std/poly.cp: binomial_transform<P>(a: List<Mod<P>>, inverse: Bool = false) -> List<Mod<P>>
 std/poly.cp: bostan_mori<P>(p: List<Mod<P>>, q: List<Mod<P>>, n: Int) -> Mod<P>
 std/poly.cp: chirp_z<P>(a: List<Mod<P>>, r: Mod<P>, m: Int) -> List<Mod<P>>
 std/poly.cp: compose<P>(f: List<Mod<P>>, g: List<Mod<P>>, n: Int) -> List<Mod<P>>
@@ -1827,17 +1830,17 @@ std/strings.cp: RollingHash61.new<S: Seq>(seq: S, base: ?U64 = None) -> RollingH
 std/strings.cp: RollingHash61.pop(mut self)
 std/strings.cp: RollingHash61.push<T: Hashable>(mut self, x: T)
 std/strings.cp: SuffixArray.compare(self, l1: Int, r1: Int, l2: Int, r2: Int) -> Int
-std/strings.cp: SuffixArray.count<P: Indexed>(self, pat: P) -> Int
+std/strings.cp: SuffixArray.count<P: Indexed<J, T>, J>(self, pat: P) -> Int
 std/strings.cp: SuffixArray.distinct(self) -> Int
-std/strings.cp: SuffixArray.find_all<P: Indexed>(self, pat: P) -> yields Int
+std/strings.cp: SuffixArray.find_all<P: Indexed<J, T>, J>(self, pat: P) -> yields Int
 std/strings.cp: SuffixArray.is_empty(self) -> Bool
 std/strings.cp: SuffixArray.kth_distinct(self, k: Int) -> ?Range<Int>
 std/strings.cp: SuffixArray.lcp_between(self, i: Int, j: Int) -> Int
 std/strings.cp: SuffixArray.lcp_of_ranks(self, r: Range<Int>) -> Int
 std/strings.cp: SuffixArray.lcp_range(self, i: Int, len: Int) -> Range<Int>
 std/strings.cp: SuffixArray.len(self) -> Int
-std/strings.cp: SuffixArray.new<S: Indexed>(s: S) -> SuffixArray
-std/strings.cp: SuffixArray.rank_range<P: Indexed>(self, pat: P) -> Range<Int>
+std/strings.cp: SuffixArray.new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>
+std/strings.cp: SuffixArray.rank_range<P: Indexed<J, T>, J>(self, pat: P) -> Range<Int>
 std/strings.cp: SuffixArray.split(self, r: Range<Int>) -> Int
 std/strings.cp: SuffixAutomaton.add_word<S: Seq>(mut self, word: S)
 std/strings.cp: SuffixAutomaton.contains<S: Seq>(self, word: S) -> Bool
@@ -1913,7 +1916,7 @@ std/strings.cp: shift_and<S: Indexed<K, T>, P: Indexed<L, T>, K, L, T: Eq>(self:
 std/strings.cp: split_once(self: Str, sep: Char) -> ?(Str, Str)
 std/strings.cp: split_whitespace(self: Str) -> List<Str>
 std/strings.cp: starts_with<S: Indexed, P: Indexed>(self: S, pat: P, at: Int = 0) -> Bool
-std/strings.cp: suffix_array<S: Indexed>(s: S) -> SuffixArray
+std/strings.cp: suffix_array<S: Indexed<K, T>, K, T: Ord>(s: S) -> SuffixArray<T>
 std/strings.cp: suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>
 std/strings.cp: to_lower(self: Str) -> Str
 std/strings.cp: to_upper(self: Str) -> Str

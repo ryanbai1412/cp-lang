@@ -176,6 +176,16 @@ pub struct SortedBag<K>:
         self.refresh()
         removed
 
+    /// Remove one copy of the key at cursor `c`, as `remove(key_of(c))` would.
+    ///
+    /// `c` must come from this bag and no mutation may have happened since it was made.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: never in release (a stale cursor removes an unspecified key); debug traps when the node of `c` has been freed
+    /// example: `var b = SortedBag.of([2, 5, 5]); b.remove_at(b.cursor_ge(3)!); b.to_list() == [2, 5]`
+    pub fn remove_at(mut self, c: BagCursor):
+        self.remove(nodes[c.id].key)
+
     /// How many copies of `x` are currently in the bag.
     ///
     /// cost: \(O(\log n)\) expected

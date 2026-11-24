@@ -158,12 +158,12 @@ Every container and range structure lists its journeys below, each one short cal
 
 - **Why:** this is where contestants feel the library, mid-contest.
 - **Example:** removing one copy from a `SortedBag` is `bag.remove(x)`, not a find then an erase.
-- **Enforced by:** `missing` (usage-journey suite, `SortedBag` and `SortedSet` first).
+- **Enforced by:** `scripts/std-api-lint.py` (every journey below has a `// journey:` line in `spec/conformance/std-journeys/<type>.cp`, which the `std-journeys` conformance suite runs).
 
 | Type | Journeys |
 |---|---|
 | `SortedBag<T>` | add, remove one copy, remove at a cursor, predecessor, successor, count in a range, k-th smallest, walk a range in order |
-| `SortedSet<T>` | the same, with `add` returning whether it was new |
+| `SortedSet<T>` | add returning whether it was new, remove one copy, predecessor, successor, count in a range, k-th smallest, walk a range in order (a set's key is its own cursor) |
 | `HashMap<K, V>` / `Counter<K, V>` | count occurrences (`tally`), read with a default, add to a value, walk in a fixed order |
 | `SegTree` / `LazySegTree` | point set, point update, range fold, range apply, first index where a prefix holds (`max_right`) |
 | `Fenwick` | add at a point, prefix sum, range sum, first prefix reaching a bound |

@@ -85,5 +85,30 @@ class OffLexicon(unittest.TestCase):
         self.assertIn("g.cp:2: std-api/R1: `has`", found[0])
 
 
+TABLE = """### R13. Journeys
+
+| Type | Journeys |
+|---|---|
+| `SortedBag<T>` | add, k-th smallest (`nth`) |
+
+### R14. Next
+"""
+
+
+class Journeys(unittest.TestCase):
+    def test_every_journey_with_a_case_is_accepted(self):
+        case = "// journey: add\nb.add(1)\n// journey: k-th smallest\nb.nth(0)\n"
+        self.assertEqual(list(lint.journeys(TABLE, {"sorted-bag": case})), [])
+
+    def test_a_journey_without_a_case_is_rejected(self):
+        found = list(lint.journeys(TABLE, {"sorted-bag": "// journey: add\n"}))
+        self.assertEqual(len(found), 1)
+        self.assertIn("k-th smallest", found[0])
+
+    def test_a_case_journey_the_table_lacks_is_rejected(self):
+        case = "// journey: add\n// journey: k-th smallest\n// journey: erase\n"
+        self.assertIn("not in the R13 table", list(lint.journeys(TABLE, {"sorted-bag": case}))[0])
+
+
 if __name__ == "__main__":
     unittest.main()

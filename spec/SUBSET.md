@@ -143,6 +143,7 @@ documented.
 | std-heap | library: heap | supported |  |
 | std-interval | library: interval | supported |  |
 | std-io | library: io | supported |  |
+| std-journeys | library: journeys | supported |  |
 | std-lazy | library: lazy | supported |  |
 | std-marks | library: marks | supported |  |
 | std-math | library: math | supported |  |
@@ -166,7 +167,7 @@ documented.
 | std-subset | library: subset | documented | stdlib: outside the Milestone 1 contest staples |
 | std-timetree | library: timetree | documented | stdlib: outside the Milestone 1 contest staples |
 | std-tree | library: tree | supported |  |
-| std-window | library: window | supported | 1 known gap |
+| std-window | library: window | supported |  |
 | Rstress | Stress, shrinking and laws | supported |  |
 | Rtrace | Traces, the debugger and runtime errors | supported |  |
 
@@ -193,4 +194,3 @@ documented.
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail
 - std-subset/enum-subsets-is-a-domain.cp: fail
-- std-window/track-infers-element-from-sequence.cp: fail

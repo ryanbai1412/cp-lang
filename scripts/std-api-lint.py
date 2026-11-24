@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Lint std's public signatures against handbook/guidelines/std-api-checklist.md.
+"""Lint std's public signatures against std-api/R1 to R13 in handbook/guidelines/std-api-checklist.md.
 
 - R1 (#r1-every-name-comes-from-the-lexicon): a public fn named by a word
   in the lexicon's "Not" column that no row's "Name" column uses.
@@ -17,6 +17,9 @@
   taking a position parameter (`i`, `at`, `l`, `r`, ...) as a bare `Int`.
 - R11 (#r11-one-form-per-operation): a top-level public fn whose first
   parameter's type also has a public method of that name: both forms.
+- R13 (#r13-each-types-everyday-tasks-are-one-call-each-with-a-case): a journey in the
+  R13 table with no `// journey: <name>` line in its type's case,
+  spec/conformance/std-journeys/<type>.cp, or a journey line the table lacks.
 
 Shrink-only: `--max` in scripts/check.sh is today's count.
 
@@ -146,6 +149,32 @@ def off_lexicon(texts, banned):
                        "use the lexicon's name, or add a row in std-api-checklist.md")
 
 
+JOURNEY_CASES = os.path.join(ROOT, "spec", "conformance", "std-journeys")
+JOURNEY = re.compile(r"^\s*// journey: (.+?)\s*$", re.M)
+
+
+def journey_table(text):
+    section = text.split("### R13.", 1)[1].split("\n### ", 1)[0]
+    for line in section.splitlines():
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        ty = re.match(r"`(\w+)", cells[0]) if len(cells) == 2 else None
+        if ty:
+            slug = re.sub(r"(?<!^)(?=[A-Z])", "-", ty.group(1)).lower()
+            yield slug, [j.strip() for j in re.sub(r"\s*\([^)]*\)", "", cells[1]).split(",")]
+
+
+def journeys(text, cases):
+    for slug, wanted in journey_table(text):
+        rel = f"spec/conformance/std-journeys/{slug}.cp"
+        found = JOURNEY.findall(cases.get(slug, ""))
+        for j in wanted:
+            if j not in found:
+                yield f"{rel}: std-api/R13: no `// journey: {j}` case"
+        for j in found:
+            if j not in wanted:
+                yield f"{rel}: std-api/R13: `// journey: {j}` is not in the R13 table"
+
+
 def findings():
     paths = sorted(glob.glob(os.path.join(ROOT, "std", "*.cp")))
     names = {m.group(2) for p in paths for m in DOC_FN.finditer(open(p).read())}
@@ -166,6 +195,9 @@ def findings():
     yield from both_forms(texts)
     yield from reading_order(texts)
     yield from index_space(texts)
+    cases = {os.path.basename(p)[:-3]: open(p).read()
+             for p in glob.glob(os.path.join(JOURNEY_CASES, "*.cp"))}
+    yield from journeys(open(CHECKLIST).read(), cases)
     _, banned = lexicon(open(CHECKLIST).read())
     yield from off_lexicon(((os.path.relpath(p, ROOT), open(p).read()) for p in paths), banned)
 
