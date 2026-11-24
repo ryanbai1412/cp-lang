@@ -235,9 +235,9 @@ fn deep_recursion_runs_on_the_stack_each_judge_gives() {
 }
 
 /// Every port's C++ for every judge, compiled with that judge's flags.
-/// About a minute on eight cores: `scripts/check.sh --full` runs it.
+/// About a minute on eight cores: a slow test (scripts/ci.py SLOW_TESTS)
+/// that `scripts/check.sh --full` and `--timing` (ci-slow.yml) run.
 #[test]
-#[ignore = "slow: scripts/check.sh --full runs it"]
 fn every_port_compiles_with_every_judges_flags() {
     let ports = ports();
     let scratch = Path::new(env!("CARGO_TARGET_TMPDIR")).join("judges-matrix");
@@ -853,37 +853,42 @@ fn submit_and_build_copy_the_cpp_to_the_clipboard() {
     std::fs::write(scratch.join("a.tests/1.in"), "1 2\n").unwrap();
     std::fs::write(scratch.join("a.tests/1.out"), "3\n").unwrap();
     let clipboard = scratch.join("clipboard");
-    std::env::set_var("CPL_CLIPBOARD", format!("cat > '{}'", clipboard.display()));
+    let copy_to = |command: &str, args: &[&str]| {
+        let out = std::process::Command::new(env!("CARGO_BIN_EXE_cpl"))
+            .args(args)
+            .env(cpl_env::CLIPBOARD.name(), command)
+            .output()
+            .unwrap();
+        let text = |b: Vec<u8>| String::from_utf8(b).unwrap();
+        (out.status.code(), text(out.stdout), text(out.stderr))
+    };
+    let to_file = format!("cat > '{}'", clipboard.display());
 
-    let out = cpl_cli::run(&["submit", path, "--copy"]);
-    let stdout = String::from_utf8(out.stdout).unwrap();
-    assert_eq!(out.code, 0, "{stdout}{}", out.stderr);
+    let (code, stdout, stderr) = copy_to(&to_file, &["submit", path, "--copy"]);
+    assert_eq!(code, Some(0), "{stdout}{stderr}");
     assert!(
         stdout.contains("1/1 passed") && stdout.contains("ready to send"),
         "{stdout}"
     );
-    assert!(out.stderr.contains("to the clipboard"), "{}", out.stderr);
+    assert!(stderr.contains("to the clipboard"), "{stderr}");
     let cpp = std::fs::read_to_string(scratch.join("a.cpp")).unwrap();
     assert!(cpp.contains("For judge `dmoj`"), "{cpp}");
     assert_eq!(std::fs::read_to_string(&clipboard).unwrap(), cpp);
 
     std::fs::remove_file(&clipboard).unwrap();
-    let out = cpl_cli::run(&["build", path, "--judge", "codeforces", "--copy"]);
-    assert_eq!(out.code, 0, "{}", out.stderr);
+    let args = ["build", path, "--judge", "codeforces", "--copy"];
+    let (code, _, stderr) = copy_to(&to_file, &args);
+    assert_eq!(code, Some(0), "{stderr}");
     let cpp = std::fs::read_to_string(scratch.join("a.cpp")).unwrap();
     assert!(cpp.contains("For judge `codeforces`"));
     assert_eq!(std::fs::read_to_string(&clipboard).unwrap(), cpp);
 
-    std::env::set_var("CPL_CLIPBOARD", "exit 1");
-    let out = cpl_cli::run(&["build", path, "--copy"]);
-    assert_eq!(out.code, 0, "{}", out.stderr);
+    let (code, _, stderr) = copy_to("exit 1", &["build", path, "--copy"]);
+    assert_eq!(code, Some(0), "{stderr}");
     assert!(
-        out.stderr
-            .contains("warning: `CPL_CLIPBOARD` (`exit 1`) failed"),
-        "{}",
-        out.stderr
+        stderr.contains("warning: `CPL_CLIPBOARD` (`exit 1`) failed"),
+        "{stderr}"
     );
-    std::env::remove_var("CPL_CLIPBOARD");
 }
 
 #[test]

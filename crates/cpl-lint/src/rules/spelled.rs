@@ -6,6 +6,8 @@
 //! (`hand_rolled_pow`, `hand_rolled_gcd`), and a slice compared with a
 //! pattern (`manual_starts_with`).
 
+use crate::facts::Facts;
+use crate::is_std;
 use crate::std_fn;
 use crate::walk::{unparen, walk_expr, walk_stmt, Visitor};
 use crate::{
@@ -19,6 +21,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = Spelled {
         src: file.src,
         base: 0,
+        facts: file.facts,
         targets: Vec::new(),
         fns: Vec::new(),
         covered: Vec::new(),
@@ -31,6 +34,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 struct Spelled<'a> {
     src: &'a str,
     base: u32,
+    facts: Option<&'a Facts>,
     /// Places written by an assignment, which `.last` cannot replace.
     targets: Vec<Span>,
     /// Every function's name and body: a fix inside a function must not call it.
@@ -376,7 +380,8 @@ impl Spelled<'_> {
         let ExprKind::Field { name: method, .. } = &callee.kind else {
             return;
         };
-        if method.text != std_fn::SORT && method.text != std_fn::SORTED {
+        let at = expr.span.shift(self.base);
+        if !is_std(self.facts, at, std_fn::SORT) && !is_std(self.facts, at, std_fn::SORTED) {
             return;
         }
         for arg in args {
@@ -435,10 +440,11 @@ impl Spelled<'_> {
         else {
             return;
         };
-        let ExprKind::Field { base: of, name } = &unparen(lhs).kind else {
+        let len = unparen(lhs);
+        let ExprKind::Field { base: of, .. } = &len.kind else {
             return;
         };
-        if name.text != std_fn::LEN
+        if !is_std(self.facts, len.span.shift(self.base), std_fn::LEN)
             || !matches!(rhs.kind, ExprKind::Int(1))
             || self.text(of) != self.text(base)
             || self.targets.contains(&expr.span.shift(self.base))

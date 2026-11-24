@@ -5,11 +5,15 @@
   {"id": "5593303", "language": "CPP17", "result": "RTE", "time": 0.13250077, "memory_kb": 7984.0, "file": "corpus/submissions/5593303.cpp"},
   {"id": "5593320", "language": "CPP17", "result": "RTE", "time": 0.40708438900000005, "memory_kb": 18116.0, "file": "corpus/submissions/5593320.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/apio23p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The task is grader-only (Alice, Bob and Circuit communicate through bounded bit strings and a gate circuit), and both C++ submissions are RTE. This package is the stdin adaptation of the sample grader: the input is n members with their favourite numbers and m letters sender to recipient, and the output is each member's received sum modulo 65536, which is what the grader checks the circuit's output against. orig.cpp computes that sum directly; it is checked against the statement sample, an independent brute on 100 random cases and the --max case."
 }

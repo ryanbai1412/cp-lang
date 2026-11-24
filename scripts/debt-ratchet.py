@@ -280,10 +280,35 @@ def lint_name_matchers(root: Path) -> list[str]:
     against a std fn (`method.text == std_fn::PUSH`, a `std_fn::SORT =>` arm)
     instead of asking the checker which fn it calls (`Facts::callee`): a
     user's own `push` fires them. Names a lint writes into its help or fix
-    don't count. `lint_std_names` keeps every such name on `std_fn`."""
-    matcher = re.compile(r"(==|!=)\s*std_fn::|std_fn::\w+\s*(==|!=|=>|\|)|\|\s*std_fn::|matches!\(.*std_fn::|contains\(std_fn::")
-    return [f"{_rel(root, p)}:{i}" for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False)
-            for i, line in enumerate(_lines(p), 1) if matcher.search(line)]
+    don't count, nor a line that asks the checker (`is_std`, `Calls::is`,
+    `Calls::name`), nor an arm of a `match` on the checker's callee name.
+    `lint_std_names` keeps every such name on `std_fn`."""
+    facts = re.compile(r"\bis_std\(|\.is\(|\.name\(")
+    compare = re.compile(r"(==|!=)\s*std_fn::|std_fn::\w+\s*(==|!=)|contains\(std_fn::")
+    arm = re.compile(r"std_fn::\w+\s*(=>|\|)|\|\s*std_fn::|matches!\(.*std_fn::")
+    written = re.compile(r"\.text\b|as_str\(\)")
+
+    def scrutinee(lines: list[str], i: int) -> str:
+        """The `match` an arm on line `i` belongs to: the nearest one above
+        it that is indented less."""
+        indent = len(lines[i]) - len(lines[i].lstrip())
+        for line in reversed(lines[:i]):
+            if "match " in line and len(line) - len(line.lstrip()) < indent:
+                return line
+        return ""
+
+    out = []
+    for p in _rs_files(root, "crates/cpl-lint/src/rules", tests=False):
+        lines = _lines(p)
+        for i, line in enumerate(lines):
+            if facts.search(line):
+                continue
+            by_arm = arm.search(line) and (
+                written.search(line) or written.search(scrutinee(lines, i))
+            )
+            if compare.search(line) or by_arm:
+                out.append(f"{_rel(root, p)}:{i + 1}")
+    return out
 
 
 def lint_type_syntax(root: Path) -> list[str]:
@@ -686,11 +711,11 @@ def direct_python(root: Path) -> list[str]:
 
 
 def unrun_script_tests(root: Path) -> list[str]:
-    """Tracked `test_*.py` files the gate neither names nor globs in its `script_tests`."""
-    gate = root / "scripts/check.sh"
-    text = gate.read_text() if gate.is_file() else ""
-    m = re.search(r"^mapfile -t script_tests < <\(git ls-files (.*)\)$", text, re.M)
-    globs = re.findall(r"'([^']+)'", m[1]) if m else []
+    """Tracked `test_*.py` files the gate neither names (check.sh, ci.py) nor globs in
+    ci.py's SCRIPT_TESTS."""
+    text = "".join(f.read_text() for f in (root / "scripts/check.sh", root / "scripts/ci.py") if f.is_file())
+    m = re.search(r"^SCRIPT_TESTS = \((.*)\)$", text, re.M)
+    globs = re.findall(r'"([^"]+)"', m[1]) if m else []
     return sorted(rel for rel in _git(root, "ls-files", "*test_*.py")
                   if Path(rel).name.startswith("test_") and Path(rel).name not in text
                   and not any(fnmatch.fnmatchcase(rel, g) for g in globs))
@@ -983,7 +1008,7 @@ def cpp_optional_copies(root: Path) -> list[str]:
 
 
 def cpp_std_functions(root: Path) -> list[str]:
-    return _copy_baseline(root, "std_functions")
+    return _header_counts(root, "std_functions")
 
 
 def cpp_sunk_copies(root: Path) -> list[str]:
@@ -1124,6 +1149,30 @@ def corpus_no_tests(root: Path) -> list[str]:
     return [d.relative_to(root).as_posix() for d in sorted(problems.iterdir()) if problems.is_dir()
             and d.is_dir() and (d / "meta.json").is_file() and not (d / "tests.toml").is_file()] \
         if problems.is_dir() else []
+
+
+def corpus_no_statement(root: Path) -> list[str]:
+    """Problem packages whose tests.toml has no statement sample inline (owner: Content, idioms).
+
+    Rule: problem-packages/R9 (handbook/guidelines/problem-packages-checklist.md#r9): a
+    package's cases start with its statement's samples as `input` cases. A package whose
+    statement can't be found has none, and can't have valid bounds or tests either, so it
+    is deleted (git history keeps it) rather than listed.
+    """
+    import tomllib
+    problems = root / "corpus" / "problems"
+    found = []
+    for d in sorted(problems.iterdir()) if problems.is_dir() else []:
+        if not (d / "meta.json").is_file():
+            continue
+        t = d / "tests.toml"
+        try:
+            cases = tomllib.loads(t.read_text(encoding="utf-8")).get("case", []) if t.is_file() else []
+        except tomllib.TOMLDecodeError:
+            cases = []
+        if not any("input" in c for c in cases):
+            found.append(d.relative_to(root).as_posix())
+    return found
 
 
 def corpus_test_files(root: Path) -> list[str]:
@@ -1327,7 +1376,7 @@ def uncited_rules(root: Path) -> list[str]:
                     for g in re.findall(r"scripts/[\w-]+\.(?:py|sh|mjs)", f.read_text(encoding="utf-8"))})
     for g in gates:
         name = Path(g).name
-        if name.startswith("test_") or name in ("check.sh", "gate-env.sh") or not (root / g).is_file():
+        if name.startswith("test_") or name in ("check.sh", "ci.py", "gate-env.sh") or not (root / g).is_file():
             continue
         if not _cites_guideline(root, "\n".join(_lines(root / g)[:40])):
             found.append(f"gate {g}")
@@ -1572,10 +1621,15 @@ def unsafe_blocks(root: Path) -> list[str]:
     return _grep_all(root, r"\bunsafe (\{|fn\b|impl\b)", "crates/**/*.rs")
 
 
+ENV_MODULE = "crates/cpl-env/"
+
+
 def cpl_env_reads(root: Path) -> list[str]:
-    """`var("CPL_…")`/`var_os("CPL_…")` in crates outside the one config module: a second config channel."""
-    return [h for h in _grep_all(root, r"var(_os)?\(\"CPL_", "crates/**/*.rs")
-            if not CONFIG_MODULES or _outside(h, CONFIG_MODULES)]
+    """`var`/`var_os`/`set_var`/`remove_var` of a `"CPL_…"` literal in crates outside `cpl-env`, the one
+    reader that declares and documents every `CPL_*` variable: a second config channel. A test sets a
+    child's variable by `cpl_env::NAME.name()`."""
+    return [h for h in _grep_all(root, r"\b(var|var_os|set_var|remove_var)\(\s*\"CPL_", "crates/**/*.rs")
+            if _outside(h, (ENV_MODULE,))]
 
 
 def test_sleeps(root: Path) -> list[str]:
@@ -1748,19 +1802,21 @@ def unchecked_fix_paths(root: Path) -> list[str]:
 
 
 def stress_engines(root: Path) -> list[str]:
-    """Stress-case runners picking a verdict: `fn run_case|stress_source|judge_case`
-    definitions in cpl-stress, plus files besides judge.rs constructing `Verdict::`.
+    """Stress front ends and verdict pickers in cpl-stress: definitions of the
+    old twins (`fn run_case|stress_source|judge_case`), files besides judge.rs
+    constructing `Verdict::`, and files besides stress.rs calling `stress_with`.
 
-    Its floor is 2 (decision 545): `judge_case`, the one verdict path, and
-    `stress_source`, the in-process front end the browser runs. The CLI's
-    front end builds C++ and runs external programs (`--brute`, `--checker`,
-    `--interactor`, `--gen`, `--fast`) as processes, which wasm can't; both
-    share `stress_with`, `judge_case`, `traced::retrace` and `Verdict`."""
+    Its floor is 1 (decision 561, superseding 545): `case.rs` `Roles::judge`,
+    the one place a case gets its verdict. `Stress::build`/`Stress::run` is
+    the one front end the CLI and the browser call; how a role's program runs
+    (in the VM, or as a native process) is a `Runner` below it."""
     lines = list(_src_lines(root, "crates/cpl-stress/src"))
     defs = [f"{rel}:{i}" for rel, i, line in lines if re.search(r"\bfn (run_case|stress_source|judge_case)\b", line)]
     files = sorted({rel for rel, _, line in lines
                     if "Verdict::" in line and Path(rel).name != "judge.rs"})
-    return defs + [f for f in files if not any(d.startswith(f + ":") for d in defs)]
+    loops = sorted({f"{rel}:{i}" for rel, i, line in lines
+                    if re.search(r"(?<!fn )\bstress_with\(", line) and Path(rel).name != "stress.rs"})
+    return defs + loops + [f for f in files if not any(d.startswith(f + ":") for d in defs)]
 
 
 def or_true(root: Path) -> list[str]:
@@ -1993,7 +2049,7 @@ def std_fns_unscaled(root: Path) -> list[str]:
 
 
 ONE_PROBLEM_RE = re.compile(r"corpus/problems/[\w.-]+")
-GIT_CHANGED_RE = re.compile(r"\bgit\b[^|;]*\b(?:diff|status)\b")
+GIT_CHANGED_RE = re.compile(r"(?<![A-Za-z0-9])_?git\b[^|;]*\b(?:diff|status)\b")
 
 
 def _names_corpus_set(line: str) -> bool:
@@ -2196,8 +2252,8 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "habit_matchers", "lint_std_names",
-    "corpus_walkers", "poll_sleeps", "retry_calls",
+    "habit_matchers", "lint_std_names", "cpl_env_reads", "dead_code_allows",
+    "corpus_walkers", "poll_sleeps", "retry_calls", "site_spec_snippets",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
@@ -2223,8 +2279,10 @@ HARD_ZERO = frozenset({
     "xfail_markers",
     "std_doc_parsers",
     "prelude_gaps",
-    "json_outside_cpl_json",
+    "json_outside_cpl_json", "rust_ignore",
 })
+# Paid down to the one place the thing lives: above the floor fails, with no baseline.
+HARD_FLOOR = {"config_schemas": 1}  # cpl-config, the one cp.toml reader
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
 COUNTERS = {
@@ -2239,6 +2297,8 @@ COUNTERS = {
     "corpus_test_files": ("files committed under corpus/problems/*/tests/", corpus_test_files, True),
     "corpus_no_max": ("non-interactive problem packages without a gen.py --max", corpus_no_max, True),
     "corpus_no_tests": ("problem packages without a tests.toml (Content)", corpus_no_tests, True),
+    "corpus_no_statement": ("problem packages without an inline statement sample (Content)",
+                            corpus_no_statement, True),
     "interp_max_over_20s": ("corpus packages the interpreter runs a --max case past 20 s on (Core)", interp_max_over_20s, True),
     "edition_refs": ("dead 0.2 edition references", edition_refs, True),
     "ir_builtin_names": ("names string-matched in lower/call.rs and lower/call/", ir_builtin_names, True),
@@ -2276,7 +2336,7 @@ COUNTERS = {
     "cpp_deep_copies": ("`// copies:` header sum over the corpus (read_only_copies)", cpp_deep_copies, True),
     "cpp_optional_copies": ("`// optional_copies:` header sum over the corpus (read_only_copies)",
                             cpp_optional_copies, True),
-    "cpp_std_functions": ("std::function in the corpus C++ (read_only_copies)", cpp_std_functions, True),
+    "cpp_std_functions": ("`// std_functions:` header sum over the corpus (read_only_copies)", cpp_std_functions, True),
     "cpp_sunk_copies": ("places copied into a by-value param a fn moves into its struct (read_only_copies)", cpp_sunk_copies, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
@@ -2422,6 +2482,10 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
             notes.append(f"{rel}: now <= {max_lines} lines (was {cap}; can be removed from allowlist)")
 
     for name, (label, _, gated) in COUNTERS.items():
+        if name in HARD_FLOOR and int(actual.get(name, 0)) > HARD_FLOOR[name]:
+            errors.append(f"{label}: {actual[name]} found; this debt is paid down to {HARD_FLOOR[name]} "
+                          f"and must stay there (`--list {name}` shows them)")
+            continue
         if name in HARD_ZERO and int(actual.get(name, 0)) > 0:
             errors.append(f"{label}: {actual[name]} found; this debt is paid off and must stay at 0 "
                           f"(`--list {name}` shows them)")
@@ -2482,7 +2546,7 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
 # Files besides this script that define what a counter counts. The bound a
 # counter reads (read_only_copies.rs) is not one: raising it is the bump.
 MEASURED_BY = {
-    "cpp_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+    "cpp_deep_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_optional_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_std_functions": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
 }
@@ -2564,6 +2628,8 @@ def inherited_baseline(baseline: dict, upstream: dict) -> dict:
     for name, (_, _, gated) in COUNTERS.items():
         if name in HARD_ZERO:
             eff[name] = 0
+        elif name in HARD_FLOOR:
+            eff[name] = HARD_FLOOR[name]
         elif gated and name in eff and name in upstream:
             eff[name] = max(int(eff[name]), int(upstream[name]))
     allow = eff.setdefault("rs_file_size_allowlist", {})
@@ -2656,6 +2722,7 @@ def main(argv: list[str] | None = None) -> int:
                 base[keys.get(n, n)] = data[keys.get(n, n)]
             data = base
         raised = [n for n in sorted(HARD_ZERO) if int(data.get(n, 0)) > 0]
+        raised += [n for n, floor in sorted(HARD_FLOOR.items()) if int(data.get(n, 0)) > floor]
         if raised:
             print(f"debt-ratchet: refusing to write hard-zero counters above 0: {', '.join(raised)} "
                   f"(remove the debt; `--list NAME` shows it)", file=sys.stderr)

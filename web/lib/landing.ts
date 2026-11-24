@@ -122,7 +122,7 @@ function live(group: string, items: { id: string; title: string; caption: string
   return Promise.all(
     items.map(async (t) => {
       const base = join(dir, group, t.id);
-      const file = existsSync(`${base}.cp`) ? `${t.id}.cp` : `${t.id}.spec.cp`;
+      const file = `${t.id}.cp`;
       const source = readFileSync(join(dir, group, file), 'utf8');
       return {
         ...t,

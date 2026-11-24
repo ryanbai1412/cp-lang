@@ -10,5 +10,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The correct output is the program's own source, so checker.py compares a port's output with this package's port.cp instead of the accepted C++'s answer (which is that C++'s source; verified with g++ 14)."
 }

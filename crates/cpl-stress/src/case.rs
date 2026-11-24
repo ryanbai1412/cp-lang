@@ -1,9 +1,11 @@
-//! One case judged. Every engine runs its programs its own way (built
-//! processes, the interpreter in the browser) and hands the runs to
-//! [`judge_case`], the one place a case's verdict is picked.
+//! One case judged. Each program a case needs runs behind its own
+//! [`Runner`] (a built process, or the VM in the browser), and
+//! [`Roles::judge`] is the one place a case's verdict is picked.
 
-use crate::judge::{first_difference, Verdict};
+use crate::judge::{first_difference, Launch, Verdict};
+use crate::program::Outcome;
 use crate::run::StressError;
+use crate::runner::Runner;
 use std::time::Duration;
 
 /// How one run of a program ended: what it printed, and why it stopped
@@ -12,6 +14,8 @@ use std::time::Duration;
 pub struct Ran {
     pub out: String,
     pub stop: Option<Verdict>,
+    /// What the run cost, when it ran as a process.
+    pub cost: Option<Outcome>,
 }
 
 /// What a checker or interactor said of a run.
@@ -117,82 +121,122 @@ pub fn judge_limit(limit: Duration) -> Duration {
 /// One run's result: `None` when the case passed.
 pub type Wrong = Option<Failed>;
 
-/// How an engine runs each program a case needs. A helper is a brute,
-/// checker or interactor; each gets ten times `limit`.
-pub trait Sides {
-    /// The brute's run, or `None` when there is no brute.
-    fn brute(&self, input: &str, limit: Duration) -> Result<Option<Ran>, StressError>;
-    /// The solution's run on its own.
-    fn solution(&self, input: &str, limit: Duration) -> Result<Ran, StressError>;
-    /// A checker's ruling on `got`, or `None` when there is no checker.
-    fn check(
-        &self,
-        input: &str,
-        got: &str,
-        expected: Option<&str>,
-        limit: Duration,
-    ) -> Result<Option<Ruling>, StressError>;
-    /// The solution run against the interactor on the hidden test
-    /// `input`, or `None` when there is no interactor.
-    fn interact(&self, input: &str, limit: Duration) -> Result<Option<Talked>, StressError>;
-    /// A second opinion on an accepted run, such as a `@cache` cold build.
-    fn recheck(&self, _input: &str, _got: &str, _limit: Duration) -> Result<Wrong, StressError> {
-        Ok(None)
-    }
+/// The programs a case runs, each behind its [`Runner`]: the solution,
+/// and the helpers that judge it. A helper is a brute, checker or
+/// interactor; each gets ten times the solution's limit.
+pub struct Roles {
+    pub solution: Runner,
+    pub brute: Option<Runner>,
+    pub checker: Option<Runner>,
+    pub interactor: Option<(Runner, Launch)>,
+    /// A second opinion on an accepted run: the `@cache` file built cold.
+    pub cold: Option<Runner>,
+    /// How long one run of the solution may take.
+    pub limit: Duration,
 }
 
-/// The verdict on one case: the brute's failure first, then the
-/// solution's, then the judge's.
-pub fn judge_case(sides: &dyn Sides, input: &str, limit: Duration) -> Result<Wrong, StressError> {
-    let expected = match sides.brute(input, limit)? {
-        Some(Ran {
-            stop: Some(stop), ..
-        }) => {
-            let why = match stop {
-                Verdict::RuntimeError(why) => why,
-                _ => "it ran past ten times the time limit".to_string(),
-            };
-            return Ok(Some(Failed::new(
-                Verdict::BruteError(why),
-                String::new(),
-                String::new(),
-            )));
+/// One case judged, and the solution's run when it ran.
+pub struct Judgement {
+    pub wrong: Wrong,
+    pub solution: Option<Ran>,
+}
+
+impl Roles {
+    pub fn has_brute(&self) -> bool {
+        self.brute.is_some()
+    }
+
+    /// True when `input` stops the solution (runtime error / TLE).
+    pub fn stops(&self, input: &str) -> bool {
+        (self.solution.run(input, self.limit)).is_ok_and(|ran| ran.stop.is_some())
+    }
+
+    pub fn limit(&self) -> Duration {
+        self.limit
+    }
+
+    /// [`Roles::run_within`] the solution's own limit.
+    pub fn run(&self, input: &str) -> Result<Wrong, StressError> {
+        self.run_within(input, self.limit)
+    }
+
+    /// The case judged with the solution stopped after `limit`.
+    pub fn run_within(&self, input: &str, limit: Duration) -> Result<Wrong, StressError> {
+        Ok(self.judge(input, limit)?.wrong)
+    }
+
+    /// The verdict on one case: the brute's failure first, then the
+    /// solution's, then the judge's.
+    pub fn judge(&self, input: &str, limit: Duration) -> Result<Judgement, StressError> {
+        let expected = match &self.brute {
+            Some(brute) => match brute.run(input, brute_limit(limit))? {
+                Ran {
+                    stop: Some(stop), ..
+                } => {
+                    let why = match stop {
+                        Verdict::RuntimeError(why) => why,
+                        _ => "it ran past ten times the time limit".to_string(),
+                    };
+                    let failed =
+                        Failed::new(Verdict::BruteError(why), String::new(), String::new());
+                    return Ok(Judgement {
+                        wrong: Some(failed),
+                        solution: None,
+                    });
+                }
+                ran => Some(ran.out),
+            },
+            None => None,
+        };
+        if let Some((interactor, launch)) = &self.interactor {
+            let talked = interactor.talk(&self.solution, *launch, input, limit)?;
+            let solution = Some(talked.solution.clone());
+            return Ok(Judgement {
+                wrong: interaction(talked, expected.unwrap_or_default()),
+                solution,
+            });
         }
-        Some(ran) => Some(ran.out),
-        None => None,
-    };
-    if let Some(talked) = sides.interact(input, limit)? {
-        return Ok(interaction(talked, expected.unwrap_or_default()));
+        let ran = self.solution.run(input, limit)?;
+        let ruling = match &self.checker {
+            Some(checker) => Some(checker.check(input, &ran.out, expected.as_deref(), limit)?),
+            None => None,
+        };
+        let verdict = ran.stop.clone().or(match ruling {
+            Some(Ruling::Accepted) => None,
+            Some(Ruling::Rejected(said)) => Some(Verdict::Wrong(match said {
+                Some(said) => format!("checker: {said}"),
+                None => "the checker rejected the output".to_string(),
+            })),
+            Some(Ruling::Broke(trap)) => Some(Verdict::JudgeError("checker", trap)),
+            // With no expected output, a token judge accepts any clean run.
+            None => (expected.as_deref())
+                .and_then(|expected| first_difference(expected, &ran.out))
+                .map(Verdict::Wrong),
+        });
+        let wrong = match verdict {
+            Some(verdict) => Some(Failed::new(
+                verdict,
+                expected.unwrap_or_default(),
+                ran.out.clone(),
+            )),
+            None => self.recheck(input, &ran.out, limit)?,
+        };
+        Ok(Judgement {
+            wrong,
+            solution: Some(ran),
+        })
     }
-    let ran = sides.solution(input, limit)?;
-    if let Some(stop) = ran.stop {
-        return Ok(Some(Failed::new(
-            stop,
-            expected.unwrap_or_default(),
-            ran.out,
-        )));
+
+    /// The `@cache` file built cold on an accepted run's input.
+    fn recheck(&self, input: &str, got: &str, limit: Duration) -> Result<Wrong, StressError> {
+        let Some(cold) = &self.cold else {
+            return Ok(None);
+        };
+        let ran = cold.run(input, brute_limit(limit))?;
+        Ok(ran
+            .cost
+            .and_then(|outcome| crate::judge::recheck(&outcome, got)))
     }
-    let verdict = match sides.check(input, &ran.out, expected.as_deref(), limit)? {
-        Some(Ruling::Accepted) => None,
-        Some(Ruling::Rejected(said)) => Some(Verdict::Wrong(match said {
-            Some(said) => format!("checker: {said}"),
-            None => "the checker rejected the output".to_string(),
-        })),
-        Some(Ruling::Broke(trap)) => Some(Verdict::JudgeError("checker", trap)),
-        // With no expected output, a token judge accepts any clean run.
-        None => expected
-            .as_deref()
-            .and_then(|expected| first_difference(expected, &ran.out))
-            .map(Verdict::Wrong),
-    };
-    if let Some(verdict) = verdict {
-        return Ok(Some(Failed::new(
-            verdict,
-            expected.unwrap_or_default(),
-            ran.out,
-        )));
-    }
-    sides.recheck(input, &ran.out, limit)
 }
 
 /// What an interactive run is called. The time limit comes first; an
@@ -251,26 +295,23 @@ mod tests {
         talked: Option<Talked>,
     }
 
-    impl Sides for Canned {
-        fn brute(&self, _: &str, _: Duration) -> Result<Option<Ran>, StressError> {
-            Ok(self.brute.clone())
-        }
-        fn solution(&self, _: &str, _: Duration) -> Result<Ran, StressError> {
-            self.solution
-                .clone()
-                .ok_or_else(|| StressError("no solution".to_string()))
-        }
-        fn check(
-            &self,
-            _: &str,
-            _: &str,
-            _: Option<&str>,
-            _: Duration,
-        ) -> Result<Option<Ruling>, StressError> {
-            Ok(self.check.clone())
-        }
-        fn interact(&self, _: &str, _: Duration) -> Result<Option<Talked>, StressError> {
-            Ok(self.talked.clone())
+    fn roles(canned: Canned) -> Roles {
+        use crate::runner::Canned as Runs;
+        let runs = |ran: Ran| Runner::Canned(Runs::Runs(Box::new(move |_, _| ran.clone())));
+        Roles {
+            solution: runs(canned.solution.unwrap_or(Ran {
+                out: String::new(),
+                stop: None,
+                cost: None,
+            })),
+            brute: canned.brute.map(runs),
+            checker: canned
+                .check
+                .map(|ruling| Runner::Canned(Runs::Rules(ruling))),
+            interactor: (canned.talked)
+                .map(|talked| (Runner::Canned(Runs::Talks(Box::new(talked))), Launch::Stdio)),
+            cold: None,
+            limit: Duration::from_secs(1),
         }
     }
 
@@ -278,11 +319,13 @@ mod tests {
         Some(Ran {
             out: out.to_string(),
             stop,
+            cost: None,
         })
     }
 
     fn verdict(sides: Canned) -> Verdict {
-        judge_case(&sides, "", Duration::from_secs(1))
+        roles(sides)
+            .run("")
             .unwrap()
             .map_or(Verdict::Accepted, |failed| failed.verdict)
     }
@@ -292,6 +335,7 @@ mod tests {
             solution: Ran {
                 out: String::new(),
                 stop,
+                cost: None,
             },
             ruling,
             transcript: Transcript::default(),

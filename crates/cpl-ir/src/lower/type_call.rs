@@ -21,7 +21,11 @@ impl Lowerer<'_> {
         }
         let ty = match (self.gen_env.get(tname), tname.as_str()) {
             (Some(GenArg::Domain(d) | GenArg::Ty(Ty::Pos(d))), _) => {
-                let fn_id = self.domain_impl_method(*d, &name.text)?;
+                let fn_id = self.domain_impl_method(Ty::Pos(*d), &name.text)?;
+                return Some(self.user_call(fn_id, None, args, span));
+            }
+            (Some(GenArg::Ty(cuts @ Ty::Bound(_))), _) => {
+                let fn_id = self.domain_impl_method(cuts.clone(), &name.text)?;
                 return Some(self.user_call(fn_id, None, args, span));
             }
             (Some(GenArg::Ty(ty)), _) => ty.clone(),
@@ -41,12 +45,11 @@ impl Lowerer<'_> {
         if let Some(fn_id) = found {
             return Some(self.user_call(fn_id, None, args, span));
         }
-        if ty == Ty::Char && name.text == "try_at" {
-            let value = match self.one_arg(&name.text, args, &Ty::Int, span) {
-                Some(value) => value,
-                None => return Some(self.err_expr(span)),
-            };
-            return Some(self.char_try_at(value, span));
+        if ty == Ty::Char {
+            let found = self.space_member(super::ord_space::OrdSpace::Char, &name.text, args, span);
+            if found.is_some() {
+                return found;
+            }
         }
         let to = match (&ty, name.text.as_str()) {
             (Ty::Int, "from_int") => "Int",
@@ -60,39 +63,5 @@ impl Lowerer<'_> {
             None => return Some(self.err_expr(span)),
         };
         Some(self.convert(to, value, span))
-    }
-
-    /// `Char.try_at(i)`: the `i`th of the 128 chars `Char.count` counts, `None` outside them.
-    fn char_try_at(&mut self, value: Expr, span: Span) -> Expr {
-        let mut stmts = Vec::new();
-        let i = self.hold(value, &mut stmts);
-        let zero = self.int_lit(0, span);
-        let k = self.int_lit(128, span);
-        let ge0 = self.mk(
-            ExprKind::Cmp(CmpOp::Ge, Box::new(i.clone()), Box::new(zero)),
-            Ty::Bool,
-            span,
-        );
-        let lt_k = self.mk(
-            ExprKind::Cmp(CmpOp::Lt, Box::new(i.clone()), Box::new(k)),
-            Ty::Bool,
-            span,
-        );
-        let ok = self.mk(
-            ExprKind::Binary(BinOp::And, Box::new(ge0), Box::new(lt_k)),
-            Ty::Bool,
-            span,
-        );
-        let ty = Ty::opt(Ty::Char);
-        let ch = self.cast(Cast::IntToChar, i, Ty::Char);
-        let some = self.mk(ExprKind::Some(Box::new(ch)), ty.clone(), span);
-        let none = self.mk(ExprKind::None, ty.clone(), span);
-        let pick = self.mk(
-            ExprKind::If(Box::new(ok), Box::new(some), Box::new(none)),
-            ty.clone(),
-            span,
-        );
-        stmts.push(Stmt::Give(pick));
-        self.mk(ExprKind::Do(Block { stmts }), ty, span)
     }
 }

@@ -7,11 +7,15 @@
   {"id": "3422488", "language": "JAVA", "result": "TLE", "time": 19.296573891, "memory_kb": 93416.0, "file": "corpus/submissions/3422488.java"},
   {"id": "3422510", "language": "JAVA", "result": "WA", "time": 24.403928221, "memory_kb": 87624.0, "file": "corpus/submissions/3422510.java"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/rccc1s5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted submission on DMOJ, so orig.cpp is a corpus-written reference: a binary trie with a lazy xor tag, splitting [l, r] out, tagging it and merging it back. It matches the sample and a Counter-based brute over 400 generated cases."
 }

@@ -12,11 +12,15 @@
   {"id": "6570101", "language": "CPP17", "result": "TLE", "time": 4.512410432, "memory_kb": 135996.0, "file": "corpus/submissions/6570101.cpp"},
   {"id": "6570102", "language": "CPP17", "result": "TLE", "time": 4.407066293, "memory_kb": 135824.0, "file": "corpus/submissions/6570102.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi15p3io/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted submission (every one is RTE or TLE), so orig.cpp is written here: a persistent segment tree over B versioned by A and the dp with a candidate stack; it agrees with a smallest-B-first greedy brute on 500 random cases. Same reference and generator as ioi15p3."
 }

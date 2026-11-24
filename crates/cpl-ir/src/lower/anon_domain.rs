@@ -461,6 +461,13 @@ impl<'a> Lowerer<'a> {
         if name.text == "count" && args.is_none() {
             return self.int_lit(variants.len() as i64, span);
         }
+        let space = super::ord_space::OrdSpace::Enum(id);
+        if let Some(found) = args.and_then(|a| self.space_member(space, &name.text, a, span)) {
+            return found;
+        }
+        if name.text == "all" && args.is_none() {
+            return self.expr(&ast::Expr::variant_list(base, &variants), None);
+        }
         let field = ast::Expr {
             kind: ast::ExprKind::Field {
                 base: Box::new(ast::Expr::variant_list(base, &variants)),

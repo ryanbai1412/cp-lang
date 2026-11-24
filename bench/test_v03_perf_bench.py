@@ -105,6 +105,16 @@ class RunInteractive(unittest.TestCase):
     def test_an_accepted_run_is_ok_when_the_interactor_spawns_it(self):
         self.assertEqual(self.run_with("print('!', input(), flush=True)", spawn=True), "ok")
 
+    def test_the_solutions_cpu_is_timed_finer_than_10_ms(self):
+        d = tempfile.mkdtemp()
+        judge = write(os.path.join(d, "interactor.py"), INTERACTOR)
+        burn = "import time\nt = time.process_time()\nwhile time.process_time() - t < 0.0137: pass\n"
+        sol = write(os.path.join(d, "sol"), f"#!{sys.executable}\n{burn}print('!', input(), flush=True)", 0o755)
+        cpu, status, rss = bench.run_interactive(sol, judge, write(os.path.join(d, "case"), "7\n"), 20)
+        self.assertEqual(status, "ok")
+        self.assertNotAlmostEqual(cpu * 100, round(cpu * 100), places=3)
+        self.assertGreater(rss, 0)
+
     def test_a_rejected_run_is_no_ratio(self):
         self.assertEqual(self.run_with("input(); print('! 8', flush=True)"), "interactor rejects")
 

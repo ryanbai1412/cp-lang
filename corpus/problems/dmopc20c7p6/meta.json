@@ -5,11 +5,15 @@
   {"id": "3686705", "language": "CPP17", "result": "TLE", "time": 3.999748475, "memory_kb": 6044.0, "file": "corpus/submissions/3686705.cpp"},
   {"id": "3686712", "language": "CPP17", "result": "RTE", "time": 5.812757098, "memory_kb": 136924.0, "file": "corpus/submissions/3686712.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc20c7p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus. orig.cpp follows the official editorial (the answer is the least w whose distance <= w graph is not bipartite) on an O(N) edge set: the 6-nearest-neighbour edges shorter than the least 6th-neighbour distance, from a k-d tree, then Kruskal with a parity DSU. It matches a binary-search-plus-BFS brute force over all pairs on 1500 small gen.py cases."
 }

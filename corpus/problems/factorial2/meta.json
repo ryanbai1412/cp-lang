@@ -13,5 +13,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Both ACs (5653914, 5653915) agree on every case and match a direct product for n <= 2e6, Wilson's theorem for n >= P - 2e6, and a full product at n = 1000000007, 2147483647 and 3000000019."
 }

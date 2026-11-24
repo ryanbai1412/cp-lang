@@ -2,8 +2,9 @@
 
 use crate::judge::{declared, Judge, Launch, Trapped};
 use crate::program::Program;
-use crate::run::{save, stress_with_cold, Options, Source};
+use crate::run::{save, Options};
 use crate::spec::InputSpec;
+use crate::stress::{Native, Place, Stress, Unbuilt};
 use cpl_diag::Span;
 use std::collections::HashMap;
 use std::io::Write;
@@ -69,17 +70,10 @@ pub struct Traced {
     pub divergence: Option<cpl_interp::trace::Divergence>,
 }
 
-/// Runs a `.cp` file and its `@alt(program)` fn on an input in the debug
-/// interpreter. `cpl` passes its own; this crate does not link one.
-/// The `bool` asks for [`Traced::divergence`].
-/// Traces the file on a failing input: the input, `--explain`, and what
-/// [`crate::judge::explaining`] chose to explain.
-pub type Tracer<'a> = &'a dyn Fn(
-    &Path,
-    &str,
-    bool,
-    Option<&Result<crate::judge::Explaining, String>>,
-) -> Result<Traced, String>;
+/// Renders a retraced failing case as one self-contained page, from the
+/// file's name and source and what its brute is called. `cpl` passes its
+/// own viewer; this crate does not link one.
+pub type Tracer<'a> = &'a dyn Fn(&str, &str, &str, &crate::traced::Retraced) -> String;
 
 struct Args {
     file: PathBuf,
@@ -527,7 +521,6 @@ pub fn run_with(
         Err(e) => return fail(format!("can't read {name}: {e}")),
     };
 
-    let resolve = |path: &Path| Program::resolve(path).map_err(|e| e.to_string());
     let judge = match select_judge(
         &src,
         &name,
@@ -537,22 +530,20 @@ pub fn run_with(
         Ok(judge) => judge,
         Err(message) => return fail(message),
     };
-    // The file, analyzed once for its own brute, judge, `@cache` and `@gen`.
-    let analysis = match args.file.extension().and_then(|e| e.to_str()) {
-        Some("cp") => {
+    // Each input a bound lint names, with the rest generated, runs before
+    // the generated cases, since small cases never reach the bounds (use
+    // case stress/U28): what the lint is, where a failing one is saved,
+    // and the input or why there is none.
+    let analysis = match (args.file.extension().and_then(|e| e.to_str()), &args.fast) {
+        (Some("cp"), None) => {
             let mut db = cpl_check::Session::new();
             db.set_file(&name, src.as_str());
             db.analyze(&name)
         }
         _ => None,
     };
-    // Each input a bound lint names, with the rest generated, runs before
-    // the generated cases, since small cases never reach the bounds (use
-    // case stress/U28): what the lint is, where a failing one is saved,
-    // and the input or why there is none.
     let lines = cpl_diag::LineIndex::new(&src);
     let witnesses: Vec<(String, PathBuf, Result<String, String>)> = (analysis.as_deref())
-        .filter(|_| args.fast.is_none())
         .map(|analysis| cpl_lint::lint_analysis(analysis, &cpl_lint::Config::default()))
         .unwrap_or_default()
         .iter()
@@ -565,145 +556,31 @@ pub fn run_with(
             (format!("{} at line {line}", d.code.0), path, input)
         })
         .collect();
-    // The file's own `@alt(program)`, unless `--brute` names another.
-    let own_brute = match &args.brute {
-        None => analysis.as_deref().and_then(cpl_ir::brute),
-        Some(_) => None,
+    let native = Native {
+        fast: args.fast.as_deref(),
+        brute: args.brute.as_deref(),
+        gen: args.gen.as_deref(),
+        judge: judge.clone(),
+        judge_given: args.checker.is_some() || args.interactor.is_some(),
     };
-    // The file's own judge has to build before it can rule on a case.
-    if args.checker.is_none()
-        && args.interactor.is_none()
-        && args.file.extension().is_some_and(|e| e == "cp")
-    {
-        let broken = analysis.as_deref().and_then(|analysis| {
-            let lowered = match (cpl_ir::checker(analysis), cpl_ir::interactor(analysis)) {
-                (Some((checker, _)), _) => cpl_ir::lower_checker(analysis, &checker),
-                (None, Some(judge)) => cpl_ir::lower_judge(analysis, &judge),
-                (None, None) => return None,
-            };
-            let lines = cpl_diag::LineIndex::new(&src);
-            lowered.err().map(|diagnostics| {
-                diagnostics
-                    .iter()
-                    .map(|d| cpl_diag::render(d, &name, &src, &lines))
-                    .collect::<String>()
-            })
-        });
-        if let Some(errors) = broken {
+    let stress = match Stress::build(
+        &args.file,
+        &name,
+        &src,
+        Place::Native(native),
+        &args.options,
+    ) {
+        Ok(stress) => stress,
+        Err(Unbuilt::Rendered(errors)) => {
             let _ = write!(stderr, "{errors}");
             return 1;
         }
-    }
-    // `@alt(f) fn g`: the brute is the whole file with `g` in `f`'s place.
-    let part_brute = match (
-        &args.brute,
-        &own_brute,
-        args.file.extension().and_then(|e| e.to_str()),
-    ) {
-        (None, None, Some("cp")) => swap_in_part_brutes(&src),
-        _ => None,
+        Err(Unbuilt::Said(message)) => return fail(message),
     };
-    let has_cached = args.fast.is_none()
-        && args.file.extension().is_some_and(|e| e == "cp")
-        && src.contains("@cache")
-        && analysis.as_deref().is_some_and(cpl_ir::has_cached_fields);
     // With nothing to judge an answer by, a case still fails on a runtime
     // error or the time limit.
-    let unjudged = args.brute.is_none()
-        && own_brute.is_none()
-        && part_brute.is_none()
-        && !has_cached
-        && judge == Judge::Tokens;
-    // The file's own `@gen` fn, unless `--gen` names another.
-    let own_gen = match &args.gen {
-        None => analysis.as_deref().and_then(cpl_ir::generator),
-        Some(_) => None,
-    };
-    let source = match (&args.gen, &own_gen) {
-        (Some(path), _) => match resolve(path) {
-            Ok(program) => Source::Generator(program),
-            Err(message) => return fail(message),
-        },
-        (None, Some((fn_name, _))) => {
-            let size = i64::try_from(args.options.size).unwrap_or(i64::MAX);
-            match Program::interpreted_gen(&args.file, size) {
-                Ok(Some(program)) => Source::Interpreted {
-                    program: Box::new(program),
-                    name: name.clone(),
-                    lines: cpl_diag::LineIndex::new(&src),
-                },
-                Ok(None) => match Program::resolve_gen(&args.file, fn_name, size) {
-                    Ok(program) => Source::InFile(
-                        program,
-                        Program::lowered_gen(&args.file, size).ok().map(|program| {
-                            Box::new(crate::InterpChoices {
-                                program,
-                                name: format!("{name} (`{fn_name}`)"),
-                                lines: cpl_diag::LineIndex::new(&src),
-                                stack_limit: None,
-                                limit: args.options.limit,
-                            })
-                        }),
-                    ),
-                    Err(e) => return fail(e.to_string()),
-                },
-                Err(e) => return fail(e.to_string()),
-            }
-        }
-        (None, None) => match InputSpec::from_source(&src) {
-            Ok(spec) if spec.is_empty() => {
-                return fail(format!(
-                    "{name} has no typed `read()` to make inputs from; write `let n: 1..=100 = read()`, a `@gen fn` that prints an input, or pass `--gen <program>`"
-                ))
-            }
-            Ok(spec) => Source::Typed(spec),
-            Err(error) => {
-                let line = cpl_diag::LineIndex::new(&src).line_of(error.span.start) + 1;
-                return fail(format!("{name}:{line}: {}", error.message));
-            }
-        },
-    };
-    // The two builds are the whole wait before the first case, so they
-    // run side by side.
-    let (fast, brute, cold) = std::thread::scope(|scope| {
-        let brute = scope.spawn(|| match (&args.brute, &own_brute) {
-            (Some(path), _) => resolve(path).map(Some),
-            (None, Some((fn_name, _))) => Program::resolve_brute(&args.file, fn_name)
-                .map(Some)
-                .map_err(|e| e.to_string()),
-            (None, None) => match &part_brute {
-                Some(swapped) => build_part_brute(&args.file, &name, swapped).map(Some),
-                None => Ok(None),
-            },
-        });
-        let cold = scope.spawn(|| {
-            if has_cached {
-                Program::resolve_cold_cache(&args.file)
-                    .map(Some)
-                    .map_err(|e| e.to_string())
-            } else {
-                Ok(None)
-            }
-        });
-        let fast = solution(&args.file, args.fast.as_deref());
-        (
-            fast,
-            brute.join().expect("a build does not panic"),
-            cold.join().expect("a build does not panic"),
-        )
-    });
-    let fast = match fast {
-        Ok(program) => program,
-        Err(message) => return fail(message),
-    };
-    let brute = match brute {
-        Ok(brute) => brute,
-        Err(message) => return fail(message),
-    };
-    let cold = match cold {
-        Ok(cold) => cold,
-        Err(message) => return fail(message),
-    };
+    let unjudged =
+        stress.roles.brute.is_none() && stress.roles.cold.is_none() && judge == Judge::Tokens;
 
     // The cases saved before run first (use case stress/U15), then the
     // bound lints' inputs.
@@ -719,17 +596,11 @@ pub fn run_with(
             .collect(),
         ..args.options.clone()
     };
-    let report = match stress_with_cold(
-        &source,
-        &fast,
-        brute.as_ref(),
-        cold.as_ref(),
-        &judge,
-        &options,
-    ) {
-        Ok(report) => report,
+    let stressed = match stress.run(&options, args.explain, tracer) {
+        Ok(stressed) => stressed,
         Err(error) => return fail(error.to_string()),
     };
+    let report = &stressed.result.report;
     // A case the brute, checker or interactor fails on is no test of the
     // solution: it isn't saved.
     let helper_failed = |failure: &crate::run::Failure| failure.verdict.helper_failed();
@@ -746,53 +617,12 @@ pub fn run_with(
             }
             false => save(&args.file, failure).ok(),
         });
-    // The failing case again, both sides in the debug interpreter: the
-    // `debug(...)`s they share, and with `--trace` the two traces.
-    let in_file = own_brute.is_some()
-        || part_brute.is_some()
-        || (args.brute.is_none() && judge != Judge::Tokens);
-    // Not a case the solution never finished: run again, it would only be stopped again.
-    let finished = |failure: &crate::run::Failure| !failure.verdict.timed_out();
-    let how = (report.failure.as_ref()).and_then(|failure| {
-        let interactive = matches!(judge, Judge::Interactor(..));
-        let brute = own_brute.is_some() || part_brute.is_some();
-        crate::judge::explaining(&failure.verdict, interactive, brute)
-    });
-    let traced = match (&report.failure, tracer) {
-        (Some(failure), Some(tracer))
-            if args.fast.is_none()
-                && in_file
-                && !helper_failed(failure)
-                && (args.explain || finished(failure)) =>
-        {
-            Some(tracer(
-                &args.file,
-                &failure.input,
-                args.explain,
-                how.as_ref(),
-            ))
-        }
-        _ => None,
-    };
-    let (stages, html) = match &traced {
+    let traced = &stressed.traced;
+    let (stages, html) = match traced {
         Some(Ok(traced)) => (traced.stages.as_slice(), Some(traced.html.as_str())),
         _ => (&[][..], None),
     };
-    let explained = match (&report.failure, &traced, how) {
-        (Some(_), _, None) => None,
-        // A part's wrong call is shown without `--explain`: calls are always kept.
-        (Some(_), Some(Ok(traced)), _) if part_brute.is_some() && traced.divergence.is_some() => {
-            Some(Ok(traced.divergence.clone()))
-        }
-        _ if !args.explain => None,
-        (Some(_), Some(Ok(traced)), Some(Ok(_))) => Some(Ok(traced.divergence.clone())),
-        (Some(_), Some(Err(why)), Some(Ok(_))) => Some(Err(why.clone())),
-        (Some(_), _, Some(Err(why))) => Some(Err(why)),
-        (Some(_), ..) => Some(Err(
-            "`--explain` runs the file against its own `@alt` fns".to_string()
-        )),
-        _ => None,
-    };
+    let explained = stressed.result.explained.clone();
     let mut trace_note = None;
     let trace_path = match (args.trace, &report.failure, html) {
         (true, Some(failure), Some(html)) => {
@@ -819,45 +649,7 @@ pub fn run_with(
         }
         _ => None,
     };
-    // Where a debug run of the brute stops: its own `@alt(program)` fn, or
-    // the file with its `@alt(f)` fns swapped in.
-    let brute_trap = |input: &str| match (&own_brute, &part_brute) {
-        _ if args.fast.is_some() => None,
-        (Some(_), _) => crate::explain::trap_report(&args.file, input, true),
-        (None, Some(swapped)) => {
-            crate::explain::trap_report_in(&args.file, swapped, input, false, None)
-        }
-        (None, None) => None,
-    };
-    // The trap a debug run stops at, in the shape `cpl check --format json` gives.
-    let trap_json = (report.failure.as_ref())
-        .filter(|_| args.json && args.fast.is_none())
-        .and_then(|failure| match failure.verdict.trapped()? {
-            Trapped::Solution => {
-                crate::explain::trap_report(&args.file, &failure.input, false).map(|t| t.json())
-            }
-            Trapped::Brute => brute_trap(&failure.input).map(|t| t.json()),
-            Trapped::Interactor => match &judge {
-                Judge::Interactor(interactor, _) => crate::judge::interactor_trap_json(
-                    &fast,
-                    interactor,
-                    &failure.input,
-                    args.options.limit,
-                )
-                .and_then(|json| cpl_json::parse(&json).ok()),
-                _ => None,
-            },
-            Trapped::Checker => std::fs::read_to_string(&args.file).ok().and_then(|text| {
-                crate::explain::checker_trap_in(
-                    &args.file,
-                    &text,
-                    &failure.input,
-                    &failure.got,
-                    None,
-                )
-                .map(|t| t.json())
-            }),
-        });
+    let trap_json = stressed.result.trap.clone().filter(|_| args.json);
     if args.json {
         let toolchain_bug = (report.failure.as_ref()).is_some_and(|f| toolchain_bug(&args, f));
         let result = crate::StressResult {
@@ -882,7 +674,7 @@ pub fn run_with(
     let _ = writeln!(
         stdout,
         "  brute: {}      {judged_by}",
-        brute.as_ref().map_or("none", |b| b.name.as_str())
+        stress.roles.brute.as_ref().map_or("none", |b| b.name())
     );
     // The build the cases ran, so a judge's verdict can be laid beside it
     // (use case stress/U29).
@@ -1015,8 +807,8 @@ pub fn run_with(
             }
         }
         Some(Trapped::Brute) => {
-            let brute_name = brute.as_ref().map_or("brute", |b| b.name.as_str());
-            let trap = brute_trap(&failure.input).map(|t| t.text());
+            let brute_name = stress.roles.brute.as_ref().map_or("brute", |b| b.name());
+            let trap = stress.brute_trap(&failure.input).map(|t| t.text());
             let _ = match trap {
                 Some(trap) => writeln!(
                     stdout,

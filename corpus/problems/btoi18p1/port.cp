@@ -13,10 +13,11 @@ use std.marks.{Interner}
 
 let n: 1..=1e5 = read()
 domain P = 0..n
-let arrows: [n](from: Str, to: Str) = read()
 var names = Interner<Str>()
 var loves = [P] p => p
-for a in arrows: loves[P(names.id(a.from))] = P(names.id(a.to))
+repeat n:
+    let (from, to): (Str, Str) = read()
+    loves[P(names.id(from))] = P(names.id(to))
 
 // the most arrows that can stay, each person then in a loving pair
 fn kept() -> Int:

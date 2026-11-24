@@ -5,10 +5,14 @@
   {"id": "5725518", "language": "CPP17", "result": "AC", "time": 30.174274999, "memory_kb": 87736.0, "file": "corpus/submissions/5725518.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi20p1/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Grader-only (init/compare_plants): orig.cpp is accepted submission 5725518 (corpus/submissions/5725518.cpp) with a main for the sample grader's format (n k q, r, then x y lines); gen.py derives r from hidden heights so it is consistent, and the reference agrees with an every-height-order brute on 150 random cases with n <= 7."
 }

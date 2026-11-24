@@ -1,7 +1,7 @@
 //! The debug run that explains a failing case: one for `cpl stress` and
 //! the browser's in-process stress.
 
-use crate::cli::Stage;
+use crate::cli::{Stage, Traced, Tracer};
 use crate::judge::Explaining;
 use cpl_interp::trace::{
     answered_divergence, explain_divergence, stages, stuck_divergence, Divergence, Recording,
@@ -143,4 +143,67 @@ fn observe(
         ),
         None => cpl_interp::run_observed(program, io, &mut sink, Some(config)),
     }
+}
+
+/// Traces the `.cp` file `name` on a failing `input` in the debug VM: the
+/// solution beside its brute (its `@alt(program)` fn, else the file with
+/// its `@alt(f)` fns swapped in) and the interactor it talks to.
+/// `render` makes the page of the two runs.
+pub fn trace(
+    name: &str,
+    source: &str,
+    input: &str,
+    explain: bool,
+    how: Option<&Result<Explaining, String>>,
+    stack_limit: Option<u32>,
+    render: Option<Tracer>,
+) -> Result<Traced, String> {
+    let mut db = cpl_check::Session::new();
+    db.set_file(name, source);
+    let analysis = db.analyze(name).ok_or("the file can't be checked")?;
+    let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
+        (diagnostics.first()).map_or("the file does not build".to_string(), |d| d.message.clone())
+    };
+    let fast = cpl_ir::lower_sampling_laws(&analysis).map_err(first)?;
+    let (brute_fn, brute) = match cpl_ir::brute(&analysis) {
+        Some((brute_fn, _)) => {
+            let brute = cpl_ir::lower_brute(&analysis, &brute_fn).map_err(first)?;
+            (brute_fn, Some(brute))
+        }
+        None => match crate::cli::swap_in_part_brutes(source) {
+            Some(swapped) => {
+                let swapped_name = format!(".{name}.brute.cp");
+                db.set_file(&swapped_name, swapped.as_str());
+                let swapped = (db.analyze(&swapped_name))
+                    .ok_or("the file with its `@alt` fns swapped in can't be checked")?;
+                (
+                    "its @alt fns".to_string(),
+                    Some(cpl_ir::lower(&swapped).map_err(first)?),
+                )
+            }
+            None => (String::new(), None),
+        },
+    };
+    let interactor = match (fast.interactive, cpl_ir::interactor(&analysis)) {
+        (false, _) => None,
+        (true, Some(judge)) => Some(cpl_ir::lower_judge(&analysis, &judge).map_err(first)?),
+        (true, None) => return Err(
+            "an interactive solution judged by another program is traced with `cpl run --trace`"
+                .to_string(),
+        ),
+    };
+    let programs = Programs {
+        fast: &fast,
+        brute: brute.as_ref(),
+        interactor: interactor.as_ref(),
+    };
+    let retraced = retrace(source, programs, input, how, explain, stack_limit);
+    let html = render.map_or_else(String::new, |render| {
+        render(name, source, &brute_fn, &retraced)
+    });
+    Ok(Traced {
+        stages: retraced.stages,
+        divergence: retraced.divergence?,
+        html,
+    })
 }

@@ -7,7 +7,6 @@
 //   cyclic convolution mod p: `pow` by squaring in O(p^2 log n), after a segmented sieve.
 // original: corpus/submissions/5463991.cpp
 // Bounds: n: 1..=1e9; m: 1..=2e7; p: 1..=100
-use std.math.{primes_in}
 
 type Z = Mod<20170408>
 
@@ -25,6 +24,9 @@ let cyclic = Monoid<Counts>([Residue] r => Z(if r.idx == 0: 1 else: 0), convolve
 // m / p whole cycles hold every residue once; the rest are 1..=m % p
 let all: Counts = [Residue] r => Z(m / p + (if 1 <= r.idx and r.idx <= m % p: 1 else: 0))
 var plain = all.clone()
-for q in primes_in(2, m + 1): plain[Residue(q % p)] -= 1
+var composite = List.filled(m + 1, false)
+for q in 2..=m if not composite[q]:
+    plain[Residue(q % p)] -= 1
+    for x in (q * q..=m).step(q): composite[x] = true
 let zero = Residue(0)
 print(pow(all, n, op: cyclic)[zero] - pow(plain, n, op: cyclic)[zero])

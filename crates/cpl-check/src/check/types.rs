@@ -628,6 +628,9 @@ impl<'a> Checker<'a> {
                 .last_mut()
                 .unwrap()
                 .insert(p.name.text.clone(), seen);
+            if p.ty.as_ref().is_some_and(Self::names_range_keys) {
+                self.lends.range_keys.insert(p.name.span);
+            }
             params.push(Param {
                 name: p.label_text().to_string(),
                 ty,
@@ -769,11 +772,22 @@ impl<'a> Checker<'a> {
                         }
                         _ => None,
                     };
+                    let named = |p: &ast::Param| {
+                        lends.sources.is_empty()
+                            || lends.sources.iter().any(|s| s.text == p.name.text)
+                    };
+                    let sources = f
+                        .params
+                        .iter()
+                        .filter(|p| p.name.text != "self")
+                        .map(|p| named(p).then(|| p.name.text.clone()))
+                        .collect();
                     Some(crate::def::Projection {
                         name: f.name.text.clone(),
                         mutable: lends.mutable,
                         lent: self.text(lends.ty.span).to_string(),
                         law,
+                        sources,
                     })
                 }
                 _ => None,
@@ -849,13 +863,7 @@ impl<'a> Checker<'a> {
                     (Some(ty), _) => self.resolve_type(ty),
                     (None, Some(init)) => {
                         let inferred = self.infer(init);
-                        let rebased = match &pat.kind {
-                            ast::PatternKind::Name(name) => self.rebased(name, init),
-                            _ => None,
-                        };
-                        if let Some(rebased) = rebased {
-                            rebased
-                        } else if *mutable && matches!(inferred, Ty::Range { .. }) {
+                        if *mutable && matches!(inferred, Ty::Range { .. }) {
                             Ty::Int
                         } else if !*mutable && inferred == Ty::Int {
                             let (lo, hi) = self.bounds(init);

@@ -19,8 +19,8 @@ fn ri() -> Int:
 var g_n = 0
 var g_m = 0
 var g_stks: List<List<Int>> = []
-var g_mu: List<Int> = []
-var g_mv: List<Int> = []
+var g_mu: List<0..=50> = []  // pillar indices, n + 1 <= 51 of them
+var g_mv: List<0..=50> = []
 var g_empty = 0
 
 fn transfer(u: Int, v: Int, cnt: Int):
@@ -30,11 +30,7 @@ fn transfer(u: Int, v: Int, cnt: Int):
         let x = g_stks[u].pop()!
         g_stks[v].push(x)
 
-fn cnt_lo(p: Int, mid: Int) -> Int:
-    var c = 0
-    for x in g_stks[p]:
-        if x <= mid: c += 1
-    return c
+fn cnt_lo(p: Int, mid: Int) -> Int = g_stks[p].count(x => x <= mid)
 
 fn is_pure(p: Int, mid: Int) -> Bool:
     let c0 = cnt_lo(p, mid)
@@ -46,11 +42,7 @@ fn solve_range(cols: List<Int>, ql: Int, qr: Int):
     for a in cols:
         let c0 = cnt_lo(a, mid)
         let c1 = g_m - c0
-        var helper = 0
-        for p in 0..=g_n:
-            if p != a and p != g_empty:
-                helper = p
-                break
+        let helper = first(p for p in 0..=g_n if p != a and p != g_empty)!
         transfer(helper, g_empty, c0)
         var idx = g_m - 1
         while idx >= 0:
@@ -94,9 +86,7 @@ fn solve_range(cols: List<Int>, ql: Int, qr: Int):
                     swap(mut cur_cols[j], mut g_empty)
         if not changed: break
 
-    var rest: List<Int> = []
-    for a in cur_cols:
-        if not is_pure(a, mid): rest.push(a)
+    let rest = [a for a in cur_cols if not is_pure(a, mid)]
     if rest.len > 0:
         var a = rest[0]
         var b = rest[1]
@@ -121,7 +111,7 @@ for _ in 0..g_n + 1: g_stks.push([])
 for i in 0..g_n:
     for _ in 0..g_m: g_stks[i].push(ri() - 1)
 g_empty = g_n
-var init_cols: List<Int> = [i for i in 0..g_n]
+let init_cols: List<Int> = (0..g_n).collect()
 solve_range(init_cols, 0, g_n - 1)
 print(g_mu.len)
 for i in 0..g_mu.len: print(g_mu[i] + 1, g_mv[i] + 1)

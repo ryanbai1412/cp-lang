@@ -8,7 +8,7 @@ let empty: List<Int> = []
 print("x:", [a[i] for i in at..3])
 print(at, empty, start, [a[i] for i in from..start], empty, from)
 let r = 2..5
-print(r.first, r.last)
+print(r.first!, r.last!)
 let sep = ", "
 let item = "b"
 let first = "a"
@@ -22,4 +22,4 @@ print(a.get(i) ?? x, seq.get(idx) ?? x, value + result + tests + row + scope)
 let (lo, hi) = (7, 8)
 let got: ?Int = read(none: x)
 let span: Range<Int> = read()
-print(got ?? lo, span.first, span.last, hi)
+print(got ?? lo, span.first!, span.last!, hi)

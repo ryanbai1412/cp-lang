@@ -28,6 +28,9 @@ CRATE_RULES = """
 
 
 class DebtRatchetTest(unittest.TestCase):
+    def test_every_measured_by_key_names_a_counter(self) -> None:
+        self.assertEqual(sorted(set(dr.MEASURED_BY) - set(dr.COUNTERS)), [])
+
     def _make_repo(self, root: Path) -> None:
         (root / "crates/demo/src").mkdir(parents=True)
         (root / "crates/cpl-cli/tests/pending").mkdir(parents=True)
@@ -67,6 +70,17 @@ class DebtRatchetTest(unittest.TestCase):
                     self._write(root, f"corpus/problems/{name}/{f}", "{}")
             self.assertEqual(dr.corpus_no_tests(root), ["corpus/problems/b"])
 
+    def test_corpus_no_statement_counts_packages_without_an_inline_sample(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sample = '[[case]]\ninput = "1\\n"\n\n[[case]]\nseed = 1\nsize = 4\n'
+            for name, files in (("a", {"meta.json": "{}", "tests.toml": sample}),
+                                ("b", {"meta.json": "{}", "tests.toml": "[[case]]\nargs = [\"--max\"]\n"}),
+                                ("c", {"meta.json": "{}"}), ("d", {"notes.md": ""})):
+                for f, text in files.items():
+                    self._write(root, f"corpus/problems/{name}/{f}", text)
+            self.assertEqual(dr.corpus_no_statement(root), ["corpus/problems/b", "corpus/problems/c"])
+
     def test_corpus_no_max_counts_packages_without_a_max_mode(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
@@ -99,6 +113,9 @@ class DebtRatchetTest(unittest.TestCase):
                 '[[package]]\nname = "shlex"\nversion = "1.3.0"\n'
                 'source = "registry+https://github.com/rust-lang/crates.io-index"\n')
             self.assertEqual(dr.dead_code_allows(root), ["crates/demo/src/lib.rs:1", "crates/demo/src/lib.rs:3"])
+            self.assertIn("dead_code_allows", dr.HARD_ZERO)
+            errs, _, _ = dr.evaluate({"dead_code_allows": 1}, {"dead_code_allows": 1})
+            self.assertTrue(any("allow(dead_code)" in e for e in errs), errs)
             self.assertEqual(dr.external_crates(root), ["shlex 1.3.0"])
 
     def test_measure_counts_accurately(self) -> None:
@@ -116,8 +133,8 @@ class DebtRatchetTest(unittest.TestCase):
             "max_rs_lines": 20,
             "rs_file_size_allowlist": {"crates/demo/src/big.rs": 25},
             "stdlib_todo": 2,
-            "rust_ignore": 1,
-            "dead_code_allows": 1,
+            "allow_attrs": 1,
+            "unsafe_blocks": 1,
         }
         # Exact match passes with no warnings/errors
         errs, warns, notes = dr.evaluate(baseline, baseline)
@@ -131,8 +148,8 @@ class DebtRatchetTest(unittest.TestCase):
                 "crates/demo/src/new_big.rs": 22,
             },
             "stdlib_todo": 3,
-            "rust_ignore": 2,
-            "dead_code_allows": 2,
+            "allow_attrs": 2,
+            "unsafe_blocks": 2,
         }
         errs, warns, _ = dr.evaluate(worse, baseline)
         self.assertEqual(len(errs), 5)
@@ -318,8 +335,8 @@ class DebtRatchetTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
-            self._write(root, "scripts/check.sh", "mapfile -t script_tests < <(git ls-files 'scripts/test_*.py')\n"
-                        "uv run python -m unittest tools/x/test_named.py\n")
+            self._write(root, "scripts/ci.py", 'SCRIPT_TESTS = ("scripts/test_*.py",)\n')
+            self._write(root, "scripts/check.sh", "uv run python -m unittest tools/x/test_named.py\n")
             for rel in ("scripts/test_a.py", "tools/x/test_named.py", "tools/y/test_b.py", "corpus/test_c.py"):
                 self._write(root, rel, "")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
@@ -405,6 +422,7 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "scripts/test_stdlib_measure.py", "")
             self._write(root, "scripts/walk.py", "for p in glob.glob('corpus/problems/*'):\n    pass\n")
             self._write(root, "scripts/changed.sh", "git diff --cached --name-only -- 'corpus/problems/*/tests/*'\n")
+            self._write(root, "scripts/changed.py", '_git(root, "diff", "--cached", "--", "corpus/problems/*/tests/*")\n')
             self._write(root, "scripts/one.py", "paths = glob.glob('docs/*') + ['!corpus/problems/cf1a/dream.cp']\n")
             self._write(root, "scripts/corpus.py", "os.listdir('corpus/problems')\n")
             self._write(root, "scripts/key.py", "x = glob.glob('a/*')\nclimb = json.load(f)[\"problems\"]\n")
@@ -526,6 +544,17 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.poll_sleeps(root), ["crates/cpl-contest/src/third.rs:1"])
             self.assertIn("poll_sleeps", dr.HARD_ZERO)
 
+    def test_cpl_env_reads_live_in_cpl_env(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "crates/cpl-env/src/lib.rs", 'std::env::var_os("CPL_X")\n')
+            self._write(root, "crates/a/src/lib.rs", 'cpl_env::X.text()\nstd::env::set_var("CPL_X", "1");\n'
+                        'env::remove_var(\n"CPL_X")\nvar_os( "CPL_Y")\nenv::var("HOME")\n')
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, env=dr._git_env())
+            self.assertEqual(dr.cpl_env_reads(root), ["crates/a/src/lib.rs:2", "crates/a/src/lib.rs:5"])
+            self.assertIn("cpl_env_reads", dr.HARD_ZERO)
+
     def test_addendum_five_counters(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -542,7 +571,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/cpl-diag/src/habits.rs", 'shape("a", c, "x", "");\nshape("gone", c, "y", "");\n')
             self._write(root, "crates/cpl-cli/tests/habits/a.cp", "let x = 1  // <- here\n")
             self._write(root, "crates/cpl-stress/src/engine.rs", "fn run_case() {}\n")
-            self._write(root, "crates/cpl-stress/src/cli.rs", "Verdict::Ok\n")
+            self._write(root, "crates/cpl-stress/src/cli.rs", "Verdict::Ok\nstress_with(&s, &r, &o)\n")
+            self._write(root, "crates/cpl-stress/src/stress.rs", "stress_with(&s, &r, &o)\n")
             self._write(root, "crates/cpl-stress/src/judge.rs", "Verdict::Ok\n")
             self._write(root, "crates/b/src/lib.rs", "cpl_diag::fix::apply_fixes(x);\n// XFAIL\n")
             self._write(root, "decisions.md", "the known-fail list is gone (xfail_markers)\n")
@@ -559,7 +589,7 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.todo_fixme(root), ["std/a.cp:1"])
             self.assertEqual(dr.xfail_markers(root), ["crates/b/src/lib.rs:2", "spec/conformance/c.cp:1"])
             self.assertEqual(len(dr.habit_matchers(root)), 2)
-            self.assertEqual(dr.stress_engines(root), ["crates/cpl-stress/src/engine.rs:1", "crates/cpl-stress/src/cli.rs"])
+            self.assertEqual(dr.stress_engines(root), ["crates/cpl-stress/src/engine.rs:1", "crates/cpl-stress/src/cli.rs:2", "crates/cpl-stress/src/cli.rs"])
             self.assertEqual(dr.unchecked_fix_paths(root), ["crates/b/src/lib.rs:1"])
 
     def test_a_counter_at_zero_is_never_raised(self) -> None:
@@ -636,6 +666,12 @@ class DebtRatchetTest(unittest.TestCase):
         errs, _, _ = dr.evaluate({name: 1}, {})
         self.assertEqual(len(errs), 1)
         self.assertEqual(dr.inherited_baseline({name: 0}, {name: 3})[name], 0)
+
+    def test_an_ignored_rust_test_fails_the_ratchet(self) -> None:
+        self.assertIn("rust_ignore", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"rust_ignore": 1}, {"rust_ignore": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
 
     def test_hard_zero_is_assigned_once(self) -> None:
         src = Path(dr.__file__).read_text(encoding="utf-8")
@@ -814,6 +850,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "scripts/check.sh", "python3 scripts/a.py\npython3 scripts/b.py scripts/test_x.py\n")
             self._write(root, "scripts/a.py", '"""Gate. Rule: handbook/guidelines/lints.md#the-rules."""\n')
             self._write(root, "scripts/b.py", '"""Gate."""\n')
+            # The runners name gates and are not one.
+            self._write(root, "scripts/ci.py", '"""Runner."""\nSTEP = "scripts/ci.py steps checks"\n')
             self.assertEqual(dr.uncited_rules(root), ["lint bad", "lint noid", "lint none", "gate scripts/b.py"])
 
     def test_upstream_on_a_fresh_tip_is_measured_except_in_ci(self) -> None:
@@ -883,11 +921,11 @@ class DebtRatchetTest(unittest.TestCase):
             root = Path(tmp)
             ratchet = root / "ratchet.json"
             ratchet.write_text(json.dumps({"max_rs_lines": 2000, "rs_file_size_allowlist": {"a.rs": 9000},
-                                           "stdlib_todo": 99, "rust_ignore": 7}))
+                                           "stdlib_todo": 99, "allow_attrs": 7}))
             self.assertEqual(dr.main(["--update", "stdlib_todo", "--root", str(root), "--ratchet", str(ratchet)]), 0)
             data = json.loads(ratchet.read_text())
             self.assertEqual(data["stdlib_todo"], 0)
-            self.assertEqual(data["rust_ignore"], 7)
+            self.assertEqual(data["allow_attrs"], 7)
             self.assertEqual(data["rs_file_size_allowlist"], {"a.rs": 9000})
             self.assertEqual(dr.main(["--update", "nope", "--root", str(root), "--ratchet", str(ratchet)]), 2)
 
@@ -899,6 +937,7 @@ class DebtRatchetTest(unittest.TestCase):
             # A hard-zero counter above 0 is never written as a baseline.
             self.assertEqual(dr.main(["--update", "--root", str(root), "--ratchet", str(ratchet)]), 1)
             (root / "crates/cpl-cli/tests/pending/case1.cp").unlink()
+            (root / "crates/demo/src/small.rs").write_text("fn t() {}\n")
             (root / "crates/cpl-ir/src").mkdir(parents=True)
             (root / "crates/cpl-ir/src/instance.rs").write_text("use codes::GROWING_INSTANTIATION;\n")
             (root / dr.SCALING_BOARD).parent.mkdir(parents=True)
@@ -1024,11 +1063,8 @@ class DebtRatchetTest(unittest.TestCase):
             port.parent.mkdir(parents=True)
             port.write_text("// copies: 1\nprint(1)\n")
             (root / "corpus/problems/cf1/notes.md").write_text("// copies: 5\n")
-            tests = root / "crates/cpl-cli/tests"
-            tests.mkdir(parents=True)
-            (tests / "read_only_copies.rs").write_text('    [("std_functions", std_functions, 2)];\n')
             self.assertEqual(len(dr.cpp_deep_copies(root)), 3)
-            self.assertEqual(len(dr.cpp_std_functions(root)), 2)
+            self.assertEqual(len(dr.cpp_std_functions(root)), 1)
 
     def test_std_shadowed_counts_receivers_a_builtin_arm_catches(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

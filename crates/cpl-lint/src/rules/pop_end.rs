@@ -2,6 +2,8 @@
 //! `let x = s.pop_first()!` (`std.bag`). The set is labelled so the fact
 //! table keeps the finding only on a `SortedBag` or `SortedSet` (`typed.rs`).
 
+use crate::facts::Facts;
+use crate::is_std;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
 use crate::{File, Finding, POP_MIN_LOOP};
@@ -14,6 +16,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Ends<'a> {
         src: &'a str,
         base: u32,
+        facts: Option<&'a Facts>,
         out: Vec<Finding>,
     }
     impl Visitor for Ends<'_> {
@@ -41,37 +44,39 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let ExprKind::Unwrap(end) = &init.kind else {
                 return;
             };
+            let end = unparen(end);
             let ExprKind::Field {
                 base: set,
-                name: end,
-            } = &unparen(end).kind
+                name: end_name,
+            } = &end.kind
             else {
                 return;
             };
-            let pop = match end.text.as_str() {
-                std_fn::FIRST => std_fn::POP_FIRST,
-                std_fn::LAST => std_fn::POP_LAST,
-                _ => return,
+            let at = end.span.shift(self.base);
+            let pop = if is_std(self.facts, at, std_fn::FIRST) {
+                std_fn::POP_FIRST
+            } else if is_std(self.facts, at, std_fn::LAST) {
+                std_fn::POP_LAST
+            } else {
+                return;
             };
-            let StmtKind::Expr(Expr {
-                kind: ExprKind::Call { callee, args },
-                ..
-            }) = &remove.kind
+            let StmtKind::Expr(
+                call @ Expr {
+                    kind: ExprKind::Call { callee, args },
+                    ..
+                },
+            ) = &remove.kind
             else {
                 return;
             };
-            let ExprKind::Field {
-                base: removed,
-                name: method,
-            } = &callee.kind
-            else {
+            let ExprKind::Field { base: removed, .. } = &callee.kind else {
                 return;
             };
             let text = |e: &Expr| e.span.shift(self.base).text(self.src);
             let between = Span::new(read.span.end, remove.span.start).shift(self.base);
             let same =
                 matches!(&args[..], [a] if a.name.is_none() && name(&a.value) == Some(bound));
-            if method.text != std_fn::REMOVE
+            if !is_std(self.facts, call.span.shift(self.base), std_fn::REMOVE)
                 || !same
                 || text(set) != text(removed)
                 || !between.text(self.src).trim().is_empty()
@@ -82,7 +87,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let mut diag = Diagnostic::warning(
                 POP_MIN_LOOP.code,
                 Span::new(read.span.start, remove.span.end).shift(self.base),
-                format!("`{}.{}!` then `{}.remove({bound})` is `{take}`", text(set), end.text, text(set)),
+                format!("`{}.{}!` then `{}.remove({bound})` is `{take}`", text(set), end_name.text, text(set)),
             )
             .with_label(set.span.shift(self.base), "the set")
             .with_help(format!(
@@ -107,6 +112,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = Ends {
         src: file.src,
         base: 0,
+        facts: file.facts,
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);

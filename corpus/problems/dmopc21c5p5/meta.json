@@ -23,5 +23,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Any permutation with the maximum primeness is accepted, so checker.py recomputes primeness and compares it with the reference's. The three ACs (4223887, 4223913, 4223999) agree on primeness for every N in 1..=100, and match an exhaustive brute for N <= 9."
 }

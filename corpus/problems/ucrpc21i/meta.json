@@ -6,11 +6,15 @@
   {"id": "3944682", "language": "CPP17", "result": "WA", "time": 1.201364204, "memory_kb": 135648.0, "file": "corpus/submissions/3944682.cpp"},
   {"id": "3944931", "language": "CPP17", "result": "RTE", "time": 0.137721501, "memory_kb": 36544.0, "file": "corpus/submissions/3944931.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ucrpc21i/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted submission: 3944677 and 3944682 are WA and 3944931 is RTE (it asserts r is a perfect square). orig.cpp is a written reference (every sphere plus both radius-r centres through each pair within 2r, O(n^3)); it matches the statement sample and an independent angular sweep on 400 random small cases. The statement bounds no r; gen.py keeps 1 <= r <= 1000."
 }

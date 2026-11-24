@@ -8,14 +8,13 @@
 //   `SortedBag`; the bases' order never changes. A cut drains the lowest bases while they
 //   fall below the floor, and "F k" is the bag's (size - k)-th smallest. O(n log n).
 // original: corpus/submissions/3738379.cpp
-// Bounds: q: 1..=3e5; floor: 0..=1e9; cmds.x: 0..=1e9
+// Bounds: q: 1..=3e5; floor: 0..=1e9; x: 0..=1e9
 let (q, floor): (1..=3e5, 0..=1e9) = read()
-domain Cmd = 0..q
-let cmds: [Cmd](op: Char, x: 0..=1e9) = read()
 
 var staff = SortedBag<Int>()  // base salaries
 var (raise, left) = (0, 0)
-for (op, x) in cmds:
+repeat q:
+    let (op, x): (Char, 0..=1e9) = read()
     match op:
         'I' => if x >= floor: staff.add(x - raise)
         'A' => raise += x

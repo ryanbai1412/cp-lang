@@ -142,6 +142,28 @@ fn without_its_source_the_file_says_so_and_is_otherwise_the_same() {
 }
 
 #[test]
+fn a_table_key_hashes_over_its_cells() {
+    // A `Map` keyed by a board of optional enum cells (in a tuple) or a fixed row: CpHash walks
+    // a Grid's sizes and cells and a Row's cells, so the key type has a hash in C++.
+    let cpp = cpp(
+        "domain R = 0..2\nenum P = J | D\nvar m: Map<([R, R]?P, P), Int> = Map()\nvar b: [R, R]?P = None\nm[(b, J)] = 1\nprint(m.len)\n",
+    );
+    assert!(
+        cpp.contains("HashMap<std::tuple<cpl::Grid<std::optional<P>, 2>, P>"),
+        "{cpp}"
+    );
+    assert!(
+        cpp.contains("decltype(g.d.data(), g.n[0], size_t())"),
+        "{cpp}"
+    );
+    assert!(cpp.contains("std::is_enum_v<I>"), "{cpp}");
+    assert!(
+        cpp.contains("decltype(r.vec(), r.a.data(), size_t())"),
+        "{cpp}"
+    );
+}
+
+#[test]
 fn hash_map_uses_salted_splitmix64_cphash() {
     let cpp = cpp("var hm: HashMap<Int, Int> = []\nhm[42] = 7\nprint(hm.get(42) ?? 0)\n");
     assert!(cpp.contains("struct CpHash"), "{cpp}");
@@ -150,6 +172,11 @@ fn hash_map_uses_salted_splitmix64_cphash() {
     // Fingerprinted slots at a load of at most 7/8, sized exactly, freeing the old table as a rehash walks it.
     assert!(
         cpp.contains("n + (n + 6) / 7") && cpp.contains("release_pages"),
+        "{cpp}"
+    );
+    // Whatever the entry, so a Map<Str, _> doesn't hold both tables whole.
+    assert!(
+        !cpp.contains("is_trivially_destructible_v<E>) if (i + 1 - done"),
         "{cpp}"
     );
     assert!(!cpp.contains("2 * (n + 1)"), "{cpp}");

@@ -1,6 +1,7 @@
 // expect: ok, output "skipped 1"
 // A closure a generator yields inside a struct, called through a method, writes the
 // generator's own local, as a bare yielded closure does (what `backtrack`'s `Step.prune()` needs).
+// std_functions: 1
 struct Step(pub v: Int, cut: () -> ()):
     pub fn prune(self) = cut()
 fn gen() -> yields Step:

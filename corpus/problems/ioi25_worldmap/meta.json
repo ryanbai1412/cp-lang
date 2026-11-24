@@ -2,16 +2,31 @@
  "problem": "ioi25_worldmap",
  "source": "ioi",
  "submissions": [],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
   "dream": [
    "corpus/gold/ioi25_worldmap.cp",
    "corpus/problems/ioi25_worldmap/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/ioi25_worldmap/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/ioi25_worldmap/port.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
+ "tags": [
+  "constructive",
+  "dfs-tree",
+  "euler-tour"
+ ],
+ "difficulty": "hard",
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No DMOJ AC submission is on file: orig.cpp is the IOI task archive's model solution (2025/day1/worldmap/solutions/model_solution/sub6-2k.cpp, K = 2N) with the sample grader as its main; it passes all 142 official tests under checker.py, which agrees with the archive's checker.cpp on its outputs and mutations of them. dream.tests/grader.cpp + worldmap.h are the sample grader without the judge secrets, which cpl test links into the @grader dream; they sit in dream.tests/ because a grader.cpp beside the stdin port would be linked into it too.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 18,
+  "sha": "ed25557f8055c164791563dd213a2915c92e0525"
+ }
 }

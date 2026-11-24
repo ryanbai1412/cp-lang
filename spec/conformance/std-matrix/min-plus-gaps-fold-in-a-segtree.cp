@@ -2,6 +2,7 @@
 // rule: std.matrix.Mat.new std.matrix.Mat.product
 // BOI 2017 Toll shape: each gap between layers of `k` places is a min-plus matrix, `None`
 // meaning no road, and a route is their product, folded in a SegTree over the gaps.
+// std_functions: 2
 domain Gap = 0..3
 domain Slot = 0..2
 let roads = [(0, 2, 4), (1, 3, 2), (0, 3, 9), (2, 4, 1), (3, 5, 7), (4, 6, 3)]

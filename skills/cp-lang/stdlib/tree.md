@@ -254,7 +254,8 @@ Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg:
 - `fn cut(mut self, u: V, v: V)` — expected \(O(\log n)\); Removes the edge `u`-`v`.; traps: when there is no edge `u`-`v`
 - `fn connected(mut self, a: V, b: V) -> Bool` — expected \(O(\log n)\); Whether `a` and `b` are in one tree.
 - `fn len(mut self, v: V) -> Int` — expected \(O(\log n)\); The number of vertices in `v`'s tree.
-- `fn get(mut self, v: V) -> T` — expected \(O(\log n)\); The value at `v`, with every update to a tree or side holding it applied.
+- `fn to_array(self) -> [V]T` — \(O(\lvert V \rvert + \text{links})\); The value at `v`, with every update to a tree or side holding it applied.
+- `fn get(mut self, v: V) -> T`
 - `fn set(mut self, v: V, x: T)` — expected \(O(\log n)\); Replaces the value at `v`, discarding earlier updates there.
 - `fn fold_tree(mut self, v: V) -> T` — expected \(O(\log n)\); The fold of every value in `v`'s tree.
 - `fn fold_sub(mut self, v: V, away: V) -> T` — expected \(O(\log n)\); The fold over `v`'s side of the edge `v`-`away`.; traps: when there is no edge `v`-`away`
@@ -265,7 +266,7 @@ Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg:
 
 The Kruskal reconstruction tree: each edge that merges two components, in increasing weight, becomes a node above them.
 
-Fields: `edge: [N]Int`, `lift: Lift<N, Int>`.
+Fields: `edge: [N]Int`, `links: JumpTree<N>`.
 
 - `@get fn tree(self) -> Rooted<N, _, _>` — \(O(n)\); builds the `Rooted` on every read, so bind it once: `let t = kt.tree`; The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
 - `fn reach(self, v: V, limit: W) -> N` — \(O(\log n)\); The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when None is); its leaves are what `v` reaches by edges of weight at most `limit`.
@@ -279,7 +280,7 @@ Fields: `edge: [N]Int`, `lift: Lift<N, Int>`.
 - `fn dfs_tree<V, A, E>(self: Graph<V, A>, root: V) -> (tree: Rooted<V, _, _>, tree_edge: [E]Bool) where A: Edged<E>` — \(O(n + m)\); The DFS tree from `root` of the component holding it, as a `Rooted` tree and a mask of the edges it uses.
 - `fn cartesian_tree<D, T>(a: [D]T, by: (T, T) -> Bool = (x, y) => x <y) -> [D]?D: var par: [D]?D = None var stack: List<D> = [] for i in D: var last: ?D = None while not stack.is_empty and by(a[i], a[stack.last!]): last = stack.pop() if let l = last: par[l] = Some(i) if not stack.is_empty: par[i] = Some(stack.last!) stack.push(i) par` — \(O(n)\), one stack pass; The Cartesian tree of `a` as parent links: the root is the least element by `by` (the leftmost among equals) and every subtree is a contiguous range of `D`.
 - `fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (domain N, KruskalTree<V, N, W>)` — \(O(m \log m)\) for m edges; The Kruskal reconstruction tree of `edges` weighted by `w`, over the vertices `V`, taking the same arguments as `std.graph.kruskal`; its nodes are a fresh domain bound by the caller: `let (domain N, kt) = kruskal_tree(es, w: f)`.
-- `fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>` — \(O(n)\); The Prüfer code of a tree on `V`: repeatedly remove the least leaf and record its neighbour, until two vertices remain.; traps: when `V` has fewer than two vertices, or `edges` is not a tree
+- `fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>`
 - `fn from_prufer<V>(code: List<V>) -> Tree<V>` — \(O(n)\); The tree whose Prüfer code is `code`.; traps: when `code` does not have `V.count - 2` entries, or `V` has fewer than two vertices
 
 ## Example

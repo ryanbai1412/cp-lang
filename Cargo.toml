@@ -9,7 +9,9 @@ publish = false
 license = "MIT OR Apache-2.0"
 
 [workspace.dependencies]
+cpl-config = { path = "crates/cpl-config" }
 cpl-diag = { path = "crates/cpl-diag" }
+cpl-env = { path = "crates/cpl-env" }
 cpl-json = { path = "crates/cpl-json" }
 cpl-corpus = { path = "crates/cpl-corpus" }
 cpl-wait = { path = "crates/cpl-wait" }

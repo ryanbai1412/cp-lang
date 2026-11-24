@@ -691,7 +691,6 @@ print(a[X])
 /// The cf2183f dream checks clean: its tree lines (`read<Tree<V>>()`,
 /// `t.at.rev`, `t.pos`, `t.below`, `t.sub`) and its 2D prefix sums.
 #[test]
-#[ignore = "corpus/problems/cf2183f/dream.cp is v0.2 (FillPrefix.sum); ported with the corpus"]
 fn dream_cf2183f_checks() {
     let src = include_str!("../../../../corpus/problems/cf2183f/dream.cp");
     let found = check(src);

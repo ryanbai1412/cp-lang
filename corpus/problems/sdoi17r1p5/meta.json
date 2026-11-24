@@ -10,11 +10,15 @@
   {"id": "5461469", "language": "CPP17", "result": "TLE", "time": 12.590635008, "memory_kb": 37172.0, "file": "corpus/submissions/5461469.cpp"},
   {"id": "5463999", "language": "CPP17", "result": "MLE", "time": 1.077891438, "memory_kb": 263328.0, "file": "corpus/submissions/5463999.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/sdoi17r1p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No submission is recorded. orig.cpp is a written reference (the overlap equations of the guesses, Gaussian elimination on n + 1 unknowns); it matches the statement sample and an exact-fraction absorbing Markov chain over the guesses' automaton on 300 random small inputs. Statement: LOJ 2004."
 }

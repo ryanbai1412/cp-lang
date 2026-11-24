@@ -9,11 +9,10 @@
 //! - `interactor <input>` talks to the solution over stdin and stdout and
 //!   exits 0 to accept.
 
-use crate::case::{judge_case, judge_limit, Ran, Ruling, Side, Sides, Talked, Transcript};
+use crate::case::{judge_limit, Ran, Roles, Ruling, Side, Talked, Transcript};
 use crate::program::{Exit, Outcome, Program};
-use crate::run::StressError;
+use crate::runner::Runner;
 use cpl_syntax::ast::StmtKind;
-use std::cell::RefCell;
 use std::path::PathBuf;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -397,100 +396,44 @@ impl Judge {
         expected: Option<&str>,
         limit: Duration,
     ) -> std::io::Result<Judged> {
-        let answered = Answered {
-            judge: self,
-            solution,
-            expected,
-            outcome: RefCell::new(None),
-            failed: RefCell::new(None),
+        let roles = Roles {
+            solution: Runner::Process(solution.clone()),
+            brute: expected.map(|out| Runner::Answer(out.to_string())),
+            checker: match self {
+                Judge::Checker(checker) => Some(Runner::Process(checker.clone())),
+                _ => None,
+            },
+            interactor: match self {
+                Judge::Interactor(interactor, launch) => {
+                    Some((Runner::Process(interactor.clone()), *launch))
+                }
+                _ => None,
+            },
+            cold: None,
+            limit,
         };
-        let wrong = judge_case(&answered, input, limit).map_err(|e| {
-            answered
-                .failed
-                .take()
-                .unwrap_or_else(|| std::io::Error::other(e.0))
-        })?;
-        let outcome = answered
-            .outcome
-            .take()
+        let judged = roles
+            .judge(input, limit)
+            .map_err(|e| std::io::Error::other(e.0))?;
+        let outcome = (judged.solution)
+            .and_then(|ran| ran.cost)
             .ok_or_else(|| std::io::Error::other("no run"))?;
-        let verdict = wrong.map_or(Verdict::Accepted, |wrong| wrong.verdict);
+        let verdict = judged
+            .wrong
+            .map_or(Verdict::Accepted, |wrong| wrong.verdict);
         Ok(Judged { verdict, outcome })
     }
 }
 
-/// A case whose expected output is known: [`judge_case`] with that output
-/// as a brute that has already run.
-struct Answered<'a> {
-    judge: &'a Judge,
-    solution: &'a Program,
-    expected: Option<&'a str>,
-    outcome: RefCell<Option<Outcome>>,
-    failed: RefCell<Option<std::io::Error>>,
-}
-
-impl Answered<'_> {
-    fn keep<T>(&self, run: std::io::Result<T>) -> Result<T, StressError> {
-        run.map_err(|e| {
-            let said = StressError(e.to_string());
-            self.failed.replace(Some(e));
-            said
-        })
-    }
-}
-
-impl Sides for Answered<'_> {
-    fn brute(&self, _: &str, _: Duration) -> Result<Option<Ran>, StressError> {
-        Ok(self.expected.map(|out| Ran {
-            out: out.to_string(),
-            stop: None,
-        }))
-    }
-
-    fn solution(&self, input: &str, limit: Duration) -> Result<Ran, StressError> {
-        let (ran, outcome) = self.keep(run(self.solution, input, limit))?;
-        self.outcome.replace(Some(outcome));
-        Ok(ran)
-    }
-
-    fn check(
-        &self,
-        input: &str,
-        got: &str,
-        expected: Option<&str>,
-        limit: Duration,
-    ) -> Result<Option<Ruling>, StressError> {
-        match self.judge {
-            Judge::Checker(checker) => self
-                .keep(check(checker, input, got, expected, limit))
-                .map(Some),
-            _ => Ok(None),
-        }
-    }
-
-    fn interact(&self, input: &str, limit: Duration) -> Result<Option<Talked>, StressError> {
-        let Judge::Interactor(interactor, launch) = self.judge else {
-            return Ok(None);
-        };
-        let (talked, outcome) =
-            self.keep(interact(self.solution, interactor, *launch, input, limit))?;
-        self.outcome.replace(Some(outcome));
-        Ok(Some(talked))
-    }
-}
-
-/// Runs `program` on `input`: what it printed and why it stopped early.
-pub(crate) fn run(
-    program: &Program,
-    input: &str,
-    limit: Duration,
-) -> std::io::Result<(Ran, Outcome)> {
+/// Runs `program` on `input`: what it printed, why it stopped early, and
+/// what it cost.
+pub(crate) fn run(program: &Program, input: &str, limit: Duration) -> std::io::Result<Ran> {
     let outcome = program.run(input, limit)?;
-    let ran = Ran {
+    Ok(Ran {
         out: outcome.stdout.clone(),
         stop: failure(&outcome),
-    };
-    Ok((ran, outcome))
+        cost: Some(outcome),
+    })
 }
 
 /// Runs a testlib-style checker, `checker input output answer`, on `got`.
@@ -847,6 +790,7 @@ fn talked(ruling: Ruling, outcome: Outcome) -> (Talked, Outcome) {
         solution: Ran {
             out: outcome.stdout.clone(),
             stop: failure(&outcome),
+            cost: Some(outcome.clone()),
         },
         ruling,
         transcript: Transcript::default(),

@@ -21,9 +21,22 @@ pub(crate) struct Removed {
     pub respelled: bool,
     /// Named arguments that fill the positional holes after the positional ones.
     pub slots: &'static [&'static str],
+    /// The row is for a call whose first argument is an operation (`+`, `max`, a monoid).
+    pub op_first: bool,
 }
 
 pub(crate) const REMOVED: &[Removed] = &[
+    Removed {
+        name: "fold",
+        method: false,
+        arity: 2,
+        to: "{1}.fold({0})",
+        why: "`fold` is a method of the sequence, op last: `xs.fold(op)` (decision 550)",
+        kept: None,
+        respelled: true,
+        slots: &[],
+        op_first: true,
+    },
     Removed {
         name: "fold",
         method: true,
@@ -33,6 +46,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: true,
         slots: &["init"],
+        op_first: false,
     },
     Removed {
         name: "suffix_fold",
@@ -43,6 +57,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "bsearch_real",
@@ -53,6 +68,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "ternary_max_real",
@@ -63,6 +79,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "ternary_min_real",
@@ -73,6 +90,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "skip_while",
@@ -83,6 +101,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "det_real",
@@ -93,6 +112,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: Some(("eps", "1e-9")),
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "det_real",
@@ -103,6 +123,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "rank_real",
@@ -113,6 +134,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: Some(("eps", "1e-9")),
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "rank_real",
@@ -123,6 +145,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "inverse_real",
@@ -133,6 +156,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: Some(("eps", "1e-9")),
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "inverse_real",
@@ -143,6 +167,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "solve_real",
@@ -153,6 +178,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: Some(("eps", "1e-9")),
         respelled: false,
         slots: &[],
+        op_first: false,
     },
     Removed {
         name: "solve_real",
@@ -163,6 +189,7 @@ pub(crate) const REMOVED: &[Removed] = &[
         kept: None,
         respelled: false,
         slots: &[],
+        op_first: false,
     },
 ];
 
@@ -172,6 +199,20 @@ const PREFIX_EXCL: &str = "prefix_excl";
 /// Whether std removed `name`, so a `use` of it goes too.
 pub(crate) fn is_removed(name: &str) -> bool {
     name == PREFIX_EXCL || REMOVED.iter().any(|r| r.name == name && !r.respelled)
+}
+
+/// Whether `t` spells an operation value: an operator, `min`/`max`/`gcd`, or a monoid built in place.
+fn is_op_text(t: &str) -> bool {
+    const OPS: [&str; 11] = [
+        "+", "*", "^", "|", "&", "min", "max", "gcd", "lcm", "or", "and",
+    ];
+    OPS.contains(&t)
+        || t.starts_with("Monoid")
+        || t.starts_with("Semigroup(")
+        || t.starts_with("each(")
+        || t.contains(".monoid()")
+        || t.ends_with(".opt()")
+        || t.ends_with(".commutative()")
 }
 
 /// `to` with its holes filled; a hole followed by `.` gets parentheses unless it is an atom.
@@ -347,9 +388,12 @@ impl Checker<'_> {
                 (a.name.as_ref()).is_some_and(|n| r.slots.contains(&n.text.as_str()))
             };
             let unnamed = args.iter().filter(|a| a.name.is_none()).count();
+            let first = args.iter().find(|a| a.name.is_none());
+            let op_first = first.is_some_and(|a| is_op_text(self.text(a.value.span)));
             let Some(row) = REMOVED.iter().find(|r| {
                 r.name == name
                     && r.method == receiver.is_some()
+                    && (!r.op_first || op_first)
                     && r.arity == unnamed + args.iter().filter(|a| slotted(r, a)).count()
             }) else {
                 return false;
@@ -494,6 +538,15 @@ mod tests {
     #[test]
     fn rows_fill_their_holes() {
         let x = |t| (t, true);
+        let op_first = REMOVED
+            .iter()
+            .find(|r| r.name == "fold" && r.op_first)
+            .unwrap();
+        assert_eq!(
+            fill(op_first.to, None, &[x("+"), x("xs")], ""),
+            "xs.fold(+)"
+        );
+        assert!(is_op_text("max") && is_op_text("Affine.monoid()") && !is_op_text("xs"));
         let named = ", steps: 60";
         let ok = [x("lo"), x("hi"), x("ok")];
         assert_eq!(

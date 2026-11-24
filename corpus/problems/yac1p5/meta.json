@@ -7,11 +7,15 @@
   {"id": "4376501", "language": "CPP17", "result": "WA", "time": 0.019470119, "memory_kb": 6208.0, "file": "corpus/submissions/4376501.cpp"},
   {"id": "4376503", "language": "CPP17", "result": "WA", "time": 1.092328255, "memory_kb": 32940.0, "file": "corpus/submissions/4376503.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/yac1p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted submission (one RTE, three WA). orig.cpp is a written reference: an answer is 0 or 1, 1 exactly when the adjacent pairs of [l, r] share a positive integer meeting time, kept as root-set intersections in a segment tree; it matches the statement sample and a hop-by-hop simulation on random inputs with |s|, |v|, |a| <= 20."
 }

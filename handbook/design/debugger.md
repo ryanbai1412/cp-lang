@@ -23,9 +23,11 @@ qualities and suites are in `handbook/domains/debugger.md`.
    `InputSpec`; `gen.rs` draws cases from it with a seeded `Rng`. A `@gen`
    fn is run instead when the file has one; `choices.rs` records its random
    choices so it can be replayed and shrunk.
-3. **Run and judge.** `engine.rs` runs both sides, as compiled C++ or in
-   the interpreter; `judge.rs` compares tokens or calls the checker or the
-   interactor.
+3. **Run and judge.** `stress.rs` is the one front end `cpl stress` and the
+   browser call: it picks a `Runner` (runner.rs) per role, the VM for the
+   browser and `.cp` helpers or a native process for `.cpp`, `.py`,
+   executables and the built C++; `case.rs` `Roles::judge` compares tokens
+   or calls the checker or the interactor.
 4. **Shrink.** `shrink.rs` deletes and lowers parts of the failing case,
    keeping it valid for its `InputSpec`, while it still fails. The result
    is saved in `sum.tests/` so `cpl test` reruns it.
@@ -170,7 +172,7 @@ The rules are explained in `handbook/guidelines/debugging.md` and listed, with t
 | `crates/cpl-stress/src/spec.rs` | `InputSpec` from typed `read()`s: ranges, domains, records, tuples, `Perm`, graph and tree shapes, `@!multitest` |
 | `crates/cpl-stress/src/gen.rs`, `choices.rs` | random values for a spec; recorded choices so a `@gen` fn replays and shrinks |
 | `crates/cpl-stress/src/shrink.rs` | structural shrinking that keeps the input valid |
-| `crates/cpl-stress/src/engine.rs`, `judge.rs` | running both sides (compiled or in-process) and judging them (`@check`, `@interactor`) |
+| `crates/cpl-stress/src/stress.rs`, `runner.rs`, `case.rs`, `judge.rs` | the one front end, each role's runner (VM or native process), and judging a case (`@check`, `@interactor`) |
 | `crates/cpl-stress/src/run.rs`, `program.rs`, `cli.rs` | the stress loop, the parts found from decorators, `cpl stress` itself |
 | `crates/cpl-interp/src/trace.rs`, `trace/` | `TraceConfig`, the `Tracer` hooks, the step log, rendering, divergence |
 | `crates/cpl-interp/src/checkpoint.rs`, `replay.rs` | checkpoints and windows; rerunning one call with an edited fn |

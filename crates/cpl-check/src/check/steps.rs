@@ -139,6 +139,26 @@ impl Checker<'_> {
             && matches!(self.quietly(|c| c.infer(op)), Ty::Fn { .. })
     }
 
+    /// R02.1.3: a struct's name is a type, not an operation: `a.fold(MaxSub)` is
+    /// `a.map(MaxSub.of).fold(+)` (decision 472).
+    pub(super) fn type_name_as_op(&mut self, op: &Expr) -> bool {
+        let ExprKind::Name(n) = &op.kind else {
+            return false;
+        };
+        if self.local(n).is_some()
+            || !matches!(self.free_global(n).as_deref(), Some(Def::Struct { .. }))
+        {
+            return false;
+        }
+        let message = format!("`{n}` is a type, not an operation to fold with");
+        if let Some(diag) = self.error(codes::TYPE_MISMATCH, op.span, message) {
+            diag.help = Some(format!(
+                "fold one summary per element: `.map({n}.of).fold(+)` (decision 472)"
+            ));
+        }
+        true
+    }
+
     /// R07.9.2: `s.fold(f, init)` or `s.fold(f, init: a)` on a sequence is the seeded fold std
     /// spells `fold_from(init, f)`; the arity error carries that rewrite (removed.rs).
     pub(super) fn seeded_fold(&mut self, base_ty: &Ty, name: &Name, args: &[Arg]) -> Option<Ty> {

@@ -137,6 +137,9 @@ pub struct Projection {
     /// Its `law disjoint(..) = ..` as source: when two of its lends are
     /// apart. Without one they always conflict.
     pub law: Option<String>,
+    /// The parameters after `self` its result may borrow from: each
+    /// non-plain one, or those named in `lends(..)` (R05.6.1).
+    pub sources: Vec<Option<String>>,
 }
 
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

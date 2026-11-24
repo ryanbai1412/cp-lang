@@ -183,22 +183,6 @@ pub fn desc<T>(x: T) -> Desc<T> = Desc(x)
 pub trait Reversible:
     fn rev(self) -> Self = self
 
-/// `xs` folded left to right with `m`: `op(op(op(id, x0), x1), x2)`, so a non-commutative `m`
-/// sees elements in sequence order. `m` is anything `Monoid.of` accepts.
-///
-/// cost: \(O(n)\) calls of `op`
-/// empty: `fold(min, List<Int>()) == Int.MAX`
-/// traps: never (an `m` without a known identity is a compile-time error)
-/// example: `fold(+, [1, 2, 3]) == 6`
-/// example: `fold(+, 0..0) == 0`
-/// example: `fold(Affine.monoid(), [Affine(2, 0), Affine(1, 1)]).eval(5) == 11`
-pub fn fold<T, M, S: Seq<T>>(m: M, xs: S) -> T:
-    let k = Monoid<T>.of(m)
-    var acc = k.id
-    for x in xs:
-        acc = k.op(acc, x)
-    acc
-
 /// `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`; a plain power is `x ** k`.
 ///
 /// `op` is anything `Monoid.of` accepts, and `k = 0` gives its identity. Powers of one
@@ -248,7 +232,7 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// cost: \(O(1)\)
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `MaxSub.join(MaxSub.of(2), MaxSub.of(-1)).try_best == Some(2)`
-    /// example: `fold(MaxSub.monoid(), [MaxSub.of(v) for v in [2, -5, 3, 1]]).try_best == Some(4)`
+    /// example: `[MaxSub.of(v) for v in [2, -5, 3, 1]].fold(MaxSub.monoid()).try_best == Some(4)`
     pub fn join(a: MaxSub, b: MaxSub) -> MaxSub:
         if not a.has: return b
         if not b.has: return a
@@ -267,6 +251,13 @@ pub struct MaxSub(has: Bool, pub best: Int, pub total: Int, pub pre: Int, pub su
     /// traps: when `k < 0`
     /// example: `MaxSub.of(-3).scale(2).try_best == Some(-6)`
     /// example: `MaxSub.of(-3).scale(0).try_best == Some(0)`
+    /// The summary of the same elements in reverse order: the best prefix and suffix swap.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `(MaxSub.of(3) + MaxSub.of(-5)).reversed() == MaxSub.of(-5) + MaxSub.of(3)`
+    pub fn reversed(self) -> MaxSub = MaxSub(has, best, total, suf, pre)
+
     pub fn scale(self, k: Int) -> MaxSub:
         assert k >= 0
         if not has: self
@@ -397,7 +388,7 @@ pub struct Semigroup<T>(pub op: (T, T) -> T):
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `fold(Semigroup((a: Int, b: Int) => a - b).opt(), [Some(5), Some(2)]) == Some(3)`
+    /// example: `[Some(5), Some(2)].fold(Semigroup((a: Int, b: Int) => a - b).opt()) == Some(3)`
     pub fn opt(self) -> Monoid<?T> = op.opt()
 
 /// \(O(1)\) construction. Associative operation with identity and inverse (`inv`),
@@ -459,7 +450,7 @@ pub struct MinCount<T>(pub val: T, pub count: Int):
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `fold(MinCount.monoid(), [MinCount.of(v) for v in [3, 1, 1]]).count == 2`
+    /// example: `[MinCount.of(v) for v in [3, 1, 1]].fold(MinCount.monoid()).count == 2`
     pub fn monoid() -> Monoid<MinCount<T>> = Monoid(MinCount.zero, (a, b) => MinCount.join(a, b))
 
     /// The empty fold, `+`'s identity: the far end of `T` (as `Monoid.of(min)`) with count 0.
@@ -495,7 +486,7 @@ pub struct MaxCount<T>(pub val: T, pub count: Int):
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `fold(MaxCount.monoid(), [MaxCount.of(v) for v in [3, 1, 3]]).count == 2`
+    /// example: `[MaxCount.of(v) for v in [3, 1, 3]].fold(MaxCount.monoid()).count == 2`
     pub fn monoid() -> Monoid<MaxCount<T>> = Monoid(MaxCount.zero, (a, b) => MaxCount.join(a, b))
 
     /// The empty fold, `+`'s identity: the low end of `T` (as `Monoid.of(max)`) with count 0.
@@ -538,7 +529,7 @@ pub struct Affine<T: Mul>(pub a: T, pub b: T):
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `fold(Affine.monoid(), [Affine(1, 1), Affine(2, 0)]).eval(5) == 12`
+    /// example: `[Affine(1, 1), Affine(2, 0)].fold(Affine.monoid()).eval(5) == 12`
     pub fn monoid() -> Monoid<Affine<T>> = Monoid(Affine<T>.id(), (f, g) => Affine.then(f, g))
 
 @test
@@ -563,9 +554,9 @@ fn bare_operators_bring_their_identity():
 fn a_monoid_of_your_own_is_a_pair():
     let cat = Monoid<Str>("", (a, b) => a + b)
     assert laws_hold(cat, ["", "ab", "c"])
-    assert fold<Str>(cat, ["ab", "c", "de"]) == "abcde"
-    assert fold<Int>(+, [1, 2, 3]) == 6
-    assert fold<Int>(max, [1, 5, 3]) == 5
+    assert ["ab", "c", "de"].fold(cat) == "abcde"
+    assert [1, 2, 3].fold(+) == 6
+    assert [1, 5, 3].fold(max) == 5
     let xs = [12, 18, 30]
     assert xs.fold(gcd) == 6
     assert xs[1..].fold(gcd) == 6
@@ -644,7 +635,7 @@ fn max_sub_monoid_laws_and_kadane():
     assert laws_hold(MaxSub.monoid(), samples)
     assert MaxSub.zero.try_best == None
     let xs = [-3, 4, -1, 2, -5, 3, 2, -1]
-    let got = fold(MaxSub.monoid(), [MaxSub.of(x) for x in xs])
+    let got = [MaxSub.of(x) for x in xs].fold(MaxSub.monoid())
     var want = Int.MIN
     for l in 0..xs.len:
         var s = 0
@@ -722,8 +713,8 @@ pub trait Selective<T>: Idempotent<T>:
 ///
 /// cost: \(O(1)\) to build; each call costs the sum of its components
 /// traps: never
-/// example: `fold(each(+, max), [(1, 5), (2, 3)]) == (3, 5)`
-/// example: `fold(each(n: +, hi: max), [(n: 1, hi: 5), (n: 2, hi: 3)]).hi == 5`
+/// example: `[(1, 5), (2, 3)].fold(each(+, max)) == (3, 5)`
+/// example: `[(n: 1, hi: 5), (n: 2, hi: 3)].fold(each(n: +, hi: max)).hi == 5`
 pub fn each<Ms>(..ms: Ms) -> Each<Ms> = Each(ms)
 
 /// The ops of [`each`], one per component; a structure takes it through [`Monoid.of`].
@@ -774,7 +765,7 @@ pub const flip: FlipAction = FlipAction()
 ///
 /// cost: \(O(1)\) to make; each call is one `op` call or none
 /// traps: never
-/// example: `let f = (a: Int, b: Int) => a * 10 + b; fold(f.opt(), [Some(1), None, Some(2)]) == Some(12)`
+/// example: `let f = (a: Int, b: Int) => a * 10 + b; [Some(1), None, Some(2)].fold(f.opt()) == Some(12)`
 pub fn opt<T>(self: (T, T) -> T) -> Monoid<?T> =
     Monoid(None, (a: ?T, b: ?T) => if let x = a: (if let y = b: Some(self(x, y)) else: a) else: b)
 
@@ -790,3 +781,13 @@ fn pow_matches_repeated_op():
             aff = Affine.then(aff, Affine(2, 1))
         assert pow(3, k, op: *) == mul and pow(3, k, op: +) == total
         assert pow(Affine(2, 1), k, op: Affine.monoid()).eval(5) == aff.eval(5)
+
+impl Show for Each<Ms>:
+    /// How many ops it combines, as `each of n ops`.
+    ///
+    /// example: `"{each(+, max)}" == "each of 2 ops"`
+    fn show(e):
+        var k = 0
+        for _ in fields(e.ms): k += 1
+        "each of {k} ops"
+

@@ -2,10 +2,11 @@ use super::ir::*;
 use crate::value::Value;
 use cpl_diag::Span;
 use cpl_ir::{
-    Arg, AssignOp, BinOp, Block, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId, Place,
+    Arg, AssignOp, BinOp, Block, Builtin, CmpOp, Expr, ExprKind, FnId, Iter, Local, LoopId, Place,
     PlaceKind, Program, Slot, Stmt, Ty, UnOp,
 };
 
+mod alias;
 mod apply;
 mod assign;
 mod assign_v;
@@ -528,154 +529,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
     }
 
-    pub(super) fn mut_fn_args_alias_free(&self, fn_id: FnId, args: &'p [Arg]) -> bool {
-        let f = &self.program.fns[fn_id];
-        fn place_root_global(p: &Place) -> Option<cpl_ir::GlobalId> {
-            match &p.kind {
-                PlaceKind::Global(g) => Some(*g),
-                PlaceKind::Local(_) => None,
-                PlaceKind::Index(base, _) | PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
-                    place_root_global(base)
-                }
-            }
-        }
-        fn place_may_touch_globals(p: &Place, globals: &[cpl_ir::GlobalId]) -> bool {
-            match &p.kind {
-                PlaceKind::Global(g) => globals.contains(g),
-                PlaceKind::Local(_) => false,
-                PlaceKind::Index(base, idxs) => {
-                    place_may_touch_globals(base, globals)
-                        || idxs.iter().any(|e| expr_may_touch_globals(e, globals))
-                }
-                PlaceKind::Field(base, _) | PlaceKind::Some(base) => {
-                    place_may_touch_globals(base, globals)
-                }
-            }
-        }
-        fn expr_may_touch_globals(e: &Expr, globals: &[cpl_ir::GlobalId]) -> bool {
-            match &e.kind {
-                ExprKind::Unit
-                | ExprKind::Int(_)
-                | ExprKind::Float(_)
-                | ExprKind::Bool(_)
-                | ExprKind::Char(_)
-                | ExprKind::Str(_)
-                | ExprKind::None
-                | ExprKind::Local(_)
-                | ExprKind::DomainVal(_)
-                | ExprKind::DomainLen(_)
-                | ExprKind::DomainLo(_)
-                | ExprKind::Error => false,
-                ExprKind::Global(g) => globals.contains(g),
-                ExprKind::Some(x)
-                | ExprKind::Unary(_, x)
-                | ExprKind::Cast(_, x)
-                | ExprKind::Field(x, _)
-                | ExprKind::IsVariant(x, _)
-                | ExprKind::Payload(x, _, _)
-                | ExprKind::IsSome(x)
-                | ExprKind::Unwrap(x, _) => expr_may_touch_globals(x, globals),
-                ExprKind::Binary(_, a, b)
-                | ExprKind::Cmp(_, a, b)
-                | ExprKind::Range { lo: a, hi: b } => {
-                    expr_may_touch_globals(a, globals) || expr_may_touch_globals(b, globals)
-                }
-                ExprKind::RangeCheck { value, lo, hi, .. } => {
-                    expr_may_touch_globals(value, globals)
-                        || lo
-                            .as_deref()
-                            .is_some_and(|x| expr_may_touch_globals(x, globals))
-                        || hi
-                            .as_deref()
-                            .is_some_and(|x| expr_may_touch_globals(x, globals))
-                }
-                ExprKind::If(c, t, f) => {
-                    expr_may_touch_globals(c, globals)
-                        || expr_may_touch_globals(t, globals)
-                        || expr_may_touch_globals(f, globals)
-                }
-                ExprKind::Index(b, idxs) => {
-                    expr_may_touch_globals(b, globals)
-                        || idxs.iter().any(|x| expr_may_touch_globals(x, globals))
-                }
-                ExprKind::Tuple(xs) | ExprKind::Variant(_, xs) | ExprKind::Builtin(_, xs) => {
-                    xs.iter().any(|x| expr_may_touch_globals(x, globals))
-                }
-                ExprKind::Do(blk) => block_may_touch_globals(blk, globals),
-                ExprKind::Call(..)
-                | ExprKind::CallExpr(..)
-                | ExprKind::Closure(..)
-                | ExprKind::Mutate(..)
-                | ExprKind::Sort(..)
-                | ExprKind::Read(..)
-                | ExprKind::Parse(..)
-                | ExprKind::Print(..)
-                | ExprKind::Debug(..)
-                | ExprKind::Format(..)
-                | ExprKind::Fill(..)
-                | ExprKind::MutSlice(..) => true,
-            }
-        }
-        fn block_may_touch_globals(b: &Block, globals: &[cpl_ir::GlobalId]) -> bool {
-            b.stmts.iter().any(|s| match s {
-                Stmt::Let(_, init) => init
-                    .as_ref()
-                    .is_some_and(|e| expr_may_touch_globals(e, globals)),
-                Stmt::Assign(place, _, rhs) => {
-                    place_may_touch_globals(place, globals) || expr_may_touch_globals(rhs, globals)
-                }
-                Stmt::Expr(e) | Stmt::Give(e) => expr_may_touch_globals(e, globals),
-                Stmt::Return(e) => e
-                    .as_ref()
-                    .is_some_and(|e| expr_may_touch_globals(e, globals)),
-                Stmt::If(c, t, f) => {
-                    expr_may_touch_globals(c, globals)
-                        || block_may_touch_globals(t, globals)
-                        || block_may_touch_globals(f, globals)
-                }
-                Stmt::While(_, c, body) => {
-                    expr_may_touch_globals(c, globals) || block_may_touch_globals(body, globals)
-                }
-                Stmt::Assert { cond, message, .. } => {
-                    expr_may_touch_globals(cond, globals)
-                        || message
-                            .as_ref()
-                            .is_some_and(|e| expr_may_touch_globals(e, globals))
-                }
-                Stmt::Break(_) | Stmt::Continue(_) | Stmt::Trap(..) => false,
-                Stmt::For(..) | Stmt::DefDomain { .. } | Stmt::DefDomainFromVal { .. } => true,
-            })
-        }
-
-        let mut mut_globals = Vec::new();
-        for arg in args {
-            if let Arg::Mut(place) = arg {
-                if let Some(g) = place_root_global(place) {
-                    mut_globals.push(g);
-                }
-            }
-        }
-        for (i, arg) in args.iter().enumerate() {
-            if !matches!(f.locals[i].ty, Ty::Fn(..)) {
-                continue;
-            }
-            let Arg::Value(ae) = arg else {
-                return false;
-            };
-            let ExprKind::Closure(cid) = &ae.kind else {
-                return false;
-            };
-            let cdef = &self.program.closures[*cid];
-            if cdef.captures.iter().any(|c| c.by_ref) {
-                return false;
-            }
-            if !mut_globals.is_empty() && block_may_touch_globals(&cdef.body, &mut_globals) {
-                return false;
-            }
-        }
-        true
-    }
-
     pub(super) fn try_compile_call_closure(
         &mut self,
         callee: &'p Expr,
@@ -686,52 +539,29 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let Ty::Fn(params, _) = &callee.ty else {
             return None;
         };
-        if args.len() != params.len() || !args.iter().all(|a| matches!(a, Arg::Value(_))) {
+        // A `mut` param's type is `Ty::Mut` of the type the callee's slot has.
+        let tys: Vec<&'p Ty> = (params.iter())
+            .map(|t| match t {
+                Ty::Mut(of) => &**of,
+                t => t,
+            })
+            .collect();
+        let has_mut = args.iter().any(|a| matches!(a, Arg::Mut(_)));
+        // A fn value passed next to a `mut` arg may reach the lent place.
+        if args.len() != params.len()
+            || (args.iter().zip(params))
+                .any(|(a, p)| matches!(a, Arg::Mut(_)) != matches!(p, Ty::Mut(_)))
+            || (has_mut && tys.iter().any(|t| matches!(t, Ty::Fn(..))))
+        {
             return None;
         }
-        let mut ni = 0usize;
-        let mut nv = 0usize;
-        for ty in params {
-            if ScalarKind::of_ty(ty, self.program).is_some() {
-                ni += 1;
-            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
-                ni += 2;
-            } else {
-                nv += 1;
-            }
-        }
-        if ni > 8 || nv > 8 {
-            return None;
-        }
+        self.mix_arg_plan(&tys, args)?;
+        let muts = (args.iter().enumerate())
+            .filter(|(_, a)| matches!(a, Arg::Mut(_)))
+            .fold(0u16, |m, (k, _)| m | 1 << k);
         let callee_v = self.compile_expr_v(callee);
-        let mut i_args = Vec::with_capacity(ni);
-        let mut v_args = Vec::with_capacity(nv);
-        for (ty, a) in params.iter().zip(args.iter()) {
-            let Arg::Value(ae) = a else { unreachable!() };
-            if ScalarKind::of_ty(ty, self.program).is_some() {
-                i_args.push(self.compile_expr_i(ae));
-            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
-                let (v, s) = self.compile_expr_opt_i(ae);
-                i_args.push(v);
-                i_args.push(s);
-            } else {
-                v_args.push(self.compile_expr_v(ae));
-            }
-        }
-        let arg_base_i = self.next_i;
-        for r in i_args {
-            let slot = self.alloc_i();
-            if slot != r {
-                self.emit(Op::MoveI { dst: slot, src: r }, span);
-            }
-        }
-        let arg_base_v = self.next_v;
-        for r in v_args {
-            let slot = self.alloc_v();
-            if slot != r {
-                self.emit(Op::MoveV { dst: slot, src: r }, span);
-            }
-        }
+        let mix = self.compile_mix_args(&tys, args, span)?;
+        let (arg_base_i, arg_base_v) = (mix.arg_base_i, mix.arg_base_v);
         let (dst_i, dst_v, dst_some) = match ret_mode {
             CallRet::Unit => (0, 0, 0),
             CallRet::I => (self.alloc_i(), 0, 0),
@@ -747,9 +577,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst_v,
                 dst_some,
                 ret_mode,
+                muts,
             },
             span,
         );
+        self.emit_mix_writebacks(mix, span);
         Some((dst_i, dst_v, dst_some))
     }
 
@@ -1033,14 +865,22 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 ExprKind::Binary(op, a, b) => {
                     let safe_op = match op {
                         BinOp::Div | BinOp::Rem => matches!(b.kind, ExprKind::Int(v) if v != 0),
-                        BinOp::Shl | BinOp::Shr => {
-                            matches!(b.kind, ExprKind::Int(v) if (0..64).contains(&v))
-                        }
+                        // A shift by `x % m` is in 0..64: `%` is Euclidean.
+                        BinOp::Shl | BinOp::Shr => match &b.kind {
+                            ExprKind::Int(v) => (0..64).contains(v),
+                            ExprKind::Binary(BinOp::Rem, _, m) => {
+                                matches!(m.kind, ExprKind::Int(m) if (1..=64).contains(&m))
+                            }
+                            _ => false,
+                        },
                         _ => true,
                     };
                     safe_op && simple_expr(a, f, program) && simple_expr(b, f, program)
                 }
                 ExprKind::Cmp(_, a, b) => simple_expr(a, f, program) && simple_expr(b, f, program),
+                ExprKind::Builtin(Builtin::Popcount | Builtin::Ctz | Builtin::Clz, args) => {
+                    args.len() == 1 && simple_expr(&args[0], f, program)
+                }
                 ExprKind::Tuple(fs) => fs.len() == 1 && simple_expr(&fs[0], f, program),
                 ExprKind::Index(base, indices) => {
                     let container_ok = match &base.ty {

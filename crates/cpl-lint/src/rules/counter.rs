@@ -5,9 +5,10 @@
 //! labelled so the fact table keeps the finding only on a `Map` or
 //! `HashMap` of `Int` (`typed.rs`).
 
+use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, walk_stmt, Visitor};
-use crate::{File, Finding, COUNTER_BY_MAP};
+use crate::{is_std, File, Finding, COUNTER_BY_MAP};
 use cpl_diag::Diagnostic;
 use cpl_syntax::ast::{AssignOp, BinOp, Expr, ExprKind, Pattern, PatternKind, Stmt, StmtKind};
 use std::collections::HashSet;
@@ -18,6 +19,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Counts<'a> {
         src: &'a str,
         base: u32,
+        facts: Option<&'a Facts>,
         seen: HashSet<String>,
         out: Vec<Finding>,
     }
@@ -147,13 +149,13 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
             let ExprKind::Call { callee, args } = &got.kind else {
                 return;
             };
-            let ExprKind::Field { base, name: get } = &callee.kind else {
+            let ExprKind::Field { base, .. } = &callee.kind else {
                 return;
             };
             let text = |e: &Expr| e.span.shift(self.base).text(self.src);
             let same_key =
                 matches!(&args[..], [a] if a.name.is_none() && text(&a.value) == text(key));
-            if get.text != std_fn::GET
+            if !is_std(self.facts, got.span.shift(self.base), std_fn::GET)
                 || name(base) != Some(map)
                 || int(zero) != Some(0)
                 || !same_key
@@ -185,6 +187,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = Counts {
         src: file.src,
         base: 0,
+        facts: file.facts,
         seen: HashSet::new(),
         out: Vec::new(),
     };

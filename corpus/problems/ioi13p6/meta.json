@@ -8,10 +8,14 @@
   {"id": "4688844", "language": "CPP17", "result": "AC", "time": 87.183152661, "memory_kb": 228992.0, "file": "corpus/submissions/4688844.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi13p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Grader-only (init/update/calculate): orig.cpp is accepted submission 4688844 (corpus/submissions/4688844.cpp) with a main reading R C N, then N actions (1 P Q K updates, 2 P Q U V questions, the official grader's layout), printing calculate per question; it agrees with a scan-every-cell brute on 200 random cases."
 }

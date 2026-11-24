@@ -136,6 +136,7 @@ cco18p2
 cco18p4
 cco18p5
 cco18p6
+cco19p1
 cco19p2
 cco19p3
 cco19p4
@@ -638,6 +639,7 @@ ioi17p3
 ioi17p4
 ioi18p1
 ioi18p2
+ioi18p3
 ioi18p4
 ioi19p1
 ioi19p2
@@ -651,6 +653,10 @@ ioi21p4
 ioi22p2
 ioi22p4
 ioi22p5
+ioi25_festival
+ioi25_migrations
+ioi25_obstacles
+ioi25_souvenirs
 ioi94p1
 ioi99p2
 ioi99p6
@@ -794,6 +800,7 @@ noip22p2
 noip22p3
 noip22p4
 noip99p2
+occ19g4
 oly20practice139
 oly23practice5
 rpeng2

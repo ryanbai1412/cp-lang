@@ -235,7 +235,19 @@ pub struct FlatMap<V>:
     /// traps: never
     /// example: `var a = FlatMap(0); a.set(1, 10); var b = FlatMap(0); b.set(1, 5); b.set(2, 7); a.absorb(mut b, join: (x, y) => x + y); a.get(1) == Some(15) and a.get(2) == Some(7) and b.is_empty`
     /// example: `var a = FlatMap(0); a.set(1, 10); var b = FlatMap(0); b.set(1, 5); a.absorb(mut b); a.get(1) == Some(5)`
+    /// example: `var a = FlatMap(0); a.set(1, 10); var b = FlatMap(0); b.set(1, 5); b.set(2, 7); a.absorb(mut b); a.get(1) == Some(5) and a.len == 2 and b.is_empty`
     pub fn absorb(mut self, mut other: FlatMap<V>, join: ?((V, V) -> V) = None):
+        if live < other.live:
+            let mine = self.take()
+            self = other.take()
+            for i in 0..mine.state.len:
+                if mine.state[i] == 1:
+                    let k = mine.ks[i]
+                    let v = mine.vs[i]
+                    if let cur = self.get(k):
+                        if let f = join: self.set(k, f(v, cur))
+                    else: self.set(k, v)
+            return
         for i in 0..other.state.len:
             if other.state[i] == 1:
                 let k = other.ks[i]
@@ -344,7 +356,14 @@ pub struct Counter<K, V: Add = Int>:
     /// example: `var c: Counter<Char, Int> = Counter(); c.add('x', 2); c['x'] == 2`
     /// example: `var c: Counter<Char, Int> = Counter(); c.add('x', 2); c.add('x', -2); c.len == 0`
     pub fn add(mut self, k: K, delta: V):
-        self.set(k, self.get(k) + delta)
+        if init != V(0):
+            self.set(k, self.get(k) + delta)
+            return
+        // `+=` starts an absent key at `V(0)`, which is `init` here: one lookup.
+        let p = mut m[k]
+        p += delta
+        let gone = p == init
+        if gone: m.remove(k)
 
     /// Remove `k` and return its previous value, or `None` if absent.
     ///
@@ -394,7 +413,12 @@ pub struct Counter<K, V: Add = Int>:
     /// empty: `var a = Counter.of(['x']); var b: Counter<Char, Int> = Counter(); a.absorb(mut b); a['x'] == 1 and a.len == 1`
     /// traps: never (overflow wraps in release, traps in debug)
     /// example: `var a = Counter.of(['x', 'y']); var b = Counter.of(['y', 'z']); a.absorb(mut b); a['y'] == 2 and a.len == 3 and b.len == 0`
+    /// example: `var a = Counter.of(['x']); var b = Counter.of(['x', 'y', 'z']); a.absorb(mut b); a['x'] == 2 and a.len == 3 and b.len == 0`
     pub fn absorb(mut self, mut other: Counter<K, V>):
+        if m.len < other.m.len:
+            let mine = self.take()
+            self = other.take()
+            other = mine
         for (k, v) in other.m.items:
             if let cur = m.get(k): self.set(k, cur + v)
             else: self.set(k, v)

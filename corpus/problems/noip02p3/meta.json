@@ -3,13 +3,17 @@
  "source": "noip",
  "submissions": [
   {"id": "5096403", "language": "CPP17", "result": "WA", "time": 0.01699527, "memory_kb": 3560.0, "file": "corpus/submissions/5096403.cpp"},
-  {"id": "5096408", "language": "CPP17", "result": "AC", "time": 0.017500734, "memory_kb": 3592.0, "file": "corpus/submissions/5096408.cpp"}
+  {"id": "5096408", "language": "CPP17", "result": "AC", "time": 0.017500734, "memory_kb": 3592.0, "file": null}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/noip02p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "5096408 passed the judge's data but counts the balls behind the car when K >= H (10.0 2.0 1.0 1.0 20.0 20: it prints 19, the answer is 3), so it is no reference; its file is gone and this record stays. orig.cpp is its interval test with balls behind the car excluded, checked against the sample and an exact-decimal brute of the time windows."
 }

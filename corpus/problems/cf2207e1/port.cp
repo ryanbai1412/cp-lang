@@ -18,12 +18,11 @@ if (0..n - 1).any(i => a[i] < a[i + 1]) or (0..n).any(i => a[i] < n - i - 1 or a
     print("NO")
     return
 
-let bounds = [n] + a
 var b: [0..n]Int = 0
 var stk: List<Int> = []
 var next_val = 0
 for i in (0..=n).rev:
-    let cur = bounds[i]
+    let cur = if i == 0: n else: a[i - 1]
     while next_val <= cur:
         stk.push(next_val)
         next_val += 1

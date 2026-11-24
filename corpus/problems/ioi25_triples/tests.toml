@@ -1,0 +1,109 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+# Part I: the statement's sample, then gen.py; Part II: the six subtasks' (M, K), judged by checker.py.
+
+[[case]]
+input = "1\n7\n4 1 4 3 2 6 1\n"
+
+[[case]]
+input = "1\n3\n1 1 2\n"
+
+[[case]]
+input = "2\n20 30\n"
+
+[[case]]
+input = "2\n500 2000\n"
+
+[[case]]
+input = "2\n5000 50000\n"
+
+[[case]]
+input = "2\n30000 700000\n"
+
+[[case]]
+input = "2\n100000 2000000\n"
+
+[[case]]
+input = "2\n200000 12000000\n"
+
+[[case]]
+seed = 1
+size = 8
+
+[[case]]
+seed = 2
+size = 8
+
+[[case]]
+seed = 3
+size = 12
+
+[[case]]
+seed = 4
+size = 12
+
+[[case]]
+seed = 5
+size = 20
+
+[[case]]
+seed = 6
+size = 20
+
+[[case]]
+seed = 7
+size = 40
+
+[[case]]
+seed = 8
+size = 40
+
+[[case]]
+seed = 9
+size = 100
+
+[[case]]
+seed = 10
+size = 100
+
+[[case]]
+seed = 11
+size = 300
+
+[[case]]
+seed = 12
+size = 1000
+
+[[case]]
+seed = 13
+size = 5000
+
+[[case]]
+seed = 14
+size = 30000
+
+[[case]]
+seed = 15
+size = 200000
+
+[[case]]
+seed = 16
+size = 200000
+
+[[case]]
+seed = 17
+size = 200000
+
+[[case]]
+seed = 18
+size = 200000
+
+[[case]]
+seed = 19
+size = 200000
+
+[[case]]
+seed = 20
+size = 200000
+
+[[case]]
+args = ["--max"]

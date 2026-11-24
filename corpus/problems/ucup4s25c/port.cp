@@ -15,7 +15,8 @@ use std.marks.{Interner}
 @!multitest
 let m: 1..=200_000 = read()
 var verts = Interner<(Int, Int)>()
-var raw_edges: List<(Int, Int)> = []
+type Vert = 0..1_200_000  // at most 6m interned pairs
+var raw_edges: List<(Vert, Vert)> = []
 
 for _ in 0..m:
     let (a, b, c): (1..=200_000, 1..=200_000, 1..=200_000) = read()
@@ -23,13 +24,12 @@ for _ in 0..m:
         raw_edges.push((verts.id((x, y)), verts.id((y, z))))
 
 domain V = verts.len
-let edges = [(V(u), V(v)) for (u, v) in raw_edges]
-let adj = Graph.directed(edges)
+let adj = Graph.directed([(V(u), V(v)) for (u, v) in raw_edges])
 let (domain C, comp) = scc(adj)
 var rep: [C]?V = None
 for u in V: rep[comp[u]] ??= u
 let roots = [u for c in C if let u = rep[c]]
 let dist = bfs(u => [v for v in adj[u] if comp[v] == comp[u]], roots)
 
-let bad = edges.any((u, v) => comp[u] == comp[v] and dist[v]! % 3 != (dist[u]! + 1) % 3)
+let bad = V.any(u => adj[u].any(v => comp[u] == comp[v] and dist[v]! % 3 != (dist[u]! + 1) % 3))
 print(yes(bad, answers: ("yes", "no")))

@@ -37,7 +37,7 @@ impl Database {
             };
             ctx.check_item(index)
         };
-        let facts = crate::Facts::from_checks(analysis.revision, &[(item.offset, &*check)]);
+        let facts = crate::Facts::from_checks(&analysis, &[(item.offset, &*check)]);
         Some(Arc::new(facts))
     }
 }

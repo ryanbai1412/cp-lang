@@ -16,19 +16,30 @@ let (n, m, a, b, c): (2..=1e5, 1..=2e5, 0..=10, 0..=1e6, 0..=1e6) = read()
 domain Station = 1..=n
 domain Train = 0..=m  // train m is the dummy 1 -> 1 at time 0
 let given: [0..m](u: Station, v: Station, s: 0..=1000, e: 0..=1000) = read()
-let trains = [Train] i => if i.ord < m: given[i.ord] else: (u: Station.first!, v: Station.first!, s: 0, e: 0)
+let trains = [Train] i => if i.ord < m: given[i.ord] else: (
+    u: Station.first!,
+    v: Station.first!,
+    s: 0,
+    e: 0,
+)
 
 var leaving = [Station] _ => LiChao(min, over: 0..=1000)
 var after: [Train]?Int = None  // the least cost to finish once train i arrives
 // latest first, departures before arrivals at the same time
-let events = [(-trains[i].s, false, i) for i in Train] + [(-trains[i].e, true, i) for i in Train]
-for (_, arrival, i) in events.sorted():
-    let t = trains[i]
-    if not arrival:
+var departs: [0..=1000]List<Train> = []
+var arrives: [0..=1000]List<Train> = []
+for i in Train:
+    departs[trains[i].s].push(i)
+    arrives[trains[i].e].push(i)
+for time in (0..=1000).rev:
+    for i in departs[time]:
+        let t = trains[i]
         if let cost = after[i]:
             leaving[t.u].add(Line(-2 * a * t.s, a * t.s * t.s + b * t.s + c + cost))
-    elif t.v == Station.last:
-        after[i] = t.e
-    elif let wait = leaving[t.v].at(t.e):
-        after[i] = wait + a * t.e * t.e - b * t.e
+    for i in arrives[time]:
+        let t = trains[i]
+        if t.v == Station.last:
+            after[i] = t.e
+        elif let wait = leaving[t.v].at(t.e):
+            after[i] = wait + a * t.e * t.e - b * t.e
 print(after[Train(m)]!)

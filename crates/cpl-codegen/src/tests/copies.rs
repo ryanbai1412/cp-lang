@@ -326,6 +326,36 @@ fn a_field_a_literal_reads_before_it_is_reset_moves_in() {
 }
 
 #[test]
+fn a_dead_field_moves_into_a_literal_whatever_its_type() {
+    let src = |reset: &str| {
+        format!(
+            "struct Tree:\n    xs: List<Int>\n    fn new() -> Tree = Tree(xs: [])\n\nstruct Bag:\n    ids: List<-2_147_483_648..=2_147_483_647>\n    t: Tree\n\n    fn take(mut self) -> Bag:\n        let out = Bag(ids, t)\n{reset}        out\n\nvar b = Bag(ids: [1, 2], t: Tree.new())\nlet c = b.take()\nprint(c.ids.len + c.t.xs.len, b.ids.len)\n"
+        )
+    };
+    let moved = cpp(&src("        ids = []\n        t = Tree.new()\n"));
+    assert!(
+        moved.contains("Bag{std::move(self.ids), std::move(self.t)}"),
+        "{moved}"
+    );
+    let read = cpp(concat!(
+        "struct Tree:\n    xs: List<Int>\n    fn new() -> Tree = Tree(xs: [])\n",
+        "struct Bag:\n    ids: List<-2_147_483_648..=2_147_483_647>\n    t: Tree\n",
+        "var ids: List<-2_147_483_648..=2_147_483_647> = [1, 2]\n",
+        "var t = Tree.new()\n",
+        "fn peek() -> Int = ids.len + t.xs.len\n",
+        "let out = Bag(ids, t)\n",
+        "print(peek())\n",
+        "ids = []\n",
+        "t = Tree.new()\n",
+        "print(out.ids.len + out.t.xs.len, peek())\n",
+    ));
+    assert!(
+        read.contains("Bag{ids, t}"),
+        "peek reads both before the reset: {read}"
+    );
+}
+
+#[test]
 fn a_get_of_a_stored_field_or_an_element_of_one_lends_it() {
     let out = cpp("struct H:
     xs: List<Int>
@@ -352,4 +382,98 @@ print(t)
         out.contains("inline std::vector<ll> H_fresh(const H& self)"),
         "{out}"
     );
+}
+
+#[test]
+fn a_returned_literal_moves_the_parts_of_a_dead_local() {
+    let out = cpp(concat!(
+        "struct S: pub a: List<Int>\n",
+        "struct T:\n    pub a: List<Int>\n    pub n: Int\n",
+        "fn f() -> S:\n    var s = S([0 for _ in 0..10])\n    s.a.push(1)\n    S(s.a)\n",
+        "fn g() -> S:\n    let st = [(1, [0 for _ in 0..10])]\n    S(st[0].1)\n",
+        "fn h() -> List<Int>:\n    var s = S([0 for _ in 0..10])\n    s.a.push(1)\n    s.a\n",
+        "fn kept(s: S) -> S = S(s.a)\n",
+        "struct U:\n    pub a: List<Int>\n    pub b: List<Int>\n",
+        "fn both() -> U:\n    var u = U([0 for _ in 0..10], [1 for _ in 0..10])\n    u.a[0] = 5\n    U(u.a, u.b)\n",
+        "fn twice() -> T:\n    var s = S([0 for _ in 0..10])\n    s.a.push(1)\n    T(s.a, s.a.len)\n",
+        "print(f().a.len, g().a.len, h().len, kept(f()).a.len, twice().a.len + twice().n, both().b.len)\n",
+    ));
+    assert!(out.contains("return S{std::move(s.a)};"), "{out}");
+    assert!(out.contains("return S{std::move(std::get<1>("), "{out}");
+    assert!(out.contains("return std::move(s.a);"), "{out}");
+    assert!(
+        out.contains("return U{std::move(u.a), std::move(u.b)};"),
+        "{out}"
+    );
+    assert!(
+        out.contains("return S{s.a};"),
+        "a parameter is the caller's: {out}"
+    );
+    assert!(out.contains("T{s.a, "), "another item reads `s`: {out}");
+}
+
+const HANDED_OUT: &str = "struct S(xs: List<Int>, k: Int)
+fn tail_some(n: Int) -> ?(Int, List<Int>):
+    var x = [n]
+    x.push(1)
+    Some((n, x))
+fn early_some(n: Int) -> ?(Int, List<Int>):
+    var x = [n]
+    x.push(1)
+    if n > 5: return Some((n, x))
+    None
+fn tail_struct(n: Int) -> S:
+    var xs = [n]
+    xs.push(2)
+    S(xs, n)
+fn tail_tuple(n: Int) -> (List<Int>, List<Int>):
+    var p = [n]
+    var q = [n, n]
+    p.push(1)
+    (p, q)
+let n: Int = read()
+print(tail_some(n)!.1, early_some(n + 6)!.1, tail_struct(n).xs, tail_tuple(n).0)
+let (y, z) = [1, 2, 3].partition(v => v > n)
+print(y, z)
+print(yes([2, 4].partition(x => x % 2 == 0) == ([2, 4], [])))
+";
+
+/// The C++ lines that build a tuple or struct of lists from names.
+fn built_from_names(cpp: &str) -> Vec<&str> {
+    cpp.lines()
+        .filter(|l| l.contains("std::vector<ll>") && (l.contains("{") && l.contains("}")))
+        .filter(|l| l.contains("return ") || l.contains("> t"))
+        .filter(|l| l.contains("std::tuple<") || l.contains(" S{"))
+        .collect()
+}
+
+#[test]
+fn a_return_moves_each_local_it_is_the_last_use_of() {
+    let cpp = cpp(HANDED_OUT);
+    // `Some((n, x))`, as a tail and as an early `return`.
+    assert_eq!(cpp.matches("{n_2, std::move(x)}").count(), 2, "{cpp}");
+    assert!(cpp.contains("return S{std::move(xs), n_2};"), "{cpp}");
+    assert!(cpp.contains("{std::move(p), std::move(q)};"), "{cpp}");
+}
+
+#[test]
+fn an_inlined_block_moves_its_own_lets_into_the_tuple_it_gives() {
+    let cpp = cpp(HANDED_OUT);
+    let built = built_from_names(&cpp);
+    assert!(!built.is_empty(), "{cpp}");
+    for line in built {
+        let items = line.rsplit_once('{').map_or("", |(_, rest)| rest);
+        for item in items.trim_end_matches(['}', ')', ';']).split(", ") {
+            assert!(
+                item.starts_with("std::move(") || !item.starts_with('t') || item == "true",
+                "{line}"
+            );
+        }
+    }
+}
+
+#[test]
+fn explain_lists_no_copy_for_a_value_moved_out() {
+    let copies = crate::explain_copies(&super::lower(HANDED_OUT));
+    assert!(copies.is_empty(), "{copies:?}");
 }

@@ -30,7 +30,7 @@ int128 = false
 time_ms = 2000
 memory_mb = 256
 release_checks = []          # e.g. ["ranges", "overflow", "reads"]
-isa = "x86-64"               # later: "avx2" enables target pragmas
+isa = "x86-64"               # or "avx2": target pragmas (Rjudge.9)
 answers = ["YES", "NO"]
 ```
 
@@ -45,3 +45,8 @@ answers = ["YES", "NO"]
   feeds `cpl bench`. (Rjudge.7)
 - Local release runs build with the profile's flags and run under its
   stack (`ulimit -s`), so judge-only crashes reproduce locally. (Rjudge.8)
+- `isa = "avx2"` says the judge's CPUs have AVX2. The C++'s first pragma
+  then asks for `optimize("O3,unroll-loops")` as well as no FMA, since -O2
+  alone never vectorises a loop whose length is known only at run time,
+  and `#pragma GCC target("avx2")` follows the includes. `x86-64`, the
+  default, emits neither. (Rjudge.9)

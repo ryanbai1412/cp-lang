@@ -5,6 +5,7 @@ let wire = Wire()
 let (n, m) = read<(2..=2e5, 1..=4e5)>()
 domain V = 1..=n
 let g = Graph.undirected(read<[m](u: V, v: V)>())
+let _maria_seed = read<Int>()
 let home = V.first!
 var friend: [V]Bool = false
 for v in g.next(home): friend[v] = true

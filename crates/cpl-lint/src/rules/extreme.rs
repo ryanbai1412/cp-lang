@@ -3,9 +3,10 @@
 //! The list is labelled so the fact table keeps the finding only on a
 //! `List` or an array (`typed.rs`).
 
+use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
-use crate::{File, Finding, SORT_FOR_EXTREME};
+use crate::{is_std, File, Finding, SORT_FOR_EXTREME};
 use cpl_diag::{Diagnostic, Fix};
 use cpl_syntax::ast::{Arg, Expr, ExprKind};
 
@@ -13,6 +14,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     struct Extremes<'a> {
         src: &'a str,
         base: u32,
+        facts: Option<&'a Facts>,
         out: Vec<Finding>,
     }
     impl Visitor for Extremes<'_> {
@@ -21,18 +23,23 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
                 ExprKind::Index { base, indices } if matches!(&indices[..], [i] if matches!(i.kind, ExprKind::Int(0))) => {
                     (&**base, std_fn::MIN)
                 }
-                ExprKind::Unwrap(inner) => match &unparen(inner).kind {
-                    ExprKind::Field { base, name } if name.text == std_fn::FIRST => {
+                ExprKind::Unwrap(inner) => {
+                    let end = unparen(inner);
+                    let ExprKind::Field { base, .. } = &end.kind else {
+                        return;
+                    };
+                    let at = end.span.shift(self.base);
+                    if is_std(self.facts, at, std_fn::FIRST) {
                         (&**base, std_fn::MIN)
-                    }
-                    ExprKind::Field { base, name } if name.text == std_fn::LAST => {
+                    } else if is_std(self.facts, at, std_fn::LAST) {
                         (&**base, std_fn::MAX)
+                    } else {
+                        return;
                     }
-                    _ => return,
-                },
+                }
                 _ => return,
             };
-            let Some((list, args)) = sorted_call(unparen(sorted)) else {
+            let Some((list, args)) = sorted_call(unparen(sorted), self.facts, self.base) else {
                 return;
             };
             let at = |e: &Expr| e.span.shift(self.base).text(self.src).to_string();
@@ -63,6 +70,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     }
     let mut v = Extremes {
         src: file.src,
+        facts: file.facts,
         base: 0,
         out: Vec::new(),
     };
@@ -71,11 +79,11 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 }
 
 /// `xs` and its `by:` argument in `xs.sorted()` or `xs.sorted(by: f)`.
-fn sorted_call(e: &Expr) -> Option<(&Expr, &[Arg])> {
+fn sorted_call<'e>(e: &'e Expr, facts: Option<&Facts>, base: u32) -> Option<(&'e Expr, &'e [Arg])> {
     let ExprKind::Call { callee, args } = &e.kind else {
         return None;
     };
-    let ExprKind::Field { base, name } = &callee.kind else {
+    let ExprKind::Field { base: list, .. } = &callee.kind else {
         return None;
     };
     let by = match &args[..] {
@@ -83,5 +91,5 @@ fn sorted_call(e: &Expr) -> Option<(&Expr, &[Arg])> {
         [a] => a.name.as_ref().is_some_and(|n| n.text == "by"),
         _ => false,
     };
-    (name.text == std_fn::SORTED && by).then_some((&**base, &args[..]))
+    (by && is_std(facts, e.span.shift(base), std_fn::SORTED)).then_some((&**list, &args[..]))
 }

@@ -13,9 +13,10 @@
 @!multitest
 let (n, k): (1..=200_000, 1..=200_000) = read()
 domain Val = 1..=2 * n
-let a: [0..n]Val = read()
 var freq: [Val]Int = 0
-for x in a: freq[x] += 1
+repeat n:
+    let a: Val = read()
+    freq[a] += 1
 
 var stk: List<Int> = []
 var next_free = 2 * n

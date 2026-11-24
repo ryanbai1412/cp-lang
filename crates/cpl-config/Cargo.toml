@@ -1,0 +1,9 @@
+[package]
+name = "cpl-config"
+description = "The one reader of cp.toml: where it is, its tables and keys, and their schema."
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+
+[dependencies]

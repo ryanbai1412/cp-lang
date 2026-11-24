@@ -248,10 +248,10 @@ fn a_fn_field_read_only_into_a_dropped_local_stores_no_std_function() {
 
 #[test]
 fn a_closure_capturing_a_known_fn_param_calls_it_directly() {
-    let out = cpp("use std.algebra.{fold, opt}
+    let out = cpp("use std.algebra.{opt}
 let cat = (a: Int, b: Int) => a * 10 + b
 let sub = (a: Int, b: Int) => a - b
-print(fold(cat.opt(), [Some(1), None, Some(2)])!, fold(sub.opt(), [Some(5), Some(2)])!)
+print([Some(1), None, Some(2)].fold(cat.opt())!, [Some(5), Some(2)].fold(sub.opt())!)
 ");
     assert!(
         !out.contains("std::function"),
@@ -460,5 +460,30 @@ print(adder(3)(2), twice(2))
     assert!(
         out.contains("auto adder(") && !out.contains("std::function"),
         "`adder` makes one closure at its one return, so it returns `auto`:\n{out}"
+    );
+}
+
+#[test]
+fn a_closure_capturing_an_unwrapped_known_param_captures_nothing() {
+    let out = cpp("use std.heap.Heap
+var h: Heap<Int> = Heap(by: x => -x)
+h.push(1)
+h.push(5)
+print(h.pop()!)
+");
+    assert!(
+        !out.contains("std::function"),
+        "`by` is one known closure, so the comparator made from it captures nothing:\n{out}"
+    );
+}
+
+#[test]
+fn a_closure_capturing_only_zero_size_values_captures_nothing() {
+    let out = cpp("let m = Monoid<(Int, Int, Int)>.of(each(+, max, min))
+print(m.op((1, 2, 3), (4, 0, 9)))
+");
+    assert!(
+        !out.contains("std::function"),
+        "`each(+, max, min)` holds only op values, so its op captures nothing:\n{out}"
     );
 }

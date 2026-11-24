@@ -10,11 +10,15 @@
   {"id": "3489931", "language": "CPP17", "result": "TLE", "time": 8.097289127, "memory_kb": 19356.0, "file": "corpus/submissions/3489931.cpp"},
   {"id": "3490091", "language": "CPP17", "result": "WA", "time": 3.766281813, "memory_kb": 3248.0, "file": "corpus/submissions/3490091.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc20c4p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus. orig.cpp is the official editorial's construction; any valid message is accepted, so checker.py checks impossibility against the reference and the window-product sum otherwise. The reference and an exhaustive search over all 2^N arrays agree (both ways, through checker.py) for every N <= 14."
 }

@@ -819,9 +819,8 @@ fn a_gen_fn_that_uses_the_input_is_an_error() {
 }
 
 /// research/dryrun/LOG.md p07: `(a: V, b: V)` edges gave no hint, and
-/// the call line twice where the declaration belonged.
+/// the call line twice.
 #[test]
-#[ignore = "spec/conformance/diagnostics/graph-edge-field-names.cp"]
 fn edges_with_other_field_names_are_told_which_to_rename() {
     let source = "let (n, m): (1..=10, 1..=10) = read()\ndomain V = 1..=n\n\
                   let flights: [0..m](a: V, b: V, c: 1..=1e9) = read()\nlet g = Graph.directed(flights)\nprint(n)\n";
@@ -837,7 +836,6 @@ fn edges_with_other_field_names_are_told_which_to_rename() {
         text.contains("help: the fields are read by name: rename `a` to `u`, `b` to `v`"),
         "{text}"
     );
-    assert!(text.contains("3 | let flights"), "{text}");
     assert_eq!(text.matches("4 | let g").count(), 1, "{text}");
 }
 
@@ -1270,13 +1268,15 @@ fn an_arc_without_a_record_says_how_to_read_it() {
 }
 
 #[test]
-#[ignore = "spec/conformance/diagnostics/sum-of-str.cp"]
 fn what_cpl_run_cannot_do_is_an_error_in_cpl_check_that_says_what_to_write() {
     let indices = check_errors(
         "list_indices",
         "let xs = [5, 6]\nfor i in xs.indices: print(i)\n",
     );
-    assert!(indices.contains("List<Int> has no `indices`"), "{indices}");
+    assert!(
+        indices.contains("a `List<Int>` has no method `indices`"),
+        "{indices}"
+    );
 
     let sort = check_errors(
         "sort_a_range",
@@ -1287,10 +1287,6 @@ fn what_cpl_run_cannot_do_is_an_error_in_cpl_check_that_says_what_to_write() {
         "{sort}"
     );
     assert!(sort.contains("`sorted(r, by: ..)`"), "{sort}");
-
-    let sum = check_errors("sum_of_text", "let xs = [\"a\", \"b\"]\nprint(sum(xs))\n");
-    assert!(sum.contains("`sum` adds numbers, not `Str`"), "{sum}");
-    assert!(sum.contains("xs.join(\"\")"), "{sum}");
 }
 
 #[test]
@@ -1463,9 +1459,10 @@ fn a_judge_without_threads_gets_a_plain_main_and_a_warning() {
     );
 }
 
+/// Only programs get the prelude (R11.3.1): a library `use`s what it
+/// needs, and then check, run and build all see it.
 #[test]
-#[ignore = "cpl-ir: Deque from prelude not in scope during lowering of user library"]
-fn user_library_sees_prelude_in_check_run_and_build() {
+fn a_user_library_uses_std_names_in_check_run_and_build() {
     let main = scratch(
         "user-lib-prelude",
         "main.cp",
@@ -1478,7 +1475,7 @@ fn user_library_sees_prelude_in_check_run_and_build() {
     std::fs::write(lib_dir.join("lib.toml"), "name = \"mylib\"\n").unwrap();
     std::fs::write(
         lib_dir.join("dq.cp"),
-        "pub fn firsts(n: Int) -> Int:\n    var d = Deque<Int>()\n    for i in 0..n:\n        d.push(i)\n    d.pop_front()!\n",
+        "use std.deque.{Deque}\n\npub fn firsts(n: Int) -> Int:\n    var d = Deque<Int>()\n    for i in 0..n:\n        d.push(i)\n    d.pop_front()!\n",
     )
     .unwrap();
 

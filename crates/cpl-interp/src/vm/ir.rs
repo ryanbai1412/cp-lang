@@ -753,6 +753,8 @@ pub(crate) enum Op {
         dst_v: u16,
         dst_some: u16,
         ret_mode: CallRet,
+        /// Bit `k` set: arg `k` is `mut`, and goes back to its arg slot.
+        muts: u16,
     },
     RetI {
         src: u16,

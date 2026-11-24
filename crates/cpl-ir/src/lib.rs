@@ -12,6 +12,7 @@
 //! literal with a character outside ASCII is an error here; nothing after
 //! this point knows about UTF-8.
 
+pub mod checks;
 pub mod effects;
 pub mod fix;
 mod lower;
@@ -1187,6 +1188,10 @@ pub enum Iter {
 pub struct Local {
     pub name: String,
     pub ty: Ty,
+    /// The map this local keys when it is the frozen key of a mut alias
+    /// `let p = mut m[k]`: the alias holds one slot of that map, which can't
+    /// change while the alias lives (E0602), so the C++ looks the key up once.
+    pub binds: Option<Place>,
 }
 
 #[derive(Clone, PartialEq, Debug)]

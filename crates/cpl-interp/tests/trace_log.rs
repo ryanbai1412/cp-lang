@@ -385,12 +385,12 @@ fn raw_ints_read_back_as_written() {
 
 /// The budgets of a debug session at 10^7 steps: stepping back answers
 /// in under 50 ms, recording makes the run at most 1.2x slower, and the
-/// recording takes a few hundred MB. `cargo test --release -p cpl-interp
-/// --test trace_log -- --ignored --nocapture`.
+/// recording takes a few hundred MB. A wall-clock test (scripts/ci.py
+/// WALL_CLOCK_TESTS): `scripts/check.sh --timing` (ci-slow.yml) reports it;
+/// `cargo test --release -p cpl-interp --test trace_log -- --nocapture`.
 const RUNS: usize = 7;
 
 #[test]
-#[ignore = "takes a minute in release; run by hand"]
 fn ten_million_steps_fit_the_debugging_budgets() {
     let mut over = Vec::new();
     for (name, source) in [

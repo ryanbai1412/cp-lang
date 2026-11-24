@@ -601,7 +601,7 @@ pub fn smawk(rows: Int, cols: Int, f: (Int, Int) -> Int) -> List<(val: Int, at: 
 /// form of `LiChao` when slopes arrive sorted and no x-range is known.
 /// Each line may carry a `tag` (a photo count, a parent index); `best_next` returns the winning
 /// line's tag, and equal values go to the smaller tag, which is the tie rule `aliens` needs.
-pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
+pub struct MonotoneHull<P: Ord>(pick: (Int, Int) -> Int = min):
     // Lines are stored negated under `max`, so the hull is always a lower envelope.
     ks: List<Int> = []
     ms: List<Int> = []
@@ -615,7 +615,8 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
 
     fn covered(self, k: Int, m: Int) -> Bool:
         let (a, b) = (ks.len - 2, ks.len - 1)
-        I128(m - ms[a]) * I128(ks[a] - ks[b]) <= I128(ms[b] - ms[a]) * I128(ks[a] - k)
+        // Strict: a line that ties the envelope at one point stays, since its tag may be the least there.
+        I128(m - ms[a]) * I128(ks[a] - ks[b]) < I128(ms[b] - ms[a]) * I128(ks[a] - k)
 
     fn pop_line(mut self):
         let _ = ks.pop()
@@ -624,8 +625,9 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
         if ptr >= ks.len and ptr > 0: ptr = max(ks.len - 1, 0)
 
     /// Add `line`, with `tag`. Slopes must arrive in order: non-increasing for `pick: min`,
-    /// non-decreasing for `max`. A line of equal slope keeps only the better intercept, and lines that
-    /// are never best are dropped.
+    /// non-decreasing for `max`. A line of equal slope keeps only the better intercept (the smaller
+    /// tag on a tie), and lines that are never best are dropped; one that ties the best at a single
+    /// point stays, as its tag may be the least there.
     ///
     /// cost: \(O(1)\) amortized
     /// traps: when the slope goes back
@@ -637,7 +639,7 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
         if n > 0:
             assert k <= ks[n - 1], "`MonotoneHull.add`: the slope went back"
             if k == ks[n - 1]:
-                if m >= ms[n - 1]: return
+                if m > ms[n - 1] or (m == ms[n - 1] and tag >= tags[n - 1]): return
                 self.pop_line()
         while ks.len >= 2 and self.covered(k, m): self.pop_line()
         ks.push(k)
@@ -654,11 +656,14 @@ pub struct MonotoneHull<P>(pick: (Int, Int) -> Int = min):
         assert last == None or x >= last!, "`best_next`/`at_next` need a non-decreasing `x`"
         last = Some(x)
         if ks.is_empty: return None
-        while ptr + 1 < ks.len:
-            let (a, b) = (self.val_at(ptr, x), self.val_at(ptr + 1, x))
-            if b <= a: ptr += 1
-            else: break
-        Some((val: self.sign() * self.val_at(ptr, x), tag: tags[ptr]))
+        while ptr + 1 < ks.len and self.val_at(ptr + 1, x) < self.val_at(ptr, x): ptr += 1
+        // Lines tied with the best at `x` follow it; walk past them, keeping the least tag.
+        var least = ptr
+        let val = self.val_at(ptr, x)
+        while ptr + 1 < ks.len and self.val_at(ptr + 1, x) == val:
+            ptr += 1
+            if tags[ptr] < tags[least]: least = ptr
+        Some((val: self.sign() * val, tag: tags[least]))
     /// The best value at any `x`, by binary search on the hull; `None` when empty.
     ///
     /// cost: \(O(\log n)\)
@@ -1178,4 +1183,17 @@ impl Show for LineContainer:
         for l in v.each():
             if not out.is_empty: out += ", "
             out += "{l.k}x + {l.m}"
+        out
+
+impl Show for LiChao<L, K>:
+    /// Every line it holds, each through its own `Show`, comma-separated in the order they sit in the tree; `no lines` for none.
+    ///
+    /// example: `var t = LiChao(min, over: 0..=10); t.add(Line(1, 0)); t.add(Line(-1, 6)); "{t}" == "-1 6, 1 0"`
+    fn show(t):
+        var out = ""
+        for l in t.lines:
+            if let x = l:
+                if not out.is_empty: out += ", "
+                out += "{x}"
+        if out.is_empty: return "no lines"
         out

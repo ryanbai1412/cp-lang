@@ -1,7 +1,6 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Test } from './practice';
-import type { Status } from '@/components/status-badge';
 
 export const languages = {
   cpp: { name: 'C++', shiki: 'cpp' },
@@ -142,16 +141,11 @@ const problems: Problem[] = [
 
 export interface QuickProblem extends Problem {
   source: string;
-  runs: boolean;
-  status: Status;
 }
 
 export function quickstart(): QuickProblem[] {
   const dir = join(process.cwd(), 'content/quickstart');
-  const gate = JSON.parse(readFileSync(join(process.cwd(), '.gate/status.json'), 'utf8')) as Record<string, { status: Status }>;
   return problems.map((p) => {
-    const runs = existsSync(join(dir, `${p.id}.cp`));
-    const file = runs ? `${p.id}.cp` : `${p.id}.spec.cp`;
-    return { ...p, runs, status: gate[`content/quickstart/${file}`].status, source: readFileSync(join(dir, file), 'utf8') };
+    return { ...p, source: readFileSync(join(dir, `${p.id}.cp`), 'utf8') };
   });
 }

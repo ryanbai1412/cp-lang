@@ -7,11 +7,15 @@
   {"id": "5103510", "language": "CPP17", "result": "WA", "time": 0.08262902, "memory_kb": 4176.0, "file": "corpus/submissions/5103510.cpp"},
   {"id": "5445675", "language": "CPP17", "result": "WA", "time": 0.091517923, "memory_kb": 4016.0, "file": "corpus/submissions/5445675.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noip20p4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ on DMOJ (its submissions are RTE or WA), so orig.cpp is a corpus-written reference: the first round step by step, then for each step of the second round a closed-form sum over later rounds via power-sum polynomials. It matches both statement samples and a per-start simulation on 300 generated small fields (44 of them -1)."
 }

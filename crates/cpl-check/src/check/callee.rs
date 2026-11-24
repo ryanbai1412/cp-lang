@@ -17,7 +17,7 @@ impl Checker<'_> {
         if !matches!(name.text.as_str(), "contains" | "has")
             || u.name.is_some()
             || v.name.is_some()
-            || self.global(&name.text).is_some()
+            || self.global(&name.text).is_some_and(|d| takes_an_arc(&d))
         {
             return None;
         }
@@ -52,11 +52,13 @@ impl Checker<'_> {
         let ty = self.call_unrecorded(call, callee, args);
         if !self.exprs.calls.iter().any(|c| c.call == call.span) {
             if let Some((name, kind)) = self.callee_form(callee) {
+                let builtin = kind == CalleeKind::Method && self.builtin_method(callee, &name.0);
                 self.exprs.calls.push(CallFact {
                     call: call.span,
                     name_span: name.1,
                     name: name.0,
                     kind,
+                    builtin,
                 });
             }
         }
@@ -64,15 +66,44 @@ impl Checker<'_> {
     }
 
     /// `p.norm` called as a getter.
-    pub(super) fn record_getter(&mut self, call: &Expr, callee: &Expr) {
+    pub(super) fn record_getter(&mut self, call: &Expr, callee: &Expr, builtin: bool) {
         if let ExprKind::Field { name, .. } = &callee.kind {
             self.exprs.calls.push(CallFact {
                 call: call.span,
                 name_span: name.span,
                 name: name.text.clone(),
                 kind: CalleeKind::Getter,
+                builtin,
             });
         }
+    }
+
+    /// `xs.push(x)`: a method the compiler gives the receiver's built-in type.
+    fn builtin_method(&self, callee: &Expr, name: &str) -> bool {
+        use crate::builtins::{builtin_members, MemberKind, Receiver};
+        let ExprKind::Field { base, .. } = &callee.kind else {
+            return false;
+        };
+        // `List.filled(n, x)`: a built-in type's own constructor.
+        if let ExprKind::Name(t) = &base.kind {
+            const TYPES: [&str; 6] = ["List", "Map", "HashMap", "Set", "HashSet", "Str"];
+            if TYPES.contains(&t.as_str()) && self.local(t).is_none() {
+                return true;
+            }
+        }
+        let ty = self.exprs.types.iter().rev().find(|t| t.0 == base.span);
+        let receiver = match ty.map(|t| &t.1) {
+            Some(Ty::Named { name, args }) => match (name.as_str(), args.len()) {
+                ("List", 1) => Receiver::List,
+                ("Map" | "HashMap", 2) => Receiver::Map,
+                ("Set" | "HashSet", 1) => Receiver::Set,
+                _ => return false,
+            },
+            Some(Ty::Str) => Receiver::Str,
+            Some(Ty::Array { .. }) => Receiver::Array,
+            _ => return false,
+        };
+        builtin_members(receiver).any(|m| m.kind == MemberKind::Method && m.name == name)
     }
 
     /// The type each generic parameter of the callee took at `call`.
@@ -120,4 +151,11 @@ impl Checker<'_> {
             _ => None,
         }
     }
+}
+
+/// A global `contains`/`has` that `g.contains(u, v)` could call as written:
+/// anything but a fn whose parameters can't hold the list, `u` and `v`
+/// (std's `contains(self: S, x: T)` is one element's test).
+fn takes_an_arc(def: &Def) -> bool {
+    !matches!(def, Def::Fn { ty: Ty::Fn { params, .. }, .. } if params.len() < 3)
 }

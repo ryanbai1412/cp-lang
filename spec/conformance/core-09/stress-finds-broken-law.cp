@@ -2,7 +2,8 @@
 // rule: 09.3.9
 // tool: stress --seed 1
 // has: "comm"
-struct Sub: z: Int
+struct Sub(z: Int):
+    fn monoid(self) -> Monoid<Int> = Monoid(z, (a, b) => self.op(a, b))
 impl Op<Int> for Sub:
     fn op(self, a: Int, b: Int) -> Int = a - b
 impl Commutative<Int> for Sub

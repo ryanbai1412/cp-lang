@@ -12,7 +12,7 @@ use cpl_ir::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
-mod narrow;
+pub(crate) mod narrow;
 
 pub(crate) use narrow::{is_opt_int, narrow_elems, narrow_ints};
 

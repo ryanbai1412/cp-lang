@@ -67,7 +67,7 @@ Fields: `p: T -> Bool,`.
 
 Fields: `f: T -> U,`.
 
-## `struct Rev<S>()`
+## `struct Rev<S>(base: S)`
 
 \(O(1)\) to make.
 

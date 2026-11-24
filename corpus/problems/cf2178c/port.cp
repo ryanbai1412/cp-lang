@@ -10,11 +10,11 @@
 
 @!multitest
 let n: 2..=200_000 = read()
-let a: [0..n]-10 ** 9..=10 ** 9 = read()
-
-var best = a[0]
-var cur = 2 * a[0]
-for x in a[1..n]:
+let first: -10 ** 9..=10 ** 9 = read()
+var (best, cur, total) = (first, 2 * first, first)
+for _ in 1..n:
+    let x: -10 ** 9..=10 ** 9 = read()
     best max= cur + x
     cur += max(0, 2 * x)
-print(best - a.sum())
+    total += x
+print(best - total)

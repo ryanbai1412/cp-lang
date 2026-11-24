@@ -820,10 +820,6 @@ impl<'a> Lowerer<'a> {
                 )
             }
             (Ty::Range(_), "rev") => self.reversed_range(value, span),
-            (Ty::List(elem) | Ty::ListView(elem, _) | Ty::MutView(elem, _), "rebase") => {
-                let elem = (**elem).clone();
-                self.rebase(value, elem, span)
-            }
             (
                 Ty::List(_)
                 | Ty::ListView(_, _)
@@ -990,7 +986,7 @@ impl<'a> Lowerer<'a> {
                 return Some(match &self.structs[*id].origin_gen {
                     Some((gid, _)) => format!("struct<> {gid}"),
                     None => format!("struct {id}"),
-                })
+                });
             }
             Ty::Enum(id) => return Some(format!("enum {id}")),
             _ => return None,
@@ -1026,7 +1022,7 @@ impl<'a> Lowerer<'a> {
                         Sym::GenStruct(gid) => Some(format!("struct<> {gid}")),
                         Sym::Enum(id) => Some(format!("enum {id}")),
                         _ => None,
-                    }
+                    };
                 }
             },
             _ => return None,

@@ -25,6 +25,34 @@ pub fn is_place(text: &str) -> bool {
     name(text) || (text.starts_with("cpl::at(") && text.ends_with(')') && !text[8..].contains("::"))
 }
 
+/// A place inside a value, `self.id` or `cpl::at(rows, i)`: returning it
+/// from a fn that returns by value copies it, where a returned local moves.
+fn is_part(text: &str) -> bool {
+    if let Some((base, index)) = text.strip_suffix(']').and_then(|t| t.split_once('[')) {
+        return is_part(base) && !base.starts_with("cpl::") && is_place(index);
+    }
+    is_place(text) && (text.contains('.') || text.starts_with("cpl::at("))
+}
+
+/// The type a line opening a fn or lambda body returns: `inline T f(..) {`,
+/// `T f(..) {` or `[&]() -> T {`.
+fn returned_type(line: &str) -> Option<&str> {
+    let body = line.strip_suffix('{')?.trim_end();
+    if let Some((_, ret)) = body.rsplit_once(") -> ") {
+        return Some(ret.trim());
+    }
+    let head = body.strip_prefix("inline ").unwrap_or(body);
+    let head = head.strip_prefix("static ").unwrap_or(head);
+    let (sig, _) = head.split_once('(')?;
+    let keyword = [
+        "if", "for", "while", "switch", "else", "return", "struct", "do",
+    ];
+    let (ret, name) = sig.trim_end().rsplit_once([' ', '&', '*'])?;
+    let ret = &sig[..ret.len() + 1];
+    let first = ret.split([' ', '(']).next().unwrap_or("");
+    (!keyword.contains(&first) && !name.is_empty() && !name.contains('>')).then(|| ret.trim())
+}
+
 /// The C++ types a local that shadows a container name may have.
 const SCALARS: [&str; 9] = [
     "int",
@@ -99,8 +127,28 @@ pub fn deep_copies(cpp: &str) -> usize {
     let container = is_container;
     let mut held = std::collections::BTreeSet::new();
     let mut count = 0;
+    // The fns and lambdas open at each line: the brace depth each body
+    // opened at, and whether it returns a container by value.
+    let mut bodies: Vec<(i64, bool)> = Vec::new();
+    let mut depth = 0i64;
     for line in cpp.lines() {
         let line = line.trim();
+        if let Some(ret) = returned_type(line) {
+            bodies.push((depth, container(ret) && !ret.ends_with(['&', '*'])));
+        }
+        depth += line.matches('{').count() as i64 - line.matches('}').count() as i64;
+        let returns_container = bodies.last().is_some_and(|b| b.1);
+        while bodies.last().is_some_and(|b| b.0 >= depth) {
+            bodies.pop();
+        }
+        if returns_container
+            && line
+                .strip_prefix("return ")
+                .and_then(|r| r.strip_suffix(';'))
+                .is_some_and(is_part)
+        {
+            count += 1;
+        }
         let decl = line.strip_prefix("const ").unwrap_or(line);
         if let Some(name) = scalar_decl(decl) {
             held.remove(name);

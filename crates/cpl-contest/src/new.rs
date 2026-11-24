@@ -406,14 +406,8 @@ fn template_for(source: &Path) -> Option<String> {
         .parent()
         .filter(|p| !p.as_os_str().is_empty())
         .unwrap_or(Path::new("."));
-    let mut dir = Some(start.canonicalize().ok()?);
-    while let Some(current) = dir {
-        if current.join("cp.toml").is_file() {
-            return std::fs::read_to_string(current.join("template.cp")).ok();
-        }
-        dir = current.parent().map(Path::to_path_buf);
-    }
-    None
+    let dir = cpl_config::project_dir(&start.canonicalize().ok()?)?;
+    std::fs::read_to_string(dir.join("template.cp")).ok()
 }
 
 /// Runs `cpl new`. Returns the exit code.

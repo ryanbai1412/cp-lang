@@ -3,14 +3,6 @@
 
 use super::*;
 
-/// The name of the domain `w.rebase` keys its cells by (R04b.1.7).
-const REBASED: &str = "Idx";
-
-/// The name of the `n`th domain when a rebase made it: no source name has a `.`.
-fn rebased_name(n: DomainId) -> String {
-    format!("rebase{n}.{REBASED}")
-}
-
 impl<'a> Lowerer<'a> {
     /// The element of a mapped sequence's source that `m[indices]` reads:
     /// a view is read by its source keys (R04a.9.4).
@@ -109,58 +101,10 @@ impl<'a> Lowerer<'a> {
         ))
     }
 
-    /// `w.rebase`: the cells of `w` keyed by a fresh domain `Idx = 0..w.len`
-    /// of their own, O(1) (R04b.1.7).
-    pub(super) fn rebase(&mut self, seq: Expr, elem: Ty, span: Span) -> Expr {
-        let seq = self.hold_view(seq, span);
-        let len = self.len_of(seq.clone(), span);
-        let len = self.hold_view(len, span);
-        let id = self.domains.len();
-        self.domains.push(rebased_name(id));
-        let lo = self.int_lit(0, span);
-        self.cx.pending.push(Stmt::DefDomain {
-            id,
-            lo: lo.clone(),
-            len: len.clone(),
-        });
-        self.mk(
-            ExprKind::Builtin(Builtin::Rekey, vec![seq, lo, len]),
-            Ty::ListView(Box::new(elem), Dim::Pos(id)),
-            span,
-        )
-    }
-
     /// Whether `x[k]` names a key: a view keeps its source's keys (R04b.1),
     /// and a range's keys are its own elements (R04.4.31).
     pub(super) fn keyed_index(ty: &Ty) -> bool {
         Self::keyed_view(ty) || matches!(ty, Ty::Range(of) if **of != Ty::I128)
-    }
-
-    /// `t.Idx` written as a value, `t` a variable holding a rebased view.
-    pub(super) fn rebased_sym(&self, owner: &ast::Expr, member: &str) -> Option<Sym> {
-        let ast::ExprKind::Name(owner) = &owner.kind else {
-            return None;
-        };
-        let ty = match self.lookup(owner) {
-            Some(slot) => &self.cx.locals[slot].ty,
-            None => match self.get_sym(owner)? {
-                Sym::Global(id) => &self.globals[id].ty,
-                _ => return None,
-            },
-        };
-        self.rebased_domain(ty, member).map(Sym::Domain)
-    }
-
-    /// `t.Idx`: the fresh domain a rebased view `t` is keyed by.
-    pub(super) fn rebased_domain(&self, ty: &Ty, member: &str) -> Option<DomainId> {
-        match ty {
-            Ty::ListView(_, Dim::Pos(d))
-                if member == REBASED && self.domains[*d] == rebased_name(*d) =>
-            {
-                Some(*d)
-            }
-            _ => None,
-        }
     }
 
     /// The domain `rest` that `prefix` holds: `D` of `let xs = compress(all)`, `t.Idx` of a rebase.
@@ -171,7 +115,7 @@ impl<'a> Lowerer<'a> {
         };
         let ty = self.probe_ty_silent(&owner)?;
         let Ty::Struct(sid) = ty else {
-            return self.rebased_domain(&ty, rest);
+            return None;
         };
         if self.per_value_domain(sid, rest) {
             let value = self.expr(&owner, None);
@@ -281,6 +225,51 @@ impl<'a> Lowerer<'a> {
         self.cx.scopes = scopes;
         self.cx.pending.extend(out);
         Some(id)
+    }
+
+    /// A method's receiver sets the domains its struct sizes from fields, so
+    /// the call's keys are checked against that value's: `mk()[1]`.
+    pub(super) fn receiver_domains(&mut self, value: Expr, span: Span) -> Expr {
+        let Ty::Struct(sid) = value.ty else {
+            return value;
+        };
+        let inits: Vec<_> = self.structs[sid]
+            .owned_domain_inits
+            .iter()
+            .filter(|i| i.per_value)
+            .cloned()
+            .collect();
+        if inits.is_empty() {
+            return value;
+        }
+        let (kind, value) = match value.kind {
+            ExprKind::Local(slot) => (PlaceKind::Local(slot), value),
+            ExprKind::Global(id) => (PlaceKind::Global(id), value),
+            _ => {
+                let slot = self.temp(value.ty.clone());
+                self.cx.pending.push(Stmt::Let(slot, Some(value)));
+                (PlaceKind::Local(slot), self.local(slot, span))
+            }
+        };
+        let place = Place {
+            kind,
+            ty: value.ty.clone(),
+            span,
+        };
+        let scopes = std::mem::replace(&mut self.cx.scopes, vec![HashMap::new()]);
+        let inline = self.cx.inline_self.replace((place, sid));
+        let mut out = Vec::new();
+        for init in inits {
+            let module = std::mem::replace(&mut self.cur_mod, init.mod_id);
+            let offset = std::mem::replace(&mut self.offset, init.offset);
+            self.init_domain_id(init.id, init.def, &mut out);
+            self.cur_mod = module;
+            self.offset = offset;
+        }
+        self.cx.inline_self = inline;
+        self.cx.scopes = scopes;
+        self.cx.pending.extend(out);
+        value
     }
 
     /// `seq.map(f)` as a list, keyed like `seq` when `seq` is a view:

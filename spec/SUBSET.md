@@ -33,7 +33,7 @@ documented.
 | R01.5 | 1.5 Operators and precedence | supported |  |
 | R01.6 | 1.6 Statements | supported |  |
 | R01.7 | 1.7 Control flow | supported |  |
-| R01.8 | 1.8 Expressions | supported | 1 known gap |
+| R01.8 | 1.8 Expressions | supported |  |
 | R01.9 | 1.9 Items | supported |  |
 | R01.10 | 1.10 Grammar | supported |  |
 | R01.11 | 1.11 Rejected spellings | supported |  |
@@ -53,7 +53,7 @@ documented.
 | R03.3 | 3. Operations on niche types | supported |  |
 | R03.4 | 4. Overflow, in one table | supported |  |
 | R03.5 | 5. Modular numbers | supported |  |
-| R04.2 | The model in one paragraph | supported | 2 known gaps |
+| R04.2 | The model in one paragraph | supported | 1 known gap |
 | R04.3 | Positions and cuts move the same way | supported |  |
 | R04.4 | Two kinds of range, one type | supported |  |
 | R04.7 | Middle of a range | supported |  |
@@ -137,7 +137,7 @@ documented.
 | std-fenwick | library: fenwick | supported |  |
 | std-flow | library: flow | documented | stdlib: outside the Milestone 1 contest staples |
 | std-geometry | library: geometry | documented | stdlib: outside the Milestone 1 contest staples |
-| std-graph | library: graph | supported | 1 known gap |
+| std-graph | library: graph | supported |  |
 | std-grid | library: grid | supported |  |
 | std-hashmap | library: hashmap | supported |  |
 | std-heap | library: heap | supported |  |
@@ -158,7 +158,7 @@ documented.
 | std-poly | library: poly | documented | stdlib: outside the Milestone 1 contest staples |
 | std-prefix | library: prefix | supported |  |
 | std-rand | library: rand | documented | stdlib: outside the Milestone 1 contest staples |
-| std-search | library: search | supported | 1 known gap |
+| std-search | library: search | supported |  |
 | std-segtree | library: segtree | supported | 2 known gaps |
 | std-seq | library: seq | supported |  |
 | std-slope | library: slope | documented | stdlib: outside the Milestone 1 contest staples |
@@ -174,14 +174,10 @@ documented.
 
 ## Known gaps
 
-- core-01/stepped-range-is-a-value.cp: fail
-- core-04/named-product-domain-runs.cp: fail
 - core-04/rebased-str-indexes-from-zero.cp: fail
 - core-04/zip-keyed-by-first.cp: fail
 - core-05/exercise-04-var-from-lent-param.cp: fail
 - core-05/map-entry-index-key-lends.cp: fail
 - core-08/law-calls-trait-method.cp: fail
-- std-graph/undirected-takes-list-of-records.cp: fail
-- std-search/real-bsearch-is-a-range-method.cp: fail
 - std-segtree/closure-folds-optional-monoid-folds-plain.cp: fail
 - std-segtree/closure-op-picks-index.cp: fail

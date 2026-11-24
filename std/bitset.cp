@@ -37,6 +37,21 @@ pub struct Bitset<D>:
         b.trim()
         b
 
+    /// The neighbour sets of the undirected `edges`, matching `Graph.undirected`: `adj[u]` holds
+    /// `v` and `adj[v]` holds `u` for each edge. Edges may carry more fields (`(u: V, v: V, w: Int)`)
+    /// and may come through a filter view.
+    ///
+    /// cost: \(O(n K / 64 + m)\) time for \(n\) vertices and \(m\) edges
+    /// empty: `domain D = 0..3; Bitset<D>.undirected(List<(u: D, v: D)>())[D(0)].len == 0`
+    /// traps: never
+    /// example: `domain D = 0..3; let adj = Bitset<D>.undirected([(u: D(0), v: D(2)), (u: D(0), v: D(1))]); adj[D(0)].len == 2 and adj[D(2)].len == 1`
+    pub fn undirected<S: Seq<R>, R: (u: D, v: D, ..)>(edges: S) -> [D]Bitset<D>:
+        var adj: [D]Bitset<D> = [D] _ => Bitset<D>.new()
+        for e in edges:
+            adj[e.u].add(e.v)
+            adj[e.v].add(e.u)
+        adj
+
     /// The singleton set `{i}`, matching `Subset<D>.single(i)`.
     ///
     /// cost: \(O(K / 64)\) time and space

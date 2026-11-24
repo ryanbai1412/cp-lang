@@ -222,12 +222,9 @@ const SMALL_BITSETS: &str = concat!(
 #[test]
 fn small_domain_bitset_keeps_its_words_inline() {
     let cpp = cpp(SMALL_BITSETS);
-    assert!(cpp.contains("cpl::Row<unsigned long long, 5> w;"), "{cpp}");
-    assert!(
-        cpp.contains("cpl::Row<unsigned long long, 5>::filled("),
-        "{cpp}"
-    );
-    assert!(!cpp.contains("std::vector<unsigned long long>("), "{cpp}");
+    assert!(cpp.contains("cpl::Row<cpl::u64, 5> w;"), "{cpp}");
+    assert!(cpp.contains("cpl::Row<cpl::u64, 5>::filled("), "{cpp}");
+    assert!(!cpp.contains("std::vector<cpl::u64>("), "{cpp}");
     assert!(
         !cpp.contains(".w.vec()"),
         "a loop over the words copies them: {cpp}"
@@ -237,13 +234,10 @@ fn small_domain_bitset_keeps_its_words_inline() {
 #[test]
 fn a_bitset_expression_counted_once_is_fused_into_one_popcount_loop() {
     let cpp = cpp(SMALL_BITSETS);
-    assert!(cpp.contains("cpl::Row<unsigned long long, 5> w;"), "{cpp}");
+    assert!(cpp.contains("cpl::Row<cpl::u64, 5> w;"), "{cpp}");
+    assert!(cpp.contains("cpl::Row<cpl::u64, 5>::filled("), "{cpp}");
     assert!(
-        cpp.contains("cpl::Row<unsigned long long, 5>::filled("),
-        "{cpp}"
-    );
-    assert!(
-        !cpp.contains("std::vector<unsigned long long>("),
+        !cpp.contains("std::vector<cpl::u64>("),
         "Bitset.new() return must construct cpl::Row directly without temp std::vector: {cpp}"
     );
     assert!(cpp.contains("__builtin_popcountll("), "{cpp}");
@@ -351,4 +345,19 @@ fn a_match_arm_binding_of_a_temporary_is_a_reference() {
         "    kind => print(kind.len)\n",
     ));
     assert!(cpp.contains("const std::string& kind = "), "{cpp}");
+}
+
+#[test]
+fn an_opt_int_max_is_one_max_with_no_branch() {
+    let cpp = cpp(concat!(
+        "let x: Int = read()\n",
+        "var best: [3]?Int = None\n",
+        "for i in 0..3:\n",
+        "    best[i] max= Some(x + i)\n",
+        "print(best[2] ?? -1)\n",
+    ));
+    assert!(
+        cpp.contains("std::max<cpl::OptInt>(") && !cpp.contains(".has_value() ||"),
+        "{cpp}"
+    );
 }

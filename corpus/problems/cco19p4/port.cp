@@ -14,13 +14,12 @@ domain Card = 0..n
 domain Value = 1..=n
 let a: [Card]Value = read()
 
-fn score(x: Int) -> F64:
-    let s = sqrt(F64(x))
-    if k == 2: F64(x) elif k == 3: s * s * s else: F64(x * x)
+// the score of a hand of x cards, for every x
+let score = [if k == 2: F64(x) elif k == 3: F64(x) * sqrt(F64(x)) else: F64(x * x) for x in 0..=n + 1]
 
 // keeping cards of one value from here up to the one with m cards left ahead, then dp after it
 struct Run(m: Int, after: F64):
-    fn at(self, x: Int) -> F64 = score(m - x) + after
+    fn at(self, x: Int) -> F64 = score[max(m - x, 0)] + after
 
 var ahead: [Value]Int = 0  // cards of each value not passed yet
 for v in a: ahead[v] += 1
@@ -29,6 +28,6 @@ var runs: [Value]LiChao<Run, F64> = [Value] v => LiChao<Run, F64>(max, over: 0..
 var best = 0.0  // the best score from the current card on
 for v in a.rev:
     ahead[v] -= 1
-    runs[v].add(Run(ahead[v] + 1, best), on: 0..ahead[v] + 2)
+    runs[v].add(Run(ahead[v] + 1, best))
     best = runs[v].at(ahead[v])!
 print(best)

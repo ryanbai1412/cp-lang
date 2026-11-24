@@ -237,8 +237,11 @@ impl<'p> Emitter<'p> {
             None => ret.clone(),
         };
         let outer = std::mem::replace(&mut self.give_ref, by_ref || own.is_some());
+        let owned = (!by_ref && own.is_none()).then(|| crate::stmt::block_lets(block));
+        let outer_owned = std::mem::replace(&mut self.give_owned, owned);
         let mut code = self.lambda(&header, |this, out| this.block(block, out));
         self.give_ref = outer;
+        self.give_owned = outer_owned;
         if let Some(slots) = own {
             let lent = slots.iter().all(|s| self.ref_bound.contains(s));
             let ret = if lent { "decltype(auto)" } else { &ret };
@@ -943,8 +946,20 @@ pub(crate) fn entry_binding(ty: &Ty, cpp: &str, var: &str, e: &str) -> String {
 /// what it reads) or a closure's by-value capture (closure id, name).
 pub(crate) enum Copied {
     Let(cpl_diag::Span, &'static str),
+    /// A copy in a library fn, at the span of the call that runs it, with
+    /// the fn and the name it binds: two in one call are two copies.
+    Library(cpl_diag::Span, String, &'static str),
     Capture(usize, String, &'static str),
 }
+
+/// C++ that names a place as is, `self.rows` or `sa.sa`.
+fn is_place_text(text: &str) -> bool {
+    text.chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '.')
+}
+
+/// Why `return self.f` copies.
+const GIVEN: &str = "a part of a value that still holds it, given by value";
 
 /// Why `Some(xs)` of a place copies.
 const SOME_COPY: &str = "an optional holds its own value";
@@ -1013,9 +1028,10 @@ impl Emitter<'_> {
         if self.ref_bound.contains(&slot) || !holds_heap(self.program, &inner.ty) {
             return None;
         }
-        self.copies.retain(
-            |c| !matches!(c, Copied::Let(span, why) if *span == inner.span && *why == SOME_COPY),
-        );
+        self.copies.retain(|c| {
+            !matches!(c, Copied::Let(span, why) | Copied::Library(span, _, why)
+                if *span == inner.span && *why == SOME_COPY)
+        });
         Some(format!("{}(std::move({}))", self.ty(ty), self.names[slot]))
     }
 
@@ -1028,7 +1044,7 @@ impl Emitter<'_> {
                 ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
             ) && rooted_in_a_name(inner));
         if place && holds_heap(self.program, &inner.ty) && !moved(text) {
-            self.copies.push(Copied::Let(inner.span, SOME_COPY));
+            self.note_copy(inner.span, SOME_COPY, None);
         }
     }
 
@@ -1046,10 +1062,11 @@ impl Emitter<'_> {
                 | ExprKind::Unwrap(..)
         );
         if place && holds_heap(self.program, &e.ty) {
-            self.copies.push(Copied::Let(
+            self.note_copy(
                 e.span,
                 "a later operand may change it, and operands are read left to right",
-            ));
+                None,
+            );
         }
     }
 
@@ -1070,7 +1087,7 @@ impl Emitter<'_> {
         );
         let written = arg.span.start >= e.span.start && arg.span.end < e.span.end;
         if place && written && holds_heap(self.program, &arg.ty) {
-            self.copies.push(Copied::Let(e.span, why));
+            self.note_copy(e.span, why, None);
         }
     }
 
@@ -1115,7 +1132,43 @@ impl Emitter<'_> {
             return;
         }
         let why = self.copy_reason(slot, init, tail, whole);
-        self.copies.push(Copied::Let(init.span, why));
+        self.note_copy(init.span, why, Some(slot));
+    }
+
+    /// Records the copy `return place;` makes when the fn or block gives a
+    /// part of a named value it does not own by value: `return self.id;`.
+    pub(crate) fn note_given_copy(&mut self, value: &Expr, text: &str, is_return: bool) {
+        let by_ref = self.give_ref || (is_return && self.closure_id.is_none() && self.lends_result);
+        let mut value = value;
+        while let (ExprKind::Builtin(_, args), true) = (&value.kind, is_place_text(text)) {
+            match args.as_slice() {
+                [arg] => value = arg,
+                _ => break,
+            }
+        }
+        let part = matches!(
+            value.kind,
+            ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
+        ) && rooted_in_a_name(value);
+        let named = is_place_text(text) || text.starts_with("cpl::at(");
+        if part && named && !by_ref && holds_heap(self.program, &value.ty) && !moved(text) {
+            self.note_copy(value.span, GIVEN, None);
+        }
+    }
+
+    /// Records a copy at `span`; one in a library fn also names the fn and
+    /// the local `slot` it binds, so `cpl explain` lists each copy once.
+    fn note_copy(&mut self, span: cpl_diag::Span, why: &'static str, slot: Option<usize>) {
+        let Some(id) = self.fn_id.filter(|_| self.in_library()) else {
+            return self.copies.push(Copied::Let(span, why));
+        };
+        let name = slot.map(|s| self.locals()[s].name.clone());
+        let fun = &self.program.fn_display[id];
+        let what = match name.filter(|n| !n.is_empty()) {
+            Some(name) => format!("`{name}` in {fun}"),
+            None => format!("a read in {fun}"),
+        };
+        self.copies.push(Copied::Library(span, what, why));
     }
 
     /// Whether local `slot` of the fn being emitted is a `cpl::Lent`
@@ -1204,6 +1257,7 @@ pub(crate) fn copy_sites(
         .iter()
         .filter_map(|c| match c {
             Copied::Let(span, why) => Some((*span, String::new(), *why)),
+            Copied::Library(..) => None,
             Copied::Capture(cid, name, why) => {
                 Some((*at.get(cid)?, format!("`{name}` captured by value"), *why))
             }
@@ -1211,6 +1265,13 @@ pub(crate) fn copy_sites(
         .collect();
     sites.sort_by_key(|(span, what, why)| (span.start, what.clone(), *why));
     sites.dedup_by(|a, b| a == b);
+    // Each library copy is its own site in the C++, though several share
+    // the call that runs them: `return id` twice in one fn is two copies.
+    sites.extend(copies.iter().filter_map(|c| match c {
+        Copied::Library(span, what, why) => Some((*span, what.clone(), *why)),
+        _ => None,
+    }));
+    sites.sort_by_key(|(span, what, why)| (span.start, what.clone(), *why));
     sites
 }
 
@@ -1220,7 +1281,11 @@ impl Emitter<'_> {
     pub(crate) fn stmt_owning(&mut self, block: &Block, k: usize, out: &mut String) {
         self.moves_last = crate::uses::last_read(self.program, block, k)
             || self.takes_sunk_param(block, k)
-            || self.dies_here(&block.stmts[k]);
+            || self.dies_here(&block.stmts[k])
+            || self
+                .uses
+                .dying_assigns
+                .contains(&(&block.stmts[k] as *const Stmt));
         self.taken_items = self.taken_items(&block.stmts[k], &block.stmts[k + 1..]);
         if self.reads_held(&block.stmts[k]) {
             self.moves_last = false;
@@ -1254,6 +1319,42 @@ impl Emitter<'_> {
         walk::stmt_exprs(stmt, &mut |e| walk::deep_expr(e, &mut read));
         walk::stmt_blocks(stmt, &mut |b| walk::deep_exprs(b, &mut read));
         reads
+    }
+
+    /// `std::move(text)` when `item` is one of the literal's taken items.
+    pub(crate) fn taken_item(&self, item: &Expr, text: String) -> String {
+        match self.taken_items.contains(&(item as *const Expr)) {
+            true => format!("std::move({text})"),
+            false => text,
+        }
+    }
+
+    /// Whether item `idx` of a returned literal reads a place on a local
+    /// the function owns (`s.a`, `st[0].1`) that no other item reads: the
+    /// return is the local's last use, so the item may move.
+    pub(crate) fn returned_item_dies(&self, items: &[Expr], idx: usize) -> bool {
+        let item = &items[idx];
+        let Some(slot) = owned_root(item) else {
+            return false;
+        };
+        let params = self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
+        (slot >= params || self.fn_id.is_some_and(|id| self.sunk[id].contains(&slot)))
+            && !self.ref_bound.contains(&slot)
+            && !item.ty.is_scalar()
+            && !matches!(item.ty, Ty::Fn(..))
+            && !items.iter().enumerate().any(|(j, other)| {
+                j != idx
+                    && crate::uses::mentions_any(self.program, other, slot)
+                    && !crate::uses::reads_apart(other, slot, &field_prefix(item))
+            })
+    }
+
+    /// `std::move(text)` when `dies`.
+    pub(crate) fn moved_if(&self, dies: bool, text: String) -> String {
+        match dies && !text.starts_with("std::move(") {
+            true => format!("std::move({text})"),
+            false => text,
+        }
     }
 
     /// The items of `let x = T(a, b.c, ..)` that read a place `rest` sets
@@ -1335,6 +1436,30 @@ fn path_of(e: &Expr) -> Option<((bool, usize), Vec<usize>)> {
     }
 }
 
+/// The local a place expression reads through fields and indexes.
+fn owned_root(e: &Expr) -> Option<usize> {
+    match &e.kind {
+        ExprKind::Local(s) => Some(*s),
+        ExprKind::Field(base, _) | ExprKind::Index(base, _) => owned_root(base),
+        _ => None,
+    }
+}
+
+/// The fields `e` follows from its root before any index: `s.a[0].b` is `[a]`.
+fn field_prefix(e: &Expr) -> Vec<usize> {
+    match &e.kind {
+        ExprKind::Field(base, f) => {
+            let mut fields = field_prefix(base);
+            if path_of(base).is_some() {
+                fields.push(*f);
+            }
+            fields
+        }
+        ExprKind::Index(base, _) => field_prefix(base),
+        _ => Vec::new(),
+    }
+}
+
 fn place_path(p: &Place) -> Option<((bool, usize), Vec<usize>)> {
     match &p.kind {
         PlaceKind::Local(s) => Some(((false, *s), Vec::new())),
@@ -1353,7 +1478,13 @@ fn touches(stmt: &Stmt, (root, fields): &((bool, usize), Vec<usize>)) -> bool {
     let block = Block {
         stmts: vec![stmt.clone()],
     };
-    let opaque = Touch::of_block(&block).code();
+    // Code called by name sees a local only through its arguments, which
+    // `uses` counts; a global it may read itself.
+    let access = Touch::of_block(&block);
+    let opaque = match root.0 {
+        true => access.code(),
+        false => access.unnamed(),
+    };
     let (mut uses, mut elsewhere) = (0usize, 0usize);
     walk::deep_exprs(&block, &mut |e| match &e.kind {
         ExprKind::Local(s) if (false, *s) == *root => uses += 1,

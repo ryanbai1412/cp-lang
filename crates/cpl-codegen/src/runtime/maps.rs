@@ -67,8 +67,8 @@ struct CpHash {
         return s;
     }
     // Full salted splitmix64 so both prime-mod and power-of-two open-addressing tables stay hack-resistant.
-    // Every integer width, signed or not (`Hash61` is a `U64`), hashes as its 64-bit value.
-    template <class I, std::enable_if_t<std::is_integral_v<I>, int> = 0>
+    // Every integer width, signed or not (`Hash61` is a `U64`), and every enum hash as their 64-bit value.
+    template <class I, std::enable_if_t<std::is_integral_v<I> || std::is_enum_v<I>, int> = 0>
     size_t operator()(I x) const { return (size_t)splitmix64((uint64_t)x + salt()); }
     size_t operator()(double x) const { return (*this)((ll)std::hash<double>()(x)); }
     size_t operator()(const std::string& s) const {
@@ -91,6 +91,19 @@ struct CpHash {
     template <class L> auto operator()(const L& xs) const -> decltype(xs.begin(), xs.data(), size_t()) {
         uint64_t h = salt() ^ xs.size();
         for (const auto& x : xs) h = splitmix64(h ^ (uint64_t)(*this)(x));
+        return (size_t)h;
+    }
+    // A K-dimensional array (`cpl::Grid`): its sizes, then each cell in row-major order.
+    template <class G> auto operator()(const G& g) const -> decltype(g.d.data(), g.n[0], size_t()) {
+        uint64_t h = salt();
+        for (size_t k : g.n) h = splitmix64(h ^ k);
+        for (const auto& x : g.d) h = splitmix64(h ^ (uint64_t)(*this)(x));
+        return (size_t)h;
+    }
+    // A row held in a struct (`cpl::Row`): the same hash as the list it stands for.
+    template <class R> auto operator()(const R& r) const -> decltype(r.vec(), r.a.data(), size_t()) {
+        uint64_t h = salt() ^ r.size();
+        for (const auto& x : r) h = splitmix64(h ^ (uint64_t)(*this)(x));
         return (size_t)h;
     }
     // An optional, packed or not.
@@ -136,15 +149,24 @@ inline uint64_t mulhi(uint64_t a, uint64_t b) {
 // of the hash) and the entry, built only in a full slot, so a probe reads an entry only when the
 // fingerprint matches. The load stays at most 7/8 and `reserve` sizes exactly. An entry's home grows
 // with its hash, so a rehash walks the old table in the new one's order and frees it as it goes.
+// A fresh odd seed per table, so two tables put the same keys in unrelated orders: draining one
+// into another in slot order would otherwise insert in home order and pile up one probe run.
+// The seeds run from a fixed start, so a program's output does not change from run to run.
+inline uint64_t table_seed() {
+    static uint64_t c = 0x2545f4914f6cdd1dULL;
+    uint64_t x = c += 0x9e3779b97f4a7c15ULL;
+    x = (x ^ (x >> 30)) * 0xbf58476d1ce4e5b9ULL; x = (x ^ (x >> 27)) * 0x94d049bb133111ebULL;
+    return (x ^ (x >> 31)) | 1;
+}
 template <class E, class K, class KeyOf, class H> struct HashTable {
-    uint8_t* st = nullptr; E* e = nullptr; size_t cap = 0, n = 0;
+    uint8_t* st = nullptr; E* e = nullptr; size_t cap = 0, n = 0; uint64_t seed = table_seed();
     HashTable() = default;
     HashTable(const HashTable& o) { copy(o); }
     HashTable(HashTable&& o) noexcept { steal(o); }
     HashTable& operator=(const HashTable& o) { if (this != &o) { drop(); copy(o); } return *this; }
     HashTable& operator=(HashTable&& o) noexcept { if (this != &o) { drop(); steal(o); } return *this; }
     ~HashTable() { drop(); }
-    void steal(HashTable& o) { st = o.st; e = o.e; cap = o.cap; n = o.n; o.st = nullptr; o.e = nullptr; o.cap = o.n = 0; }
+    void steal(HashTable& o) { st = o.st; e = o.e; cap = o.cap; n = o.n; seed = o.seed; o.st = nullptr; o.e = nullptr; o.cap = o.n = 0; }
     void alloc(size_t c) {
         st = (uint8_t*)calloc(c, 1); e = (E*)calloc(c, sizeof(E));
         if (!st || !e) fail(\"out of memory\");
@@ -152,7 +174,7 @@ template <class E, class K, class KeyOf, class H> struct HashTable {
     }
     void copy(const HashTable& o) {
         if (!o.cap) return;
-        alloc(o.cap);
+        seed = o.seed; alloc(o.cap);
         for (size_t i = 0; i < cap; ++i) if (o.st[i]) { new (e + i) E(o.e[i]); st[i] = o.st[i]; }
         n = o.n;
     }
@@ -168,8 +190,9 @@ template <class E, class K, class KeyOf, class H> struct HashTable {
         for (size_t i = 0; i < cap; ++i) if (st[i]) kill(i);
         n = 0;
     }
-    // The salted hash, mixed again so a 32-bit size_t still fills the top bits the home is taken from.
-    uint64_t hash(const K& k) const { return (uint64_t)H{}(k) * 0x9e3779b97f4a7c15ULL; }
+    // The salted hash keyed by the table's seed, mixed again so a 32-bit size_t still fills the top
+    // bits the home is taken from.
+    uint64_t hash(const K& k) const { return ((uint64_t)H{}(k) ^ seed) * 0x9e3779b97f4a7c15ULL; }
     static uint8_t fp(uint64_t h) { return (uint8_t)(0x80 | (h & 0x7f)); }
     size_t home(uint64_t h) const { return (size_t)mulhi(h, cap); }
     size_t next(size_t i) const { return i + 1 == cap ? 0 : i + 1; }
@@ -180,13 +203,14 @@ template <class E, class K, class KeyOf, class H> struct HashTable {
         for (size_t i = home(h); st[i]; i = next(i)) if (st[i] == f && KeyOf{}(e[i]) == k) return i;
         return cap;
     }
-    // Rehashes into c slots, walking the old slots in order and freeing each page once it is moved out.
+    // Rehashes into c slots, walking the old slots in order and freeing each page once its entries are
+    // moved out and destroyed, so the old and new tables are never both whole, whatever E is.
     void grow(size_t c) {
-        HashTable t; t.alloc(c);
+        HashTable t; t.seed = seed; t.alloc(c);
         const size_t chunk = 1 << 14; size_t done = 0;
         for (size_t i = 0; i < cap; ++i) {
             if (st[i]) { t.put(std::move(e[i])); kill(i); }
-            if constexpr (std::is_trivially_destructible_v<E>) if (i + 1 - done == chunk) {
+            if (i + 1 - done == chunk) {
                 release_pages(st + done, chunk); release_pages(e + done, chunk * sizeof(E)); done = i + 1;
             }
         }
@@ -334,6 +358,19 @@ template <class V> Lent<V> lend_opt(Lent<V> l) { return l; }
         code: "\
 template <class M, class Q> Lent<typename M::mapped_type> map_lend(const M& m, const Q& k) {
     auto it = m.find(k); return {it == m.end() ? nullptr : &it->second};
+}
+",
+    },
+    Piece {
+        name: "map_slot",
+        needs: &["fail"],
+        code: "\
+template <class M, class Q> typename M::mapped_type* map_slot(M& m, const Q& k) {
+    auto it = m.find(k); return it == m.end() ? nullptr : &it->second;
+}
+template <class V> V& map_slot_at(V* p) { if (!p) fail(\"key not in map\"); return *p; }
+template <class M, class Q> typename M::mapped_type& map_slot_put(M& m, typename M::mapped_type*& p, const Q& k) {
+    return p ? *p : *(p = &m[k]);
 }
 ",
     },

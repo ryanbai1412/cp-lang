@@ -744,7 +744,9 @@ impl Ty {
             return self.clone();
         }
         let list_index = Ty::list_index();
-        let listed = bindings.values().any(|ty| *ty == list_index);
+        let listed = bindings
+            .values()
+            .any(|ty| *ty == list_index || *ty == Ty::Int);
         let bound = self.map(&mut |ty| match ty {
             Ty::Param(name) => bindings.get(name).cloned(),
             _ => None,
@@ -752,13 +754,15 @@ impl Ty {
         if !listed {
             return bound;
         }
-        // `[D]T` where a list was given is that list's type, and one of
-        // its positions is an `Int`.
+        // `[D]T` where a list was given, or `D = Int` (R07.3.5), is that list's
+        // type, and one of its positions is an `Int`.
         bound.map(&mut |ty| match ty {
-            Ty::Array { index, elem } if *index == [Ty::list_index()] => Some(Ty::Named {
-                name: "List".to_string(),
-                args: vec![elem.subst(bindings)],
-            }),
+            Ty::Array { index, elem } if *index == [Ty::list_index()] || *index == [Ty::Int] => {
+                Some(Ty::Named {
+                    name: "List".to_string(),
+                    args: vec![elem.subst(bindings)],
+                })
+            }
             ty if *ty == list_index => Some(Ty::Int),
             _ => None,
         })

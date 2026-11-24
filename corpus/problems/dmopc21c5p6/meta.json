@@ -6,11 +6,15 @@
   {"id": "4233321", "language": "CPP17", "result": "TLE", "time": 4.20956775, "memory_kb": 7504.0, "file": "corpus/submissions/4233321.cpp"},
   {"id": "4233327", "language": "CPP17", "result": "TLE", "time": 4.2763638, "memory_kb": 7504.0, "file": "corpus/submissions/4233327.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc21c5p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus. orig.cpp follows the official editorial: greedy prefix, then the lexicographically smallest perfect matching on the last positions (the suffix doubles if the prefix leaves no matching). It matches a lexicographic backtracking brute force for N <= 19 and odd N <= 61, the plain lexicographic matching over all N positions for every N <= 700, and its output is a valid prime-sum permutation at N = 1e6 and N = 674871."
 }

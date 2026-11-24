@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Solve } from '@/components/exercise';
-import { StatusBadge } from '@/components/status-badge';
 import { Button } from '@/components/ui/button';
 import { highlight } from '@/lib/highlight';
 import { type Lang, languages, quickstart } from '@/lib/quickstart';
@@ -25,7 +24,6 @@ export default async function Page({ params }: Props) {
   if (!(lang in languages)) notFound();
   const l = lang as Lang;
   const problems = quickstart();
-  const checked = await Promise.all(problems.map((p) => (p.runs ? null : highlight(p.source.trimEnd(), 'cp'))));
   const theirs = await Promise.all(problems.map((p) => highlight(p.yours[l], languages[l].shiki)));
   return (
     <main className="container mx-auto max-w-4xl px-4 py-12">
@@ -60,19 +58,7 @@ export default async function Page({ params }: Props) {
             </details>
             <div className="mt-4">
               <p className="mb-4 text-base leading-7">{p.statement}</p>
-              {p.runs ? (
-                <Solve id={`quickstart-${p.id}`} starter={p.source} reference={p.source} tests={p.tests} />
-              ) : (
-                <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
-                  <div className="flex items-center gap-2 border-b px-3 py-2 text-sm text-muted-foreground">
-                    <StatusBadge status={p.status} />
-                  </div>
-                  <div tabIndex={0}
-                    className="overflow-x-auto p-4 text-[13px] leading-relaxed [&_pre]:!bg-transparent"
-                    dangerouslySetInnerHTML={{ __html: checked[i]! }}
-                  />
-                </div>
-              )}
+              <Solve id={`quickstart-${p.id}`} starter={p.source} reference={p.source} tests={p.tests} />
             </div>
             <div className="mt-4 rounded-xl border p-4">
               <p className="text-sm font-medium">What&apos;s different from {languages[l].name}</p>

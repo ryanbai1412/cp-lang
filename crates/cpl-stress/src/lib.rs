@@ -7,7 +7,6 @@ pub mod case;
 pub mod choices;
 pub mod cli;
 pub mod duplex;
-pub mod engine;
 pub mod explain;
 pub mod gen;
 pub mod judge;
@@ -16,21 +15,23 @@ pub mod program;
 pub mod report;
 pub mod rng;
 pub mod run;
+pub mod runner;
 pub mod shrink;
 pub mod spec;
+pub mod stress;
 pub mod traced;
 
-pub use case::{judge_case, Failed, Ran, Ruling, Side, Sides, Talked, Transcript, Wrong};
-pub use engine::{
-    stress_source, ChoiceSource, Engine, InterpChoices, InterpEngine, ProcessChoices, ProcessEngine,
-};
+pub use case::{Failed, Ran, Roles, Ruling, Side, Talked, Transcript, Wrong};
+pub use choices::ChoiceSource;
 pub use gen::{generate, make, Case, Pick, Size, TreeShape, Value};
 pub use judge::{Judge, Judged, Launch, Verdict};
 pub use program::{missing_compiler, BuildError, Exit, Outcome, Program};
 pub use report::StressResult;
 pub use rng::Rng;
+pub use runner::{Runner, Vm};
 pub use shrink::{fit, shrink};
 pub use spec::{InputSpec, Shape, SpecError};
+pub use stress::{Place, Stress, Stressed};
 pub use traced::STUCK_STEPS;
 
 /// Whether a file has a fn `cpl stress` judges by; see [`cpl_ir::STRESS_DECORATORS`].

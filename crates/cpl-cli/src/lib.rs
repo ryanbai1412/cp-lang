@@ -236,20 +236,14 @@ pub fn exec<S: AsRef<str>>(
         Some("stress") => {
             let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
             let mut errors = Vec::new();
-            let code =
-                cpl_stress::cli::run_with(&args, stdout, &mut errors, Some(&trace::against_brute));
+            let code = cpl_stress::cli::run_with(&args, stdout, &mut errors, Some(&trace::page));
             *stderr += &String::from_utf8_lossy(&errors);
             code
         }
         Some("locate") => {
             let args: Vec<String> = rest.iter().map(|arg| arg.to_string()).collect();
             let mut errors = Vec::new();
-            let code = cpl_stress::locate::run_with(
-                &args,
-                stdout,
-                &mut errors,
-                Some(&trace::against_brute),
-            );
+            let code = cpl_stress::locate::run(&args, stdout, &mut errors);
             *stderr += &String::from_utf8_lossy(&errors);
             code
         }
@@ -849,7 +843,7 @@ fn verdict(
         *stderr += &format!("{}\n", trap.message);
         *stderr += &render_trap(path, text, trap);
         // Stress reads the trap as `cpl check --format json` gives it.
-        if let Some(file) = std::env::var_os("CPL_JUDGE_DIAGNOSTIC") {
+        if let Some(file) = cpl_env::JUDGE_DIAGNOSTIC.raw() {
             let lines = cpl_diag::LineIndex::new(text);
             let json = cpl_diag::json::diagnostic(&trap.to_diagnostic(path, &lines), &lines);
             let _ = std::fs::write(file, json.to_string());

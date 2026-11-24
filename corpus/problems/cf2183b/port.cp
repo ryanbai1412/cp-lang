@@ -11,7 +11,8 @@
 
 @!multitest
 let (n, k): (2..=200_000, 2..=200_000) = read()
-let a: [0..n]0..=n = read()
 var has: [0..k - 1]Bool = false
-for x in a if x < k - 1: has[x] = true
+repeat n:
+    let a: 0..=n = read()
+    if a < k - 1: has[a] = true
 print((0..k - 1).find(x => not has[x]) ?? (k - 1))

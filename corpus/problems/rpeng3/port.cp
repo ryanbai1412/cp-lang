@@ -19,7 +19,7 @@ let down: 1..=up = read()
 domain Loc = 1..=500_001
 let home: Loc = read()
 domain Fair = 0..n
-let fairs: [Fair](t: 1..=500_000, at: Loc, gain: 1..=4000) = read()
+var fairs: [Fair](t: 1..=500_000, at: Loc, gain: 1..=4000) = read()
 
 // Every visited location's best profit lies in -5e6..=2e9: walking there from
 // home costs at most 10 * 5e5, and the fairs gain at most 4000 * 5e5. The keys
@@ -38,8 +38,8 @@ fn arrive(x: Loc) -> Int:
     max(from_low.fold(Loc.first!..=x) - Int(x) * down, from_high.fold(x..=Loc.last!) + Int(x) * up)
 
 let ud = up + down
-let by_day = fairs.sorted()
-for day in by_day.runs(by: f => f.t):
+fairs.sort()
+for day in fairs.runs(by: f => f.t):
     // A day's fairs, by location: enter at one, sweep to an end of a
     // contiguous stretch and come back to the exit.
     domain Q = 0..day.len

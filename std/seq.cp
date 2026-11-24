@@ -1297,11 +1297,9 @@ pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 /// empty: `var a: List<Int> = []; a.insert(0, 5); a == [5]`
 pub fn insert<T>(mut self: List<T>, i: Int, x: T):
     assert 0 <= i <= self.len
-    self.push(x)
-    var j = self.len - 1
-    while j > i:
-        self.swap(j - 1, j)
-        j -= 1
+    var carry = x
+    for j in i..self.len: swap(mut carry, mut self[j])
+    self.push(carry)
 
 /// \(O(n)\). Remove and return the element at index `i` (`0 <= i < self.len`), shifting `i + 1..` left.
 ///
@@ -1311,9 +1309,9 @@ pub fn insert<T>(mut self: List<T>, i: Int, x: T):
 /// empty: `var a: List<Int> = []; a.remove(0) == 0` (traps R0401)
 pub fn remove<T>(mut self: List<T>, i: Int) -> T:
     assert 0 <= i < self.len
-    for j in i..self.len - 1:
-        self.swap(j, j + 1)
-    self.pop()!
+    var carry = self.pop()!
+    for j in (i..self.len).rev: swap(mut carry, mut self[j])
+    carry
 
 // =============================================================================
 // Spec surface (`= todo` where not yet implemented)
@@ -1380,6 +1378,25 @@ impl Seq<T> for [D]T:
 impl Bidir<T> for [D]T:
     fn iter_rev(self) -> yields T:
         for x in self.rev: yield x
+
+/// A `Prefix` walks its running folds: the fold through each position (from the right for a
+/// suffix table), in key order, so
+/// `a.scan(+).min()` is the least running total and `inversions(a.scan(+))` counts its
+/// inversions.
+impl Seq<T> for Prefix<D, T>:
+    fn iter(self) -> yields T:
+        for v in D:
+            yield self.through(v)
+
+impl Keyed<D, T> for Prefix<D, T>:
+    fn items(self) -> yields (D, T):
+        for v in D:
+            yield (v, self.through(v))
+
+impl Bidir<T> for Prefix<D, T>:
+    fn iter_rev(self) -> yields T:
+        for v in D.rev:
+            yield self.through(v)
 
 /// A sized sequence read in \(O(1)\) by walk position: `s.nth(k)` is the element `k` steps into
 /// the walk. Every `Indexed` is one, and so is the `.rev` of one, which is what `zip`'s later
@@ -1708,34 +1725,33 @@ pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
 /// order: same elements, keyed `0..len` by a fresh domain
 /// traps: never
 /// example: `[5, 6, 7][1..].rebase.nth(1) == 7`
-@get pub fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>:
-    domain Idx = 0..self.len
-    Rebased<S, Idx>(self, Idx.all)
+@get pub fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S> = Rebased(self)
 
 /// The view `rebase` returns: `src` keyed by `Idx`, a fresh domain `0..src.len` of its own.
-pub struct Rebased<S, Idx>(pub src: S, idx: Range<Idx>)
+pub struct Rebased<S>(pub src: S):
+    domain Idx = 0..src.len
 
-impl Seq<T> for Rebased<S: Indexed<K, T>, Idx>:
+impl<S: Indexed<K, T>, K, T> Seq<T> for Rebased<S>:
     fn iter(self) -> yields T:
-        for x in src: yield x
+        for x in self.src: yield x
 
-impl Sized for Rebased<S: Sized, Idx>:
-    @get fn len(self) -> Int = src.len
+impl<S: Sized> Sized for Rebased<S>:
+    @get fn len(self) -> Int = self.src.len
 
-impl Keyed<Idx, T> for Rebased<S: Indexed<K, T>, Idx>:
+impl<S: Indexed<K, T>, K, T> Keyed<Idx, T> for Rebased<S>:
     fn items(self) -> yields (Idx, T):
-        for i in idx: yield (i, src.nth(i.ord))
+        for i in Idx.all: yield (i, self.src.nth(i.ord))
 
-impl Bidir<T> for Rebased<S: Indexed<K, T>, Idx>:
+impl<S: Indexed<K, T>, K, T> Bidir<T> for Rebased<S>:
     fn iter_rev(self) -> yields T:
-        for x in src.rev: yield x
+        for x in self.src.rev: yield x
 
-impl Positional<T> for Rebased<S: Indexed<K, T>, Idx>:
-    fn nth(self, k: Int) -> T = src.nth(k)
+impl<S: Indexed<K, T>, K, T> Positional<T> for Rebased<S>:
+    fn nth(self, k: Int) -> T = self.src.nth(k)
 
-impl Indexed<Idx, T> for Rebased<S: Indexed<K, T>, Idx>:
-    fn at(self, i: Idx) -> T = src.nth(i.ord)
-    @get fn keys(self) -> Range<Idx> = idx
+impl<S: Indexed<K, T>, K, T> Indexed<Idx, T> for Rebased<S>:
+    fn at(self, i: Idx) -> T = self.src.nth(i.ord)
+    @get fn keys(self) -> Range<Idx> = Idx.all
 
 /// \(O(1)\). Every `k`-th element of `self`, starting with the first: `[3, 1, 2, 4].step(2)` walks
 /// `3, 2`. Keys survive (R04a.9.3): `a.step(2)[i]` reads `a[i]`, and a key the stride skips traps.
@@ -2069,7 +2085,7 @@ pub fn chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>:
 /// declared member wins.
 ///
 /// cost: \(O(n)\) comparisons
-/// empty: `let a: List<Int> = []; (3 in a) == false`
+/// empty: `let a: List<Int> = []; a.contains(3) == false`
 /// traps: never
 /// example: `(1..=3).map(x => x * x).contains(4)`
 pub fn contains<S: Seq<T>, T: Eq>(self: S, x: T) -> Bool:
@@ -4142,6 +4158,14 @@ fn views_and_trackers_walk_and_show():
     let r = [1, 2, 3].ring.span(2, 2)
     assert r.each().collect() == [2, 0] and "{r}" == "2 0" and not r.is_empty
 
+impl Show for Rev<S>:
+    fn show(v):
+        var out = ""
+        for x in v:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
 impl Show for Slice<S>:
     fn show(v):
         var out = ""
@@ -4149,6 +4173,17 @@ impl Show for Slice<S>:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+impl Seq<T> for Stepped<S, T>:
+    fn iter(self) -> yields T:
+        for j in 0..self.len: yield self.nth(j)
+
+impl Bidir<T> for Stepped<S, T>:
+    fn iter_rev(self) -> yields T:
+        var j = self.len
+        while j > 0:
+            j -= 1
+            yield self.nth(j)
 
 impl Show for Stepped<S, T>:
     fn show(v):

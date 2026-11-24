@@ -13,6 +13,7 @@
 // blocks against one division per i, submask and k-subset walks against a scan of every mask,
 // Dirichlet products against the divisor double loop, and Du / Min_25 prefix sums against
 // tables built by trial division. Reads `seed n`; prints the first op that differs.
+// std_functions: 2
 use std.math.{floor_quotients, submasks, bit_subsets, dirichlet_convolve, dirichlet_inv}
 use std.math.{DirichletSum, sum_phi, sum_mobius, sum_multiplicative}
 use std.rand.{Rng}

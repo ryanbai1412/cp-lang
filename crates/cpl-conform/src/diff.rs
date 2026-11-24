@@ -10,6 +10,7 @@ use crate::corpus;
 use crate::runner::{self, CompileError};
 use crate::scoreboard::{CaseOutcome, SuiteReport};
 use crate::variants;
+use cpl_stress::Verdict;
 
 #[derive(Clone, Debug)]
 enum DiffTarget {
@@ -21,12 +22,15 @@ enum DiffTarget {
         id: String,
         spec_path: PathBuf,
         tests: Vec<PathBuf>,
+        /// An interactive package's interactor: both engines are judged by it.
+        interactor: Option<PathBuf>,
     },
     /// A corpus `port.cp` with side-effect probes (`variants`), on its smallest input.
     Variant {
         id: String,
         port_path: PathBuf,
         input: PathBuf,
+        interactor: Option<PathBuf>,
     },
 }
 
@@ -75,6 +79,7 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
             id,
             spec_path: prob.spec_path,
             tests: prob.tests.into_iter().map(|(inp, _)| inp).collect(),
+            interactor: prob.interactor,
         });
     }
 
@@ -101,6 +106,7 @@ fn discover(root: &Path, filter: Option<&str>) -> Vec<DiffTarget> {
                 id,
                 port_path: prob.spec_path,
                 input,
+                interactor: prob.interactor,
             });
         }
     }
@@ -184,10 +190,12 @@ pub(crate) fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCom
         .map_err(|e| CppCompileError::Infra(format!("cannot create cache dir: {e}")))?;
     // `CPL_CONFORM_CXXFLAGS` replaces `-O2`, e.g. `-O1 -g -fsanitize=address,undefined`
     // to turn undefined behaviour in emitted C++ into a failing case.
-    let flags = std::env::var("CPL_CONFORM_CXXFLAGS").unwrap_or_else(|_| "-O2".into());
+    let flags = cpl_env::CONFORM_CXXFLAGS
+        .text()
+        .unwrap_or_else(|| "-O2".into());
     // `CPL_CXX_SYSTEM_KEY` fingerprints the compiler and system headers when the
     // cache outlives them (shared across checkouts and CI runs).
-    let system = std::env::var("CPL_CXX_SYSTEM_KEY").unwrap_or_default();
+    let system = cpl_env::CXX_SYSTEM_KEY.text().unwrap_or_default();
     let key = if flags == "-O2" && system.is_empty() {
         fnv1a_hex(cpp.as_bytes())
     } else {
@@ -295,6 +303,7 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
             id,
             spec_path,
             tests,
+            ..
         } => {
             let mut inps = Vec::with_capacity(tests.len());
             for t in tests {
@@ -321,6 +330,7 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
             id,
             port_path,
             input,
+            ..
         } => match std::fs::read(input) {
             Ok(bytes) => (
                 id.clone(),
@@ -359,6 +369,14 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         }
     };
     let path_str = path.to_string_lossy();
+    let interactor = match target {
+        DiffTarget::Corpus { interactor, .. } | DiffTarget::Variant { interactor, .. } => {
+            interactor.as_deref()
+        }
+        DiffTarget::Conformance { .. } => None,
+    };
+    // What `cpl run` runs: the port, or for a variant the written variant.
+    let mut run_path = path.clone();
     let text = if matches!(target, DiffTarget::Variant { .. }) {
         let skip = |detail: &str| CaseOutcome {
             status: "skip".into(),
@@ -367,18 +385,38 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         if runner::compile_program(db, &path_str, &text).is_err() {
             return (id, skip("the port does not compile yet"));
         }
-        let Some((variant, _)) = variants::build(db, &path_str, &text) else {
+        let input = inputs.first().map_or(&[][..], |(_, b)| b.as_slice());
+        // An interactive port runs only against its interactor, so its probes are not pruned.
+        let built = if interactor.is_some() {
+            variants::build(db, &path_str, &text)
+        } else {
+            variants::build_running(db, &path_str, &text, input)
+        };
+        let Some((variant, _)) = built else {
             return (id, skip("no probe checks"));
         };
         // Kept for reproducing a mismatch: `cpl run` it next to the port.
         let dir = cache_dir.join("variants");
-        let _ = std::fs::create_dir_all(&dir).and_then(|_| {
-            std::fs::write(dir.join(format!("{}.cp", id.replace('/', "_"))), &variant)
-        });
+        let written = dir.join(format!("{}.cp", id.replace('/', "_")));
+        if std::fs::create_dir_all(&dir)
+            .and_then(|_| std::fs::write(&written, &variant))
+            .is_ok()
+        {
+            run_path = written;
+        } else if interactor.is_some() {
+            return (
+                id,
+                CaseOutcome {
+                    status: "error".into(),
+                    detail: format!("cannot write {}", written.display()),
+                },
+            );
+        }
         variant
     } else {
         text
     };
+    let checks = release_checks(&text);
     let compiled = match runner::compile_program(db, &path_str, &text) {
         Ok(c) => c,
         Err(CompileError::Diagnostics(_)) => {
@@ -410,12 +448,14 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         Ok(Expect::OkOutput(want)) if !compiled.program.cpp_bodies.is_empty() => Some(want),
         _ => None,
     };
-    for (_, inp) in &inputs {
+    for (_, inp) in inputs.iter().filter(|_| interactor.is_none()) {
         if let Some(want) = &written {
             interp_outputs.push(want.clone().into_bytes());
             continue;
         }
-        let run = match runner::run_interp_bounded(&compiled.program, &path_str, &text, inp) {
+        let limit = runner::case_timeout();
+        let at = checks.unwrap_or(cpl_codegen::Checks::LOCAL);
+        let run = match runner::run_interp_at(&compiled.program, &path_str, &text, inp, limit, at) {
             Ok(run) => run,
             Err(detail) => {
                 return (
@@ -443,7 +483,11 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("main.cp");
-    let cpp = cpl_codegen::emit(&compiled.program, name, Some(&text));
+    let target = cpl_codegen::Target {
+        checks: checks.unwrap_or_default(),
+        ..cpl_codegen::Target::default()
+    };
+    let cpp = cpl_codegen::emit_for(&compiled.program, name, Some(&text), &target);
     let bin = match compile_cpp(&cpp, cache_dir) {
         Ok(b) => b,
         Err(CppCompileError::Cxx(err)) => {
@@ -466,6 +510,24 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
         }
     };
 
+    if let Some(interactor) = interactor {
+        let cpl = match conformance::cli_binary() {
+            Ok(cpl) => cpl.display().to_string(),
+            Err(detail) => {
+                return (
+                    id,
+                    CaseOutcome {
+                        status: "error".into(),
+                        detail,
+                    },
+                )
+            }
+        };
+        let (spec, bin) = (run_path.display().to_string(), bin.display().to_string());
+        let interp = cpl_stress::Program::command(&spec, &[&cpl, "run", &spec]);
+        let cpp = cpl_stress::Program::command(&bin, &[&bin]);
+        return (id, interactive_outcome(interactor, &interp, &cpp, &inputs));
+    }
     for ((inp_name, inp), interp_out) in inputs.iter().zip(interp_outputs.iter()) {
         let cpp_out = match run_binary(&bin, inp) {
             Ok(o) => o,
@@ -519,12 +581,76 @@ fn run_one(db: &mut Session, cache_dir: &Path, target: &DiffTarget) -> (String, 
     )
 }
 
+/// Whether two runs against an interactor agree: the same verdict and the same
+/// transcript, except that after the interactor stops a run, how much more it
+/// printed depends on timing, so only the shorter transcript must match.
+fn agree(a: &cpl_stress::Judged, b: &cpl_stress::Judged) -> bool {
+    if std::mem::discriminant(&a.verdict) != std::mem::discriminant(&b.verdict) {
+        return false;
+    }
+    let (x, y) = (
+        a.outcome.stdout.split_whitespace(),
+        b.outcome.stdout.split_whitespace(),
+    );
+    if a.verdict == Verdict::Accepted {
+        x.eq(y)
+    } else {
+        x.zip(y).all(|(p, q)| p == q)
+    }
+}
+
+/// An interactive package, judged by its interactor under `cpl run` and as
+/// the built C++: the verdicts and what each printed must agree on every case.
+fn interactive_outcome(
+    interactor: &Path,
+    interp: &cpl_stress::Program,
+    cpp: &cpl_stress::Program,
+    inputs: &[(String, Vec<u8>)],
+) -> CaseOutcome {
+    let outcome = |status: &str, detail: String| CaseOutcome {
+        status: status.into(),
+        detail,
+    };
+    for (name, inp) in inputs {
+        let inp = String::from_utf8_lossy(inp);
+        match (
+            corpus::interacted(interactor, interp, &inp),
+            corpus::interacted(interactor, cpp, &inp),
+        ) {
+            (Ok(a), Ok(b)) if agree(&a, &b) => {}
+            (Ok(a), Ok(b)) => {
+                let (al, bl) = (a.outcome.stdout.lines(), b.outcome.stdout.lines());
+                let at = al
+                    .clone()
+                    .zip(bl.clone())
+                    .take_while(|(x, y)| x == y)
+                    .count();
+                let line = |mut l: std::str::Lines, v: &Verdict| {
+                    format!(
+                        "{:?} {v:?}",
+                        runner::truncate_chars(l.nth(at).unwrap_or(""), 50)
+                    )
+                };
+                let detail = format!(
+                    "{name}: line {}: interp {}, cpp {}",
+                    at + 1,
+                    line(al, &a.verdict),
+                    line(bl, &b.verdict),
+                );
+                return outcome("mismatch", runner::first_line_trimmed(&detail, 240));
+            }
+            (Err(e), _) | (_, Err(e)) => return outcome("error", format!("{name}: {e}")),
+        }
+    }
+    outcome("pass", String::new())
+}
+
 pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
     let targets = discover(root, filter);
     // The per-user g++ cache (scripts/check.sh, kept across CI runs) when there is one,
     // so a fresh checkout or CI job doesn't recompile every case.
-    let cache_dir = match std::env::var_os("CPL_CXX_CACHE_DIR") {
-        Some(dir) => PathBuf::from(dir).join("conform-diff"),
+    let cache_dir = match cpl_env::CXX_CACHE_DIR.path() {
+        Some(dir) => dir.join("conform-diff"),
         None => std::env::var_os("CARGO_TARGET_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("target"))
@@ -627,5 +753,84 @@ mod rerun_tests {
         assert_eq!(outcomes["slow"].status, "pass");
         assert_eq!(outcomes["hung"].status, "error");
         assert_eq!(outcomes["wrong"].status, "fail");
+    }
+}
+
+/// The checks a `// tool: run --release [--checks LEVEL]` case runs at on
+/// both sides: release against release (R09.2.2), the judge build's level
+/// (`none` unless it says) in the interpreter as in the C++. `None` for any
+/// other case: the interpreter checks everything, as `cpl run` does.
+fn release_checks(text: &str) -> Option<cpl_codegen::Checks> {
+    let words: Vec<&str> = conformance::header_values(text, "tool:")
+        .first()
+        .map(|t| t.split_whitespace().collect())
+        .unwrap_or_default();
+    if words.first() != Some(&"run") || !words.contains(&"--release") {
+        return None;
+    }
+    match words.iter().position(|w| *w == "--checks") {
+        Some(i) => words.get(i + 1).and_then(|l| cpl_codegen::Checks::parse(l)),
+        None => Some(cpl_codegen::Checks::None),
+    }
+}
+
+#[cfg(test)]
+mod release_checks_tests {
+    use super::release_checks;
+    use cpl_codegen::Checks;
+
+    #[test]
+    fn a_release_case_runs_its_level_on_both_sides() {
+        assert_eq!(
+            release_checks("// tool: run --release --checks none\n"),
+            Some(Checks::None)
+        );
+        assert_eq!(
+            release_checks("// tool: run --release --checks traps\n"),
+            Some(Checks::Traps)
+        );
+        assert_eq!(
+            release_checks("// tool: run --release\n"),
+            Some(Checks::None)
+        );
+        assert_eq!(release_checks("// expect: ok\n"), None);
+    }
+}
+
+#[cfg(test)]
+mod interactive_tests {
+    use super::interactive_outcome;
+    use cpl_stress::Program;
+    use std::path::Path;
+
+    #[test]
+    fn an_interactive_package_is_judged_by_its_interactor_on_both_sides() {
+        let dir = std::env::temp_dir().join(format!("cpl-diff-interactive-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let lib = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../corpus/lib");
+        let interactor = dir.join("interactor.py");
+        std::fs::write(
+            &interactor,
+            format!(
+                "import sys\nsys.path.insert(0, {:?})\nfrom interactor_lib import run_interactor\n\n\
+                 def drive(case_text, io):\n    n = int(case_text)\n    io.send(str(n))\n    \
+                 got = io.recv_line().strip()\n    \
+                 if got != str(2 * n):\n        raise RuntimeError(f\"answer {{got}}, want {{2 * n}}\")\n\n\
+                 run_interactor(drive)\n",
+                lib.display().to_string()
+            ),
+        )
+        .unwrap();
+        let solve = |body: &str| Program::command(body, &["python3", "-c", body]);
+        let right = solve("print(2 * int(input()))");
+        let wrong = solve("print(int(input()))");
+        let inputs = vec![("01.in".to_string(), b"3\n".to_vec())];
+        assert_eq!(
+            interactive_outcome(&interactor, &right, &right, &inputs).status,
+            "pass"
+        );
+        let split = interactive_outcome(&interactor, &right, &wrong, &inputs);
+        assert_eq!(split.status, "mismatch", "{}", split.detail);
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }

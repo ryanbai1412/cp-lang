@@ -11,10 +11,7 @@ use std::path::{Path, PathBuf};
 
 /// Mutants per file; `CPL_FUZZ_MUTANTS` asks for a deeper run.
 fn mutants_per_file() -> u64 {
-    std::env::var("CPL_FUZZ_MUTANTS")
-        .ok()
-        .and_then(|n| n.parse().ok())
-        .unwrap_or(3)
+    cpl_env::FUZZ_MUTANTS.parse().unwrap_or(3)
 }
 
 fn cp_files(dir: &Path, out: &mut Vec<PathBuf>) {
@@ -127,7 +124,7 @@ fn message(panic: &Box<dyn std::any::Any + Send>) -> String {
 
 /// With `CPL_FUZZ_DUMP=<dir>`, a failing mutant is written there to reproduce.
 fn dump(name: &str, n: usize, mutant: &str) {
-    if let Some(dir) = std::env::var_os("CPL_FUZZ_DUMP") {
+    if let Some(dir) = cpl_env::FUZZ_DUMP.raw() {
         let file = format!("{}-{n}.cp", name.replace('/', "_").trim_end_matches(".cp"));
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(Path::new(&dir).join(file), mutant).unwrap();

@@ -244,8 +244,30 @@ impl<'a> Lowerer<'a> {
                     return;
                 }
                 let key = self.overload_key(m, decl);
+                let source = decl;
                 let decl = self.with_implicit_generics(decl, m, None);
-                if !decl.generics.is_empty() || decl.params.iter().any(super::declare::is_opt_mut) {
+                let grader = m == 0 && stmt.decorators.iter().any(|d| d.name.text == "grader");
+                if grader && !decl.generics.is_empty() && !matches!(decl.body, ast::FnBody::None) {
+                    // The grader calls one C++ fn over lists: an entry that
+                    // binds each domain to its list's length and calls this.
+                    let inner = format!("{key}'grader");
+                    let gfid = self.gen_fns.len();
+                    self.gen_fns.push(GenFnTemplate {
+                        mod_id: m,
+                        offset,
+                        owner: None,
+                        owner_env: HashMap::new(),
+                        decl,
+                    });
+                    self.mod_syms[m].insert(inner.clone(), Sym::GenFn(gfid));
+                    let entry: &'a ast::FnDecl =
+                        Box::leak(Box::new(super::judge::entry_over_lists(decl, &inner)));
+                    let id = self.declare_fn_in(entry, m, offset, None, HashMap::new());
+                    self.mod_syms[m].insert(key, Sym::Fn(id));
+                    self.grader_wrappers.push((source, entry));
+                } else if !decl.generics.is_empty()
+                    || decl.params.iter().any(super::declare::is_opt_mut)
+                {
                     let gfid = self.gen_fns.len();
                     self.gen_fns.push(GenFnTemplate {
                         mod_id: m,

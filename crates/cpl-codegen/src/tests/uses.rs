@@ -1,7 +1,7 @@
 //! The Uses table: what may happen to each heap binding.
 
 use super::lower;
-use crate::uses::{Home, KEPT};
+use crate::uses::Home;
 
 fn uses_of(source: &str, name: &str) -> crate::uses::Use {
     let target = crate::Target::default();
@@ -24,7 +24,7 @@ for v in 0..n:
     print(xs[0] + xs.len)
 ";
     let xs = uses_of(source, "xs");
-    assert!(!xs.mutated && !xs.moved && xs.escapes.is_none(), "{xs:?}");
+    assert!(!xs.mutated && !xs.moved, "{xs:?}");
 }
 
 #[test]
@@ -38,17 +38,6 @@ for v in 0..n:
 ";
     let xs = uses_of(source, "xs");
     assert!(xs.mutated && xs.moved, "{xs:?}");
-}
-
-#[test]
-fn a_list_a_kept_closure_captures_escapes() {
-    let source = "let n = read<Int>()
-for v in 0..n:
-    let xs = [v]
-    let fs = [() => xs.len]
-    print(fs[0]())
-";
-    assert_eq!(uses_of(source, "xs").escapes, Some(KEPT));
 }
 
 #[test]
@@ -210,8 +199,92 @@ fn a_global_read_after_the_fn_that_takes_it_is_copied() {
 }
 
 #[test]
+fn a_read_only_call_on_a_global_a_closure_writes_copies_nothing() {
+    let out = super::cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "domain X = 0..n\n",
+        "var t = SegTree<X, Int>(max, fill: 0)\n",
+        "fn best(at: X) -> Int = t.fold(X.first!..=at)\n",
+        "fn add(at: X):\n",
+        "    t.set(at, best(at) + 1)\n",
+        "let f = (x: X) => add(x)\n",
+        "for x in X: f(x)\n",
+        "print(t.fold(X.first!..=X.last!))\n",
+    ));
+    assert!(
+        !out.contains("(t),"),
+        "`fold` calls only the `Int` op, never `f`, so it can't change `t` and reads it in place:\n{out}"
+    );
+}
+
+#[test]
+fn a_call_that_may_run_a_closure_writing_the_global_copies_it() {
+    let out = super::cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "domain X = 0..n\n",
+        "var t = SegTree<X, Int>(max, fill: 0)\n",
+        "fn bump(a: Int, b: Int) -> Int:\n",
+        "    t.set(X.first!, a)\n",
+        "    max(a, b)\n",
+        "let g = (a: Int, b: Int) => bump(a, b)\n",
+        "fn best(at: X) -> Int = t.fold(X.first!..=at)\n",
+        "print(g(1, 2), best(X.last!))\n",
+    ));
+    assert!(
+        out.contains("(t),"),
+        "`g` has the op's type and writes `t`, so `fold` may change `t` and reads a copy:\n{out}"
+    );
+}
+
+#[test]
 fn binding_a_lent_optional_copies_nothing() {
     let source = "use std.persistent.PersistentSegTree\ndomain N = 0..4\nlet z: [N]Int = [0, 0, 0, 0]\nvar t = PersistentSegTree<N, Int>(+, a: z)\nlet v1 = t.set(t.base, N(1), 1)\nprint(yes(t.diff_kth(v1, t.base, 0) == Some(N(1))))\n";
     assert!(crate::tests::cpp(source).contains("cpl::Lent<"));
     assert_eq!(copy_reasons(source), [] as [&str; 0]);
+}
+
+#[test]
+fn each_copy_a_library_call_makes_is_listed_at_its_fn() {
+    let src = concat!(
+        "use std.bag.{AugSortedBag}\n",
+        "var s: AugSortedBag<Int, Str> = AugSortedBag((x, y) => x + y, \"\", k => Str(k))\n",
+        "s.add(3)\n",
+        "let lo: Int = read()\n",
+        "print(s.fold_between(lo, 9))\n",
+    );
+    let whats: Vec<String> = crate::explain_copies(&lower(src))
+        .into_iter()
+        .map(|(_, what, _)| what)
+        .collect();
+    assert_eq!(
+        whats,
+        [
+            "a read in AugSortedBag.fold_between",
+            "a read in AugSortedBag.fold_between",
+            "a read in AugSortedBag.fold_from",
+            "a read in AugSortedBag.fold_upto",
+            "a read in AugSortedBag.sub"
+        ]
+    );
+}
+
+#[test]
+fn a_last_read_assigned_inside_an_if_moves() {
+    let out = super::cpp(concat!(
+        "let n: 1..=10 = read()\n",
+        "var best: ?List<Int> = None\n",
+        "for i in 0..n:\n",
+        "    let w = [j * i for j in 0..n]\n",
+        "    if best == None or w < best!: best = w\n",
+        "var dp = [0 for _ in 0..n]\n",
+        "for i in 0..n:\n",
+        "    let next = [dp[j] + i for j in 0..n]\n",
+        "    if i % 2 == 0:\n",
+        "        dp = next\n",
+        "print(best!, dp)\n",
+    ));
+    assert!(
+        out.contains("(std::move(w))") && out.contains("dp = std::move(next)"),
+        "`w` and `next` are last read where they are assigned, so they move:\n{out}"
+    );
 }

@@ -32,6 +32,16 @@ impl<'p> Emitter<'p> {
             PlaceKind::Some(base) => format!("(*{})", self.place_at(base, false)),
             PlaceKind::Index(base, indices) => {
                 let b = self.place_at(base, false);
+                if let (Ty::Map(..) | Ty::HashMap(..), [key]) = (&base.ty, indices.as_slice()) {
+                    if let Some(at) = self.map_slot(key) {
+                        return match store {
+                            true => {
+                                format!("cpl::map_slot_put({b}, {at}, {})", self.expr(key).text)
+                            }
+                            false => format!("cpl::map_slot_at({at})"),
+                        };
+                    }
+                }
                 if let (Ty::Array { dims, .. }, PlaceKind::Local(_) | PlaceKind::Global(_)) =
                     (&base.ty, &base.kind)
                 {

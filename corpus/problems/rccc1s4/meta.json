@@ -8,11 +8,15 @@
   {"id": "3419161", "language": "JAVA", "result": "WA", "time": 16.822648822, "memory_kb": 61280.0, "file": "corpus/submissions/3419161.java"},
   {"id": "3422410", "language": "JAVA", "result": "AC", "time": 19.195772649, "memory_kb": 179060.0, "file": "corpus/submissions/3422410.java"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/rccc1s4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ on DMOJ (the AC is Java), so orig.cpp is a corpus-written reference: a dp over (bucket, pours) with a suffix minimum. It matches the sample, an exhaustive search over pour counts on 300 small generated cases, and the Java AC on 80 generated cases and --max."
 }

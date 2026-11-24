@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "4794219", "language": "PYPY3", "result": "AC", "time": 0.464615832, "memory_kb": 60304.0, "file": "corpus/submissions/4794219.py"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/ccc22j2/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The only accepted submission is Python, so there is no accepted C++ reference. orig.cpp is a corpus-written count of ratings 5p - 3f above 40, checked against the statement samples, the Python AC and an independent brute on 60 random cases. The statement gives no upper bound on N or the point and foul counts, so tests.toml has no --max case."
 }

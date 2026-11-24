@@ -116,10 +116,7 @@ fn run_interp_io(
 
 /// Seconds a case may run, from `CPL_CONFORM_CASE_TIMEOUT` (default 20).
 pub fn case_timeout() -> u64 {
-    std::env::var("CPL_CONFORM_CASE_TIMEOUT")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(20)
+    cpl_env::CONFORM_CASE_TIMEOUT.parse().unwrap_or(20)
 }
 
 /// Runs `cmd` with `input` on stdin and returns its output, or `Err` after
@@ -195,12 +192,32 @@ pub fn run_interp_within(
     input: &[u8],
     limit: u64,
 ) -> Result<RunOutput, String> {
+    run_interp_at(
+        program,
+        path,
+        text,
+        input,
+        limit,
+        cpl_ir::checks::Checks::LOCAL,
+    )
+}
+
+/// [`run_interp_within`] at a judge build's `checks`: what it doesn't trap
+/// on does what that build does (R09.3).
+pub fn run_interp_at(
+    program: &cpl_ir::Program,
+    path: &str,
+    text: &str,
+    input: &[u8],
+    limit: u64,
+    checks: cpl_ir::checks::Checks,
+) -> Result<RunOutput, String> {
     let stop = cpl_interp::Stop::after(std::time::Duration::from_secs(limit));
     let run = run_interp_io(
         program,
         path,
         text,
-        cpl_interp::Io::fixed(input).until(stop),
+        cpl_interp::Io::fixed(input).until(stop).at(checks),
     );
     match &run.trap {
         Some(trap) if trap.message == cpl_interp::OUT_OF_TIME => {
@@ -353,10 +370,7 @@ fn watch_memory(finished: &std::sync::mpsc::Receiver<()>) {
 /// `CPL_CONFORM_MAX_RSS_MB`, else three quarters of the machine's memory,
 /// capped at 10 GB; `None` where /proc can't tell.
 fn memory_limit_mb() -> Option<u64> {
-    if let Some(mb) = std::env::var("CPL_CONFORM_MAX_RSS_MB")
-        .ok()
-        .and_then(|s| s.parse().ok())
-    {
+    if let Some(mb) = cpl_env::CONFORM_MAX_RSS_MB.parse() {
         return Some(mb);
     }
     let total = proc_kb("/proc/meminfo", "MemTotal:")? / 1024;

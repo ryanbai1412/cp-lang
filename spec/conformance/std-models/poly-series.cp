@@ -14,6 +14,7 @@
 // products, sqrt and compose_inv by squaring and composing back, compose by Horner on truncated
 // products, and Poly's methods against the same loops. Reads `seed n`; prints the first op that
 // differs.
+// std_functions: 1
 use std.poly.{deriv, integral, inv, log, exp, pow, sqrt, compose, compose_inv, Poly}
 use std.math.{pow_mod}
 use std.mod.{Mod}

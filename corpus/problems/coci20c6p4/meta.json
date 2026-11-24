@@ -8,11 +8,15 @@
   {"id": "4188216", "language": "CPP17", "result": "WA", "time": 0.002530726, "memory_kb": 3332.0, "file": "corpus/submissions/4188216.cpp"},
   {"id": "4188252", "language": "CPP17", "result": "TLE", "time": 3.773425961, "memory_kb": 3384.0, "file": "corpus/submissions/4188252.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/coci20c6p4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ was collected (the five submissions are WA or TLE), so orig.cpp is a new reference: only edges of one sweep triangulation can be uncrossed, and each is tested in O(n log n) by sorting the points on one side by angle; checked against the statement samples and an O(n^4) brute force."
 }

@@ -1107,9 +1107,11 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hove
         .find(|e| e.name == text[start..end])?;
     let cost = cpl_syntax::doc::Facts::parse(&entry.doc)
         .cost
-        .filter(|c| c.starts_with("O("))
+        .filter(|c| cpl_syntax::doc::big_o(c).is_some())
         .map(|c| cpl_diag::plain::text(&c));
     Some(cpl_check::Hover {
+        ty: None,
+        signature: false,
         span: cpl_diag::Span {
             start: start as u32,
             end: end as u32,

@@ -220,14 +220,12 @@ fn local_closure_lowers_to_auto_and_dynamic_field_falls_back_to_std_function() {
 }
 
 #[test]
-#[ignore = "spec/conformance/std-lazy/flip-action-on-a-segtree.cp"]
 fn higher_order_combinator_devirtualizes_to_zero_std_function() {
     let cpp = cpp(concat!(
-        "use std.lazy.{Flip, flip_action}\n",
+        "use std.lazy.{flip_action}\n",
         "domain I = 0..4\n",
-        "let m = Monoid<Int>(0, (a, b) => a + b)\n",
-        "let act = flip_action<Int>(m)\n",
-        "var st = SegTree<I, Flip<Int>>(act.over, [I] i => if i.ord % 2 == 0: Flip(1, 0) else: Flip(0, 1), act: act)\n",
+        "let act = flip_action<Int>((a, b) => a + b)\n",
+        "var st = SegTree<I, Flip<Int>, Bool>(act.over, [I] i => if i.ord % 2 == 0: Flip(1, 0) else: Flip(0, 1), act: act)\n",
         "st.apply(I(0)..I(3), true)\n",
         "print(st.all.now)\n",
     ));
@@ -532,4 +530,17 @@ fn a_value_if_of_different_closures_joins_at_the_erased_fn() {
         "{out}"
     );
     assert!(out.contains(" : std::function<ll(ll)>(low)"), "{out}");
+}
+
+#[test]
+fn a_yields_fn_that_walks_another_feeds_its_callback_on() {
+    let cpp = cpp(concat!(
+        "fn inner2(n: Int) -> yields Int:\n    for i in 0..n: yield i\n",
+        "fn outer2(n: Int) -> yields Int:\n    for x in inner2(n): yield x\n",
+        "let n: Int = read()\nvar t = 0\nfor x in outer2(n): t += x\nprint(t)\n",
+    ));
+    let outer = cpp.rsplit("int cpl_each_outer2(").next().unwrap();
+    let outer = &outer[..outer.find("\n}\n").unwrap()];
+    assert!(outer.contains("cpl_each_inner2(n_2, "), "{outer}");
+    assert!(!outer.contains("std::vector"), "{outer}");
 }

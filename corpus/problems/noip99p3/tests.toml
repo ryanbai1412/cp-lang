@@ -1,0 +1,27 @@
+# Cases for scripts/corpus.py make (problem-packages/R9).
+
+[[case]]
+input = "275.6 11.9 27.4 2.8 2\n102.0 2.9\n220.0 2.2\n"
+
+[[case]]
+seed = 1
+size = 1
+
+[[case]]
+seed = 2
+size = 3
+
+[[case]]
+seed = 3
+size = 10
+
+[[case]]
+seed = 4
+size = 40
+
+[[case]]
+seed = 5
+size = 200
+
+[[case]]
+args = ["--max"]

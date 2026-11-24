@@ -283,7 +283,7 @@ pub(crate) struct Checker<'a> {
     lambda_params: Vec<(Span, Vec<Ty>)>,
     /// The bounds with trait arguments of the fn whose arguments are being
     /// checked: binding `S` binds what `S: Seq<T>` says of `T`.
-    call_bound_args: Vec<(String, String, Vec<Ty>)>,
+    call_bound_args: Option<std::sync::Arc<Def>>,
     /// Locals whose heap value has been moved out (`let b = a` / `b = a`),
     /// mapped to the span of the move (§128).
     pub(crate) moved: HashMap<String, Span>,
@@ -363,7 +363,7 @@ impl<'a> Checker<'a> {
             walk_only: Default::default(),
             local_defs: HashMap::default(),
             lambda_params: Vec::new(),
-            call_bound_args: Vec::new(),
+            call_bound_args: None,
             moved: HashMap::default(),
             assigning_name: None,
             memo_captured: Vec::new(),
@@ -448,6 +448,14 @@ impl<'a> Checker<'a> {
         }
     }
 
+    /// `name` as a plain call: a `@get` fn is read as `.name` (R06.4.2), so it
+    /// never shadows the prelude fn of its name, `swap(mut a, mut b)`.
+    pub(crate) fn free_global(&mut self, name: &str) -> Option<Arc<Def>> {
+        let prelude = prelude::VALUE_NAMES.contains(&name);
+        self.global(name)
+            .filter(|d| !(prelude && matches!(&**d, Def::Fn { getter: true, .. })))
+    }
+
     /// `struct Eq(..)` inside a fn: its type and constructor are in scope
     /// for the whole block, like a top-level struct for the whole file.
     pub(crate) fn declare_local_types(&mut self, stmts: &[cpl_syntax::ast::Stmt]) {
@@ -469,6 +477,10 @@ impl<'a> Checker<'a> {
                 matches!(args.as_slice(), [Ty::Pos(d) | Ty::Domain(d)] if !d.ends_with(".cuts"))
             }
             Ty::Optional(elem) => Self::expects_piece(elem),
+            Ty::Tuple(items) => {
+                items.iter().any(Self::expects_piece)
+                    && !items.iter().any(Self::expects_bounds_range)
+            }
             _ => false,
         }
     }
@@ -923,7 +935,7 @@ impl<'a> Checker<'a> {
                 ("answers".into(), Ty::Tuple(vec![Ty::Str, Ty::Str])),
             ]);
         }
-        if let Some(def) = self.global(name) {
+        if let Some(def) = self.free_global(name) {
             let ty = match &*def {
                 // `Sum` without `<Int>`: nothing says what `T` is.
                 Def::Value { ty, generics, .. } if !generics.is_empty() => self.settle(ty),

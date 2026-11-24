@@ -231,6 +231,44 @@ pub(crate) struct File<'a> {
     pub proven: &'a std::sync::OnceLock<rules::Proven>,
 }
 
+/// Whether the call or getter at `at` (a file span) is std's `name`: the
+/// checker resolved it to a fn the prelude or a std module declares, or
+/// a compiler builtin member, so a program's own fn of that name is not it. `name` comes from [`std_fn`].
+pub(crate) fn is_std(facts: Option<&Facts>, at: Span, name: &str) -> bool {
+    facts.and_then(|f| f.callee(at)).is_some_and(|c| {
+        c.name == name
+            && (c.builtin
+                || c.module == "prelude"
+                || std_fn::declared_in(name).contains(&c.module.as_str()))
+    })
+}
+
+/// The checker's facts and the offset of the item a rule is in: asks
+/// [`is_std`] of an item-relative expression.
+#[derive(Clone, Copy)]
+pub(crate) struct Calls<'a> {
+    facts: Option<&'a Facts>,
+    base: u32,
+}
+
+impl<'a> Calls<'a> {
+    pub fn new(facts: Option<&'a Facts>, base: u32) -> Self {
+        Calls { facts, base }
+    }
+
+    /// Whether `e`, a call or getter, is std's `name`.
+    pub fn is(self, e: &cpl_syntax::ast::Expr, name: &str) -> bool {
+        is_std(self.facts, e.span.shift(self.base), name)
+    }
+
+    /// The name of the std fn `e`, a call or getter, calls: `None` for a
+    /// program's own fn or where the checker has no answer.
+    pub fn name(self, e: &cpl_syntax::ast::Expr) -> Option<&'a str> {
+        let callee = self.facts?.callee(e.span.shift(self.base))?;
+        is_std(self.facts, e.span.shift(self.base), &callee.name).then_some(callee.name.as_str())
+    }
+}
+
 fn with_parsed<T: Default>(src: &str, f: impl FnOnce(&File) -> T) -> T {
     let parsed = cpl_syntax::parse_file(src);
     if !parsed.diagnostics.is_empty() {

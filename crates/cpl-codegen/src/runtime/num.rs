@@ -109,6 +109,8 @@ inline double fln(double x) {
 inline void farc_check(const char* f, double x) {
 #ifdef LOCAL
     if (!(x >= -1.0 && x <= 1.0)) { cpl::flush(); fprintf(stderr, \"%s(%g) is outside -1..=1\\n\", f, x); exit(3); }
+#else
+    (void)f, (void)x;
 #endif
 }
 inline double fasin(double x) { farc_check(\"asin\", x); return std::asin(x); }

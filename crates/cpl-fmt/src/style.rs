@@ -49,30 +49,17 @@ impl Style {
     pub fn from_toml(text: &str) -> (Style, Vec<StyleError>) {
         let mut style = Style::default();
         let mut errors = Vec::new();
-        let mut in_fmt = false;
-        for (index, raw) in text.lines().enumerate() {
-            let line = raw.split('#').next().unwrap_or("").trim();
-            if line.is_empty() {
-                continue;
-            }
-            if let Some(table) = line.strip_prefix('[') {
-                in_fmt = table.trim_end_matches(']').trim() == "fmt";
-                continue;
-            }
-            if !in_fmt {
-                continue;
-            }
+        for line in cpl_config::table(text, "fmt") {
             let mut error = |message: String| {
                 errors.push(StyleError {
-                    line: index + 1,
+                    line: line.line,
                     message,
                 })
             };
-            let Some((key, value)) = line.split_once('=') else {
-                error(format!("expected `key = number`, found `{line}`"));
+            let Some((key, value)) = line.pair else {
+                error(format!("expected `key = number`, found `{}`", line.text));
                 continue;
             };
-            let (key, value) = (key.trim(), value.trim());
             let (slot, range) = match key {
                 "indent_width" => (&mut style.indent, 2..=8),
                 "line_width" => (&mut style.line_width, 40..=200),
@@ -99,20 +86,12 @@ impl Style {
     /// directory, or the defaults. Returns the path it read with any bad
     /// lines.
     pub fn discover(source: &Path) -> (Style, Option<(PathBuf, Vec<StyleError>)>) {
-        let start = source.parent().unwrap_or(Path::new("."));
-        let start = if start.as_os_str().is_empty() {
-            Path::new(".")
-        } else {
-            start
-        };
-        let start = start.canonicalize().unwrap_or(start.to_path_buf());
-        for dir in start.ancestors() {
-            let candidate = dir.join("cp.toml");
-            if let Ok(text) = std::fs::read_to_string(&candidate) {
+        match cpl_config::discover(source) {
+            Some((file, text)) => {
                 let (style, errors) = Style::from_toml(&text);
-                return (style, Some((candidate, errors)));
+                (style, Some((file, errors)))
             }
+            None => (Style::default(), None),
         }
-        (Style::default(), None)
     }
 }

@@ -12,6 +12,7 @@
 //   odd_d_grundy = [0, 2, 3, 1].
 // - Even d: even prefix lengths cancel to 0; odd lengths collapse to
 //   g = len / d + 2, giving 0 when ctz(g) is odd, else 2 (odd popcount) or 1.
+use std.seq.{fold}
 
 let even_bits_from_2 = 0x5555555555555554
 let odd_d_grundy = [0, 2, 3, 1]
@@ -38,5 +39,5 @@ let qs: [0..n](
     l: 1..=10 ** 18,
     r: 1..=10 ** 18,
 ) = read()
-let ans = fold(^, prefix_xor(r - c + 1, c - b) ^ prefix_xor(l - c, c - b) for (_, b, c, l, r) in qs)
+let ans = fold(prefix_xor(r - c + 1, c - b) ^ prefix_xor(l - c, c - b) for (_, b, c, l, r) in qs, ^)
 print(if ans != 0: "Bug" else: "Feature")

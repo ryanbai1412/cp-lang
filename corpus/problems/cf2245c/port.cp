@@ -24,4 +24,6 @@ if want >= 1 << b:
 if want > 0: tail.push(want)
 tail.push(0)
 print("YES")
-print([i for i in (0..n).rev if not tail.any(x => x == i)] + tail.rev)
+var order = [i for i in (0..n).rev if not tail.any(x => x == i)]
+for x in tail.rev: order.push(x)
+print(order)

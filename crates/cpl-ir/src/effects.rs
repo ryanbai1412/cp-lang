@@ -2,7 +2,7 @@
 //! whether it does I/O, whether it may trap, and whether it calls a fn value
 //! whose target is unknown. The one source both back ends and the tools ask.
 
-use crate::pushed::{summarize, FnSummary};
+use crate::pushed::{closure_has_type, summarize, FnSummary};
 use crate::walk::{self, Effects as Stores};
 use crate::{
     Arg, BinOp, Block, Builtin, Cast, ClosureId, CmpOp, Dim, Expr, ExprKind, FnId, Iter, Mutation,
@@ -668,20 +668,10 @@ impl Reader<'_> {
             target: &|_, _| None,
             by_type: false,
         };
-        let same =
-            |param: &Ty, arg: &Ty| param == arg || matches!(arg, Ty::Mut(of) if **of == *param);
         let mut found = false;
         let mut t = Access::default();
         for (cid, c) in program.closures.iter().enumerate() {
-            if program.unreached_closures.contains(&cid)
-                || c.ret != **ret
-                || c.params.len() != args.len()
-                || !c
-                    .params
-                    .iter()
-                    .zip(args)
-                    .all(|(&p, a)| same(&c.locals[p].ty, a))
-            {
+            if program.unreached_closures.contains(&cid) || !closure_has_type(c, args, ret) {
                 continue;
             }
             if c.captures.iter().any(|cap| cap.by_ref && !cap.is_global) {

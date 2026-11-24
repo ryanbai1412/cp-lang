@@ -148,11 +148,28 @@ impl<'p> Emitter<'p> {
         ret: &Ty,
         build: impl FnOnce(&mut Self, Vec<Code>) -> Code,
     ) -> Code {
+        self.sequence_laid(operands, &[], ret, build)
+    }
+
+    /// `sequence`, building operand `i` in `layouts[i]`: a fresh list given
+    /// for a narrowed parameter is made in the parameter's cells.
+    pub fn sequence_laid(
+        &mut self,
+        operands: &[&Expr],
+        layouts: &[Option<cpl_ir::NarrowLayout>],
+        ret: &Ty,
+        build: impl FnOnce(&mut Self, Vec<Code>) -> Code,
+    ) -> Code {
+        let laid =
+            |this: &mut Self, i: usize, e: &Expr| match layouts.get(i).and_then(|l| l.as_ref()) {
+                Some(l) => this.expr_with_elem_layout(e, Some(l)),
+                None => this.expr(e),
+            };
         let touches: Vec<Touch> = operands.iter().map(|e| self.touch(e)).collect();
         let n = operands.len();
         let ordered = (0..n).any(|i| (i + 1..n).any(|j| touches[i].conflicts(&touches[j])));
         if !ordered {
-            let codes = operands.iter().map(|e| self.expr(e)).collect();
+            let codes = (0..n).map(|i| laid(self, i, operands[i])).collect();
             return build(self, codes);
         }
         let ret_text = self.ty(ret);
@@ -160,7 +177,7 @@ impl<'p> Emitter<'p> {
         self.lambda(&ret_text, |this, out| {
             let mut codes = Vec::with_capacity(n);
             for (i, e) in operands.iter().enumerate() {
-                let code = this.expr(e);
+                let code = laid(this, i, e);
                 if i + 1 == n
                     || this.is_fixed(e)
                     || matches!(e.kind, ExprKind::Str(_) | ExprKind::None)
@@ -277,6 +294,12 @@ impl<'p> Emitter<'p> {
                 }
             }
             ExprKind::Cmp(op, l, r) => self.sequence(&[l, r], &Ty::Bool, |_, codes| {
+                // `()` has one value: equal to itself, so never less or greater.
+                if l.ty == Ty::Unit {
+                    let holds = matches!(op, CmpOp::Eq | CmpOp::Le | CmpOp::Ge);
+                    let (a, b) = (&codes[0].text, &codes[1].text);
+                    return Code::primary(format!("((void)({a}), (void)({b}), {holds})"));
+                }
                 if let Ty::Struct(id) = l.ty {
                     let sdef = &program.structs[id];
                     match op {
@@ -469,6 +492,14 @@ impl<'p> Emitter<'p> {
                         Code::primary(call)
                     }
                 })
+            }
+            ExprKind::Index(base, indices)
+                if matches!(base.ty, Ty::Map(..) | Ty::HashMap(..))
+                    && indices.len() == 1
+                    && self.map_slot(&indices[0]).is_some() =>
+            {
+                let at = self.map_slot(&indices[0]).unwrap_or_default();
+                Code::primary(format!("cpl::map_slot_at({at})"))
             }
             ExprKind::Index(base, indices) => {
                 let mut operands: Vec<&Expr> = vec![base];
@@ -691,12 +722,11 @@ impl<'p> Emitter<'p> {
                                     .and_then(|s| self.elem_layout(cpl_ir::ElemLoc::Field(s, idx)))
                                     .cloned()
                                 {
-                                    return self.expr_with_elem_layout(item, Some(&l)).text;
+                                    let v = self.expr_with_elem_layout(item, Some(&l)).text;
+                                    return self.taken_item(item, v);
                                 }
-                                let mut v = self.braced(item);
-                                if self.taken_items.contains(&(item as *const Expr)) {
-                                    v = format!("std::move({v})");
-                                }
+                                let v = self.braced(item);
+                                let v = self.taken_item(item, v);
                                 match struct_id {
                                     Some(s) => self.narrow_field_store(s, idx, &v),
                                     None => v,

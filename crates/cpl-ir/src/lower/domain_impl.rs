@@ -21,9 +21,14 @@ impl Lowerer<'_> {
             .then(|| name.text.clone())
     }
 
-    /// `D.m(..)` with `D` a domain: the method a blanket domain impl gives it.
-    pub(super) fn domain_impl_method(&mut self, d: usize, method: &str) -> Option<FnId> {
-        let ty = Ty::Pos(d);
+    /// `D.m(..)` with `D` a domain, or the cuts `V.cuts` of one: the method
+    /// a blanket domain impl gives it.
+    pub(super) fn domain_impl_method(&mut self, ty: Ty, method: &str) -> Option<FnId> {
+        let arg = match ty {
+            Ty::Pos(d) => GenArg::Domain(d),
+            Ty::Bound(_) => GenArg::Ty(ty.clone()),
+            _ => return None,
+        };
         if let Some(found) = self
             .prim_methods
             .iter()
@@ -47,7 +52,7 @@ impl Lowerer<'_> {
                 continue;
             };
             let trait_name = self.impls[idx].trait_name.clone();
-            let env = GenEnv::from([(param, GenArg::Domain(d))]);
+            let env = GenEnv::from([(param, arg.clone())]);
             let saved = (
                 std::mem::replace(&mut self.cur_mod, m),
                 std::mem::replace(&mut self.offset, offset),
@@ -99,7 +104,7 @@ impl Lowerer<'_> {
                 }
             }
             if self.domain_blanket_param(idx).is_some() {
-                if matches!(ty, Ty::Pos(_)) {
+                if matches!(ty, Ty::Pos(_) | Ty::Bound(_)) {
                     return true;
                 }
                 continue;

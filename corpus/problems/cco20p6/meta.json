@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "4801876", "language": "CPP17", "result": "RTE", "time": 13.998966251, "memory_kb": 128572.0, "file": "corpus/submissions/4801876.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/cco20p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ was collected (the one submission is RTE), so orig.cpp is a public solution (per-type fracturing heap of next-cheapest subsets, then a binary search on the K-th cost) with three bugs fixed: it read an empty group list when every type was fixed, the start plan counted even above the cost cap, and the search began at 1 so a free empty plan was never found; checked against the statement sample and a brute force over all subsets."
 }

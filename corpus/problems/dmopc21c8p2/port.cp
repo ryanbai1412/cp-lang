@@ -27,7 +27,7 @@ let bot: [Col]0..=m = read()
 // counting the constraints each sum meets
 var blank: [Parity]Int = 0
 var need: [Parity]Int = 0
-var allowed: [Parity, Sum]Int = 0
+var allowed: [Parity, Sum]-1_000_000..=1_000_000 = 0  // a difference of column counts
 for i in Col:
     let par = Parity(i.ord % 2)
     let known = top[i] + bot[i]

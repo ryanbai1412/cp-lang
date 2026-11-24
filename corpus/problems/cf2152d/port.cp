@@ -15,9 +15,8 @@
 let (n, q): (1..=250_000, 1..=250_000) = read()
 domain Pos = 1..=n
 let a: [0..n]2..=10 ** 9 = read()
-let cnt_ops = prefix([bit_width(x - 1) for x in a])
-let cnt_trade = prefix([if x == 2: 1 else: bit_width(x - 2) for x in a])
+let cnt = prefix([bit_width(x - 1) + (if x == 2: 1 else: bit_width(x - 2)) for x in a])  // ops + trades
 
 for _ in 0..q:
     let (l, r): (Pos, Pos) = read()
-    print((cnt_trade.fold(l.ord..r.ord + 1) + cnt_ops.fold(l.ord..r.ord + 1)) / 2)
+    print(cnt.fold(l.ord..r.ord + 1) / 2)

@@ -112,6 +112,7 @@ fn run_native(file: &str, compiled: &Compiled, input: &[u8]) -> Result<Run, Stri
         stamp: Some(judge.stamp()),
         thread_stack: judge.thread_stack,
         windows: judge.os == cpl_judge::Os::Windows,
+        avx2: judge.avx2,
         ..cpl_codegen::Target::default()
     };
     let (cpp, spans) = cpl_codegen::emit_profiled(&compiled.program, "profile", &target);

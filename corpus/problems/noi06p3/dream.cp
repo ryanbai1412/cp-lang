@@ -2,6 +2,7 @@
 // combs: runs of equal depth, alternately recessed (Low) and protruding (High), starting and
 // ending recessed, each protrusion deeper than the recesses beside it. Cells are only added, so a
 // row's depth only grows; a DP over (row, depth, side).
+// std_functions: 1
 enum Side = Low | High
 let never = 1 << 60  // an impossible comb; sums of a few stay in range
 

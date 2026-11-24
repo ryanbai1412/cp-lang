@@ -243,6 +243,8 @@ fn a_wrong_name_or_key_says_what_is_allowed() {
     );
     let error = Config::parse("[judge.mine]\nstack_mb = 5\n").unwrap_err();
     assert!(error.contains("says which one it `extends`"), "{error}");
+    let error = Config::parse("[judge.cses]\nisa = \"sse9\"\n").unwrap_err();
+    assert!(error.contains("`isa` is \"x86-64\" or \"avx2\""), "{error}");
     let error = Config::parse("[judge.cses]\nstack_mb = \"lots\"\n").unwrap_err();
     assert!(
         error.contains("`stack_mb` is a whole number of MB, or \"unlimited\""),
@@ -353,4 +355,13 @@ fn a_yes_from_the_probe_is_kept_across_processes_and_a_no_is_not() {
     .unwrap();
     assert!(!probe(cxx, &flags, Some(&memo)));
     assert!(!probe(cxx, &flags, None));
+}
+
+#[test]
+fn a_project_says_its_judge_has_avx2() {
+    let toml = "[judge]\njudge = \"fast\"\n[judge.fast]\nextends = \"generic\"\nisa = \"avx2\"\n";
+    let dir = dir("avx2", Some(toml));
+    let fast = resolve(&dir.join("a.cp"), "", None).unwrap();
+    assert!(fast.avx2);
+    assert!(builtins().iter().all(|p| !p.avx2));
 }

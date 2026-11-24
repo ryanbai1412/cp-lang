@@ -12,7 +12,7 @@
 let n: 1..=500 = read()
 domain Coord = 0..n
 let rank: [Coord]Int = [Coord] x => if x.ord >= n / 2: 2 * (x.ord - n / 2) else: 2 * (n / 2 - x.ord) - 1
-let grid: [Coord, Coord]Int = [Coord, Coord] (r, c) =>
+fn cell(r: Coord, c: Coord) -> Int:
     let k = max(rank[r], rank[c])
     k * k + (if rank[c] < k: rank[c] else: k + rank[r])
-for r in Coord: print(grid[r, ..])
+for r in Coord: print([cell(r, c) for c in Coord])

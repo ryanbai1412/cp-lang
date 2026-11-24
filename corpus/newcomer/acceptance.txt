@@ -4,23 +4,23 @@
 # or `not-lint: <why>` (no lint can decide it; the owner is named).
 # Rule: lints/R26, handbook/guidelines/lints-checklist.md#r26-an-idiom-with-evidence-gets-a-lint
 no-sort-desc-spelling lint:sort_desc_by_negation
-prefix-sum-manual-push missing:prefix-totals-list
+prefix-sum-manual-push lint:hand_rolled_prefix_sum
 inversions-manual-fenwick lint:inversions_by_fenwick
 argmax-manual-loop lint:loop_argmax
 array-to-list-copy-for-helper not-lint: how to type an array parameter is a docs question (idioms)
 run-length-manual-loop lint:runs_by_hand
 per-tree-graph-manual-bfs lint:queue_head_index
 runs-not-taught-in-practice not-lint: practice text (site)
-scan-includes-leading-zero missing:prefix-totals-list
+scan-includes-leading-zero lint:hand_rolled_prefix_sum
 map-get-index-workaround-nonidiomatic not-lint: the copy made by `get` is an API question (stdlib)
 heap-len-hesitation lint:small_to_large_by_hand
-scan-returns-prefix-not-seq missing:prefix-totals-list
+scan-returns-prefix-not-seq lint:hand_rolled_prefix_sum
 checker-shares-only-input not-lint: what a `@check` sees is language scope (spec)
 str-no-split not-lint: a missing std function (stdlib)
 map-index-push-no-autoinsert lint:group_into_map
 fill-spelling-hesitation not-lint: the spelling of a filled array (stdlib); `[0; n]` already gets an error with the fix
 optional-last-loop-guard lint:coalesce_test_then_unwrap
-prefix-sums-manual-loop missing:prefix-totals-list
+prefix-sums-manual-loop lint:hand_rolled_prefix_sum
 optional-index-default not-lint: arithmetic on optionals is a language question (spec)
 copy-clone-two-spellings not-lint: two std spellings for one copy (stdlib)
 checker-duplicates-solution not-lint: what a `@check` sees is language scope (spec)

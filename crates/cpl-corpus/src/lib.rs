@@ -2,6 +2,8 @@
 //! sorted by id, the way `scripts/corpus.py ls` lists them. Every Rust tool and
 //! test reads the corpus through here.
 
+pub mod programs;
+
 use std::path::{Path, PathBuf};
 
 /// Where the packages live, relative to the repository root.

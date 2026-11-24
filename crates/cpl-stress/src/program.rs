@@ -69,8 +69,8 @@ fn hash(bytes: &[u8]) -> u64 {
 
 /// Where built binaries are kept.
 fn cache_dir() -> PathBuf {
-    match std::env::var_os("CPL_CACHE") {
-        Some(dir) => PathBuf::from(dir),
+    match cpl_env::CACHE.path() {
+        Some(dir) => dir,
         None => std::env::temp_dir().join("cpl-cache"),
     }
 }
@@ -104,7 +104,7 @@ fn find_std_header() -> Option<PathBuf> {
 
 #[cfg(unix)]
 fn find_std_header() -> Option<PathBuf> {
-    if std::env::var_os("CPL_NO_PCH").is_some() {
+    if cpl_env::NO_PCH.is_set() {
         return None;
     }
     let version = Command::new("g++")
@@ -398,6 +398,7 @@ fn emit_cpp(
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
         checks,
+        avx2: profile.avx2,
     };
     let mut cpp = cpl_codegen::emit_for(&program, &file, None, &target);
     if matches!(part, Part::Gen(_)) {

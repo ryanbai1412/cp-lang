@@ -1,6 +1,6 @@
 use super::ir::*;
 use crate::value::{Array, Cells, TupleVal, Value};
-use crate::{trap, Res, LENT};
+use crate::{release, trap, Res, LENT};
 use cpl_diag::Span;
 use cpl_ir::{AssignOp, BinOp, Expr, ExprKind, Iter, Place, PlaceKind, Program, Stmt, Ty};
 use std::rc::Rc;
@@ -389,13 +389,13 @@ pub(super) fn exec_bin_u64(a_raw: i64, b_raw: i64, op: BinOp, span: Span) -> Res
         BinOp::Mul => av.wrapping_mul(bv),
         BinOp::Div => {
             if bv == 0 {
-                return trap(span, format!("division by zero: `{av} / 0`"));
+                return release::div_zero(span, format!("division by zero: `{av} / 0`"));
             }
             av / bv
         }
         BinOp::Rem => {
             if bv == 0 {
-                return trap(span, format!("division by zero: `{av} % 0`"));
+                return release::div_zero(span, format!("division by zero: `{av} % 0`"));
             }
             av % bv
         }
@@ -538,6 +538,26 @@ pub(super) struct FedCtx<'a, 'p> {
     pub(super) caller_base: usize,
     pub(super) body_pc: usize,
     pub(super) var_loc: SlotLoc,
+    /// The call feeding the frame this one's loop body runs in, when that
+    /// frame is itself a `yields` fn fed by a loop: its yields go on out.
+    pub(super) parent: Option<&'a mut (dyn FedParent<'p> + 'a)>,
+}
+
+/// A [`FedCtx`] whatever its borrows, for a fed call inside a fed call.
+pub(super) trait FedParent<'p> {
+    fn with(
+        &mut self,
+        f: &mut dyn FnMut(&mut FedCtx<'_, 'p>) -> crate::Res<ExecExit>,
+    ) -> crate::Res<ExecExit>;
+}
+
+impl<'p> FedParent<'p> for FedCtx<'_, 'p> {
+    fn with(
+        &mut self,
+        f: &mut dyn FnMut(&mut FedCtx<'_, 'p>) -> crate::Res<ExecExit>,
+    ) -> crate::Res<ExecExit> {
+        f(self)
+    }
 }
 
 pub(super) fn store_fed_val(ctx: &mut FedCtx<'_, '_>, vm_regs_i: &mut [i64], val: Value) {
@@ -1004,13 +1024,13 @@ pub(super) fn apply_scalar_assign_op(
             AssignOp::Binary(BinOp::Mul) => a.wrapping_mul(b),
             AssignOp::Binary(BinOp::Div) => {
                 if b == 0 {
-                    return trap(span, format!("division by zero: `{a} / 0`"));
+                    return release::div_zero(span, format!("division by zero: `{a} / 0`"));
                 }
                 a / b
             }
             AssignOp::Binary(BinOp::Rem) => {
                 if b == 0 {
-                    return trap(span, format!("division by zero: `{a} % 0`"));
+                    return release::div_zero(span, format!("division by zero: `{a} % 0`"));
                 }
                 a % b
             }
@@ -1038,61 +1058,52 @@ pub(super) fn apply_scalar_assign_op(
     let out = match op {
         AssignOp::Binary(BinOp::Add) => match cur.checked_add(rhs) {
             Some(v) => v,
-            None => {
-                return trap(
-                    span,
-                    format!("integer overflow: `{cur} + {rhs}` does not fit in an `Int` (64 bits)"),
-                )
-            }
+            None => release::overflow(
+                span,
+                format!("integer overflow: `{cur} + {rhs}` does not fit in an `Int` (64 bits)"),
+                cur.wrapping_add(rhs),
+            )?,
         },
         AssignOp::Binary(BinOp::Sub) => match cur.checked_sub(rhs) {
             Some(v) => v,
-            None => {
-                return trap(
-                    span,
-                    format!("integer overflow: `{cur} - {rhs}` does not fit in an `Int` (64 bits)"),
-                )
-            }
+            None => release::overflow(
+                span,
+                format!("integer overflow: `{cur} - {rhs}` does not fit in an `Int` (64 bits)"),
+                cur.wrapping_sub(rhs),
+            )?,
         },
         AssignOp::Binary(BinOp::Mul) => match cur.checked_mul(rhs) {
             Some(v) => v,
-            None => {
-                return trap(
-                    span,
-                    format!("integer overflow: `{cur} * {rhs}` does not fit in an `Int` (64 bits)"),
-                )
-            }
+            None => release::overflow(
+                span,
+                format!("integer overflow: `{cur} * {rhs}` does not fit in an `Int` (64 bits)"),
+                cur.wrapping_mul(rhs),
+            )?,
         },
         AssignOp::Binary(BinOp::Div) => {
             if rhs == 0 {
-                return trap(span, format!("division by zero: `{cur} / 0`"));
+                return release::div_zero(span, format!("division by zero: `{cur} / 0`"));
             }
             match cur.checked_div_euclid(rhs) {
                 Some(v) => v,
-                None => {
-                    return trap(
-                        span,
-                        format!(
-                            "integer overflow: `{cur} / {rhs}` does not fit in an `Int` (64 bits)"
-                        ),
-                    )
-                }
+                None => release::overflow(
+                    span,
+                    format!("integer overflow: `{cur} / {rhs}` does not fit in an `Int` (64 bits)"),
+                    cur.wrapping_div_euclid(rhs),
+                )?,
             }
         }
         AssignOp::Binary(BinOp::Rem) => {
             if rhs == 0 {
-                return trap(span, format!("division by zero: `{cur} % 0`"));
+                return release::div_zero(span, format!("division by zero: `{cur} % 0`"));
             }
             match cur.checked_rem_euclid(rhs) {
                 Some(v) => v,
-                None => {
-                    return trap(
-                        span,
-                        format!(
-                            "integer overflow: `{cur} % {rhs}` does not fit in an `Int` (64 bits)"
-                        ),
-                    )
-                }
+                None => release::overflow(
+                    span,
+                    format!("integer overflow: `{cur} % {rhs}` does not fit in an `Int` (64 bits)"),
+                    cur.wrapping_rem_euclid(rhs),
+                )?,
             }
         }
         AssignOp::Binary(BinOp::BitAnd) => cur & rhs,
@@ -1216,7 +1227,7 @@ pub(crate) struct VmStats {
 
 impl VmStats {
     pub(crate) fn from_env() -> Option<Self> {
-        let val = std::env::var_os("CPL_VM_STATS")?;
+        let val = cpl_env::VM_STATS.raw()?;
         if val.is_empty() || val == "0" {
             return None;
         }
@@ -1250,7 +1261,7 @@ impl VmStats {
             .map(|(k, &v)| (k.as_str(), v))
             .collect();
         loop_entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
-        if std::env::var("CPL_VM_STATS").ok().as_deref() == Some("json") {
+        if cpl_env::VM_STATS.is("json") {
             let mut walked: Vec<_> = self.walked_counts.iter().collect();
             walked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
             let walked: Vec<(&str, u64)> = walked.iter().map(|(k, &v)| (k.as_str(), v)).collect();

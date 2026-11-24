@@ -9,11 +9,15 @@
   {"id": "6415807", "language": "CPP17", "result": "RTE", "time": 6.81457328, "memory_kb": 51880.0, "file": "corpus/submissions/6415807.cpp"},
   {"id": "6415810", "language": "CPP17", "result": "RTE", "time": 9.594328714, "memory_kb": 52136.0, "file": "corpus/submissions/6415810.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/oly23practice7/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted submission on DMOJ (its C++ submissions are WA or RTE), so orig.cpp is a corpus-written reference: tighten each range along the MST precedences, then schedule earliest deadline first. Any valid permutation is accepted, so checker.py checks the verdict against the reference and replays Kruskal. The verdicts match an all-permutations brute on 400 generated cases, and the checker accepts every reference output."
 }

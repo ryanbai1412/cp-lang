@@ -1,9 +1,10 @@
 //! A list filled by a loop that reads one item per step (`read_loop`): one
 //! typed `read()` takes every item and checks its bounds.
 
+use crate::facts::Facts;
 use crate::std_fn;
 use crate::walk::{unparen, Visitor};
-use crate::{File, Finding, READ_LOOP};
+use crate::{is_std, File, Finding, READ_LOOP};
 use cpl_diag::{Diagnostic, Span};
 use cpl_syntax::ast::*;
 
@@ -12,6 +13,7 @@ use super::shapes::{name, squash};
 pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = ReadLoop {
         src: file.src,
+        facts: file.facts,
         base: 0,
         out: Vec::new(),
     };
@@ -23,6 +25,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 
 struct ReadLoop<'a> {
     src: &'a str,
+    facts: Option<&'a Facts>,
     base: u32,
     out: Vec<Finding>,
 }
@@ -33,19 +36,19 @@ pub(crate) fn is_read(e: &Expr) -> bool {
 }
 
 /// `xs.push(e)`: `xs` and `e`.
-fn push(stmt: &Stmt) -> Option<(&str, &Expr)> {
+fn push<'s>(stmt: &'s Stmt, facts: Option<&Facts>, base: u32) -> Option<(&'s str, &'s Expr)> {
     let StmtKind::Expr(e) = &stmt.kind else {
         return None;
     };
     let ExprKind::Call { callee, args } = &e.kind else {
         return None;
     };
-    let ExprKind::Field { base, name: method } = &callee.kind else {
+    let ExprKind::Field { base: list, .. } = &callee.kind else {
         return None;
     };
     match args.as_slice() {
-        [arg] if method.text == std_fn::PUSH && arg.name.is_none() => {
-            Some((name(base)?, &arg.value))
+        [arg] if arg.name.is_none() && is_std(facts, e.span.shift(base), std_fn::PUSH) => {
+            Some((name(list)?, &arg.value))
         }
         _ => None,
     }
@@ -64,7 +67,7 @@ impl ReadLoop<'_> {
         };
         match body.stmts.as_slice() {
             [s] => {
-                let (xs, v) = push(s)?;
+                let (xs, v) = push(s, self.facts, base)?;
                 is_read(v).then(|| Some((xs.to_string(), from_list()?)))?
             }
             [read, s] => {
@@ -79,7 +82,7 @@ impl ReadLoop<'_> {
                 else {
                     return None;
                 };
-                let (xs, v) = push(s)?;
+                let (xs, v) = push(s, self.facts, base)?;
                 if !is_read(init)
                     || squash(self.text(base, v.span)) != squash(self.text(base, pat.span))
                 {

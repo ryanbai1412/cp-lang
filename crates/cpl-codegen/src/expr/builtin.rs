@@ -23,7 +23,11 @@ impl<'p> Emitter<'p> {
                 let name = if op == Builtin::Min { "min" } else { "max" };
                 let ty = self.ty(&e.ty);
                 let all: Vec<String> = codes.iter().map(|c| c.text.clone()).collect();
-                if all.len() == 2 {
+                if e.ty == Ty::Unit {
+                    // Every `()` is the one `()`: only the arguments' effects remain.
+                    let effects: Vec<String> = all.iter().map(|a| format!("(void)({a})")).collect();
+                    Code::primary(format!("({})", effects.join(", ")))
+                } else if all.len() == 2 {
                     Code::primary(format!("std::{name}<{ty}>({})", all.join(", ")))
                 } else {
                     Code::primary(format!("std::{name}<{ty}>({{{}}})", all.join(", ")))

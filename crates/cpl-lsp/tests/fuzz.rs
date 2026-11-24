@@ -10,8 +10,6 @@
 
 use cpl_json::{obj, Value};
 
-#[path = "../../cpl-cli/tests/support/corpus_programs.rs"]
-mod corpus_programs;
 use cpl_lsp::Server;
 
 const URI: &str = "file:///fuzz/solution.cp";
@@ -19,17 +17,11 @@ const PORTS: usize = 12;
 const EDITS_PER_PORT: usize = 30;
 
 fn edits_per_port() -> usize {
-    std::env::var("CPL_LSP_FUZZ_EDITS")
-        .ok()
-        .and_then(|n| n.parse().ok())
-        .unwrap_or(EDITS_PER_PORT)
+    cpl_env::LSP_FUZZ_EDITS.parse().unwrap_or(EDITS_PER_PORT)
 }
 
 fn port_count() -> usize {
-    std::env::var("CPL_LSP_FUZZ_PORTS")
-        .ok()
-        .and_then(|n| n.parse().ok())
-        .unwrap_or(PORTS)
+    cpl_env::LSP_FUZZ_PORTS.parse().unwrap_or(PORTS)
 }
 const SNIPPETS: &[&str] = &[
     "(", ")", "[", "]", "{", "}", "=>", "++", ".", ":", ",", "\n    ", "\n", "let ", "var ", "fn ",
@@ -200,7 +192,7 @@ fn every_request_on_broken_ports_is_answered_without_an_internal_error() {
             }
         }
     }
-    files.extend(corpus_programs::v02_snapshot_ports(&repo));
+    files.extend(cpl_corpus::programs::v02_snapshot_ports(&repo));
     files.sort();
     let ports = port_count().min(files.len());
     let step = (files.len() / ports).max(1);

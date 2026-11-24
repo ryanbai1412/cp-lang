@@ -2,16 +2,31 @@
  "problem": "ioi25_souvenirs",
  "source": "ioi",
  "submissions": [],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
   "dream": [
    "corpus/gold/ioi25_souvenirs.cp",
    "corpus/problems/ioi25_souvenirs/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/ioi25_souvenirs/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/ioi25_souvenirs/port.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "interactive",
+  "greedy",
+  "constructive"
+ ],
+ "difficulty": "medium",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is the official model solution (ioi/task-archive 2025/day1/souvenirs/solutions/model_solution/author_solution.cpp) with souvenirs.h inlined and the sample grader's main and transaction (5000-call limit), reading the port's input. It, hazem_full.cpp and badawy_full.cpp print 0 1 ... N-1 on all 54 official tests, so the grader accepts them. The port and dream are stdin forms that simulate transaction; the judge form is `@grader fn buy_souvenirs` with `@grader fn transaction`.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 12,
+  "sha": "ccbf1a0b65f4442d7bbbb3c6012cfc7a4b90812b"
+ }
 }

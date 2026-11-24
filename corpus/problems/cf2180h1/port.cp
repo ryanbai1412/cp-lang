@@ -9,7 +9,7 @@
 //   over offsets 0..len in closed form: write d = 2^l * odd, collapse the offsets to
 //   g_hi = len / odd + ((len % odd) & 1), and a pattern of period 2^(l+2) in g_hi gives the
 //   bits. A series is prefix_xor(r - c + 1) ^ prefix_xor(l - c): O(1) each.
-// Bounds: n: 1..=200_000
+// Bounds: n: 1..=200_000; a, b, c, l, r: 1..=10 ** 18
 
 fn prefix_xor(len: Int, d0: Int) -> Int:
     let l = ctz(d0)
@@ -30,14 +30,13 @@ fn prefix_xor(len: Int, d0: Int) -> Int:
             res ^= if ((l ^ i) & 1) == 1: 0 else: 1
     res
 
+type Coord = 1..=10 ** 18
+
 @!multitest
 let n: 1..=200_000 = read()
-let qs: [0..n](
-    a: 1..=10 ** 18,
-    b: 1..=10 ** 18,
-    c: 1..=10 ** 18,
-    l: 1..=10 ** 18,
-    r: 1..=10 ** 18,
-) = read()
-let ans = fold(^, prefix_xor(r - c + 1, c - b) ^ prefix_xor(l - c, c - b) for (_, b, c, l, r) in qs)
+var ans = 0
+repeat n:
+    let (a, b, c, l, r): (Coord, Coord, Coord, Coord, Coord) = read()
+    assert c - b == b - a
+    ans ^= prefix_xor(r - c + 1, c - b) ^ prefix_xor(l - c, c - b)
 print(if ans != 0: "Bug" else: "Feature")

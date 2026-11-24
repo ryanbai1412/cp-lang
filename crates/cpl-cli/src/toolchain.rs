@@ -206,8 +206,8 @@ fn write_atomically(path: &Path, bytes: &[u8]) -> Result<(), String> {
 }
 
 pub fn home() -> Option<PathBuf> {
-    if let Some(home) = std::env::var_os("CPL_HOME").filter(|h| !h.is_empty()) {
-        return Some(PathBuf::from(home));
+    if let Some(home) = cpl_env::HOME.path() {
+        return Some(home);
     }
     Some(cpl_check::home_dir()?.join(".cpl"))
 }
@@ -314,9 +314,8 @@ fn release_tags(home: &Path, id: &str) -> Vec<String> {
 }
 
 pub(crate) fn releases_url() -> String {
-    std::env::var("CPL_RELEASES_URL")
-        .ok()
-        .filter(|url| !url.is_empty())
+    cpl_env::RELEASES_URL
+        .text()
         .unwrap_or_else(|| RELEASES.to_string())
         .trim_end_matches('/')
         .to_string()
@@ -500,10 +499,7 @@ fn choose(
             format!("`+{text}` on the command line"),
         ));
     }
-    if let Some(text) = std::env::var("CPL_VERSION")
-        .ok()
-        .filter(|v| !v.trim().is_empty())
-    {
+    if let Some(text) = cpl_env::VERSION.text() {
         let selector = Selector::parse(&text).map_err(|e| format!("{e} (in $CPL_VERSION)"))?;
         return Ok((selector, format!("CPL_VERSION={text}")));
     }
@@ -625,7 +621,7 @@ fn hand_over(mut command: Command, bin: &Path) -> Option<u8> {
 /// toolchain, else the exit code of `args` run by it through the launcher.
 pub(crate) fn pinned(want: &str, args: &[&str]) -> Result<Option<u8>, String> {
     let selector = Selector::parse(want)?;
-    let running = std::env::var("CPL_TOOLCHAIN").unwrap_or_default();
+    let running = cpl_env::TOOLCHAIN.text().unwrap_or_default();
     let here = match &selector {
         Selector::Version(version) => version == crate::VERSION,
         Selector::Dated(id) | Selector::Toolchain(id) => running.starts_with(id.as_str()),

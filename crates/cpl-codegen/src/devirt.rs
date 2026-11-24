@@ -1018,6 +1018,20 @@ fn recursive_fns(program: &Program) -> BTreeSet<FnId> {
 }
 
 impl Emitter<'_> {
+    /// The place holding the first field, from the root, that the struct's
+    /// C++ leaves out (`slots[i]` of `slots[i].val` with `val: ()`): a store
+    /// through it writes nothing, but that place still traps on a bad index.
+    pub(crate) fn absent_field_base<'a>(&self, place: &'a Place) -> Option<&'a Place> {
+        match &place.kind {
+            PlaceKind::Local(_) | PlaceKind::Global(_) => None,
+            PlaceKind::Field(base, idx) => self.absent_field_base(base).or_else(|| {
+                matches!(base.ty, Ty::Struct(s) if self.devirt.dropped_field(s, *idx))
+                    .then_some(&**base)
+            }),
+            PlaceKind::Index(base, _) | PlaceKind::Some(base) => self.absent_field_base(base),
+        }
+    }
+
     /// A store into a dropped field or local (decision 178).
     pub(crate) fn dropped_store(&self, place: &Place, op: AssignOp) -> bool {
         let dead_root = match crate::walk::root(place) {

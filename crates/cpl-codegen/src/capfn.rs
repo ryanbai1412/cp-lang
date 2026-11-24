@@ -8,8 +8,39 @@
 
 use crate::devirt::Devirt;
 use crate::walk;
-use cpl_ir::{Arg, Block, ClosureId, Expr, ExprKind, FnId, PlaceKind, Program, Slot, Stmt};
+use cpl_ir::{Arg, Block, ClosureId, Expr, ExprKind, FnId, PlaceKind, Program, Slot, Stmt, Ty};
 use std::collections::{BTreeMap, BTreeSet};
+
+/// A capture of a value with no representation (an op value like `+`,
+/// a struct of them, `()`) holds nothing: the closure makes its own
+/// (`Let` without an init is the type's zero) and captures nothing, so it
+/// lowers like a captureless closure (R06.2.5).
+pub(crate) fn zero_size_captures(program: &mut Program) {
+    let structs = &program.structs;
+    for def in &mut program.closures {
+        let (empty, kept): (Vec<_>, Vec<_>) = std::mem::take(&mut def.captures)
+            .into_iter()
+            .partition(|cap| {
+                !cap.is_global && !cap.by_ref && zero_size(structs, &def.locals[cap.inner].ty)
+            });
+        def.captures = kept;
+        let lets = empty.iter().map(|cap| Stmt::Let(cap.inner, None));
+        def.body.stmts.splice(0..0, lets);
+    }
+}
+
+fn zero_size(structs: &[cpl_ir::StructDef], ty: &Ty) -> bool {
+    match ty {
+        Ty::Unit => true,
+        Ty::Tuple(items) => items.iter().all(|t| zero_size(structs, t)),
+        Ty::Record(fields) => fields.iter().all(|(_, t)| zero_size(structs, t)),
+        Ty::Struct(s) => structs[*s]
+            .fields
+            .iter()
+            .all(|(_, t)| zero_size(structs, t)),
+        _ => false,
+    }
+}
 
 pub(crate) fn known_captures(program: &mut Program) {
     let mut plan: BTreeMap<(FnId, ClosureId), Vec<(Slot, ClosureId)>> = BTreeMap::new();
@@ -17,6 +48,7 @@ pub(crate) fn known_captures(program: &mut Program) {
         let devirt = Devirt::collect(program);
         for (id, f) in program.fns.iter().enumerate() {
             let changed = changed(program, id);
+            let aliases = param_aliases(f);
             walk::deep_exprs(&f.body, &mut |e| {
                 let ExprKind::Closure(cid) = e.kind else {
                     return;
@@ -28,16 +60,22 @@ pub(crate) fn known_captures(program: &mut Program) {
                 let known: Vec<(Slot, ClosureId)> = def
                     .captures
                     .iter()
-                    .filter(|cap| {
-                        !cap.is_global
+                    .filter_map(|cap| {
+                        let param = match aliases.get(&cap.outer) {
+                            Some(&p) => p,
+                            None => cap.outer,
+                        };
+                        let ok = !cap.is_global
                             && !cap.by_ref
-                            && cap.outer < f.params.len()
-                            && !f.params[cap.outer].mutable
+                            && param < f.params.len()
+                            && !f.params[param].mutable
+                            && !changed.contains(&param)
                             && !changed.contains(&cap.outer)
                             && only_called(&def.body, cap.inner)
-                            && !nested_capture(program, &def.body, cap.inner)
+                            && !nested_capture(program, &def.body, cap.inner);
+                        ok.then(|| Some((cap.inner, devirt.param_target(id, param)?)))
+                            .flatten()
                     })
-                    .filter_map(|cap| Some((cap.inner, devirt.param_target(id, cap.outer)?)))
                     .collect();
                 if !known.is_empty() {
                     plan.insert((id, cid), known);
@@ -76,6 +114,29 @@ pub(crate) fn known_captures(program: &mut Program) {
             def.captures.retain(|c| c.is_global || c.inner != slot);
         }
     }
+}
+
+/// Each local of `f` bound once to a parameter or to the value in an
+/// optional one (`if let g = cmp`), with the parameter it names.
+fn param_aliases(f: &cpl_ir::Function) -> BTreeMap<Slot, Slot> {
+    let mut lets: BTreeMap<Slot, Option<Slot>> = BTreeMap::new();
+    walk::deep_stmts(&f.body, &mut |s| {
+        if let Stmt::Let(slot, init) = s {
+            let param = match init.as_ref().map(|e| &e.kind) {
+                Some(ExprKind::Local(p)) => Some(*p),
+                Some(ExprKind::Unwrap(inner, _)) => match inner.kind {
+                    ExprKind::Local(p) => Some(p),
+                    _ => None,
+                },
+                _ => None,
+            };
+            let once = !lets.contains_key(slot);
+            lets.insert(*slot, param.filter(|&p| once && p < f.params.len()));
+        }
+    });
+    lets.into_iter()
+        .filter_map(|(slot, p)| Some((slot, p?)))
+        .collect()
 }
 
 /// The closures made at one place only: a fn cloned per call keeps its

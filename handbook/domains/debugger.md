@@ -178,7 +178,7 @@ tests for wording.
 | Large values stay visible | values over the trace's size cap shown as `[]` | hand-written suite: a 30000-cell array is drawn by a window of its cells | `crates/cpl-cli/tests/trace_goldens.rs` `a_large_array_is_drawn_by_a_window` |
 | Library code stays out of a user's trace | steps inside an imported module's fns the trace didn't ask for | design: the tracer steps over library calls (`debugging/R2`); saved traces of std calls | `crates/cpl-cli/tests/trace_goldens.rs` `every_program_records_its_saved_trace` |
 | Huge traces can be narrowed to what matters | filters by fn, test, watch, depth, window | hand-written suite | `crates/cpl-cli/tests/trace_filters.rs` |
-| Tracing is cheap enough to leave on | traced vs untraced time on 10^7 steps (target at most 1.2x); memory; worst step back | gate at 10^6 steps on every run, bounds only go down toward the 1.2x target; the 10^7-step budget test by hand | `crates/cpl-interp/tests/trace_log.rs` `tracing_stays_cheap_enough_to_leave_on`, `ten_million_steps_fit_the_debugging_budgets` (ignored) |
+| Tracing is cheap enough to leave on | traced vs untraced time on 10^7 steps (target at most 1.2x); memory; worst step back | gate at 10^6 steps on every run, bounds only go down toward the 1.2x target; the 10^7-step budget test in `scripts/check.sh --timing` | `crates/cpl-interp/tests/trace_log.rs` `tracing_stays_cheap_enough_to_leave_on`, `ten_million_steps_fit_the_debugging_budgets` (wall-clock tier) |
 | Tracing off costs nothing | untraced time before and after the observer | design: untraced runs use a no-op observer | `crates/cpl-interp/src/lib.rs` |
 
 ### Time travel and the editor

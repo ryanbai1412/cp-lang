@@ -21,10 +21,8 @@ const BINDERS: [K; 9] = [
     K::Const,
 ];
 
-/// `src` with each name it binds (`let`, `var`, `for`, `fn`, `type`, ...)
-/// renamed to `<name>2`, in code and in strings. Names also used as a
-/// member (`xs.name`) keep their spelling.
-pub(crate) fn rename(src: &str) -> String {
+/// Every name `src` binds with `let`, `var`, `for`, `fn`, `type`, ...
+fn binds(src: &str) -> HashSet<String> {
     let toks = cpl_syntax::lex(src).tokens;
     let text = |t: &Token| &src[t.span.start as usize..t.span.end as usize];
     let mut bound = HashSet::new();
@@ -46,10 +44,45 @@ pub(crate) fn rename(src: &str) -> String {
                 }
                 j += 1;
             }
+        } else if toks.get(j).is_some_and(|t| t.kind == K::LParen) {
+            // `let (a, b) = ..`: every name of the tuple.
+            let mut depth = 0;
+            for t in &toks[j..] {
+                match t.kind {
+                    K::LParen => depth += 1,
+                    K::RParen => depth -= 1,
+                    K::Ident => {
+                        bound.insert(text(t).to_string());
+                    }
+                    _ => {}
+                }
+                if depth == 0 {
+                    break;
+                }
+            }
         } else if let Some(n) = toks.get(j).filter(|n| n.kind == K::Ident) {
             bound.insert(text(n).to_string());
         }
     }
+    bound
+}
+
+/// Whether `host` binds a name `planted` reads: its own `count` would hide
+/// the std fn a planted `count(xs, p)` calls.
+fn shadows(host: &str, planted: &str) -> bool {
+    let bound = binds(host);
+    let toks = cpl_syntax::lex(planted).tokens;
+    (toks.iter().filter(|t| t.kind == K::Ident))
+        .any(|t| bound.contains(&planted[t.span.start as usize..t.span.end as usize]))
+}
+
+/// `src` with each name it binds (`let`, `var`, `for`, `fn`, `type`, ...)
+/// renamed to `<name>2`, in code and in strings. Names also used as a
+/// member (`xs.name`) keep their spelling.
+pub(crate) fn rename(src: &str) -> String {
+    let toks = cpl_syntax::lex(src).tokens;
+    let text = |t: &Token| &src[t.span.start as usize..t.span.end as usize];
+    let mut bound = binds(src);
     let dotted: HashSet<&str> = toks
         .windows(2)
         .filter(|w| w[0].kind == K::Dot && w[1].kind == K::Ident)
@@ -132,7 +165,7 @@ fn a_record_fires_the_same_renamed_and_planted_in_a_clean_program() {
             misses.push(format!("{}: renamed near_miss.cp fires", rec.name));
             continue;
         }
-        for host in &hosts {
+        for host in hosts.iter().filter(|h| !shadows(h, &before)) {
             let from = host.len();
             let planted = format!("{host}{before}");
             let got = found(&planted, from);

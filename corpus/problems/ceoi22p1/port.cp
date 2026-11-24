@@ -39,7 +39,7 @@ insert_runs(Pos.first!, Pos.last!)
 let order = Q.collect().sorted(by: qi => qs[qi].t)
 let half = n / 2
 var cur_t: ?Int = Some(0)
-var ans: [Q]?Card = None
+var ans: [Q]Card = Card.first!
 
 for qi in order:
     let target_t = qs[qi].t
@@ -61,4 +61,4 @@ for qi in order:
     let off = pos1 - bit.prefix(leader.l) - 1
     ans[qi] = deck[pos_of[leader].offset(off)!]
 
-for qi in Q: print(ans[qi]!)
+for qi in Q: print(ans[qi])

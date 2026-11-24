@@ -7,22 +7,19 @@
 //   leaves the most room for the cells above and to the left, so if this grid fails a final
 //   check (positive, at most 1e18, rows and columns increasing) every filling fails. O(NM).
 // original: corpus/submissions/4452959.cpp
-// Bounds: n, m: 1..=1500; given: 0..=1e9
+// Bounds: n, m: 1..=1500; a: 0..=1e9
 
 let n: 1..=1500 = read()
 let m: 1..=1500 = read()
 domain Row = 1..=n
 domain Col = 1..=m
-let given: [Row, Col]0..=1e9 = read()
 const ROOM = 1e17  // past the border: room below it for n + m blanks
 const TOP = 1e18
 
-var a: [Row, Col]Int = 0
+var a: [Row, Col]Int = read<[Row, Col]0..=1e9>()  // 0 is blank, filled in place
 for r in Row.rev:
     for c in Col.rev:
-        if given[r, c] != 0:
-            a[r, c] = given[r, c]
-        else:
+        if a[r, c] == 0:
             var most = ROOM
             if let q = (r, c).down: most min= a[q]
             if let q = (r, c).right: most min= a[q]
@@ -30,7 +27,9 @@ for r in Row.rev:
 
 fn below(p: (Row, Col), q: ?(Row, Col)) -> Bool = if let q = q: a[p] < a[q] else: true
 let fits = all(
-    a[r, c] in 1..=TOP and below((r, c), (r, c).down()) and below((r, c), (r, c).right())
-    for r in Row for c in Col
+    a[r, c] in 1..=TOP and below((r, c), (r, c).down()) and below(
+        (r, c),
+        (r, c).right(),
+    ) for r in Row for c in Col
 )
 if fits: print(a) else: print(-1)

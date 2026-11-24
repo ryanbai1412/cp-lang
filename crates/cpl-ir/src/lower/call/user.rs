@@ -173,7 +173,6 @@ impl<'a> Lowerer<'a> {
                 }
                 self.get_sym(name)
             }
-            ast::ExprKind::Field { base, name } => self.rebased_sym(base, &name.text),
             ast::ExprKind::Tuple(_) => self.inline_product_sym(e),
             _ => None,
         }
@@ -408,6 +407,12 @@ impl<'a> Lowerer<'a> {
                             }
                         }
                         GenArg::Ty(Ty::Int) => return self.prelude("Int", args, hint, span),
+                        // `V(0)` with `V = 0..=10` converts, checked against the range.
+                        GenArg::Range(lo, hi) => {
+                            let value = self.prelude("Int", args, hint, span);
+                            let bounds = self.const_bounds(lo, hi, span);
+                            return self.check_range(value, &bounds, span);
+                        }
                         GenArg::Ty(Ty::Float) => return self.prelude("F64", args, hint, span),
                         GenArg::Ty(Ty::Char) => return self.prelude("Char", args, hint, span),
                         GenArg::Ty(Ty::Str) => return self.prelude("Str", args, hint, span),
@@ -445,7 +450,9 @@ impl<'a> Lowerer<'a> {
                 // A plain call of two values is the core binary `min`/`max`, and a
                 // free `count`/`all`/`any` of one generator tests each value it makes,
                 // even where std.seq's fold of that name is in scope (decision 53).
-                if super::names::core_over_std(name, args) && !self.declares(name) {
+                let getter = cpl_check::PRELUDE_VALUES.contains(&name.as_str())
+                    && self.get_sym(name).is_some_and(|s| self.is_getter(s));
+                if getter || super::names::core_over_std(name, args) && !self.declares(name) {
                     return self.prelude(name, args, hint, span);
                 }
                 match self.get_sym(name) {
@@ -1163,6 +1170,8 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
+        // `Within<S: Versioned<D, T>, D, T>(store: S)`: `D` and `T` come from `S`'s impl.
+        self.bind_impl_bounds(&decl.bounds, tpl_mod, &mut inferred);
         if gen_names.iter().any(|g| g == "F") && !inferred.contains_key("F") {
             if let Some(act_arg) = args
                 .iter()
@@ -1543,6 +1552,10 @@ impl<'a> Lowerer<'a> {
                             Some(b) => self.check_range(value, &b, arg.value.span),
                             None => value,
                         };
+                        let value = match declared.and_then(|t| self.const_param_cells(id, t)) {
+                            Some(cells) => self.check_fresh_cells(value, &cells, &arg.value),
+                            None => value,
+                        };
                         lowered.push(Arg::Value(value));
                     }
                 }
@@ -1808,11 +1821,9 @@ impl<'a> Lowerer<'a> {
                         self.expect_declared(&arg.value, ty, Some(&decl.fields[i].ty))
                     };
                     let v = self.field_keys(id, &decl.fields[i].ty, v, &arg.value);
-                    let v = match self
-                        .struct_field_range(id, i)
-                        .and_then(|r| r.scalar().cloned())
-                    {
-                        Some(b) => self.check_range(v, &b, arg.value.span),
+                    let v = match self.struct_field_range(id, i) {
+                        Some(RangeInfo::Scalar(b)) => self.check_range(v, &b, arg.value.span),
+                        Some(cells) => self.check_fresh_cells(v, &cells, &arg.value),
                         None => v,
                     };
                     values.push(v);

@@ -1,10 +1,8 @@
 //! `cpl run --trace`, `cpl run --format json` and the tracing half of
 //! `cpl stress`: a run in the debug interpreter, recorded.
 
-use cpl_diag::Shown;
 use cpl_interp::trace::{document, Recording, TraceConfig};
-use cpl_stress::judge::Explaining;
-use cpl_stress::traced::{retrace, Programs};
+use cpl_stress::traced::Retraced;
 use std::path::Path;
 
 /// The trace viewer: one page with nothing to fetch. A trace is put in
@@ -121,72 +119,13 @@ pub fn versus(
     )
 }
 
-/// Runs the solution and the `@alt(program)` of the file at `path` on
-/// `input` in the debug interpreter: what `cpl stress` shows of a
-/// failing case. A file judged by its `@check` alone has no brute to
-/// line up with, and its trace is the solution's own run. With `explain`,
-/// every value each run gives a variable is logged too, for the first one
-/// they give differently.
-pub fn against_brute(
-    path: &Path,
-    input: &str,
-    explain: bool,
-    how: Option<&Result<Explaining, String>>,
-) -> Result<cpl_stress::cli::Traced, String> {
-    let name = path.shown();
-    let source = std::fs::read_to_string(path).map_err(|e| format!("can't read {name}: {e}"))?;
-    let mut db = cpl_check::Session::new();
-    db.set_file(&name, source.as_str());
-    let analysis = db.analyze(&name).ok_or("the file can't be checked")?;
-    let first = |diagnostics: Vec<cpl_diag::Diagnostic>| {
-        diagnostics
-            .first()
-            .map_or("the file does not build".to_string(), |d| d.message.clone())
-    };
-    let fast = cpl_ir::lower(&analysis).map_err(first)?;
-    // The brute is the file's `@alt(program)` fn, else the file with each
-    // `@alt(f)` fn in `f`'s place; its lines stay where they were.
-    let (brute_fn, slow) = match cpl_ir::brute(&analysis) {
-        Some((brute_fn, _)) => {
-            let slow = cpl_ir::lower_brute(&analysis, &brute_fn).map_err(first)?;
-            (brute_fn, Some(slow))
-        }
-        None => match cpl_stress::cli::swap_in_part_brutes(&source) {
-            Some(swapped) => {
-                let mut swapped_db = cpl_check::Session::new();
-                swapped_db.set_file(&name, swapped.as_str());
-                let analysis = (swapped_db.analyze(&name))
-                    .ok_or("the file with its `@alt` fns swapped in can't be checked")?;
-                let slow = cpl_ir::lower(&analysis).map_err(first)?;
-                ("its @alt fns".to_string(), Some(slow))
-            }
-            None => (String::new(), None),
-        },
-    };
-    // An interactive solution talks to the file's `@interactor`.
-    let interactor = match fast.interactive {
-        true => {
-            let judge = cpl_ir::interactor(&analysis).ok_or(
-                "an interactive solution judged by another program is traced with `cpl run --trace`",
-            )?;
-            Some(cpl_ir::lower_judge(&analysis, &judge).map_err(first)?)
-        }
-        false => None,
-    };
-    let programs = Programs {
-        fast: &fast,
-        brute: slow.as_ref(),
-        interactor: interactor.as_ref(),
-    };
-    let retraced = retrace(&source, programs, input, how, explain, None);
-    let html = html(&match &retraced.slow {
-        Some(slow) => versus(&name, &source, &brute_fn, &retraced.fast, slow),
-        None => single(&name, &source, &retraced.fast),
-    });
-    Ok(cpl_stress::cli::Traced {
-        stages: retraced.stages,
-        divergence: retraced.divergence?,
-        html,
+/// The page `cpl stress --trace` writes for a failing case: the
+/// solution's run beside its brute's, or its own run alone when it has no
+/// brute to line up with.
+pub fn page(name: &str, source: &str, brute_fn: &str, retraced: &Retraced) -> String {
+    html(&match &retraced.slow {
+        Some(slow) => versus(name, source, brute_fn, &retraced.fast, slow),
+        None => single(name, source, &retraced.fast),
     })
 }
 

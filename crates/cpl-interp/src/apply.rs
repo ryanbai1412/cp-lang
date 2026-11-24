@@ -283,6 +283,16 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         Ok(Ordering::Equal)
     }
 
+    /// The values of `e`'s operands, in order.
+    pub(crate) fn eval_operands(&mut self, e: &'p Expr) -> Res<Vec<Value>> {
+        let ops = operands(e);
+        let mut vals = Vec::with_capacity(ops.len());
+        for operand in ops {
+            vals.push(self.eval(operand)?);
+        }
+        Ok(vals)
+    }
+
     pub(crate) fn less_ty_val(&mut self, ty: &Ty, l: &Value, r: &Value, span: Span) -> Res<bool> {
         if let Ty::Struct(id) = ty {
             if let Some(hook) = self.program.structs[*id].ord {

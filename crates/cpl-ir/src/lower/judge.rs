@@ -28,7 +28,13 @@ impl<'a> Lowerer<'a> {
             let top_level = self.sigs[id].mod_id == 0 && self.sigs[id].owner.is_none();
             if matches!(decl.body, ast::FnBody::None) {
                 judge_fns.push(id);
-            } else if top_level && entries.iter().any(|entry| std::ptr::eq(*entry, decl)) {
+            } else if top_level
+                && (entries.iter().any(|entry| std::ptr::eq(*entry, decl))
+                    || self
+                        .grader_wrappers
+                        .iter()
+                        .any(|(_, entry)| std::ptr::eq(*entry, decl)))
+            {
                 entry_fns.push(id);
             } else {
                 continue;
@@ -81,6 +87,108 @@ impl<'a> Lowerer<'a> {
             }
             (self.cur_mod, self.offset) = saved;
         }
+        // Every `@grader fn` the grader calls is built, or the build fails.
+        let built = |decl: &ast::FnDecl| {
+            let entry = (self.grader_wrappers.iter())
+                .find(|(source, _)| std::ptr::eq(*source, decl))
+                .map_or(decl, |(_, entry)| *entry);
+            entry_fns
+                .iter()
+                .any(|&id| std::ptr::eq(self.sigs[id].decl, entry))
+        };
+        let dropped: Vec<&ast::FnDecl> = (entries.iter().copied())
+            .filter(|decl| !matches!(decl.body, ast::FnBody::None) && !built(decl))
+            .collect();
+        for decl in dropped {
+            let name = &decl.name.text;
+            self.error(
+                codes::UNSUPPORTED,
+                decl.name.span,
+                format!("`{name}` can't be built for the judge's grader"),
+            );
+            self.help("a `@grader fn` is a top-level fn of the program's own file");
+        }
         (judge_fns, entry_fns)
     }
+}
+
+/// The C++ entry the grader calls for `decl`, a `@grader fn` over its own
+/// domains: each `[C]T` it takes is a `List<T>`, each `C` it gives an `Int`,
+/// and its body calls `inner`, the fn itself, which binds `C` to the list's
+/// length.
+pub(super) fn entry_over_lists(decl: &ast::FnDecl, inner: &str) -> ast::FnDecl {
+    let own: Vec<&str> = decl.generics.iter().map(|g| g.text.as_str()).collect();
+    let at = decl.name.span;
+    let name = |text: &str| ast::Expr {
+        kind: ast::ExprKind::Name(text.to_string()),
+        span: at,
+    };
+    let args = (decl.params.iter())
+        .map(|p| ast::Arg {
+            name: None,
+            mutable: false,
+            value: name(&p.name.text),
+        })
+        .collect();
+    ast::FnDecl {
+        name: decl.name.clone(),
+        generics: Vec::new(),
+        bounds: Vec::new(),
+        params: (decl.params.iter())
+            .map(|p| ast::Param {
+                ty: p.ty.as_ref().map(|t| over_lists(t, &own)),
+                ..p.clone()
+            })
+            .collect(),
+        ret: decl.ret.as_ref().map(|t| over_lists(t, &own)),
+        lends: None,
+        uses: decl.uses.clone(),
+        body: ast::FnBody::Expr(ast::Expr {
+            kind: ast::ExprKind::Call {
+                callee: Box::new(name(inner)),
+                args,
+            },
+            span: at,
+        }),
+        sig_span: decl.sig_span,
+    }
+}
+
+fn over_lists(t: &ast::Type, own: &[&str]) -> ast::Type {
+    let is_own = |t: &ast::Type| {
+        matches!(&t.kind, ast::TypeKind::Named { name, args }
+            if args.is_empty() && own.contains(&name.text.as_str()))
+    };
+    let named = |text: &str, args| ast::TypeKind::Named {
+        name: ast::Name {
+            text: text.to_string(),
+            span: t.span,
+        },
+        args,
+    };
+    let kind = match &t.kind {
+        _ if is_own(t) => named("Int", Vec::new()),
+        ast::TypeKind::Array { index, elem } if index.len() == 1 && is_own(&index[0]) => {
+            named("List", vec![over_lists(elem, own)])
+        }
+        ast::TypeKind::Array { index, elem } => ast::TypeKind::Array {
+            index: index.clone(),
+            elem: Box::new(over_lists(elem, own)),
+        },
+        ast::TypeKind::Named { name, args } => ast::TypeKind::Named {
+            name: name.clone(),
+            args: args.iter().map(|a| over_lists(a, own)).collect(),
+        },
+        ast::TypeKind::Tuple(ts) => {
+            ast::TypeKind::Tuple(ts.iter().map(|a| over_lists(a, own)).collect())
+        }
+        ast::TypeKind::Record(fs) => ast::TypeKind::Record(
+            fs.iter()
+                .map(|(n, a)| (n.clone(), over_lists(a, own)))
+                .collect(),
+        ),
+        ast::TypeKind::Optional(a) => ast::TypeKind::Optional(Box::new(over_lists(a, own))),
+        other => other.clone(),
+    };
+    ast::Type { kind, span: t.span }
 }

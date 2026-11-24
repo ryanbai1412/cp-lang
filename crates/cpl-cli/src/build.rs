@@ -70,6 +70,7 @@ pub(crate) fn build_file(
         thread_stack: profile.thread_stack,
         windows: profile.os == cpl_judge::Os::Windows,
         checks,
+        avx2: profile.avx2,
     };
     let mut sizes = Vec::new();
     let aim = profile.aim();

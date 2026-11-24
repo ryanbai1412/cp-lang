@@ -5,10 +5,14 @@
   {"id": "5723346", "language": "CPP17", "result": "AC", "time": 5.189412218, "memory_kb": 5840.0, "file": "corpus/submissions/5723346.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi15p2/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Interactive (init/orderCoins with the four scale settings): orig.cpp is accepted submission 5723346 (corpus/submissions/5723346.cpp) with a stdio bridge for interactor.py, which allows six weighings a case (3^5 < 720, so six is the least that always works); it sorts all 720 orders within that."
 }

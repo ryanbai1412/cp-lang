@@ -11,9 +11,7 @@ pub(crate) mod effects;
 
 use crate::lend::{copied_at_test, Tail};
 use crate::walk;
-use cpl_ir::{
-    Arg, AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, PlaceKind, Program, Stmt, Ty,
-};
+use cpl_ir::{AssignOp, Block, Builtin, Expr, ExprKind, FnId, Iter, PlaceKind, Program, Stmt, Ty};
 use effects::Touch;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -37,14 +35,7 @@ pub(crate) struct Use {
     /// Read whole, not only through an index, field, length or `for`: the
     /// C++ may move it there.
     pub(crate) moved: bool,
-    /// Why it may outlive its home's frame, when it may.
-    #[allow(dead_code)]
-    pub(crate) escapes: Option<&'static str>,
 }
-
-pub(crate) const RETURNED: &str = "it is returned";
-pub(crate) const STORED: &str = "it is stored in another variable";
-pub(crate) const KEPT: &str = "a closure that may be kept captures it";
 
 /// The Uses table: each heap binding's [`Use`] and each fn's [`Effects`],
 /// computed once per program.
@@ -57,6 +48,9 @@ pub(crate) struct Uses {
     /// ([`dying_lets`]), and those of fns that read a global for the last
     /// time ([`dying_global_lets`]).
     pub(crate) dying: BTreeSet<*const Stmt>,
+    /// The `x = y` (or `Some(y)`) statements inside `if`s that read `y`
+    /// for the last time ([`dying_nested_assigns`]).
+    pub(crate) dying_assigns: BTreeSet<*const Stmt>,
 }
 
 impl Uses {
@@ -67,12 +61,14 @@ impl Uses {
             bindings: BTreeMap::new(),
             table,
             dying: dying_global_lets(program),
+            dying_assigns: BTreeSet::new(),
         };
         let bodies = [&program.setup, &program.main]
             .into_iter()
             .chain(program.fns.iter().map(|f| &f.body))
             .chain(program.closures.iter().map(|c| &c.body));
         for body in bodies {
+            dying_nested_assigns(program, body, &mut Vec::new(), &mut uses.dying_assigns);
             walk::blocks(body, &mut |block| {
                 for k in 0..block.stmts.len() {
                     uses.dying.extend(dying_lets(program, block, k));
@@ -107,57 +103,18 @@ impl Uses {
         muts: &[usize],
     ) {
         let (mut mutated, mut moved) = (BTreeSet::new(), BTreeSet::new());
-        let mut escapes = BTreeMap::new();
         mutated.extend(muts.iter().copied());
         for block in blocks {
             mutated.extend(Touch::of_block(block).stored_locals());
             moved.extend(crate::lend::whole_reads(block));
-            let mut called = BTreeSet::new();
-            walk::deep_stmts(block, &mut |stmt| match stmt {
-                Stmt::Let(s, Some(e)) if matches!(e.kind, ExprKind::Closure(_)) => {
-                    if crate::lend::only_called(program, block, *s, 3) {
-                        called.insert(e as *const Expr);
-                    }
-                }
-                Stmt::Return(Some(e)) | Stmt::Give(e) => {
-                    if let ExprKind::Local(s) = e.kind {
-                        escapes.entry(s).or_insert(RETURNED);
-                    }
-                }
-                Stmt::Assign(_, _, e) => {
-                    if let ExprKind::Local(s) = e.kind {
-                        escapes.entry(s).or_insert(STORED);
-                    }
-                }
-                _ => {}
-            });
             walk::deep_exprs(block, &mut |e| {
-                if let ExprKind::Call(f, args) = &e.kind {
-                    for (j, arg) in args.iter().enumerate() {
-                        if let Arg::Value(v) = arg {
-                            if matches!(v.kind, ExprKind::Closure(_))
-                                && crate::lend::fn_param_only_called(program, *f, j)
-                            {
-                                called.insert(v as *const Expr);
-                            }
-                        }
-                    }
-                }
-            });
-            walk::deep_exprs(block, &mut |e| {
-                let ExprKind::Closure(cid) = e.kind else {
-                    return;
-                };
-                for c in program.closures[cid]
-                    .captures
-                    .iter()
-                    .filter(|c| !c.is_global)
-                {
-                    if c.by_ref {
-                        mutated.insert(c.outer);
-                    } else if !called.contains(&(e as *const Expr)) {
-                        escapes.entry(c.outer).or_insert(KEPT);
-                    }
+                if let ExprKind::Closure(cid) = e.kind {
+                    let captures = program.closures[cid].captures.iter();
+                    mutated.extend(
+                        captures
+                            .filter(|c| !c.is_global && c.by_ref)
+                            .map(|c| c.outer),
+                    );
                 }
             });
         }
@@ -168,7 +125,6 @@ impl Uses {
             let found = Use {
                 mutated: mutated.contains(&slot),
                 moved: moved.contains(&slot),
-                escapes: escapes.get(&slot).copied(),
             };
             self.bindings.insert((home, slot), found);
         }
@@ -246,6 +202,26 @@ fn mentions(program: &Program, stmts: &[Stmt], slot: usize) -> Mentions {
 /// Whether `e` mentions the local `slot`, directly or through a closure.
 pub(crate) fn mentions_any(program: &Program, e: &Expr, slot: usize) -> bool {
     mentions(program, &[Stmt::Give(e.clone())], slot).any
+}
+
+/// Whether every read of the local `slot` in `e` leaves the path `fields`
+/// at a different field (`s.b` beside `s.a`), so it reads none of it.
+pub(crate) fn reads_apart(e: &Expr, slot: usize, fields: &[usize]) -> bool {
+    let (mut reads, mut apart, mut closure) = (0, 0, false);
+    walk::deep_expr(e, &mut |e| match &e.kind {
+        ExprKind::Local(s) if *s == slot => reads += 1,
+        ExprKind::Field(base, f) => {
+            apart += usize::from(field_path(base).is_some_and(|(s, at)| {
+                s == slot
+                    && at.len() < fields.len()
+                    && fields.starts_with(&at)
+                    && fields[at.len()] != *f
+            }));
+        }
+        ExprKind::Closure(_) => closure = true,
+        _ => {}
+    });
+    !closure && reads == apart
 }
 
 /// The statements of `rest` (those after a `let` of `slot`) while `slot`
@@ -525,6 +501,61 @@ pub(crate) fn last_read(program: &Program, block: &Block, k: usize) -> bool {
         return false;
     };
     walk::root(place) != (false, *slot) && dead_after(program, block, k, *slot)
+}
+
+/// The `x = y` and `x = Some(y)` statements nested in `if`s that read the
+/// local `y` for the last time: `y` is declared in an enclosing block with
+/// no loop between, and nothing after the statement, in its block or any
+/// out to that declaration, reads it
+/// (`for e in E: let w = walk(e); if ..: best = w`).
+fn dying_nested_assigns<'a>(
+    program: &Program,
+    block: &'a Block,
+    outer: &mut Vec<(&'a Block, usize)>,
+    out: &mut BTreeSet<*const Stmt>,
+) {
+    for (k, stmt) in block.stmts.iter().enumerate() {
+        match stmt {
+            Stmt::If(_, a, b) => {
+                outer.push((block, k));
+                dying_nested_assigns(program, a, outer, out);
+                dying_nested_assigns(program, b, outer, out);
+                outer.pop();
+            }
+            Stmt::While(.., body) | Stmt::For(.., body) => {
+                dying_nested_assigns(program, body, &mut Vec::new(), out);
+            }
+            Stmt::Assign(place, AssignOp::Set, value) if !outer.is_empty() => {
+                let src = match &value.kind {
+                    ExprKind::Local(slot)
+                        if matches!(place.kind, PlaceKind::Local(_) | PlaceKind::Global(_)) =>
+                    {
+                        *slot
+                    }
+                    _ => match some_local(value) {
+                        Some(slot) => slot,
+                        None => continue,
+                    },
+                };
+                if walk::root(place) == (false, src) || !unread_after(program, block, k, src) {
+                    continue;
+                }
+                for &(b, j) in outer.iter().rev() {
+                    if !unread_after(program, b, j, src) {
+                        break;
+                    }
+                    if b.stmts[..j]
+                        .iter()
+                        .any(|s| matches!(s, Stmt::Let(slot, _) if *slot == src))
+                    {
+                        out.insert(stmt as *const Stmt);
+                        break;
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
 }
 
 /// The local `y` of `Some(y)`.

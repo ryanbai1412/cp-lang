@@ -40,7 +40,6 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     t: List<T>
     lz: List<F>
     has_lz: List<Bool>
-    span: List<Int>
     size: Int
     log: Int
     act: ?Action<T, F>
@@ -112,7 +111,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     fn sparse(m: Monoid<T>, over: Range<Int>, fill: ?T, act: ?Action<T, F>) -> SegTree<D, T, F>:
         let (lo, hi) = over.ends
         let size = bit_ceil(max(hi - lo, 1))
-        var st = SegTree<D, T, F>(m, [], [], [], [], size, ctz(size), act, None) with base: lo, n: hi - lo
+        var st = SegTree<D, T, F>(m, [], [], [], size, ctz(size), act, None) with base: lo, n: hi - lo
         st.seed(fill)
         st
 
@@ -150,8 +149,19 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
 
     // The positions of `D` under node `p`, which covers `nl..nr`.
     fn width(self, p: Int, nl: Int, nr: Int) -> Int:
-        if lc.len == 0: return span[p]
+        if lc.len == 0: return self.dense_width(p)
         max(0, min(nr, n) - nl)
+
+    // The positions of `D` under dense node `p`: its leaves less the padding past `n`.
+    fn dense_width(self, p: Int) -> Int:
+        unchecked:
+            let k = log + 1 - bit_width(p)
+            return min(max(n - ((p << k) - size), 0), 1 << k)
+
+    // The positions of `D` under dense node `p`, one of the nodes with `w` leaves.
+    fn level_width(self, p: Int, w: Int) -> Int:
+        unchecked:
+            return min(max(size + n - p * w, 0), w)
 
     fn kid(self, p: Int, right: Bool) -> Int:
         if lc.len == 0: return if right: 2 * p + 1 else: 2 * p
@@ -208,31 +218,27 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         elif let v = fill:
             for i in 0..D.count(): t[size + i] = v
         for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
-        SegTree(m, t, [], [], [], size, 0, None, None)
+        SegTree(m, t, [], [], size, 0, None, None)
 
     fn build_lazy(m: Monoid<T>, a: ?[D]T, fill: ?T, resolved: Action<T, F>) -> SegTree<D, T, F>:
         let size = bit_ceil(D.count())
         var t = List.filled(2 * size, m.id)
-        var span = List.filled(2 * size, 0)
-        for i in 0..D.count(): span[size + i] = 1
         if let init = a:
             assert fill == None, "pass either `a` or `fill`, not both"
             for i in 0..D.count(): t[size + i] = init[D.at(i)]
         elif let v = fill:
             for i in 0..D.count(): t[size + i] = v
-        for p in (1..size).rev:
-            t[p] = m.op(t[2 * p], t[2 * p + 1])
-            span[p] = span[2 * p] + span[2 * p + 1]
+        for p in (1..size).rev: t[p] = m.op(t[2 * p], t[2 * p + 1])
         SegTree(
             m,
             t,
             List.filled(size, resolved.id),
             List.filled(size, false),
-            span,
             size,
             ctz(size),
             Some(resolved),
             None,
+            n: D.count(),
         )
 
     fn put(mut self, p: Int, f: F, w: Int, leaf: Bool):
@@ -252,13 +258,17 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             lz[p] = act!.id
             has_lz[p] = false
 
-    fn push_at(mut self, p: Int):
-        self.push(p, 2 * p, 2 * p + 1, span[2 * p], span[2 * p + 1], 2 * p >= size)
+    // Push dense node `p`'s tag onto its children, each with `w` leaves.
+    fn push_at(mut self, p: Int, w: Int):
+        let (l, r) = (2 * p, 2 * p + 1)
+        self.push(p, l, r, self.level_width(l, w), self.level_width(r, w), l >= size)
 
     fn open(mut self, l: Int, h: Int):
+        var w = size
         for i in (1..=log).rev:
-            if ((l >> i) << i) != l: self.push_at(l >> i)
-            if ((h >> i) << i) != h: self.push_at((h - 1) >> i)
+            w /= 2
+            if ((l >> i) << i) != l: self.push_at(l >> i, w)
+            if ((h >> i) << i) != h: self.push_at((h - 1) >> i, w)
 
     // Node `p`'s value with `pend`, the tags its ancestors hold, applied.
     fn seen(self, pend: ?F, p: Int, nl: Int, nr: Int) -> T:
@@ -333,22 +343,26 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             return
         let (l0, h0) = (lo + size, hi + size)
         if dual or not act!.commutes: self.open(l0, h0)
-        var (l, h) = (l0, h0)
+        // Every node the loop tags lies inside `r`, so it holds all `w` of its leaves.
+        var (l, h, w) = (l0, h0, 1)
         unchecked:
             while l < h:
                 if l % 2 == 1:
-                    self.put(l, f, span[l], l >= size)
+                    self.put(l, f, w, l >= size)
                     l += 1
                 if h % 2 == 1:
                     h -= 1
-                    self.put(h, f, span[h], h >= size)
+                    self.put(h, f, w, h >= size)
                 l /= 2
                 h /= 2
+                w += w
         if dual: return
+        w = 1
         for i in 1..=log:
+            w += w
             let (a, b) = (l0 >> i, (h0 - 1) >> i)
-            if ((l0 >> i) << i) != l0: self.pull_node(a, 2 * a, 2 * a + 1, span[a])
-            if ((h0 >> i) << i) != h0: self.pull_node(b, 2 * b, 2 * b + 1, span[b])
+            if ((l0 >> i) << i) != l0: self.pull_node(a, 2 * a, 2 * a + 1, self.level_width(a, w))
+            if ((h0 >> i) << i) != h0: self.pull_node(b, 2 * b, 2 * b + 1, self.level_width(b, w))
 
     /// Apply tag `f` to every position; `apply(D.all, f)`.
     ///
@@ -387,21 +401,22 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         // `a` folds `na` leaves under node `l - 1`, `b` folds `nb` under node `h`; each takes the
         // tags of the nodes it climbs through, so nothing is pushed.
         let f = act!
-        var (na, nb) = (0, 0)
+        var (na, nb, w) = (0, 0, 1)
         unchecked:
             while l < h:
                 if l % 2 == 1:
                     a = m.op(a, t[l])
-                    na += span[l]
+                    na += w
                     l += 1
                 if h % 2 == 1:
                     h -= 1
                     b = m.op(t[h], b)
-                    nb += span[h]
+                    nb += w
                 l /= 2
                 h /= 2
                 if na > 0 and has_lz[l - 1]: a = f.apply(lz[l - 1], a, na)
                 if nb > 0 and has_lz[h]: b = f.apply(lz[h], b, nb)
+                w += w
         m.op(self.lift(a, na, l - 1), self.lift(b, nb, h))
 
     /// The last cut `d` at or right of `from` such that `ok(fold(from..d))` holds. `ok` must be
@@ -531,7 +546,10 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
         if lc.len == 0:
             let p = size + i.ord
             if act != None:
-                for k in (1..=log).rev: self.push_at(p >> k)
+                var w = size
+                for k in (1..=log).rev:
+                    w /= 2
+                    self.push_at(p >> k, w)
             return p
         let x = self.slot(i.ord)
         var (p, nl, nr) = (1, 0, size)
@@ -1675,3 +1693,63 @@ fn merge_sort_and_sparse_segtree_match_brute():
                 assert mst.count_lt(rng, v) == cnt(rng, x => x < v)
                 assert mst.count_le(rng, v) == cnt(rng, x => x <= v)
             assert mst.count_in(rng, -3, 4) == cnt(rng, x => -3 <= x <= 4)
+
+impl Show for SegTree<D, T, F>:
+    /// Every position's value, with tags applied, space-separated; a sparse tree (built with `over:`) shows its size and fold.
+    ///
+    /// example: `var s = SegTree(+, [4, 5, 6]); s.set(1, 9); "{s}" == "4 9 6"`
+    /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000); s.set(7, 4); "{s}" == "1000000 positions, all 4"`
+    fn show(s):
+        if s.lc.len > 0: return "{s.count} positions, all {s.all}"
+        var out = ""
+        for i in 0..D.count():
+            if not out.is_empty: out += " "
+            out += "{s.get(D.at(i))}"
+        out
+
+impl Show for MergeSortTree<D, T>:
+    /// The values it was built from, space-separated in position order.
+    ///
+    /// example: `"{MergeSortTree([3, 1, 4])}" == "3 1 4"`
+    fn show(t):
+        var out = ""
+        for i in 0..D.count:
+            if not out.is_empty: out += " "
+            out += "{t.data[t.beg[t.size + i]]}"
+        out
+
+impl Show for SegTree2D<R, C, T>:
+    /// Every cell's value, space-separated within a row, rows separated by ` / `.
+    ///
+    /// example: `var g = SegTree2D<0..2, 0..2, Int>(+, fill: 1); g.set(1, 0, 7); "{g}" == "1 1 / 7 1"`
+    fn show(g):
+        var out = ""
+        for r in 0..R.count:
+            if r > 0: out += " / "
+            for c in 0..C.count:
+                if c > 0: out += " "
+                out += "{g.get(R.at(r), C.at(c))}"
+        out
+
+impl Show for WaveletMatrix<D>:
+    /// The values it was built from, space-separated in position order.
+    ///
+    /// example: `"{WaveletMatrix([3, 1, 4])}" == "3 1 4"`
+    fn show(w):
+        var out = ""
+        for i in 0..D.count:
+            if not out.is_empty: out += " "
+            out += "{w.kth(D.at(i)..=D.at(i), 0)!}"
+        out
+
+impl Show for DynamicOrderTree<D, T>:
+    /// The current values, space-separated in position order.
+    ///
+    /// example: `var t = DynamicOrderTree([3, 1, 4]); t.set(2, 9); "{t}" == "3 1 9"`
+    fn show(t):
+        var out = ""
+        for i in 0..t.n:
+            if not out.is_empty: out += " "
+            out += "{t.get(D.at(i))}"
+        out
+

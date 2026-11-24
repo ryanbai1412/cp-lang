@@ -5,9 +5,13 @@
 //   with the smallest a, as the original prints); a small a always works in practice.
 // original: corpus/submissions/4325077.cpp
 // Bounds: t: 1..=1000; ns: 4..=1e6
+use std.math.{primes_in}
+
 let t: 1..=1000 = read()
 let ns: [t]4..=1e6 = read()
-let sieve = Sieve(2 * ns.max()!)
+let primes = primes_in(2, 2 * ns.max()! + 1)
+var is_prime = List.filled(2 * ns.max()! + 1, false)
+for p in primes: is_prime[p] = true
 for n in ns:
-    let a = sieve.primes.find(p => sieve.is_prime(2 * n - p))!
+    let a = primes.find(p => is_prime[2 * n - p])!
     print(a, 2 * n - a)

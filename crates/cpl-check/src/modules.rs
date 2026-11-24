@@ -29,7 +29,7 @@ impl Loader for FsLoader {
 }
 
 /// The library files a host with no file system gives by path, relative
-/// to the file it checks (`"cp.toml"`, `"kit/m.cp"`): found as `FsLoader`
+/// to the file it checks (`cp.toml`, `kit/m.cp`): found as `FsLoader`
 /// finds them on disk, through the same `cp.toml` and `lib.toml`.
 pub struct GivenFiles(BTreeMap<String, String>);
 
@@ -145,7 +145,7 @@ pub(crate) fn modules() -> &'static [(&'static str, &'static str)] {
         std::sync::OnceLock::new();
     FROM_DISK
         .get_or_init(|| {
-            let dir = match std::env::var_os("CPL_STD_DIR") {
+            let dir = match cpl_env::STD_DIR.raw() {
                 Some(dir) if dir.is_empty() => return None,
                 Some(dir) => std::path::PathBuf::from(dir),
                 None => source_std()?.to_path_buf(),
@@ -168,7 +168,7 @@ fn source_std() -> Option<&'static Path> {
 /// in (a copied or shared target dir), whose std it would silently ignore.
 pub fn dev_std_problem() -> Option<String> {
     let built = env!("CPL_STD_SOURCE");
-    if built.is_empty() || std::env::var_os("CPL_STD_DIR").is_some() {
+    if built.is_empty() || cpl_env::STD_DIR.is_set() {
         return None;
     }
     let exe = std::env::current_exe().ok();
@@ -563,9 +563,8 @@ pub fn home_dir() -> Option<PathBuf> {
 /// whose `lib.toml` names the library.
 fn library_root(files: &dyn Files, start: &Path, name: &str) -> Option<PathBuf> {
     let start = files.canonical(start);
-    let configured = start.ancestors().find_map(|dir| {
-        let config = files.read(&dir.join("cp.toml"))?;
-        let path = configured_library(&config, name)?;
+    let configured = cpl_config::find_map(&start, &mut |f| files.read(f), |dir, config| {
+        let path = configured_library(config, name)?;
         let path = match path.strip_prefix("~/") {
             Some(below_home) => home_dir()?.join(below_home),
             None => dir.join(path),
@@ -580,21 +579,10 @@ fn library_root(files: &dyn Files, start: &Path, name: &str) -> Option<PathBuf> 
 pub fn configured_libraries(start: &Path) -> Vec<(String, PathBuf)> {
     let start = start.canonicalize().unwrap_or_else(|_| start.to_path_buf());
     let mut out: Vec<(String, PathBuf)> = Vec::new();
-    for dir in start.ancestors() {
-        let Ok(config) = std::fs::read_to_string(dir.join("cp.toml")) else {
-            continue;
-        };
-        let mut in_libs = false;
-        for line in config.lines() {
-            let line = line.split('#').next().unwrap_or("").trim();
-            if line.starts_with('[') {
-                in_libs = line == "[libs]";
-                continue;
-            }
-            let Some((name, _)) = line.split_once('=').filter(|_| in_libs) else {
-                continue;
-            };
-            let name = name.trim();
+    let read = &mut |f: &Path| std::fs::read_to_string(f).ok();
+    cpl_config::find_map(&start, read, |dir, config| {
+        for line in cpl_config::table(config, "libs") {
+            let Some((name, _)) = line.pair else { continue };
             if out.iter().any(|(n, _)| n == name) {
                 continue;
             }
@@ -602,27 +590,19 @@ pub fn configured_libraries(start: &Path) -> Vec<(String, PathBuf)> {
                 out.push((name.to_string(), root));
             }
         }
-    }
+        None::<()>
+    });
     out
 }
 
 /// The path `[libs]` of a `cp.toml` gives the library `name`, written as
 /// `name = "path"` or `name = { path = "path" }`.
 fn configured_library<'a>(config: &'a str, name: &str) -> Option<&'a str> {
-    let mut in_libs = false;
-    for line in config.lines() {
-        let line = line.split('#').next().unwrap_or("").trim();
-        if line.starts_with('[') {
-            in_libs = line == "[libs]";
-            continue;
-        }
-        if !in_libs {
-            continue;
-        }
-        let Some((key, value)) = line.split_once('=') else {
+    for line in cpl_config::table(config, "libs") {
+        let Some((key, value)) = line.pair else {
             continue;
         };
-        if key.trim() != name {
+        if key != name {
             continue;
         }
         let value = value.trim();
@@ -835,7 +815,7 @@ mod tests {
         let kit = root.join("kit/math");
         std::fs::create_dir_all(&contest).unwrap();
         std::fs::create_dir_all(&kit).unwrap();
-        std::fs::write(contest.join("cp.toml"), "[libs]\nlib = \"../kit\"\n").unwrap();
+        std::fs::write(contest.join(cpl_config::FILE), "[libs]\nlib = \"../kit\"\n").unwrap();
         std::fs::write(kit.join("poly.cp"), "fn two() -> Int: 2\n").unwrap();
         let from = contest.join("a.cp");
         let module = ["lib", "math", "poly"].map(String::from);

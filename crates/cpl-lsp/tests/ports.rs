@@ -7,8 +7,6 @@
 
 use cpl_json::{obj, Value};
 
-#[path = "../../cpl-cli/tests/support/corpus_programs.rs"]
-mod corpus_programs;
 use cpl_lsp::Server;
 use std::collections::HashSet;
 use std::path::Path;
@@ -269,7 +267,7 @@ fn every_corpus_program_and_conformance_case_is_served() {
     for dir in cpl_corpus::packages(&root) {
         cp_files(&dir, &mut files);
     }
-    files.extend(corpus_programs::v02_snapshot_ports(&root));
+    files.extend(cpl_corpus::programs::v02_snapshot_ports(&root));
     let corpus = files.len();
     cp_files(&root.join("spec/conformance"), &mut files);
     assert!(

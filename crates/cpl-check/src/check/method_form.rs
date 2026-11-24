@@ -142,10 +142,33 @@ impl Checker<'_> {
 
     /// `base.name`'s type: a member, else a `@get fn` of that name.
     pub(super) fn member_or_getter(&mut self, expr: &Expr, name: &ast::Name, base: Ty) -> Ty {
+        // A getter read is a call: its facts say which fn it calls.
+        if !self.in_call_callee && !self.exprs.calls.iter().any(|c| c.call == expr.span) {
+            if self.builtin_get(&base, &name.text) {
+                self.record_getter(expr, expr, true);
+            } else if self.names_getter_fn(&base, &name.text) {
+                self.record_getter(expr, expr, false);
+            }
+        }
         match self.member_ty(expr, name, base) {
             Ty::Unknown if !self.in_call_callee => self.getter_fn_read(expr).unwrap_or(Ty::Unknown),
             ty => ty,
         }
+    }
+
+    /// Whether `base.name` names a `@get fn`, std's `s.first` on a `SortedBag`.
+    pub(super) fn names_getter_fn(&mut self, base: &Ty, name: &str) -> bool {
+        if let Ty::Named { name: owner, .. } = base {
+            if let Some(members) = self.members_of(owner) {
+                if members.fields.iter().any(|f| f.name == name) {
+                    return false;
+                }
+                if members.members.iter().any(|(m, _)| m == name) {
+                    return true;
+                }
+            }
+        }
+        matches!(self.pick_method(base, name), Pick::One(_, def) if matches!(&*def, Def::Fn { getter: true, .. }))
     }
 
     /// `xs.ring`: a field read naming a `@get fn` is the call `ring(xs)`.

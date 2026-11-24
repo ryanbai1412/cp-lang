@@ -24,7 +24,7 @@ fn print_stacks(k: Int, stack: Flavour -> Int):
     print([stack(a[p]) for p in Pizza])
     print([stack(b[q]) for q in Person])
 
-var surplus: [Flavour]Int = 0
+var surplus: [Flavour]-1e6..=1e6 = 0
 for f in a: surplus[f] += 1
 let distinct = surplus.all(c => c <= 1)
 for f in b: surplus[f] -= 1
@@ -36,7 +36,7 @@ elif a.all(f => f.label <= 2):
 elif distinct:
     let laid = a.inverse()
     var tops: List<Pizza> = []
-    var stack: [Flavour]Int = 0
+    var stack: [Flavour]0..=1e6 = 0
     for f in b:
         let p = laid[f]
         let i = (0..tops.len).first_true(i => tops[i] > p) ?? tops.len

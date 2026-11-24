@@ -84,16 +84,21 @@ pub(crate) struct Bounds {
 pub(crate) const LEN_MAX: i128 = i64::MAX as i128;
 
 /// A name the prover can be told about: an input of a declared range, or an
-/// immutable `let` of arithmetic over such names, as prover text.
+/// immutable `let` of arithmetic over such names, as prover text. The
+/// playground build has no prover, so it keeps only which names are inputs.
 #[derive(Clone)]
-#[cfg_attr(target_arch = "wasm32", allow(dead_code))]
 enum Def {
-    Input(Interval),
+    Input {
+        #[cfg(not(target_arch = "wasm32"))]
+        range: Interval,
+    },
+    #[cfg(not(target_arch = "wasm32"))]
     Let { text: String, names: Vec<String> },
 }
 
 /// `expr` as fully parenthesized prover text and the names it reads, when
 /// it is only integers, names and arithmetic.
+#[cfg(not(target_arch = "wasm32"))]
 fn prover_text(expr: &Expr, names: &mut Vec<String>) -> Option<String> {
     Some(match &expr.kind {
         ExprKind::Int(value) => value.to_string(),
@@ -635,7 +640,7 @@ impl Bounds {
 
     /// Whether `name` is an input of a declared range, as read.
     pub(crate) fn is_input(&self, name: &str) -> bool {
-        matches!(self.defs.get(name), Some(Def::Input(_)))
+        matches!(self.defs.get(name), Some(Def::Input { .. }))
     }
 
     pub(crate) fn bound_once(&self, name: &str) -> bool {
@@ -675,11 +680,16 @@ impl Bounds {
     /// From here on `name` is an input anywhere in `range`.
     pub(crate) fn input(&mut self, name: &str, range: Interval) {
         self.bind(name, Some(range));
-        self.defs.insert(name.to_string(), Def::Input(range));
+        let def = Def::Input {
+            #[cfg(not(target_arch = "wasm32"))]
+            range,
+        };
+        self.defs.insert(name.to_string(), def);
     }
 
     /// `name` was just bound to the value of `init`, which the prover can
     /// follow when it is arithmetic over names it can follow.
+    #[cfg(not(target_arch = "wasm32"))]
     pub(crate) fn define(&mut self, name: &str, init: &Expr) {
         let mut names = Vec::new();
         if let Some(text) = prover_text(init, &mut names) {
@@ -703,7 +713,7 @@ impl Bounds {
                 return Some(());
             }
             match bounds.defs.get(name)? {
-                Def::Input(range) => ctx.var(name, &format!("{}..={}", range.lo, range.hi)).ok(),
+                Def::Input { range } => ctx.var(name, &format!("{}..={}", range.lo, range.hi)).ok(),
                 Def::Let { text, names } => {
                     for n in names {
                         tell(bounds, n, ctx, told)?;
@@ -729,6 +739,9 @@ impl Bounds {
     pub(crate) fn overflow(&self, _expr: &Expr) -> Option<String> {
         None
     }
+
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn define(&mut self, _name: &str, _init: &Expr) {}
 
     /// From here on `a - b` is in `diff`, as well as in what the intervals
     /// of `a` and `b` give.

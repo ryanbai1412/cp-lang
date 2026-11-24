@@ -27,7 +27,7 @@ fn a_fold_whose_op_calls_trap_free_fns_builds_no_list() {
     let cpp = cpp(concat!(
         "type Z = Mod<998_244_353>\n",
         "let n: 1..=1000 = read()\n",
-        "print(fold(*, Z(i) for i in 1..=n if i % 3 != 0))\n",
+        "print((1..=n).filter(i => i % 3 != 0).map(i => Z(i)).fold(*))\n",
     ));
     assert!(cpp.contains("cpl_sink_"), "{cpp}");
 }
@@ -101,10 +101,7 @@ fn a_u64_sum_with_a_default_of_builds_no_list_at_each_call() {
         "print(ways, sum(dp[v] for v in V))\n",
     ));
     let solve = &cpp[cpp.find("void solve()").unwrap()..];
-    assert!(
-        !solve.contains("std::vector<unsigned long long>()"),
-        "{solve}"
-    );
+    assert!(!solve.contains("std::vector<cpl::u64>()"), "{solve}");
     assert!(!solve.contains("push_back"), "{solve}");
 }
 

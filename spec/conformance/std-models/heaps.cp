@@ -7,6 +7,7 @@
 // Heap, MaxHeap, MinMaxHeap and ErasableHeap of Int, each against a sorted List: seeded random
 // pushes, pops, push_pop, replace_top, removals, takes and drains, with the contents compared
 // after each op. Reads `seed n`; prints the first op that differs.
+// std_functions: 8
 use std.rand.{Rng}
 use std.heap.{Heap, MaxHeap, MinMaxHeap, ErasableHeap}
 

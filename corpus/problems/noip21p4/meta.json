@@ -14,5 +14,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Both accepted C++ agree with each other, the statement samples and a per-piece brute (one normal step, straight no-turn runs, interchange flood fill) on 200 generated cases; the reference takes about 2 s on --max."
 }

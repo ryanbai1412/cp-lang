@@ -3839,6 +3839,22 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
         self.splay(v.ord)
         cnt[v.ord]
 
+    /// Every vertex's value with every pending tag applied as it walks the splay trees; it reads
+    /// the trees and writes nothing back, so no splay moves.
+    ///
+    /// cost: \(O(\lvert V \rvert + \text{links})\)
+    /// traps: never
+    /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(0, 1); et.apply_tree(0, 3); et.to_array() == [3, 3, 0]`
+    pub fn to_array(self) -> [V]T:
+        var out = val
+        var stack: List<(Int, F)> = [(x, act.id) for x in 0..lc.len if pa[x] == None]
+        while let (x, f) = stack.pop():
+            if x < V.count: out[V.nth(x)] = act.apply(f, out[V.nth(x)], 1)
+            let g = act.compose(f, lz[x])
+            if let c = lc[x]: stack.push((c, g))
+            if let c = rc[x]: stack.push((c, g))
+        out
+
     /// The value at `v`, with every update to a tree or side holding it applied.
     ///
     /// cost: expected \(O(\log n)\)
@@ -3928,7 +3944,7 @@ pub struct KruskalTree<V, N, W>:
     /// The merging weight of each node; `None` at a leaf.
     pub w: [N]?W
     edge: [N]Int
-    lift: Lift<N, Int>
+    links: JumpTree<N>
 
     /// The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds. The roots, one per
     /// component, are in increasing node order.
@@ -3936,7 +3952,7 @@ pub struct KruskalTree<V, N, W>:
     /// cost: \(O(n)\); builds the `Rooted` on every read, so bind it once: `let t = kt.tree`
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.tree.parent(kt.leaf[1]) == kt.tree.parent(kt.leaf[2]) and kt.tree.size(kt.leaf[0]) == 1`
-    @get pub fn tree(self) -> Rooted<N, _, _> = Rooted.from_parents(lift.up)
+    @get pub fn tree(self) -> Rooted<N, _, _> = Rooted.from_parents([N] x => links.parent(x))
 
     /// The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when
     /// None is); its leaves are what `v` reaches by edges of weight at most `limit`.
@@ -3944,7 +3960,8 @@ pub struct KruskalTree<V, N, W>:
     /// cost: \(O(\log n)\)
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.reach(0, 4) == kt.leaf[0] and kt.w[kt.reach(1, 4)] == Some(3) and kt.w[kt.reach(1, 5)] == Some(5)`
-    pub fn reach(self, v: V, limit: W) -> N = lift.climb(leaf[v], ok: x => w[x]! <= limit).at
+    pub fn reach(self, v: V, limit: W) -> N =
+        links.jump_while(leaf[v], x => x == leaf[v] or w[x]! <= limit)!
 
     /// The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`.
     /// The highest such node is unique, so there is no tie.
@@ -3956,7 +3973,8 @@ pub struct KruskalTree<V, N, W>:
     /// ties: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.w[kt.top(1, e => es[e].w < 5)] == Some(3)`
     /// traps: never
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.w[kt.top(1, e => es[e].w < 5)] == Some(3) and kt.top(0, e => false) == kt.leaf[0]`
-    pub fn top<E>(self, v: V, ok: E -> Bool) -> N = lift.climb(leaf[v], x => ok(E.nth(edge[x]))).at
+    pub fn top<E>(self, v: V, ok: E -> Bool) -> N =
+        links.jump_while(leaf[v], x => x == leaf[v] or ok(E.nth(edge[x])))!
 
     /// For every node, `op` folded over the `leaf` values of the leaves under it.
     ///
@@ -3975,7 +3993,7 @@ pub struct KruskalTree<V, N, W>:
         var acc: [N]?T = None
         for v in V: acc[self.leaf[v]] = Some(leaf(v))
         for x in N:
-            if let p = lift.parent(x):
+            if let p = links.parent(x):
                 let c = acc[x]!
                 acc[p] = if let a = acc[p]: Some(m.op(a, c)) else: Some(c)
         [N] x => acc[x]!
@@ -3988,7 +4006,7 @@ pub struct KruskalTree<V, N, W>:
     /// example: `domain V = 0..3; let es: [0..2](u: V, v: V, w: Int) = [(u: 0, v: 1, w: 5), (u: 1, v: 2, w: 3)]; let (domain N, kt) = kruskal_tree(es, w: e => es[e].w); kt.bottleneck(0, 2) == Some(5) and kt.bottleneck(1, 2) == Some(3) and kt.bottleneck(0, 0) == None`
     pub fn bottleneck(self, a: V, b: V) -> ?W:
         if a == b: return None
-        if let c = lift.lca(leaf[a], leaf[b]): w[c]
+        if let c = links.lca(leaf[a], leaf[b]): w[c]
         else: None
 
 /// The Kruskal reconstruction tree of `edges` weighted by `w`, over the vertices `V`, taking the
@@ -4029,17 +4047,16 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
             key.push(e.ord)
             top[dsu.find(r.u)] = x
     domain N = 0..par.len
-    var up: [N]?(N, Int) = None
-    for x in N:
-        if par[x.ord] >= 0: up[x] = Some((N.nth(par[x.ord]), 0))
-    let lift = Lift(up, op: (a, b) => a + b, identity: 0)
+    var links = JumpTree<N>()
+    for x in N.rev:
+        if par[x.ord] >= 0: links.add(x, N.nth(par[x.ord]))
     (
         N,
         KruskalTree<V, N, W>(
             [V] v => N.nth(v.ord),
             [N] x => weight[x.ord],
             [N] x => key[x.ord],
-            lift,
+            links,
         ),
     )
 
@@ -4052,6 +4069,26 @@ pub fn kruskal_tree<V, E, W, R: (u: V, v: V, ..)>(edges: [E]R, w: E -> W) -> (
 /// traps: when `V` has fewer than two vertices, or `edges` is not a tree
 /// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 1, v: 3)]; prufer(tr) == [1, 1]`
 /// example: `domain V = 0..4; let tr: Tree<V> = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 3)]; prufer(tr) == [1, 2]`
+@test
+fn a_kruskal_tree_reaches_what_the_light_edges_connect():
+    domain V = 0..8
+    domain E = 0..12
+    let es: [E](u: V, v: V, w: Int) = [E] _ => (u: V(rand(0, 7)), v: V(rand(0, 7)), w: rand(1, 6))
+    let (domain N, kt) = kruskal_tree(es, w: e => es[e].w)
+    var first: List<?Int> = [None for _ in 0..V.count * V.count]
+    for limit in 0..=7:
+        var d = Dsu<V>()
+        for e in es:
+            if e.w <= limit: d.unite(e.u, e.v)
+        for a in V:
+            assert kt.top(a, (e: E) => es[e].w <= limit) == kt.reach(a, limit)
+            for b in V:
+                assert (kt.reach(a, limit) == kt.reach(b, limit)) == d.same(a, b)
+                let i = a.ord * V.count + b.ord
+                if a != b and d.same(a, b) and first[i] == None: first[i] = Some(limit)
+    for a in V:
+        for b in V: assert kt.bottleneck(a, b) == first[a.ord * V.count + b.ord]
+
 pub fn prufer<V, E, R: (u: V, v: V, ..)>(edges: [E]R) -> List<V>:
     assert V.count >= 2, "`prufer` needs at least two vertices"
     assert E.count == V.count - 1, "`prufer`: `edges` is not a tree"
@@ -4126,3 +4163,26 @@ fn gen_rooted<V>(shape: Int) -> Rooted<V, _, _>:
         if shape == 3 and i >= spine: j = rand(0, spine - 1)
         par[label[i]] = Some(label[j])
     Rooted.from_parents(par)
+
+impl Show for EulerTourTree<V, T>:
+    /// Every vertex's value, space-separated in vertex order.
+    ///
+    /// example: `var t = EulerTourTree<0..3, Int>(+, a: [4, 5, 6]); t.link(0, 1); t.set(2, 9); "{t}" == "4 5 9"`
+    fn show(t):
+        var out = ""
+        for v in V:
+            if not out.is_empty: out += " "
+            out += "{t.get(v)}"
+        out
+
+impl Show for LazyEulerTourTree<V, T, F>:
+    /// Every vertex's value, space-separated in vertex order, read through `to_array` without
+    /// pushing any tag down.
+    ///
+    /// example: `domain V = 0..3; var et = LazyEulerTourTree<V, Int, Int>(add); et.link(1, 2); et.apply_tree(2, 4); "{et}" == "0 4 4"`
+    fn show(t):
+        var out = ""
+        for x in t.to_array():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

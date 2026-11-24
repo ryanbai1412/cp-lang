@@ -2,9 +2,9 @@
 // The snippet gate: every CP Lang program on the site is CP Lang 0.3 and gets
 // its status from the compiler, never by hand. `runs`: the compiler runs it
 // (matching `.out` when given) and emits C++. `checks`: it passes the checker
-// but does not run yet. `spec`: it is written to spec/ and the compiler does
-// not accept it yet; only `*.spec.cp` files and `status=spec` fences may be
-// that, and without an input file one is `checks` at best. The page shows `checks` and `spec` without Run and without output.
+// but does not run yet. There is no spec status: a program the compiler
+// doesn't accept yet is a checker or std bug to fix, not a page to publish, so
+// a `*.spec.cp` file or a `status=spec` fence fails the gate.
 // A practice problem's ref.cp must also pass every test in its tests.json.
 // Pages take their programs from content/, never from literals in TSX, so
 // everything a visitor can run is covered. Writes .gate/status.json and
@@ -41,7 +41,7 @@ process.on('exit', (code) => {
     console.error(`gate: WARNING: ${relative(repo, cpl)} is older than crates/; these failures may be stale (cargo build --release -p cpl-cli)`);
 });
 
-const rank = { fails: 0, spec: 1, checks: 2, runs: 3 };
+const rank = { fails: 0, checks: 2, runs: 3 };
 const snippets = [];
 
 function walk(dir, f) {
@@ -55,13 +55,15 @@ function walk(dir, f) {
 walk(join(web, 'content'), (p) => {
   if (p.endsWith('.cp')) {
     const base = p.replace(/(\.spec)?\.cp$/, '');
+    const spec = p.endsWith('.spec.cp');
     const read = (ext) => (existsSync(`${base}.${ext}`) ? readFileSync(`${base}.${ext}`, 'utf8') : null);
     snippets.push({
       id: relative(web, p),
       source: readFileSync(p, 'utf8'),
       stdin: read('in') ?? '',
-      expected: p.endsWith('.spec.cp') ? null : read('out'),
-      declared: p.endsWith('.spec.cp') ? 'spec' : 'runs',
+      expected: read('out'),
+      declared: 'runs',
+      spec,
     });
     const tests = join(dirname(p), 'tests.json');
     if (p.endsWith('/ref.cp') && existsSync(tests))
@@ -83,9 +85,10 @@ walk(join(web, 'content'), (p) => {
       i++;
       const meta = m[1];
       const rejects = /\brejects=([ER]\d{4})\b/.exec(meta)?.[1];
-      const declared = rejects ? 'rejects' : (/\bstatus=(runs|checks|spec)\b/.exec(meta)?.[1] ?? 'runs');
+      const spec = /\bstatus=spec\b/.test(meta);
+      const declared = rejects ? 'rejects' : (/\bstatus=(runs|checks)\b/.exec(meta)?.[1] ?? 'runs');
       const stdin = /\binput="([^"]*)"/.exec(meta)?.[1]?.replace(/\\n/g, '\n') ?? '';
-      snippets.push({ id: `${relative(web, p)}#${i}`, source: m[2], stdin, expected: null, declared, rejects });
+      snippets.push({ id: `${relative(web, p)}#${i}`, source: m[2], stdin, expected: null, declared, rejects, spec });
     }
   }
 });
@@ -142,7 +145,9 @@ for (const id of readdirSync(join(web, 'content/practice'))) {
 // Each worker gets its own folder, so parallel runs never share a main.cp.
 const slots = snippets.map(() => null);
 const cli = snippets.map(() => null);
-const errorsOf = snippets.map(() => []);
+const errorsOf = snippets.map((s) =>
+  s.spec ? [`gate: ${s.id} is marked spec; every site program runs (site/R1): fix the checker or std, or drop the program`] : [],
+);
 async function gate(k, dir) {
   const s = snippets[k];
   const errors = errorsOf[k];
@@ -171,9 +176,8 @@ async function gate(k, dir) {
   let note = '';
   if (check.status !== 0) {
     note = first(check);
-    if (s.declared === 'spec') status = 'spec';
   }
-  else if (build.status === 0 && run.status === 0 && matches) status = s.declared === 'spec' && !s.stdin ? 'checks' : 'runs';
+  else if (build.status === 0 && run.status === 0 && matches) status = 'runs';
   else {
     status = 'checks';
     note = run.status === 0 && build.status === 0 ? `output ${JSON.stringify(run.stdout)} != expected` : first(build.status === 0 ? run : build);
@@ -269,14 +273,14 @@ const pages = {};
 for (const [id, r] of Object.entries(results)) {
   if (id.includes('@test')) continue;
   const page = id.replace(/#\d+$/, '').replace(/\/[^/]+\.cp$/, '/');
-  const p = (pages[page] ??= { runs: 0, checks: 0, spec: 0, fails: 0, rejects: 0, notes: [] });
+  const p = (pages[page] ??= { runs: 0, checks: 0, fails: 0, rejects: 0, notes: [] });
   p[r.status]++;
   if (r.status !== 'runs' && r.status !== 'rejects') p.notes.push(`  - \`${id}\` ${r.status}: ${r.note}`);
 }
 writeFileSync(
   join(web, '.gate/report.md'),
-  ['# Snippet status by page', '', '| page | snippets | runs | check-only | spec only |', '|---|---|---|---|---|']
-    .concat(Object.entries(pages).map(([k, p]) => `| ${k} | ${p.runs + p.checks + p.spec + p.fails + p.rejects} | ${p.runs + p.rejects} | ${p.checks} | ${p.spec + p.fails} |`))
+  ['# Snippet status by page', '', '| page | snippets | runs | check-only | fails |', '|---|---|---|---|---|']
+    .concat(Object.entries(pages).map(([k, p]) => `| ${k} | ${p.runs + p.checks + p.fails + p.rejects} | ${p.runs + p.rejects} | ${p.checks} | ${p.fails} |`))
     .concat(['', '## Does not run', ''], Object.values(pages).flatMap((p) => p.notes))
     .join('\n') + '\n',
 );

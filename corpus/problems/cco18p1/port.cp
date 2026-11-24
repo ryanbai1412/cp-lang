@@ -16,10 +16,12 @@ fn rivals(g: Game, h: Game) -> Bool =
     geese_won[g.ord] != hawks_won[h.ord] and
         (if geese_won[g.ord] == 'W': geese[g] > hawks[h] else: geese[g] < hawks[h])
 
-// best[g, h]: the most points from the first g geese games and h hawks games
-var best: [Game.cuts, Game.cuts]Int = 0
+// prev[h], then cur[h]: the most points from the geese games up to g and the first h hawks games
+var prev: [Game.cuts]Int = 0
 for g in Game:
+    var cur: [Game.cuts]Int = 0
     for h in Game:
-        let paired = if rivals(g, h): best[g.l, h.l] + geese[g] + hawks[h] else: 0
-        best[g.r, h.r] = max(best[g.l, h.r], best[g.r, h.l], paired)
-print(best[Game.cuts.last!, Game.cuts.last!])
+        let paired = if rivals(g, h): prev[h.l] + geese[g] + hawks[h] else: 0
+        cur[h.r] = max(prev[h.r], cur[h.l], paired)
+    prev = cur
+print(prev[Game.cuts.last!])

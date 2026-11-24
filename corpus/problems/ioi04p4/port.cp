@@ -15,7 +15,7 @@ let wanted = Set(plates)
 
 // A piece is a plate, or scrap, or it is cut in two; by symmetry the first part of a cut is
 // never the larger one, and both parts are smaller, so filling by size in order is enough.
-var waste: [1..=w, 1..=h]Int = 0
+var waste: [1..=w, 1..=h]0..=360_000 = 0
 for a in 1..=w:
     for b in 1..=h:
         if (a, b) in wanted: continue

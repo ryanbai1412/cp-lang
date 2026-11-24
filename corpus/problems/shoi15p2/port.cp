@@ -12,7 +12,7 @@
 let (n, m): (1..=2e5, 1..=2e5) = read()
 domain Cell = 1..=n
 
-struct Run(holes: Int, cells: Int, best: Int, pre: Int, suf: Int)
+struct Run(holes: 0..=2e5, cells: 0..=2e5, best: 0..=2e5, pre: 0..=2e5, suf: 0..=2e5)
 
 fn solid(hole: Bool, len: Int) -> Run = if hole: Run(len, 0, len, len, len) else: Run(0, len, 0, 0, 0)
 

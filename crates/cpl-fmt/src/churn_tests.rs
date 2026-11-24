@@ -5,9 +5,6 @@
 
 use std::path::{Path, PathBuf};
 
-#[path = "../../cpl-cli/tests/support/corpus_programs.rs"]
-mod corpus_programs;
-
 fn sources() -> Vec<PathBuf> {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut files = Vec::new();
@@ -16,7 +13,7 @@ fn sources() -> Vec<PathBuf> {
             files.push(dir.join(name));
         }
     }
-    files.extend(corpus_programs::v02_snapshot_ports(&root));
+    files.extend(cpl_corpus::programs::v02_snapshot_ports(&root));
     for entry in std::fs::read_dir(root.join("std")).unwrap().flatten() {
         files.push(entry.path());
     }

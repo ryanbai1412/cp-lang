@@ -13,7 +13,6 @@ let n: 1..=10 = read()
 domain Fold = 1..=n
 let folds: [Fold](a: Vec, b: Vec) = read()
 let q: 1..=1e5 = read()
-let holes: [q]Vec = read()
 
 // The layers at p once the folds before `done` have been made.
 fn layers(done: Cut<Fold>, p: Vec) -> Int:
@@ -21,4 +20,6 @@ fn layers(done: Cut<Fold>, p: Vec) -> Int:
     let (a, b) = folds[last]
     if (b - a).cross(p - a) < 0: return 0
     layers(done.prev!, p) + layers(done.prev!, reflect(p, a, b))
-for p in holes: print(layers(Fold.end, p))
+repeat q:
+    let hole: Vec = read()
+    print(layers(Fold.end, hole))

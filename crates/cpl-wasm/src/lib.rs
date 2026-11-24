@@ -410,8 +410,13 @@ impl Playground {
             let _ = stack;
             None
         };
-        match cpl_stress::stress_source(name, source, &options, stack_limit, true) {
-            Ok(result) => result.render(),
+        let place = cpl_stress::Place::InProcess { stack_limit };
+        let stressed =
+            cpl_stress::Stress::build(std::path::Path::new(name), name, source, place, &options)
+                .map_err(cpl_stress::run::StressError::from)
+                .and_then(|stress| stress.run(&options, true, None));
+        match stressed {
+            Ok(stressed) => stressed.result.render(),
             Err(error) => cpl_stress::report::render_error(&error),
         }
     }
@@ -475,6 +480,7 @@ impl Playground {
             windows: profile.os == cpl_judge::Os::Windows,
             // `cpl build`'s default: a judge build checks what hand-written C++ does.
             checks: cpl_codegen::Checks::None,
+            avx2: profile.avx2,
         };
         let aim = profile.aim();
         let cpp = match cpl_codegen::emit_aiming(

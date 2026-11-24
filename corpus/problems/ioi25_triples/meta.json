@@ -2,16 +2,32 @@
  "problem": "ioi25_triples",
  "source": "ioi",
  "submissions": [],
- "cpp_ac": 0,
+ "cpp_ac": 1,
  "artifacts": {
   "dream": [
    "corpus/gold/ioi25_triples.cp",
    "corpus/problems/ioi25_triples/dream.cp"
+  ],
+  "original": [
+   "corpus/problems/ioi25_triples/orig.cpp"
+  ],
+  "port": [
+   "corpus/problems/ioi25_triples/port.cp"
   ]
  },
- "tags": [],
- "difficulty": null,
- "dream": "none",
+ "tags": [
+  "counting",
+  "sqrt-decomposition",
+  "constructive",
+  "randomized"
+ ],
+ "difficulty": "hard",
+ "dream": "draft",
  "spec": "none",
- "notes": ""
+ "notes": "orig.cpp is the official model solution (ioi/task-archive 2025/day1/triples/solutions/model_solution) with the sample grader's main, no secrets; checked against the archive's O(n^3) and O(n^2) correct solutions on generated cases. Part II cases are the six subtasks' (M, K), judged by checker.py (T >= K, counted by orig.cpp). dream.cp and port.cp read the sample grader's stdin: corpus.py runs them with no grader.cpp, so they drop @grader.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 29,
+  "sha": "1578cf1298e4eb65766d62df2c1e1ecf75677d79"
+ }
 }

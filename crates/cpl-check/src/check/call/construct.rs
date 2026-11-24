@@ -212,7 +212,7 @@ impl Checker<'_> {
                                 type_args
                                     .get(i)
                                     .cloned()
-                                    .unwrap_or_else(|| bindings[g].clone())
+                                    .unwrap_or_else(|| Ty::Param(g.clone()).subst(&bindings))
                             })
                             .collect()
                     } else {

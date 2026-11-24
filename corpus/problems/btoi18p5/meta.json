@@ -8,11 +8,15 @@
   {"id": "4456217", "language": "CPP17", "result": "TLE", "time": 18.482495635, "memory_kb": 47944.0, "file": "corpus/submissions/4456217.cpp"},
   {"id": "4456220", "language": "CPP17", "result": "TLE", "time": 11.578921977, "memory_kb": 47832.0, "file": "corpus/submissions/4456220.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/btoi18p5/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No submission is accepted (the five C++ ones are TLE or fail to build under g++ 14), so there is no accepted reference. orig.cpp is a corpus-written reference: random 64-bit weights per sequence and per-column letter weight sums find the one sequence whose weighted distance sum is K times the others' weight, O(NM). Checked against the statement samples and an independent O(N^2 M) brute on 60 random small cases."
 }

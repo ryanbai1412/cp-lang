@@ -1,6 +1,7 @@
 use super::*;
 use crate::judge::{declared, first_difference};
-use crate::run::{save, stress, Options, Source};
+use crate::run::{save, stress_with, InputSource, Options};
+use crate::runner::Runner;
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -563,6 +564,26 @@ fn declared_judges_are_found_with_their_lines() {
     assert_eq!(declared(SRC), []);
 }
 
+/// Stresses the native `fast` against `brute` on inputs from `source`.
+fn stress(
+    source: &InputSource,
+    fast: &Program,
+    brute: Option<&Program>,
+    judge: &Judge,
+    options: &Options,
+) -> Result<crate::run::Report, crate::run::StressError> {
+    assert_eq!(*judge, Judge::Tokens);
+    let roles = crate::Roles {
+        solution: Runner::Process(fast.clone()),
+        brute: brute.map(|brute| Runner::Process(brute.clone())),
+        checker: None,
+        interactor: None,
+        cold: None,
+        limit: options.limit,
+    };
+    stress_with(source, &roles, options)
+}
+
 fn options(cases: usize) -> Options {
     Options {
         cases,
@@ -573,7 +594,8 @@ fn options(cases: usize) -> Options {
 
 #[test]
 fn stress_agrees_when_the_solution_is_right() {
-    let source = Source::Typed(spec());
+    let spec = spec();
+    let source = InputSource::Typed(&spec);
     let report = stress(
         &source,
         &max_below(u32::MAX),
@@ -590,7 +612,8 @@ fn stress_agrees_when_the_solution_is_right() {
 
 #[test]
 fn stress_stops_at_the_first_failure_shrinks_it_and_is_the_same_for_any_jobs() {
-    let source = Source::Typed(spec());
+    let spec = spec();
+    let source = InputSource::Typed(&spec);
     let (fast, brute) = (max_below(1000), max_below(u32::MAX));
     let report = stress(&source, &fast, Some(&brute), &Judge::Tokens, &options(300)).unwrap();
     let failure = report.failure.clone().expect("a value over 1000 turns up");
@@ -624,7 +647,8 @@ fn stress_stops_at_the_first_failure_shrinks_it_and_is_the_same_for_any_jobs() {
 #[test]
 fn a_generator_program_can_make_the_inputs() {
     // `gen <seed> <size>` prints one number per case: the seed.
-    let source = Source::Generator(sh("echo 1; echo $0"));
+    let gen = Runner::Process(sh("echo 1; echo $0"));
+    let source = InputSource::Generator(&gen);
     let report = stress(
         &source,
         &max_below(4),
@@ -642,7 +666,8 @@ fn a_generator_program_can_make_the_inputs() {
 
 #[test]
 fn a_failing_brute_is_a_failing_case_blamed_on_the_brute() {
-    let source = Source::Typed(spec());
+    let spec = spec();
+    let source = InputSource::Typed(&spec);
     let report = stress(
         &source,
         &sh("cat"),
@@ -661,7 +686,8 @@ fn a_failing_brute_is_a_failing_case_blamed_on_the_brute() {
 #[test]
 fn a_failure_is_saved_as_a_regression_test() {
     let dir = scratch("save");
-    let source = Source::Typed(spec());
+    let spec = spec();
+    let source = InputSource::Typed(&spec);
     let report = stress(
         &source,
         &max_below(1000),
@@ -1440,47 +1466,10 @@ fn shrinking_a_digraph_keeps_each_arc_the_way_it_points() {
 fn an_in_process_interactor_runs_once_per_case() {
     let src = "let n: Int = read()\nask(\"!\", n)\n\n@interactor\nfn judge(mut sol: Interactor):\n    let n: 1..=9 = read()\n    sol.send(n)\n    sol.send(n)\n    let kind: Str = sol.recv()\n    let x: Int = sol.recv()\n    assert kind == \"!\" and x == n\n";
     let before = crate::duplex::INTERACTOR_RUNS.with(|runs| runs.get());
-    let result = crate::stress_source("o.cp", src, &options(40), Some(1 << 26), false).unwrap();
+    let result = stress_in_vm("o.cp", src, &options(40), Some(1 << 26), false).unwrap();
     assert_eq!(result.report.failure, None, "{}", result.render());
     let runs = crate::duplex::INTERACTOR_RUNS.with(|runs| runs.get()) - before;
     assert_eq!(runs, 40);
-}
-
-/// A solution, with no brute, that runs out of any limit under the full
-/// one, and out of the full limit on inputs longer than `stuck_over` bytes.
-/// `full_runs` counts the runs that spent the full limit.
-struct Spins {
-    stuck_over: usize,
-    full_runs: std::sync::atomic::AtomicU32,
-}
-
-impl crate::engine::Engine for Spins {
-    fn has_brute(&self) -> bool {
-        false
-    }
-
-    fn stops(&self, _: &str) -> bool {
-        true
-    }
-
-    fn limit(&self) -> Duration {
-        Duration::from_millis(300)
-    }
-
-    fn run_within(
-        &self,
-        input: &str,
-        limit: Duration,
-    ) -> Result<crate::case::Wrong, crate::run::StressError> {
-        let full = limit >= self.limit();
-        let spins = !full || input.len() > self.stuck_over;
-        if full && spins {
-            self.full_runs
-                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-        }
-        Ok(spins
-            .then(|| crate::case::Failed::new(Verdict::TimeLimit, String::new(), String::new())))
-    }
 }
 
 /// Runs out of the full time limit cost the whole limit each, so narrowing
@@ -1494,9 +1483,32 @@ fn a_time_limit_case_spends_a_bounded_number_of_full_limit_runs() {
     // Stuck on every input, the smallest included; then stuck only on
     // long ones, so the short case the quick shrink reaches passes.
     for stuck_over in [0, 12] {
-        let engine = Spins {
-            stuck_over,
-            full_runs: Default::default(),
+        let full_runs = std::sync::Arc::new(std::sync::atomic::AtomicU32::new(0));
+        let limit = Duration::from_millis(300);
+        let counted = full_runs.clone();
+        // A solution, with no brute, that runs out of any limit under the
+        // full one, and out of the full limit on inputs longer than
+        // `stuck_over` bytes.
+        let spins = move |input: &str, within: Duration| {
+            let full = within >= limit;
+            let spins = !full || input.len() > stuck_over;
+            if full && spins {
+                counted.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            }
+            let stop = spins.then_some(Verdict::TimeLimit);
+            crate::Ran {
+                out: String::new(),
+                stop,
+                cost: None,
+            }
+        };
+        let roles = crate::Roles {
+            solution: Runner::Canned(crate::runner::Canned::Runs(Box::new(spins))),
+            brute: None,
+            checker: None,
+            interactor: None,
+            cold: None,
+            limit,
         };
         let options = Options {
             cases: 30,
@@ -1504,12 +1516,10 @@ fn a_time_limit_case_spends_a_bounded_number_of_full_limit_runs() {
             size: 8,
             ..Options::default()
         };
-        let report =
-            crate::run::stress_with(&crate::run::InputSource::Typed(&spec), &engine, &options)
-                .unwrap();
+        let report = stress_with(&InputSource::Typed(&spec), &roles, &options).unwrap();
         let failure = report.failure.expect("a time-limit case");
         assert_eq!(failure.verdict, Verdict::TimeLimit);
-        let runs = engine.full_runs.into_inner();
+        let runs = full_runs.load(std::sync::atomic::Ordering::Relaxed);
         // The case itself, the bounded runs, and the check that the case
         // a quick shrink reached still runs out of the full limit.
         assert!(
@@ -1658,4 +1668,17 @@ fn a_shrunk_case_shrinks_no_further() {
             );
         }
     }
+}
+
+/// The browser's stress: the file built and run in the calling thread's VM.
+fn stress_in_vm(
+    name: &str,
+    source: &str,
+    options: &crate::run::Options,
+    stack_limit: Option<u32>,
+    explain: bool,
+) -> Result<crate::StressResult, crate::run::StressError> {
+    let place = crate::Place::InProcess { stack_limit };
+    let stress = crate::Stress::build(std::path::Path::new(name), name, source, place, options)?;
+    Ok(stress.run(options, explain, None)?.result)
 }

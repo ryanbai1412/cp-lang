@@ -50,6 +50,8 @@ var t = Trie<L>()
 for w in words: let _ = t.add(w)
 let ac = AhoCorasick<L>(words)
 let nodes = t.len
+for r in 0..160:
+    acc += t.each().collect().len // timed: strings.Trie.each
 var t2 = Trie<L>()
 var d0 = DynamicAhoCorasick<L>()
 d0.add(words[0])
@@ -65,6 +67,7 @@ for i in 0..1 << 18:
     if d0.is_empty: acc += 1 // timed: strings.DynamicAhoCorasick.is_empty
     acc += t.root // timed: strings.Trie.root
     acc += t.len // timed: strings.Trie.len
+    acc += t.nodes // timed: strings.Trie.nodes
     if t.is_empty: acc += 1 // timed: strings.Trie.is_empty
     if let x = t.step(v, c): acc += x // timed: strings.Trie.step
     acc += t.ends_at(v) // timed: strings.Trie.ends_at

@@ -2,7 +2,7 @@
 """Judge for EGOI 2022 "Social Engineering": `interactor.py CASE [--log-in F] [--log-out F] -- SOLUTION...`.
 
 CASE is `n m`, m lines `u v`, then Maria's seed (0: she takes her smallest free friend, else
-a seeded random one). Sends `n m` and the edges. `?` asks Maria's move from vertex 1: a free
+a seeded random one). Sends all of it, as the official input has the seed after the edges. `?` asks Maria's move from vertex 1: a free
 neighbour, or 0 when she has none (she resigns). An integer is the solution's move along a
 free edge. `!` is the function returning: right only before any `?` when Maria has a winning
 strategy (some component without vertex 1 holds an odd number of its neighbours), else only
@@ -40,7 +40,7 @@ def drive(case_text, io):
     for u, v in edges:
         free[u].add(v)
         free[v].add(u)
-    io.send(f"{n} {m}\n" + "\n".join(f"{u} {v}" for u, v in edges))
+    io.send(f"{n} {m}\n" + "\n".join(f"{u} {v}" for u, v in edges) + f"\n{seed}")
     lost = maria_wins(n, edges)
     at, asked, resigned = 1, 0, False
     while True:

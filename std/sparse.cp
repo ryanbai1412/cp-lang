@@ -307,6 +307,7 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     mask: List<U64>
     nb: Int
     top: List<Int>
+    keys: Range<D>
 
     fn better(self, i: Int, j: Int) -> Int = if before(vals[j], vals[i]): j else: i
 
@@ -329,10 +330,10 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
     /// traps: never (`before` must be a strict weak order, or results are unspecified)
     /// example: `LinearRmq([3, 1, 4]).best(0..3) == 1`
     pub fn new(a: [D]T, before: (T, T) -> Bool = (x, y) => x < y) -> LinearRmq<D, T>:
-        let vals = [a[i] for i in D]
+        let vals = [a[i] for i in a.keys]
         let n = vals.len
         let nb = (n + 63) / 64
-        var q = LinearRmq<D, T>(before, n, vals, [], nb, [])
+        var q = LinearRmq<D, T>(before, n, vals, [], nb, [], a.keys)
         for b in 0..nb:
             var cur: U64 = U64(0)
             for i in 64 * b..min(64 * b + 64, n):
@@ -367,12 +368,12 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
         assert lo < hi, "`argbest` needs a non-empty range"
         let h = hi - 1
         let (bl, bh) = (lo / 64, h / 64)
-        if bl == bh: return D.nth(self.in_block(lo, h))
+        if bl == bh: return keys.nth(self.in_block(lo, h))
         var ans = self.in_block(lo, 64 * bl + 63)
         if bl + 1 < bh:
             let k = bit_width(bh - bl - 1) - 1
             ans = self.better(ans, self.better(top[k * nb + bl + 1], top[k * nb + bh - (1 << k)]))
-        D.nth(self.better(ans, self.in_block(64 * bh, h)))
+        keys.nth(self.better(ans, self.in_block(64 * bh, h)))
 
     /// The value of the best element of the non-empty range `r` under `before`; `a[argbest(r)]`.
     ///

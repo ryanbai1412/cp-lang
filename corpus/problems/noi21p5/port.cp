@@ -17,9 +17,11 @@ use std.lazy.{SeqFold}
 type Z = Mod<998_244_353>
 type M2 = (Z, Z, Z, Z)  // a 2 x 2 matrix, row by row
 
+// two residue products fit an Int, so each entry reduces once
+fn dot(x: Z, y: Z, u: Z, v: Z) -> Z = Z.new(x.v * y.v + u.v * v.v)
 fn mul(a: M2, b: M2) -> M2 = (
-    a.0 * b.0 + a.1 * b.2, a.0 * b.1 + a.1 * b.3,
-    a.2 * b.0 + a.3 * b.2, a.2 * b.1 + a.3 * b.3,
+    dot(a.0, b.0, a.1, b.2), dot(a.0, b.1, a.1, b.3),
+    dot(a.2, b.0, a.3, b.2), dot(a.2, b.1, a.3, b.3),
 )
 fn step(e: Bool) -> M2 = if e: (Z(1), Z(1), Z(0), Z(1)) else: (Z(1), Z(0), Z(1), Z(1))
 

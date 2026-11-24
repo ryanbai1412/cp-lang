@@ -211,10 +211,7 @@ pub fn project_files(uri: &str, name: &str) -> Vec<String> {
     let Some(dir) = std::path::Path::new(&path).parent() else {
         return Vec::new();
     };
-    let root = dir
-        .ancestors()
-        .find(|d| d.join("cp.toml").is_file())
-        .unwrap_or(dir);
+    let root = cpl_config::project_dir(dir).unwrap_or_else(|| dir.to_path_buf());
     let mut found = Vec::new();
     let mut stack = vec![root.to_path_buf()];
     let mut budget = 5000;

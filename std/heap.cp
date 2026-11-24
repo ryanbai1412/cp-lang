@@ -1583,3 +1583,18 @@ impl Show for Settle<K, P>:
     ///
     /// example: `var s: Settle<Char, Int> = Settle(); s.offer('a', 5); s.offer('b', 3); s.pop(); "{s}" == "1 settled, 1 open"`
     fn show(s) = "{s.done.len} settled, {s.cur.len - s.done.len} open"
+
+impl Show for Meld<T>:
+    /// How many values the heap holds, as `n elements` (`1 element`); its values live in the `MeldHeaps` pool.
+    ///
+    /// example: `var p = MeldHeaps<Int>(); "{p.of([4, 2, 9])}" == "3 elements"`
+    fn show(h):
+        if h.len == 1: return "1 element"
+        "{h.len} elements"
+
+impl Show for MeldHeaps<T>:
+    /// How many nodes the pool has allocated across all its heaps, as `n nodes`.
+    ///
+    /// example: `var p = MeldHeaps<Int>(); p.of([4, 2]); p.of([1]); "{p}" == "3 nodes"`
+    fn show(p) = "{p._nodes.len} nodes"
+

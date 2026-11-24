@@ -6,14 +6,14 @@
 //   prefix's lcm is a multiple of every shorter one, so "some light in 1..i is off" is
 //   monotone in i. Prefix lcms are capped at 2e9 (above every t, so a capped prefix never
 //   divides t); `prefix_fold` builds them and each query runs `first_true`. O(n log + q log n).
-// Bounds: n: 1..=2e5; q: 1..=1e6; a: 1..=1e9; queries: 0..=1e9
+// Bounds: n: 1..=2e5; q: 1..=1e6; a: 1..=1e9; t: 0..=1e9
 use std.prefix.{prefix_fold}
 const CAP = 2e9  // above every query, so a capped prefix never divides one
 let (n, q): (1..=2e5, 1..=1e6) = read()
 domain I = 1..=n
 let a: [I]1..=1e9 = read()
-let queries: [q]0..=1e9 = read()
 
 let on_until = prefix_fold(Monoid(1, (x, y) => min(CAP, lcm(x, y))), a)
-for t in queries:
+for _ in 0..q:
+    let t: 0..=1e9 = read()
     print(I.first_true(i => t % on_until[i.r] != 0), none: -1)

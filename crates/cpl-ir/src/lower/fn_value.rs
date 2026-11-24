@@ -87,6 +87,20 @@ impl<'a> Lowerer<'a> {
 
     /// `(a, b) => name(a, b)`: a fn named as a value is the closure that calls
     /// it, so it means what a direct call does (`min` keeps `none` as identity).
+    /// `min`/`max`, or the `Some` variant, named as a fn value: `xs.map(Some)` is `x => Some(x)`.
+    pub(super) fn prelude_fn_value(&mut self, name: &str, hint: Option<&Ty>, span: Span) -> Expr {
+        if matches!(name, "some" | "Some") {
+            let lambda = self.call_closure_ast(name, 1, span);
+            return self.expr(&lambda, hint);
+        }
+        let hint = match hint {
+            Some(t @ Ty::Fn(ps, _)) if ps.len() == 2 => t.clone(),
+            _ => Ty::Fn(vec![Ty::Int, Ty::Int], Box::new(Ty::Int)),
+        };
+        let lambda = self.call_closure_ast(name, 2, span);
+        self.expr(&lambda, Some(&hint))
+    }
+
     pub(super) fn call_closure_ast(&self, name: &str, arity: usize, span: Span) -> ast::Expr {
         let params: Vec<String> = (0..arity).map(|i| format!("__{name}{i}")).collect();
         let at = |kind| ast::Expr { kind, span };
@@ -138,11 +152,24 @@ impl<'a> Lowerer<'a> {
             }),
             Some(GenArg::Ty(ty)) => {
                 let ty = ty.clone();
-                builtin_has(&ty, trait_name) || self.has_plain_impl(&ty, trait_name)
+                builtin_has(&ty, trait_name)
+                    || self.has_plain_impl(&ty, trait_name)
+                    || (matches!(ty, Ty::Bound(_)) && self.has_domain_blanket_impl(trait_name))
+            }
+            Some(GenArg::Domain(d)) => {
+                builtin_has(&Ty::Pos(*d), trait_name) || self.has_domain_blanket_impl(trait_name)
             }
             _ => false,
         };
         by_impl || self.has_bound_by_shape(param, trait_name)
+    }
+
+    /// An `impl<D: Domain> Tr for D` gives `Tr` to every domain and its cuts.
+    fn has_domain_blanket_impl(&self, trait_name: &str) -> bool {
+        (0..self.impls.len()).any(|idx| {
+            self.impls[idx].trait_name.as_deref() == Some(trait_name)
+                && self.domain_blanket_param(idx).is_some()
+        })
     }
 
     /// `ty` (`Int`, `F64`, ...) has an `impl Tr` written for exactly it, not for a generic type.
@@ -255,7 +282,10 @@ pub(super) fn trait_members(body: &ast::Block) -> (Vec<&ast::FnDecl>, Vec<(&str,
 fn builtin_has(ty: &Ty, trait_name: &str) -> bool {
     let number = matches!(ty, Ty::Int | Ty::I128 | Ty::U64 | Ty::Float);
     let scalar = number || matches!(ty, Ty::Bool | Ty::Char | Ty::Str);
+    let position = matches!(ty, Ty::Pos(_) | Ty::Bound(_));
     match trait_name {
+        "Domain" | "Index" => position,
+        "Eq" | "Ord" | "Hash" if position => true,
         "Add" => number || *ty == Ty::Str,
         "Sub" | "Mul" | "Div" | "Rem" | "Neg" | "Num" => number,
         "Eq" | "Ord" | "Show" => scalar,

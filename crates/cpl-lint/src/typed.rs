@@ -106,9 +106,9 @@ fn fix_checks(d: &Diagnostic, facts: &Facts) -> bool {
     match d.code {
         // `collect` copies a list or an array into the `List` the
         // comprehension builds; a `Str` or a generator may collect into
-        // whatever the context asks for. A range literal has no label: in a
-        // generic fn `cpl run` has no `Range.collect` yet (std `sa_order`).
-        c if c == COPY_COMPREHENSION.code => d.labels.first().is_some_and(|l| {
+        // whatever the context asks for. A range literal, stepped or not, has
+        // no label and collects into a `List` of its elements.
+        c if c == COPY_COMPREHENSION.code => d.labels.first().is_none_or(|l| {
             matches!(facts.place_type(l.span), Some(Ty::Array { .. }))
                 || facts.place_type(l.span).is_some_and(|t| t.is_list())
         }),

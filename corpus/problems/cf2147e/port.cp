@@ -15,7 +15,7 @@ use std.seq.{argmax}
 let (n, q): (1..=100_000, 1..=100_000) = read()
 var a: [0..n]Int = read()
 
-var v = fold(|, a)
+var v = a.fold(|)
 var cur_cost = 0
 var costs = [0]
 var pops = [popcount(v)]
@@ -27,7 +27,7 @@ for b in 0..31 if not v.bit(b):
         let cheapest = (1 << x) - (a[idx] & mask)
         a[idx] += cheapest
         cur_cost += cheapest
-        v = fold(|, a)
+        v = a.fold(|)
     costs.push(cur_cost)
     pops.push(popcount(v))
 

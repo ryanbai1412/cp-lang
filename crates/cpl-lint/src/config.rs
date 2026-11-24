@@ -92,31 +92,21 @@ impl Config {
     pub fn from_toml(text: &str) -> (Config, Vec<ConfigError>) {
         let mut config = Config::default();
         let mut errors = Vec::new();
-        let mut in_lints = false;
-        for (index, raw) in text.lines().enumerate() {
-            let line = strip_comment(raw).trim();
-            if line.is_empty() {
-                continue;
-            }
-            if let Some(table) = line.strip_prefix('[') {
-                in_lints = table.trim_end_matches(']').trim() == "lints";
-                continue;
-            }
-            if !in_lints {
-                continue;
-            }
+        for line in cpl_config::table(text, "lints") {
             let mut error = |message: String| {
                 errors.push(ConfigError {
-                    line: index + 1,
+                    line: line.line,
                     message,
                     lint: None,
                 })
             };
-            let Some((key, value)) = line.split_once('=') else {
-                error(format!("expected `name = \"level\"`, found `{line}`"));
+            let Some((key, value)) = line.pair else {
+                error(format!(
+                    "expected `name = \"level\"`, found `{}`",
+                    line.text
+                ));
                 continue;
             };
-            let (key, value) = (key.trim(), value.trim());
             if key == "memory_mb" {
                 match value.parse::<u64>() {
                     Ok(mb) if mb > 0 => config.memory_mb = mb,
@@ -165,6 +155,15 @@ impl Config {
                 )),
             }
         }
+        errors.extend(
+            cpl_config::check(text)
+                .into_iter()
+                .map(|(line, message)| ConfigError {
+                    line,
+                    message,
+                    lint: None,
+                }),
+        );
         (config, errors)
     }
 
@@ -172,33 +171,12 @@ impl Config {
     /// directory, or the defaults when there is none. Returns the path it
     /// read with any bad lines.
     pub fn discover(source: &Path) -> (Config, Option<(std::path::PathBuf, Vec<ConfigError>)>) {
-        let start = source.parent().unwrap_or(Path::new("."));
-        let start = if start.as_os_str().is_empty() {
-            Path::new(".")
-        } else {
-            start
-        };
-        let start = start.canonicalize().unwrap_or(start.to_path_buf());
-        for dir in start.ancestors() {
-            let candidate = dir.join("cp.toml");
-            if let Ok(text) = std::fs::read_to_string(&candidate) {
+        match cpl_config::discover(source) {
+            Some((file, text)) => {
                 let (config, errors) = Config::from_toml(&text);
-                return (config, Some((candidate, errors)));
+                (config, Some((file, errors)))
             }
-        }
-        (Config::default(), None)
-    }
-}
-
-/// The line without its `# comment`, leaving a `#` inside a string alone.
-fn strip_comment(line: &str) -> &str {
-    let mut in_string = false;
-    for (at, c) in line.char_indices() {
-        match c {
-            '"' => in_string = !in_string,
-            '#' if !in_string => return &line[..at],
-            _ => {}
+            None => (Config::default(), None),
         }
     }
-    line
 }

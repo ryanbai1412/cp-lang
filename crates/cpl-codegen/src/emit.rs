@@ -165,6 +165,11 @@ pub(crate) struct Emitter<'p> {
     /// The `Do` block being written gives a place it does not own: its
     /// lambda returns `decltype(auto)`, so each `give` is written `return (x);`.
     pub give_ref: bool,
+    /// The fn being written returns `const T&`: its `return` of a place lends it.
+    pub lends_result: bool,
+    /// The `let`s the `Do` block being written as a lambda owns: they
+    /// move into what it gives.
+    pub give_owned: Option<BTreeSet<usize>>,
     /// `m.get(k) ?? d` expressions read only within their full expression,
     /// written as `cpl::map_or` (see [`Emitter::mark_read_in_place`]).
     pub read_in_place: BTreeSet<usize>,
@@ -199,6 +204,11 @@ pub(crate) struct Emitter<'p> {
     pub spent: BTreeSet<usize>,
     /// Named `let o = m.get(k)` held as a `cpl::Lent`: see [`Emitter::lent_map_get`].
     pub lent: BTreeSet<usize>,
+    /// Keys of `let p = mut m[k]` aliases (see [`cpl_ir::Local::binds`]), by
+    /// closure and slot: the C++ pointer to the map slot found once.
+    pub map_slots: BTreeMap<(Option<usize>, usize), String>,
+    /// Emitting the plain `let` of such a key, before its slot pointer.
+    pub plain_let: bool,
     /// Locals bound as `const T&` to a place they read.
     pub ref_bound: BTreeSet<usize>,
     pub taken: BTreeSet<String>,
@@ -292,6 +302,8 @@ impl<'p> Emitter<'p> {
             in_setup: false,
             spent: BTreeSet::new(),
             lent: BTreeSet::new(),
+            map_slots: BTreeMap::new(),
+            plain_let: false,
             ref_bound: BTreeSet::new(),
             taken: BTreeSet::new(),
             fresh: 0,
@@ -307,6 +319,8 @@ impl<'p> Emitter<'p> {
             lent_fields,
             last_use_call: false,
             give_ref: false,
+            lends_result: false,
+            give_owned: None,
             read_in_place: BTreeSet::new(),
             moved_entry: BTreeSet::new(),
             moves_last: false,
@@ -428,6 +442,14 @@ impl<'p> Emitter<'p> {
         }
         self.taken.insert(name.clone());
         name
+    }
+
+    /// The slot pointer of a map index keyed by a mut alias's frozen key.
+    pub fn map_slot(&self, key: &Expr) -> Option<String> {
+        let ExprKind::Local(k) = key.kind else {
+            return None;
+        };
+        self.map_slots.get(&(self.closure_id, k)).cloned()
     }
 
     pub fn locals(&self) -> &'p [Local] {
@@ -574,7 +596,8 @@ impl<'p> Emitter<'p> {
     }
 
     /// `ll gcd(ll a, ll b)`. Call after [`Emitter::enter`].
-    fn signature(&self, f: &Function) -> String {
+    /// The fn's C++ signature, and whether it returns `const T&`.
+    fn signature(&self, f: &Function) -> (String, bool) {
         let id = self.fn_id.expect("a fn");
         let mut named = crate::scope::named_params(&f.body, f.params.len());
         named.retain(|slot| !self.devirt.dead_local(Some(id), *slot));
@@ -646,10 +669,13 @@ impl<'p> Emitter<'p> {
             .collect();
         if self.devirt.returns_lambda(id) {
             ret = "auto".into();
-        } else if self.lends_its_result(id, f, &by_ref) {
+        }
+        let lends = !self.devirt.returns_lambda(id) && self.lends_its_result(id, f, &by_ref);
+        if lends {
             ret = format!("const {ret}&");
         }
-        format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "))
+        let signature = format!("{prefix}{ret} {}({})", fn_name(&f.name), params.join(", "));
+        (signature, lends)
     }
 
     /// A fn that gives a field of a parameter it takes by `const&` (or an element of one) as
@@ -934,7 +960,8 @@ impl<'p> Emitter<'p> {
                 crate::Part::Yours
             };
             self.enter(Some(id), &f.body, f.params.len());
-            let signature = self.signature(f);
+            let (signature, lends) = self.signature(f);
+            self.lends_result = lends;
             let hook = program.is_hook(id);
             protos.push(Proto {
                 name: fn_name(&f.name),
@@ -1128,7 +1155,7 @@ impl<'p> Emitter<'p> {
 
         let mut out = String::new();
         out.push_str(&header(name, source, self.target.stamp.as_deref()));
-        if self.target.checks == crate::Checks::All {
+        if self.target.checks.keeps(cpl_ir::checks::Check::Overflow) {
             out.push_str("#define LOCAL\n");
         }
         let what = if source.is_some() {
@@ -1185,11 +1212,21 @@ impl<'p> Emitter<'p> {
             }
         }
         // The pragma first: every float op rounds as the interpreter's does, never an FMA.
-        out.push_str(
-            "#if defined(__clang__)\n#pragma clang fp contract(off)\n#elif defined(__GNUC__)\n#pragma GCC optimize(\"fp-contract=off\")\n#endif\n\
+        // On an AVX2 judge the same pragma asks for O3 too: one optimize set for the library and
+        // the program, or g++ won't inline one into the other.
+        let optimize = match self.target.avx2 {
+            true => "O3,unroll-loops,fp-contract=off",
+            false => "fp-contract=off",
+        };
+        out.push_str(&format!(
+            "#if defined(__clang__)\n#pragma clang fp contract(off)\n#elif defined(__GNUC__)\n#pragma GCC optimize(\"{optimize}\")\n#endif\n\
              #include <algorithm>\n#include <array>\n#include <cmath>\n#include <cstdint>\n#include <cstdio>\n#include <cstdlib>\n\
              #include <map>\n#include <optional>\n#include <set>\n#include <string>\n#include <tuple>\n#include <utility>\n#include <vector>\n#include <unistd.h>\n#ifdef _WIN32\n#include <fcntl.h>\n#include <io.h>\n#endif\n",
-        );
+        ));
+        // After the includes, so the library's always-inline helpers keep the default target.
+        if self.target.avx2 {
+            out.push_str("#if defined(__GNUC__) && !defined(__clang__)\n#pragma GCC target(\"avx2\")\n#endif\n");
+        }
         if types.contains("std::function")
             || vars.contains("std::function")
             || fns.contains("std::function")
@@ -1226,7 +1263,7 @@ impl<'p> Emitter<'p> {
         }
 
         out.push_str(
-            "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\n",
+            "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\nusing u64 = unsigned long long;\n",
         );
         for (at, piece) in [
             "niche",

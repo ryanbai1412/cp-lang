@@ -9,7 +9,15 @@ impl<'p> Emitter<'p> {
         let mut codes = codes.into_iter();
         args.iter()
             .map(|arg| match arg {
-                Arg::Value(v) => self.as_stored(v, codes.next().expect("one per value").text),
+                Arg::Value(v) => {
+                    let text = codes.next().expect("one per value").text;
+                    match (&v.ty, text.as_str()) {
+                        // A fn value's `()` parameter is a `cpl::Unit`: the value runs, then one is given.
+                        (Ty::Unit, "(void)0") => "cpl::Unit{}".to_string(),
+                        (Ty::Unit, _) => format!("((void)({text}), cpl::Unit{{}})"),
+                        _ => self.as_stored(v, text),
+                    }
+                }
                 Arg::Mut(place) => self.place(place),
             })
             .collect()
@@ -91,9 +99,18 @@ impl<'p> Emitter<'p> {
                 }
             }
         }
+        let layouts: Vec<_> = (args.iter().enumerate())
+            .filter(|(_, arg)| matches!(arg, Arg::Value(v) if operands.iter().any(|o| std::ptr::eq(*o, v))))
+            .map(|(slot, arg)| match arg {
+                Arg::Value(v) if crate::scope::narrow::is_fresh_list(v) => self
+                    .elem_layout(cpl_ir::ElemLoc::Local(cpl_ir::ScopeId::Fn(id), slot))
+                    .cloned(),
+                _ => None,
+            })
+            .collect();
         let site = self.site_store(id);
         let marked = self.mark_read_in_place(&operands, Some(id), &lent);
-        let result = self.sequence(&operands, &e.ty, |this, codes| {
+        let result = self.sequence_laid(&operands, &layouts, &e.ty, |this, codes| {
             let mut codes = codes.into_iter();
             let mut texts = Vec::with_capacity(args.len());
             // Arguments for parameters that hold no value: they are run

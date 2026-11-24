@@ -5,6 +5,8 @@
 //! two (`split_range_check`) and a map key tested before `+=`
 //! (`contains_then_add`).
 
+use crate::facts::Facts;
+use crate::is_std;
 use crate::std_fn;
 use crate::walk::{unparen, walk_stmt, Visitor};
 use crate::{
@@ -20,6 +22,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandLoops {
         src: file.src,
         base: 0,
+        facts: file.facts,
         chains: Vec::new(),
         starts: Vec::new(),
         out: Vec::new(),
@@ -34,6 +37,7 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 struct HandLoops<'a> {
     src: &'a str,
     base: u32,
+    facts: Option<&'a Facts>,
     /// `and` chains already read whole, so their inner `and`s are skipped.
     chains: Vec<Span>,
     /// `var j = init` right before a statement: (that statement, `j`, the
@@ -278,15 +282,6 @@ impl HandLoops<'_> {
         if !conds.is_empty() || name(body) != Some(x) || !self.text(expr.span).starts_with('[') {
             return;
         }
-        // `cpl run` cannot keep a stepped range as a value yet (E0501), so
-        // `(m..n by k).collect()` would not run.
-        let stepped = matches!(
-            &unparen(iter).kind,
-            ExprKind::Range { step: Some(_), .. } | ExprKind::By { .. }
-        );
-        if stepped {
-            return;
-        }
         let it = self.text(iter.span);
         let it = match iter.kind {
             ExprKind::Name(_)
@@ -357,11 +352,12 @@ impl HandLoops<'_> {
             let Some((lhs, CmpOp::Lt, rhs)) = compare(c) else {
                 continue;
             };
-            let ExprKind::Field { base, name: len } = &unparen(rhs).kind else {
+            let len = unparen(rhs);
+            let ExprKind::Field { base, .. } = &len.kind else {
                 continue;
             };
-            let (Some(q), true) = (name(base), name(lhs) == Some(h) && len.text == std_fn::LEN)
-            else {
+            let is_len = is_std(self.facts, len.span.shift(w_base), std_fn::LEN);
+            let (Some(q), true) = (name(base), name(lhs) == Some(h) && is_len) else {
                 continue;
             };
             let read = format!("{q}[{h}]");

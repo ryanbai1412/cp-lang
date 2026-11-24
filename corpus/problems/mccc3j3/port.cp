@@ -9,9 +9,9 @@
 // Bounds: n, m: 1..=1e6
 // original: corpus/submissions/4223424.cpp
 let (n, m): (1..=1_000_000, 1..=1_000_000) = read()
-let s: [domain S]Char = read()
-let t: [domain T]Char = read()
-assert S.count == n and T.count == m
+let s: Str = read()
+let t: Str = read()
+assert s.len == n and t.len == m
 domain Letter = 'A'..='Z'
 var in_s: [Letter]Int = 0
 var in_t: [Letter]Int = 0

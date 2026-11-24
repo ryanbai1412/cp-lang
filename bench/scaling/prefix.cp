@@ -12,6 +12,8 @@ for _ in 0..500:
 for _ in 0..500:
     let p = Prefix<V, Int>(a) // timed: prefix.Prefix.new
     s += p.all
+for _ in 0..500:
+    s += Prefix<V, Int>.of_rev_scan(a, +, None).all // timed: prefix.Prefix.of_rev_scan
 let p = Prefix<V, Int>(a)
 for i in 0..reps:
     s += p.all // timed: prefix.Prefix.all

@@ -34,5 +34,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "MonotoneHull lines carry a photo-count tag for aliens tie-breaking. orig.cpp is the AC submission corpus/submissions/4730545.cpp (a grader function) with a sample grader main that reads the port's input."
+ "notes": "MonotoneHull lines carry a photo-count tag for aliens tie-breaking. orig.cpp is the AC submission corpus/submissions/4730545.cpp (a grader function) with a sample grader main that reads the port's input.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 14,
+  "sha": "58155d501f3cf7697157418f26e95fb87ebca411"
+ }
 }

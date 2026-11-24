@@ -16,7 +16,7 @@ let a: [0..n]0..=10 ** 18 = read()
 let b: [0..n]0..=10 ** 18 = read()
 let c: Str = read()
 
-var x = fold(^, a)
+var x = a.fold(^)
 
 var basis: [0..60]Int = 0
 var maximize: [0..60]Bool = false

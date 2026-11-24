@@ -1,6 +1,5 @@
 //! A traced run of every program in `tests/programs` records the trace
-//! saved next to it in `<name>.trace`, on the VM and on the tree-walker
-//! the browser traces on while wasm builds leave out the VM. After a
+//! saved next to it in `<name>.trace`. After a
 //! change that is meant to change traces, run with `CPL_BLESS=1` and
 //! review the diff.
 //!
@@ -16,8 +15,8 @@ mod trace_diff;
 
 const KEPT: usize = 8 << 10;
 
-/// The trace `program` records, as saved, on the tree-walker if `tree`.
-fn traced(program: &Path, tree: bool) -> String {
+/// The trace `program` records, as saved.
+fn traced(program: &Path) -> String {
     let input = program.with_extension("in");
     let stdin = match std::fs::File::open(&input) {
         Ok(file) => Stdio::from(file),
@@ -32,11 +31,6 @@ fn traced(program: &Path, tree: bool) -> String {
         "json",
     ])
     .stdin(stdin);
-    if tree {
-        cpl.env("CPL_TRACE_ENGINE", "tree");
-    } else {
-        cpl.env_remove("CPL_TRACE_ENGINE");
-    }
     let out = cpl.output().unwrap();
     let document = String::from_utf8_lossy(&out.stdout).replace("\r\n", "\n");
     // The title and source come first and depend on the checkout.
@@ -92,7 +86,7 @@ fn every_program_records_its_saved_trace() {
         .collect();
     programs.sort();
     assert!(programs.len() > 150, "{} programs", programs.len());
-    let bless = std::env::var_os("CPL_BLESS").is_some();
+    let bless = cpl_env::BLESS.is_set();
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let chunks: Vec<_> = programs.chunks(programs.len().div_ceil(threads)).collect();
     let differ: Vec<String> = std::thread::scope(|scope| {
@@ -104,7 +98,7 @@ fn every_program_records_its_saved_trace() {
                     for program in *chunk {
                         let golden = program.with_extension("trace");
                         if bless {
-                            let trace = traced(program, false);
+                            let trace = traced(program);
                             if !trace.contains(CRASHED) {
                                 std::fs::write(&golden, trace).unwrap();
                             }
@@ -114,20 +108,18 @@ fn every_program_records_its_saved_trace() {
                             continue;
                         };
                         let want = want.replace("\r\n", "\n");
-                        for (engine, tree) in [("vm", false), ("tree-walker", true)] {
-                            let got = traced(program, tree);
-                            if got.contains(CRASHED) || want.contains(CRASHED) {
-                                differ.push(format!(
-                                    "{} on the {engine}: cpl crashed, and a crash is never a saved trace",
-                                    golden.file_name().unwrap().to_string_lossy()
-                                ));
-                            } else if got != want {
-                                differ.push(format!(
-                                    "{} on the {engine}:\n  {}",
-                                    golden.file_name().unwrap().to_string_lossy(),
-                                    trace_diff::classify(&got, &want).join("\n  ")
-                                ));
-                            }
+                        let got = traced(program);
+                        if got.contains(CRASHED) || want.contains(CRASHED) {
+                            differ.push(format!(
+                                "{}: cpl crashed, and a crash is never a saved trace",
+                                golden.file_name().unwrap().to_string_lossy()
+                            ));
+                        } else if got != want {
+                            differ.push(format!(
+                                "{}:\n  {}",
+                                golden.file_name().unwrap().to_string_lossy(),
+                                trace_diff::classify(&got, &want).join("\n  ")
+                            ));
                         }
                     }
                     differ
@@ -157,7 +149,6 @@ fn printed(program: &Path) -> String {
     };
     let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
         .args(["run", program.to_str().unwrap()])
-        .env_remove("CPL_TRACE_ENGINE")
         .stdin(stdin)
         .output()
         .unwrap();
@@ -254,7 +245,6 @@ fn a_traced_run_prints_what_an_untraced_run_prints() {
                             "--format",
                             "json",
                         ]);
-                        cpl.env_remove("CPL_TRACE_ENGINE");
                         cpl.stdin(match std::fs::File::open(program.with_extension("in")) {
                             Ok(file) => Stdio::from(file),
                             Err(_) => Stdio::null(),
@@ -306,7 +296,6 @@ fn a_large_array_is_drawn_by_a_window() {
             "--format",
             "json",
         ])
-        .env_remove("CPL_TRACE_ENGINE")
         .output()
         .unwrap();
     let document = String::from_utf8_lossy(&out.stdout);

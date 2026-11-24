@@ -34,7 +34,7 @@ Fields: `lines: List<?L>`, `left: List<Int>`, `right: List<Int>`.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\); Never: the first node is reached before any `next()`.
 - `@get fn items(self) -> yields (Int, K)` — \(O(\mathit{len})\)
 
-## `struct MonotoneHull<P>(pick: (Int, Int) -> Int = min)`
+## `struct MonotoneHull<P: Ord>(pick: (Int, Int) -> Int = min)`
 
 \(O(1)\) amortized per `add` and per `at_next`, \(O(\log n)\) per `at`.
 

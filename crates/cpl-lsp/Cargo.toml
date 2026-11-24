@@ -7,6 +7,7 @@ publish.workspace = true
 license.workspace = true
 
 [dependencies]
+cpl-config.workspace = true
 cpl-check.workspace = true
 cpl-diag.workspace = true
 cpl-doc.workspace = true
@@ -18,6 +19,7 @@ cpl-ir.workspace = true
 cpl-syntax.workspace = true
 
 [dev-dependencies]
+cpl-env.workspace = true
 cpl-corpus.workspace = true
 # The latency test measures with the allocator the `cpl` binary ships with.
 mimalloc = { workspace = true }

@@ -1,0 +1,7 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+
+[[case]]
+input = ""
+
+[[case]]
+args = ["--max"]

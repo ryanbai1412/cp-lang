@@ -181,44 +181,56 @@ impl<'p> CompiledProgram<'p> {
         profiled: bool,
     ) -> Self {
         let empty_fed: Vec<bool> = vec![false; program.fns.len()];
-        let mut fed_fns = Vec::with_capacity(program.fns.len());
-        for (id, f) in program.fns.iter().enumerate() {
+        let fed_fn = |id: usize, fed_ok: &[bool]| -> Option<Chunk<'p>> {
+            let f = &program.fns[id];
             if traced || profiled || f.locals.len() > 512 || program.judge_fns.contains(&id) {
-                fed_fns.push(None);
-            } else if let Some(&acc_slot) = feeds.pushers.get(&id) {
-                let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
-                let mut fc = Compiler::new(
-                    program,
-                    feeds,
-                    &empty_fed,
-                    &f.locals,
-                    Some(id),
-                    f.params.len(),
-                );
-                fc.feed_acc = Some(acc_slot);
-                fc.allow_fed_loops = false;
-                fc.compile_block(&f.body, None, false);
-                fc.emit(Op::FeedEnd, Span::default());
-                let mut fchunk = fc.finish();
-                // A fallback the tree-walker runs (an assert's trap) is fine
-                // as long as it never yields.
-                let yields_on_vm = (fchunk.fallback_stmts.iter())
-                    .all(|s| !Compiler::stmt_mentions_slot(s, acc_slot))
-                    && (fchunk.fallback_exprs.iter())
-                        .all(|e| !Compiler::expr_mentions_slot(e, acc_slot));
-                if yields_on_vm {
-                    fchunk.param_count = f.params.len();
-                    fchunk.ret_kind = None;
-                    fchunk.guarded_domains = guarded_domains;
-                    if fchunk.has_by_ref_closure {
-                        fchunk.needs_stack = true;
-                    }
-                    fed_fns.push(Some(fchunk));
-                } else {
-                    fed_fns.push(None);
+                return None;
+            }
+            let &acc_slot = feeds.pushers.get(&id)?;
+            let guarded_domains = program.fn_guarded_domains(&f.ret, &f.body);
+            let mut fc = Compiler::new(program, feeds, fed_ok, &f.locals, Some(id), f.params.len());
+            fc.feed_acc = Some(acc_slot);
+            fc.compile_block(&f.body, None, false);
+            fc.emit(Op::FeedEnd, Span::default());
+            let mut fchunk = fc.finish();
+            // A fallback the tree-walker runs (an assert's trap) is fine
+            // as long as it never yields.
+            let yields_on_vm = (fchunk.fallback_stmts.iter())
+                .all(|s| !Compiler::stmt_mentions_slot(s, acc_slot))
+                && (fchunk.fallback_exprs.iter())
+                    .all(|e| !Compiler::expr_mentions_slot(e, acc_slot));
+            if !yields_on_vm {
+                return None;
+            }
+            fchunk.param_count = f.params.len();
+            fchunk.ret_kind = None;
+            fchunk.guarded_domains = guarded_domains;
+            if fchunk.has_by_ref_closure {
+                fchunk.needs_stack = true;
+            }
+            Some(fchunk)
+        };
+        let mut fed_fns: Vec<Option<Chunk<'p>>> = (0..program.fns.len())
+            .map(|id| fed_fn(id, &empty_fed))
+            .collect();
+        // A `yields` fn walking another feeds its loop from the other's form,
+        // so it is compiled again each time more fed forms are known.
+        let walkers: Vec<usize> = (0..program.fns.len())
+            .filter(|&id| {
+                feeds.pushers.contains_key(&id) && feeds.walks_a_fed_fn(&program.fns[id].body)
+            })
+            .collect();
+        loop {
+            let known: Vec<bool> = fed_fns.iter().map(Option::is_some).collect();
+            let mut more = false;
+            for &id in &walkers {
+                if let Some(again) = fed_fn(id, &known) {
+                    more |= !known[id];
+                    fed_fns[id] = Some(again);
                 }
-            } else {
-                fed_fns.push(None);
+            }
+            if !more {
+                break;
             }
         }
         let fed_ok: Vec<bool> = fed_fns.iter().map(Option::is_some).collect();

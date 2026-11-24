@@ -644,6 +644,53 @@ pub struct HistoricBeatsSegTree<D>:
         let y = self.ask(2 * u + 1, mid, nr, ql, qr, what)
         if what <= 1: x + y else: max(x, y)
 
+    /// The current values in position order, with every pending tag applied as it walks; it
+    /// reads the tree and writes nothing back.
+    ///
+    /// cost: \(O(\lvert D \rvert)\)
+    /// empty: `HistoricBeatsSegTree<0..0>().to_array() == []`
+    /// order: position order of `D`
+    /// traps: never
+    /// example: `var t = HistoricBeatsSegTree([5, 1, 4]); t.chmin(0..3, 3); t.add(1..3, 2); t.to_array() == [3, 3, 5]`
+    pub fn to_array(self) -> [D]Int:
+        var out: List<Int> = []
+        if n > 0: self.peek(1, 0, n, None, mut out)
+        [D] i => out[i.ord]
+
+    // `push` without writes: `got` is what `give` would hand `u`; its children get what `push`
+    // would hand them once `apply` composed `got` into `u`'s tags.
+    fn peek(self, u: Int, nl: Int, nr: Int, got: ?List<Int>, mut out: List<Int>):
+        if nr - nl == 1:
+            out.push(s[u] + (if let g = got: g[0] else: 0))
+            return
+        let b = 9 * u
+        var t = [tg[b + k] for k in 0..9]
+        if let g = got:
+            let one = mx1[u] == mn1[u]
+            for k in 0..3:
+                let j = if not one: k elif k < 2: 0 else: -1
+                if j >= 0:
+                    let q = 3 * k
+                    t[q + 1] max= t[q] + g[3 * j + 1]
+                    t[q] += g[3 * j]
+                    t[q + 2] += g[3 * j + 2]
+        let mid = (nl + nr) / 2
+        let (l, r) = (2 * u, 2 * u + 1)
+        if not t.any(x => x != 0):
+            self.peek(l, nl, mid, None, mut out)
+            self.peek(r, mid, nr, None, mut out)
+            return
+        let pmax = max(mx1[l], mx1[r])
+        let pmin = min(mn1[l], mn1[r])
+        self.peek(l, nl, mid, Some(self.handed(l, t, pmax, pmin)), mut out)
+        self.peek(r, mid, nr, Some(self.handed(r, t, pmax, pmin)), mut out)
+
+    // The nine tags `give` hands child `v` from its parent's tags `t`.
+    fn handed(self, v: Int, t: List<Int>, pmax: Int, pmin: Int) -> List<Int>:
+        let k1 = if mx1[v] == pmax: 0 elif mx1[v] == mn1[v] and mn1[v] == pmin: 1 else: 2
+        let k2 = if mx1[v] == mn1[v]: k1 elif mn1[v] == pmin: 1 else: 2
+        [t[3 * k1], t[3 * k1 + 1], t[3 * k1 + 2], t[3 * k2], t[3 * k2 + 1], t[3 * k2 + 2], t[6], t[7], t[8]]
+
     fn query(mut self, r: Range<D>, what: Int) -> ?Int:
         let (lo, hi) = r.ends
         if lo == hi: return None
@@ -714,3 +761,26 @@ fn beats_segtree_chmin_chmax_add_matches_brute():
             assert st.max_val(rng) == [ref[i] for i in rng].max()!
     for i in I:
         assert st.get(i) == ref[i]
+
+impl Show for BeatsSegTree<D>:
+    /// Every position's value, space-separated in position order.
+    ///
+    /// example: `var t = BeatsSegTree([5, 1, 7]); t.chmin(0..3, 4); "{t}" == "4 1 4"`
+    fn show(t):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{t.get(i)}"
+        out
+
+impl Show for HistoricBeatsSegTree<D>:
+    /// The current values in position order, space-separated, read through `to_array` without
+    /// pushing any tag down.
+    ///
+    /// example: `var t = HistoricBeatsSegTree([2, 8, 5]); t.chmax(0..3, 4); t.add(0..2, -1); "{t}" == "3 7 5"`
+    fn show(t):
+        var out = ""
+        for x in t.to_array():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

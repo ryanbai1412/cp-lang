@@ -38,7 +38,6 @@ fn a_tree_reads_without_a_use() {
 /// The tree dreams that the stdlib covers check clean, so a change that breaks
 /// their spelling (`t.up(+, finish:)`, `t.virtual`, `t.below`) fails here.
 #[test]
-#[ignore = "these dreams are v0.2; ported with the corpus"]
 fn the_tree_dreams_check() {
     for dream in ["cf2035f", "cf2124i", "cf2183d2", "cf2237i1"] {
         let path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))

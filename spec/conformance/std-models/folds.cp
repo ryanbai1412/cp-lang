@@ -8,7 +8,7 @@
 // of order shows) for `fold`, `-` for `reduce`, and a base-10 accumulator for `fold_from`.
 // Reads `seed n`; prints the first list where they differ.
 use std.rand.{Rng}
-use std.algebra.{Monoid, fold}
+use std.algebra.{Monoid}
 
 let seed0 = read<Int>()
 let n = read<Int>()
@@ -33,7 +33,7 @@ for _ in 0..n:
     let words = [Str(x) for x in xs]
     if xs.fold(+) != sum: bad = "fold(+) on {xs}"
     elif xs.fold(max) != big: bad = "fold(max) on {xs}"
-    elif fold(cat, words) != word: bad = "fold(cat) on {xs}"
+    elif words.fold(cat) != word: bad = "fold(cat) on {xs}"
     elif xs.reduce((a, b) => a - b) != diff: bad = "reduce(-) on {xs}"
     elif xs.fold_from(0, (a, x) => a * 10 + x) != digits: bad = "fold_from on {xs}"
 print(if bad == "": "ok" else: bad)

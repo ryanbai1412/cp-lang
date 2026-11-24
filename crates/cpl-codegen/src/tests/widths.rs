@@ -94,6 +94,21 @@ fn ranged_int_struct_fields_take_the_narrowest_width() {
 }
 
 #[test]
+fn a_list_literal_argument_is_built_in_the_params_cells() {
+    let out = cpp("fn first(xs: List<-5..=5>) -> Int = xs[0]
+let a: 0..=5 = read()
+fn neg(v: Int) -> Int = -v
+let low: -5..=5 = -a
+print(first([-neg(a)]), first([low]))
+");
+    assert!(
+        out.contains("first(const std::vector<int8_t>& xs)"),
+        "{out}"
+    );
+    assert!(!out.contains("std::vector<ll>{"), "{out}");
+}
+
+#[test]
 fn reserve_keeps_a_narrow_list_narrow() {
     let out = cpp("let k: 1..=9 = read()
 var a: List<0..500_000> = []

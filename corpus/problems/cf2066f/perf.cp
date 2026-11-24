@@ -13,12 +13,12 @@ let b: [PosB]-1e6..=1e6 = read()
 
 fn widest_max(r: Range<PosA>) -> Range<PosA>:
     let f = r.first!
-    var best = (a[f], 1, f.l..f.r)
+    var best: (Int, Int, Range<PosA>) = (a[f], 1, f.l..f.r)
     var (start, run) = (r.start, 0)
     for i in r:
         if run < 0: (start, run) = (i.l, 0)
         run += a[i]
-        let key = (run, i.r.ord - start.ord, start..i.r)
+        let key: (Int, Int, Range<PosA>) = (run, i.r.ord - start.ord, start..i.r)
         if (key.0, key.1) >= (best.0, best.1): best = key
     best.2
 

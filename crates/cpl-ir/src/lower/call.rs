@@ -140,6 +140,12 @@ impl<'a> Lowerer<'a> {
         hint: Option<&Ty>,
     ) -> Expr {
         let span = whole.span;
+        if let [op] = args {
+            let relower = |lw: &mut Self| lw.method(whole, base, name, args, hint);
+            if let Some(checked) = self.checking_laws(base, op, span, relower) {
+                return checked;
+            }
+        }
         if args.is_empty() && name.text == "parse" && self.parse_without_type(base, name, hint) {
             return self.err_expr(span);
         }
@@ -284,9 +290,6 @@ impl<'a> Lowerer<'a> {
             };
             match (args, name.text.as_str()) {
                 ([], "sum") => return self.reduce(Reduce::Sum, base, span),
-                ([op], "fold") if op.name.is_none() && !op.mutable => {
-                    return self.fold_seq(base, op, false, name.span, span);
-                }
                 (_, "sorted")
                     if !matches!(
                         seq_ty,
@@ -518,7 +521,15 @@ impl<'a> Lowerer<'a> {
                 }
             }
         }
-        match self.sym(base) {
+        // `w.Idx.wrap(4)`: the domain the value `w` sized from its fields.
+        let value_domain = match &base.kind {
+            ast::ExprKind::Field {
+                base: owner,
+                name: member,
+            } => self.value_domain_named(owner, &member.text),
+            _ => None,
+        };
+        match value_domain.map(Sym::Domain).or_else(|| self.sym(base)) {
             Some(Sym::Mod(target_mod)) => {
                 let sym = self.mod_syms[target_mod].get(&name.text).copied();
                 return match sym {
@@ -661,34 +672,12 @@ impl<'a> Lowerer<'a> {
                         None => self.err_expr(span),
                     };
                 }
-                "wrap" => {
-                    return match self.one_arg("wrap", args, &Ty::Int, span) {
-                        Some(label) => self.domain_wrap(id, label, span),
-                        None => self.err_expr(span),
-                    };
-                }
                 "at" => return self.domain_at(id, args, span),
-                "nth" => {
-                    return match self.one_arg(&name.text, args, &Ty::Int, span) {
-                        Some(value) => self.mk(
-                            ExprKind::Cast(Cast::FromOrd(id), Box::new(value)),
-                            Ty::Pos(id),
-                            span,
-                        ),
-                        None => self.err_expr(span),
-                    };
-                }
-                // `V.try_at(i)` is the inverse of `v.ord`, and `none`
-                // outside the domain.
-                "try_at" => {
-                    return match self.one_arg(&name.text, args, &Ty::Int, span) {
-                        Some(value) => self.mk(
-                            ExprKind::Builtin(Builtin::PosTryOrd(id), vec![value]),
-                            Ty::opt(Ty::Pos(id)),
-                            span,
-                        ),
-                        None => self.err_expr(span),
-                    };
+                "wrap" | "nth" | "try_at" => {
+                    let space = super::ord_space::OrdSpace::Domain(id);
+                    if let Some(found) = self.space_member(space, &name.text, args, span) {
+                        return found;
+                    }
                 }
                 "after" => {
                     return match self.one_arg("after", args, &Ty::Pos(id), span) {

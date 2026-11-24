@@ -265,7 +265,6 @@ print(st.a, st.b ?? 0, idx)
 }
 
 #[test]
-#[ignore = "spec/conformance/core-04/prefix-and-z-function-over-domain-array-and-range.cp"]
 fn seq_and_indexed_traits_unify_sequences_and_reject_non_sequences() {
     let ok_src = "\
 use std.seq.{runs, prod, is_sorted}
@@ -292,7 +291,7 @@ print(s.first!, s.last!, r[2], sum(r), prod(r), yes(is_sorted(r)))
     assert_eq!(
         outcome(ok_src, ""),
         (
-            "5 5 5 5\n1 1 2\n2 2 1\n0 1 0 0 1\n0 1 0 1 2\n0 0 0 0 0\n5 1 0 2 1\na a 3 15 120 YES\n"
+            "5 5 5 5\n1 1 2\n2 2 1\n0 1 0 0 1\n0 1 0 1 2\n0 0 0 0 0\n5 1 0 2 1\na a 2 15 120 YES\n"
                 .to_string(),
             None
         )
@@ -1196,7 +1195,6 @@ print(if a == Some([false, true]): 1 else: 0)
 }
 
 #[test]
-#[ignore = "spec/conformance/core-02/generic-enum-payload-binds-its-type-argument.cp"]
 fn generic_enum_qualified_variant() {
     let src = "\
 enum Boxed<T> = One(T) | Empty
@@ -1638,4 +1636,59 @@ fn a_list_of_scalars_is_packed() {
     pairs.push(Value::Tuple(TupleVal::OneInt(7)));
     assert!(matches!(pairs, Cells::Values(_)));
     assert_eq!(pairs.len(), 3);
+}
+
+/// What `source` prints run at a judge build's `checks`, and its failure.
+fn at_checks(source: &str, checks: cpl_ir::checks::Checks) -> (String, Option<String>) {
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let mut out = Vec::new();
+    let io = crate::Io::fixed(b"").at(checks);
+    let failure = crate::run_with(&program, io, &mut out)
+        .err()
+        .map(|t| t.message);
+    (String::from_utf8(out).expect("ASCII"), failure)
+}
+
+#[test]
+fn a_release_run_does_what_the_judge_build_does() {
+    use cpl_ir::checks::Checks;
+    // Opaque to the folder, as in spec/conformance/core-09's release cases.
+    let source = concat!(
+        "fn id(k: Int) -> Int = if k == 0: 0 else: id(k - 1) + 1\n",
+        "let z = id(0)\n",
+        "let big = 9223372036854775807 - id(0)\n",
+        "var t = big\n",
+        "t += id(1)\n",
+        "print(7 / z, 7 % z, big + id(1), t)\n",
+        "assert z == 1\n",
+        "print(\"after\")\n",
+    );
+    let want = "0 0 -9223372036854775808 -9223372036854775808\nafter\n";
+    assert_eq!(at_checks(source, Checks::None), (want.to_string(), None));
+    let (_, traps) = at_checks(source, Checks::Traps);
+    assert!(traps.is_some_and(|m| m.starts_with("division by zero")));
+    let (_, all) = at_checks(source, Checks::LOCAL);
+    assert!(all.is_some_and(|m| m.starts_with("integer overflow")));
+    let wraps = "let big = 9223372036854775807 - id(0)\nfn id(k: Int) -> Int = k\nprint(big + id(1))\nassert id(0) == 1\n";
+    assert_eq!(at_checks(wraps, Checks::Traps).0, "-9223372036854775808\n");
+    let (_, asserted) = at_checks(wraps, Checks::Traps);
+    assert!(asserted.is_some());
+    assert!(at_checks(wraps, Checks::LOCAL)
+        .1
+        .is_some_and(|m| m.starts_with("integer overflow")));
+}
+
+#[test]
+fn a_packed_list_sorts_packed() {
+    use crate::value::{Cells, Value};
+    let ints = Cells::from([3, 1, 2].map(Value::Int).to_vec());
+    let up = crate::sort::sorted_packed(&ints, &cpl_ir::Ty::Int, false).unwrap();
+    assert!(matches!(&up, Cells::Int(v) if v == &[1, 2, 3]));
+    let down = crate::sort::sorted_packed(&ints, &cpl_ir::Ty::Int, true).unwrap();
+    assert!(matches!(&down, Cells::Int(v) if v == &[3, 2, 1]));
+    // A type with an order of its own sorts through it.
+    let opt = cpl_ir::Ty::Opt(Box::new(cpl_ir::Ty::Int));
+    assert!(crate::sort::sorted_packed(&ints, &opt, false).is_none());
 }

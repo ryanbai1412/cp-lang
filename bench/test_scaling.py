@@ -54,6 +54,18 @@ class Growth(unittest.TestCase):
         self.assertAlmostEqual(scaling.growth(r"(\deg f + m) \log m"),
                                scaling.growth(r"(f + m) \log m"), places=6)
 
+    def test_a_mark_naming_two_fns_is_unread(self):
+        text = "a() // timed: m.a m.b\nb() // timed: m.b\nf = x // within: m.a m.b\ng = x // within: m.a\n"
+        self.assertEqual(scaling.unread_marks(text), [1, 3])
+        self.assertEqual(scaling.timed_lines(text, None), {"m.b": {2}})
+        self.assertEqual(scaling.within_lines(text), {"m.a": {4}})
+
+    def test_a_popcount_counts_the_bits_of_its_value(self):
+        f = r"2^(\mathit{bits} - \mathit{popcount}(m))"
+        self.assertAlmostEqual(scaling.growth(f, let={"bits": "log_2 n", "m": "0"}), 4.0, places=3)
+        self.assertAlmostEqual(scaling.growth(f, let={"bits": "log_2 n", "m": "3"}), 4.0, places=3)
+        self.assertAlmostEqual(scaling.growth(f, let={"bits": "log_2 n", "m": "n - 1"}), 1.0, places=3)
+
     def test_a_binomial_grows_as_its_value(self):
         self.assertAlmostEqual(scaling.growth("C(n, k)", let={"k": "2"}, n=15.0), 1770 / 105, places=3)
         self.assertAlmostEqual(scaling.growth("C(n, k)", fixed=("k",)), 4.0, places=3)

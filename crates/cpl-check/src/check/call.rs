@@ -188,11 +188,11 @@ impl<'a> Checker<'a> {
             return self.call(call, &on_self, args);
         }
         if let Some(ty) = self.builtin_getter_call(call, callee, args) {
-            self.record_getter(call, callee);
+            self.record_getter(call, callee, true);
             return ty;
         }
         if let Some(ty) = self.getter_call(callee, args) {
-            self.record_getter(call, callee);
+            self.record_getter(call, callee, false);
             return ty;
         }
         if let Some(ty) = self.filled(callee, args) {
@@ -313,6 +313,10 @@ impl<'a> Checker<'a> {
         self.lambda_params.truncate(given);
         self.empty_collection(call, callee, args);
         self.lent_together(args);
+        // `f(mut a)` may change `a` as an assignment to it would.
+        for arg in args.iter().filter(|a| a.mutable) {
+            self.check_access(&arg.value, true);
+        }
         self.call_effects(call, callee, args);
         self.sort_key_uses(callee, args);
         self.debug_changes(callee, args);
@@ -617,6 +621,56 @@ impl<'a> Checker<'a> {
 
     /// Built-in `MemberKind::Get` properties (`len`, `is_empty`, `first`,
     /// `last`, `rev`, `items`) are read without parentheses.
+    /// `xs.len`, `x.sqrt`: a getter the compiler gives `base_ty`, with no
+    /// declaration of its own.
+    pub(super) fn builtin_get(&self, base_ty: &Ty, name: &str) -> bool {
+        let is_builtin_get = match base_ty {
+            Ty::Named { name: n, args } if n == "List" && args.len() == 1 => {
+                crate::builtins::builtin_members(crate::builtins::Receiver::List)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+            }
+            Ty::Str => crate::builtins::builtin_members(crate::builtins::Receiver::Str)
+                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),
+            Ty::Named { name: n, args }
+                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2 =>
+            {
+                crate::builtins::builtin_members(crate::builtins::Receiver::Map)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+            }
+            Ty::Named { name: n, args }
+                if matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
+            {
+                crate::builtins::builtin_members(crate::builtins::Receiver::Set)
+                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name)
+            }
+            Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
+                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name),
+            Ty::Named { name: n, .. } if n == "Range" => {
+                matches!(
+                    name,
+                    "len" | "is_empty" | "first" | "last" | "rev" | "start" | "end"
+                )
+            }
+            Ty::Named { name: n, .. } if n == "SortedRange" => {
+                matches!(name, "len" | "is_empty" | "first" | "last" | "rev")
+            }
+            Ty::Domain(_) => {
+                matches!(name, "len" | "first" | "last" | "rev" | "bounds" | "cuts")
+            }
+            t if t.is_int() => matches!(name, "abs" | "ord" | "sqrt"),
+            Ty::Float => matches!(name, "abs" | "ceil" | "floor" | "round" | "sqrt" | "trunc"),
+            _ => false,
+        };
+        // `xs.rev`: every `Bidir` sequence's reverse view, a std `@get`.
+        let is_builtin_get = is_builtin_get || (name == "rev" && base_ty.is_bidir());
+        // `g.rows()`: a std method on arrays that is only ever `@get`; a trait
+        // method of the same name (`5.rev()`, `Reversible`) is not one.
+        let is_builtin_get = is_builtin_get
+            || (matches!(base_ty, Ty::Array { .. })
+                && crate::prelude::getter_methods().iter().any(|g| g == name));
+        is_builtin_get
+    }
+
     fn builtin_getter_call(&mut self, call: &Expr, callee: &Expr, args: &[Arg]) -> Option<Ty> {
         if !args.is_empty() {
             return None;
@@ -625,60 +679,7 @@ impl<'a> Checker<'a> {
             return None;
         };
         let base_ty = self.quietly(|c| c.infer(base));
-        let is_builtin_get = match &base_ty {
-            Ty::Named { name: n, args } if n == "List" && args.len() == 1 => {
-                crate::builtins::builtin_members(crate::builtins::Receiver::List)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text)
-            }
-            Ty::Str => crate::builtins::builtin_members(crate::builtins::Receiver::Str)
-                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text),
-            Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Map" | "HashMap") && args.len() == 2 =>
-            {
-                crate::builtins::builtin_members(crate::builtins::Receiver::Map)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text)
-            }
-            Ty::Named { name: n, args }
-                if matches!(n.as_str(), "Set" | "HashSet") && args.len() == 1 =>
-            {
-                crate::builtins::builtin_members(crate::builtins::Receiver::Set)
-                    .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text)
-            }
-            Ty::Array { .. } => crate::builtins::builtin_members(crate::builtins::Receiver::Array)
-                .any(|m| m.kind == crate::builtins::MemberKind::Get && m.name == name.text),
-            Ty::Named { name: n, .. } if n == "Range" => {
-                matches!(
-                    name.text.as_str(),
-                    "len" | "is_empty" | "first" | "last" | "rev" | "start" | "end"
-                )
-            }
-            Ty::Named { name: n, .. } if n == "SortedRange" => {
-                matches!(
-                    name.text.as_str(),
-                    "len" | "is_empty" | "first" | "last" | "rev"
-                )
-            }
-            Ty::Domain(_) => {
-                matches!(
-                    name.text.as_str(),
-                    "len" | "first" | "last" | "rev" | "bounds" | "cuts"
-                )
-            }
-            t if t.is_int() => matches!(name.text.as_str(), "abs" | "ord" | "sqrt"),
-            Ty::Float => matches!(
-                name.text.as_str(),
-                "abs" | "ceil" | "floor" | "round" | "sqrt" | "trunc"
-            ),
-            _ => false,
-        };
-        // `xs.rev`: every `Bidir` sequence's reverse view, a std `@get`.
-        let is_builtin_get = is_builtin_get || (name.text == "rev" && base_ty.is_bidir());
-        // `g.rows()`: a std method on arrays that is only ever `@get`; a trait
-        // method of the same name (`5.rev()`, `Reversible`) is not one.
-        let is_builtin_get = is_builtin_get
-            || (matches!(base_ty, Ty::Array { .. })
-                && crate::prelude::getter_methods().contains(&name.text));
-        if !is_builtin_get {
+        if !self.builtin_get(&base_ty, &name.text) {
             return None;
         }
         let callee_text = self.quote(callee.span);
@@ -1064,6 +1065,11 @@ impl<'a> Checker<'a> {
         }
         if name.text == "fold" {
             if let ExprKind::Call { args, .. } = &call.kind {
+                if let [arg] = args.as_slice() {
+                    if self.type_name_as_op(&arg.value) {
+                        return Some(Ty::Error);
+                    }
+                }
                 if let Some(acc) = self.seeded_fold(&base_ty, name, args) {
                     return Some(acc);
                 }
@@ -1201,6 +1207,10 @@ impl<'a> Checker<'a> {
                         match found {
                             Some((_, got_ty)) if self.fits(got_ty, req_ty) => {}
                             _ => {
+                                let help = super::expr::rename_fields(
+                                    actual,
+                                    &Ty::Record(req_fields.clone()),
+                                );
                                 let diag = self.error(
                                     codes::ROW_MISSING_FIELD,
                                     call.span,
@@ -1209,7 +1219,13 @@ impl<'a> Checker<'a> {
                                         found.map_or(format!("has no `{req_name}`"), |(_, t)| format!("has `{req_name}: {t}`"))
                                     ),
                                 );
-                                suggest_rename(diag, args, actual_fs, &req_fields);
+                                if let Some(diag) = diag {
+                                    if help.is_some() {
+                                        diag.help = help;
+                                    }
+                                    suggest_rename(Some(diag), args, actual_fs, &req_fields);
+                                }
+                                break;
                             }
                         }
                     }
@@ -1303,22 +1319,16 @@ impl<'a> Checker<'a> {
                     },
                     _ => None,
                 };
-                let (bound_args, default_binds) =
-                    match callee_name.and_then(|n| self.global(n)).as_deref() {
-                        Some(Def::Fn {
-                            bound_args,
-                            default_binds,
-                            ..
-                        }) => (bound_args.clone(), default_binds.clone()),
-                        _ => Default::default(),
-                    };
-                let outer = std::mem::replace(&mut self.call_bound_args, bound_args);
+                let callee_def = callee_name.and_then(|n| self.global(n));
+                let outer = std::mem::replace(&mut self.call_bound_args, callee_def.clone());
                 self.args(&callee_text, "takes", &params, args, call, &mut bindings);
                 self.call_bound_args = outer;
-                for (generic, ty) in default_binds {
-                    if !bindings.contains_key(&generic) {
-                        let ty = ty.subst(&bindings);
-                        bindings.insert(generic, ty);
+                if let Some(Def::Fn { default_binds, .. }) = callee_def.as_deref() {
+                    for (generic, ty) in default_binds {
+                        if !bindings.contains_key(generic) {
+                            let ty = ty.subst(&bindings);
+                            bindings.insert(generic.clone(), ty);
+                        }
                     }
                 }
                 if let Some(fn_name) = callee_name {

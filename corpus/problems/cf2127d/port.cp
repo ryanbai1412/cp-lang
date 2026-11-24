@@ -22,12 +22,12 @@ if m > n - 1:
     print(0)
     return
 
-var deg: [V]Int = 0
+var deg: [V]0..=200_000 = 0  // at most m
 for (u, v) in edges:
     deg[u] += 1
     deg[v] += 1
 
-var deg2: [V]Int = 0
+var deg2: [V]0..=200_000 = 0
 var spine_edges = 0
 for (u, v) in edges if deg[u] > 1 and deg[v] > 1:
     deg2[u] += 1
@@ -39,6 +39,6 @@ if V.any(v => deg2[v] >= 3):
     return
 
 if spine_edges >= 1:
-    print(Z(4) * fold(*, comb.fact(deg[v] - deg2[v]) for v in V if deg[v] > 1))
+    print(Z(4) * V.filter(v => deg[v] > 1).map(v => comb.fact(deg[v] - deg2[v])).fold(*))
 else:
     print(Z(2) * comb.fact(n - 1))

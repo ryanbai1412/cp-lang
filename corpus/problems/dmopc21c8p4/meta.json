@@ -7,11 +7,15 @@
   {"id": "4522785", "language": "CPP17", "result": "WA", "time": 5.102447899, "memory_kb": 22732.0, "file": "corpus/submissions/4522785.cpp"},
   {"id": "4522813", "language": "CPP17", "result": "WA", "time": 10.780242965, "memory_kb": 50096.0, "file": "corpus/submissions/4522813.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/dmopc21c8p4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No C++ AC in the corpus. orig.cpp follows the official editorial: reflect the grid over its borders, after which every operation commutes with translation by 4, so 16 tracked cells give all displacements. It matches a literal simulation of the five operations on 960 small gen.py cases."
 }

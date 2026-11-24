@@ -57,9 +57,13 @@ impl<'p> Emitter<'p> {
             return false;
         };
         let returns = cpl_ir::pushed::returns(body);
+        // Inside a `cpl_each_f` form a body that yields on feeds the same
+        // callback; one that may stop early is not fed there.
+        let nested = self.pushing.is_some();
+        let escapes = cpl_ir::pushed::escapes(body);
         // A closure's `return` is not the enclosing fn's, so only a body that
         // never returns is fed from inside one.
-        if self.pushing.is_some() || (self.closure_id.is_some() && returns) {
+        if (nested && escapes) || (self.closure_id.is_some() && returns) {
             return false;
         }
         let feeds = cpl_ir::pushed::Feeds {
@@ -83,6 +87,22 @@ impl<'p> Emitter<'p> {
             return false;
         };
         let sep = if call.is_empty() { "" } else { ", " };
+        if nested {
+            // What the callback stops with stops this form too.
+            self.line(
+                out,
+                &format!("if (int cpl_r = cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"),
+            );
+            self.indent += 1;
+            for line in first {
+                self.line(out, line);
+            }
+            self.block(body, out);
+            self.line(out, "return 0;");
+            self.indent -= 1;
+            self.line(out, "})) return cpl_r;");
+            return true;
+        }
         let ret = match self.fn_id {
             Some(f) if self.program.fns[f].ret != Ty::Unit => {
                 Some(self.ty(&self.program.fns[f].ret))

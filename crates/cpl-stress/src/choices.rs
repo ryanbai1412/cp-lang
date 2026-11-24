@@ -6,7 +6,6 @@
 //! of them, so a tree or a sorted list stays a tree or a sorted list
 //! while it shrinks. A choice past the end of a list is 0, the low end.
 
-use crate::engine::{ChoiceSource, ProcessChoices};
 use crate::program::Program;
 use crate::run::StressError;
 use std::collections::HashMap;
@@ -107,17 +106,13 @@ pub fn replay(generator: &Program, choices: &[u64]) -> Option<Drawn> {
     drawn.ok()?.ok()
 }
 
-/// The smallest case found, within `budget` runs, that `still_fails`.
-pub fn shrink(
-    generator: &Program,
-    first: &Drawn,
-    budget: usize,
-    still_fails: &mut dyn FnMut(&str) -> bool,
-) -> Drawn {
-    shrink_with(&ProcessChoices(generator, None), first, budget, still_fails)
+/// Runs an in-file `@gen` fn by seed or by replaying a recorded choice list.
+pub trait ChoiceSource: Sync {
+    fn draw(&self, seed: u64) -> Result<Drawn, StressError>;
+    fn replay(&self, choices: &[u64]) -> Option<Drawn>;
 }
 
-/// [`shrink`], driven by any [`ChoiceSource`].
+/// The smallest case found, within `budget` runs, that `still_fails`.
 pub fn shrink_with(
     source: &dyn ChoiceSource,
     first: &Drawn,

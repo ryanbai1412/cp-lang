@@ -61,6 +61,9 @@ pub struct Profile {
     pub source_limit: usize,
     /// Whether the compiler has `__int128`.
     pub int128: bool,
+    /// Whether the judge's CPUs have AVX2, so the C++ may ask for it and
+    /// for loop vectorisation with target pragmas (`isa = "avx2"`).
+    pub avx2: bool,
     /// The judge's usual limits, for a problem that names none.
     pub time_ms: u64,
     pub memory_mb: u64,
@@ -294,7 +297,7 @@ fn accepts_all(compiler: &str, flags: &[String]) -> bool {
     }
     // A yes is kept across runs, so `cpl test` and `cpl stress` don't build two
     // probe programs on every start; `CPL_JUDGE_PROBE_DIR=` (empty) keeps nothing.
-    let memo = match std::env::var_os("CPL_JUDGE_PROBE_DIR") {
+    let memo = match cpl_env::JUDGE_PROBE_DIR.raw() {
         Some(dir) if dir.is_empty() => None,
         Some(dir) => Some(std::path::PathBuf::from(dir)),
         None => Some(std::env::temp_dir().join("cpl-cache").join("judge-probes")),
@@ -328,7 +331,7 @@ fn probe(compiler: &str, flags: &[String], memo: Option<&Path>) -> bool {
             meta.len(),
             modified.as_nanos(),
             flags,
-            std::env::var("CPL_CXX_SYSTEM_KEY").ok(),
+            cpl_env::CXX_SYSTEM_KEY.text(),
         )
             .hash(&mut hasher);
         Some(memo.join(format!("{:016x}", hasher.finish())))
@@ -400,6 +403,7 @@ fn profile(
         thread_stack: Some(THREAD_STACK),
         source_limit,
         int128: true,
+        avx2: false,
         time_ms: 2000,
         memory_mb: 256,
         evidence: evidence.into(),
@@ -567,9 +571,9 @@ fn project(path: &Path) -> Option<(std::path::PathBuf, String)> {
     } else {
         start
     };
-    start.ancestors().find_map(|dir| {
-        let file = dir.join("cp.toml");
-        std::fs::read_to_string(&file).ok().map(|text| (file, text))
+    let read = &mut |f: &Path| std::fs::read_to_string(f).ok();
+    cpl_config::find_map(start, read, |dir, text| {
+        Some((dir.join(cpl_config::FILE), text.to_string()))
     })
 }
 
@@ -595,7 +599,7 @@ impl Config {
         let mut config = Config::default();
         let mut table: Option<Option<String>> = None;
         for (at, line) in text.lines().enumerate() {
-            let line = strip_comment(line).trim();
+            let line = cpl_config::strip_comment(line).trim();
             if line.is_empty() {
                 continue;
             }
@@ -708,6 +712,7 @@ const KEYS: &[(&str, &str)] = &[
     ),
     ("source_kb", "a whole number of KB"),
     ("int128", "true or false"),
+    ("isa", "\"x86-64\" or \"avx2\""),
     ("time_ms", "a whole number of milliseconds"),
     ("memory_mb", "a whole number of MB"),
 ];
@@ -728,10 +733,12 @@ fn check_key(key: &str, value: &Value) -> Result<(), String> {
             | ("stack_mb" | "thread_stack_mb", Value::Int(_))
             | ("source_kb", Value::Int(_))
             | ("int128", Value::Bool(_))
+            | ("isa", Value::Str(_))
             | ("time_ms" | "memory_mb", Value::Int(_))
     ) || matches!((key, value), ("stack_mb", Value::Str(s)) if s == "unlimited");
-    let fits =
-        fits && !matches!((key, value), ("os", Value::Str(s)) if s != "linux" && s != "windows");
+    let fits = fits
+        && !matches!((key, value), ("os", Value::Str(s)) if s != "linux" && s != "windows")
+        && !matches!((key, value), ("isa", Value::Str(s)) if s != "x86-64" && s != "avx2");
     match fits {
         true => Ok(()),
         false => Err(format!("`{key}` is {wants}")),
@@ -755,22 +762,11 @@ fn apply(profile: &mut Profile, key: &str, value: &Value) {
         ("thread_stack_mb", Value::Int(mb)) => profile.thread_stack = (*mb > 0).then(|| mb << 20),
         ("source_kb", Value::Int(kb)) => profile.source_limit = (*kb as usize) * 1024,
         ("int128", Value::Bool(b)) => profile.int128 = *b,
+        ("isa", Value::Str(s)) => profile.avx2 = s == "avx2",
         ("time_ms", Value::Int(ms)) => profile.time_ms = *ms,
         ("memory_mb", Value::Int(mb)) => profile.memory_mb = *mb,
         _ => {}
     }
-}
-
-fn strip_comment(line: &str) -> &str {
-    let mut quoted = false;
-    for (at, c) in line.char_indices() {
-        match c {
-            '"' => quoted = !quoted,
-            '#' if !quoted => return &line[..at],
-            _ => {}
-        }
-    }
-    line
 }
 
 fn parse_value(text: &str) -> Result<Value, String> {

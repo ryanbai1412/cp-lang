@@ -237,6 +237,14 @@ pub struct Prefix<D, T: Add + Sub>:
     /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p[D(1)] == 3`
     pub fn at(self, c: Cut<D>) -> T = self.p[c]
 
+    /// The running fold at position `v`: through `v` from the start, or from `v` to the end on a
+    /// suffix table (`a.rev.scan(f)`). It is what walking the table yields at `v`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..3; let p = Prefix<D, Int>([D] v => 1 + Int(v)); p.through(D(1)) == 3`
+    pub fn through(self, v: D) -> T = if back: self.p[v.l] else: self.p[v.r]
+
     /// The fold of the first `k` positions, whatever `D`'s base: the value at the cut `k`
     /// positions in, the identity at `0` and `all` at `D.count`.
     ///
@@ -739,6 +747,18 @@ pub struct ArithDiff<D, T: Add + Sub + Mul>:
 
 impl Show for Prefix<D, T>:
     fn show(q): "{q.p}"
+
+impl Show for Diff<D, T>:
+    /// The values `finish` would return now, in key order, space-separated.
+    ///
+    /// example: `domain D = 0..4; var d = Diff<D, Int>(); d.add(D(1)..D(3), 5); "{d}" == "0 5 5 0"`
+    fn show(x): "{x.finish()}"
+
+impl Show for ArithDiff<D, T>:
+    /// The values `finish` would return now, in key order, space-separated.
+    ///
+    /// example: `domain D = 0..4; var d = ArithDiff<D, Int>(); d.add_arith(D(1)..=D(3), 1, 2); "{d}" == "0 1 3 5"`
+    fn show(x): "{x.finish()}"
 
 @test
 fn one_d_sums_match_brute():

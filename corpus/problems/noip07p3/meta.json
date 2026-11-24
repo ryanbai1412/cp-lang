@@ -6,11 +6,15 @@
   {"id": "5184976", "language": "PYPY3", "result": "WA", "time": 0.690378131, "memory_kb": 62748.0, "file": "corpus/submissions/5184976.py"},
   {"id": "5184980", "language": "PYPY3", "result": "AC", "time": 0.697025574, "memory_kb": 63444.0, "file": "corpus/submissions/5184980.py"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/noip07p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The only accepted submission is Python, so orig.cpp is the per-row interval DP in __int128 written for the corpus, checked against the sample, a brute over every take order and 5184980 at --max."
 }

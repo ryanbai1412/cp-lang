@@ -157,7 +157,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 if n < 0 {
                     return trap(span, format!("List.filled with negative length {n}"));
                 }
-                Value::List(Rc::new(crate::value::Cells::from(vec![val; n as usize])))
+                Value::List(Rc::new(crate::value::Cells::filled(n as usize, val)))
             }
             Builtin::Join => {
                 let text = |value: Value| match value {
@@ -302,9 +302,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 other => other,
             },
             Builtin::ArrayToList => match first {
-                Value::Array(arr) => {
-                    Value::List(Rc::new(crate::value::Cells::from(arr.to_values())))
-                }
+                Value::Array(arr) => Value::List(Rc::new(arr.data.clone())),
                 other => other,
             },
             Builtin::ListToArray => match first {
@@ -499,6 +497,14 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Ty::List(elem) => (**elem).clone(),
                     _ => Ty::Int,
                 };
+                let packed = match &first {
+                    Value::List(items) => crate::sort::sorted_packed(items, &elem_ty, false),
+                    Value::Array(arr) => crate::sort::sorted_packed(&arr.data, &elem_ty, false),
+                    _ => None,
+                };
+                if let Some(sorted) = packed {
+                    return Ok(Value::List(Rc::new(sorted)));
+                }
                 match first {
                     Value::List(items) => {
                         let v = Rc::try_unwrap(items)

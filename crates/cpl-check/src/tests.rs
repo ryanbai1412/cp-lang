@@ -434,14 +434,24 @@ fn work_after(new_text: &str) -> (Stats, Vec<Diagnostic>) {
 const ROADS_ITEMS: u64 = 14;
 
 #[test]
-#[ignore = "v0.3 lexes 3 files on the first analysis of ROADS, not 1; needs a call on whether built-in std counts"]
 fn the_first_analysis_does_all_the_work_once() {
     let mut db = Database::new();
     db.set_file("a.cp", ROADS);
-    db.analyze("a.cp");
+    let analysis = db.analyze("a.cp").unwrap();
     let stats = db.stats();
-    assert_eq!(stats.files_lexed, 1);
-    assert_eq!(stats.items_parsed, ROADS_ITEMS);
+    // The file and each std module it reaches are lexed and parsed once;
+    // only the file's own items are checked.
+    assert_eq!(
+        stats.files_lexed,
+        1 + analysis.modules().len() as u64,
+        "{:?}",
+        analysis
+            .modules()
+            .iter()
+            .map(|m| &m.path)
+            .collect::<Vec<_>>()
+    );
+    assert!(stats.items_parsed >= ROADS_ITEMS);
     assert_eq!(stats.items_checked, ROADS_ITEMS);
     assert_eq!(stats.items_reused, 0);
     // Asking again without an edit does nothing at all.
@@ -857,7 +867,6 @@ fn hidden() -> Int = 1
 ";
 
 #[test]
-#[ignore = "spec/conformance/core-05/a-user-method-on-self-does-not-change-its-receiver.cp"]
 fn a_generic_struct_is_used_with_the_types_given_there() {
     let src = "\
 let n: 1..=9 = read()
@@ -870,11 +879,11 @@ let q = p.swap()
 let d: Char = q.first
 ";
     assert_eq!(check(src), vec![]);
-    // `p.first!` is a `City`, not a `Char`: the argument fixed `A`.
-    let diag = one(&src.replace("let c: City = p.first!", "let c: Char = p.first!"));
+    // `p.first` is a `City`, not a `Char`: the argument fixed `A`.
+    let diag = one(&src.replace("let c: City = p.first", "let c: Char = p.first"));
     assert_eq!(
         diag.message,
-        "`c` is declared a Char, but `p.first!` is a City"
+        "`c` is declared a Char, but `p.first` is a City"
     );
     // The swapped pair's parameters swapped too.
     let diag = one(&src.replace("let d: Char = q.first", "let d: City = q.first"));
@@ -1119,6 +1128,35 @@ fn a_let_bound_element_lends_only_that_element() {
         let diags = lent(body);
         assert_eq!(diags.len(), 1, "{body}: {diags:#?}");
         assert_eq!(diags[0].code.0, "E0602");
+    }
+}
+
+#[test]
+fn a_lent_struct_holds_every_variable_it_was_made_from() {
+    // `ms.within(mar)` lends `mar` as well as `ms`, and `grow(mut a)` changes
+    // `a` as an assignment would.
+    let within = |body: &str| {
+        check(&format!(
+            "use std.persistent.{{PArena, PMultiset}}\ndomain V = 0..10\nvar mar = PArena<PMultiset<V>>()\nvar ms = PMultiset<V>.empty()\nms = ms.with(mut mar, V(1))\nlet w = ms.within(mar)\n{body}"
+        ))
+    };
+    assert_eq!(
+        within("print(w.len)\nmar = PArena<PMultiset<V>>()\n"),
+        vec![]
+    );
+    let grow = |body: &str| {
+        check(&format!(
+            "struct H: xs: List<Int>\nfn wrap(xs: List<Int>) -> lends H = H(xs)\nfn grow(mut xs: List<Int>): xs.push(1)\nvar a = [1, 2]\nlet h = wrap(a)\n{body}"
+        ))
+    };
+    assert_eq!(grow("print(h.xs.len)\ngrow(mut a)\n"), vec![]);
+    for diags in [
+        within("mar = PArena<PMultiset<V>>()\nprint(w.len)\n"),
+        within("ms = ms.with(mut mar, V(2))\nprint(w.len)\n"),
+        grow("grow(mut a)\nprint(h.xs.len)\n"),
+    ] {
+        assert!(!diags.is_empty(), "a change while lent is an error");
+        assert!(diags.iter().all(|d| d.code.0 == "E0602"), "{diags:#?}");
     }
 }
 
@@ -1398,7 +1436,6 @@ fn a_range_or_span_stays_in_one_domain() {
 }
 
 #[test]
-#[ignore = "spec/conformance/diagnostics/max-of-a-slice-is-optional.cp"]
 fn the_max_of_a_slice_is_optional() {
     let head =
         "let n: 1..=5 = read()\ndomain V = 1..=n\nlet a: [V]Int = read()\nlet f = V.first!\n";
@@ -1409,7 +1446,7 @@ fn the_max_of_a_slice_is_optional() {
     );
     for body in [
         "let k: Int = a[f..f].max() ?? 0\n",
-        "let k: Int = max(a)\n",
+        "let k: Int = a.max()!\n",
         "let k: Int = min(a[f], 3)\n",
     ] {
         let src = format!("{head}{body}print(k)\n");

@@ -221,6 +221,10 @@
                 "type": "integer",
                 "description": "Optional: how many steps one recording keeps (default 10000000). A longer run is stepped through in windows of a tenth of this."
               },
+              "timeLimit": {
+                "type": "number",
+                "description": "Optional: seconds a recording may run before it is cut (default 10)."
+              },
               "stopOnEntry": {
                 "type": "boolean",
                 "description": "Stop at the first recorded step on entry.",

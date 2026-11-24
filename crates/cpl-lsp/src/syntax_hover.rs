@@ -16,6 +16,8 @@ pub fn hover(analysis: &Analysis, offset: u32) -> Option<cpl_check::Hover> {
     let src = analysis.text.get(item.offset as usize..)?;
     let (span, text) = Written::of(&item.syntax.parsed.stmts).explain(src, offset - item.offset)?;
     Some(cpl_check::Hover {
+        ty: None,
+        signature: false,
         span: span.shift(item.offset),
         text,
         doc: None,
@@ -48,6 +50,8 @@ fn builtin_hover(text: &str, offset: u32) -> Option<cpl_check::Hover> {
     let word = text.get(token.span.start as usize..token.span.end as usize)?;
     let (_, shown, doc) = BUILTINS.iter().find(|(name, ..)| *name == word)?;
     Some(cpl_check::Hover {
+        ty: None,
+        signature: false,
         span: token.span,
         text: shown.to_string(),
         doc: Some(doc.to_string()),

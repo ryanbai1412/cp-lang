@@ -8,11 +8,15 @@
   {"id": "4530067", "language": "CPP17", "result": "WA", "time": 0.697292364, "memory_kb": 14320.0, "file": "corpus/submissions/4530067.cpp"},
   {"id": "4530068", "language": "CPP17", "result": "WA", "time": 3.387227231, "memory_kb": 28724.0, "file": "corpus/submissions/4530068.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/coci21c6p4/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "No accepted C++ was collected (the five submissions are WA), so orig.cpp is a new reference: each built string is a block of the final string, so it counts distinct palindromes in offline ranges with a palindromic tree, series links, a Fenwick tree and a max segment tree; checked against the statement samples and a brute force that rebuilds every string."
 }

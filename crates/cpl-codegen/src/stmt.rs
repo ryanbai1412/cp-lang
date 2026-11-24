@@ -15,6 +15,9 @@ mod loops;
 
 mod assign;
 
+mod ret;
+pub(crate) use ret::block_lets;
+
 /// A block with a value that is statements and then the value, with no
 /// other way out: it can be written in line.
 fn flat(e: &Expr) -> Option<(&[Stmt], &Expr)> {
@@ -95,6 +98,7 @@ impl<'p> Emitter<'p> {
                 self.moves_last = false;
             }
             self.tail = None;
+            self.take_block_lets(stmts, value);
             e = value;
         }
         e
@@ -458,6 +462,15 @@ impl<'p> Emitter<'p> {
                 let name = self.names[*slot].clone();
                 self.line(out, &format!("auto {name} = cpl::rec({text});"));
             }
+            Stmt::Let(slot, Some(init))
+                if self.locals()[*slot].binds.is_some()
+                    && !self.hoisted.contains(slot)
+                    && !self.plain_let =>
+            {
+                if let Some(map) = &self.locals()[*slot].binds {
+                    self.let_map_slot(*slot, map, init, out);
+                }
+            }
             Stmt::Let(slot, init) => {
                 self.borrow_if_named_closure(*slot, init.as_ref());
                 let tail = self.tail.take();
@@ -675,114 +688,14 @@ impl<'p> Emitter<'p> {
                         .then(|| self.rekeyed_local(value))
                         .flatten();
                     let moved_some = is_return.then(|| self.moved_some(value));
+                    let handed = (is_return && self.closure_id.is_none())
+                        || (!is_return && !self.give_ref && self.give_owned.is_some());
                     let mut text = if let Some(Some(text)) = moved_some {
                         text
-                    } else if is_return && self.closure_id.is_none() {
-                        if let ExprKind::Tuple(items) = &value.kind {
-                            if !items.is_empty()
-                                && !matches!(
-                                    value.ty,
-                                    Ty::Unit | Ty::Error | Ty::Map(..) | Ty::HashMap(..)
-                                )
-                            {
-                                let params =
-                                    self.fn_id.map_or(0, |id| self.program.fns[id].params.len());
-                                let ty = self.ty(&value.ty);
-                                let struct_id = match value.ty {
-                                    Ty::Struct(s) => Some(s),
-                                    _ => None,
-                                };
-                                let dropped: Vec<bool> = (0..items.len())
-                                    .map(|idx| {
-                                        struct_id.is_some_and(|s| self.devirt.dropped_field(s, idx))
-                                    })
-                                    .collect();
-                                let rendered: Vec<String> = items
-                                    .iter()
-                                    .enumerate()
-                                    .filter(|(idx, _)| !dropped[*idx])
-                                    .map(|(idx, item)| {
-                                        if struct_id.is_some_and(|s| {
-                                            self.devirt.field_elidable(s, idx)
-                                                && self.devirt.skippable_value(item)
-                                        }) {
-                                            return "false".to_string();
-                                        }
-                                        if let Some(lent) = self.lent_item(struct_id, idx, item) {
-                                            return lent;
-                                        }
-                                        if let Some(sid) = struct_id {
-                                            if let Some(&k) = self.rows.get(&(sid, idx)) {
-                                                let cell = self
-                                                    .ty(&item.ty)
-                                                    .strip_prefix("std::vector<")
-                                                    .and_then(|c| c.strip_suffix('>'))
-                                                    .map(str::to_string);
-                                                if let Some(cell) = cell {
-                                                    if let Some(row_init) =
-                                                        self.emit_row_init(item, sid, idx, &cell, k)
-                                                    {
-                                                        return row_init;
-                                                    }
-                                                }
-                                            }
-                                        }
-                                        if let ExprKind::Local(slot) = item.kind {
-                                            if (slot >= params
-                                                || self.fn_id.is_some_and(|id| self.sunk[id].contains(&slot)))
-                                                && !item.ty.is_scalar()
-                                                && !matches!(item.ty, Ty::Fn(..))
-                                                && !items.iter().enumerate().any(|(j, other)| {
-                                                    j != idx && {
-                                                        let mut used = false;
-                                                        crate::walk::deep_expr(other, &mut |e| {
-                                                            if matches!(e.kind, ExprKind::Local(s) if s == slot) {
-                                                                used = true;
-                                                            }
-                                                        });
-                                                        used
-                                                    }
-                                                })
-                                            {
-                                                return format!("std::move({})", self.names[slot]);
-                                            }
-                                        }
-                                        if let Some(l) = struct_id
-                                            .and_then(|s| {
-                                                self.elem_layout(cpl_ir::ElemLoc::Field(s, idx))
-                                            })
-                                            .cloned()
-                                        {
-                                            return self.expr_with_elem_layout(item, Some(&l)).text;
-                                        }
-                                        let v = self.expr(item).text;
-                                        match struct_id {
-                                            Some(s) => self.narrow_field_store(s, idx, &v),
-                                            None => v,
-                                        }
-                                    })
-                                    .collect();
-                                format!("{ty}{{{}}}", rendered.join(", "))
-                            } else {
-                                let ret_l = if is_return {
-                                    self.fn_id
-                                        .and_then(|id| self.elem_layout(cpl_ir::ElemLoc::FnRet(id)))
-                                        .cloned()
-                                } else {
-                                    None
-                                };
-                                self.expr_with_elem_layout(value, ret_l.as_ref()).text
-                            }
-                        } else {
-                            let ret_l = if is_return {
-                                self.fn_id
-                                    .and_then(|id| self.elem_layout(cpl_ir::ElemLoc::FnRet(id)))
-                                    .cloned()
-                            } else {
-                                None
-                            };
-                            self.expr_with_elem_layout(value, ret_l.as_ref()).text
-                        }
+                    } else if let Some(text) =
+                        handed.then(|| self.handed_out(value, is_return)).flatten()
+                    {
+                        text
                     } else {
                         let ret_l = if is_return {
                             self.fn_id
@@ -793,6 +706,13 @@ impl<'p> Emitter<'p> {
                         };
                         self.expr_with_elem_layout(value, ret_l.as_ref()).text
                     };
+                    if is_return
+                        && self.closure_id.is_none()
+                        && matches!(value.kind, ExprKind::Field(..) | ExprKind::Index(..))
+                        && self.returned_item_dies(std::slice::from_ref(value), 0)
+                    {
+                        text = self.moved_if(true, text);
+                    }
                     if let Some(local) = rekeyed {
                         let name = &self.names[local];
                         if let Some(rest) = text.strip_prefix(&format!("cpl::rekey_own({name}, ")) {
@@ -800,6 +720,7 @@ impl<'p> Emitter<'p> {
                         }
                     }
                     self.last_use_call = false;
+                    self.note_given_copy(value, &text, is_return);
                     if self.give_ref && matches!(stmt, Stmt::Give(_)) {
                         text = format!("({text})");
                     }
@@ -1017,4 +938,37 @@ fn built_in(mut e: &Expr, slot: usize) -> bool {
         e = value;
     }
     false
+}
+
+impl<'p> Emitter<'p> {
+    /// `let p = mut m[k]` keyed by `slot`: find the slot once; reads trap on an
+    /// absent key and writes make room for it, as `m[k]` does.
+    fn let_map_slot(&mut self, slot: usize, map: &'p Place, init: &Expr, out: &mut String) {
+        let name = self.names[slot].clone();
+        // A key that is an unchanging parameter needs no copy of its own.
+        let param = match init.kind {
+            ExprKind::Local(src) if self.closure_id.is_none() && !init.ty.is_scalar() => {
+                self.fn_id.is_some_and(|id| {
+                    self.program.fns[id]
+                        .params
+                        .get(src)
+                        .is_some_and(|p| !p.mutable)
+                })
+            }
+            _ => false,
+        };
+        if param {
+            let (cpp, src) = (self.ty(&init.ty), self.expr(init).text);
+            self.line(out, &format!("const {cpp}& {name} = {src};"));
+        } else {
+            self.plain_let = true;
+            self.stmt(&Stmt::Let(slot, Some(init.clone())), out);
+            self.plain_let = false;
+        }
+        let m = self.place(map);
+        let at = self.temp();
+        self.need("map_slot");
+        self.line(out, &format!("auto* {at} = cpl::map_slot({m}, {name});"));
+        self.map_slots.insert((self.closure_id, slot), at);
+    }
 }

@@ -14,7 +14,7 @@
 // Bounds: n, q: 1..=2e5; initial.a, initial.b, a, b, r: 1..=1e9; t: 0..=n
 
 // the rockets in a run of slots, folded left to right
-struct Fleet(top_a: Int, top_b: Int, last_net: Int, count: Int, net: Int):
+struct Fleet(top_a: 0..=1e9, top_b: 0..=1e9, last_net: -1e9..=1e9, count: 0..=4e5, net: Int):
     pub fn of(r: (a: Int, b: Int)) -> Fleet = Fleet(r.a, r.b, r.a - r.b, 1, r.a - r.b)
 
 let fleets = Monoid<Fleet>(

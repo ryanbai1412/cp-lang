@@ -169,7 +169,6 @@ fn the_prelude_names_are_the_ones_a_file_can_use() {
 }
 
 #[test]
-#[ignore = "spec/conformance/std-seq/strview-runs.cp"]
 fn sequence_method_parity_across_list_array_str_and_views() {
     use std::collections::BTreeSet;
     let list_names: BTreeSet<&str> = cpl_check::builtin_members(Receiver::List)
@@ -184,9 +183,9 @@ fn sequence_method_parity_across_list_array_str_and_views() {
 
     // Every general sequence method on `List` must also exist on `Str`
     // (excluding List-only `to_list`, `extend`, `reserve`, `insert`, `remove`,
-    // and numeric-only `sum`/`prod` — `Char` is not numeric).
+    // `push_id`, and numeric-only `sum`/`prod` — `Char` is not numeric).
     let list_only_vs_str: BTreeSet<&str> = [
-        "to_list", "extend", "reserve", "insert", "remove", "sum", "prod",
+        "to_list", "extend", "reserve", "insert", "remove", "push_id", "sum", "prod",
     ]
     .into_iter()
     .collect();
@@ -201,8 +200,8 @@ fn sequence_method_parity_across_list_array_str_and_views() {
 
     // Every non-growable sequence method on `List` must also exist on `[D]T`.
     let growable_only: BTreeSet<&str> = [
-        "push", "pop", "insert", "remove", "resize", "truncate", "extend", "clear", "reserve",
-        "to_list", "copy", "reversed", "rev",
+        "push", "push_id", "pop", "insert", "remove", "resize", "truncate", "extend", "clear",
+        "reserve", "to_list", "copy", "reversed", "rev",
     ]
     .into_iter()
     .collect();
@@ -213,38 +212,6 @@ fn sequence_method_parity_across_list_array_str_and_views() {
     assert!(
         missing_on_arr.is_empty(),
         "`Array` is missing List sequence methods: {missing_on_arr:?}"
-    );
-
-    // Run the full sequence parity program (List, [D]T, Str, ListView, StrView) in both
-    // interpreter and compiled C++17 and verify identical output.
-    let prog =
-        std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/programs/seq_str_parity.cp");
-    let interp = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg("run")
-        .arg(&prog)
-        .output()
-        .unwrap();
-    assert!(
-        interp.status.success(),
-        "interpreter failed on seq_str_parity.cp:\n{}",
-        String::from_utf8_lossy(&interp.stderr)
-    );
-
-    let cpp = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .arg("run")
-        .arg("--release")
-        .arg(&prog)
-        .output()
-        .unwrap();
-    assert!(
-        cpp.status.success(),
-        "C++ run failed on seq_str_parity.cp:\n{}",
-        String::from_utf8_lossy(&cpp.stderr)
-    );
-    assert_eq!(
-        String::from_utf8_lossy(&interp.stdout),
-        String::from_utf8_lossy(&cpp.stdout),
-        "interpreter and C++17 disagreed on seq_str_parity.cp"
     );
 }
 

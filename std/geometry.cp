@@ -876,7 +876,7 @@ pub fn convex_polygons_overlap(a: List<Pt>, b: List<Pt>) -> Bool:
 /// or touching at a point or along an edge) is `[]`. The result starts at its least `(y, x)`
 /// corner.
 ///
-/// cost: \(O(\lvert a \rvert + \lvert b \rvert)\) time and memory
+/// cost: \(O((\lvert a \rvert + \lvert b \rvert) \log(\lvert a \rvert + \lvert b \rvert))\) time, \(O(\lvert a \rvert + \lvert b \rvert)\) memory
 /// empty: `let s = [Vec(0.0, 0.0), Vec(1.0, 0.0), Vec(0.0, 1.0)]; convex_polygon_intersect([], s) == [] and convex_polygon_intersect(s, []) == []`
 /// order: counter-clockwise, starting at the least `(y, x)`; a new `List`, keyed from 0
 /// traps: never
@@ -1086,6 +1086,7 @@ fn better_dir(a: Pt, b: Pt, dir: Pt) -> Bool:
 /// example: `hull_extreme([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)], Pt(1, 0)) == 1`
 pub fn hull_extreme(hull: List<Pt>, dir: Pt) -> Int:
     let i = extreme_by_dir(hull, dir)
+    if dir.x == 0 and dir.y == 0: return 0
     let n = hull.len
     let d = dot128(hull[i], dir)
     var best = i
@@ -1511,16 +1512,6 @@ fn edge_planes(poly: List<Vec>) -> List<HalfPlane>:
         if poly[i] != q: hs.push(HalfPlane.through(poly[i], q))
     hs
 
-fn in_corner(a: Pt, b: Pt, c: Pt, q: Pt) -> Bool =
-    cross128_3(a, b, q) >= 0 and cross128_3(b, c, q) >= 0 and cross128_3(c, a, q) >= 0
-
-fn is_ear(poly: List<Pt>, rem: List<Int>, i: Int) -> Bool:
-    let m = rem.len
-    let (ai, bi, ci) = (rem[(i + m - 1) % m], rem[i], rem[(i + 1) % m])
-    let (a, b, c) = (poly[ai], poly[bi], poly[ci])
-    if cross128_3(a, b, c) <= 0: return false
-    not rem.any(q => q != ai and q != bi and q != ci and in_corner(a, b, c, poly[q]))
-
 /// A triangulation of the counter-clockwise simple polygon `poly` into `n - 2` triangles of
 /// vertex indices, each listed counter-clockwise.
 ///
@@ -1535,18 +1526,112 @@ pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)>:
     if n < 3: return []
     let area2: I128 = sum(poly[i].cross128(poly[(i + 1) % n]) for i in 0..n)
     assert area2 > 0, "polygon_triangulate: polygon must be counter-clockwise"
-    var rem: List<Int> = (0..n).collect()
+    // Cut the polygon into y-monotone pieces with a sweep from the top (de Berg et al., ch. 3):
+    // each reflex vertex with both neighbours below (split) or above (merge) gets a diagonal to
+    // the helper of the edge left of it. Then triangulate each piece along its two chains.
+    var edges: List<(Int, Int)> = [(i, (i + 1) % n) for i in 0..n]
+    var order: List<Int> = (0..n).collect()
+    order.sort(by: i => (-poly[i].y, poly[i].x))
+    var active = SortedSet<MonoEdge>.new()
+    var helper = List.filled(n, 0)
+    var merge = List.filled(n, false)
+    for v in order:
+        let (a, b) = ((v + n - 1) % n, (v + 1) % n)
+        let pv = poly[v]
+        let (a_below, b_below) = (sweeps_after(poly[a], pv), sweeps_after(poly[b], pv))
+        let reflex = turn(poly[a], pv, poly[b]) <= 0
+        if not a_below:
+            if merge[helper[a]]: edges.push((v, helper[a]))
+            let _ = active.remove(mono_edge(poly, a))
+        if a_below == b_below and not reflex:
+            if a_below:
+                let _ = active.add(mono_edge(poly, v))
+                helper[v] = v
+            continue
+        if a_below != b_below and b_below:
+            let _ = active.add(mono_edge(poly, v))
+            helper[v] = v
+            continue
+        let probe = MonoEdge(pv, pv, -1)
+        let j = active.last_true(e => e < probe)!.id
+        if a_below and b_below:
+            edges.push((v, helper[j]))
+            let _ = active.add(mono_edge(poly, v))
+            helper[v] = v
+        elif merge[helper[j]]:
+            edges.push((v, helper[j]))
+        helper[j] = v
+        merge[v] = not a_below and not b_below
     var tris: List<(Int, Int, Int)> = []
-    while rem.len > 3:
-        let m = rem.len
-        let ear = (0..m).find(i => is_ear(poly, rem, i))
-        if let i = ear:
-            tris.push((rem[(i + m - 1) % m], rem[i], rem[(i + 1) % m]))
-            rem = [rem[k] for k in 0..m if k != i]
-        else:
-            assert false, "polygon_triangulate: polygon is not simple"
-    tris.push((rem[0], rem[1], rem[2]))
+    for face in planar_walk(poly, edges).faces:
+        var a2 = I128(0)
+        for i in 0..face.len: a2 += poly[face[i]].cross128(poly[face[(i + 1) % face.len]])
+        if a2 > I128(0): triangulate_monotone(poly, face, mut tris)
     tris
+
+/// Whether `p` comes after `q` in a sweep from the top: lower, or as low and further right.
+fn sweeps_after(p: Pt, q: Pt) -> Bool = p.y < q.y or (p.y == q.y and p.x > q.x)
+
+/// A polygon edge from its top `u` down to its bottom `l`, ordered left to right across the
+/// sweep line of `polygon_triangulate`; with `u == l` it probes for the edges left of a point.
+struct MonoEdge(u: Pt, l: Pt, id: Int)
+
+impl Ord for MonoEdge:
+    fn lt(s, t):
+        if s.id == t.id: return false
+        var c = 0
+        if not sweeps_after(s.u, t.u):
+            c = turn(s.u, s.l, t.u)
+            if c == 0: c = turn(s.u, s.l, t.l)
+        else:
+            c = -turn(t.u, t.l, s.u)
+            if c == 0: c = -turn(t.u, t.l, s.l)
+        if c == 0: s.id < t.id else: c > 0
+
+fn mono_edge(poly: List<Pt>, i: Int) -> MonoEdge = MonoEdge(poly[i], poly[(i + 1) % poly.len], i)
+
+fn ccw_tri(poly: List<Pt>, a: Int, b: Int, c: Int) -> (Int, Int, Int) =
+    if turn(poly[a], poly[b], poly[c]) >= 0: (a, b, c) else: (a, c, b)
+
+/// Triangulate the y-monotone counter-clockwise `face` of `poly` with a stack of the vertices
+/// still waiting for a diagonal, top to bottom.
+fn triangulate_monotone(poly: List<Pt>, face: List<Int>, mut tris: List<(Int, Int, Int)>):
+    let k = face.len
+    var top = 0
+    var bot = 0
+    for i in 1..k:
+        if sweeps_after(poly[face[top]], poly[face[i]]): top = i
+        if sweeps_after(poly[face[i]], poly[face[bot]]): bot = i
+    // Counter-clockwise from the top runs down the left chain to the bottom.
+    var left = List.filled(k, false)
+    var i = top
+    while i != bot:
+        left[i] = true
+        i = (i + 1) % k
+    var order: List<Int> = (0..k).collect()
+    order.sort(by: i => (-poly[face[i]].y, poly[face[i]].x))
+    var st = [order[0], order[1]]
+    for j in 2..k - 1:
+        let u = order[j]
+        if left[u] != left[st.last!]:
+            for t in 0..st.len - 1: tris.push(ccw_tri(poly, face[u], face[st[t]], face[st[t + 1]]))
+            st = [st.last!, u]
+        else:
+            var p = st.pop()!
+            while st.len > 0 and diagonal_inside(poly, face[st.last!], face[p], face[u], left[u]):
+                let q = st.last!
+                tris.push(ccw_tri(poly, face[q], face[p], face[u]))
+                p = q
+                st.pop()
+            st.push(p)
+            st.push(u)
+    let u = order[k - 1]
+    for t in 0..st.len - 1: tris.push(ccw_tri(poly, face[u], face[st[t]], face[st[t + 1]]))
+
+/// Whether the diagonal from `u` up to `q` past the chain vertex `p` between them is inside:
+/// whether the chain turns left at `p` in counter-clockwise order.
+fn diagonal_inside(poly: List<Pt>, q: Int, p: Int, u: Int, on_left: Bool) -> Bool =
+    if on_left: turn(poly[q], poly[p], poly[u]) > 0 else: turn(poly[u], poly[p], poly[q]) > 0
 
 /// The number of lattice points strictly inside the simple lattice polygon `poly`, either
 /// orientation, by Pick's theorem: `I = (|area2| - B) / 2 + 1` with `B = pick_boundary(poly)`.

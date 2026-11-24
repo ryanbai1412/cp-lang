@@ -35,6 +35,21 @@ fn build_keeps_only_probes_that_check() {
 }
 
 #[test]
+fn a_probe_that_traps_on_the_input_is_dropped() {
+    let mut db = Session::new();
+    let text = "var p: 0..=3 = 3\nfor i in 0..2:\n    p = 3 - i\nprint(p)\n";
+    let (variant, kept) = build_running(&mut db, "probe.cp", text, b"").expect("probes run");
+    assert!(kept > 0, "{variant}");
+    assert!(!variant.contains("cpl_probe0_inc()"), "{variant}");
+    let Ok(compiled) = crate::runner::compile_program(&mut db, "probe.cp", &variant) else {
+        panic!("the variant compiles: {variant}");
+    };
+    let run =
+        crate::runner::run_interp_bounded(&compiled.program, "probe.cp", &variant, b"").unwrap();
+    assert!(run.trap.is_none(), "{variant}");
+}
+
+#[test]
 fn a_port_without_probe_sites_is_its_own_variant() {
     let flat = "let n = 3\nprint(n + 1)\n";
     assert!(super::same_as_port(flat));
@@ -76,4 +91,19 @@ fn a_hash_container_inside_a_table_prints_its_sizes() {
     let (variant, _) = build(&mut db, "probe.cp", text).expect("some probe checks");
     assert!(variant.contains(".len for cpl_x in cnt]"), "{variant}");
     assert!(error_lines(&mut db, "probe.cp", &variant).is_none());
+}
+
+#[test]
+fn a_var_of_ranges_prints_its_bounds_not_its_elements() {
+    let mut db = Session::new();
+    let text = "var reach: [0..3]Range<Int> = 0..0\nreach[0] = 0..1_000_000_001\nfor i in 1..3:\n    reach[i] = 0..i\nvar r = 0..1_000_000_001\nprint(reach[1].r, r.l)\n";
+    let (variant, _) = build(&mut db, "probe.cp", text).expect("some probe checks");
+    assert!(
+        variant.contains("print([(cpl_x.l, cpl_x.r) for cpl_x in reach])"),
+        "{variant}"
+    );
+    assert!(variant.contains("print((r.l, r.r))"), "{variant}");
+    for line in variant.lines().filter(|l| l.starts_with("print(")) {
+        assert!(line != "print(reach)" && line != "print(r)", "{variant}");
+    }
 }

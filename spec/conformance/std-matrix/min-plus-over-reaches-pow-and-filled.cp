@@ -1,5 +1,6 @@
 // expect: ok, output "10 10 YES\nYES"
 // A non-default `over:` carries into `*`, `**` and `filled`: min-plus walks, None as no path.
+// std_functions: 2
 domain V = 0..3
 let d: [V, V]?Int = [V, V] (i, j) => if i == j: Some(0) elif j.ord == i.ord + 1: Some(5) else: None
 let m = Mat(d, over: Semiring(min, +))

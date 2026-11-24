@@ -8,8 +8,8 @@
 //   degree leaves some component odd). On a spanning forest of the graph without her, bottom
 //   up each vertex pairs its open friends through itself (the tree path between them) and
 //   passes at most one up; a root left with one is an odd component. O((n + m) log n).
-// Stdin protocol (the grader played over stdin, as in spec.cp): n, m, then m edges (u, v) in
-//   1..=n. Prints "!" at once when the strategy gives up. Otherwise asks "?" for Maria's move (0
+// Stdin protocol (the grader played over stdin, as in spec.cp): n, m, m edges (u, v) in
+//   1..=n, then Maria's seed (unused). Prints "!" at once when the strategy gives up. Otherwise asks "?" for Maria's move (0
 //   once she resigns), answers a move into a friend along its paired path and back to vertex
 //   1, and prints "!" once she has resigned.
 // Bounds: n: 2..=2e5; m: 1..=4e5; edges.u, edges.v: 1..=n
@@ -20,6 +20,7 @@ let n: 2..=2e5 = read()
 let m: 1..=4e5 = read()
 domain V = 1..=n
 let edges: [m](u: V, v: V) = read()
+let _maria_seed: Int = read()
 
 let g = Graph.undirected(edges)
 let home = V.first!

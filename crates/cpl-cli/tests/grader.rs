@@ -107,6 +107,27 @@ fn a_grader_fn_links_in_its_declared_types() {
     assert_eq!(String::from_utf8_lossy(&ran.stdout), expected);
 }
 
+/// A `@grader fn` over its own domain (`p: [C]Int -> List<C>`) is built as
+/// one C++ fn over vectors, `C` bound to the list's length.
+#[test]
+fn a_grader_fn_over_its_own_domain_links() {
+    let here = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/grader_domain");
+    let ran = Command::new(env!("CARGO_BIN_EXE_cpl"))
+        .arg("run")
+        .arg(here.join("festival.cp"))
+        .arg("--grader")
+        .arg(here.join("grader.cpp"))
+        .output()
+        .expect("cpl runs");
+    assert!(
+        ran.status.success(),
+        "{}",
+        String::from_utf8_lossy(&ran.stderr)
+    );
+    let expected = std::fs::read_to_string(here.join("festival.out")).expect("the expected output");
+    assert_eq!(String::from_utf8_lossy(&ran.stdout), expected);
+}
+
 /// A range with an open end has no C++ integer to cross in.
 #[test]
 fn cpl_check_names_an_open_range_at_the_grader() {

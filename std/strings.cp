@@ -3,6 +3,7 @@
 
 use std.math.{pow_mod, inv_mod}
 use std.seq.{collect, nth, find}
+use std.sparse.{LinearRmq}
 use std.range.{first_true, last_true}
 
 const CAP = 2_000_000_000
@@ -70,7 +71,7 @@ pub fn ends_with<S: Indexed, P: Indexed>(self: S, pat: P) -> Bool:
 /// example: `"banana".search('n') == Some(2)`
 /// example: `"banana"[2..].search('a') == Some(3)`
 /// example: `"banana".search("x") == None`
-pub fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
+pub fn search<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K:
     for k in find_all(self, "" + p): return Some(k)
     None
 
@@ -86,7 +87,7 @@ pub fn search<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
 /// example: `"banana".rsearch("an") == Some(3)`
 /// example: `"banana".rsearch('a') == Some(5)`
 /// example: `"ab".rsearch("") == Some(1)`
-pub fn rsearch<S: Indexed<K, T>, K, T, P>(self: S, p: P) -> ?K:
+pub fn rsearch<S: Indexed<K, T>, K, T: Eq, P>(self: S, p: P) -> ?K:
     var last: ?K = None
     for k in find_all(self, "" + p): last = Some(k)
     last
@@ -1080,8 +1081,7 @@ pub struct SuffixArray<T: Ord>:
     pub sa: List<Int>
     rank: List<Int>
     pub lcp: List<Int>
-    mask: List<U64>
-    top: List<Int>
+    rmq: LinearRmq<Int, Int>
     dcum: List<Int>
     src: List<T>
 
@@ -1102,39 +1102,13 @@ pub struct SuffixArray<T: Ord>:
     pub fn new<S: Indexed<K, T>, K>(s: S) -> SuffixArray<T>:
         let n = s.len
         let (sa, rank, lcp) = sa_rank_lcp(s)
-        // The block-of-64 RMQ of std.sparse.LinearRmq over `lcp`, leftmost on ties. It is a
-        // second copy because a struct cannot yet name the LinearRmq built over a List (the
-        // List's index domain is unnameable; a Core bug): use LinearRmq once that is fixed.
-        let m = lcp.len
-        let nb = (m + 63) / 64
-        var mask: List<U64> = List.filled(m, U64(0))
-        unchecked:
-            for b in 0..nb:
-                var cur = U64(0)
-                for i in 64 * b..min(64 * b + 64, m):
-                    while cur != U64(0) and lcp[i] < lcp[64 * b + bit_width(cur) - 1]:
-                        cur ^= U64(1) << (bit_width(cur) - 1)
-                    cur |= U64(1) << (i - 64 * b)
-                    mask[i] = cur
-        var top = List.filled(nb * max(bit_width(nb), 1), 0)
-        unchecked:
-            for b in 0..nb:
-                let (lo, hi) = (64 * b, min(64 * b + 64, m) - 1)
-                let at = mask[hi] & ~((U64(1) << (lo - 64 * b)) - U64(1))
-                top[b] = lo + bit_width(at & (~at + U64(1))) - 1
-            var k = 1
-            while (1 << k) <= nb:
-                for b in 0..nb:
-                    let (x, y) = (top[(k - 1) * nb + b], top[(k - 1) * nb + min(b + (1 << (k - 1)), nb - 1)])
-                    top[k * nb + b] = if lcp[y] < lcp[x]: y else: x
-                k += 1
         var dcum = List.filled(n + 1, 0)
         unchecked:
             for r in 0..n:
                 let shared = if r == 0: 0 else: lcp[r - 1]
                 dcum[r + 1] = dcum[r] + (n - sa[r]) - shared
         let src = [s.nth(i) for i in 0..n]
-        SuffixArray(sa, rank, lcp, mask, top, dcum, src)
+        SuffixArray(sa, rank, lcp, LinearRmq(lcp), dcum, src)
 
     /// The length `n` of the sequence the suffix array was built over.
     ///
@@ -1262,24 +1236,8 @@ pub struct SuffixArray<T: Ord>:
         if m == 0 or self.lcp_between(l1, l2) >= m: return if n1 < n2: -1 elif n1 > n2: 1 else: 0
         if rank[l1] < rank[l2]: -1 else: 1
 
-    fn in_block(self, l: Int, r: Int) -> Int:
-        let base = l - l % 64
-        let at = mask[r] & ~((U64(1) << (l - base)) - U64(1))
-        base + bit_width(at & (~at + U64(1))) - 1
-
-    fn earlier_min(self, i: Int, j: Int) -> Int = if lcp[j] < lcp[i]: j else: i
-
     // The leftmost position of the least `lcp` in `lo..hi` (non-empty).
-    fn arg_min(self, lo: Int, hi: Int) -> Int:
-        let h = hi - 1
-        let (bl, bh) = (lo / 64, h / 64)
-        if bl == bh: return self.in_block(lo, h)
-        var ans = self.in_block(lo, 64 * bl + 63)
-        if bl + 1 < bh:
-            let nb = (lcp.len + 63) / 64
-            let k = bit_width(bh - bl - 1) - 1
-            ans = self.earlier_min(ans, self.earlier_min(top[k * nb + bl + 1], top[k * nb + bh - (1 << k)]))
-        self.earlier_min(ans, self.in_block(64 * bh, h))
+    fn arg_min(self, lo: Int, hi: Int) -> Int = rmq.argbest(lo..hi)
 
     /// The number of distinct non-empty substrings: `n * (n + 1) / 2 - sum(lcp)`.
     ///
@@ -1437,19 +1395,33 @@ const RH_M2 = 1_000_000_009
 
 /// \(O(1)\) space and comparison. A 64-bit double-mod polynomial hash value (`Copy + Eq + Ord + Hash`).
 /// Can itself be fed into another `RollingHash` (e.g. hashing rows into a column hash for 2D grids).
-pub struct HashVal(pub h1: Int, pub h2: Int):
+pub struct HashVal(pub h1: Int, pub h2: Int)
+
+/// \(O(1)\) per element. Elements accepted by `RollingHash`: `Char`, `Int`, `Bool`, `HashVal`, or any user type
+/// implementing `hash_token`.
+pub trait Hashable:
+    @get fn hash_token(self) -> Int = Int(self)
+
+impl Hashable for Int:
+    @get fn hash_token(self) -> Int = self
+
+impl Hashable for Char:
+    @get fn hash_token(self) -> Int = Int(self)
+
+impl Hashable for Bool:
+    @get fn hash_token(self) -> Int = if self: 1 else: 0
+
+impl<D: Domain> Hashable for D:
+    @get fn hash_token(self) -> Int = self.ord
+
+impl Hashable for HashVal:
     /// One integer that identifies the pair, `(h1 << 31) | h2`, so a `RollingHash` can hash a
     /// sequence of `HashVal` (rows of a grid, say).
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `HashVal(1, 2).hash_token == 2147483650`
-    @get pub fn hash_token(self) -> Int = (h1 << 31) | h2
-
-/// \(O(1)\) per element. Elements accepted by `RollingHash`: `Char`, `Int`, `Bool`, `HashVal`, or any user type
-/// implementing `hash_token`.
-pub trait Hashable:
-    @get fn hash_token(self) -> Int = Int(self)
+    @get fn hash_token(self) -> Int = (self.h1 << 31) | self.h2
 
 @get fn ord(self: Int) -> Int = self
 
@@ -4027,3 +3999,41 @@ impl Show for Hash61:
     ///
     /// example: `let h = RollingHash61("abab"); "{h.get(0..2)}" == "{h.get(2..4)}"`
     fn show(h) = "hash {h.v}"
+
+impl Show for KmpAutomaton<A>:
+    /// How many states the automaton has (the pattern's length plus one), as `n states`.
+    ///
+    /// example: `"{KmpAutomaton<Char>("aba")}" == "4 states"`
+    fn show(k) = "{k.len} states"
+
+impl Show for Hash2D<R, C>:
+    /// The size of the grid it hashes, as `rows x cols grid`.
+    ///
+    /// example: `domain R = 0..2; domain C = 0..4; "{Hash2D<R, C>((r, c) => c.ord)}" == "2x4 grid"`
+    fn show(h) = "{R.count}x{C.count} grid"
+
+impl Show for DynamicHash<D>:
+    /// How many elements it hashes, as `n elements` (`1 element`).
+    ///
+    /// example: `"{DynamicHash("abc")}" == "3 elements"`
+    fn show(h):
+        if h.len == 1: return "1 element"
+        "{h.len} elements"
+
+impl Show for PalindromicTree<A>:
+    /// The elements pushed so far, space-separated, then how many distinct palindromes they hold.
+    ///
+    /// example: `"{PalindromicTree<Char>.of("aba")}" == "a b a: 3 palindromes"`
+    fn show(t):
+        var out = ""
+        for a in t.chars:
+            if not out.is_empty: out += " "
+            out += "{a}"
+        "{out}: {t.distinct} palindromes"
+
+impl Show for AhoCorasick<A>:
+    /// How many patterns it matches and how many states its trie has.
+    ///
+    /// example: `"{AhoCorasick<Char>(["a", "ab", "b"])}" == "3 patterns, 4 states"`
+    fn show(ac) = "{ac.pat_state.len} patterns, {ac.len} states"
+

@@ -125,9 +125,7 @@ pub(crate) fn ready_to_send(
 /// the command in `CPL_CLIPBOARD`. Returns the tool's name.
 pub(crate) fn copy_to_clipboard(text: &str) -> Result<String, String> {
     use std::process::{Command, Stdio};
-    let chosen = std::env::var("CPL_CLIPBOARD")
-        .ok()
-        .filter(|c| !c.trim().is_empty());
+    let chosen = cpl_env::CLIPBOARD.text();
     let candidates: Vec<Vec<String>> = match &chosen {
         Some(command) => vec![vec!["sh".into(), "-c".into(), command.clone()]],
         None => [

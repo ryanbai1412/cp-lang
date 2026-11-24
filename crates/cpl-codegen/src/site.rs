@@ -143,7 +143,7 @@ impl Emitter<'_> {
         self.line(out, &format!("if (!({cond})) cpl::fail({why});"));
     }
 
-    fn in_library(&self) -> bool {
+    pub(crate) fn in_library(&self) -> bool {
         self.fn_id
             .is_some_and(|id| self.program.library_fns.get(id).copied().unwrap_or(false))
     }

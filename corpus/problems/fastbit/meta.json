@@ -5,10 +5,14 @@
   {"id": "3657448", "language": "CPP17", "result": "AC", "time": 0.405557718, "memory_kb": 3640.0, "file": "corpus/submissions/3657448.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/fastbit/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Function-only (setbits) on the judge. orig.cpp is the AC submission corpus/submissions/3657448.cpp with a grader main for the stdin adaptation: `N S` calls setbits on N splitmix64(S) outputs and prints their sum, so --max reaches the statement's 1e8 calls."
 }

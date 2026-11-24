@@ -33,7 +33,6 @@ std/algebra.cp: Semigroup.opt(self) -> Monoid<?T>
 std/algebra.cp: cmp<T: Ord>(self: T, other: T) -> Ordering
 std/algebra.cp: desc<T>(x: T) -> Desc<T>
 std/algebra.cp: each<Ms>(..ms: Ms) -> Each<Ms>
-std/algebra.cp: fold<T, M, S: Seq>(m: M, xs: S) -> T
 std/algebra.cp: minmax<T: Ord>(a: T, b: T) -> (T, T)
 std/algebra.cp: opt<T>(self: (T, T) -> T) -> Monoid<?T>
 std/algebra.cp: point_action<T, F, M>(id: F, compose: (F, F) -> F, apply: (F, T) -> T, over: M) -> Action<T, F>
@@ -753,7 +752,6 @@ std/graph.cp: Paths.iter(self) -> yields (v: V, d: W)
 std/graph.cp: Paths.path(self, t: V) -> ?List<V>
 std/graph.cp: Paths.reached(self, v: V) -> Bool
 std/graph.cp: Paths.tight<>(self, g: Next<V>) -> [V]List<A>
-std/graph.cp: Reweighted.out(self, u: V) -> yields (to: V, e: E, w: W)
 std/graph.cp: TwoSat.add_eq(mut self, a: Lit<X>, b: Lit<X>)
 std/graph.cp: TwoSat.add_or(mut self, a: Lit<X>, b: Lit<X>)
 std/graph.cp: TwoSat.add_xor(mut self, a: Lit<X>, b: Lit<X>)
@@ -1593,11 +1591,11 @@ std/seq.cp: Stepped.keys(self) -> StepKeys
 std/seq.cp: Stepped.len(self) -> Int
 std/seq.cp: Stepped.nth(self, j: Int) -> T
 std/seq.cp: SubseqStep.prune(mut self)
-std/seq.cp: adjacent<S: Seq, T>(self: S) -> yields (T, T)
-std/seq.cp: adjacent_diff<S: Seq, T>(self: S) -> List<T>
-std/seq.cp: all<S: Seq, T>(self: S, p: T -> Bool) -> Bool
+std/seq.cp: adjacent<S: Seq<T>, T>(self: S) -> yields (T, T)
+std/seq.cp: adjacent_diff<S: Seq<T>, T>(self: S) -> List<T>
+std/seq.cp: all<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool
 std/seq.cp: all_some<S: Seq<?U>, U>(self: S) -> ?List<U>
-std/seq.cp: any<S: Seq, T>(self: S, p: T -> Bool) -> Bool
+std/seq.cp: any<S: Seq<T>, T>(self: S, p: T -> Bool) -> Bool
 std/seq.cp: argmax<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D
 std/seq.cp: argmin<S: Keyed, D, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?D
 std/seq.cp: bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>
@@ -1607,75 +1605,76 @@ std/seq.cp: chain<Ss, T>(..seqs: Ss) -> yields T
 std/seq.cp: chunks<S: Indexed>(self: S, k: Int) -> yields Slice<S>
 std/seq.cp: chunks_padded<S: Indexed, T>(self: S, k: Int, pad: T) -> yields List<T>
 std/seq.cp: clone<T>(self: T) -> T
-std/seq.cp: collect<S: Seq, T>(self: S) -> List<T>
+std/seq.cp: collect<S: Seq<T>, T>(self: S) -> List<T>
 std/seq.cp: combinations<S: Indexed, T>(self: S, k: Int) -> yields List<T>
 std/seq.cp: compose<A, B, C>(f: [A]B, g: [B]C) -> [A]C
 std/seq.cp: compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>)
-std/seq.cp: count<S: Seq, T>(self: S, p: T -> Bool = _ => true) -> Int
+std/seq.cp: contains<S: Seq<T>, T: Eq>(self: S, x: T) -> Bool
+std/seq.cp: count<S: Seq<T>, T>(self: S, p: T -> Bool = _ => true) -> Int
 std/seq.cp: count_in<D, T, K>(self: [D]T, r: Range<K>, by: T -> K = x => x) -> Int
 std/seq.cp: counting_sort<S: IndexedMut, T, K>(mut self: S, by: T -> K)
 std/seq.cp: covering<P, D>(self: [P]Range<D>, r: Range<D>) -> Range<P>
 std/seq.cp: cycle<D>(self: [D]D, from: D) -> yields D
-std/seq.cp: cyclic_pairs<S: Seq, T>(self: S) -> yields (T, T)
+std/seq.cp: cyclic_pairs<S: Seq<T>, T>(self: S) -> yields (T, T)
 std/seq.cp: dedup<T>(mut self: List<T>)
-std/seq.cp: deduped<S: Seq, T>(self: S) -> List<T>
-std/seq.cp: distinct<S: Seq, T, K>(self: S, by: T -> K = x => x) -> List<T>
+std/seq.cp: deduped<S: Seq<T>, T>(self: S) -> List<T>
+std/seq.cp: distinct<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> List<T>
 std/seq.cp: drop<S: Indexed>(self: S, k: Int = 1) -> Slice<S>
 std/seq.cp: drop_last<S: Indexed>(self: S, k: Int = 1) -> Slice<S>
-std/seq.cp: drop_while<S: Seq, T>(self: S, drop: T -> Bool) -> yields T
+std/seq.cp: drop_while<S: Seq<T>, T>(self: S, drop: T -> Bool) -> yields T
 std/seq.cp: equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>
 std/seq.cp: even<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>
 std/seq.cp: filter<S: Seq<T>, T>(self: S, p: T -> Bool) -> Filtered<S, T>
-std/seq.cp: filter_map<S: Seq, T, U>(self: S, f: T -> ?U) -> yields U
-std/seq.cp: find<S: Seq, T>(self: S, p: T -> Bool) -> ?T
-std/seq.cp: first<S: Seq, T>(self: S) -> ?T
+std/seq.cp: filter_map<S: Seq<T>, T, U>(self: S, f: T -> ?U) -> yields U
+std/seq.cp: find<S: Seq<T>, T>(self: S, p: T -> Bool) -> ?T
+std/seq.cp: first<S: Seq<T>, T>(self: S) -> ?T
 std/seq.cp: first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D
-std/seq.cp: first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U
+std/seq.cp: first_some<S: Seq<T>, T, U>(self: S, f: T -> ?U) -> ?U
 std/seq.cp: flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V
 std/seq.cp: flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T
 std/seq.cp: fold<S: Seq<T>, T, M>(self: S, op: M) -> T
 std/seq.cp: fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> Acc
 std/seq.cp: get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V
-std/seq.cp: group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>
+std/seq.cp: group<S: Seq<T>, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>
 std/seq.cp: index_pairs<D>(self: Range<D>) -> yields (D, D)
 std/seq.cp: insert<T>(mut self: List<T>, i: Int, x: T)
 std/seq.cp: intersect<T>(mut self: Set<T>, o: Set<T>)
 std/seq.cp: inverse<I, V>(self: [I]V) -> [V]I
-std/seq.cp: inversions<S: Seq, T>(self: S) -> Int
-std/seq.cp: is_permutation<A: Seq, B: Seq, T>(self: A, b: B) -> Bool
-std/seq.cp: is_sorted<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Bool
-std/seq.cp: is_subsequence<S: Seq, N: Indexed, T>(self: S, of: N) -> Bool
+std/seq.cp: inversions<S: Seq<T>, T>(self: S) -> Int
+std/seq.cp: is_permutation<A: Seq<T>, B: Seq<T>, T>(self: A, b: B) -> Bool
+std/seq.cp: is_sorted<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Bool
+std/seq.cp: is_subsequence<S: Seq<T>, N: Indexed, T>(self: S, of: N) -> Bool
 std/seq.cp: items<S: Keyed<K, T>, K, T>(self: S) -> Items<S>
 std/seq.cp: iterate<T>(from: ?T, step: T -> ?T) -> yields T
-std/seq.cp: keyed<S: Seq, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, T, K>
+std/seq.cp: keyed<S: Seq<T>, I: Indexed, T, K>(self: S, keys: I = 0.., by: ?(T -> K) = None) -> Keys<S, I, T, K>
 std/seq.cp: keys<T>(self: List<T>) -> Range<Int>
 std/seq.cp: kway_merge<S: Indexed, T>(lists: List<S>) -> List<T>
 std/seq.cp: last<S: Bidir, T>(self: S) -> ?T
 std/seq.cp: last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D
 std/seq.cp: lcs<A: Indexed, B: Indexed, T>(a: A, b: B) -> List<(Int, Int)>
 std/seq.cp: lis<D, T, K>(self: [D]T, strict: Bool = true, by: T -> K = x => x) -> List<D>
-std/seq.cp: majority<S: Seq, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)
+std/seq.cp: majority<S: Seq<T>, T>(self: S, eq: (T, T) -> Bool = (a, b) => a == b) -> ?(val: T, count: Int)
 std/seq.cp: map<S: Seq<T>, T, U>(self: S, f: T -> U) -> Mapped<S, T, U>
-std/seq.cp: max<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
-std/seq.cp: max_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)
-std/seq.cp: max_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>
+std/seq.cp: max<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
+std/seq.cp: max_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)
+std/seq.cp: max_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>
 std/seq.cp: maximal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]Range<D>
-std/seq.cp: mean<S: Seq, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64
+std/seq.cp: mean<S: Seq<T>, T>(self: S, of: T -> F64 = x => F64(x)) -> ?F64
 std/seq.cp: merge_sorted<A: Indexed, B: Indexed, T, K>(self: A, b: B, by: T -> K = x => x) -> List<T>
-std/seq.cp: min<S: Seq, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
-std/seq.cp: min_count<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)
-std/seq.cp: min_k<S: Seq, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>
+std/seq.cp: min<S: Seq<T>, T, K>(self: S, by: T -> K = x => x, ties: Ties = Ties.First) -> ?T
+std/seq.cp: min_count<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(val: T, count: Int)
+std/seq.cp: min_k<S: Seq<T>, T, K>(self: S, k: Int, by: T -> K = x => x) -> List<T>
 std/seq.cp: minimal<D, T, St: Track<T>>(self: [D]T, state: St, ok: St -> Bool, anchor: Anchor = Anchor.End) -> [D]?Range<D>
-std/seq.cp: minmax<S: Seq, T, K>(self: S, by: T -> K = x => x) -> ?(T, T)
+std/seq.cp: minmax<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> ?(T, T)
 std/seq.cp: next_permutation<S: IndexedMut>(mut self: S) -> Bool
 std/seq.cp: next_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D
 std/seq.cp: next_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D
 std/seq.cp: nth<S: Indexed, T>(self: S, k: Int) -> T
 std/seq.cp: odd<S: Indexed<K, T>, K, T>(self: S) -> Stepped<S, T>
 std/seq.cp: outermost<D, S: Seq<Range<D>>>(self: S) -> List<Range<D>>
-std/seq.cp: pairs<S: Seq, T>(self: S) -> yields (T, T)
+std/seq.cp: pairs<S: Seq<T>, T>(self: S) -> yields (T, T)
 std/seq.cp: partial_inverse<I, V>(self: [I]?V) -> [V]?I
-std/seq.cp: partition<S: Seq, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>)
+std/seq.cp: partition<S: Seq<T>, T>(self: S, keep: T -> Bool) -> (List<T>, List<T>)
 std/seq.cp: partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int
 std/seq.cp: perm_cycles<V>(self: [V]V) -> List<List<V>>
 std/seq.cp: perm_order<V>(self: [V]V) -> Int
@@ -1691,27 +1690,28 @@ std/seq.cp: present<S: Seq<?U>, U>(self: S) -> yields U
 std/seq.cp: prev_permutation<S: IndexedMut>(mut self: S) -> Bool
 std/seq.cp: prev_same<D, T, K>(self: [D]T, by: T -> K = x => x) -> [D]?D
 std/seq.cp: prev_smaller<D, T, K>(self: [D]T, by: T -> K = x => x, strict: Bool = true) -> [D]?D
-std/seq.cp: prod<S: Seq, T>(self: S) -> T
+std/seq.cp: prod<S: Seq<T>, T>(self: S) -> T
 std/seq.cp: product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U)
 std/seq.cp: radix_sort<S: IndexedMut, T>(mut self: S, by: T -> Int = x => x)
 std/seq.cp: rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>
 std/seq.cp: record_highs<D, T, K>(self: [D]T, by: T -> K = x => x) -> yields D
-std/seq.cp: reduce<S: Seq, T>(self: S, f: (T, T) -> T) -> ?T
+std/seq.cp: reduce<S: Seq<T>, T>(self: S, f: (T, T) -> T) -> ?T
 std/seq.cp: rekey<D, K, T>(self: [D]T, keys: Range<K>) -> [K]T
 std/seq.cp: remove<T>(mut self: List<T>, i: Int) -> T
 std/seq.cp: resized<S: Indexed, T>(self: S, n: Int, fill: T) -> List<T>
 std/seq.cp: rev<S: Bidir>(self: S) -> Rev<S>
 std/seq.cp: reverse<S: IndexedMut>(mut self: S, range: ?Range<Int> = None)
+std/seq.cp: reversed<S: Bidir, T>(self: S) -> List<T>
 std/seq.cp: rfind<S: Bidir, T>(self: S, p: T -> Bool) -> ?T
 std/seq.cp: ring<D, T>(self: [D]T) -> Ring<D, T>
 std/seq.cp: rotate_left<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None)
 std/seq.cp: rotate_right<S: IndexedMut>(mut self: S, k: Int, range: ?Range<Int> = None)
-std/seq.cp: rotated_left<S: Seq, T>(self: S, k: Int) -> List<T>
-std/seq.cp: rotated_right<S: Seq, T>(self: S, k: Int) -> List<T>
+std/seq.cp: rotated_left<S: Seq<T>, T>(self: S, k: Int) -> List<T>
+std/seq.cp: rotated_right<S: Seq<T>, T>(self: S, k: Int) -> List<T>
 std/seq.cp: runs<S: Indexed, T, K>(self: S, by: T -> K = x => x, link: ?((T, T) -> Bool) = None) -> yields Slice<S>
 std/seq.cp: select<S: IndexedMut, T, K>(mut self: S, k: Int, by: T -> K = x => x, cmp: ?((T, T) -> Bool) = None)
 std/seq.cp: sort<S: IndexedMut, T, K: Ord>(mut self: S; by: T -> K = x => x)
-std/seq.cp: sorted<S: Seq, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>
+std/seq.cp: sorted<S: Seq<T>, T, K: Ord>(self: S; by: T -> K = x => x) -> List<T>
 std/seq.cp: sorted_diff<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
 std/seq.cp: sorted_intersect<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
 std/seq.cp: sorted_union<A: Indexed, B: Indexed, T>(self: A, b: B) -> List<T>
@@ -1722,22 +1722,22 @@ std/seq.cp: stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> 
 std/seq.cp: step<S: Indexed<K, T>, K, T>(self: S, k: Int) -> Stepped<S, T>
 std/seq.cp: subsequences<S: Indexed, T>(self: S) -> yields SubseqStep<T>
 std/seq.cp: subtract<T>(mut self: Set<T>, o: Set<T>)
-std/seq.cp: sum<S: Seq, T, U>(self: S, of: T -> U = x => x) -> U
+std/seq.cp: sum<S: Seq<T>, T, U>(self: S, of: T -> U = x => x) -> U
 std/seq.cp: swap<A>(self: (A, A)) -> (A, A)
 std/seq.cp: swap_at<D, T>(mut self: [D]T, i: D, j: D)
 std/seq.cp: take<S: Indexed>(self: S, k: Int) -> Slice<S>
 std/seq.cp: take_all<T>(mut self: List<T>) -> List<T>
 std/seq.cp: take_last<S: Indexed>(self: S, k: Int) -> Slice<S>
-std/seq.cp: take_while<S: Seq, T>(self: S, keep: T -> Bool) -> yields T
-std/seq.cp: tally<S: Seq, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>
+std/seq.cp: take_while<S: Seq<T>, T>(self: S, keep: T -> Bool) -> yields T
+std/seq.cp: tally<S: Seq<T>, T, K>(self: S, by: T -> K = x => x) -> Counter<K, Int>
 std/seq.cp: union<T>(mut self: Set<T>, o: Set<T>)
 std/seq.cp: unzip<S: Seq<(A, B)
 std/seq.cp: update<K, V>(mut self: Map<K, V>, k: K, init: V, f: fn(V) -> V)
 std/seq.cp: valleys<D, T>(self: [D]T) -> yields Range<D>
 std/seq.cp: windows<S: Indexed>(self: S, k: Int) -> yields Slice<S>
 std/seq.cp: with_domain<T>(self: List<T>) -> (domain I, [I]T)
-std/seq.cp: with_next<S: Seq, T>(self: S) -> yields (T, ?T)
-std/seq.cp: with_prev<S: Seq, T>(self: S) -> yields (?T, T)
+std/seq.cp: with_next<S: Seq<T>, T>(self: S) -> yields (T, ?T)
+std/seq.cp: with_prev<S: Seq<T>, T>(self: S) -> yields (?T, T)
 std/seq.cp: zip<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)
 std/seq.cp: zip_exact<A: Indexed<K, T>, B: Positional<U>, K, T, U>(a: A, b: B) -> yields (T, U)
 std/slope.cp: Concave.add_abs(mut self, a: Int)
@@ -1963,7 +1963,7 @@ std/strings.cp: is_palindrome<S: Indexed>(s: S) -> Bool
 std/strings.cp: is_space(self: Char) -> Bool
 std/strings.cp: is_upper(self: Char) -> Bool
 std/strings.cp: join<S: Seq>(self: Str, parts: S) -> Str
-std/strings.cp: lcs_all<A, S: Seq>(words: List<S>) -> Int
+std/strings.cp: lcs_all<A, S: Seq<A>>(words: List<S>) -> Int
 std/strings.cp: lower(self: Char) -> Char
 std/strings.cp: lyndon_factorization<S: Indexed<K, T>, K, T>(s: S) -> List<K>
 std/strings.cp: lyndon_runs<S: Indexed>(s: S) -> List<(l: Int, r: Int, period: Int)>

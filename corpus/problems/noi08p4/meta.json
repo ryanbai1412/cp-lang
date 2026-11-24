@@ -13,5 +13,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The DMOJ statement is behind a challenge page; bounds and the sample are from the Luogu mirror (P4202). Both accepted C++ submissions match a brute (every <= m successor change keeping 1 reachable, R(1) by Gaussian elimination) on 150 gen.py inputs with n <= 6, and agree with each other on 300 inputs with n = 60."
 }

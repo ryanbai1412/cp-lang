@@ -1,0 +1,56 @@
+# The package's cases (problem-packages/R9): `input` inline, else `gen.py seed size` or `args`.
+# N is always 10 000, so every case is gen.py's; `--sample` is the statement's example.
+
+[[case]]
+args = ["--sample"]
+
+[[case]]
+seed = 1
+size = 1
+
+[[case]]
+seed = 2
+size = 2
+
+[[case]]
+seed = 3
+size = 4
+
+[[case]]
+seed = 4
+size = 8
+
+[[case]]
+seed = 5
+size = 16
+
+[[case]]
+seed = 6
+size = 32
+
+[[case]]
+seed = 7
+size = 100
+
+[[case]]
+seed = 8
+size = 1000
+
+[[case]]
+seed = 9
+size = 3
+
+[[case]]
+seed = 10
+size = 6
+
+[[case]]
+seed = 11
+size = 12
+
+[[case]]
+seed = 12
+size = 24
+
+[[case]]
+args = ["--max"]

@@ -16,21 +16,17 @@ fn scratch(name: &str) -> PathBuf {
     dir
 }
 
-#[cfg_attr(not(unix), allow(dead_code))]
 fn sh(script: &str) -> Program {
     Program::command("script", &["sh", "-c", script])
 }
 
 /// Writes an executable shell script and returns its path.
-#[cfg_attr(not(unix), allow(dead_code))]
+#[cfg(unix)]
 fn script(dir: &Path, name: &str, body: &str) -> String {
+    use std::os::unix::fs::PermissionsExt;
     let path = dir.join(name);
     std::fs::write(&path, format!("#!/bin/sh\n{body}\n")).unwrap();
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
-    }
+    std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
     path.display().to_string()
 }
 
@@ -55,7 +51,6 @@ const COMPANION: &str = r#"{
 }"#;
 
 /// Prints the largest number on the second line.
-#[cfg_attr(not(unix), allow(dead_code))]
 const MAX: &str = "awk 'NR==2 { m=$1; for (i=2;i<=NF;i++) if ($i>m) m=$i; print m }'";
 
 #[test]
@@ -833,6 +828,7 @@ fn listen_takes_a_problem_posted_by_the_extension() {
     assert!(notes.contains("ignored a request"), "{notes}");
 }
 
+#[cfg(unix)]
 #[test]
 fn test_judges_memory_against_the_problems_limit() {
     if !cfg!(target_os = "linux") {

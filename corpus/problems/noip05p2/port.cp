@@ -27,7 +27,7 @@ let end = shrunk + 1  // past the last stone nothing matters
 var stone: [0..end]Bool = false
 for x in spot: stone[x] = true
 // fewest[p]: stones landed on from p onwards, p included
-var fewest: [0..end + t]Int = 0
+var fewest: [0..end + t]0..=100 = 0  // at most m stones
 for p in (0..end).rev:
     fewest[p] = min(fewest[p + hop] for hop in s..=t)! + Int(stone[p])
 print(fewest[0])

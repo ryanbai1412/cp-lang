@@ -67,6 +67,9 @@ pub struct Target {
     pub windows: bool,
     /// The runtime checks the build keeps.
     pub checks: Checks,
+    /// Whether the judge's CPUs have AVX2: the C++ then targets it and
+    /// lets g++ vectorise loops whose length is only known at run time.
+    pub avx2: bool,
 }
 
 impl Default for Target {
@@ -76,6 +79,7 @@ impl Default for Target {
             thread_stack: Some(1 << 30),
             windows: false,
             checks: Checks::default(),
+            avx2: false,
         }
     }
 }
@@ -190,16 +194,23 @@ fn prepared(program: &cpl_ir::Program, target: &Target) -> cpl_ir::Program {
     let mut program = program.clone();
     (program.unordered_maps, program.unordered_sets) = unordered::find(&program);
     program.wide_domains = width::wide_domains(&program);
-    prune::prune(&mut program, target.checks != Checks::None);
+    prune::prune(
+        &mut program,
+        target.checks.keeps(cpl_ir::checks::Check::Asserts),
+    );
     splice::splice(&mut program);
     unpack::unpack(&mut program);
     optfn::known_options(&mut program);
+    capfn::zero_size_captures(&mut program);
     split::split(&mut program);
     capfn::known_captures(&mut program);
     // A closure `capfn` freed of its capture can now split its struct.
     split::split(&mut program);
     // A param `optfn` knows is `None` can leave a field only ever `None`.
-    prune::prune(&mut program, target.checks != Checks::None);
+    prune::prune(
+        &mut program,
+        target.checks.keeps(cpl_ir::checks::Check::Asserts),
+    );
     program.unreached_closures = emit::unreached_closures(&program);
     program
 }

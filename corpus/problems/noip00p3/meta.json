@@ -2,13 +2,17 @@
  "problem": "noip00p3",
  "source": "noip",
  "submissions": [
-  {"id": "5067872", "language": "CPP17", "result": "AC", "time": 0.026990224, "memory_kb": 7452.0, "file": "corpus/submissions/5067872.cpp"}
+  {"id": "5067872", "language": "CPP17", "result": "AC", "time": 0.026990224, "memory_kb": 7452.0, "file": null}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/noip00p3/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "5067872 passed the judge's data but indexes memo[1 << 20] by i * 3^n and arr[20] at n, both out of bounds once n >= 13, so it is no reference; its file is gone and this record stays. orig.cpp is the depth-first search over words used at most twice, written for the corpus and checked against the sample and a brute that builds the dragon strings."
 }

@@ -4,11 +4,15 @@
  "submissions": [
   {"id": "3615637", "language": "CPP17", "result": "CE", "time": null, "memory_kb": null, "file": "corpus/submissions/3615637.cpp"}
  ],
- "cpp_ac": 0,
- "artifacts": {},
+ "cpp_ac": 1,
+ "artifacts": {
+  "original": [
+   "corpus/problems/hci16ulamspiral/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "The only C++ submission is CE, so orig.cpp is written from the statement. It matches an independent turn-left-when-free simulation for every N = 1..31."
 }

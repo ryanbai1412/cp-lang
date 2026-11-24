@@ -40,6 +40,7 @@ fn inflow(a: List<Int>) -> List<Int>:
         into.push(carried)
     into
 
-let left = inflow(a)
 let right = inflow(a.rev)
-print([a[i] + left[i] + right[n - 1 - i] for i in 0..n])
+var ans = inflow(a)
+for i in 0..n: ans[i] += a[i] + right[n - 1 - i]
+print(ans)

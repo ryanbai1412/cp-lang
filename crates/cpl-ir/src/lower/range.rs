@@ -429,20 +429,8 @@ impl<'a> Lowerer<'a> {
                         .map(|e| RangeInfo::Elem(Box::new(e)));
                 }
                 if args.is_empty() {
-                    if let Some(GenArg::Range(lo_c, hi_c)) = self.gen_env.get(&name.text).cloned() {
-                        let lo_expr = lo_c.map(|v| self.int_lit(v, ty.span));
-                        let hi_expr = hi_c.map(|v| self.int_lit(v, ty.span));
-                        return Some(RangeInfo::Scalar(RangeBounds {
-                            lo: lo_expr,
-                            hi: hi_expr,
-                            lo_const: lo_c,
-                            hi_const: hi_c,
-                            text: format!(
-                                "{}..={}",
-                                lo_c.map_or(String::new(), |v| v.to_string()),
-                                hi_c.map_or(String::new(), |v| v.to_string())
-                            ),
-                        }));
+                    if let Some(GenArg::Range(lo, hi)) = self.gen_env.get(&name.text).cloned() {
+                        return Some(RangeInfo::Scalar(self.const_bounds(lo, hi, ty.span)));
                     }
                     if let Some(Sym::Alias(aid)) = self.get_sym(&name.text) {
                         return self.in_alias(aid, |lw, ty| lw.range_info_from_ast(ty));
@@ -540,6 +528,60 @@ impl<'a> Lowerer<'a> {
 
     /// The range of fn `id`'s param declared `ty`, read in `id`'s own
     /// module, when its ends are constants and so mean the same at the call.
+    /// The range a parameter's declared cells hold (`xs: List<-5..=5>`),
+    /// when their bounds are constant.
+    pub(super) fn const_param_cells(&mut self, id: FnId, ty: &ast::Type) -> Option<RangeInfo> {
+        let ast::TypeKind::Named { name, args } = &ty.kind else {
+            return None;
+        };
+        if name.text != "List" || args.len() != 1 {
+            return None;
+        }
+        match self.const_param_cells(id, &args[0]) {
+            Some(inner) => Some(RangeInfo::Elem(Box::new(inner))),
+            None => self
+                .const_param_range(id, &args[0])
+                .map(|b| RangeInfo::Elem(Box::new(RangeInfo::Scalar(b)))),
+        }
+    }
+
+    /// Checks each cell of a list literal against the range its destination
+    /// declares (`first([x])` for `xs: List<-5..=5>`): a literal's cells are
+    /// stored as given, so each is checked as a scalar would be.
+    pub(super) fn check_fresh_cells(
+        &mut self,
+        value: Expr,
+        info: &RangeInfo,
+        written: &ast::Expr,
+    ) -> Expr {
+        let RangeInfo::Elem(inner) = info else {
+            return value;
+        };
+        let cells = match &written.kind {
+            ast::ExprKind::List(cells) => &cells[..],
+            _ => &[],
+        };
+        match value.kind {
+            ExprKind::Tuple(items)
+                if matches!(value.ty, Ty::List(_)) && items.len() == cells.len() =>
+            {
+                let items = items
+                    .into_iter()
+                    .zip(cells)
+                    .map(|(item, cell)| match inner.as_ref() {
+                        RangeInfo::Scalar(b) => self.check_range(item, b, cell.span),
+                        nested => self.check_fresh_cells(item, nested, cell),
+                    })
+                    .collect();
+                Expr {
+                    kind: ExprKind::Tuple(items),
+                    ..value
+                }
+            }
+            kind => Expr { kind, ..value },
+        }
+    }
+
     pub(super) fn const_param_range(&mut self, id: FnId, ty: &ast::Type) -> Option<RangeBounds> {
         let saved_m = std::mem::replace(&mut self.cur_mod, self.sigs[id].mod_id);
         let saved_off = std::mem::replace(&mut self.offset, self.sigs[id].offset);
@@ -1057,6 +1099,26 @@ impl<'a> Lowerer<'a> {
             _ => {}
         }
         false
+    }
+
+    /// The bounds of a range a type parameter is bound to: `V = 0..=10`.
+    pub(super) fn const_bounds(
+        &mut self,
+        lo: Option<i64>,
+        hi: Option<i64>,
+        span: Span,
+    ) -> RangeBounds {
+        RangeBounds {
+            lo: lo.map(|v| self.int_lit(v, span)),
+            hi: hi.map(|v| self.int_lit(v, span)),
+            lo_const: lo,
+            hi_const: hi,
+            text: format!(
+                "{}..={}",
+                lo.map_or(String::new(), |v| v.to_string()),
+                hi.map_or(String::new(), |v| v.to_string())
+            ),
+        }
     }
 
     /// Wraps `value` in `ExprKind::RangeCheck` unless statically proven inside `bounds`.

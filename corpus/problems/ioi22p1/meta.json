@@ -5,10 +5,14 @@
   {"id": "4785724", "language": "CPP17", "result": "AC", "time": 9.043615411, "memory_kb": 42832.0, "file": "corpus/submissions/4785724.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi22p1/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Grader-only (max_weights): orig.cpp is accepted submission 4785724 (corpus/submissions/4785724.cpp) with a main for the sample grader's format (N M, then X Y W lines); it agrees with an every-pier-length brute on 150 random cases with N <= 6."
 }

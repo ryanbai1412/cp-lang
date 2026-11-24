@@ -106,7 +106,10 @@ class AffectedTest(unittest.TestCase):
 
 
     def test_std_and_vm_paths_select_their_owners_slices(self):
-        self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings"])
+        self.assertEqual(self.sel("std/seq.cp")["slices"], ["vm-trace", "corpus-warnings", "copies"])
+        self.assertEqual(self.sel("corpus/problems/noip18p4/port.cp")["slices"], ["copies"])
+        self.assertEqual(self.sel("spec/conformance/std-bag/x.cp")["slices"], ["copies"])
+        self.assertEqual(self.sel("crates/cpl-codegen/src/emit.rs")["slices"], ["copies"])
         self.assertEqual(self.sel("crates/cpl-interp/src/vm/run.rs")["slices"], ["vm-trace"])
         self.assertEqual(self.sel("crates/cpl-fmt/src/lib.rs")["slices"], [])
 

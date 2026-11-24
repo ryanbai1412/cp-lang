@@ -21,7 +21,7 @@ pub struct PArena<T>:
 
     /// An empty arena with room for `cap` nodes before it reallocates.
     ///
-    /// cost: \(O(\mathit{cap})\)
+    /// cost: \(O(1)\); the room is not touched until it is used
     /// traps: when `cap < 0`
     /// example: `PArena<Int>(cap: 8).is_empty`
     pub fn new(cap: Int = 0) -> PArena<T>:
@@ -64,7 +64,7 @@ pub struct PArena<T>:
 
     /// Allocate room for at least `cap` nodes in total; changes no handle or node.
     ///
-    /// cost: \(O(\mathit{cap})\)
+    /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes), \(O(1)\) otherwise
     /// traps: when `cap < 0`
     /// example: `var a = PArena<Int>(); a.reserve(100); a.alloc(1); a.len == 1`
     pub fn reserve(mut self, cap: Int):
@@ -226,7 +226,7 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
     /// Preallocate room for `nodes` tree nodes in total, so later writes do not regrow the arena.
     /// Changes no version.
     ///
-    /// cost: \(O(\mathit{nodes})\)
+    /// cost: \(O(\mathit{len})\) when it grows (it moves the nodes it holds), \(O(1)\) otherwise
     /// traps: when `nodes < 0`
     /// example: `var t = PersistentSegTree(+, a: [1, 2, 3]); t.reserve(100); t.all(t.base) == 6`
     pub fn reserve(mut self, nodes: Int):
@@ -935,6 +935,13 @@ impl Show for PMultisetWithin<D>:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+impl Show for PMultiset<D>:
+    /// The size the handle knows, as `multiset of len`; its elements live in the arena, so
+    /// `s.within(ar)` prints them.
+    ///
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 3).with(mut ar, 3); "{s}" == "multiset of 2"`
+    fn show(s) = "multiset of {s.len}"
 
 impl Show for PArena<T>:
     /// The allocated values in allocation order, space-separated.

@@ -172,6 +172,7 @@ impl<'a> Lowerer<'a> {
                 outer.locals.push(Local {
                     name: name.clone(),
                     ty: ty.clone(),
+                    binds: None,
                 });
                 outer
                     .scopes
@@ -283,6 +284,7 @@ impl<'a> Lowerer<'a> {
         self.cx.locals.push(Local {
             name: ANSWER.to_string(),
             ty: ret.clone(),
+            binds: None,
         });
         out.push(Stmt::Let(answer, Some(fill)));
         let keep = ast::StmtKind::Assign {

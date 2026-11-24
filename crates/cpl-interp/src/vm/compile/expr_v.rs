@@ -576,13 +576,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
                     },
                     span,
                 );
-                self.emit(
-                    Op::UnwrapV {
-                        dst_v: dst,
-                        src_v: lv,
-                    },
-                    lhs.span,
-                );
+                // An optional default keeps the optional; a plain one gives what is inside.
+                if lhs.ty == expr.ty {
+                    self.emit(Op::MoveV { dst, src: lv }, lhs.span);
+                } else {
+                    self.emit(
+                        Op::UnwrapV {
+                            dst_v: dst,
+                            src_v: lv,
+                        },
+                        lhs.span,
+                    );
+                }
                 let j_done = self.emit(Op::Jmp { target: 0 }, span);
                 let none_pc = self.ops.len() as u32;
                 self.patch(j_none, none_pc);

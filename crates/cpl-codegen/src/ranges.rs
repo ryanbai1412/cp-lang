@@ -530,6 +530,10 @@ impl<'p> Facts<'p> {
                 self.upper_bound(fn_id, then, depth + 1)?
                     .max(self.upper_bound(fn_id, otherwise, depth + 1)?),
             ),
+            // A label is its ordinal plus the domain's first label.
+            ExprKind::Cast(Cast::Label(d), _) => self
+                .const_domain_lo(*d)?
+                .checked_add(self.domain_max_len_at(*d, depth + 1)? - 1),
             ExprKind::Cast(_, inner) => self.upper_bound(fn_id, inner, depth + 1),
             _ => None,
         }
@@ -841,6 +845,7 @@ impl<'p> Facts<'p> {
                 }
             }
             ExprKind::Cast(Cast::CharToInt | Cast::Ord, _) | ExprKind::DomainLen(_) => NonNeg,
+            ExprKind::Cast(Cast::Label(d), _) => self.const_domain_lo(*d).map_or(Unknown, literal),
             ExprKind::If(_, a, b) => match both(of(a), of(b)) {
                 Unknown => Unknown,
                 sign => sign,

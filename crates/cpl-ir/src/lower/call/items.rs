@@ -603,7 +603,7 @@ impl<'a> Lowerer<'a> {
                 return call;
             }
             (Some(true), Some((base, _))) => Some(Arg::Mut(self.mut_receiver(base, &name))),
-            (Some(false), Some((_, value))) => Some(Arg::Value(value)),
+            (Some(false), Some((_, value))) => Some(Arg::Value(self.receiver_domains(value, span))),
             (None, None) => None,
             (Some(_), None) => {
                 let message = format!("`{name}` is called on a value: `x.{name}(...)`");

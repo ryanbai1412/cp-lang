@@ -14,10 +14,14 @@
   {"id": "5659304", "language": "CPP17", "result": "AC", "time": 18.705088708, "memory_kb": 286184.0, "file": "corpus/submissions/5659304.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi17p6/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Grader-only (minimum_walk): orig.cpp is accepted submission 5659304 (corpus/submissions/5659304.cpp) with a main for the sample grader's format (n s, then p); it agrees with a Dijkstra-over-states brute on 400 random cases with n <= 6, s != 0 included."
 }
