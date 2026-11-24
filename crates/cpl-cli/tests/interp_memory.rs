@@ -10,19 +10,6 @@ use std::time::Duration;
 /// How many problems, largest input first, the gate runs.
 const PROBLEMS: usize = 6;
 
-/// Problems whose run is over the limit today, with the cause. Delete an
-/// entry when its run fits; the test fails while a listed run fits.
-const KNOWN_OVER_MEMORY: &[(&str, &str)] = &[
-    (
-        "cco24p1",
-        "about 335 MB peak on case 11, interpreter overhead (VM memory)",
-    ),
-    (
-        "yac7p3",
-        "about 262 MB peak on case 09, interpreter overhead (VM memory)",
-    ),
-];
-
 fn repo_root() -> PathBuf {
     Path::new(env!("CARGO_MANIFEST_DIR"))
         .parent()
@@ -111,35 +98,13 @@ fn largest_input_fits_the_judges_memory(rank: usize) {
     let src = std::fs::read_to_string(&spec).expect("read spec");
     let limit = cpl_contest::problem::Limits::of(&spec, &src).memory_kb;
     let peak = peak_kb(&spec, input);
-    let known = KNOWN_OVER_MEMORY.iter().any(|(k, _)| k == name);
-    match (peak > limit, known) {
-        (true, false) => panic!(
-            "{name}: `cpl run` peaks at {} MB on {}, over the {} MB limit",
-            peak / 1024,
-            input.display(),
-            limit / 1024
-        ),
-        (false, true) => panic!(
-            "{name}: peaks at {} MB, under the {} MB limit now; delete it from KNOWN_OVER_MEMORY",
-            peak / 1024,
-            limit / 1024
-        ),
-        _ => {}
-    }
-}
-
-/// A listed problem the gate no longer runs can't show it fits, so the list
-/// only names problems among the largest inputs.
-#[test]
-#[cfg(target_os = "linux")]
-fn every_problem_known_over_memory_is_one_the_gate_runs() {
-    let inputs = largest_inputs(&repo_root());
-    for (name, _) in KNOWN_OVER_MEMORY {
-        assert!(
-            inputs.iter().any(|(run, _)| run == name),
-            "{name} is no longer among the {PROBLEMS} largest inputs; delete it from KNOWN_OVER_MEMORY"
-        );
-    }
+    assert!(
+        peak <= limit,
+        "{name}: `cpl run` peaks at {} MB on {}, over the {} MB limit",
+        peak / 1024,
+        input.display(),
+        limit / 1024
+    );
 }
 
 #[test]

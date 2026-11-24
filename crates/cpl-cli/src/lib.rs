@@ -11,6 +11,7 @@ mod explain;
 use explain::explain_code;
 mod interact;
 mod json_out;
+mod kept_input;
 mod laws;
 mod live;
 mod migrate;
@@ -1320,7 +1321,7 @@ fn run_file(
     // that answers a person or a judge at the other end of a pipe is not
     // left waiting for the input to end.
     // What it read is kept, to run it again and name its locals if it traps.
-    let read = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let read = std::sync::Arc::new(std::sync::Mutex::new(kept_input::Kept::new()));
     let whole;
     let io = match input {
         Input::Whole(input) => {
@@ -1332,7 +1333,7 @@ fn run_file(
             let read = std::sync::Arc::clone(&read);
             cpl_interp::Io::live(Box::new(move || {
                 let chunk = more();
-                read.lock().unwrap().extend_from_slice(&chunk);
+                read.lock().unwrap().push(&chunk);
                 (!chunk.is_empty()).then_some(chunk)
             }))
         }
@@ -1349,9 +1350,10 @@ fn run_file(
         Some(trap) => {
             // Naming the locals runs it again: only a quick one is repeated.
             let locals = (started.elapsed() < TRAP_RERUN).then(|| {
-                let read = read.lock().unwrap();
+                let kept;
                 let input = if whole.is_empty() {
-                    &read[..]
+                    kept = read.lock().ok()?.bytes()?;
+                    &kept[..]
                 } else {
                     &whole[..]
                 };
