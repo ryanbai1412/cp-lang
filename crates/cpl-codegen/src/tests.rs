@@ -174,6 +174,11 @@ fn hash_map_uses_salted_splitmix64_cphash() {
         cpp.contains("n + (n + 6) / 7") && cpp.contains("release_pages"),
         "{cpp}"
     );
+    // Whatever the entry, so a Map<Str, _> doesn't hold both tables whole.
+    assert!(
+        !cpp.contains("is_trivially_destructible_v<E>) if (i + 1 - done"),
+        "{cpp}"
+    );
     assert!(!cpp.contains("2 * (n + 1)"), "{cpp}");
     assert!(cpp.len() < 65536, "{} bytes", cpp.len());
 }

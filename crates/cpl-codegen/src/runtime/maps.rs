@@ -203,13 +203,14 @@ template <class E, class K, class KeyOf, class H> struct HashTable {
         for (size_t i = home(h); st[i]; i = next(i)) if (st[i] == f && KeyOf{}(e[i]) == k) return i;
         return cap;
     }
-    // Rehashes into c slots, walking the old slots in order and freeing each page once it is moved out.
+    // Rehashes into c slots, walking the old slots in order and freeing each page once its entries are
+    // moved out and destroyed, so the old and new tables are never both whole, whatever E is.
     void grow(size_t c) {
         HashTable t; t.seed = seed; t.alloc(c);
         const size_t chunk = 1 << 14; size_t done = 0;
         for (size_t i = 0; i < cap; ++i) {
             if (st[i]) { t.put(std::move(e[i])); kill(i); }
-            if constexpr (std::is_trivially_destructible_v<E>) if (i + 1 - done == chunk) {
+            if (i + 1 - done == chunk) {
                 release_pages(st + done, chunk); release_pages(e + done, chunk * sizeof(E)); done = i + 1;
             }
         }
