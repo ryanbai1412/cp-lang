@@ -1587,7 +1587,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Ty::Map(kt, _) | Ty::HashMap(kt, _) => value::strip_cached(key, kt, self.program),
             _ => key.clone(),
         };
-        if let Some(found) = map.get(&lookup_key, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))? {
+        if let Some(found) = map.get(&lookup_key, &mut |t, a, b| self.less_ty_val(t, a, b, span))? {
             return Ok(found.clone());
         }
         let mut shown = Vec::new();
@@ -1877,19 +1877,19 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     (Builtin::Contains, Value::Map(entries)) => {
                         let entries = entries.clone();
                         let cmp =
-                            &mut |t: &Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, e.span);
+                            &mut |t: &Ty, a: &Value, b: &Value| self.less_ty_val(t, a, b, e.span);
                         return Ok(Value::Bool(entries.contains_key(&key, cmp)?));
                     }
                     (Builtin::Contains, Value::Set(items)) => {
                         let items = items.clone();
                         let cmp =
-                            &mut |t: &Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, e.span);
+                            &mut |t: &Ty, a: &Value, b: &Value| self.less_ty_val(t, a, b, e.span);
                         return Ok(Value::Bool(items.contains(&key, cmp)?));
                     }
                     (Builtin::MapGet, Value::Map(entries)) => {
                         let entries = entries.clone();
                         let cmp =
-                            &mut |t: &Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, e.span);
+                            &mut |t: &Ty, a: &Value, b: &Value| self.less_ty_val(t, a, b, e.span);
                         return Ok(Value::Opt(OptVal::from_option(
                             entries.get(&key, cmp)?.cloned(),
                         )));

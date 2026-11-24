@@ -216,7 +216,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                         let span = e.span;
                         let keys = Rc::make_mut(&mut set);
                         for v in values {
-                            keys.insert(v, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?;
+                            keys.insert(v, &mut |t, a, b| self.less_ty_val(t, a, b, span))?;
                         }
                         Value::Set(set)
                     }
@@ -344,12 +344,26 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
     }
 
     pub(crate) fn less_ty_val(&mut self, ty: &Ty, l: &Value, r: &Value, span: Span) -> Res<bool> {
-        if let Ty::Struct(id) = ty {
-            if let Some(hook) = self.program.structs[*id].ord {
-                return self.user_less(hook, l.clone(), r.clone(), span);
+        match (ty, l, r) {
+            (Ty::Struct(id), _, _) if self.program.structs[*id].ord.is_some() => {
+                let hook = self.program.structs[*id].ord.expect("checked");
+                self.user_less(hook, l.clone(), r.clone(), span)
             }
+            // A tuple's last part decides only when the rest ties, so it needs `<` one way.
+            (Ty::Tuple(ts), Value::Tuple(ls), Value::Tuple(rs)) if !ts.is_empty() => {
+                let (mut sl, mut sr) = ([Value::Unit], [Value::Unit]);
+                let (ls, rs) = (ls.as_slice(&mut sl).to_vec(), rs.as_slice(&mut sr).to_vec());
+                let last = ts.len() - 1;
+                for (i, t) in ts[..last].iter().enumerate() {
+                    let o = self.cmp_ty_val(t, &ls[i], &rs[i], span)?;
+                    if o.is_ne() {
+                        return Ok(o.is_lt());
+                    }
+                }
+                self.less_ty_val(&ts[last], &ls[last], &rs[last], span)
+            }
+            _ => Ok(self.cmp_ty_val(ty, l, r, span)?.is_lt()),
         }
-        Ok(self.cmp_ty_val(ty, l, r, span)?.is_lt())
     }
 }
 

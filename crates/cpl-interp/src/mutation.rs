@@ -1,7 +1,7 @@
 //! What a mutation does to the value it changes: shared by the tree-walker
 //! and the VM, which find the value each their own way.
 
-use crate::value::keys::Cmp;
+use crate::value::keys::Less;
 use crate::value::{self, OptVal, Value};
 use crate::{bug, trap, Res};
 use cpl_diag::Span;
@@ -17,7 +17,7 @@ pub(crate) fn mutate_cell(
     (arg, arg2): (Value, Value),
     program: &Program,
     span: Span,
-    cmp: &mut Cmp,
+    cmp: &mut Less,
 ) -> Res<Value> {
     Ok(match (op, cell) {
         (_, Value::Moved) => return trap(span, cpl_diag::msgs::interp::LENT.at(&[])),

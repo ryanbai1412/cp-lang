@@ -1,7 +1,7 @@
 //! The keys of a `Set` or a `Map`. A key type whose order is the structural one keeps them in
 //! a B-tree ordered by `Value`'s own `Ord`; a key type with a user `Ord` anywhere in it keeps them
-//! in a list sorted by that `Ord`, which runs user code, so every search there takes the one
-//! compare function (`Interp::cmp_ty_val`) the rest of the interpreter orders with.
+//! in sorted runs ordered by that `Ord`, which runs user code, so every search there takes the one
+//! compare the rest of the interpreter orders with (`Interp::less_ty_val`).
 
 use super::Value;
 use crate::Res;
@@ -14,8 +14,8 @@ use std::ops::Bound;
 pub(crate) trait Walk: DoubleEndedIterator + ExactSizeIterator {}
 impl<I: DoubleEndedIterator + ExactSizeIterator> Walk for I {}
 
-/// Compares two keys of `ty` by its `Ord`.
-pub(crate) type Cmp<'a> = dyn FnMut(&Ty, &Value, &Value) -> Res<Ordering> + 'a;
+/// Whether a key of `ty` orders before another by its `Ord`.
+pub(crate) type Less<'a> = dyn FnMut(&Ty, &Value, &Value) -> Res<bool> + 'a;
 
 /// Where a bound search starts: `first_ge`, `first_gt`, `last_le`, `last_lt`.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -50,54 +50,6 @@ impl Edge {
     }
 }
 
-/// Where `key` sits in `keys`, sorted by `ty`'s `Ord`: `Ok(i)` holds an equal key at `i`,
-/// `Err(i)` is where it would go.
-fn search(ty: &Ty, keys: &[Value], key: &Value, cmp: &mut Cmp) -> Res<Result<usize, usize>> {
-    let (mut lo, mut hi) = (0, keys.len());
-    while lo < hi {
-        let mid = lo + (hi - lo) / 2;
-        match cmp(ty, &keys[mid], key)? {
-            Ordering::Less => lo = mid + 1,
-            Ordering::Greater => hi = mid,
-            Ordering::Equal => return Ok(Ok(mid)),
-        }
-    }
-    Ok(Err(lo))
-}
-
-/// The position `edge` names next to `key`, if there is one.
-fn edge_at(ty: &Ty, keys: &[Value], key: &Value, edge: Edge, cmp: &mut Cmp) -> Res<Option<usize>> {
-    let at = search(ty, keys, key, cmp)?;
-    let i = match (edge, at) {
-        (Edge::FirstGe | Edge::LastLe, Ok(i)) => Some(i),
-        (Edge::FirstGt, Ok(i)) => Some(i + 1),
-        (Edge::FirstGe | Edge::FirstGt, Err(i)) => Some(i),
-        (Edge::LastLe, Err(i)) | (Edge::LastLt, Ok(i) | Err(i)) => i.checked_sub(1),
-    };
-    Ok(i.filter(|&i| i < keys.len()))
-}
-
-/// The positions from `lo` to `hi` in `keys`, sorted by `ty`'s `Ord`.
-fn between(
-    ty: &Ty,
-    keys: &[Value],
-    lo: &Bound<Value>,
-    hi: &Bound<Value>,
-    cmp: &mut Cmp,
-) -> Res<(usize, usize)> {
-    let a = match lo {
-        Bound::Unbounded => 0,
-        Bound::Included(k) => search(ty, keys, k, cmp)?.unwrap_or_else(|i| i),
-        Bound::Excluded(k) => search(ty, keys, k, cmp)?.map_or_else(|i| i, |i| i + 1),
-    };
-    let b = match hi {
-        Bound::Unbounded => keys.len(),
-        Bound::Included(k) => search(ty, keys, k, cmp)?.map_or_else(|i| i, |i| i + 1),
-        Bound::Excluded(k) => search(ty, keys, k, cmp)?.unwrap_or_else(|i| i),
-    };
-    Ok((a, b.max(a)))
-}
-
 /// A key type that orders by a user `Ord` somewhere inside it.
 pub(crate) fn user_ordered(ty: &Ty, program: &cpl_ir::Program) -> bool {
     match ty {
@@ -113,12 +65,273 @@ pub(crate) fn user_ordered(ty: &Ty, program: &cpl_ir::Program) -> bool {
     }
 }
 
+/// An entry of a sorted set or map: the key it is ordered by.
+pub(crate) trait Entry: Clone {
+    fn key(&self) -> &Value;
+}
+
+impl Entry for Value {
+    fn key(&self) -> &Value {
+        self
+    }
+}
+
+impl Entry for (Value, Value) {
+    fn key(&self) -> &Value {
+        &self.0
+    }
+}
+
+/// The longest a run grows before it splits in two.
+const RUN: usize = 512;
+
+/// A run and an offset in it; `(runs.len(), 0)` is the end.
+type Pos = (usize, usize);
+
+/// Entries sorted by key in runs of at most `RUN`, so an insert or a removal moves one run, not
+/// the whole set, and a search takes \(O(\log n)\) compares, one per step.
+#[derive(Clone, Debug)]
+pub struct Runs<T> {
+    runs: Vec<Vec<T>>,
+    len: usize,
+}
+
+impl<T> Default for Runs<T> {
+    fn default() -> Runs<T> {
+        Runs {
+            runs: Vec::new(),
+            len: 0,
+        }
+    }
+}
+
+impl<T: Entry> Runs<T> {
+    fn end(&self) -> Pos {
+        (self.runs.len(), 0)
+    }
+
+    fn get(&self, (r, o): Pos) -> Option<&T> {
+        self.runs.get(r)?.get(o)
+    }
+
+    fn next(&self, (r, o): Pos) -> Pos {
+        if o + 1 < self.runs[r].len() {
+            (r, o + 1)
+        } else {
+            (r + 1, 0)
+        }
+    }
+
+    fn prev(&self, (r, o): Pos) -> Option<Pos> {
+        if o > 0 {
+            Some((r, o - 1))
+        } else {
+            let r = r.checked_sub(1)?;
+            Some((r, self.runs[r].len() - 1))
+        }
+    }
+
+    /// How many entries come before `p`.
+    fn index(&self, (r, o): Pos) -> usize {
+        self.runs[..r].iter().map(Vec::len).sum::<usize>() + o
+    }
+
+    /// The first position whose key isn't less than `key`.
+    fn lower_bound(&self, ty: &Ty, key: &Value, less: &mut Less) -> Res<Pos> {
+        let (mut lo, mut hi) = (0, self.runs.len());
+        while lo < hi {
+            let mid = lo + (hi - lo) / 2;
+            let last = self.runs[mid].last().expect("a run is never empty");
+            if less(ty, last.key(), key)? {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        let Some(run) = self.runs.get(lo) else {
+            return Ok(self.end());
+        };
+        let (mut a, mut b) = (0, run.len());
+        while a < b {
+            let mid = a + (b - a) / 2;
+            if less(ty, run[mid].key(), key)? {
+                a = mid + 1;
+            } else {
+                b = mid;
+            }
+        }
+        Ok((lo, a))
+    }
+
+    /// `Ok` at the entry whose key equals `key`, else `Err` where it would go.
+    fn find(&self, ty: &Ty, key: &Value, less: &mut Less) -> Res<Result<Pos, Pos>> {
+        let at = self.lower_bound(ty, key, less)?;
+        Ok(match self.get(at) {
+            Some(x) if !less(ty, key, x.key())? => Ok(at),
+            _ => Err(at),
+        })
+    }
+
+    /// The position `edge` names next to `key`.
+    fn edge(&self, ty: &Ty, key: &Value, edge: Edge, less: &mut Less) -> Res<Option<Pos>> {
+        let at = self.find(ty, key, less)?;
+        let p = match (edge, at) {
+            (Edge::FirstGe | Edge::LastLe, Ok(p)) | (Edge::FirstGe | Edge::FirstGt, Err(p)) => {
+                Some(p)
+            }
+            (Edge::FirstGt, Ok(p)) => Some(self.next(p)),
+            (Edge::LastLe, Err(p)) | (Edge::LastLt, Ok(p) | Err(p)) => self.prev(p),
+        };
+        Ok(p.filter(|&p| self.get(p).is_some()))
+    }
+
+    /// The positions from `lo` to `hi`.
+    fn between(
+        &self,
+        ty: &Ty,
+        lo: &Bound<Value>,
+        hi: &Bound<Value>,
+        less: &mut Less,
+    ) -> Res<(Pos, Pos)> {
+        let after = |s: &Self, k: &Value, less: &mut Less| -> Res<Pos> {
+            Ok(match s.find(ty, k, less)? {
+                Ok(p) => s.next(p),
+                Err(p) => p,
+            })
+        };
+        let a = match lo {
+            Bound::Unbounded => (0, 0),
+            Bound::Included(k) => self.lower_bound(ty, k, less)?,
+            Bound::Excluded(k) => after(self, k, less)?,
+        };
+        let b = match hi {
+            Bound::Unbounded => self.end(),
+            Bound::Included(k) => after(self, k, less)?,
+            Bound::Excluded(k) => self.lower_bound(ty, k, less)?,
+        };
+        Ok((a, b.max(a)))
+    }
+
+    fn insert_at(&mut self, (r, o): Pos, x: T) {
+        self.len += 1;
+        if self.runs.is_empty() {
+            self.runs.push(vec![x]);
+            return;
+        }
+        let (r, o) = if r == self.runs.len() {
+            (r - 1, self.runs[r - 1].len())
+        } else {
+            (r, o)
+        };
+        self.runs[r].insert(o, x);
+        if self.runs[r].len() > RUN {
+            let tail = self.runs[r].split_off(RUN / 2);
+            self.runs.insert(r + 1, tail);
+        }
+    }
+
+    fn remove_at(&mut self, (r, o): Pos) -> T {
+        self.len -= 1;
+        let x = self.runs[r].remove(o);
+        if self.runs[r].is_empty() {
+            self.runs.remove(r);
+        }
+        x
+    }
+
+    fn walk(&self, a: Pos, b: Pos) -> RunWalk<'_, T> {
+        let len = if a < b {
+            self.index(b) - self.index(a)
+        } else {
+            0
+        };
+        RunWalk {
+            runs: &self.runs,
+            front: a,
+            back: b,
+            len,
+        }
+    }
+
+    fn first(&self) -> Option<&T> {
+        self.runs.first()?.first()
+    }
+
+    fn last(&self) -> Option<&T> {
+        self.runs.last()?.last()
+    }
+
+    fn pop_first(&mut self) -> Option<T> {
+        (self.len > 0).then(|| self.remove_at((0, 0)))
+    }
+
+    fn pop_last(&mut self) -> Option<T> {
+        let r = self.runs.len().checked_sub(1)?;
+        Some(self.remove_at((r, self.runs[r].len() - 1)))
+    }
+
+    fn clear(&mut self) {
+        self.runs.clear();
+        self.len = 0;
+    }
+}
+
+/// The entries of runs from `front` up to `back`.
+pub struct RunWalk<'a, T> {
+    runs: &'a [Vec<T>],
+    front: Pos,
+    back: Pos,
+    len: usize,
+}
+
+impl<'a, T> Iterator for RunWalk<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> {
+        if self.len == 0 {
+            return None;
+        }
+        let (r, o) = self.front;
+        let x = &self.runs[r][o];
+        self.front = if o + 1 < self.runs[r].len() {
+            (r, o + 1)
+        } else {
+            (r + 1, 0)
+        };
+        self.len -= 1;
+        Some(x)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (self.len, Some(self.len))
+    }
+}
+
+impl<T> DoubleEndedIterator for RunWalk<'_, T> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.len == 0 {
+            return None;
+        }
+        let (mut r, mut o) = self.back;
+        if o == 0 {
+            r -= 1;
+            o = self.runs[r].len();
+        }
+        o -= 1;
+        self.back = (r, o);
+        self.len -= 1;
+        Some(&self.runs[r][o])
+    }
+}
+
+impl<T> ExactSizeIterator for RunWalk<'_, T> {}
+
 #[derive(Clone, Debug)]
 pub enum KeySet {
     /// Keys mapped to `Unit`, so a set shares the map's B-tree code.
     Tree(BTreeMap<Value, Value>),
     /// Sorted by the key type's user `Ord`.
-    Sorted(Ty, Vec<Value>),
+    Sorted(Ty, Runs<Value>),
 }
 
 impl Default for KeySet {
@@ -131,7 +344,7 @@ impl KeySet {
     /// An empty set over keys of `ty`.
     pub(crate) fn of(ty: &Ty, program: &cpl_ir::Program) -> KeySet {
         if user_ordered(ty, program) {
-            KeySet::Sorted(ty.clone(), Vec::new())
+            KeySet::Sorted(ty.clone(), Runs::default())
         } else {
             KeySet::default()
         }
@@ -141,7 +354,7 @@ impl KeySet {
     pub(crate) fn empty_like(&self) -> KeySet {
         match self {
             KeySet::Tree(_) => KeySet::default(),
-            KeySet::Sorted(ty, _) => KeySet::Sorted(ty.clone(), Vec::new()),
+            KeySet::Sorted(ty, _) => KeySet::Sorted(ty.clone(), Runs::default()),
         }
     }
 
@@ -152,14 +365,14 @@ impl KeySet {
     pub(crate) fn len(&self) -> usize {
         match self {
             KeySet::Tree(t) => t.len(),
-            KeySet::Sorted(_, v) => v.len(),
+            KeySet::Sorted(_, v) => v.len,
         }
     }
 
     pub(crate) fn iter(&self) -> Box<dyn Walk<Item = &Value> + '_> {
         match self {
             KeySet::Tree(t) => Box::new(t.keys()),
-            KeySet::Sorted(_, v) => Box::new(v.iter()),
+            KeySet::Sorted(_, v) => Box::new(v.walk((0, 0), v.end())),
         }
     }
 
@@ -180,14 +393,14 @@ impl KeySet {
     pub(crate) fn pop_first(&mut self) -> Option<Value> {
         match self {
             KeySet::Tree(t) => t.pop_first().map(|(k, _)| k),
-            KeySet::Sorted(_, v) => (!v.is_empty()).then(|| v.remove(0)),
+            KeySet::Sorted(_, v) => v.pop_first(),
         }
     }
 
     pub(crate) fn pop_last(&mut self) -> Option<Value> {
         match self {
             KeySet::Tree(t) => t.pop_last().map(|(k, _)| k),
-            KeySet::Sorted(_, v) => v.pop(),
+            KeySet::Sorted(_, v) => v.pop_last(),
         }
     }
 
@@ -198,21 +411,21 @@ impl KeySet {
         }
     }
 
-    pub(crate) fn contains(&self, key: &Value, cmp: &mut Cmp) -> Res<bool> {
+    pub(crate) fn contains(&self, key: &Value, less: &mut Less) -> Res<bool> {
         match self {
             KeySet::Tree(t) => Ok(t.contains_key(key)),
-            KeySet::Sorted(ty, v) => Ok(search(ty, v, key, cmp)?.is_ok()),
+            KeySet::Sorted(ty, v) => Ok(v.find(ty, key, less)?.is_ok()),
         }
     }
 
     /// Adds `key`; whether it was new.
-    pub(crate) fn insert(&mut self, key: Value, cmp: &mut Cmp) -> Res<bool> {
+    pub(crate) fn insert(&mut self, key: Value, less: &mut Less) -> Res<bool> {
         match self {
             KeySet::Tree(t) => Ok(t.insert(key, Value::Unit).is_none()),
-            KeySet::Sorted(ty, v) => Ok(match search(ty, v, &key, cmp)? {
+            KeySet::Sorted(ty, v) => Ok(match v.find(ty, &key, less)? {
                 Ok(_) => false,
-                Err(i) => {
-                    v.insert(i, key);
+                Err(p) => {
+                    v.insert_at(p, key);
                     true
                 }
             }),
@@ -220,12 +433,12 @@ impl KeySet {
     }
 
     /// Takes `key` out; whether it was there.
-    pub(crate) fn remove(&mut self, key: &Value, cmp: &mut Cmp) -> Res<bool> {
+    pub(crate) fn remove(&mut self, key: &Value, less: &mut Less) -> Res<bool> {
         match self {
             KeySet::Tree(t) => Ok(t.remove(key).is_some()),
-            KeySet::Sorted(ty, v) => Ok(match search(ty, v, key, cmp)? {
-                Ok(i) => {
-                    v.remove(i);
+            KeySet::Sorted(ty, v) => Ok(match v.find(ty, key, less)? {
+                Ok(p) => {
+                    v.remove_at(p);
                     true
                 }
                 Err(_) => false,
@@ -238,19 +451,19 @@ impl KeySet {
         &self,
         lo: Bound<Value>,
         hi: Bound<Value>,
-        cmp: &mut Cmp,
+        less: &mut Less,
     ) -> Res<Box<dyn DoubleEndedIterator<Item = &Value> + '_>> {
         match self {
             KeySet::Tree(t) => Ok(Box::new(t.range((lo, hi)).map(|(k, _)| k))),
             KeySet::Sorted(ty, v) => {
-                let (a, b) = between(ty, v, &lo, &hi, cmp)?;
-                Ok(Box::new(v[a..b].iter()))
+                let (a, b) = v.between(ty, &lo, &hi, less)?;
+                Ok(Box::new(v.walk(a, b)))
             }
         }
     }
 
     /// The key `edge` names next to `key`.
-    pub(crate) fn edge(&self, key: Value, edge: Edge, cmp: &mut Cmp) -> Res<Option<&Value>> {
+    pub(crate) fn edge(&self, key: Value, edge: Edge, less: &mut Less) -> Res<Option<&Value>> {
         match self {
             KeySet::Tree(t) => {
                 let mut found = t.range(edge.range(key));
@@ -261,7 +474,7 @@ impl KeySet {
                 }
                 .map(|(k, _)| k))
             }
-            KeySet::Sorted(ty, v) => Ok(edge_at(ty, v, &key, edge, cmp)?.map(|i| &v[i])),
+            KeySet::Sorted(ty, v) => Ok(v.edge(ty, &key, edge, less)?.and_then(|p| v.get(p))),
         }
     }
 }
@@ -269,8 +482,8 @@ impl KeySet {
 #[derive(Clone, Debug)]
 pub enum KeyMap {
     Tree(BTreeMap<Value, Value>),
-    /// Keys sorted by the key type's user `Ord`, each beside its value.
-    Sorted(Ty, Vec<Value>, Vec<Value>),
+    /// Entries sorted by the key type's user `Ord`.
+    Sorted(Ty, Runs<(Value, Value)>),
 }
 
 impl Default for KeyMap {
@@ -283,7 +496,7 @@ impl KeyMap {
     /// An empty map over keys of `ty`.
     pub(crate) fn of(ty: &Ty, program: &cpl_ir::Program) -> KeyMap {
         if user_ordered(ty, program) {
-            KeyMap::Sorted(ty.clone(), Vec::new(), Vec::new())
+            KeyMap::Sorted(ty.clone(), Runs::default())
         } else {
             KeyMap::default()
         }
@@ -292,7 +505,7 @@ impl KeyMap {
     pub(crate) fn empty_like(&self) -> KeyMap {
         match self {
             KeyMap::Tree(_) => KeyMap::default(),
-            KeyMap::Sorted(ty, ..) => KeyMap::Sorted(ty.clone(), Vec::new(), Vec::new()),
+            KeyMap::Sorted(ty, _) => KeyMap::Sorted(ty.clone(), Runs::default()),
         }
     }
 
@@ -303,82 +516,87 @@ impl KeyMap {
     pub(crate) fn len(&self) -> usize {
         match self {
             KeyMap::Tree(t) => t.len(),
-            KeyMap::Sorted(_, k, _) => k.len(),
+            KeyMap::Sorted(_, v) => v.len,
         }
     }
 
     pub(crate) fn iter(&self) -> Box<dyn Walk<Item = (&Value, &Value)> + '_> {
         match self {
             KeyMap::Tree(t) => Box::new(t.iter()),
-            KeyMap::Sorted(_, k, v) => Box::new(k.iter().zip(v.iter())),
+            KeyMap::Sorted(_, v) => Box::new(v.walk((0, 0), v.end()).map(|(k, x)| (k, x))),
         }
     }
 
     pub(crate) fn pop_first(&mut self) -> Option<(Value, Value)> {
         match self {
             KeyMap::Tree(t) => t.pop_first(),
-            KeyMap::Sorted(_, k, v) => (!k.is_empty()).then(|| (k.remove(0), v.remove(0))),
+            KeyMap::Sorted(_, v) => v.pop_first(),
         }
     }
 
     pub(crate) fn pop_last(&mut self) -> Option<(Value, Value)> {
         match self {
             KeyMap::Tree(t) => t.pop_last(),
-            KeyMap::Sorted(_, k, v) => k.pop().zip(v.pop()),
+            KeyMap::Sorted(_, v) => v.pop_last(),
         }
     }
 
     pub(crate) fn clear(&mut self) {
         match self {
             KeyMap::Tree(t) => t.clear(),
-            KeyMap::Sorted(_, k, v) => {
-                k.clear();
-                v.clear();
-            }
+            KeyMap::Sorted(_, v) => v.clear(),
         }
     }
 
-    pub(crate) fn contains_key(&self, key: &Value, cmp: &mut Cmp) -> Res<bool> {
-        Ok(self.get(key, cmp)?.is_some())
+    pub(crate) fn contains_key(&self, key: &Value, less: &mut Less) -> Res<bool> {
+        Ok(self.get(key, less)?.is_some())
     }
 
-    pub(crate) fn get(&self, key: &Value, cmp: &mut Cmp) -> Res<Option<&Value>> {
+    pub(crate) fn get(&self, key: &Value, less: &mut Less) -> Res<Option<&Value>> {
         match self {
             KeyMap::Tree(t) => Ok(t.get(key)),
-            KeyMap::Sorted(ty, k, v) => Ok(search(ty, k, key, cmp)?.ok().map(|i| &v[i])),
+            KeyMap::Sorted(ty, v) => Ok(v
+                .find(ty, key, less)?
+                .ok()
+                .and_then(|p| v.get(p))
+                .map(|e| &e.1)),
         }
     }
 
-    pub(crate) fn get_mut(&mut self, key: &Value, cmp: &mut Cmp) -> Res<Option<&mut Value>> {
+    pub(crate) fn get_mut(&mut self, key: &Value, less: &mut Less) -> Res<Option<&mut Value>> {
         match self {
             KeyMap::Tree(t) => Ok(t.get_mut(key)),
-            KeyMap::Sorted(ty, k, v) => Ok(search(ty, k, key, cmp)?.ok().map(|i| &mut v[i])),
+            KeyMap::Sorted(ty, v) => Ok(match v.find(ty, key, less)? {
+                Ok((r, o)) => Some(&mut v.runs[r][o].1),
+                Err(_) => None,
+            }),
         }
     }
 
     /// Sets `key` to `value`; the value it had.
-    pub(crate) fn insert(&mut self, key: Value, value: Value, cmp: &mut Cmp) -> Res<Option<Value>> {
+    pub(crate) fn insert(
+        &mut self,
+        key: Value,
+        value: Value,
+        less: &mut Less,
+    ) -> Res<Option<Value>> {
         match self {
             KeyMap::Tree(t) => Ok(t.insert(key, value)),
-            KeyMap::Sorted(ty, k, v) => Ok(match search(ty, k, &key, cmp)? {
-                Ok(i) => Some(std::mem::replace(&mut v[i], value)),
-                Err(i) => {
-                    k.insert(i, key);
-                    v.insert(i, value);
+            KeyMap::Sorted(ty, v) => Ok(match v.find(ty, &key, less)? {
+                Ok((r, o)) => Some(std::mem::replace(&mut v.runs[r][o].1, value)),
+                Err(p) => {
+                    v.insert_at(p, (key, value));
                     None
                 }
             }),
         }
     }
 
-    pub(crate) fn remove(&mut self, key: &Value, cmp: &mut Cmp) -> Res<Option<Value>> {
+    pub(crate) fn remove(&mut self, key: &Value, less: &mut Less) -> Res<Option<Value>> {
         match self {
             KeyMap::Tree(t) => Ok(t.remove(key)),
-            KeyMap::Sorted(ty, k, v) => Ok(match search(ty, k, key, cmp)? {
-                Ok(i) => {
-                    k.remove(i);
-                    Some(v.remove(i))
-                }
+            KeyMap::Sorted(ty, v) => Ok(match v.find(ty, key, less)? {
+                Ok(p) => Some(v.remove_at(p).1),
                 Err(_) => None,
             }),
         }
@@ -389,13 +607,13 @@ impl KeyMap {
         &self,
         lo: Bound<Value>,
         hi: Bound<Value>,
-        cmp: &mut Cmp,
+        less: &mut Less,
     ) -> Res<Box<dyn DoubleEndedIterator<Item = (&Value, &Value)> + '_>> {
         match self {
             KeyMap::Tree(t) => Ok(Box::new(t.range((lo, hi)))),
-            KeyMap::Sorted(ty, k, v) => {
-                let (a, b) = between(ty, k, &lo, &hi, cmp)?;
-                Ok(Box::new(k[a..b].iter().zip(v[a..b].iter())))
+            KeyMap::Sorted(ty, v) => {
+                let (a, b) = v.between(ty, &lo, &hi, less)?;
+                Ok(Box::new(v.walk(a, b).map(|(k, x)| (k, x))))
             }
         }
     }
@@ -405,7 +623,7 @@ impl KeyMap {
         &self,
         key: Value,
         edge: Edge,
-        cmp: &mut Cmp,
+        less: &mut Less,
     ) -> Res<Option<(&Value, &Value)>> {
         match self {
             KeyMap::Tree(t) => {
@@ -416,9 +634,10 @@ impl KeyMap {
                     found.next_back()
                 })
             }
-            KeyMap::Sorted(ty, k, v) => {
-                Ok(edge_at(ty, k, &key, edge, cmp)?.map(|i| (&k[i], &v[i])))
-            }
+            KeyMap::Sorted(ty, v) => Ok(v
+                .edge(ty, &key, edge, less)?
+                .and_then(|p| v.get(p))
+                .map(|(k, x)| (k, x))),
         }
     }
 }
@@ -449,6 +668,6 @@ by_contents!(KeyMap);
 /// The compare a site passes that the compiler only reaches with B-tree keys (the VM's own
 /// ops, emitted for key types without a user `Ord`): a sorted set there is a compiler bug,
 /// never a silent structural order.
-pub(crate) fn tree_only(span: cpl_diag::Span) -> impl FnMut(&Ty, &Value, &Value) -> Res<Ordering> {
+pub(crate) fn tree_only(span: cpl_diag::Span) -> impl FnMut(&Ty, &Value, &Value) -> Res<bool> {
     move |_, _, _| crate::bug(span, "this value can't be changed that way")
 }

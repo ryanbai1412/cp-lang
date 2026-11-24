@@ -248,7 +248,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
         let empty = empty
             && !matches!(held, Value::Set(s) if s.is_sorted_by_user())
             && !matches!(held, Value::Map(m) if m.is_sorted_by_user());
-        let mut cmp = |t: &Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, span);
+        let mut cmp = |t: &Ty, a: &Value, b: &Value| self.less_ty_val(t, a, b, span);
         Ok(match held {
             _ if empty => vec![],
             Value::Set(items) => items.range(lo, hi, &mut cmp)?.cloned().collect(),

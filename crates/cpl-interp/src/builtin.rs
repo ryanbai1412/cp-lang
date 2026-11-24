@@ -350,9 +350,10 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::MutView(mv) => self.mut_view_to_vec(mv, span)?.contains(&needle),
                     Value::Array(array) => array.contains(&needle),
                     Value::Set(items) => items
-                        .contains(&key_needle, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?,
-                    Value::Map(entries) => entries
-                        .contains_key(&key_needle, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?,
+                        .contains(&key_needle, &mut |t, a, b| self.less_ty_val(t, a, b, span))?,
+                    Value::Map(entries) => entries.contains_key(&key_needle, &mut |t, a, b| {
+                        self.less_ty_val(t, a, b, span)
+                    })?,
                     Value::Str(bytes) => match &needle {
                         Value::Char(c) => bytes.contains(c),
                         Value::Str(part) => {
@@ -398,7 +399,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 match &first {
                     Value::Map(entries) => optional(
                         entries
-                            .get(&key, &mut |t, a, b| self.cmp_ty_val(t, a, b, span))?
+                            .get(&key, &mut |t, a, b| self.less_ty_val(t, a, b, span))?
                             .cloned(),
                     ),
                     _ => Value::Opt(OptVal::None),
@@ -417,7 +418,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     _ => Edge::LastLt,
                 };
                 let cmp =
-                    &mut |t: &cpl_ir::Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, span);
+                    &mut |t: &cpl_ir::Ty, a: &Value, b: &Value| self.less_ty_val(t, a, b, span);
                 match &first {
                     Value::Set(items) => optional(items.edge(key, edge, cmp)?.cloned()),
                     Value::Map(entries) => optional(

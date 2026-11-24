@@ -587,7 +587,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             value,
                             start,
                             span,
-                            &mut |t, a, b| self.cmp_ty_val(t, a, b, span),
+                            &mut |t, a, b| self.less_ty_val(t, a, b, span),
                         ),
                         _ => bug(span, "expected map"),
                     };

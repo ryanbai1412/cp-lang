@@ -1,7 +1,7 @@
 //! Assignment: storing into places, compound assignment, and mutating calls.
 
 use super::*;
-use crate::value::keys::{self, Cmp};
+use crate::value::keys::{self, Less};
 use crate::value::KeyMap;
 
 pub(super) fn field_mut(holder: &mut Value, index: usize, span: Span) -> Res<&mut Value> {
@@ -320,7 +320,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                             value,
                             start,
                             span,
-                            &mut |t, a, b| self.cmp_ty_val(t, a, b, span),
+                            &mut |t, a, b| self.less_ty_val(t, a, b, span),
                         );
                         *self.resolve(base, &mut rest.iter())? = held;
                         done?;
@@ -487,7 +487,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             (arg, arg2),
             program,
             span,
-            &mut |t, a, b| self.cmp_ty_val(t, a, b, span),
+            &mut |t, a, b| self.less_ty_val(t, a, b, span),
         );
         *self.resolve(place, &mut indices.iter())? = held;
         done
@@ -503,7 +503,7 @@ pub(crate) fn assign_entry(
     value: Value,
     start: impl FnOnce() -> Value,
     span: Span,
-    cmp: &mut Cmp,
+    cmp: &mut Less,
 ) -> Res<()> {
     if op == AssignOp::Set {
         map.insert(k, value, cmp)?;
