@@ -177,6 +177,9 @@ print(solve(7))
 const MUT: &str = "fn bump(mut acc: Int, n: Int):
     for i in 0..n:
         acc = (acc * 7 + i) % 1000003
+fn scale(p: (Int, Int), mut acc: Int, n: Int):
+    for i in 0..n:
+        acc = (acc * p.0 + i * p.1) % 1000003
 fn fold(mut xs: List<Int>, n: Int) -> Int:
     var s = 0
     for i in 0..n:
@@ -190,6 +193,7 @@ fn run(m: Int) -> Int:
         a.push(i)
     for r in 0..8:
         bump(mut t, 3000)
+        scale((3, r), mut t, 2000)
         t = (t + fold(mut a, 3000) + a[r]) % 1000003
     return t
 var g = 5

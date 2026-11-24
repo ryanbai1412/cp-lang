@@ -7,7 +7,7 @@ use crate::observe::Observer;
 use crate::value::Value;
 use crate::vm::helpers::*;
 use crate::vm::ir::*;
-use crate::{interp_failed, trap, Flow, Interp, Res};
+use crate::{trap, Flow, Interp, Res};
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
     /// Frame `k` of `frames`, its locals on the stack at `self.base`, on the
@@ -83,7 +83,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         };
         if let Some(callee) = fn_id.and_then(|id| compiled.fns[id as usize].as_ref()) {
             if !self.ckpt.lent_back.is_empty() {
-                self.lend_back_resumed(callee, regs_i, regs_v, args)?;
+                self.lend_back_resumed(callee, regs_i, regs_v, args);
             }
         }
         put_ret(ret, regs_i, regs_v, dst, val);
@@ -131,7 +131,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
         regs_i: &mut [i64],
         regs_v: &mut [Value],
         (arg_i, arg_v): (usize, usize),
-    ) -> Res<()> {
+    ) {
         let back = std::mem::take(&mut self.ckpt.lent_back);
         let (mut ii, mut iv) = (arg_i, arg_v);
         for (loc, v) in callee.slot_map.iter().take(callee.param_count).zip(back) {
@@ -148,10 +148,12 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     regs_v[iv] = v;
                     iv += 1;
                 }
-                SlotLoc::SmallTuple { .. } => return Err(interp_failed(cpl_diag::Span::default())),
+                SlotLoc::SmallTuple { len, .. } => {
+                    unbox_small_tuple(&v, &mut regs_i[ii..], len);
+                    ii += usize::from(len);
+                }
             }
         }
-        Ok(())
     }
 }
 

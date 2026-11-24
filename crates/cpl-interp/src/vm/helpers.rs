@@ -309,11 +309,7 @@ fn slot_from_stack(
             regs_i[some as usize] = s;
         }
         SlotLoc::SmallTuple { base: b, len, .. } => {
-            if let Value::Tuple(TupleVal::Boxed(fs)) = &stack[base + slot] {
-                for (k, f) in fs.iter().take(len as usize).enumerate() {
-                    regs_i[b as usize + k] = ScalarKind::unbox_val(f);
-                }
-            }
+            unbox_small_tuple(&stack[base + slot], &mut regs_i[b as usize..], len)
         }
         SlotLoc::V(r) => {
             regs_v[r as usize] = std::mem::replace(&mut stack[base + slot], Value::Unit);
@@ -378,6 +374,15 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
             Cells::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
             Cells::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
             Cells::Float(_) | Cells::Rows { .. } => 0,
+        }
+    }
+}
+
+/// The fields of small tuple `held` into `regs`, one register each.
+pub(crate) fn unbox_small_tuple(held: &Value, regs: &mut [i64], len: u8) {
+    if let Value::Tuple(TupleVal::Boxed(fs)) = held {
+        for (k, f) in fs.iter().take(len as usize).enumerate() {
+            regs[k] = ScalarKind::unbox_val(f);
         }
     }
 }
