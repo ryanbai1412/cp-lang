@@ -1622,10 +1622,20 @@ pub fn keyed<S: Seq, I: Indexed, T, K>(
     self: S,
     keys: I = 0..,
     by: ?(T -> K) = None,
-) -> Keys<S, I, T, K> = todo
+) -> Keys<S, I, T, K> = Keys(self, keys, by)
 
 /// The view `keyed` returns.
 pub struct Keys<S, I, T, K>(pub src: S, pub keys: I, by: ?(T -> K))
+
+impl Keyed<K, T> for Keys<S, I, T, K>:
+    fn iter(self) -> yields T:
+        for x in src: yield x
+    fn items(self) -> yields (K, T):
+        var j = 0
+        for x in src:
+            if by != None: yield (by!(x), x)
+            else: yield (keys.nth(j), x)
+            j += 1
 
 /// \(O(1)\) per step. Yield leading elements while `keep(x)` holds, stopping at the first failure.
 ///
