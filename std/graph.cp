@@ -2051,13 +2051,17 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [], []]; dfs(g, from: [V(0)]).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Exit(1, Some(1)), Visit.Enter(2, Some(2)), Visit.Exit(2, Some(2)), Visit.Exit(0, None)]`
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; dfs(g, from: [V(0)]).collect() == [Visit.Enter(0, None), Visit.Enter(1, Some(1)), Visit.Enter(2, Some(2)), Visit.Exit(2, Some(2)), Visit.Exit(1, Some(1)), Visit.Again(0, 2), Visit.Exit(0, None)]`
 pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yields Visit<V, G.Arc>:
-    var vis: [V]Bool = false
-    if let sn = seen: vis = sn.clone()
+    if let sn = seen:
+        for e in dfs_walk(g, from, mut sn): yield e
+    else:
+        var vis: [V]Bool = false
+        for e in dfs_walk(g, from, mut vis): yield e
+
+fn dfs_walk<V, G: Next<V>>(g: G, from: Seq<V>, mut vis: [V]Bool) -> yields Visit<V, G.Arc>:
     let no_via: ?G.Arc = None
     for s in from:
         if vis[s]: continue
         vis[s] = true
-        if let sn = seen: sn[s] = true
         yield Visit.Enter(s, no_via)
         var stk_v = [s]
         var stk_via: List<?G.Arc> = [no_via]
@@ -2075,7 +2079,6 @@ pub fn dfs<V, G: Next<V>>(g: G, from: Seq<V>, seen: ?mut [V]Bool = None) -> yiel
                     yield Visit.Again(u, a)
                 else:
                     vis[v] = true
-                    if let sn = seen: sn[v] = true
                     yield Visit.Enter(v, Some(a))
                     stk_v.push(v)
                     stk_via.push(Some(a))

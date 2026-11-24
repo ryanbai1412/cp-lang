@@ -36,8 +36,7 @@ pub struct FlowGraph<V>:
     /// traps: never
     /// example: `let g = FlowGraph<0..3>(); g.arcs.collect() == []`
     pub fn new() -> FlowGraph<V>:
-        let no_arcs: List<Arc> = []
-        FlowGraph([V] v => no_arcs, [], [], [], None)
+        FlowGraph([V] v => [], [], [], [], None)
 
     /// Adds an arc `u -> v` with capacity `cap`, and its reverse `v -> u` with capacity 0, and
     /// returns the forward arc. A `cap` of `None` is an arc no cut can afford: capacity 2^60.
