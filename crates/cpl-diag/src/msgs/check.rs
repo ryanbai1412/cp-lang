@@ -51,4 +51,5 @@ super::msgs! {
     SIZE_OVER_TARGET = SIZE_NEAR_LIMIT, "the C++ for `{}` is {} bytes, over the {}-byte target and {}% of the {}-byte limit of judge `{}`; `--size` says where the bytes go";
     SIZE_NEAR_TARGET = SIZE_NEAR_LIMIT, "the C++ for `{}` is {} bytes, over {} bytes, near the {}-byte target and {}% of the {}-byte limit of judge `{}`; `--size` says where the bytes go";
     SIZE_AS_WRITTEN = SIZE_NEAR_LIMIT, "as written, the C++ for `{}` would be {} bytes, over the {} of judge `{}`; {}";
+    NOT_IN_STR_OF = RANGE_STORE_CONST, "`{}` is not in `Str of \"{}\"`";
 }

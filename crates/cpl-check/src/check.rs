@@ -57,6 +57,7 @@ use crate::def::Def;
 use crate::fx::HashMap;
 use crate::prelude;
 use crate::ty::Ty;
+use cpl_diag::msgs::Msg;
 use cpl_diag::{codes, Code, Diagnostic, Sink, Span};
 use cpl_syntax::narrow;
 use std::sync::Arc;
@@ -563,6 +564,24 @@ impl<'a> Checker<'a> {
         }
         let before = self.sink.len();
         self.sink.push(Diagnostic::error(code, span, message));
+        (self.sink.len() > before)
+            .then(|| self.sink.last_mut())
+            .flatten()
+    }
+
+    /// Reports `msg` with `args` at `span`, unless an earlier error already
+    /// covers it; the reported diagnostic, to add help to.
+    fn report(
+        &mut self,
+        msg: &'static Msg,
+        span: Span,
+        args: &[&dyn std::fmt::Display],
+    ) -> Option<&mut Diagnostic> {
+        if self.sink.encloses_poison(span) {
+            return None;
+        }
+        let before = self.sink.len();
+        self.sink.push(msg.error(span, args));
         (self.sink.len() > before)
             .then(|| self.sink.last_mut())
             .flatten()

@@ -554,10 +554,10 @@ impl<'a> Checker<'a> {
                                 if let cpl_syntax::ast::StrPiece::Text(text) = piece {
                                     if let Some(bad) = text.chars().find(|c| !alphabet.contains(*c))
                                     {
-                                        self.error(
-                                            codes::RANGE_STORE_CONST,
+                                        self.report(
+                                            &cpl_diag::msgs::check::NOT_IN_STR_OF,
                                             init_expr.span,
-                                            format!("`{bad}` is not in `Str of \"{alphabet}\"`"),
+                                            &[&bad, &alphabet],
                                         );
                                         break;
                                     }

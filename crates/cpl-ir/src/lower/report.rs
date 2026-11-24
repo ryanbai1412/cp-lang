@@ -65,6 +65,16 @@ impl<'a> Lowerer<'a> {
         (text, line, note)
     }
 
+    /// Reports `msg` with `args` at `span`, as `error` does.
+    pub(super) fn report(
+        &mut self,
+        msg: &'static cpl_diag::msgs::Msg,
+        span: Span,
+        args: &[&dyn std::fmt::Display],
+    ) {
+        self.error(msg.code, span, msg.say(args));
+    }
+
     pub(super) fn error(&mut self, code: cpl_diag::Code, span: Span, message: impl Into<String>) {
         self.error_text(code, span, message.into());
     }

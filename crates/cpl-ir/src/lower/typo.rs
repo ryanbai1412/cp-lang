@@ -652,7 +652,7 @@ impl<'a> Lowerer<'a> {
     /// `print(xs.sort())`: an in-place change gives nothing to print; its
     /// copying form does.
     pub(super) fn no_value_to_print(&mut self, span: Span) {
-        self.error(codes::TYPE_MISMATCH, span, "this has no value to print");
+        self.report(&cpl_diag::msgs::ir::NO_VALUE_TO_PRINT, span, &[]);
         let text = self.source(span);
         let copy = [(".sort()", ".sorted()"), (".reverse()", ".rev")]
             .into_iter()
