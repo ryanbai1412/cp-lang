@@ -6,6 +6,7 @@
 //   always worth taking (any LCS can be changed to use them), so common[i, j] is
 //   1 + common[i+1, j+1] then, else the better of dropping either head. Walk from the start:
 //   take equal heads, otherwise drop a head whose loss keeps the length. O(|s| |t|).
+// Bounds: a.len: 1..=3000; b.len: 1..=3000
 // original: corpus/submissions/4131645.cpp
 let a: Str<1..=3000> = read()
 let b: Str<1..=3000> = read()

@@ -482,6 +482,14 @@ class BoundsTest(unittest.TestCase):
                                  "    root: 1,\n)\nlet z: 1..=3 = read()\n")
         self.assertEqual(got, {"trie.u": ("1", "k"), "trie.c": ("1", "9"), "z": ("1", "3")})
 
+    def test_a_string_reads_its_length_range_as_name_len(self):
+        port = "let k: Str<1..=10000> = read()\nlet d: 1..=100 = read()\n"
+        self.assertEqual(corpus.port_ranges(port), {"k.len": ("1", "10000"), "d": ("1", "100")})
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: d: 1..=100\n" + port), ["bounds-undeclared p k.len"])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: k.len: 1..=1e4; d: 1..=100\n" + port), [])
+        self.assertEqual(corpus.bounds_findings("p", "// Bounds: k.len: 1..=1e5; d: 1..=100\n" + port),
+                         ["bounds-narrow p k.len: reads 1..=10000, statement 1..=1e5"])
+
     def test_an_unnamed_tuple_has_positional_fields_the_header_can_state_whole(self):
         port = "domain Col = 1..=w\ntype Cell = (Col, 0..n)\nlet s: [q](1..=3, Col) = read()\nlet c: Cell = read()\n"
         self.assertEqual(corpus.port_ranges(port), {"s.0": ("1", "3"), "s.1": ("1", "w"),

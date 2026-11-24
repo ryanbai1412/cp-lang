@@ -480,6 +480,9 @@ def read_ranges(names, t, domains):
                 out.update(read_ranges([f"{names[0]}.{f.strip()}"], ft, domains))
         return out
     t = domains.get(t, t)
+    if s := re.fullmatch(r"Str<(.+)>", t):
+        # A string's range is its length: `s: Str<1..=n>` is stated as `s.len: 1..=n`.
+        return {f"{n}.len": r for n, r in read_ranges(names, s.group(1), domains).items()}
     m = READ_RANGE.match(t)
     if not m: return {}
     hi = m.group(3).strip()

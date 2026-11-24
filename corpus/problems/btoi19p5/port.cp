@@ -7,6 +7,7 @@
 //   t they meet at some j, Y ending at j and X starting there. KMP (`prefix_matches`) gives
 //   the longest Y for every j, and on the reversed strings the longest X. The flip is the same
 //   search on t reversed: O(n^2) time, O(n) memory.
+// Bounds: s.len: 1..=3000; t.len: 1..=3000
 // original: corpus/submissions/4456167.cpp
 use std.strings.{prefix_matches}
 
