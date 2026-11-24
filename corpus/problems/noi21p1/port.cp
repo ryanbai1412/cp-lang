@@ -9,56 +9,51 @@
 //   neighbours (heavy edges inside the range); a query adds those over its ranges and compares
 //   colours across each range's top edge. O(m log^2 n).
 // original: corpus/submissions/3859087.cpp
-// Bounds: t: 1..=3; n, m: 1..=1e5; kind: 1..=2; a, b: 1..=n
+// Bounds: n, m: 1..=1e5; kind: 1..=2; a, b: 1..=n
 
-// A range's colours at both ends and its count of equal neighbours; `l == 0` is the empty range.
+// A range's colours at both ends and its count of equal neighbours; the empty range is `None`.
 type Run = (l: Int, r: Int, ties: Int)
 
-fn join(a: Run, b: Run) -> Run:
-    if a.l == 0: return b
-    if b.l == 0: return a
-    (a.l, b.r, a.ties + b.ties + (if a.r == b.l: 1 else: 0))
+fn join(a: ?Run, b: ?Run) -> ?Run:
+    if let x = a and let y = b: Some((x.l, y.r, x.ties + y.ties + (if x.r == y.l: 1 else: 0)))
+    else: a ?? b
 
-let blank: Run = (0, 0, 0)
-let runs = Monoid(blank, join)
-let paint = Action<Run, Int>(
-    id: 0,
-    compose: (new_c, old_c) => if new_c != 0: new_c else: old_c,
-    apply: (c, run, span) => if c == 0: run else: (c, c, span - 1),
+let runs = Monoid<?Run>(None, join)
+let paint = Action<?Run, ?Int>(
+    id: None,
+    compose: (new_c, old_c) => new_c ?? old_c,
+    apply: (c, run, span) => if let c = c: Some((c, c, span - 1)) else: run,
     over: runs,
 )
 
-let t: 1..=3 = read()
-for _ in 0..t:
-    let n: 1..=1e5 = read()
-    let m: 1..=1e5 = read()
-    domain V = 1..=n
-    domain E = 1..n
+@!multitest
+let n: 1..=1e5 = read()
+let m: 1..=1e5 = read()
+domain V = 1..=n
+domain E = 1..n
 
-    fn random_tree() -> [E](u: V, v: V):
-        [E] e => (V(rand(1, e.label)), V(e.label + 1))
+fn random_tree() -> [E](u: V, v: V):
+    [E] e => (V(rand(1, e.label)), V(e.label + 1))
 
-    let edges: [E](u: V, v: V) = read(gen: random_tree)
-    let tree = Rooted(Graph.undirected(edges), V.first!)
-    let own: [tree.Pre]Run = [tree.Pre] p => (-p.ord - 1, -p.ord - 1, 0)
-    var colour = SegTree(runs, own, act: paint)
-    var who: [tree.Pre]V = V.first!
-    for v in V: who[tree.sub(v).first!] = v
+let edges: [E](u: V, v: V) = read(gen: random_tree)
+let tree = Rooted(Graph.undirected(edges), V.first!)
+let own: [tree.Pre]?Run = [tree.Pre] p => Some((-p.ord - 1, -p.ord - 1, 0))
+var colour = SegTree(runs, own, act: paint)
 
-    for now in 1..=m:
-        let kind: 1..=2 = read()
-        let a: V = read()
-        let b: V = read()
-        if kind == 1:
-            for chain in tree.chains(a, b): colour.apply(chain.range, now)
-        else:
-            let peak = tree.sub(tree.lca(a, b)).first!
-            var heavy = 0
-            for chain in tree.chains(a, b):
-                let l = chain.range.first!
-                heavy += colour.fold(chain.range).ties
-                // every range but the highest hangs from the path by one more edge
-                if l != peak:
-                    let above = tree.sub(tree.parent(who[l])!).first!
-                    if colour[l].l == colour[above].l: heavy += 1
-            print(heavy)
+for now in 1..=m:
+    let kind: 1..=2 = read()
+    let a: V = read()
+    let b: V = read()
+    if kind == 1:
+        for chain in tree.chains(a, b): colour.apply(chain.range, Some(now))
+    else:
+        let peak = tree.sub(tree.lca(a, b)).first!
+        var heavy = 0
+        for chain in tree.chains(a, b):
+            let l = chain.range.first!
+            heavy += colour.fold(chain.range)!.ties
+            // every range but the highest hangs from the path by one more edge
+            if l != peak:
+                let above = tree.sub(tree.parent(tree.at[l])!).first!
+                if colour[l]!.l == colour[above]!.l: heavy += 1
+        print(heavy)
