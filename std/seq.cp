@@ -1711,6 +1711,10 @@ impl Bidir<T> for Rev<S: Bidir<T>>:
 impl Sized for Rev<S: Sized>:
     @get fn len(self) -> Int = self.src.len
 
+impl Keyed<D, T> for Rev<S: Indexed<D, T>>:
+    fn items(self) -> yields (D, T):
+        for k in self.src.keys.rev: yield (k, self.src.at(k))
+
 /// \(O(1)\) to make. The view `s.items`: `(key, element)` pairs in `s`'s order.
 pub struct Items<S>(
     /// \(O(1)\). The source sequence whose items this view walks.

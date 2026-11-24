@@ -287,7 +287,17 @@ impl Checker<'_> {
             // so a read names the getter, as the engines run it.
             Ty::Fn { params, ret } if !self.in_call_callee && params.is_empty() => {
                 let ty = Ty::Fn { params, ret };
-                self.getter_fn_read(expr).unwrap_or(ty)
+                // An unsettled getter (`Items<Slice<List<_>>>`) still says more than the fn.
+                let read = |c: &mut Self| {
+                    c.quietly(|c| {
+                        let ty = c.method_form_call(expr, expr, &[]);
+                        ty.or_else(|| c.exprs.last_type(expr.span).cloned())
+                    })
+                    .filter(|t| !matches!(t, Ty::Fn { .. } | Ty::Error))
+                };
+                self.getter_fn_read(expr)
+                    .or_else(|| read(self))
+                    .unwrap_or(ty)
             }
             ty => ty,
         }

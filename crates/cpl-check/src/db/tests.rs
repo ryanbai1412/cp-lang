@@ -496,3 +496,10 @@ fn a_bare_bound_gives_the_fn_its_free_trait_arg() {
         print(yes(xs.contains(W.cuts.nth(1).ord)), W.cuts.nth(0).ord + 1)\n";
     assert_eq!(silent_unknowns_of(src), (vec![], 0));
 }
+
+#[test]
+fn a_slice_of_an_unsettled_list_walks_int_keys() {
+    let src = "fn h(x) -> List<_> = [x]\nfn f(y) -> Int:\n    let s = h(y)[..1]\n    var n = 0\n    for (z, x) in s.items: n += z\n    for (z, x) in s.items.rev: n += z\n    n\nprint(f(1))\n";
+    let (unknowns, _) = silent_unknowns_of(src);
+    assert!(!unknowns.iter().any(|u| u == "z" || u.starts_with("s.")), "{unknowns:?}");
+}

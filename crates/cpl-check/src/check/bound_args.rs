@@ -631,9 +631,6 @@ impl Checker<'_> {
             return None;
         }
         let elem = self.element_ty(ty);
-        if elem.has_vague() {
-            return None;
-        }
         let key = match ty {
             Ty::Array { index, .. } if index.len() == 1 => index[0].clone(),
             Ty::Str => Ty::list_index(),
@@ -641,6 +638,10 @@ impl Checker<'_> {
             Ty::Named { name, .. } if name == "List" || name == "Range" => Ty::list_index(),
             _ => Ty::Unknown,
         };
+        // A `List<_>` still has its `Int` keys: only an unknown key says nothing.
+        if elem.has_vague() && (n == 1 || key.has_vague()) {
+            return None;
+        }
         let mut out = vec![Ty::Unknown; n - 1];
         if let Some(last) = out.last_mut() {
             *last = key;

@@ -1,8 +1,4 @@
-// expect: ok, output "1 6
-// 2 7
-//
-// 1 5
-// 2 9"
+// expect: ok, output "1 6\n2 7\n\n1 5\n2 9"
 // rule: std.seq.Keyed
 // a slice's `items` is its `Keyed` impl's, which holds only when the source is `Indexed`
 let a = [5, 6, 7]
