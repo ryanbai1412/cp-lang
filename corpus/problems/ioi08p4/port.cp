@@ -9,42 +9,25 @@
 //   longest cycles first; with none left, each pair of crossing teleporters adds 4 and a last
 //   single one adds 1. Endpoints are bucketed by spot: O(n log n + 2e6) with the loop sort.
 // original: corpus/submissions/5637680.cpp
-// Bounds: n, m: 1..=1e6
+// Bounds: n, m: 1..=1e6; teles.w, teles.e: 1..=2e6
 let n: 1..=1e6 = read()
 let m: 1..=1e6 = read()
 domain Tele = 1..=n
 domain Point = 1..=2 * n  // the endpoints, west to east
-type Ends = (w: 1..=2e6, e: 1..=2e6)
+domain Spot = 1..=2e6  // the spots between the track ends
+type Ends = (w: Spot, e: Spot)
 
-// All 2n endpoints are different and w < e: no type says that, so the input
-// is built here. Spread 2n spots along the track, shuffle, pair them up.
-fn track() -> [Tele]Ends:
-    var spot: [Point]Int = 0
-    var here = 0
-    for p in Point:
-        here += rand(1, 1e6 / n)
-        spot[p] = here
-    for p in Point:
-        let o = Point(rand(1, p.label))
-        let s = spot[p]
-        spot[p] = spot[o]
-        spot[o] = s
-    [Tele] t => (
-        min(spot[Point(2 * t.label - 1)], spot[Point(2 * t.label)]),
-        max(spot[Point(2 * t.label - 1)], spot[Point(2 * t.label)]),
-    )
-
-let teles: [Tele]Ends = read(gen: track)
+let teles: [Tele]Ends = read()
 
 // The endpoints are distinct spots up to 2e6, so bucket them by spot and number them west to east.
-var owner: [1..=2e6]?Tele = None
+var owner: [Spot]?Tele = None
 for t in Tele:
     owner[teles[t].w] = t
     owner[teles[t].e] = t
 var partner: [Point]Point = [Point] p => p
 var first_end: [Tele]?Point = None
 var next = 1
-for spot in 1..=2e6:
+for spot in Spot:
     if let t = owner[spot]:
         let p = Point(next)
         next += 1
@@ -69,16 +52,12 @@ fn ride(from: Int) -> Int:  // jumps until the track ends or the ride repeats
     jumps
 
 var points = ride(0)
-var loops: List<Int> = []
-for s in 0..2 * n:
-    if not seen[s]: loops.push(ride(s))
+let loops = [ride(s) for s in 0..2 * n if not seen[s]]
 
 // A new teleporter with one end on the ride and one on a loop splices the
 // whole loop in: its jumps plus 2. With no loops left, two new teleporters
 // that cross each other add 4, and a single one adds 1.
-var spare = m
-for jumps in loops.sorted(by: x => -x):
-    if spare > 0:
-        points += jumps + 2
-        spare -= 1
+let spliced = loops.sorted(by: x => desc(x)).take(m).collect()
+points += spliced.sum(jumps => jumps + 2)
+let spare = m - spliced.len
 print(points + 4 * (spare / 2) + spare % 2)

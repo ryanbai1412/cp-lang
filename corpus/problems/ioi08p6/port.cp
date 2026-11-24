@@ -5,116 +5,76 @@
 //   0 < B <= 2e9 and P <= 30000.
 // Solution: B > 0: binary search the side k. An obstacle charges its cost to a box of lowest
 //   corners; sweep the corners' x with a lazy min/add SegTree over y and test the cheapest
-//   corner: O((M + P) log N) per k. B = 0: two pointers over columns; a SegTree counting the
-//   obstacles over each y (whole removals only, so no push-down) knows the longest free run, and
-//   the window shrinks until a square of its width fits. O((M + P) log N).
+//   corner: O((M + P) log N) per k. B = 0: two pointers over columns; a range-add SegTree over y
+//   keeps each node's least cover count and its runs at that count, so the longest run at count
+//   0 is the widest free strip, and the window shrinks until a square of its width fits.
+//   O((M + P) log N).
 // limits: 5000 ms, 256 MB
 // original: corpus/submissions/5637805.cpp
 
-let m: Int = read()
-let n: Int = read()
-let budget: Int = read()
-let p: Int = read()
-struct Box(x0: Int, y0: Int, x1: Int, y1: Int, cost: Int)
-var boxes: List<Box> = []
-for _ in 0..p:
-    let x0: Int = read()
-    let y0: Int = read()
-    let x1: Int = read()
-    let y1: Int = read()
-    let cost: Int = read()
-    boxes.push(Box(x0, y0, x1, y1, cost))
+// Bounds: m, n: 1..=1e6; budget: 0..=2e9; p: 1..=4e5; boxes.x0, boxes.x1: 1..=m; boxes.y0, boxes.y1: 1..=n; boxes.cost: 1..=7000
+let (m, n): (1..=1e6, 1..=1e6) = read()
+let budget: 0..=2e9 = read()
+let p: 1..=4e5 = read()
+let boxes: [p](x0: 1..=m, y0: 1..=n, x1: 1..=m, y1: 1..=n, cost: 1..=7000) = read()
 
-// the cheapest place for a base of side k, or none when the field is too small
+// The cheapest place for a base of side k <= min(m, n).
 fn cheapest(k: Int) -> Int:
+    domain X = 1..=m - k + 1  // where the base's lowest corner can be
     domain Y = 1..=n - k + 1
-    // the cost changes only where a box starts or stops covering a corner x
-    var events: List<(x: Int, by: Int, lo: Y, hi: Y)> = []
+    var starts: [X]List<(lo: Y, hi: Y, cost: Int)> = []
+    var stops: [X]List<(lo: Y, hi: Y, cost: Int)> = []
     for b in boxes:
-        let (lo, hi) = (Y(max(b.y0 - k + 1, 1)), Y(min(b.y1, n - k + 1)))
-        events.push((max(b.x0 - k + 1, 1), b.cost, lo, hi))
-        if b.x1 < m - k + 1: events.push((b.x1 + 1, -b.cost, lo, hi))
-    let order = sorted(events, by: e => e.x)
+        let span = (lo: Y(max(b.y0 - k + 1, 1)), hi: Y(min(b.y1, n - k + 1)), cost: b.cost)
+        starts[X(max(b.x0 - k + 1, 1))].push(span)
+        if let after = X.at(b.x1 + 1): stops[after].push(span)
     var cost = SegTree<Y, Int, Int>(min, act: add, a: [Y] _ => 0)
-    var best = if order.is_empty or order[0].x > 1: 0 else: Int.MAX
-    var i = 0
-    while i < order.len:
-        let x = order[i].x
-        while i < order.len and order[i].x == x:
-            cost.apply(order[i].lo..=order[i].hi, order[i].by)
-            i += 1
-        best min= cost.fold(Y.all)
-    best
+    var best: ?Int = None
+    for x in X:
+        for s in stops[x]: cost.apply(s.lo..=s.hi, -s.cost)
+        for s in starts[x]: cost.apply(s.lo..=s.hi, s.cost)
+        best min= cost.all
+    best!
 
 fn with_budget() -> Int:
     (1..=min(m, n)).last_true(k => cheapest(k) <= budget) ?? 0  // side k fits
 
-// How many intervals lie over each y in 1..=n, for intervals that are only
-// ever removed whole: a node keeps the count of intervals that span it, and
-// the free runs below it, so nothing is pushed down.
-struct Cover(n: Int):
-    over: List<Int>  // intervals spanning the whole node
-    head: List<Int>  // free run at the node's start, end, and the longest
-    tail: List<Int>
-    run: List<Int>
+// A run of rows: its least cover count, and the runs of rows at that count at its start, at its
+// end and anywhere in it.
+type Strip = (low: Int, len: Int, head: Int, tail: Int, run: Int)
 
-    fn new(n: Int) -> Cover:
-        var c = Cover(
-            n,
-            List.filled(4 * n, 0),
-            List.filled(4 * n, 0),
-            List.filled(4 * n, 0),
-            List.filled(4 * n, 0),
-        )
-        c.build(1, 1, n)
-        c
+fn at_low(s: Strip, low: Int) -> Strip = if s.low == low: s else: (low: s.low, len: s.len, head: 0, tail: 0, run: 0)
 
-    fn build(mut self, at: Int, lo: Int, hi: Int):
-        (head[at], tail[at], run[at]) = (hi - lo + 1, hi - lo + 1, hi - lo + 1)
-        if lo == hi: return
-        let mid = (lo + hi) / 2
-        self.build(2 * at, lo, mid)
-        self.build(2 * at + 1, mid + 1, hi)
-
-    fn pull(mut self, at: Int, lo: Int, hi: Int):
-        let (l, r, mid) = (2 * at, 2 * at + 1, (lo + hi) / 2)
-        if over[at] > 0:
-            (head[at], tail[at], run[at]) = (0, 0, 0)
-        elif lo == hi:
-            (head[at], tail[at], run[at]) = (1, 1, 1)
-        else:
-            head[at] = if head[l] == mid - lo + 1: head[l] + head[r] else: head[l]
-            tail[at] = if tail[r] == hi - mid: tail[r] + tail[l] else: tail[r]
-            run[at] = max(run[l], run[r], tail[l] + head[r])
-
-    fn add(mut self, at: Int, lo: Int, hi: Int, from: Int, to: Int, by: Int):
-        if from <= lo and hi <= to:
-            over[at] += by
-        else:
-            let mid = (lo + hi) / 2
-            if from <= mid: self.add(2 * at, lo, mid, from, to, by)
-            if to > mid: self.add(2 * at + 1, mid + 1, hi, from, to, by)
-        self.pull(at, lo, hi)
-
-    fn put(mut self, from: Int, to: Int): self.add(1, 1, n, from, to, 1)
-    fn take(mut self, from: Int, to: Int): self.add(1, 1, n, from, to, -1)
-    @get fn longest_free(self) -> Int = run[1]
+fn join(a: Strip, b: Strip) -> Strip:
+    let low = min(a.low, b.low)
+    let (l, r) = (at_low(a, low), at_low(b, low))
+    (
+        low:,
+        len: a.len + b.len,
+        head: if l.head == a.len: a.len + r.head else: l.head,
+        tail: if r.tail == b.len: b.len + l.tail else: r.tail,
+        run: max(l.run, r.run, l.tail + r.head),
+    )
 
 fn for_free() -> Int:
     domain X = 1..=m
-    var enters: [X]List<Box> = []
-    var leaves: [X]List<Box> = []
+    domain Y = 1..=n
+    var enters: [X]List<Range<Y>> = []
+    var leaves: [X]List<Range<Y>> = []
     for b in boxes:
-        enters[X(b.x0)].push(b)
-        leaves[X(b.x1)].push(b)
-    var cover = Cover.new(n)
-    var (best, left) = (0, 1)  // the window is columns left..=right
-    for right in 1..=m:
-        for b in enters[X(right)]: cover.put(b.y0, b.y1)
-        while cover.longest_free < right - left + 1:
-            for b in leaves[X(left)]: cover.take(b.y0, b.y1)
-            left += 1
-        best max= right - left + 1
+        enters[X(b.x0)].push(Y(b.y0)..=Y(b.y1))
+        leaves[X(b.x1)].push(Y(b.y0)..=Y(b.y1))
+    let none: Strip = (low: Int.MAX, len: 0, head: 0, tail: 0, run: 0)
+    let cover_by = Action<Strip, Int>(apply: (d, s, _) => (low: s.low + d, len: s.len, head: s.head, tail: s.tail, run: s.run), over: Monoid(none, join))
+    var cover = SegTree<Y, Strip, Int>(Monoid(none, join), act: cover_by, a: [Y] _ => (low: 0, len: 1, head: 1, tail: 1, run: 1))
+    fn widest_free() -> Int = if cover.all.low == 0: cover.all.run else: 0
+    var (best, left) = (0, X.cuts.first!)  // the window is the columns from cut left to right
+    for right in X:
+        for r in enters[right]: cover.apply(r, 1)
+        while widest_free() < Int(right.r) - Int(left):
+            for r in leaves[left.r!]: cover.apply(r, -1)
+            left = left.next!
+        best max= Int(right.r) - Int(left)
     best
 
 print(if budget > 0: with_budget() else: for_free())
