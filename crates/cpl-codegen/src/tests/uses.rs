@@ -99,6 +99,12 @@ fn a_value_that_owns_no_heap_memory_is_never_listed_as_a_copy() {
 }
 
 #[test]
+fn a_clone_of_a_place_is_listed_as_a_copy() {
+    let source = "var a = [3, 1, 2]\nvar b = a.clone()\nb.push(4)\nprint(a, b)\n";
+    assert_eq!(copy_reasons(source), [crate::uses::CLONED]);
+}
+
+#[test]
 fn explain_reads_closures_copies_and_dropped_fields_off_one_write() {
     let program = lower(
         "struct S:\n    f: (Int) -> Int\n    unused: Int\nvar a = [3, 1, 2]\nvar b = a.clone()\nb.push(4)\nlet s = S(f: x => x + 1, unused: 0)\nprint(s.f(b[0]))\n",

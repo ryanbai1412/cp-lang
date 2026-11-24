@@ -123,6 +123,23 @@ impl<'p> Emitter<'p> {
                 Code::primary(format!("cpl::rand_range({}, {})", text(0), text(1)))
             }
             Builtin::Copy => {
+                if let [arg] = args {
+                    let place = matches!(
+                        arg.kind,
+                        ExprKind::Local(_)
+                            | ExprKind::Global(_)
+                            | ExprKind::Field(..)
+                            | ExprKind::Payload(..)
+                            | ExprKind::Index(..)
+                    );
+                    // The copy the contestant wrote, `a.clone()`, not one a generated
+                    // constructor makes of its parameter at the call's span.
+                    let written = arg.span.start >= e.span.start && arg.span.end < e.span.end;
+                    if place && written && crate::lend::holds_heap(self.program, &arg.ty) {
+                        let why = crate::uses::CLONED;
+                        self.copies.push(crate::lend::Copied::Let(e.span, why));
+                    }
+                }
                 let l = args.first().and_then(|a| self.expr_elem_layout(a));
                 Code::primary(format!(
                     "{}({})",
