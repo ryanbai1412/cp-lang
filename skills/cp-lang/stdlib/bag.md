@@ -135,7 +135,7 @@ Fields: `ks: SortedBag<K>`, `vals: List<V>`, `vfree: List<Int>`.
 
 Monoid-augmented ordered multiset maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 
-Fields: `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
+Fields: `bag: SortedBag<K>`, `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
 
 - `fn new(op: (T, T) -> T, id: T, leaf: K -> T) -> AugSortedBag<K, T>` — \(O(1)\); Create an empty `AugSortedBag<K, T>` with associative `op`, identity `id`, and key map `leaf`.
 - `fn reserve(mut self, cap: Int)` — \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise; Preallocate treap node pool for at least `cap` elements.
@@ -158,8 +158,6 @@ Fields: `op: (T, T) -> T`, `id: T`, `leaf: K -> T`.
 - `fn each(self) -> yields K` — \(O(1)\) amortized per step; Yield all elements in ascending order.
 
 ## `struct AugSortedSet<K, T>`
-
-Monoid-augmented ordered unique set maintaining `op` over `leaf(k)` on every subtree (W10 operation values).
 
 Fields: `bag: AugSortedBag<K, T>`.
 

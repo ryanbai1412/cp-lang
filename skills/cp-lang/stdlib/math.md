@@ -12,10 +12,13 @@ In prelude (no `use` needed): `BigInt`, `Ratio`, `Sieve`, `Sign`, `bit`, `bit_le
 
 ## `struct Sieve`
 
-The smallest prime factor of every number up to `n` (0 for 0 and 1), by a linear sieve.
+The primes up to `n` by a sieve of Eratosthenes over the odd numbers, kept as a primality bitset of \(n / 16\) bytes and the list `primes`.
 
-- `fn new(n: Int) -> Sieve` — \(O(n)\) time and memory; A linear sieve up to `n`: the smallest prime factor of every `0..=n` and the primes in `2..=n`, ascending.; traps: when `n < 0` or `n > 2_000_000_000`
-- `fn is_prime(self, x: Int) -> Bool` — \(O(1)\); Whether `x` is prime, for `0 <= x <= n`: `spf[x] == x` and `x >= 2`.; traps: when `x` is outside `0..=n`
+Fields: `top: Int`, `odd_composite: List<U64>`.
+
+- `fn new(n: Int) -> Sieve` — \(O(n \log \log n)\) time, \(n / 16\) bytes plus 4 bytes a prime; A sieve up to `n`: which of `0..=n` are prime, and the primes.; traps: when `n < 0` or `n > 2_000_000_000`
+- `@get fn spf(self) -> List<SieveVal>` — \(O(n)\) time and \(4n\) bytes on the first read, then \(O(1)\), lent; The smallest prime factor of every `0..=n`, with `spf[0]` and `spf[1]` 0.
+- `fn is_prime(self, x: Int) -> Bool` — \(O(1)\); Whether `x` is prime, for `0 <= x <= n`, from the primality bitset (no `spf` build).; traps: when `x` is outside `0..=n`
 - `fn factor(self, x: Int) -> List<(Int, Int)>` — \(O(\log x)\); The prime factorization of `x` in `1..=n` as `(prime, exponent)` pairs, by repeated `spf`.; traps: when `x` is outside `1..=n`
 - `fn phi(self, x: Int) -> Int` — \(O(\log x)\); Euler's totient of `x` in `1..=n`: how many of `1..=x` are coprime to `x`.; traps: when `x` is outside `1..=n`
 - `fn mobius(self, x: Int) -> Int` — \(O(\log x)\); The Mobius function of `x` in `1..=n`: 0 if a square above 1 divides `x`, else -1 to the number of prime factors.; traps: when `x` is outside `1..=n`

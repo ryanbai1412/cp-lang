@@ -42,6 +42,7 @@ Fields: `in_arc: [V]?A`.
 - `fn below(self, v: V) -> Range<Pre>` — \(O(1)\); The positions of `v`'s descendants: `sub(v)` without `v`.
 - `fn is_anc(self, a: V, b: V) -> Bool` — \(O(1)\); Whether `a` is an ancestor of `b`; a vertex is its own ancestor.
 - `fn lower(self, u: V, v: V) -> V` — \(O(1)\); The child end of the tree edge between `u` and `v`, in either order.; traps: when `u` and `v` are not joined by a tree edge
+- `fn orient(self, u: V, v: V) -> (anc: V, desc: V)` — \(O(1)\); The ends of an ancestor pair, the ancestor first, in either order: a tree edge, or an edge `dfs_tree` left out of an undirected graph's tree, which always joins a vertex to one of its ancestors (a back edge).; traps: when neither `u` nor `v` is an ancestor of the other
 - `fn lca(self, a: V, b: V) -> V` — \(O(\log n)\); The lowest common ancestor of `a` and `b`, by heavy-path climbing.; traps: when `a` and `b` are in different trees of a forest
 - `fn dist(self, a: V, b: V) -> Int` — \(O(\log n)\); The length of the path between `a` and `b`: its number of edges, or the total of its edge lengths in a tree built from `Weighted` arcs.; traps: when `a` and `b` are in different trees of a forest
 - `fn path(self, a: V, b: V) -> List<V>` — \(O(\log n + \lvert \mathit{path} \rvert)\); The simple path of vertices from `a` to `b`, both included.; traps: when `a` and `b` are in different trees of a forest
