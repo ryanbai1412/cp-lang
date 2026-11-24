@@ -1389,6 +1389,22 @@ pub(crate) enum Op {
         hi: u16,
         text_idx: u16,
     },
+    /// `RangeCheckI` with constant bounds.
+    RangeCheckImmI {
+        dst: u16,
+        val: u16,
+        lo: i32,
+        hi: i32,
+        text_idx: u16,
+    },
+    /// A tuple or struct of `len` fields of one scalar `kind`, from the Int
+    /// registers from `base_i`.
+    MakeTupleI {
+        dst: u16,
+        base_i: u16,
+        len: u8,
+        kind: ScalarKind,
+    },
     ConstUnit {
         dst: u16,
     },

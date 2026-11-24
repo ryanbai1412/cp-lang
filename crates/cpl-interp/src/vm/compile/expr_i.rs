@@ -186,6 +186,24 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 text,
             } => {
                 let val = self.compile_expr_i(value);
+                let imm = |b: &Option<Box<Expr>>| match b.as_deref().map(|e| &e.kind) {
+                    Some(ExprKind::Int(v)) => i32::try_from(*v).ok(),
+                    _ => None,
+                };
+                if let (Some(lo), Some(hi)) = (imm(lo), imm(hi)) {
+                    let text_idx = self.range_texts.len() as u16;
+                    self.range_texts.push(text.as_str());
+                    let dst = self.alloc_i();
+                    let check = Op::RangeCheckImmI {
+                        dst,
+                        val,
+                        lo,
+                        hi,
+                        text_idx,
+                    };
+                    self.emit(check, span);
+                    return dst;
+                }
                 let r_lo = match lo {
                     Some(lo) => self.compile_expr_i(lo),
                     None => {

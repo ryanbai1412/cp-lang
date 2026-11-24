@@ -1798,6 +1798,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
             | Op::StrGetI { .. }
             | Op::GStrGetI { .. }
             | Op::MakeTuple { .. }
+            | Op::MakeTupleI { .. }
             | Op::MakeList { .. }
             | Op::ListFilled { .. }
             | Op::ToList { .. }

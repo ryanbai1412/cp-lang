@@ -672,6 +672,43 @@ print(cuts, rcuts, yes(b != None), yes(n == None), yes(b == None), max(xs[0], xs
 }
 
 #[test]
+fn vm_builds_wide_int_structs_from_int_registers() {
+    // bench/ranges/lazy_assign's `join`: a 5-field struct of bounded Ints is
+    // built straight from Int registers, each field checked against constant bounds.
+    let source = "
+struct Run(a: 0..=100, b: 0..=100, c: 0..=100, d: 0..=100, e: 0..=100)
+fn join(x: Run, y: Run) -> Run = Run(x.a + y.a, x.b + y.b, x.c, y.d, x.e + 1)
+let r = join(Run(1, 2, 3, 4, 5), Run(10, 20, 30, 40, 50))
+print(r.a, r.b, r.c, r.d, r.e)
+let big = join(Run(99, 0, 0, 0, 0), Run(2, 0, 0, 0, 0))
+print(big.a)
+";
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    assert!(
+        analysis.diagnostics.is_empty(),
+        "{:?}",
+        analysis.diagnostics
+    );
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let feeds = cpl_ir::pushed::Feeds::of(&program);
+    let compiled = crate::vm::CompiledProgram::compile(&program, &feeds, false, false);
+    let join = program.fns.iter().position(|f| f.name == "join").unwrap();
+    let chunk = compiled.fns[join].as_ref().expect("join is on the VM");
+    let ops: Vec<String> = chunk.ops.iter().map(|op| format!("{op:?}")).collect();
+    let count = |name: &str| ops.iter().filter(|op| op.starts_with(name)).count();
+    assert_eq!(count("MakeTupleI"), 1, "{ops:?}");
+    assert_eq!(count("RangeCheckImmI"), 3, "{ops:?}");
+    assert_eq!(count("BoxI"), 0, "{ops:?}");
+    assert_eq!(count("ConstImmI"), 0, "{ops:?}");
+    let (out, trap) = outcome(source, "");
+    assert_eq!(out, "11 22 3 40 6\n");
+    let msg = trap.expect("expected out-of-range trap");
+    assert!(msg.contains("101 is outside"), "unexpected trap: {msg}");
+}
+
+#[test]
 fn vm_alias_free_mut_closure_runs_without_fallback() {
     let source = "
 fn count_and_bump(mut xs: List<Int>, pred: Int -> Bool) -> Int:

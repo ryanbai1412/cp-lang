@@ -306,6 +306,39 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
             ExprKind::Tuple(fields)
+                if (2..=16).contains(&fields.len())
+                    && matches!(expr.ty, Ty::Tuple(_) | Ty::Record(_) | Ty::Struct(_))
+                    && ScalarKind::of_ty(&fields[0].ty, self.program).is_some()
+                    && (fields.iter()).all(|f| {
+                        ScalarKind::of_ty(&f.ty, self.program)
+                            == ScalarKind::of_ty(&fields[0].ty, self.program)
+                    }) =>
+            {
+                let Some(kind) = ScalarKind::of_ty(&fields[0].ty, self.program) else {
+                    return self.emit_fallback_expr_v(expr);
+                };
+                let regs: Vec<u16> = fields.iter().map(|f| self.compile_expr_i(f)).collect();
+                let base_i = self.next_i;
+                for r in regs {
+                    let slot = self.alloc_i();
+                    if slot != r {
+                        self.emit(Op::MoveI { dst: slot, src: r }, span);
+                    }
+                }
+                let dst = self.alloc_v();
+                let len = fields.len() as u8;
+                self.emit(
+                    Op::MakeTupleI {
+                        dst,
+                        base_i,
+                        len,
+                        kind,
+                    },
+                    span,
+                );
+                dst
+            }
+            ExprKind::Tuple(fields)
                 if fields.len() <= 16
                     && matches!(expr.ty, Ty::Tuple(_) | Ty::Record(_) | Ty::Struct(_)) =>
             {

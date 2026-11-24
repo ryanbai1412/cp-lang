@@ -146,6 +146,17 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     _ => return bug(spans[cur_pc], "expected string"),
                 }
             }
+            Op::MakeTupleI {
+                dst,
+                base_i,
+                len,
+                kind,
+            } => {
+                let b = base_i as usize;
+                let fs =
+                    crate::value::Shared::collect(len as usize, |k| kind.box_val(regs_i[b + k]));
+                regs_v[dst as usize] = Value::Tuple(TupleVal::Boxed(fs));
+            }
             Op::MakeTuple { dst, base_v, len } => {
                 let b = base_v as usize;
                 let n = len as usize;
@@ -964,29 +975,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 {
                     self.tick(spans[cur_pc])?;
                     self.stack_left(spans[cur_pc], None)?;
-                    let mut ni = 0usize;
-                    let mut nv = 0usize;
-                    for loc in callee.slot_map.iter().take(callee.param_count) {
-                        match loc {
-                            SlotLoc::I(..) => ni += 1,
-                            SlotLoc::OptI { .. } => ni += 2,
-                            SlotLoc::V(_) => nv += 1,
-                            SlotLoc::SmallTuple { .. } => {
-                                return trap(
-                                    spans[cur_pc],
-                                    cpl_diag::msgs::interp::INTERPRETER_FAILED.at(&[]),
-                                )
-                            }
-                        }
-                    }
-                    let mut arg_buf_i = [0i64; 8];
-                    let abi = arg_base_i as usize;
-                    arg_buf_i[..ni].copy_from_slice(&regs_i[abi..abi + ni]);
-                    let mut arg_buf_v: [Value; 8] = std::array::from_fn(|_| Value::Unit);
-                    let abv = arg_base_v as usize;
-                    for k in 0..nv {
-                        arg_buf_v[k] = std::mem::replace(&mut regs_v[abv + k], Value::Unit);
-                    }
                     let needs_stack = callee.needs_stack;
                     let saved_base = self.base;
                     if needs_stack {
@@ -999,34 +987,26 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         self.frameless_base = Some(saved_base);
                     }
                     self.call_frames.push(("<closure>", spans[cur_pc]));
-                    self.suspend(
-                        chunk,
-                        cur_pc,
-                        base_i,
-                        regs_v,
-                        Body::Closure(cid),
-                        saved_base,
-                    );
-                    let prev_in_closure = std::mem::replace(&mut self.in_closure, true);
+                    // The args go straight from this frame's registers to the callee's.
                     let c_base_i = vm_regs_i.len();
                     vm_regs_i.resize(c_base_i + callee.num_i, 0);
                     let mut c_regs_v = self.take_regs_v(callee.num_v);
-                    let mut ii = 0usize;
-                    let mut iv = 0usize;
+                    let mut ii = base_i + arg_base_i as usize;
+                    let mut iv = arg_base_v as usize;
                     for loc in callee.slot_map.iter().take(callee.param_count) {
                         match *loc {
                             SlotLoc::I(r, _) => {
-                                vm_regs_i[c_base_i + r as usize] = arg_buf_i[ii];
+                                vm_regs_i[c_base_i + r as usize] = vm_regs_i[ii];
                                 ii += 1;
                             }
                             SlotLoc::OptI { val, some, .. } => {
-                                vm_regs_i[c_base_i + val as usize] = arg_buf_i[ii];
-                                vm_regs_i[c_base_i + some as usize] = arg_buf_i[ii + 1];
+                                vm_regs_i[c_base_i + val as usize] = vm_regs_i[ii];
+                                vm_regs_i[c_base_i + some as usize] = vm_regs_i[ii + 1];
                                 ii += 2;
                             }
                             SlotLoc::V(r) => {
                                 c_regs_v[r as usize] =
-                                    std::mem::replace(&mut arg_buf_v[iv], Value::Unit);
+                                    std::mem::replace(&mut regs_v[iv], Value::Unit);
                                 iv += 1;
                             }
                             SlotLoc::SmallTuple { .. } => {
@@ -1037,6 +1017,15 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             }
                         }
                     }
+                    self.suspend(
+                        chunk,
+                        cur_pc,
+                        base_i,
+                        regs_v,
+                        Body::Closure(cid),
+                        saved_base,
+                    );
+                    let prev_in_closure = std::mem::replace(&mut self.in_closure, true);
                     for (cap, cval) in def.captures.iter().zip(caps.iter()) {
                         let crate::CaptureVal::Val(v) = cval else {
                             return trap(

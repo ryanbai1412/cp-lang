@@ -369,6 +369,23 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 regs_i[dst as usize] = v;
             }
+            Op::RangeCheckImmI {
+                dst,
+                val,
+                lo,
+                hi,
+                text_idx,
+            } => {
+                let v = regs_i[val as usize];
+                if v < i64::from(lo) || v > i64::from(hi) {
+                    let text = chunk.range_texts[text_idx as usize];
+                    return trap(
+                        spans[cur_pc],
+                        cpl_diag::msgs::interp::OUTSIDE.at(&[&v, &text]),
+                    );
+                }
+                regs_i[dst as usize] = v;
+            }
             Op::ConstUnit { dst } => {
                 regs_v[dst as usize] = Value::Unit;
             }
