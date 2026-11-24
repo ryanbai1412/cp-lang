@@ -26,6 +26,7 @@ jobs:
     # own root-cause finding has long beaten the bisect.
     timeout-minutes: 30
     env:
+      TARGET_KEY: target-ci-v2
       BAD: ${{ github.event.workflow_run.head_sha }}
       RUN_ID: ${{ github.event.workflow_run.id }}
       GH_TOKEN: ${{ github.token }}
@@ -44,23 +45,11 @@ jobs:
           n=$(grep -cE '\b(FAIL|TIMEOUT|SIG[A-Z]+) +\[' failed.log || true)
           echo "fails=$n" >>"$GITHUB_OUTPUT"
           echo "good $good, bad $BAD, $n FAIL lines"
-      - name: Install the pinned Rust toolchain
-        if: steps.range.outputs.fails != '0'
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         if: steps.range.outputs.fails != '0'
         with:
-          cache-targets: "false"
-          save-if: "false"
-      - name: Restore CI's dev target/
-        if: steps.range.outputs.fails != '0'
-        uses: actions/cache/restore@v4
-        with:
-          path: target
-          key: target-ci-v1-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
-          restore-keys: |
-            target-ci-v1-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
-            target-ci-v1-dev-
+          target: dev
+          save-if: false
       - uses: taiki-e/install-action@v2
         if: steps.range.outputs.fails != '0'
         with:

@@ -50,9 +50,7 @@ jobs:
           fi
           echo "plugin build since ${base:-(none)}: $build"
           echo "build=$build" >> "$GITHUB_OUTPUT"
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: neovim
       - uses: actions/setup-java@v4

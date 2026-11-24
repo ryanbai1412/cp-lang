@@ -40,9 +40,7 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: debugger-loop
       - uses: taiki-e/install-action@v2
@@ -87,9 +85,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: neovim
       - uses: actions/setup-node@v4
@@ -115,9 +111,7 @@ jobs:
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: neovim
       - uses: actions/setup-java@v4

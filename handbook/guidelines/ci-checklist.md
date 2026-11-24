@@ -344,3 +344,16 @@ target and cost one runner-hour every few runs.
 *Example:* adding a `Restore target/` step or a `cargo build` to the `tests`
 job fails `test_the_workspace_tests_compile_once`.
 *Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.
+
+### ci/R38
+
+Every workflow sets Rust up through `.github/actions/setup-rust`: the pinned
+toolchain, the cargo caches and, with `target:`, the target/ that ci.yml
+saves under `TARGET_KEY: target-ci-v2`, re-stamped by `scripts/ci-mtime.sh`.
+*Why:* 20 hand-copied setups had drifted: ci-slow and culprit still
+restored `target-ci-v1`, which nothing has saved since the key moved to v2,
+so both rebuilt the workspace from scratch.
+*Example:* a job that runs `rustup toolchain install` itself, or a
+`TARGET_KEY: target-ci-v1`, fails
+`test_every_workflow_sets_rust_up_through_one_action`.
+*Enforced by:* `scripts/test_workflows.py`, run by `scripts/check.sh`.

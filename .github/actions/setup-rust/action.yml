@@ -1,0 +1,54 @@
+name: setup-rust
+description: >
+  The one Rust setup every workflow uses (ci/R38): the pinned toolchain,
+  the cargo registry cache, and, with `target`, main's target/ restored and
+  re-stamped by scripts/ci-mtime.sh so cargo rebuilds only what changed.
+inputs:
+  target:
+    description: "Restore main's target/ for this profile (dev, clippy, release); empty caches target/ with rust-cache instead"
+    default: ""
+  shared-key:
+    description: rust-cache shared-key, for jobs without `target`
+    default: ""
+  key:
+    description: rust-cache key
+    default: ""
+  save-if:
+    description: rust-cache save-if
+    default: "true"
+  cache:
+    description: "false skips the cargo caches, for jobs that only run prebuilt binaries"
+    default: "true"
+  add:
+    description: "Extra `rustup` arguments run after the install, e.g. `target add wasm32-wasip1`"
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Install the pinned Rust toolchain
+      shell: bash
+      run: rustup show active-toolchain || rustup toolchain install
+    - name: rustup ${{ inputs.add }}
+      if: inputs.add != ''
+      shell: bash
+      run: rustup ${{ inputs.add }}
+    - uses: Swatinem/rust-cache@v2
+      if: inputs.cache == 'true'
+      with:
+        cache-targets: ${{ inputs.target == '' }}
+        shared-key: ${{ inputs.shared-key }}
+        key: ${{ inputs.key }}
+        save-if: ${{ inputs.save-if }}
+    - name: Restore target/ (${{ inputs.target }})
+      if: inputs.target != ''
+      uses: actions/cache/restore@v4
+      with:
+        path: target
+        key: ${{ env.TARGET_KEY }}-${{ inputs.target }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
+        restore-keys: |
+          ${{ env.TARGET_KEY }}-${{ inputs.target }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
+          ${{ env.TARGET_KEY }}-${{ inputs.target }}-
+    - name: Reuse unchanged build outputs
+      if: inputs.target != ''
+      shell: bash
+      run: scripts/ci-mtime.sh

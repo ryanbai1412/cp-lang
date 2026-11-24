@@ -181,6 +181,17 @@ class WorkflowTest(unittest.TestCase):
             self.assertNotIn("continue-on-error", f.read(),
                              "a red nobody sees is not a check: block, or report from the watchdog (ci/R29)")
 
+    def test_every_workflow_sets_rust_up_through_one_action(self):
+        wf = os.path.join(ROOT, ".github", "workflows")
+        for name in sorted(os.listdir(wf)):
+            with open(os.path.join(wf, name), encoding="utf-8") as f:
+                text = f.read()
+            for own in ("rustup toolchain install", "Swatinem/rust-cache", "scripts/ci-mtime.sh"):
+                self.assertNotIn(own, text, f"{name}: use ./.github/actions/setup-rust (ci/R38)")
+            for key in re.findall(r"TARGET_KEY: (\S+)", text):
+                self.assertEqual(key, "target-ci-v2",
+                                 f"{name}: restores a target/ ci.yml never saves (ci/R38)")
+
     def test_finds_an_uncapped_job(self):
         text = "on: push\njobs:\n  a:\n    timeout-minutes: 5\n    steps: []\n  b:\n    runs-on: x\n    steps:\n      - timeout-minutes: 3\n"
         self.assertEqual(uncapped_jobs(text), ["b"])

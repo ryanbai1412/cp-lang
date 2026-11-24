@@ -11,11 +11,11 @@ permissions:
 
 # Every Rust job restores the newest target/ its group saved on main (dev:
 # tests, conform, timing; clippy: checks; release: site), and
-# scripts/ci-mtime.sh re-stamps only the files changed since, so cargo
+# .github/actions/setup-rust re-stamps only the files changed since, so cargo
 # rebuilds only the crates and test binaries whose inputs changed.
 env:
   CARGO_INCREMENTAL: "0"
-  TARGET_KEY: target-${{ github.workflow }}-v2
+  TARGET_KEY: target-ci-v2
 
 # On main a started run always finishes, and at most one more waits: a newer
 # push replaces the waiting run, so CI checks the newest tip next instead of
@@ -40,21 +40,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
-          cache-targets: "false"
-      - name: Restore target/ (${{ matrix.part == 'checks' && 'clippy' || 'dev' }})
-        uses: actions/cache/restore@v4
-        with:
-          path: target
-          key: ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
-            ${{ env.TARGET_KEY }}-${{ matrix.part == 'checks' && 'clippy' || 'dev' }}-
-      - name: Reuse unchanged build outputs
-        run: scripts/ci-mtime.sh
+          target: ${{ matrix.part == 'checks' && 'clippy' || 'dev' }}
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
@@ -138,21 +126,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
-          cache-targets: "false"
-      - name: Restore target/ (dev)
-        uses: actions/cache/restore@v4
-        with:
-          path: target
-          key: ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
-            ${{ env.TARGET_KEY }}-dev-
-      - name: Reuse unchanged build outputs
-        run: scripts/ci-mtime.sh
+          target: dev
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
@@ -194,8 +170,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
+      - uses: ./.github/actions/setup-rust
+        with:
+          cache: false
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
@@ -235,9 +212,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: neovim
       - uses: rhysd/action-setup-vim@v1
@@ -279,9 +254,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: neovim
       - uses: actions/setup-node@v4
@@ -309,9 +282,7 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: neovim
       # bash, so the first failing command fails the step: Windows' default
@@ -342,10 +313,9 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install && rustup target add wasm32-wasip1
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
+          add: target add wasm32-wasip1
           shared-key: neovim
       - name: Build cpl
         run: cargo build -p cpl-cli
@@ -385,9 +355,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       # skill-gen checks every skill example with cpl.
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: neovim
           save-if: false
@@ -446,21 +414,9 @@ jobs:
         shard: [1, 2, 3]
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
-          cache-targets: "false"
-      - name: Restore target/ (release)
-        uses: actions/cache/restore@v4
-        with:
-          path: target
-          key: ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
-            ${{ env.TARGET_KEY }}-release-
-      - name: Reuse unchanged build outputs
-        run: scripts/ci-mtime.sh
+          target: release
       - name: Build cpl
         run: cargo build --profile ci --bin cpl
       - name: Rejudge the acceptance solutions
@@ -504,21 +460,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
-          cache-targets: "false"
-      - name: Restore target/ (release)
-        uses: actions/cache/restore@v4
-        with:
-          path: target
-          key: ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ env.TARGET_KEY }}-release-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
-            ${{ env.TARGET_KEY }}-release-
-      - name: Reuse unchanged build outputs
-        run: scripts/ci-mtime.sh
+          target: release
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:

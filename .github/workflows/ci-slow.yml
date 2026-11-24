@@ -13,7 +13,7 @@ permissions:
 env:
   CARGO_INCREMENTAL: "0"
   # Restores the dev target/ that ci.yml saves.
-  TARGET_KEY: target-ci-v1
+  TARGET_KEY: target-ci-v2
 
 concurrency:
   group: ci-slow-${{ github.ref }}
@@ -28,21 +28,9 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
-          cache-targets: "false"
-      - name: Restore target/ (dev)
-        uses: actions/cache/restore@v4
-        with:
-          path: target
-          key: ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-${{ github.run_id }}
-          restore-keys: |
-            ${{ env.TARGET_KEY }}-dev-${{ hashFiles('Cargo.lock', 'rust-toolchain.toml') }}-
-            ${{ env.TARGET_KEY }}-dev-
-      - name: Reuse unchanged build outputs
-        run: scripts/ci-mtime.sh
+          target: dev
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-nextest
@@ -57,11 +45,9 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - run: rustup component add llvm-tools-preview
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
+          add: component add llvm-tools-preview
           shared-key: coverage
       - uses: taiki-e/install-action@v2
         with:
@@ -82,9 +68,7 @@ jobs:
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: mutants
       - name: Mutation score
@@ -108,9 +92,7 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
-      - name: Install the pinned Rust toolchain
-        run: rustup show active-toolchain || rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
+      - uses: ./.github/actions/setup-rust
         with:
           shared-key: lsp-latency
       - name: LSP latency (release)
