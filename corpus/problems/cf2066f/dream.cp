@@ -25,37 +25,40 @@ fn cool(r: Range<PosA>) -> List<Range<PosA>>:
     let m = a[r].items.map((i, v) => MaxSubAt.of(i, v)).fold(+)!.at
     cool(r.start..m.start) + [m] + cool(m.end..r.end)
 
-let (domain Seg, span) = cool(PosA.first..=PosA.last).indexed()
+let segs = cool(PosA.first!..=PosA.last!)
+domain Seg = 0..segs.len
+let span = [Seg] s => segs[s.ord]
 let total = [Seg] s => a[span[s]].sum()
-let mss = [PosB.cuts, PosB.cuts] (l, r) => b[l..r].map(MaxSub.of).fold(+)!.best
+let mss = [PosB.cuts, PosB.cuts] (l, r) =>
+    if l <= r: b[l..r].map(MaxSub.of).fold(+) else: MaxSub.zero
 
 struct Back(from: PosB.cuts, spent: Bool)
-struct Plan(piece: [Seg]Range<PosB>, free: Seg)
+struct Plan(piece: [Seg]Range<PosB.cuts>, free: Seg)
 
 fn plan(x: Int) -> ?Plan:
     var came: [Seg.cuts, PosB.cuts, Bool]?Back = None
     fn fit(k: Seg.cuts, j: PosB.cuts, spent: Bool) -> Bool =
         came[k, j, spent] != None or (
-            k == Seg.cuts.first and j == PosB.cuts.first and not spent
+            k == Seg.cuts.first! and j == PosB.cuts.first! and not spent
         )
     for s in Seg:
         if total[s] < x:
             for spent in [false, true]:
                 for j in PosB.cuts:
                     if fit(s.l, j, spent) and b[j..].starts_with(a[span[s]]):
-                        came[s.r, j + span[s].len, spent] = Back(j, spent)
+                        came[s.r, PosB.cuts.nth(j.ord + span[s].len), spent] = Back(j, spent)
         else:
             for spent in [false, true]:
                 var latest: ?PosB.cuts = None
                 for j in PosB.cuts:
-                    if let i = latest, mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
+                    if let i = latest, mss[i, j].best <= x: came[s.r, j, spent] = Back(i, spent)
                     if fit(s.l, j, spent): latest = j
             if let i = PosB.cuts.first(j => fit(s.l, j, false)):
                 for j in PosB.cuts:
                     if j > i: came[s.r, j, true] = Back(i, false)
-    var at = Back(PosB.cuts.last, true)
-    if not fit(Seg.cuts.last, at.from, true): return None
-    var piece: [Seg]Range<PosB> = PosB.cuts.first..PosB.cuts.first
+    var at = Back(PosB.cuts.last!, true)
+    if not fit(Seg.cuts.last!, at.from, true): return None
+    var piece: [Seg]Range<PosB.cuts> = PosB.cuts.first!..PosB.cuts.first!
     var free: ?Seg = None
     for s in Seg.rev:
         let back = came[s.r, at.from, at.spent]!
