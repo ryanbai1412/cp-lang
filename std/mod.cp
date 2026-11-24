@@ -11,7 +11,7 @@
 //! an `Int`, `*` multiplies in 128 bits.
 use std.algebra.{Monoid}
 use std.fenwick.{Fenwick}
-use std.math.{crt_all, factor, gcd, inv_mod, isqrt, mod_log, mod_sqrt, mul_mod, pow_mod}
+use std.math.{crt_all, factor, inv_mod, isqrt, mod_log, mod_sqrt, mul_mod, pow_mod}
 use std.range.{Len}
 
 /// An integer modulo the constant `P`, always stored in `0..P`.
@@ -205,7 +205,6 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// traps: when `limit < 0` or `limit >= 2^31`, or `P` is not prime
     /// example: `type Z = Mod<7>; let c = Comb<Z>(3); c.fact(3) == Z(6)`
     pub fn new(limit: Len = 0) -> Comb<M>:
-        assert limit >= 0, "`Comb(limit)` needs `limit >= 0`"
         let p = M.MOD
         for q in 2..=p.isqrt:
             assert p % q != 0, "`Comb` needs a prime modulus"
@@ -242,7 +241,6 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<7>; Comb<Z>().fact(6) == Z(6)`
     /// example: `type Z = Mod<7>; Comb<Z>().fact(7) == Z(0)`
     pub fn fact(self, n: 0..) -> M:
-        assert n >= 0, "`fact(n)` needs `n >= 0`"
         if n >= M.MOD: return M(0)
         self.ensure(n)
         f[n]
@@ -342,7 +340,6 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().catalan(4) == Z(14)`
     /// example: `type Z = Mod<7>; Comb<Z>().catalan(4) == Z(0)`
     pub fn catalan(self, n: 0..) -> M:
-        assert n >= 0, "`catalan(n)` needs `n >= 0`"
         self.choose(2 * n, n) - self.choose(2 * n, n + 1)
 
     /// The number of derangements `!n`: permutations of `n` things with no fixed point.
@@ -356,7 +353,6 @@ pub struct Comb<M: Add + Sub + Mul>:
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(4) == Z(9)`
     /// example: `type Z = Mod<1_000_000_007>; Comb<Z>().derange(5) == Z(44)`
     pub fn derange(self, n: 0..) -> M:
-        assert n >= 0, "`derange(n)` needs `n >= 0`"
         while d.len <= n:
             let i = d.len
             d.push(M(i - 1) * (d[i - 1] + d[i - 2]))
@@ -486,7 +482,6 @@ pub struct ModComb(pub m: Int):
     /// traps: when `m < 1`
     /// example: `ModComb(12).choose(6, 3) == 8`
     pub fn new(m: 1..) -> ModComb:
-        assert m >= 1, "`ModComb(m)` needs `m >= 1`"
         ModComb(m, [PrimePowerComb.new(q, k) for (q, k) in factor(m)])
 
     /// `C(n, k) mod m`, by CRT over the prime powers of `m`; 0 when `k` is outside `0..=n`.
