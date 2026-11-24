@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-GEN = "spec/conformance/COVERAGE.md"
+GEN = "spec/conformance/widths/int.cp"
 RATCHET = "scripts/debt-ratchet.json"
 
 

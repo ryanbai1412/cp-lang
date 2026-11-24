@@ -1,4 +1,7 @@
-"""Write spec/conformance/COVERAGE.md: rules, diagnostics and std items vs cases.
+"""Rules, diagnostics and std items vs cases: fails on a rule without the cases it
+needs and writes the report to target/spec/COVERAGE.md (CI keeps it as the
+`conformance-coverage` artifact; `--print` prints it instead). The report is not
+committed: its counts moved with every case, so it was most of main's regen commits.
 
 A case is positive when it expects `ok`, negative when it expects a diagnostic
 or a trap; a tool case with a `// lacks:` line, or one that exits nonzero, is also negative. A rule whose text forbids or traps something needs a negative case;
@@ -9,15 +12,17 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from collections import defaultdict
 
 import specgate
 from specgate import Problem
 
-HELP = "every rule has the accept and reject cases it needs; --write writes spec/conformance/COVERAGE.md"
+HELP = "every rule has the accept and reject cases it needs; writes target/spec/COVERAGE.md, or --print prints it"
 ROOT = specgate.ROOT
 SPEC = ROOT / "spec"
 CONF = SPEC / "conformance"
+REPORT = ROOT / "target/spec/COVERAGE.md"
 RULE_DEF = re.compile(r"\(R((?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+)(, permits)?\)")
 CODE = re.compile(r"\b([ELRW]\d{4})\b")
 UNTESTABLE = {
@@ -218,7 +223,7 @@ def spec_blocks(all_cases, block_status=None):
 
 
 def args(ap) -> None:
-    ap.add_argument("--write", action="store_true")
+    ap.add_argument("--print", action="store_true", help="print the report instead of writing it")
 
 
 def run(opts) -> list[Problem]:
@@ -409,12 +414,9 @@ def run(opts) -> list[Problem]:
         for u in uncited:
             w(f"- {u}")
     text = "\n".join(out) + "\n"
-    target = CONF / "COVERAGE.md"
-    if gaps:
-        return [Problem(f"{rules[r][0]}:{rules[r][1]}", f"R{r}: {gaps[r]}; add the case") for r in sorted(gaps, key=rule_key)]
-    if not opts.write:
-        if not target.exists() or target.read_text() != text:
-            return [Problem(str(target.relative_to(ROOT)), "stale; run: uv run scripts/spec-gate.py coverage --write")]
-        return []
-    target.write_text(text)
-    return []
+    if opts.print:
+        sys.stdout.write(text)
+    else:
+        REPORT.parent.mkdir(parents=True, exist_ok=True)
+        REPORT.write_text(text)
+    return [Problem(f"{rules[r][0]}:{rules[r][1]}", f"R{r}: {gaps[r]}; add the case") for r in sorted(gaps, key=rule_key)]

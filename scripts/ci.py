@@ -159,8 +159,7 @@ STEPS = {
         Step("every std fn with a case grows as its cost: says (bench/scaling.py --check)",
              ("bench/scaling.py", "--check", "--cpl", "{cpl}"),
              "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"),
-        gate("coverage", fail="rule coverage gate failed; see above, then rerun: uv run scripts/spec-gate.py coverage",
-             derived=True),
+        gate("coverage", fail="a rule lacks the case it needs; see above, then rerun: uv run scripts/spec-gate.py coverage"),
         gate("subset", fail=_stale("spec/SUBSET.md", "subset")),
         gate("matrix", fail="matrix gate failed; see above"),
         gate("widths", fail=_stale("spec/conformance/widths/", "widths")),
@@ -505,7 +504,7 @@ class Tail:
         self.step("checking scripts (scripts/ci.py steps commit)")
         if run_steps("commit", self.cpl, run=self.run):
             raise Failed("")
-        self.step("generated files current: skill pages, COVERAGE.md, gap lists (scripts/gen.py --check)")
+        self.step("generated files current: skill pages, gap lists (scripts/gen.py --check)")
         # CI's regen job regenerates stale files on main, so a commit isn't blocked by
         # staleness it may not have caused; only the summary line, the rest is the job's.
         gen = self.run([sys.executable, "scripts/gen.py", "--check"], cwd=ROOT, stdout=subprocess.PIPE,

@@ -106,6 +106,13 @@ jobs:
         run: |
           timeout 680 scripts/check.sh --fast || { s=$?; [ "$s" != 124 ] \
             || echo "::error::the gate passed 11 min; the last ==> step above is the slow one"; exit "$s"; }
+      # The rule coverage report (scripts/spec-gate.py coverage), kept per run, not committed.
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() && matrix.part == 'checks' }}
+        with:
+          name: conformance-coverage
+          path: target/spec/COVERAGE.md
+          if-no-files-found: ignore
       - uses: actions/cache/save@v4
         if: ${{ always() && matrix.part == 'conform:corpus+docs' }}
         with:
@@ -376,7 +383,7 @@ jobs:
       - name: Tree-sitter grammar
         run: editors/tree-sitter-cp/smoke.sh
 
-  # A main push with stale generated files (skill pages, COVERAGE.md, fixed
+  # A main push with stale generated files (skill pages, gap lists, fixed
   # prelude gaps) or a machine-fixable clippy lint gets them regenerated and committed here, under the pushed
   # commit's Domain trailer, then CI is dispatched on the new tip: a push by
   # the Actions token starts no run by itself.

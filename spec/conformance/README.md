@@ -23,7 +23,8 @@ without the `R`; `cpl-conform --rules` lists the rules no case cites.
 A rule is defined where `(Rnn.n.n)` ends its sentence, or `(Rnn.n.n, permits)` when its text
 matches a forbidding word but only permits or defines something, so it needs no reject case; a reference to a
 rule from elsewhere is written `(see Rnn.n.n)` so it is not read as a
-second definition. `COVERAGE.md` (from `scripts/spec-gate.py coverage`)
+second definition. The coverage report (`scripts/spec-gate.py coverage` writes
+`target/spec/COVERAGE.md`; CI keeps it as the `conformance-coverage` artifact)
 lists per chapter the rules, codes and std items each case covers. An `R` code
 expects the program to check, run and trap with that code on that line.
 An `L` code runs `cpl lint` (default levels) after the check. An optional

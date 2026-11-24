@@ -68,7 +68,7 @@ rows marked `missing` in the register below.
 |---|---|
 | `spec/core/` chapters and their rule ids `(Rnn.n.n)` | `std/*.cp` signatures and bodies (stdlib) |
 | `spec/lib/` library design chapters, `spec/tools/` tool contracts | `spec/diagnostics.md`, the error catalogue (diagnostics) |
-| `spec/conformance/`: the cases, `README.md` (the case format), the generators' data, `COVERAGE.md` | Making failing cases pass (compiler, perf, stdlib, tools) |
+| `spec/conformance/`: the cases, `README.md` (the case format), the generators' data, the coverage report (`target/spec/COVERAGE.md`, CI artifact `conformance-coverage`) | Making failing cases pass (compiler, perf, stdlib, tools) |
 | `spec/SUBSET.md`: which sections are supported, documented or a known gap, with an owner per failing case | `handbook/language/std.md` (stdlib) |
 | `handbook/language/` design docs, except `std.md` | The gate script and CI (infra) |
 | `crates/cpl-conform` (the runner: `conformance`, `spec-blocks`, `corpus`, `docs`, `diff`) | The corpus programs and scoreboard (idioms) |
@@ -229,7 +229,7 @@ Three probes put the rubric to work:
 | `cpl-conform spec-blocks` | Code examples in `spec/core` and `spec/lib` that don't compile or run | `cargo run -p cpl-conform -- spec-blocks` |
 | `cpl-conform corpus` | Corpus solutions that fail their tests, judged by `checker.py` when present | `cargo run -p cpl-conform -- corpus` |
 | `cpl-conform all --check` | Any case that passed before and fails now | gate step `cpl-conform ratchet` |
-| `scripts/spec-gate.py coverage` | Untested rules and codes; writes `COVERAGE.md` | `uv run --quiet python scripts/spec-gate.py coverage` |
+| `scripts/spec-gate.py coverage` | Untested rules and codes; writes `target/spec/COVERAGE.md` (`--print` prints it) | `uv run --quiet python scripts/spec-gate.py coverage` |
 | `scripts/spec-gate.py matrix` | Empty feature x consumer cells; generates `spec/conformance/matrix/` | `python3 scripts/spec-gate.py matrix` |
 | `scripts/spec-gate.py traits` | Trait methods with no case | `uv run --quiet python scripts/spec-gate.py traits` |
 | `scripts/spec-gate.py sigs`, `spec-gate.py prelude` | Chapter vs `std` disagreements on named args and prelude names | `uv run --quiet python scripts/spec-gate.py sigs` |

@@ -54,7 +54,7 @@ the end.
 | `spec/lib/` | What the stdlib must offer per area, with rationale. |
 | `spec/tools/` | Tool contracts: CLI, fmt and lint, LSP, stress, trace and debug, explain, bundle, judge profiles. |
 | `spec/diagnostics.md` | Every error code: meaning, example, fix-it. |
-| `spec/conformance/` | The spec's test suite: handwritten cases (`// expect:` and `// rule:` headers), generated matrix and trait cases, gap lists and `COVERAGE.md` (all in `gen.toml`). Cases are never deleted or weakened. |
+| `spec/conformance/` | The spec's test suite: handwritten cases (`// expect:` and `// rule:` headers), generated matrix and trait cases, and gap lists (all in `gen.toml`); the coverage report is built, not committed (`scripts/spec-gate.py coverage`). Cases are never deleted or weakened. |
 
 ## `std/`: the standard library
 

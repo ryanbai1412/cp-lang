@@ -92,7 +92,7 @@ class StepsTest(unittest.TestCase):
         self.assertNotIn("widths", calls)
 
     def test_a_derived_step_only_warns_once_healed(self) -> None:
-        for name in ("coverage", "skill-gen"):
+        for name in ("skill-gen",):
             self.assertEqual(self._run({name: 1})[0], 1)
             status, calls = self._run({name: 1}, healed=True)
             self.assertEqual(status, 0)
