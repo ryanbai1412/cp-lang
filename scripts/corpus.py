@@ -1671,11 +1671,16 @@ def base_findings(found, modes, base, cpl, run=subprocess.run):
     print(f"corpus: rerunning {len(ids)} package(s) with findings at the base {rev[:9]}", file=sys.stderr)
     profile = "debug" if "debug" in Path(cpl).parts else "release"  # the timeouts are the candidate's build's
     build = ["cargo", "build", "-q", "-p", "cpl-cli", *(["--release"] if profile == "release" else [])]
-    if run(build, cwd=wt, env=env).returncode:
+    if (b := run(build, cwd=wt, env=env, capture_output=True, text=True)).returncode:
+        # Every finding then counts as new; say why, so a refusal names a broken base, not the change.
+        print(f"corpus: no verdict at the base {rev[:9]}: `{' '.join(build)}` exited {b.returncode} in {wt}:\n"
+              + "\n".join(((b.stderr or "") + (b.stdout or "")).splitlines()[-15:]), file=sys.stderr)
         return set()
     r = run([sys.executable, "scripts/corpus.py", "verify", *ids, "--only", ",".join(modes),
              "--cpl", os.path.join(target, profile, "cpl")], cwd=wt, env=env, capture_output=True, text=True)
     if r.returncode not in (0, 1):
+        print(f"corpus: no verdict at the base {rev[:9]}: its verify exited {r.returncode}:\n"
+              + "\n".join(((r.stderr or "") + (r.stdout or "")).splitlines()[-15:]), file=sys.stderr)
         return set()
     old = set(r.stdout.splitlines()) & set(found)
     with open(common / "cpl-preexisting-reds.log", "a") as log:

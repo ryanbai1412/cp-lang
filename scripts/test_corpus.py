@@ -1442,6 +1442,11 @@ class AtBaseTest(unittest.TestCase):
         self.assertEqual(self._base("interp-timeout yac6p6 08.in\n", build=101)[0], set())
         self.assertEqual(self._base("interp-timeout yac6p6 08.in\n", code=2)[0], set())
 
+    def test_a_base_with_no_verdict_says_why(self):
+        # Idioms' btoi06p5: the base build failed inside land.sh and every finding read as new, silently.
+        self.assertIn("no verdict at the base", self._base("interp-timeout yac6p6 08.in\n", build=101)[1])
+        self.assertIn("verify exited 2", self._base("interp-timeout yac6p6 08.in\n", code=2)[1])
+
 
 if __name__ == "__main__":
     unittest.main()
