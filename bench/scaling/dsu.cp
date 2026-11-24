@@ -71,6 +71,10 @@ for i in 0..reps:
     let m = p.mark() // timed: dsu.ParityDsu.mark
     p.unite(V((i) % n), V((i * 7 + 1) % n))
     p.undo_to(m) // timed: dsu.ParityDsu.undo_to
+for i in 0..reps:
+    s += p.components // timed: dsu.ParityDsu.components
+for _ in 0..30:
+    s += p.groups().len // timed: dsu.ParityDsu.groups
 
 for _ in 0..250:
     s += PotentialDsu<V>().components // timed: dsu.PotentialDsu.new

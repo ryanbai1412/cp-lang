@@ -38,6 +38,16 @@ class Growth(unittest.TestCase):
                               (r"\lvert \mathit{from} \rvert", 4.0)]:
             self.assertAlmostEqual(scaling.growth(formula, fixed=("P",)), want, places=3, msg=formula)
 
+    def test_a_unicode_symbol_is_one_symbol(self):
+        cost = r"\lvert Δ\mathit{start} \rvert + \lvert Δ\mathit{end} \rvert"
+        self.assertEqual(scaling.growth(cost), 4.0)
+        self.assertEqual(scaling.growth(cost, fixed=("Δstart", "Δend")), 1.0)
+
+    def test_stdin_lines_follow_n(self):
+        self.assertEqual(scaling.stdin_text(3), "3\n")
+        self.assertEqual(scaling.stdin_text(3, 2), "3\n0 1 2 -1\n0 1 2 -1\n")
+        self.assertEqual(scaling.header("// stdin: 2\nlet n = 1\n"), {"stdin": "2"})
+
     def test_a_bare_deg_is_a_symbol(self):
         self.assertAlmostEqual(scaling.growth(r"(n + \deg) \log^2 n", fixed=("deg",), n=16.0),
                                (64 + 1) * 36 / ((16 + 1) * 16), places=6)

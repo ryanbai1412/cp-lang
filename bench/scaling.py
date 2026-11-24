@@ -9,7 +9,8 @@ need, and marks each line whose time is a fn's with `// timed: <fn>`, the
 fn named as `cpl doc --format json std` does (`bag.SortedBag.add`); one
 case may time several fns. A header may name the fn a bare `// timed`
 means (`// scaling: bag.SortedBag.add`), hold symbols at a constant
-(`// fixed: K`), give one as a formula in n (`// let: k = \\log n; d = \\sqrt n`,
+(`// fixed: K`), feed it input after `n` (`// stdin: 3`, three lines of `0 1 .. n-1 -1`
+for a fn that reads input), give one as a formula in n (`// let: k = \\log n; d = \\sqrt n`,
 for a fn whose cost names a size the case derives from n) or set the base size (`// n: 4096`, default N). A
 timed line may give its fn's symbols their own meaning after the mark,
 `// timed: strings.repeat [fixed: self]` or `[let: k = \\log n]`, when one fn
@@ -160,13 +161,14 @@ def python(formula):
     f = f.replace("\\cdot", "*").replace("\\times", "*")
     f = f.replace("^", "**").replace("{", "(").replace("}", ")").replace("\\,", "")
     # a symbol written as a function of others (`\mathit{nodes}(\mathit{self})`, `d(x)`) is one symbol
-    while m := re.search(r"\b(?!(?:%s)\()([A-Za-z_]\w*)\(" % "|".join(BUILTINS), f):
+    while m := re.search(r"\b(?!(?:%s)\()([^\W\d]\w*)\(" % "|".join(BUILTINS), f):
         end = _arg(f, m.start())
         f = f[:m.start()] + m.group(1) + f[end:]
+    # a symbol may be spelt in Unicode (`Δ\mathit{start}` is one symbol)
     f = re.sub(r"([\w)])\s+(?=[\w(])", r"\1*", f)
     if "\\" in f:
         raise ValueError(f"can't read the cost formula {formula!r}")
-    return re.sub(r"\b(?!(?:%s)\()([A-Za-z_]\w*)" % "|".join(BUILTINS), r"v_\1", f)
+    return re.sub(r"\b(?!(?:%s)\()([^\W\d]\w*)" % "|".join(BUILTINS), r"v_\1", f)
 
 
 def growth(formula, fixed=(), k=4.0, n=float(N), let=None):
@@ -197,14 +199,21 @@ def header(text):
     """The case's `// key: value` header lines."""
     out = {}
     for line in text.splitlines():
-        m = re.match(r"//\s*(scaling|fixed|let|n):\s*(.*)", line)
+        m = re.match(r"//\s*(scaling|fixed|let|n|stdin):\s*(.*)", line)
         if not m:
             break
         out[m.group(1)] = m.group(2).strip()
     return out
 
 
-def per_hit(cpl, case, sizes, groups, tmp, within=None, floor=MIN_NS):
+def stdin_text(n, lines=0):
+    """The input of a run at `n`: `n`, then `lines` lines of `0 1 .. n-1` each ended by `-1`,
+    a sentinel a `read_all(until: ...)` can stop at."""
+    row = " ".join(map(str, range(n))) + " -1\n"
+    return f"{n}\n" + row * lines
+
+
+def per_hit(cpl, case, sizes, groups, tmp, within=None, floor=MIN_NS, lines=0):
     """(size -> fn -> fastest nanoseconds per hit of its timed lines over RUNS runs, with the
     time (not the hits) of its `within` lines; fn -> why its lines take too little time to
     judge). Runs alternate between the sizes, so a busy machine slows every size alike
@@ -214,7 +223,7 @@ def per_hit(cpl, case, sizes, groups, tmp, within=None, floor=MIN_NS):
     for n in sizes:
         inputs[n] = os.path.join(tmp, f"{os.path.basename(case)}.{n}.in")
         with open(inputs[n], "w") as f:
-            f.write(f"{n}\n")
+            f.write(stdin_text(n, lines))
     best, short = {n: {} for n in sizes}, {}
     for _ in range(RUNS):
         for n in sizes:
@@ -316,7 +325,8 @@ def run_case(cpl, case, costs, tmp):
             out.append((f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}))
     try:
         within = within_lines(text)
-        timed, short = per_hit(cpl, case, (n, 4 * n), groups, tmp, within)
+        timed, short = per_hit(cpl, case, (n, 4 * n), groups, tmp, within,
+                               lines=int(head.get("stdin", 0)))
         small, big = timed[n], timed[4 * n]
     except (RuntimeError, subprocess.TimeoutExpired) as e:
         return out + [(f"{rel}::{fn}", {"fn": fn, "ok": False, "why": str(e)}) for fn in documented]
