@@ -318,9 +318,17 @@ pub fn emit_for(
     source: Option<&str>,
     target: &Target,
 ) -> String {
-    let program = prepared(program, target);
-    let emitter = emit::Emitter::new(&program, target);
-    narrow(&emitter.file(name, source))
+    emit_prepared(&prepared(program, target), name, source, target)
+}
+
+/// [`emit_for`] of a program [`prepared`] already.
+fn emit_prepared(
+    program: &cpl_ir::Program,
+    name: &str,
+    source: Option<&str>,
+    target: &Target,
+) -> String {
+    narrow(&emit::Emitter::new(program, target).file(name, source))
 }
 
 /// [`emit_for`] with every statement counting its starts and the time until
@@ -504,7 +512,8 @@ pub fn emit_aiming(
     (aim, limit): (usize, usize),
     target: &Target,
 ) -> Result<Fitted, Fitted> {
-    let emit = |program, name, source| emit_for(program, name, source, target);
+    let program = &prepared(program, target);
+    let emit = |program, name, source| emit_prepared(program, name, source, target);
     let cpp = emit(program, name, Some(source));
     let full = cpp.len();
     let none = std::collections::BTreeMap::new;
@@ -540,7 +549,7 @@ pub fn emit_aiming(
             unfolded(),
         ));
     }
-    let origins = instance_origins(program, target);
+    let origins = instance_origins(program);
     let fold::Folded {
         cpp,
         members,
@@ -584,11 +593,7 @@ pub fn emit_aiming(
 
 /// Each fn's C++ name, and the generic fn it is an instance of, with the
 /// number of a clone `split` made (`_k0`) dropped too.
-fn instance_origins(
-    program: &cpl_ir::Program,
-    target: &Target,
-) -> std::collections::BTreeMap<String, String> {
-    let program = prepared(program, target);
+fn instance_origins(program: &cpl_ir::Program) -> std::collections::BTreeMap<String, String> {
     program
         .fns
         .iter()
