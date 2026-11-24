@@ -309,7 +309,12 @@ ioi18p1
 ioi19p1
 ioi22p5
 mccc4j4
+nccc8s3
+noi02p1
+noi02p3
+noi05p4
 noi06p3
+noi07p1
 noi08p5
 noi09p4
 noi14p5

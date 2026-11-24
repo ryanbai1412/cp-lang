@@ -6,23 +6,18 @@
 //   pop every larger top that occurs again later (last[] holds each value's last position),
 //   since it can be picked up after x. What stays on the stack is the answer. O(N).
 // original: corpus/submissions/7011313.cpp
-let n: 1..=2e5 = read()
-let k: 1..=n = read()
-domain I = 1..=n
+let (n, k) = read<(1..=200_000, 1..=200_000)>()
 domain V = 1..=k
-let a: [I]V = read()
-
-var last: [V]I = I.first!  // where each number occurs for the last time
-for i in I: last[a[i]] = i
-
-// Keep a stack of the numbers chosen so far. A new number pushes out every
-// larger one on top of it that occurs again later.
+let a = read<[n]V>()
+var last: [V]Int = 0
+for (i, x) in a.items:
+    last[x] = i
 var kept: List<V> = []
 var chosen: [V]Bool = false
-for i in I:
-    let x = a[i]
-    if chosen[x]: continue
-    while let top = kept.last and top > x and last[top] > i:
+for (i, x) in a.items:
+    if chosen[x]:
+        continue
+    while let top = kept.last, top > x and last[top] > i:
         chosen[kept.pop()!] = false
     kept.push(x)
     chosen[x] = true

@@ -32,3 +32,7 @@ read the parent branch with `t.up_arc(c)!.cost`, and it merged children with
 
 Measurements (n = 300, 3 heads, k = 150): `cpl run` 0.47 s / 55 MB; the emitted C++
 (18,453 B, g++ -O2) runs in under 0.01 s / 3 MB, the AC submission 3718952 in 0.03 s / 4 MB.
+
+## Measurements
+
+Contestant-written tokens: port 310, original 494 (`corpus/audit.py` count). Emitted C++: 19778 bytes (`cpl build`, judge `generic`).

@@ -12,4 +12,20 @@
 - **General fix:** the tagged-enum reader reads a domain-typed payload field like `read<Ship>()`
   (R10.2.3). Routed to compiler from this problem (`plan/domains/compiler/worklog.md`, 2026-11-22).
 - **Workaround:** payload fields are `1..=30000`, converted with `Ship(i)`.
-- **Severity:** medium. **Status:** open (compiler).
+- **Severity:** medium. **Status:** fixed: the port reads `M(i: Ship, j: Ship)` and needs no
+  conversions.
+
+## 2. `PotentialDsu` roots by size, so the column's front is kept beside it
+
+- **Where:** `var head: [Ship]?Ship` and `fn front(v)`, patched after every `unite`.
+- **Ideal code (`dream.cp`):** `line.unite(line.find(j).root, line.find(i).root, diff: line.size(j))`,
+  with the front ship being the root.
+- **What happened:** the root is whichever set was larger, not the column's front, so the port
+  tracks the front per root by hand: two facts that must agree.
+- **General fix:** let `PotentialDsu.unite` keep a chosen root (or keep the potential origin as a
+  separate per-set value), so potentials are measured from a stable element.
+- **Severity:** low.
+
+## Measurements
+
+Contestant-written tokens: port 177, original 218 (`corpus/audit.py` count). Emitted C++: 16327 bytes (`cpl build`, judge `generic`).

@@ -6,38 +6,27 @@
 //   s-t path iff dist(s, v) + dist(v, t) == dist(s, t), and then carries
 //   ways(s, v) * ways(v, t) of the ways(s, t) paths. O(n^3).
 // original: corpus/submissions/3756474.cpp
-let (n, m): (1..=100, 1..=4500) = read()
+let (n, m) = read<(1..=100, 1..=4500)>()
 domain V = 1..=n
-var dist: [V, V]?Int = None
-var ways: [V, V]Int = 0
+var best: [V, V]?(d: Int, ways: Int) = [V, V] (s, t) => if s == t: Some((d: 0, ways: 1)) else: None
+for (a, b, c) in read<[m](a: V, b: V, c: 1..=1000)>():
+    for (x, y) in [(a, b), (b, a)]:
+        best[x, y] = Some((d: c, ways: 1))
 for v in V:
-    dist[v, v] = Some(0)
-    ways[v, v] = 1
-for _ in 0..m:
-    let (u, v, w): (V, V, 1..=1000) = read()
-    dist[u, v] = Some(w)
-    dist[v, u] = Some(w)
-    ways[u, v] = 1
-    ways[v, u] = 1
-
-for k in V:
-    for i in V:
-        let dik = dist[i, k] else: continue
-        for j in V:
-            let dkj = dist[k, j] else: continue
-            let (cand, via) = (dik + dkj, ways[i, k] * ways[k, j])
-            let old = dist[i, j]
-            if old == None or cand < old!:
-                dist[i, j] = Some(cand)
-                ways[i, j] = via
-            elif cand == old! and k != i and k != j:
-                ways[i, j] += via
-
+    for s in V if s != v:
+        let Some(sv) = best[s, v] else: continue
+        for t in V if t != v and t != s:
+            let Some(vt) = best[v, t] else: continue
+            let d = sv.d + vt.d
+            best[s, t] = match best[s, t]:
+                Some(st) if st.d < d => Some(st)
+                Some(st) if st.d == d => Some((d, ways: st.ways + sv.ways * vt.ways))
+                _ => Some((d, ways: sv.ways * vt.ways))
+fn share(s: V, v: V, t: V) -> F64:
+    let (sv, vt, st) = (best[s, v]!, best[v, t]!, best[s, t]!)
+    if sv.d + vt.d == st.d: F64(sv.ways * vt.ways) / F64(st.ways) else: 0.0
 for v in V:
-    var share = 0.0
-    for s in V:
-        for t in V:
-            if s == v or t == v or s == t: continue
-            if let a = dist[s, v], let b = dist[v, t], a + b == dist[s, t]!:
-                share += F64(ways[s, v] * ways[v, t]) / F64(ways[s, t])
-    print(share, precision: 3)
+    print(
+        [(s, t) for s in V for t in V if s != t and s != v and t != v].sum(of: p => share(p.0, v, p.1)),
+        digits: 3,
+    )
