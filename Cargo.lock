@@ -145,6 +145,7 @@ dependencies = [
  "cpl-env",
  "cpl-ir",
  "cpl-json",
+ "cpl-rt",
 ]
 
 [[package]]

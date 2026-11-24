@@ -10,6 +10,7 @@ license.workspace = true
 cpl-env.workspace = true
 cpl-diag.workspace = true
 cpl-ir.workspace = true
+cpl-rt.workspace = true
 cpl-json.workspace = true
 
 [dev-dependencies]

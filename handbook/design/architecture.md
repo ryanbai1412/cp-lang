@@ -210,7 +210,7 @@ Crate names follow jobs; a crate whose job already matches keeps its name.
 | `cpl-check` | query database, names, modules, types, traits, generics, domains, ownership; the front end every tool queries. Reads the judge's memory limit from `cpl-judge` for E0904; reads `CPL_STD_DIR` with `cpl-env`; asks `cpl-prover` for inputs that overflow `Int` (`Overflow`; native only, decision 235), so lint reads that fact here; checks `@intrinsic` bodies against `cpl-rt` |
 | `cpl-ir` | the IR, lowering, monomorphization, facts (absorbing `prover`), passes, layout; lowers an `@intrinsic` call to its `cpl-rt` primitive |
 | `cpl-rt` | the intrinsics table: Rust and C++ for each primitive, in one place (decision 573); depends on nothing |
-| `cpl-interp` | the one interpreter: register VM, event stream, traces, replay, profiler; WASM build; reads `CPL_VM_STATS` with `cpl-env` |
+| `cpl-interp` | the one interpreter: register VM, event stream, traces, replay, profiler; WASM build; reads `CPL_VM_STATS` with `cpl-env`; runs `@intrinsic` primitives and words their traps through `cpl-rt` |
 | `cpl-codegen` | C++ emitter, runtime tree-shaking, judge profiles |
 | `cpl-diag` | diagnostic model and renderers; its JSON shape is printed with `cpl-json`. `plain` turns doc text's LaTeX math and intra-doc links into terminal text for hover, the CLI and lint (`cpl_doc::plain` re-exports it) |
 | `cpl-cli` | `cpl check/run/build/test/stress/doc/fmt/lint/explain/judge/dap`; `cpl run --live` waits on file changes with `cpl-wait`; reads its `CPL_*` settings with `cpl-env` |

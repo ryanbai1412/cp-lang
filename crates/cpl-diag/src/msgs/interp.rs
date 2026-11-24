@@ -34,6 +34,7 @@ super::msgs! {
     INSERT_OUTSIDE_LIST_LENGTH = RUNTIME, "insert({}) is outside a list of length {}";
     INTEGER_OVERFLOW = OVERFLOW, "integer overflow: {}";
     INTEGER_OVERFLOW_ABS_DOES_NOT = OVERFLOW, "integer overflow: `abs({})` does not fit in an `Int` (64 bits)";
+    INTEGER_OVERFLOW_ABS_I128 = OVERFLOW, "integer overflow: `abs({})` does not fit in an `I128` (128 bits)";
     INTEGER_OVERFLOW_BIT_CEIL_DOES = OVERFLOW, "integer overflow: `bit_ceil({})` does not fit in an `Int` (64 bits)";
     INTEGER_OVERFLOW_DOES_NOT_FIT = OVERFLOW, "integer overflow: `-{}` does not fit in an `Int` (64 bits)";
     INTEGER_OVERFLOW_DOES_NOT_FIT_2 = OVERFLOW, "integer overflow: `-{}` does not fit in an `I128` (128 bits)";

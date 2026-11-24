@@ -491,13 +491,14 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 }
                 Op::AbsI { dst, a } => {
                     let av = regs_i[a as usize];
-                    match av.checked_abs().filter(|v| *v != i64::MIN) {
+                    match av.checked_abs() {
                         Some(v) => regs_i[dst as usize] = v,
                         None => {
+                            let fault = cpl_rt::Fault::Overflow;
                             return trap(
                                 spans[cur_pc],
-                                rows::INTEGER_OVERFLOW_ABS_DOES_NOT.at(&[&av]),
-                            )
+                                crate::fault_said(cpl_ir::Scalar::Int(av), fault),
+                            );
                         }
                     }
                 }

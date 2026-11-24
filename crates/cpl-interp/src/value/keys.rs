@@ -7,7 +7,7 @@ use super::Value;
 use crate::Res;
 use cpl_ir::Ty;
 use std::cmp::Ordering;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::ops::Bound;
 
 /// A walk over keys in order, from either end, that knows its length.
@@ -115,14 +115,15 @@ pub(crate) fn user_ordered(ty: &Ty, program: &cpl_ir::Program) -> bool {
 
 #[derive(Clone, Debug)]
 pub enum KeySet {
-    Tree(BTreeSet<Value>),
+    /// Keys mapped to `Unit`, so a set shares the map's B-tree code.
+    Tree(BTreeMap<Value, Value>),
     /// Sorted by the key type's user `Ord`.
     Sorted(Ty, Vec<Value>),
 }
 
 impl Default for KeySet {
     fn default() -> KeySet {
-        KeySet::Tree(BTreeSet::new())
+        KeySet::Tree(BTreeMap::new())
     }
 }
 
@@ -157,35 +158,35 @@ impl KeySet {
 
     pub(crate) fn iter(&self) -> Box<dyn Walk<Item = &Value> + '_> {
         match self {
-            KeySet::Tree(t) => Box::new(t.iter()),
+            KeySet::Tree(t) => Box::new(t.keys()),
             KeySet::Sorted(_, v) => Box::new(v.iter()),
         }
     }
 
     pub(crate) fn first(&self) -> Option<&Value> {
         match self {
-            KeySet::Tree(t) => t.first(),
+            KeySet::Tree(t) => t.first_key_value().map(|(k, _)| k),
             KeySet::Sorted(_, v) => v.first(),
         }
     }
 
     pub(crate) fn last(&self) -> Option<&Value> {
         match self {
-            KeySet::Tree(t) => t.last(),
+            KeySet::Tree(t) => t.last_key_value().map(|(k, _)| k),
             KeySet::Sorted(_, v) => v.last(),
         }
     }
 
     pub(crate) fn pop_first(&mut self) -> Option<Value> {
         match self {
-            KeySet::Tree(t) => t.pop_first(),
+            KeySet::Tree(t) => t.pop_first().map(|(k, _)| k),
             KeySet::Sorted(_, v) => (!v.is_empty()).then(|| v.remove(0)),
         }
     }
 
     pub(crate) fn pop_last(&mut self) -> Option<Value> {
         match self {
-            KeySet::Tree(t) => t.pop_last(),
+            KeySet::Tree(t) => t.pop_last().map(|(k, _)| k),
             KeySet::Sorted(_, v) => v.pop(),
         }
     }
@@ -199,7 +200,7 @@ impl KeySet {
 
     pub(crate) fn contains(&self, key: &Value, cmp: &mut Cmp) -> Res<bool> {
         match self {
-            KeySet::Tree(t) => Ok(t.contains(key)),
+            KeySet::Tree(t) => Ok(t.contains_key(key)),
             KeySet::Sorted(ty, v) => Ok(search(ty, v, key, cmp)?.is_ok()),
         }
     }
@@ -207,7 +208,7 @@ impl KeySet {
     /// Adds `key`; whether it was new.
     pub(crate) fn insert(&mut self, key: Value, cmp: &mut Cmp) -> Res<bool> {
         match self {
-            KeySet::Tree(t) => Ok(t.insert(key)),
+            KeySet::Tree(t) => Ok(t.insert(key, Value::Unit).is_none()),
             KeySet::Sorted(ty, v) => Ok(match search(ty, v, &key, cmp)? {
                 Ok(_) => false,
                 Err(i) => {
@@ -221,7 +222,7 @@ impl KeySet {
     /// Takes `key` out; whether it was there.
     pub(crate) fn remove(&mut self, key: &Value, cmp: &mut Cmp) -> Res<bool> {
         match self {
-            KeySet::Tree(t) => Ok(t.remove(key)),
+            KeySet::Tree(t) => Ok(t.remove(key).is_some()),
             KeySet::Sorted(ty, v) => Ok(match search(ty, v, key, cmp)? {
                 Ok(i) => {
                     v.remove(i);
@@ -240,7 +241,7 @@ impl KeySet {
         cmp: &mut Cmp,
     ) -> Res<Box<dyn DoubleEndedIterator<Item = &Value> + '_>> {
         match self {
-            KeySet::Tree(t) => Ok(Box::new(t.range((lo, hi)))),
+            KeySet::Tree(t) => Ok(Box::new(t.range((lo, hi)).map(|(k, _)| k))),
             KeySet::Sorted(ty, v) => {
                 let (a, b) = between(ty, v, &lo, &hi, cmp)?;
                 Ok(Box::new(v[a..b].iter()))
@@ -257,7 +258,8 @@ impl KeySet {
                     found.next()
                 } else {
                     found.next_back()
-                })
+                }
+                .map(|(k, _)| k))
             }
             KeySet::Sorted(ty, v) => Ok(edge_at(ty, v, &key, edge, cmp)?.map(|i| &v[i])),
         }

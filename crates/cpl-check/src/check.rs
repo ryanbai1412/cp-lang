@@ -719,15 +719,13 @@ impl<'a> Checker<'a> {
         ret: &Ty,
     ) {
         let Some(p) = cpl_rt::Prim::from_id(name) else {
-            let known: Vec<&str> = cpl_rt::TABLE.iter().map(|e| e.id).collect();
             self.report(
                 at,
                 msgs::check::UNKNOWN_INTRINSIC_NO_INTRINSIC_THE_TABLE,
-                &[&name, &known.join(", ")],
+                &[&name, &cpl_rt::Prim::IDS.join(", ")],
             );
             return;
         };
-        let entry = p.entry();
         let fits = |ty: &Ty, want: &str| match ty {
             Ty::Named { name, .. } | Ty::Param(name)
                 if f.generics.iter().any(|g| &g.text == name) =>
@@ -736,16 +734,16 @@ impl<'a> Checker<'a> {
             }
             _ => want.split('|').any(|w| w == ty.to_string()),
         };
-        let params_fit = f.params.len() == entry.params.len()
-            && (f.params.iter().zip(entry.params)).all(|(param, want)| {
+        let params_fit = f.params.len() == p.params().len()
+            && (f.params.iter().zip(p.params())).all(|(param, want)| {
                 self.local(&param.name.text)
                     .is_some_and(|l| fits(&l.ty, want))
             });
-        if !params_fit || !fits(ret, entry.result) {
+        if !params_fit || !fits(ret, p.result()) {
             self.report(
                 at,
                 msgs::check::UNKNOWN_INTRINSIC_IS_MUST_HAVE_THAT,
-                &[&name, &entry.params.join(", "), &entry.result, &f.name.text],
+                &[&name, &p.params().join(", "), &p.result(), &f.name.text],
             );
         }
     }

@@ -106,9 +106,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 } else {
                     let shift = 64 - ((x - 1) as u64).leading_zeros();
                     if shift > 62 {
+                        let fault = cpl_rt::Fault::CeilOverflow;
                         return trap(
                             spans[cur_pc],
-                            cpl_diag::msgs::interp::INTEGER_OVERFLOW_BIT_CEIL_DOES.at(&[&x]),
+                            crate::fault_said(cpl_ir::Scalar::Int(x), fault),
                         );
                     }
                     1i64 << shift

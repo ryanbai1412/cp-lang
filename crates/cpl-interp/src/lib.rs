@@ -55,6 +55,7 @@ use cpl_ir::{
     FnId, Iter, LoopId, Mutation, Place, PlaceKind, Program, SortBy, Spec, Stmt, Ty, UnOp,
 };
 use cpl_ir::{Prim, Scalar};
+use cpl_rt::Fault;
 use input::Input;
 pub use input::More;
 use observe::Observer;
@@ -525,10 +526,7 @@ type Res<T> = Result<T, Box<Trap>>;
 /// A whole float as an `Int`: strictly between `-2^63` and `2^63`.
 fn float_int(v: f64, span: Span) -> Res<Value> {
     if !(v > -9223372036854775808.0 && v < 9223372036854775808.0) {
-        return trap(
-            span,
-            cpl_diag::msgs::interp::DOES_NOT_FIT_IN_INT_2.at(&[&v]),
-        );
+        return trap(span, fault_said(Scalar::F64(v), Fault::NotInt(v)));
     }
     Ok(Value::Int(v as i64))
 }
@@ -1912,23 +1910,36 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
 /// The 64 bits of an `Int` or a `U64`.
 /// The table's VM implementation of `p` on `vals` (R12.14.3).
 pub(crate) fn intrinsic(p: Prim, vals: &[Value], span: Span) -> Res<Value> {
-    let args: Vec<Scalar> = (vals.iter())
-        .map(|v| match v {
-            Value::U64(b) => Scalar::U64(*b),
-            Value::I128(b) => Scalar::I128(b.get()),
-            Value::Float(f) => Scalar::F64(*f),
-            Value::Bool(b) => Scalar::Bool(*b),
-            other => Scalar::Int(other.int()),
-        })
-        .collect();
-    Ok(match p.run(&args) {
+    let a = match vals[0] {
+        Value::U64(b) => Scalar::U64(b),
+        Value::I128(b) => Scalar::I128(b.get()),
+        Value::Float(f) => Scalar::F64(f),
+        ref other => Scalar::Int(other.int()),
+    };
+    Ok(match p.run(a) {
         Ok(Scalar::Int(v)) => Value::Int(v),
         Ok(Scalar::I128(v)) => Value::I128(v.into()),
         Ok(Scalar::U64(v)) => Value::U64(v),
         Ok(Scalar::F64(v)) => Value::Float(v),
-        Ok(Scalar::Bool(v)) => Value::Bool(v),
-        Err(message) => return Err(Box::new(Trap::written(span, message))),
+        Err(fault) => return trap(span, fault_said(a, fault)),
     })
+}
+
+/// The message of an intrinsic's trap on `a`; the VM's own ops trap through it too.
+pub(crate) fn fault_said(a: Scalar, fault: Fault) -> cpl_diag::msgs::Said {
+    use cpl_diag::msgs::interp as rows;
+    let wide = match a {
+        Scalar::I128(v) => v,
+        a => a.bits() as i64 as i128,
+    };
+    let (row, shown): (_, &dyn std::fmt::Display) = match &fault {
+        Fault::NotInt(v) => (rows::DOES_NOT_FIT_IN_INT_2, v),
+        Fault::Negative(v) => (rows::SQRT_NEGATIVE_NUMBER, v),
+        Fault::CeilOverflow => (rows::INTEGER_OVERFLOW_BIT_CEIL_DOES, &wide),
+        Fault::WideOverflow => (rows::INTEGER_OVERFLOW_ABS_I128, &wide),
+        Fault::Overflow => (rows::INTEGER_OVERFLOW_ABS_DOES_NOT, &wide),
+    };
+    row.at(&[shown])
 }
 
 /// A domain for a message: `1..=5`, or that it is empty.
