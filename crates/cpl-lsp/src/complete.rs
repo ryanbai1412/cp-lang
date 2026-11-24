@@ -1380,12 +1380,18 @@ fn whole_words(text: &str, word: &str) -> usize {
 }
 
 /// The fn bodies of an item: a local declared in one is seen only in it.
-struct FnSpans(Vec<cpl_diag::Span>);
+/// Also its comprehensions, whose `for` names are seen in the body before them.
+struct FnSpans(Vec<cpl_diag::Span>, Vec<cpl_diag::Span>);
 
 impl Visitor for FnSpans {
     fn stmt(&mut self, stmt: &Stmt) {
         if let StmtKind::Fn(_) = stmt.kind {
             self.0.push(stmt.span);
+        }
+    }
+    fn expr(&mut self, expr: &Expr) {
+        if let ExprKind::Comprehension { .. } = expr.kind {
+            self.1.push(expr.span);
         }
     }
 }
@@ -1396,10 +1402,15 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
         return Vec::new();
     };
     let rel = cursor.offset - item.offset;
-    let mut fns = FnSpans(Vec::new());
+    let mut fns = FnSpans(Vec::new(), Vec::new());
     for stmt in &item.syntax.parsed.stmts {
         walk_stmt(stmt, &mut fns);
     }
+    let in_same_comprehension = |at: u32| {
+        fns.1
+            .iter()
+            .any(|c| c.start <= at && at <= c.end && c.start <= rel && rel <= c.end)
+    };
     let innermost = |at: u32| {
         fns.0
             .iter()
@@ -1415,7 +1426,9 @@ fn locals(cursor: &Cursor) -> Vec<(String, Ty, &'static str)> {
                 entry.keyword,
                 "let" | "var" | "param" | "for" | "fn" | "domain"
             );
-        if !declares || entry.span.end >= rel {
+        let ahead = entry.span.end >= rel
+            && !(entry.keyword == "for" && in_same_comprehension(entry.span.start));
+        if !declares || ahead {
             continue;
         }
         // A nested fn's name is inside its own span; its scope is the fn around it.
