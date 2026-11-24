@@ -1210,6 +1210,13 @@ pub struct MergeSegs<D>:
         rs[u] = r
         if let x = b: (u, Some(x)) else: (0, None)
 
+    fn first_from(self, u: Int, lo: Int, hi: Int, k: Int) -> ?Int:
+        with lint(unproven_list_index: allow)
+        if u == 0 or hi <= k: return None
+        if lo + 1 == hi: return Some(lo)
+        let mid = (lo + hi) / 2
+        self.first_from(ls[u], lo, mid, k) ?? self.first_from(rs[u], mid, hi, k)
+
     /// The set holding only `x`.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) time and new nodes
@@ -1241,6 +1248,26 @@ pub struct MergeSegs<D>:
         let (root, x) = self.prune(s.root, 0, D.count, alive)
         s.root = root
         x
+
+    /// The smallest position of `s` at or after `x`, or `None`. Read-only: `s` and every set sharing
+    /// its nodes stay as they are.
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\)
+    /// ties: the smallest position in key order
+    /// traps: never
+    /// example: `var p = MergeSegs<0..10>(); let m = p.merge(p.singleton(3), p.singleton(7)); p.first_ge(m, 4) == Some(7)`
+    /// example: `var p = MergeSegs<0..10>(); let m = p.merge(p.singleton(3), p.singleton(7)); p.first_ge(m, 8) == None`
+    pub fn first_ge(self, s: MergeSeg<D>, x: D) -> ?D:
+        if let k = self.first_from(s.root, 0, D.count, x.ord): Some(D.nth(k)) else: None
+
+    /// Whether `s` holds a position in `r`. Read-only, as `first_ge` is.
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\)
+    /// traps: never
+    /// example: `var p = MergeSegs<0..10>(); let m = p.merge(p.singleton(3), p.singleton(7)); p.any_in(m, 4..8) and not p.any_in(m, 4..7)`
+    pub fn any_in(self, s: MergeSeg<D>, r: Range<D>) -> Bool:
+        let (lo, hi) = r.ends
+        if let k = self.first_from(s.root, 0, D.count, lo): k < hi else: false
 
 @test
 fn merge_sort_and_sparse_segtree_match_brute():
