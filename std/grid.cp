@@ -350,3 +350,17 @@ impl Show for GridCols<R, C, T>:
             if not out.is_empty: out += "\n"
             out += "{x}"
         out
+
+const DIR_NAMES = ["up", "up-right", "right", "down-right", "down", "down-left", "left", "up-left"]
+
+impl Show for Dir4:
+    /// Its name: `up`, `right`, `down` or `left`.
+    ///
+    /// example: `"{Dir4.down}" == "down"`
+    fn show(d) = DIR_NAMES[2 * d.k]
+
+impl Show for Dir8:
+    /// Its name, clockwise from up: `up`, `up-right`, `right`, ..., `up-left`.
+    ///
+    /// example: `"{Dir8.all()[3]}" == "down-right"`
+    fn show(d) = DIR_NAMES[d.k]

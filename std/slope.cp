@@ -399,3 +399,28 @@ fn convex_mirrors_concave():
             g.max_convolve(Concave.flat(0..=w))
         for c in f.lo..=f.hi: assert f.at(c) == -g.at(c)
         assert f.min() == -g.max()
+
+impl Show for Concave:
+    /// Its domain and its value at each point, as `concave on lo..=hi: f(lo) ... f(hi)`.
+    ///
+    /// example: `var f = Concave.flat(2..5); f.add_left(3); "{f}" == "concave on 2..=4: -1 0 0"`
+    fn show(f):
+        var out = "concave on {f.lo}..={f.hi}: {f.base}"
+        var v = f.base
+        for s in f.slopes.to_list():
+            v += s
+            out += " {v}"
+        out
+
+impl Show for Convex:
+    /// Its domain and its value at each point, as `convex on lo..=hi: f(lo) ... f(hi)`.
+    ///
+    /// example: `"{Convex.flat(2..5)}" == "convex on 2..=4: 0 0 0"`
+    fn show(f):
+        var out = "convex on {f.lo}..={f.hi}:"
+        var v = -f.neg.base
+        out += " {v}"
+        for s in f.neg.slopes.to_list():
+            v -= s
+            out += " {v}"
+        out

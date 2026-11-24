@@ -2623,3 +2623,9 @@ impl Show for SortedRange<K>:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+impl Show for BagCursor:
+    /// The node it points at, as `cursor at node i`; read its key with `key_of`.
+    ///
+    /// example: `let b = SortedBag.of([5, 2, 2]); "{b.cursor_first()!}" == "cursor at node 1"`
+    fn show(c) = "cursor at node {c.id}"

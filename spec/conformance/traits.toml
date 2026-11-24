@@ -1979,3 +1979,77 @@ let d = PersistentDsu<V>.new(mut ar).unite(mut ar, 2, 1)
 print(d.within(ar))
 """
 out = "0 2 2"
+
+
+[case."Show/Dir4/show"]
+code = """
+use std.grid.{Dir4}
+print(Dir4.left, Dir4.up.cw)
+"""
+out = "left right"
+
+[case."Show/Dir8/show"]
+code = """
+use std.grid.{Dir8}
+print(Dir8.all()[7], Dir8.all()[1].back)
+"""
+out = "up-left down-left"
+
+[case."Show/Rng/show"]
+code = """
+use std.rand.{Rng}
+var r = Rng(1)
+print(r)
+"""
+out = "rng state 1"
+
+[case."Show/ByAngle/show"]
+code = """
+use std.geometry.{Pt, arg}
+print(arg(Pt(-3, 4)))
+"""
+out = "by angle -3 4"
+
+[case."Show/ByAngleFrom/show"]
+code = """
+use std.geometry.{Pt, ByAngleFrom}
+print(ByAngleFrom(Pt(0, 1), Pt(2, 5)))
+"""
+out = "by angle 2 5 from 0 1"
+
+[case."Show/HalfPlane/show"]
+code = """
+use std.geometry.{Vec, HalfPlane}
+print(HalfPlane.through(Vec(1.0, 2.0), Vec(1.0, 3.0)))
+"""
+out = "left of 1.0000000000 2.0000000000 along 0.0000000000 1.0000000000"
+
+[case."Show/Concave/show"]
+code = """
+use std.slope.{Concave}
+var f = Concave.flat(0..3)
+f.add_left(2)
+print(f)
+"""
+out = "concave on 0..=2: -2 -1 0"
+
+[case."Show/Convex/show"]
+code = """
+use std.slope.{Convex}
+print(Convex.point(4))
+"""
+out = "convex on 4..=4: 0"
+
+[case."Show/StepKeys/show"]
+code = """
+print([5, 6, 7, 8, 9, 10, 11].step(3).keys)
+"""
+out = "0 3 6"
+
+[case."Show/BagCursor/show"]
+code = """
+use std.bag.{SortedBag}
+let b = SortedBag.of([4])
+print(b.cursor_first()!)
+"""
+out = "cursor at node 0"

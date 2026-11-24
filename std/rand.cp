@@ -122,3 +122,9 @@ pub struct Rng(s: U64):
         var pos = (0..n).collect()
         for i in 0..k: pos.swap_idx(i, self.int(i, n - 1))
         [from.at(pos[i]) for i in 0..k]
+
+impl Show for Rng:
+    /// Its state, as `rng state s`; generators with equal states give equal streams.
+    ///
+    /// example: `"{Rng(7)}" == "rng state 7"`
+    fn show(r) = "rng state {r.s}"

@@ -4090,3 +4090,14 @@ impl Show for RingSlice<D, T>:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+impl Show for StepKeys:
+    /// The positions the walk visits, in order, space-separated.
+    ///
+    /// example: `"{[3, 1, 2, 4, 5].step(2).keys}" == "0 2 4"`
+    fn show(s):
+        var out = ""
+        for j in 0..s.len:
+            if not out.is_empty: out += " "
+            out += "{s.first + s.from + j * s.k}"
+        out

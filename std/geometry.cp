@@ -4505,3 +4505,21 @@ impl Show for PointSet:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+impl Show for ByAngle:
+    /// The point it orders, as `by angle x y`.
+    ///
+    /// example: `"{arg(Pt(1, 2))}" == "by angle 1 2"`
+    fn show(a) = "by angle {a.p}"
+
+impl Show for ByAngleFrom:
+    /// The point it orders and the ray it starts from, as `by angle x y from bx by`.
+    ///
+    /// example: `"{ByAngleFrom(Pt(1, 0), Pt(0, 1))}" == "by angle 0 1 from 1 0"`
+    fn show(a) = "by angle {a.p} from {a.base}"
+
+impl Show for HalfPlane:
+    /// The directed line, as `left of x y along dx dy`.
+    ///
+    /// example: `"{HalfPlane(Vec(0.0, 0.0), Vec(1.0, 0.0))}" == "left of {Vec(0.0, 0.0)} along {Vec(1.0, 0.0)}"`
+    fn show(h) = "left of {h.p} along {h.dir}"
