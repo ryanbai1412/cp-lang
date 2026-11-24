@@ -16,14 +16,15 @@ domain Letter = 'a'..='z'
 var trie = Trie<Letter>.new()
 
 let n: 1..=25_000 = read()
-domain Word = 1..=n
-let words: [Word]Str = read()
-for w in words: trie.add([Letter(c) for c in w])
-let longest = Word.max(by: i => words[i].len)!
+var longest = ""
+repeat n:
+    let w: Str = read()
+    trie.add([Letter(c) for c in w])
+    if w.len > longest.len: longest = w
 
 var on_longest: Set<Int> = Set()
 var at = trie.root
-for c in words[longest]:
+for c in longest:
     at = trie.step(at, Letter(c))!
     on_longest.add(at)
 
