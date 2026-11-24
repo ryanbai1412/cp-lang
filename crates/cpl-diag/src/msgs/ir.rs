@@ -203,7 +203,6 @@ super::msgs! {
     FN_HAS_NO_PARAMETER = UNKNOWN_ARG_NAME, "`{}` has no parameter named `{}`";
     GEN_TAKES = UNSUPPORTED, "`gen` takes a range, `gen(1..=n)`, or a type, `gen<[V]Int>()`";
     GEN_STR_LEN = UNSUPPORTED, "a `gen<Str of ...>` takes its length range: `len: 1..=10`";
-    GEN_TREE_SHAPE = UNSUPPORTED, "a tree's `shape` is path, star, binary, caterpillar or random";
     GEN_NEEDS_MODULE = UNSUPPORTED, "`gen` needs `std.{}`, which this build did not load";
     GEN_MAKES = UNSUPPORTED,
         "`gen` makes ranges, arrays of them, `Str of`, and named types with a `Random` impl";

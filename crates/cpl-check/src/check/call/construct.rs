@@ -338,7 +338,8 @@ impl Checker<'_> {
                 typed_lambda = self.lambda_defaults(arg, &expected, callee, params)
                     || self.lambda_takes(arg, &expected);
             }
-            let arg_ty = self.infer(&arg.value);
+            let want = param.map(|p| p.ty.subst(bindings));
+            let arg_ty = self.infer_arg(&arg.value, want.as_ref());
             // A lambda with unwritten parameters keeps its signature for
             // itself; the generic its result is binds from it.
             let lambda_sig = (typed_lambda && arg_ty == Ty::Unknown)

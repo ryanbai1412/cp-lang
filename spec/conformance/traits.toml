@@ -3147,3 +3147,11 @@ let p = gen<Perm<V>>()
 print(p.len, yes(p.sorted() == V.collect()))
 """
 out = "5 YES"
+
+[case."Random/Rooted/gen"]
+code = """
+domain V = 0..5
+let t = gen<Rooted<V>>(shape: Star)
+print(V.count, yes(V.all(v => t.depth(v) <= 1)))
+"""
+out = "5 YES"

@@ -179,13 +179,12 @@ impl<'a> Checker<'a> {
                 return ty;
             }
         }
-        // `gen<Rooted<V>>(shape: path)`: the shape is a name of `gen`'s own.
         if let ExprKind::Generic { base, args: tys } = &callee.kind {
             if matches!(&base.kind, ExprKind::Name(n) if n == "gen" && self.local(n).is_none() && self.global(n).is_none())
             {
                 // `gen<T>(args)` on a type that draws itself is `T.gen(args)`.
                 let own = match tys.as_slice() {
-                    [t] if !matches!(&t.kind, cpl_syntax::ast::TypeKind::Named { name, .. } if matches!(name.text.as_str(), "Rooted" | "Graph")) => {
+                    [t] if !matches!(&t.kind, cpl_syntax::ast::TypeKind::Named { name, .. } if matches!(name.text.as_str(), "Graph")) => {
                         t.gen_call(args, call.span)
                     }
                     _ => None,
@@ -194,10 +193,7 @@ impl<'a> Checker<'a> {
                     return self.infer(&own);
                 }
                 for arg in args {
-                    let shape = arg.name.as_ref().is_some_and(|n| n.text == "shape");
-                    if !(shape && matches!(arg.value.kind, ExprKind::Name(_))) {
-                        self.infer(&arg.value);
-                    }
+                    self.infer(&arg.value);
                 }
                 return self.read_ty(callee, args).unwrap_or(Ty::Unknown);
             }

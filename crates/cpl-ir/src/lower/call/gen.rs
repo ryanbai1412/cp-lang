@@ -1,7 +1,7 @@
 //! `gen(lo..=hi)` and `gen<T>(...)`: a random value of a type the input
 //! could hold (R06.4.3, lib/random-stress.md). Ranges draw with `rand`,
-//! arrays draw each element, `Str of`, `Rooted` and `Graph` call the std
-//! fns beside each type, and a named type's `impl Random` draws the rest.
+//! arrays draw each element, `Str of` and `Graph` call the std fns beside
+//! each type, and a named type's `impl Random` draws the rest.
 
 use super::*;
 
@@ -113,44 +113,6 @@ impl<'a> Lowerer<'a> {
             }
             ast::TypeKind::Named { name, args: tys } => {
                 match (name.text.as_str(), tys.as_slice()) {
-                    ("Rooted", [v, ..]) => {
-                        let shape = match named("shape").map(|a| &a.value.kind) {
-                            None => 4,
-                            Some(ast::ExprKind::Name(shape)) => {
-                                match ["path", "star", "binary", "caterpillar", "random"]
-                                    .iter()
-                                    .position(|s| s == shape)
-                                {
-                                    Some(at) => at as i128,
-                                    None => {
-                                        return self.gen_error(
-                                            cpl_diag::msgs::ir::GEN_TREE_SHAPE.at(&[]),
-                                            span,
-                                        )
-                                    }
-                                }
-                            }
-                            Some(_) => {
-                                return self
-                                    .gen_error(cpl_diag::msgs::ir::GEN_TREE_SHAPE.at(&[]), span)
-                            }
-                        };
-                        let shape = ast::Arg {
-                            name: None,
-                            mutable: false,
-                            value: ast::Expr {
-                                kind: ast::ExprKind::Int(shape),
-                                span,
-                            },
-                        };
-                        self.std_call(
-                            "tree",
-                            "gen_rooted",
-                            std::slice::from_ref(v),
-                            &[shape],
-                            span,
-                        )
-                    }
                     ("Graph", [_, arc]) => {
                         let flag = |name: &str| ast::Arg {
                             name: Some(ast::Name {

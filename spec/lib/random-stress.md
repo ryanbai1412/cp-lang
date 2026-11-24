@@ -27,13 +27,14 @@ are the input spec:
     let a = gen<[V]1..=1e9>()  // an array over a domain
     let s = gen<Str of "ab">(len: 1..=10)
     let g = gen<Graph<V, (to: V, w: 1..=9)>>(simple: true, connected: true)
-    let t = gen<Rooted<V>>(shape: random)  // also path, star, caterpillar, binary
+    let t = gen<Rooted<V>>(shape: Random)  // a TreeShape: also Path, Star, Caterpillar, Binary
     let p = gen<Perm<V>>()
     print(n)
 ```
 
 - `gen<Perm<V>>()` draws a uniformly random permutation: a `Perm<V>` is a `[V]V`, drawn
-  by the `Random` impl over the alias.
+  by the `Random` impl over the alias. `gen<Rooted<V>>(shape:)` takes a `TreeShape`, `Random`
+  by default; its variants read bare there, as an expected enum's do (R02.7.1).
 - `gen<T>(args)` for any other named type is `T.gen(args)`: a type is drawn by its
   `std.rand.Random` impl, a user type like a std one, and its `gen` may take named
   options (`fn gen(far: Bool = false) -> Pt`). A type without one has no `gen` to call.

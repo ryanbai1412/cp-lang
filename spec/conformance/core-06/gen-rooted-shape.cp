@@ -4,7 +4,7 @@
 // has: "cases agree"
 domain V = 0..5
 @gen fn input():
-    let t = gen<Rooted<V>>(shape: path)
+    let t = gen<Rooted<V>>(shape: Path)
     assert V.all(v => t.depth(v) < V.count)
     print(V.count)
 @alt(program)

@@ -231,6 +231,14 @@ impl<'a> Lowerer<'a> {
                 return self.mk(ExprKind::Do(Block { stmts }), Ty::Error, span);
             }
             _ => {
+                if let Some((id, tag)) = self.expected_variant(name, hint) {
+                    if self.enums[id].variants[tag].1.is_empty() {
+                        return match self.enum_to_sum_domain.get(&id) {
+                            Some(&d) => self.encode_sum_variant(d, tag, Vec::new(), span),
+                            None => self.mk(ExprKind::Variant(tag, Vec::new()), Ty::Enum(id), span),
+                        };
+                    }
+                }
                 if self.tail_names.contains(name) {
                     let gen = matches!(self.aside, Some(Aside::Gen(_)));
                     let message = if gen {

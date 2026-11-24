@@ -4163,22 +4163,26 @@ pub fn from_prufer<V>(code: List<V>) -> Tree<V>:
     if leaf.ord < last.ord: out.push((u: leaf, v: last)) else: out.push((u: last, v: leaf))
     [0..V.count - 1] i => out[i]
 
-/// `gen<Rooted<V>>(shape:)`, with the shape by its place in path, star,
-/// binary, caterpillar, random: each vertex hangs from one drawn before it.
-fn gen_rooted<V>(shape: Int) -> Rooted<V, _, _>:
-    let n = V.count
-    var label = V.collect()
-    shuffle(mut label)
-    var par: [V]?V = None
-    let spine = max(1, (n + 1) / 2)
-    for i in 1..n:
-        var j = rand(0, i - 1)
-        if shape == 0 or (shape == 3 and i < spine): j = i - 1
-        if shape == 1: j = 0
-        if shape == 2: j = (i - 1) / 2
-        if shape == 3 and i >= spine: j = rand(0, spine - 1)
-        par[label[i]] = Some(label[j])
-    Rooted.from_parents(par)
+/// The shape of tree `gen<Rooted<V>>(shape:)` draws: a path, a star, a binary heap, a
+/// caterpillar (a spine with legs), or a random one (each vertex below a uniform earlier one).
+pub enum TreeShape = Path | Star | Binary | Caterpillar | Random
+
+/// `gen<Rooted<V>>(shape:)`: each vertex hangs from one drawn before it, in `shape`.
+impl<V, Pre, A> Random for Rooted<V, Pre, A>:
+    fn gen(shape: TreeShape = Random) -> Rooted<V, _, _>:
+        let n = V.count
+        var label = V.collect()
+        shuffle(mut label)
+        var par: [V]?V = None
+        let spine = max(1, (n + 1) / 2)
+        for i in 1..n:
+            var j = rand(0, i - 1)
+            if shape == Path or (shape == Caterpillar and i < spine): j = i - 1
+            if shape == Star: j = 0
+            if shape == Binary: j = (i - 1) / 2
+            if shape == Caterpillar and i >= spine: j = rand(0, spine - 1)
+            par[label[i]] = Some(label[j])
+        Rooted.from_parents(par)
 
 impl Show for EulerTourTree<V, T>:
     /// Every vertex's value, space-separated in vertex order.

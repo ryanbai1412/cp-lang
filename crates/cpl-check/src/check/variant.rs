@@ -41,6 +41,28 @@ impl<'a> Checker<'a> {
         self.variants_fit(at, want, &mut shared) && shared
     }
 
+    /// An argument's type. A bare name that is no value in scope and is a
+    /// unit variant of the enum its parameter wants is that variant, so
+    /// `gen<Rooted<V>>(shape: Path)` needs no `TreeShape.` (R02.7.1).
+    pub(crate) fn infer_arg(&mut self, at: &Expr, want: Option<&Ty>) -> Ty {
+        if let (ExprKind::Name(name), Some(want @ Ty::Named { name: of, args })) = (&at.kind, want)
+        {
+            let free = self.local(name).is_none()
+                && !matches!(
+                    self.global(name).as_deref(),
+                    Some(Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. })
+                );
+            let unit = |d: &Def| {
+                matches!(d, Def::Enum { variants, .. }
+                    if variants.iter().any(|(v, fields)| v == name && fields.is_empty()))
+            };
+            if args.is_empty() && free && self.type_def(of).as_deref().is_some_and(unit) {
+                return want.clone();
+            }
+        }
+        self.infer(at)
+    }
+
     fn variants_fit(&mut self, at: &Expr, want: &Ty, shared: &mut bool) -> bool {
         for value in value_positions(at, false) {
             let fits = match (&value.kind, want) {
