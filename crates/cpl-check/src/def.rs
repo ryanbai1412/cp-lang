@@ -112,7 +112,7 @@ pub enum Def {
         /// The associated types it declares, `type Found` (R08.1.9), each
         /// with the traits its bound names (`type Arc: Target<V>`) and its
         /// default, if any (`type Item = Int`, decision 469).
-        assoc: Vec<(String, Vec<String>, Option<Ty>)>,
+        assoc: Vec<(String, Vec<(String, Vec<Ty>)>, Option<Ty>)>,
         /// `@structural trait Hash`: a compound type has it when each part does, and a
         /// built-in scalar only through its own impl.
         structural: bool,

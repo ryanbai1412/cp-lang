@@ -147,15 +147,20 @@ impl Checker<'_> {
     /// `base.name`'s type: a member, else a `@get fn` of that name.
     pub(super) fn member_or_getter(&mut self, expr: &Expr, name: &ast::Name, base: Ty) -> Ty {
         // A getter read is a call: its facts say which fn it calls.
+        let mut getter_fn = false;
         if !self.in_call_callee && !self.exprs.calls.iter().any(|c| c.call == expr.span) {
             if self.builtin_get(&base, &name.text) {
                 self.record_getter(expr, expr, true);
             } else if self.names_getter_fn(&base, &name.text) {
                 self.record_getter(expr, expr, false);
+                getter_fn = matches!(self.pick_method(&base, &name.text),
+                    Pick::One(_, def) if matches!(&*def, Def::Fn { getter: true, .. }));
             }
         }
         match self.member_ty(expr, name, base) {
             Ty::Unknown if !self.in_call_callee => self.getter_fn_read(expr).unwrap_or(Ty::Unknown),
+            // `p.adj4` on `p: (R, C)`: the value of the `@get fn`, not the fn.
+            Ty::Fn { params, ret } if getter_fn && params.is_empty() => *ret,
             ty => ty,
         }
     }

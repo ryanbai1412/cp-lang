@@ -911,6 +911,19 @@ impl<'a> Checker<'a> {
                     )
                 })
             }
+            // `a.to` on `a: G.Arc` reads through the bound `type Arc: Target<V>`.
+            Ty::Assoc { of, name: assoc } => {
+                if let Ty::Param(param) = &**of {
+                    match self.assoc_bound_method(param, assoc, &name.text) {
+                        Some(Ty::Fn { params, ret }) if !self.in_call_callee && params.is_empty() => {
+                            return *ret;
+                        }
+                        Some(ty) => return ty,
+                        None => {}
+                    }
+                }
+                None
+            }
             Ty::Param(param) => {
                 return match self.bound_method(param, &name.text) {
                     Some(Ty::Fn { params, ret }) if !self.in_call_callee && params.is_empty() => {

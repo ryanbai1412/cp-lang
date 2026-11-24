@@ -1168,6 +1168,15 @@ impl<'a> Checker<'a> {
                     .into_iter()
                     .map(|(n, bounds, default)| {
                         let default = default.map(|t| self.quietly(|c| c.resolve_type(t)));
+                        let bounds = (bounds.iter())
+                            .filter_map(|b| {
+                                let TypeKind::Named { args, .. } = &b.kind else {
+                                    return None;
+                                };
+                                let args = args.iter().map(|t| self.quietly(|c| c.resolve_type(t)));
+                                Some((type_head(b)?, args.collect()))
+                            })
+                            .collect();
                         (n, bounds, default)
                     })
                     .collect();

@@ -172,6 +172,42 @@ impl Checker<'_> {
         None
     }
 
+    /// `a.to` on `a: G.Arc` for `G: Next<V>`: the member comes from the
+    /// associated type's bound, `type Arc: Target<V>` (R08.1.9).
+    pub(crate) fn assoc_bound_method(&mut self, param: &str, assoc: &str, name: &str) -> Option<Ty> {
+        let traits: Vec<String> = (self.param_bounds.iter())
+            .filter(|(p, _)| p == param)
+            .flat_map(|(_, ts)| ts.iter().cloned())
+            .collect();
+        for trait_name in traits {
+            let Some(Def::Trait { assoc: declared, .. }) = self.type_def(&trait_name).as_deref().cloned()
+            else {
+                continue;
+            };
+            let Some((_, bounds, _)) = declared.into_iter().find(|(n, ..)| n == assoc) else {
+                continue;
+            };
+            let outer = self.bound_bindings(param, &trait_name);
+            for (bound, args) in bounds {
+                let Some(Def::Trait { generics, methods, .. }) = self.type_def(&bound).as_deref().cloned()
+                else {
+                    continue;
+                };
+                let Some(m) = methods.iter().find(|m| m.name == name) else {
+                    continue;
+                };
+                let mut on = crate::ty::Bindings::default();
+                let of = Box::new(Ty::Param(param.into()));
+                on.insert("Self".into(), Ty::Assoc { of, name: assoc.into() });
+                for (g, a) in generics.iter().zip(args) {
+                    on.insert(g.clone(), a.subst(&outer));
+                }
+                return Some(m.ty.subst(&on));
+            }
+        }
+        None
+    }
+
     /// A bare op (`+`, `max`) passed for `M: Op<E>` is the `Monoid<E>` the
     /// trait has an impl for, once `E` is known, at a generic bound as at a
     /// concrete one; a closure keeps its fn type (R08.1.9, decision 456).

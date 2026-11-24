@@ -216,9 +216,10 @@ impl Checker<'_> {
                         args: type_args,
                     }
                 }
-                Def::Alias { ty, .. } => {
+                // `MinHeap<(W, V)>()` is the `Heap<(W, V)>` it names.
+                Def::Alias { ty, generics } => {
                     self.plain_args(args);
-                    ty.clone()
+                    ty.subst(&generics.iter().cloned().zip(type_args).collect())
                 }
                 _ => {
                     self.plain_args(args);

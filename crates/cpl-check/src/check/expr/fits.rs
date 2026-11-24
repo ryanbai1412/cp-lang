@@ -144,14 +144,17 @@ impl<'a> Checker<'a> {
             }
             // A struct passes where a trait it implements is written, by the
             // arguments its impl gives that trait: a std view such as
-            // `Mapped<S, T, U>` is a `Seq<U>` (R07.1.2).
-            (Ty::Named { .. }, Ty::Named { name, args })
-                if !args.is_empty()
-                    && matches!(self.type_def(name).as_deref(), Some(Def::Trait { .. })) =>
+            // `Mapped<S, T, U>` is a `Seq<U>` (R07.1.2). What the impls don't
+            // settle here, the call's bound check does.
+            (_, Ty::Named { name, args })
+                if matches!(self.type_def(name).as_deref(), Some(Def::Trait { .. })) =>
             {
-                if let Some(given) = self.trait_args_of(got, name, args.len()) {
-                    return given.iter().zip(args).all(|(g, w)| self.fits(g, w));
-                }
+                return match self.trait_args_of(got, name, args.len()) {
+                    Some(given) if matches!(got, Ty::Named { .. }) && !args.is_empty() => {
+                        given.iter().zip(args).all(|(g, w)| self.fits(g, w))
+                    }
+                    _ => true,
+                };
             }
             (_, Ty::Optional(inner)) => {
                 return self.fits(got, inner);

@@ -9,14 +9,14 @@ use cpl_syntax::ast::{self, Stmt, StmtKind};
 
 /// The associated types a trait body declares, each with its bound's traits
 /// and the default it writes (`type Item = Int`), if any.
-pub(super) fn declared(body: &[Stmt]) -> Vec<(String, Vec<String>, Option<&ast::Type>)> {
+pub(super) fn declared(body: &[Stmt]) -> Vec<(String, &[ast::Type], Option<&ast::Type>)> {
     body.iter()
         .filter_map(|s| match &s.kind {
             StmtKind::TypeAlias {
                 name, bounds, ty, ..
             } => Some((
                 name.text.clone(),
-                bounds.iter().filter_map(type_head).collect(),
+                bounds.as_slice(),
                 (!matches!(ty.kind, ast::TypeKind::Error)).then_some(ty),
             )),
             _ => None,
@@ -185,7 +185,7 @@ impl Checker<'_> {
             {
                 continue;
             }
-            for b in bounds {
+            for (b, _) in bounds {
                 if self.implements_trait(&chosen, b) {
                     continue;
                 }

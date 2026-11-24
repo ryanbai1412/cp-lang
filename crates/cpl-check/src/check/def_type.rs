@@ -141,7 +141,10 @@ impl Checker<'_> {
                 name: name.to_string(),
                 args,
             },
-            Def::Trait { .. } => Ty::Unknown,
+            Def::Trait { .. } => Ty::Named {
+                name: name.to_string(),
+                args,
+            },
             // Declared by a broken statement: its error is already reported.
             Def::Value { ty: Ty::Error, .. } | Def::Fn { ty: Ty::Error, .. } => Ty::Error,
             Def::Value { .. } | Def::Fn { .. } | Def::Variant { .. } | Def::Impl { .. } => {
