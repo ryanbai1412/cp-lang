@@ -4138,6 +4138,14 @@ impl Show for Rev<S>:
             out += "{x}"
         out
 
+impl Show for Rebased<S>:
+    fn show(v):
+        var out = ""
+        for x in v.src:
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out
+
 impl Show for Slice<S>:
     fn show(v):
         var out = ""
