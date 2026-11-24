@@ -287,6 +287,18 @@ class GatesTest(unittest.TestCase):
             got = sorted(p.where for p in run("tool-vocab"))
         self.assertEqual(got, ["cpl explain E0001 (title)", "cpl run --help", "hover in spec/conformance/a.cp"])
 
+    def test_coverage(self):
+        import importlib
+        from specgate import coverage as cov
+        cov = importlib.reload(cov)
+        m = cov.RULE_DEF.search("is legal and adds a flag. (R02.4.3, permits)")
+        self.assertEqual((m.group(1), m.group(2)), ("02.4.3", ", permits"))
+        self.assertIsNone(cov.RULE_DEF.search("rejects it. (R02.4.4)").group(2))
+        self.assertIn("01.3.6", cov.rule_texts())
+        self.assertIn("01.3.6", cov.PERMITS)
+        self.assertNotIn("01.3.5", cov.PERMITS)
+        self.assertFalse((specgate.ROOT / "spec/conformance/permits.txt").exists())
+
     def test_markers(self):
         old = "// expect: E0601 at 2 (checked)\n// rule: 05.1\n// a note\nlet a = 1\r\nf(a)\n"
         with Tree({"spec/conformance/c/a.cp": old}) as t:

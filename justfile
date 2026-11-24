@@ -86,7 +86,7 @@ spec-check:
 
 # Refresh or check the conformance coverage table.
 conformance-coverage *args:
-    uv run python scripts/conformance-coverage.py {{args}}
+    uv run python scripts/spec-gate.py coverage {{args}}
 
 # Write plan/STATUS.md from every domain's metrics.toml and the open questions.
 status:

@@ -11,7 +11,7 @@ py() { uv run --quiet python "$@"; }
 # so one broken generator never leaves every other file stale.
 run() { local out; out=$("$@" 2>&1) || { printf '%s\n' "$out" | tail -20 >&2; echo "regen: failed: $*" >&2; }; }
 [ ! -f scripts/skill-gen.py ] || run py scripts/skill-gen.py
-[ ! -f scripts/conformance-coverage.py ] || run py scripts/conformance-coverage.py
+[ ! -f scripts/specgate/coverage.py ] || run py scripts/spec-gate.py coverage --write
 [ ! -f scripts/specgate/prelude.py ] || run py scripts/spec-gate.py prelude --write
 ! command -v pnpm >/dev/null || run pnpm install --lockfile-only --silent
 ! command -v node >/dev/null || run node editors/vscode/scripts/language-data.js

@@ -1,18 +1,21 @@
-#!/usr/bin/env python3
-# Enforces handbook/guidelines/conformance-checklist.md#conformancer1-every-rule-has-a-case-and-every-forbidding-rule-has-a-reject-case
 """Write spec/conformance/COVERAGE.md: rules, diagnostics and std items vs cases.
 
 A case is positive when it expects `ok`, negative when it expects a diagnostic
 or a trap; a tool case with a `// lacks:` line, or one that exits nonzero, is also negative. A rule whose text forbids or traps something needs a negative case;
 one cited only by positive cases is listed as happy-path only.
+Enforces handbook/guidelines/conformance-checklist.md#conformancer1-every-rule-has-a-case-and-every-forbidding-rule-has-a-reject-case
 """
+from __future__ import annotations
+
 import json
 import re
-import sys
 from collections import defaultdict
-from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
+import specgate
+from specgate import Problem
+
+HELP = "every rule has the accept and reject cases it needs; --write writes spec/conformance/COVERAGE.md"
+ROOT = specgate.ROOT
 SPEC = ROOT / "spec"
 CONF = SPEC / "conformance"
 RULE_DEF = re.compile(r"\(R((?:\d\d[a-z]?|[a-z]+)(?:\.\d+)+)(, permits)?\)")
@@ -214,7 +217,11 @@ def spec_blocks(all_cases, block_status=None):
     return out
 
 
-def main():
+def args(ap) -> None:
+    ap.add_argument("--write", action="store_true")
+
+
+def run(opts) -> list[Problem]:
     rules = rule_texts()
     all_cases = cases()
     scoreboard = json.loads((ROOT / "research/scoreboard.json").read_text())
@@ -237,10 +244,7 @@ def main():
     stale += [f"R{r}: marked permits but its text no longer forbids" for r in permits
               if not NEGATIVE_WORDS.search(rules[r][2])]
     if stale:
-        print("drop `, permits` from these spec rules:")
-        for s in stale:
-            print(f"  {s}")
-        return 1
+        return [Problem("spec", f"drop `, permits`: {s}") for s in stale]
 
     def forbids(rid):
         return rid not in permits and bool(NEGATIVE_WORDS.search(rules[rid][2]))
@@ -407,20 +411,10 @@ def main():
     text = "\n".join(out) + "\n"
     target = CONF / "COVERAGE.md"
     if gaps:
-        print("rules without a case they need:")
-        for r in sorted(gaps, key=rule_key):
-            print(f"  R{r}: {gaps[r]}: {rules[r][0]}:{rules[r][1]}")
-        print("add the cases")
-        return 1
-    if "--check" in sys.argv:
+        return [Problem(f"{rules[r][0]}:{rules[r][1]}", f"R{r}: {gaps[r]}; add the case") for r in sorted(gaps, key=rule_key)]
+    if not opts.write:
         if not target.exists() or target.read_text() != text:
-            print(f"{target.relative_to(ROOT)} stale; run scripts/conformance-coverage.py")
-            return 1
-        return 0
+            return [Problem(str(target.relative_to(ROOT)), "stale; run: uv run scripts/spec-gate.py coverage --write")]
+        return []
     target.write_text(text)
-    print(f"wrote {target.relative_to(ROOT)}")
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())
+    return []

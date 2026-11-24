@@ -18,7 +18,7 @@ Workstreams 1-3 below are landed; 4-6 continue in the order above.
 ## Workstreams, in order
 
 1. **Land what exists** (hours). Rebase `devin/wip-conformance-matrix` (6 commits, `git cherry` shows all unlanded) on main, regenerate `COVERAGE.md`, gate, land. Adds the matrix generator (`scripts/conformance-matrix.py`, `spec/conformance/matrix.toml`, 211 cases) and 108 hand cases with rulings 211-215.
-2. **Rule completeness (M1).** For each of the 45 happy-path-only rules write the smallest reject case; fix the 78 unknown cites (teach `--rules` that `std.*` ids are std items, via a request to whoever owns `cpl-conform`; fix malformed headers myself); give the 10 rule-less core cases a rule. Then add `conformance-coverage.py --check` to the fast gate (request to infra).
+2. **Rule completeness (M1).** For each of the 45 happy-path-only rules write the smallest reject case; fix the 78 unknown cites (teach `--rules` that `std.*` ids are std items, via a request to whoever owns `cpl-conform`; fix malformed headers myself); give the 10 rule-less core cases a rule. Then add `spec-gate.py coverage` to the fast gate (request to infra).
 3. **Trait table (M2).** `scripts/spec-gate.py traits`: parse `pub trait` bodies in `std/*.cp` and the core traits in `spec/core/08` and `12`; parse `impl Trait for Type:` claims (72); core claimers (List, Str, `[D]T`, Range, domains) by hand in `spec/conformance/traits.toml`. Each (type, trait, method) needs a snippet + expected output; the gate fails on one without.
 4. **Spec blocks (M2).** A `<!-- given: ... -->` prelude before a fence supplies the names a fragment uses; a `<!-- spec-only: reason -->` marker skips it; tag the 27 untagged blocks. The `spec_blocks.rs` change is a request to the runner's owner (patch drafted on the wip branch under `research/conformance-generators/`).
 5. **Consistency (M3).** A check that every std signature named in a chapter matches `std` (names, named args); resolve rebuild round 2's 32 holes (ruling, case, or question); then rebuild round 3.
@@ -86,6 +86,6 @@ Each local fix, and the mechanism that would remove its whole class.
 6. All of the above are ratchets in `scripts/check.sh --fast`.
 
 
-- **M1 Every rule tested both ways.** Exit: `conformance-coverage.py` reports 0 happy-path-only rules, 0 unknown cites, 0 rule-less core cases, 0 diagnostic codes without a reject case; `conformance-coverage.py --check` runs in the fast gate.
+- **M1 Every rule tested both ways.** Exit: `spec-gate.py coverage` reports 0 happy-path-only rules, 0 unknown cites, 0 rule-less core cases, 0 diagnostic codes without a reject case; `spec-gate.py coverage` runs in the fast gate.
 - **M2 Generated coverage.** Exit: `devin/wip-conformance-matrix` landed and `spec-gate.py matrix` gates 0 empty cells; `spec-gate.py traits` gates the trait table, failing on any method with no case; spec-blocks: every fence is a case or `spec-only`.
 - **M3 Independently rebuildable.** Exit: a rebuild round (cold agent, `spec/` only, 40 questions + 10 programs) records < 5 holes; the bug-catch probe catches >= 90% of reverted compiler fixes.

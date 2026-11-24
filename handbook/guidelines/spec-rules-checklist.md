@@ -33,7 +33,7 @@ machine fix (`else if` gives E0503, fixed to `elif`) or doesn't exist.
 
 A rule is defined where `(Rnn.n.n)` ends its sentence. A mention elsewhere
 is written `(see Rnn.n.n)`, so tools don't read it as a second definition.
-Enforced by `scripts/conformance-coverage.py --check`, which also flags
+Enforced by `scripts/spec-gate.py coverage`, which also flags
 rules no case cites (conformance C1).
 
 ### spec-rules/R4. Every checked operation answers three questions

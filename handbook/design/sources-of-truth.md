@@ -67,7 +67,7 @@ Each generated fact, the file that owns it, and the script that generates it.
 
 | Fact | Owner | Generated into | By |
 |---|---|---|---|
-| Conformance coverage and rule gaps | the cases in `spec/conformance/` | `spec/conformance/` reports | `scripts/conformance-coverage.py` |
+| Conformance coverage and rule gaps | the cases in `spec/conformance/` | `spec/conformance/` reports | `scripts/spec-gate.py coverage` |
 | Agent skill pages | the spec and the std sources | `skills/` | `scripts/skill-gen.py` |
 | Editor language data | the operator table and keyword lists | `editors/vscode/` | `editors/vscode/scripts/language-data.js` |
 | Current numbers for each domain | the measuring commands | `plan/domains/<domain>/metrics.toml` | each metric's `command` |

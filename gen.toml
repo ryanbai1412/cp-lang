@@ -45,8 +45,8 @@ tier = "pre-commit"
 name = "coverage"
 files = ["spec/conformance/COVERAGE.md"]
 inputs = ["spec/core/*.md", "spec/lib/*.md", "std/*.cp", "spec/conformance/**/*.cp", "spec/lints.md"]
-write = ["scripts/conformance-coverage.py"]
-check = ["scripts/conformance-coverage.py", "--check"]
+write = ["scripts/spec-gate.py", "coverage", "--write"]
+check = ["scripts/spec-gate.py", "coverage"]
 tier = "pre-commit"
 
 [[gen]]

@@ -85,7 +85,7 @@ domain with its path.
 | Interface | Used by | Held by |
 |---|---|---|
 | Authority: handbook leads design; spec/ is its downstream exhaustive form. A handbook/spec disagreement is a bug spec resolves; every other doc yields to both | every domain | this charter; `spec-gate.py vocab` |
-| Rule ids `Rnn.n.n` | compiler, diagnostics (`spec/diagnostics.md` cites them), site, idioms | `cpl-conform --rules`, `conformance-coverage.py --check` |
+| Rule ids `Rnn.n.n` | compiler, diagnostics (`spec/diagnostics.md` cites them), site, idioms | `cpl-conform --rules`, `spec-gate.py coverage` |
 | The conformance case format (`// expect:`, `// rule:`, `// input:`, `// timeout:`, `// has:` headers; a code's line ends with `// <- here`) | compiler, stdlib (`std-*` groups), tools, diagnostics | `crates/cpl-conform/tests/ratchet.rs`, `spec/conformance/README.md` |
 | The pass list in `research/scoreboard.json` | compiler (its headline number), infra (the `cpl-conform ratchet` gate step) | `cpl-conform all --check` |
 | the scoreboard's failing cases (`spec/SUBSET.md` is generated from them; no case carries a `// gap:` line) | every implementing domain, the milestone owner | `spec-gate.py subset`, `gaps` |
@@ -113,9 +113,9 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 
 | Quality | Metric | Mechanism | Where |
 |---|---|---|---|
-| Every rule is tested ([conformance/R1](../guidelines/conformance-checklist.md)) | rules with no case; forbidding rules with no reject case | zero in the gate | `scripts/conformance-coverage.py --check` |
+| Every rule is tested ([conformance/R1](../guidelines/conformance-checklist.md)) | rules with no case; forbidding rules with no reject case | zero in the gate | `scripts/spec-gate.py coverage` |
 | Every case cites something that exists | cites to unknown rules | gate | `cpl-conform --rules` |
-| Every diagnostic code is reachable | codes with no reject case | ratchet | `scripts/conformance-coverage.py --check` |
+| Every diagnostic code is reachable | codes with no reject case | ratchet | `scripts/spec-gate.py coverage` |
 | Feature combinations are tested (index types x consumers) ([conformance/R5](../guidelines/conformance-checklist.md)) | empty matrix cells | generated suite, gate | `scripts/spec-gate.py matrix`, `spec/conformance/matrix.toml` |
 | Every trait method on every claimer is tested ([conformance/R5](../guidelines/conformance-checklist.md)) | trait methods with no case | generated table, ratchet | `scripts/spec-gate.py traits` |
 | Chapters and `std` agree on named arguments | named args no std fn takes | gate: zero | `scripts/spec-gate.py sigs` |
@@ -154,7 +154,7 @@ yet. Targets and current values are in `plan/domains/spec/metrics.toml`.
 | The suite is deterministic | cases that pass and fail on the same build | per-case `// timeout:`; flake report over repeated runs ([conformance/R6](../guidelines/conformance-checklist.md)) | `scripts/spec-gate.py flakes`, `scripts/check.sh --full`, `crates/cpl-conform/tests/timeout.rs` |
 | Cross-references in the spec resolve | rule ids anywhere in the repo naming no rule; links to missing files | gate ([spec-rules/R3](../guidelines/spec-rules-checklist.md)) | `scripts/spec-gate.py xref --check`, `scripts/check-doc-links.py` |
 | The spec says what changed between versions ([spec-rules/R7](../guidelines/spec-rules-checklist.md)) | removed spellings (E0503) with no changelog line | every E0503 spelling in `spec/diagnostics.md` is named under the current version in `CHANGELOG.md` | `scripts/spec-gate.py changelog` in `scripts/check.sh` |
-| Old programs keep their meaning (pins and `cpl migrate`, R11.4.3) | R11.4.x cases failing; `cpl migrate` cases whose rewrite differs | cases for each of R11.4.1–3: the stamp, a build with a pinned compiler, a removed spelling's E0503, and `cpl migrate` rewriting it (`// tool: migrate`, `// rewritten:`), with rule coverage from `conformance-coverage.py` | `spec/conformance/core-11/` |
+| Old programs keep their meaning (pins and `cpl migrate`, R11.4.3) | R11.4.x cases failing; `cpl migrate` cases whose rewrite differs | cases for each of R11.4.1–3: the stamp, a build with a pinned compiler, a removed spelling's E0503, and `cpl migrate` rewriting it (`// tool: migrate`, `// rewritten:`), with rule coverage from `spec-gate.py coverage` | `spec/conformance/core-11/` |
 | Each chapter teaches its model first | supported chapters with no model paragraph | process | `spec/core/` |
 | Every design decision gives its reason and the alternatives that lost | decisions cited in `spec/` that no handbook doc names | ratchet: the count only goes down ([spec-rules/R6](../guidelines/spec-rules-checklist.md)) | `scripts/spec-gate.py decisions-explained`, `scripts/check.sh` |
 | The suite is fast enough to run on every land ([conformance/R8](../guidelines/conformance-checklist.md)) | CPU seconds of `cpl-conform conformance spec-blocks` (wall time is in `metrics.toml`) | gate: total CPU under a budget of about twice today's | `scripts/spec-gate.py speed` in `scripts/check.sh --full` |
@@ -228,7 +228,7 @@ Three probes put the rubric to work:
 | `cpl-conform spec-blocks` | Code examples in `spec/core` and `spec/lib` that don't compile or run | `cargo run -p cpl-conform -- spec-blocks` |
 | `cpl-conform corpus` | Corpus solutions that fail their tests, judged by `checker.py` when present | `cargo run -p cpl-conform -- corpus` |
 | `cpl-conform all --check` | Any case that passed before and fails now | gate step `cpl-conform ratchet` |
-| `scripts/conformance-coverage.py` | Untested rules and codes; writes `COVERAGE.md` | `uv run scripts/conformance-coverage.py --check` |
+| `scripts/spec-gate.py coverage` | Untested rules and codes; writes `COVERAGE.md` | `uv run --quiet python scripts/spec-gate.py coverage` |
 | `scripts/spec-gate.py matrix` | Empty feature x consumer cells; generates `spec/conformance/matrix/` | `python3 scripts/spec-gate.py matrix` |
 | `scripts/spec-gate.py traits` | Trait methods with no case | `uv run --quiet python scripts/spec-gate.py traits` |
 | `scripts/spec-gate.py sigs`, `spec-gate.py prelude` | Chapter vs `std` disagreements on named args and prelude names | `uv run --quiet python scripts/spec-gate.py sigs` |

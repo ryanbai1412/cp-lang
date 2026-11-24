@@ -613,8 +613,8 @@ uv run --quiet python bench/scaling.py --check --cpl "$cpl" \
     || fail "a std fn's time at n and 4n disagrees with its cost:, or research/perf/scaling.json is stale; see above"
 
 step "conformance coverage: COVERAGE.md current, no new rule gaps"
-uv run scripts/conformance-coverage.py --check ||
-    derived "rule coverage gate failed; see above, then rerun: uv run scripts/conformance-coverage.py"
+uv run --quiet python scripts/spec-gate.py coverage ||
+    derived "rule coverage gate failed; see above, then rerun: uv run scripts/spec-gate.py coverage"
 
 step "conformance gaps: SUBSET.md generated from the board (scripts/spec-gate.py subset)"
 uv run --quiet python scripts/spec-gate.py subset || fail "spec/SUBSET.md is stale; run: uv run scripts/spec-gate.py subset --write"

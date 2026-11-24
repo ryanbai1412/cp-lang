@@ -103,7 +103,7 @@ check behind it, and marks the ones with none as `missing`.
 |---|---|---|
 | `Diagnostic`, `Span`, `Severity`, `Fix`, `Sink` | every front-end and tool crate | `crates/cpl-diag` unit tests |
 | `codes::*`, one constant per catalogue code | every error site | `crates/cpl-cli/tests/catalogue.rs` |
-| `REGISTRY`: title, explanation, a trigger that emits exactly the code, a fix that makes it check clean | `cpl explain`, the catalogue test, `scripts/conformance-coverage.py` | `crates/cpl-cli/tests/catalogue.rs` |
+| `REGISTRY`: title, explanation, a trigger that emits exactly the code, a fix that makes it check clean | `cpl explain`, the catalogue test, `scripts/spec-gate.py coverage` | `crates/cpl-cli/tests/catalogue.rs` |
 | `render`, `render_all`: the text form `error[E0301]: ... --> f.cp:7:17` | `cpl check/run/build`, goldens | `crates/cpl-cli/tests/diagnostics.rs` |
 | `cpl_ir::fix`: picks among an error's candidate fixes by re-checking, applies them in rounds | `cpl fix`, `cpl-lsp`, `cpl-wasm` | `crates/cpl-ir/src/fix.rs` tests, `crates/cpl-lsp/src/tests/parity.rs`, `crates/cpl-wasm/tests/parity.rs` |
 
