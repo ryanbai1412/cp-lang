@@ -13,6 +13,9 @@ use cpl_codegen::cpp_counts::{
     block_copies, container_copies, declared, entry_copies, lent_part_copies, map_get_copies,
     optional_copies, std_functions, sunk_copies,
 };
+#[path = "support/result_cache.rs"]
+mod result_cache;
+use result_cache::ResultCache;
 
 /// Counts one pattern in generated C++.
 type Count = fn(&str) -> usize;
@@ -117,31 +120,111 @@ fn check_shard(k: u64) {
         .into_iter()
         .filter(|src| shard_of(&rel(src)) == k)
         .collect();
+    let cache = ResultCache::new(result_cache::default_dir("copies"), &repo());
+    let wrong = disagreements_of(&sources, &out, &cache);
+    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+}
+
+/// Each program's disagreements, `rel: why`, in `sources` order, built in
+/// parallel; `cache` keeps them between runs.
+fn disagreements_of(sources: &[PathBuf], out: &Path, cache: &ResultCache) -> Vec<String> {
     let next = std::sync::atomic::AtomicUsize::new(0);
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let wrong: Vec<String> = std::thread::scope(|s| {
+    std::thread::scope(|s| {
         let jobs: Vec<_> = (0..threads)
             .map(|n| {
-                let (out, sources, next) = (out.join(format!("{n}.cpp")), &sources, &next);
+                let (out, next) = (out.join(format!("{n}.cpp")), &next);
                 s.spawn(move || {
                     let mut wrong = Vec::new();
-                    while let Some(src) =
-                        sources.get(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                    while let Some(i) =
+                        Some(next.fetch_add(1, std::sync::atomic::Ordering::Relaxed))
+                            .filter(|&i| i < sources.len())
                     {
+                        let src = &sources[i];
                         let rel = rel(src);
-                        wrong.extend(
-                            disagreements(src, &out)
+                        let found = cache.lines(src, || disagreements(src, &out));
+                        wrong.push((
+                            i,
+                            found
                                 .into_iter()
-                                .map(|w| format!("{rel}: {w}")),
-                        );
+                                .map(|w| format!("{rel}: {w}"))
+                                .collect::<Vec<_>>(),
+                        ));
                     }
                     wrong
                 })
             })
             .collect();
-        jobs.into_iter().flat_map(|j| j.join().unwrap()).collect()
-    });
-    assert!(wrong.is_empty(), "{}", wrong.join("\n"));
+        let mut all: Vec<_> = jobs.into_iter().flat_map(|j| j.join().unwrap()).collect();
+        all.sort_by_key(|(i, _)| *i);
+        all.into_iter().flat_map(|(_, w)| w).collect()
+    })
+}
+
+/// A warm cache gives back exactly what a cold one computed, and an edit
+/// recomputes only the edited program.
+#[test]
+fn cached_disagreements_match_a_cold_run_and_an_edit_recomputes_only_its_program() {
+    let tmp =
+        Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("copies_cache_{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&tmp);
+    let (cache_dir, progs) = (tmp.join("cache"), tmp.join("programs"));
+    std::fs::create_dir_all(&progs).unwrap();
+    // A shipped program with copies, the same with its count misstated (a
+    // non-empty result) and one with none.
+    let sample = sources_of_shard_sample();
+    let base = std::fs::read_to_string(&sample[0]).unwrap();
+    let n = declared(&base, "copies").unwrap();
+    let wrong_header = base.replacen(&format!("copies: {n}"), &format!("copies: {}", n + 1), 1);
+    let texts = [
+        base.clone(),
+        wrong_header,
+        "print(read() + 1)\n".to_string(),
+    ];
+    let mut sources: Vec<PathBuf> = texts
+        .iter()
+        .enumerate()
+        .map(|(i, t)| {
+            let p = progs.join(format!("p{i}.cp"));
+            std::fs::write(&p, t).unwrap();
+            p
+        })
+        .collect();
+    sources.extend(sample);
+    let out = tmp.join("out");
+    std::fs::create_dir_all(&out).unwrap();
+    let run = || {
+        let cache = ResultCache::new(Some(cache_dir.clone()), &repo());
+        let found = disagreements_of(&sources, &out, &cache);
+        (found, cache.misses())
+    };
+    let uncached = disagreements_of(&sources, &out, &ResultCache::new(None, &repo()));
+    let (cold, cold_misses) = run();
+    assert_eq!(cold_misses, sources.len());
+    assert_eq!(cold, uncached);
+    let misstated = format!("p1.cp: the C++ makes {n} copies, the header says {}", n + 1);
+    assert!(cold.iter().any(|w| w.contains(&misstated)), "{cold:?}");
+    let (warm, warm_misses) = run();
+    assert_eq!((warm_misses, &warm), (0, &cold));
+    std::fs::write(&sources[1], &texts[0]).unwrap();
+    let (edited, edited_misses) = run();
+    assert_eq!(edited_misses, 1);
+    assert_eq!(
+        edited,
+        disagreements_of(&sources, &out, &ResultCache::new(None, &repo()))
+    );
+    assert!(!edited.iter().any(|w| w.contains("p1.cp")), "{edited:?}");
+    let _ = std::fs::remove_dir_all(&tmp);
+}
+
+/// A few shipped programs with copies, so the cached path covers `cpl explain`.
+fn sources_of_shard_sample() -> Vec<PathBuf> {
+    let mut with_copies: Vec<PathBuf> = sources()
+        .into_iter()
+        .filter(|s| declared(&std::fs::read_to_string(s).unwrap(), "copies").unwrap_or(0) > 0)
+        .collect();
+    with_copies.truncate(4);
+    with_copies
 }
 
 macro_rules! shards {
