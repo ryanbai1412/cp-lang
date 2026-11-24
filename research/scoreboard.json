@@ -1174,6 +1174,7 @@
         "core-07/range-sum-closed-form-traps-on-overflow.cp": "pass",
         "core-07/range-sum-is-ranges-own.cp": "pass",
         "core-07/record-literal-compared-takes-other-side-type.cp": "pass",
+        "core-07/reducer-over-yields-getter-with-capture.cp": "pass",
         "core-07/rev-and-filter-keys-walk.cp": "pass",
         "core-07/rev-does-not-satisfy-indexed.cp": "pass",
         "core-07/rev-drop-in-walk-order.cp": "pass",
@@ -1566,6 +1567,7 @@
         "core-11/inline-mod-sees-prelude.cp": "pass",
         "core-11/inline-mod-use-std.cp": "pass",
         "core-11/items-hoist.cp": "pass",
+        "core-11/lib-table-fns-need-no-import.cp": "pass",
         "core-11/library-module-no-prelude.cp": "pass",
         "core-11/library-module-uses-std.cp": "pass",
         "core-11/local-shadows-every-special-name.cp": "pass",
@@ -1600,6 +1602,7 @@
         "core-11/runtime-domain-reads-in-order.cp": "pass",
         "core-11/runtime-domain-use-before-definition.cp": "pass",
         "core-11/strings-table-in-prelude.cp": "pass",
+        "core-11/two-meaning-module-is-qualified.cp": "pass",
         "core-11/use-collides-with-local.cp": "pass",
         "core-11/use-std-paths.cp": "pass",
         "core-11/use-unknown-module.cp": "pass",
@@ -1674,7 +1677,7 @@
         "diagnostics/foreign-half-open-range.cp": "pass",
         "diagnostics/foreign-let-mut.cp": "pass",
         "diagnostics/foreign-or-or.cp": "pass",
-        "diagnostics/graph-edge-field-names.cp": "fail",
+        "diagnostics/graph-edge-field-names.cp": "pass",
         "diagnostics/index-impl-old-names.cp": "pass",
         "diagnostics/index-impl-var.cp": "pass",
         "diagnostics/int-of-struct-names-into-impl.cp": "pass",
@@ -2526,6 +2529,7 @@
         "std-lazy/lazytreap-bodies.cp": "pass",
         "std-lazy/rope-matches-brute.cp": "pass",
         "std-lazy/rope-query-path-reads-pending-tags.cp": "pass",
+        "std-lazy/seq-fold-matches-brute.cp": "pass",
         "std-marks/arena-alloc-1.cp": "pass",
         "std-marks/arena-clear-1.cp": "pass",
         "std-marks/arena-get-1.cp": "pass",
@@ -2650,6 +2654,7 @@
         "std-mod/try-inv-zero-and-noncoprime.cp": "pass",
         "std-models/deque.cp": "pass",
         "std-models/fenwick.cp": "pass",
+        "std-models/seq-fold.cp": "pass",
         "std-ntt/convolve-2d-matches-the-loop.cp": "pass",
         "std-ntt/convolve-cyclic-length-mismatch-traps.cp": "pass",
         "std-ntt/convolve-fast-product.cp": "pass",
@@ -2726,6 +2731,7 @@
         "std-prefix/scan-max-of-bounded.cp": "pass",
         "std-prefix/scan-min-range-fold-traps.cp": "pass",
         "std-prefix/scan-of-list-int-is-cut.cp": "pass",
+        "std-prefix/scan-of-strings-keeps-no-copy-of-the-fold.cp": "pass",
         "std-prefix/scan-owns-its-table.cp": "pass",
         "std-prefix/scan-prefix-ends.cp": "pass",
         "std-prefix/scan-range-array-int-index-is-an-error.cp": "pass",
@@ -2797,6 +2803,7 @@
         "std-seq/adjacent-diff-short.cp": "pass",
         "std-seq/adjacent_diff-1.cp": "pass",
         "std-seq/all-1.cp": "pass",
+        "std-seq/all-some-unwraps-the-element.cp": "pass",
         "std-seq/all_some-1.cp": "pass",
         "std-seq/any-1.cp": "pass",
         "std-seq/argmax-on-slice-keys-from-source.cp": "pass",
@@ -2901,6 +2908,7 @@
         "std-seq/rekey-length-mismatch-traps.cp": "pass",
         "std-seq/rekey-std-body-over-declared-domain.cp": "pass",
         "std-seq/rev-piece-walks-backward.cp": "pass",
+        "std-seq/reverse-and-join-are-std-bodies.cp": "pass",
         "std-seq/rfind-no-match.cp": "pass",
         "std-seq/ring-maximal-minimal-match-brute.cp": "pass",
         "std-seq/ring-one-item-next-prev.cp": "pass",
@@ -3118,7 +3126,8 @@
         "std-subset/braces-are-not-a-subset.cp": "pass",
         "std-subset/empty-braces-is-empty-subset.cp": "pass",
         "std-subset/empty-subset-is-named.cp": "pass",
-        "std-subset/enum-subsets-is-a-domain.cp": "fail",
+        "std-subset/enum-subsets-is-a-domain.cp": "pass",
+        "std-subset/enum-subsets-walk-in-mask-order.cp": "pass",
         "std-subset/for-walks-members.cp": "pass",
         "std-subset/index-by-other-domain-subset.cp": "pass",
         "std-subset/items-walks-members.cp": "pass",
@@ -3406,6 +3415,7 @@
         "traits/Show/Pt--show.cp": "pass",
         "traits/Show/Pt3--show.cp": "pass",
         "traits/Show/Ratio--show.cp": "pass",
+        "traits/Show/SeqFold--show.cp": "pass",
         "traits/Show/SortedBag--show.cp": "pass",
         "traits/Show/SortedSet--show.cp": "pass",
         "traits/Show/SparseIntervalMap--show.cp": "pass",
@@ -3518,13 +3528,6 @@
           ]
         },
         {
-          "cause": "E0204: `<id>` declares no domain `<id>`",
-          "count": 1,
-          "examples": [
-            "std-subset/enum-subsets-is-a-domain.cp"
-          ]
-        },
-        {
           "cause": "E0302: `<id>` takes a [_]_ for `<id>`, but `<id>` is a List<(u: V, v: V, w: Int)>",
           "count": 1,
           "examples": [
@@ -3574,13 +3577,6 @@
           ]
         },
         {
-          "cause": "wanted E0704; got E0201: `<id>` (`<id>`) does not work on the types it was given here: no value named `<id>` here",
-          "count": 1,
-          "examples": [
-            "diagnostics/graph-edge-field-names.cp"
-          ]
-        },
-        {
           "cause": "wanted E0805; got no diagnostic",
           "count": 1,
           "examples": [
@@ -3610,11 +3606,11 @@
         }
       ],
       "counts": {
-        "fail": 18,
-        "pass": 3471
+        "fail": 16,
+        "pass": 3483
       },
-      "passed": 3471,
-      "total": 3489
+      "passed": 3483,
+      "total": 3499
     },
     "corpus": {
       "cases": {
