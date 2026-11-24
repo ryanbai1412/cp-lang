@@ -206,7 +206,7 @@ fn cli_within(
     input: &[u8],
     limit: u64,
 ) -> Result<(i32, String, String), String> {
-    let mut cmd = std::process::Command::new(cpl);
+    let mut cmd = crate::pin::command(cpl);
     cmd.args(args);
     let out = runner::run_piped(cmd, input, limit)
         .map_err(|e| format!("`cpl {}` {e}", args.join(" ")))?;
@@ -303,7 +303,6 @@ pub(crate) struct ToolRun {
 /// blanks the `// has:`/`// lacks:`/`// rewritten:` lines so a tool that echoes the source
 /// (`build`) can't match them.
 fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, String> {
-    use std::process::Command;
     let cpl = cli_binary()?;
     let dir = std::env::temp_dir().join(format!(
         "cpl-conform-tool-{}-{}",
@@ -386,7 +385,7 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
     for before in header_values(text, "before:") {
         let mut words = before.split_whitespace();
         let first = words.next().ok_or("empty `// before:` header")?;
-        let mut cmd = Command::new(&cpl);
+        let mut cmd = crate::pin::command(&cpl);
         cmd.args(argv(first, words.collect())).current_dir(&dir);
         let out = runner::run_piped(cmd, &header_input(text), runner::case_timeout())
             .map_err(|e| format!("cpl {e}"))?;
@@ -398,7 +397,7 @@ fn run_tool(case: &ConformanceCase, text: &str, args: &str) -> Result<ToolRun, S
             ));
         }
     }
-    let mut cmd = Command::new(&cpl);
+    let mut cmd = crate::pin::command(&cpl);
     cmd.args(argv(sub, words.collect())).current_dir(&dir);
     let out = runner::run_piped(cmd, &header_input(text), runner::case_timeout())
         .map_err(|e| format!("cpl {e}"))?;
@@ -845,6 +844,24 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
         hold_cli(Some(snapshot(&bin, &dir).ok()?));
         Some(dir)
     });
+    let _pin = match crate::pin::Pin::new(cpl_check::loaded_std()) {
+        Ok(pin) => pin,
+        Err(e) => {
+            let detail = format!("cannot pin std for the run: {e}");
+            return SuiteReport::from_outcomes(
+                cases
+                    .iter()
+                    .map(|case| {
+                        let outcome = CaseOutcome {
+                            status: "fail".into(),
+                            detail: detail.clone(),
+                        };
+                        (case.id.clone(), outcome)
+                    })
+                    .collect(),
+            );
+        }
+    };
     let outcomes = runner::parallel_with_db(&cases, |db, case| {
         let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| run_one(db, case)))
             .unwrap_or_else(|_| CaseOutcome {

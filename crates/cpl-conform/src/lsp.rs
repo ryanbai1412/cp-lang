@@ -9,7 +9,7 @@ use crate::conformance::ToolRun;
 use cpl_json::{obj, Value};
 use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 const REQUESTS: [(&str, &str); 5] = [
     ("hover", "textDocument/hover"),
@@ -70,7 +70,7 @@ pub(crate) fn session(
     }
     messages.push(message(Some(3), "shutdown", Value::Null));
     messages.push(message(None, "exit", Value::Null));
-    let mut child = Command::new(cpl)
+    let mut child = crate::pin::command(cpl)
         .args(["lsp", "--stdio"])
         .current_dir(file.parent().unwrap_or(Path::new(".")))
         .stdin(Stdio::piped())

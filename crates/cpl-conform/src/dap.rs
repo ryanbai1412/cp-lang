@@ -10,7 +10,7 @@ use crate::lsp::frames;
 use cpl_json::{obj, Value};
 use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 
 const STEPS: [&str; 6] = [
     "continue",
@@ -71,7 +71,7 @@ pub(crate) fn session(
     requests.push(("configurationDone", obj([])));
     requests.extend(steps);
     requests.push(("disconnect", obj([])));
-    let mut child = Command::new(cpl)
+    let mut child = crate::pin::command(cpl)
         .args(["dap", "--stdio"])
         .current_dir(file.parent().unwrap_or(Path::new(".")))
         .stdin(Stdio::piped())

@@ -62,6 +62,12 @@ pub fn is_list_form_hook(name: &str) -> bool {
 /// Name of this crate.
 pub const NAME: &str = env!("CARGO_PKG_NAME");
 
+/// Every std module this process checks against, by name (`"seq"`), with its text: the
+/// ones `CPL_STD_DIR` (or a dev build's own std/) had when first read, else those built in.
+pub fn loaded_std() -> &'static [(&'static str, &'static str)] {
+    modules::modules()
+}
+
 #[cfg(test)]
 mod tests;
 #[cfg(test)]
