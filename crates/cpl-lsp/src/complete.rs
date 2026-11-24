@@ -1105,22 +1105,22 @@ pub fn member_hover(cursor: &Cursor, std: &mut StdLib) -> Option<cpl_check::Hove
         .into_iter()
         .map(|(e, _)| e)
         .find(|e| e.name == text[start..end])?;
+    let cost = cpl_syntax::doc::DocText::parse(&entry.doc)
+        .facts
+        .cost
+        .filter(|c| c.starts_with("O("))
+        .map(|c| cpl_diag::plain::text(&c));
     Some(cpl_check::Hover {
         span: cpl_diag::Span {
             start: start as u32,
             end: end as u32,
         },
-        // The doc's whole `cost:` line: `O(1) to make, O(n) to walk`, not just `O(1)`.
-        text: match entry
-            .doc
-            .lines()
-            .map(str::trim)
-            .find(|l| l.starts_with("cost: O("))
-        {
-            Some(cost) => format!("{}\n{cost}", entry.detail),
+        text: match &cost {
+            Some(cost) => format!("{}\ncost: {cost}", entry.detail),
             None => entry.detail,
         },
         doc: (!entry.doc.is_empty()).then_some(entry.doc),
+        cost,
     })
 }
 

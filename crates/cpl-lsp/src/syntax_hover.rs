@@ -19,6 +19,7 @@ pub fn hover(analysis: &Analysis, offset: u32) -> Option<cpl_check::Hover> {
         span: span.shift(item.offset),
         text,
         doc: None,
+        cost: None,
     })
 }
 
@@ -50,6 +51,7 @@ fn builtin_hover(text: &str, offset: u32) -> Option<cpl_check::Hover> {
         span: token.span,
         text: shown.to_string(),
         doc: Some(doc.to_string()),
+        cost: None,
     })
 }
 

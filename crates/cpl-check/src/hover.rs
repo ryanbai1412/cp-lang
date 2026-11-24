@@ -23,6 +23,9 @@ pub struct Hover {
     pub text: String,
     /// The `///` comment above the declaration, wherever it is declared.
     pub doc: Option<String>,
+    /// The cost the doc states, its whole `cost:` fact in the receiver's
+    /// domains: `O(log |V|) amortized`.
+    pub cost: Option<String>,
 }
 
 /// Where a symbol is declared, possibly in an imported module.
@@ -146,15 +149,24 @@ impl Database {
         let cost = doc
             .as_deref()
             .and_then(cost_of)
-            .map(|c| in_receiver_domains(&c, &generics));
-        let text = match cost {
-            Some(cost) if matches!(entry.ty, Ty::Fn { .. }) || entry.keyword == "field" => {
-                format!("{text}\ncost: {cost}")
-            }
-            _ if item.check.fixed_io.contains(&entry.span) => format!("{text}\ncost: O(1)"),
-            _ => text,
+            .map(|c| in_receiver_domains(&c, &generics))
+            .filter(|_| matches!(entry.ty, Ty::Fn { .. }) || entry.keyword == "field")
+            .or_else(|| {
+                item.check
+                    .fixed_io
+                    .contains(&entry.span)
+                    .then(|| "O(1)".into())
+            });
+        let text = match &cost {
+            Some(cost) => format!("{text}\ncost: {cost}"),
+            None => text,
         };
-        Some(Hover { span, text, doc })
+        Some(Hover {
+            span,
+            text,
+            doc,
+            cost,
+        })
     }
 
     /// Each call in `start..end` whose doc states a cost above `O(1)`:
@@ -197,7 +209,7 @@ impl Database {
             .into_iter()
             .filter_map(|(span, name)| {
                 let hover = self.hover(path, span.start)?;
-                let cost = hover.text.lines().find_map(|l| l.strip_prefix("cost: "))?;
+                let cost = hover.cost.as_deref()?;
                 (hover.span == span && cost.starts_with("O(") && !cost.starts_with("O(1)"))
                     .then(|| (span, name, cost.to_string()))
             })
@@ -396,21 +408,9 @@ fn member_span(analysis: &Analysis, owner: &str, member: &str) -> Option<Span> {
     analysis.decl_span(member)
 }
 
-/// The `///` lines above the line `at` is on, past its decorators.
+/// The doc above the line `at` is on, past its decorators.
 fn doc_above(text: &str, at: u32) -> Option<String> {
-    let head = text.get(..at as usize)?;
-    let line_start = head.rfind('\n').map_or(0, |i| i + 1);
-    let mut lines = Vec::new();
-    for line in head[..line_start].lines().rev() {
-        let line = line.trim();
-        if let Some(doc) = line.strip_prefix("///") {
-            lines.push(doc.strip_prefix(' ').unwrap_or(doc));
-        } else if !line.starts_with('@') {
-            break;
-        }
-    }
-    lines.reverse();
-    let doc = lines.join("\n").trim().to_string();
+    let doc = cpl_syntax::doc::doc_above(text, at as usize);
     (!doc.is_empty()).then_some(doc)
 }
 
@@ -428,33 +428,10 @@ fn in_receiver_domains(cost: &str, generics: &[(String, Ty)]) -> String {
     out
 }
 
-/// The smallest entry under the cursor.
-/// The first `O(...)` a doc states, in plain text, with what qualifies it:
-/// `O(log n) amortized`.
+/// The cost a doc states: its `cost:` fact, in plain text.
 fn cost_of(doc: &str) -> Option<String> {
-    let doc = &cpl_diag::plain::text(doc);
-    let start = doc.find("O(")?;
-    let mut depth = 0;
-    for (i, c) in doc[start..].char_indices() {
-        match c {
-            '(' => depth += 1,
-            ')' => {
-                depth -= 1;
-                if depth == 0 {
-                    let end = start + i + 1;
-                    let amortized = doc[end..].trim_start().starts_with("amortized");
-                    let cost = &doc[start..end];
-                    return Some(if amortized {
-                        format!("{cost} amortized")
-                    } else {
-                        cost.to_string()
-                    });
-                }
-            }
-            _ => {}
-        }
-    }
-    None
+    let cost = cpl_syntax::doc::DocText::parse(doc).facts.cost?;
+    Some(cpl_diag::plain::text(&cost))
 }
 
 /// A name of the compiler's own prelude at `at`, which the checker records
@@ -500,7 +477,8 @@ fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover>
         .iter()
         .find(|(s, ..)| *s == span)
         .map(|(.., c)| c.clone());
-    let text = match io.or_else(|| cost_of(doc)) {
+    let cost = io.or_else(|| cost_of(doc));
+    let text = match &cost {
         Some(cost) => format!("{name}: built-in\ncost: {cost}"),
         None => format!("{name}: built-in"),
     };
@@ -508,6 +486,7 @@ fn prelude_value_hover(item: &crate::db::AnalyzedItem, at: u32) -> Option<Hover>
         span: span.shift(item.offset),
         text,
         doc: Some(doc.to_string()),
+        cost,
     })
 }
 

@@ -261,21 +261,12 @@ impl Server {
                     match checked {
                         // The checker's cost lines stay when the doc writes none.
                         Some(checked) => Some(match member {
-                            Some(mut member) if !member.text.contains("\ncost: ") => {
-                                // The doc's whole `cost:` line, `O(1) to make, O(n) to
-                                // walk`, over the checker's first clause of it.
-                                let written = member.doc.as_deref().and_then(|doc| {
-                                    doc.lines()
-                                        .map(str::trim)
-                                        .find(|l| l.starts_with("cost: O("))
-                                });
+                            Some(mut member) if member.cost.is_none() => {
                                 for line in checked.text.lines().skip(1) {
                                     member.text.push('\n');
-                                    member.text.push_str(match written {
-                                        Some(written) if line.starts_with("cost: ") => written,
-                                        _ => line,
-                                    });
+                                    member.text.push_str(line);
                                 }
+                                member.cost = checked.cost;
                                 member
                             }
                             Some(member) => member,
@@ -325,32 +316,28 @@ impl Server {
                 if let Some(index) = self.index_hover(&uri, offset, true) {
                     hover.text = format!("{}\n  {}", hover.text, index.text);
                 }
-                let sized = hover
-                    .text
-                    .lines()
-                    .find_map(|l| l.strip_prefix("cost: "))
-                    .and_then(|cost| {
-                        let size = facts
-                            .sizes()
-                            .iter()
-                            .find(|s| s.receiver.1 + 1 == hover.span.start)?;
-                        let steps = steps_of(cost, size.max as f64)?;
-                        let receiver =
-                            &facts.text()[size.receiver.0 as usize..size.receiver.1 as usize];
-                        let named = if size.count.chars().all(|c| c.is_ascii_digit()) {
-                            String::new()
-                        } else {
-                            format!("{} = ", size.count)
-                        };
-                        Some((
-                            format!("cost: {cost}"),
-                            format!(
+                let sized = hover.cost.as_deref().and_then(|cost| {
+                    let size = facts
+                        .sizes()
+                        .iter()
+                        .find(|s| s.receiver.1 + 1 == hover.span.start)?;
+                    let steps = steps_of(cost, size.max as f64)?;
+                    let receiver =
+                        &facts.text()[size.receiver.0 as usize..size.receiver.1 as usize];
+                    let named = if size.count.chars().all(|c| c.is_ascii_digit()) {
+                        String::new()
+                    } else {
+                        format!("{} = ", size.count)
+                    };
+                    Some((
+                        format!("cost: {cost}"),
+                        format!(
                             "cost: {cost}, about {} steps: {receiver} has at most {named}{} items",
                             count_text(steps.ceil() as u128),
                             count_text(size.max)
                         ),
-                        ))
-                    });
+                    ))
+                });
                 if let Some((plain, sized)) = sized {
                     hover.text = hover.text.replacen(&plain, &sized, 1);
                 }
@@ -947,6 +934,7 @@ impl Server {
             span: Span::new(proven.head.0, proven.head.1),
             text,
             doc: None,
+            cost: None,
         })
     }
 
@@ -990,6 +978,7 @@ impl Server {
             span: Span { start, end },
             text,
             doc: None,
+            cost: None,
         })
     }
 
@@ -1019,6 +1008,7 @@ impl Server {
             span: Span { start, end },
             text: format!("{source}: Int {value}{fits}"),
             doc: None,
+            cost: None,
         })
     }
 

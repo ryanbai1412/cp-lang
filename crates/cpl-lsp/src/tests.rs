@@ -1528,7 +1528,10 @@ print(xs.sorted(), xs.rev, fold(Monoid.sum, xs), m)
         "{rev}"
     );
     let fold = shown(&mut server, 4, 28);
-    assert!(fold.contains("-> T\ncost: O(n)\n```"), "{fold}");
+    assert!(
+        fold.contains("-> T\ncost: O(n) calls of `op`\n```"),
+        "{fold}"
+    );
     assert_eq!(
         shown(&mut server, 2, 4),
         "```cp\nm: 2..=10001\n  storage: 2 B\n```"
