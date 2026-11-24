@@ -158,7 +158,7 @@ fn answer(stream: TcpStream, live: &Live, run: &Run, record: Record) {
         let document = record(Some(from)).unwrap_or_else(|error| {
             format!(
                 "{{\"error\":{}}}",
-                cpl_json::escape_script_safe_string(error.trim_end())
+                cpl_json::escape_string(error.trim_end())
             )
         });
         ("application/json", document)
@@ -194,7 +194,7 @@ fn answer(stream: TcpStream, live: &Live, run: &Run, record: Record) {
                 let error = shown
                     .error
                     .as_deref()
-                    .map_or("null".to_string(), cpl_json::escape_script_safe_string);
+                    .map_or("null".to_string(), cpl_json::escape_string);
                 (
                     "application/json",
                     format!(
@@ -228,7 +228,7 @@ fn replay(run: &Run, body: &str) -> String {
     let error = |message: &str| {
         format!(
             "{{\"error\":{}}}",
-            cpl_json::escape_script_safe_string(message.trim_end())
+            cpl_json::escape_string(message.trim_end())
         )
     };
     let Ok(request) = cpl_json::parse(body) else {

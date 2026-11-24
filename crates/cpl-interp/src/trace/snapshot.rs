@@ -226,7 +226,7 @@ pub(super) fn all_cells<'v>(mut items: impl ExactSizeIterator<Item = &'v Value>)
 
 /// `text` as a JSON string safe for embedding in HTML `<script>` tags.
 pub fn string(out: &mut String, text: &str) {
-    let _ = cpl_json::write_script_safe_string(out, text);
+    let _ = cpl_json::write_string(out, text);
 }
 
 pub(super) fn bytes_text(bytes: &[u8]) -> String {

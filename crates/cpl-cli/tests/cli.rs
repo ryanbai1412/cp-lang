@@ -68,7 +68,7 @@ fn lsp_serves_diagnostics_and_hover_over_stdio() {
     );
     assert!(
         stdout.contains(
-            r"dist: [V]?Int\n  domain V = 1..=n, n <= 2e5\n  storage: 8 B per element, 1.6 MB max"
+            r"dist: [V]?Int\n  domain V = 1..=n, n \u003c= 2e5\n  storage: 8 B per element, 1.6 MB max"
         ),
         "{stdout}"
     );

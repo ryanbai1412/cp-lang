@@ -269,15 +269,15 @@ pub fn run_report(
             format!(
                 "{{\"line\":{},\"name\":{},\"value\":{}}}",
                 live.line,
-                cpl_json::escape_script_safe_string(&live.name),
-                cpl_json::escape_script_safe_string(&live.value)
+                cpl_json::escape_string(&live.name),
+                cpl_json::escape_string(&live.value)
             )
         })
         .collect();
     let mut out = format!(
         "{{\"values\":[{}],\"stdout\":{},\"time_ms\":{millis}",
         values.join(","),
-        cpl_json::escape_script_safe_string(&String::from_utf8_lossy(stdout))
+        cpl_json::escape_string(&String::from_utf8_lossy(stdout))
     );
     if let Some(error) = error {
         out += &format!(",\"error\":{error}");
