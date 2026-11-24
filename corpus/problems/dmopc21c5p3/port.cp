@@ -29,8 +29,8 @@ let n: 1..=MAX_N = read()
 if n <= 2:
     print(-1)
 elif win[n - 1]:
-    print((1..=n).collect())
+    print(1..=n)
 else:
     // a losing pile: perturb the tail; three sizes need the 3-cycle (n, n - 2, n - 1)
     let tail = if n == 11 or n == 36 or n == 311: [n, n - 2, n - 1] else: [n, n - 1]
-    print((1..=n - tail.len).collect() + tail)
+    print(1..=n - tail.len, tail)
