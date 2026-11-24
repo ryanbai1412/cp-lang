@@ -720,6 +720,7 @@
         "core-04/spec-block-split-by-search.cp": "pass",
         "core-04/static-method-binds-domain-from-list.cp": "pass",
         "core-04/stored-cut-range-not-piece.cp": "pass",
+        "core-04/struct-keyed-array-binds-the-struct-args.cp": "pass",
         "core-04/subset-type-walk-binds-subsets.cp": "pass",
         "core-04/subset-walk-empty-domain.cp": "pass",
         "core-04/table-one-cell-parameter.cp": "pass",
@@ -1314,6 +1315,7 @@
         "core-08/laws-not-assumed.cp": "pass",
         "core-08/lazy-method-sig.cp": "pass",
         "core-08/match-stored-shape-only.cp": "pass",
+        "core-08/method-bound-binds-the-struct-param.cp": "pass",
         "core-08/monomorphized.cp": "pass",
         "core-08/no-dyn.cp": "pass",
         "core-08/no-higher-kinded.cp": "pass",
@@ -1345,15 +1347,18 @@
         "core-08/static-fn-explicit-args.cp": "pass",
         "core-08/struct-bound-reaches-method.cp": "pass",
         "core-08/supertrait-required.cp": "pass",
+        "core-08/too-many-type-arguments-are-an-error.cp": "pass",
         "core-08/trait-alias-no-impl.cp": "pass",
         "core-08/trait-alias.cp": "pass",
         "core-08/trait-assoc-type-bound.cp": "pass",
         "core-08/trait-default-method.cp": "pass",
         "core-08/trait-default-overridden-through-generic.cp": "pass",
+        "core-08/trait-impl-for-f64-is-found-by-a-bound.cp": "pass",
         "core-08/trait-message-bound-holds.cp": "fail",
         "core-08/trait-message.cp": "pass",
         "core-08/trait-qualified-call.cp": "pass",
         "core-08/trait-typed-param-in-method.cp": "pass",
+        "core-08/type-arguments-on-a-plain-struct-are-an-error.cp": "pass",
         "core-08/type-param-default.cp": "pass",
         "core-09/allow-attribute-removed.cp": "pass",
         "core-09/asin-outside-domain-trap.cp": "pass",
@@ -2663,6 +2668,7 @@
         "std-poly/bernoulli-table-zero-is-one.cp": "pass",
         "std-poly/big.cp": "pass",
         "std-poly/combinatorial-tables.cp": "pass",
+        "std-poly/generic-shift-div-match-brute.cp": "pass",
         "std-poly/partition-table-zero-is-one.cp": "pass",
         "std-poly/poly-series-methods.cp": "pass",
         "std-poly/pow-sqrt-import-by-name.cp": "pass",
@@ -2952,6 +2958,7 @@
         "std-seq/slice-max-optional.cp": "pass",
         "std-seq/slice-runs-maximal-minimal.cp": "pass",
         "std-seq/sort-sorted-last.cp": "pass",
+        "std-seq/span-backwards-traps.cp": "pass",
         "std-seq/span-of-two-cuts-is-the-range-between.cp": "pass",
         "std-seq/span-rejects-cuts-of-two-domains.cp": "pass",
         "std-seq/split-on-a-value.cp": "pass",
@@ -3113,6 +3120,7 @@
         "std-tree/jump-tree-fresh-is-all-roots.cp": "pass",
         "std-tree/jump-tree-paths-match-climbing.cp": "pass",
         "std-tree/kruskal-tree-as-rooted-forest.cp": "pass",
+        "std-tree/kruskal-tree-binds-its-node-domain.cp": "pass",
         "std-tree/kruskal-tree-bottleneck-and-reach.cp": "pass",
         "std-tree/kruskal-tree-loop-edge-adds-nothing.cp": "pass",
         "std-tree/kruskal-tree-no-edges-is-lone-leaves.cp": "pass",
@@ -3176,9 +3184,10 @@
         "std-tree/spanning-tree-is-bfs-from-first.cp": "pass",
         "std-tree/sub-at-matches-rerooting.cp": "pass",
         "std-tree/up-lift-changes-type.cp": "pass",
+        "std-window/every-track-state-feeds-maximal.cp": "pass",
         "std-window/fn-type-mut-param.cp": "pass",
         "std-window/sweep-move-feeds-track.cp": "pass",
-        "std-window/track-infers-element-from-sequence.cp": "fail",
+        "std-window/track-infers-element-from-sequence.cp": "pass",
         "std-window/track-push-pop-back-to-init.cp": "pass",
         "std-window/track-push-pop-restores.cp": "pass",
         "std-window/undoing-infers-from-annotated-lambda.cp": "pass",
@@ -3475,13 +3484,6 @@
           ]
         },
         {
-          "cause": "E0203: an `<id>` has no member `<id>`",
-          "count": 1,
-          "examples": [
-            "std-window/track-infers-element-from-sequence.cp"
-          ]
-        },
-        {
           "cause": "E0204: `<id>` declares no domain `<id>`",
           "count": 1,
           "examples": [
@@ -3588,11 +3590,11 @@
         }
       ],
       "counts": {
-        "fail": 22,
-        "pass": 3417
+        "fail": 21,
+        "pass": 3427
       },
-      "passed": 3417,
-      "total": 3439
+      "passed": 3427,
+      "total": 3448
     },
     "corpus": {
       "cases": {
