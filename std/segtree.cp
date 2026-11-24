@@ -2,7 +2,7 @@
 //!
 //! start: `SegTree`, `MergeSortTree`, `WaveletMatrix`, `SegTree2D`
 //! example: `SegTree(+, [1, 2, 3]).all == 6`
-use std.algebra.{Action, Acts, Monoid}
+use std.algebra.{Action, Acts, Comm, Each, Monoid, opt}
 use std.bag.{SortedBag}
 use std.math.{gcd, bit, popcount, bit_ceil, bit_width, ctz}
 use std.range.{Len, ends, first_true}
@@ -18,6 +18,34 @@ impl<T> Acts<T, Int> for NoAction:
 struct NoOp
 struct NoOver
 fn same<A, B>(a: A, b: B) -> Bool = a == b
+
+// What a tree folds with `op` (decision 456): a `Monoid` folds its `T`; a bare `(T, T) -> T` has
+// no identity, so it folds `?T` and a fold over no positions is `None`.
+trait Folds<T>:
+    type Fold = T
+    fn cell(self, x: T) -> Self.Fold
+    fn fold_monoid(self) -> ?Monoid<Self.Fold>
+
+impl<T> Folds<T> for Monoid<T>:
+    fn cell(self, x: T) -> T = x
+    fn fold_monoid(self) -> ?Monoid<T> = Some(self)
+
+impl<T> Folds<T> for (T, T) -> T:
+    type Fold = ?T
+    fn cell(self, x: T) -> ?T = Some(x)
+    fn fold_monoid(self) -> ?Monoid<?T> = Some(self.opt())
+
+impl<T> Folds<T> for Comm<T>:
+    fn cell(self, x: T) -> T = x
+    fn fold_monoid(self) -> ?Monoid<T> = Some(self.monoid())
+
+impl<T, Ms> Folds<T> for Each<Ms>:
+    fn cell(self, x: T) -> T = x
+    fn fold_monoid(self) -> ?Monoid<T> = Some(self.monoid())
+
+impl<T> Folds<T> for NoOp:
+    fn cell(self, x: T) -> T = x
+    fn fold_monoid(self) -> ?Monoid<T> = None
 
 /// The positions a `SegTree` runs over. A domain brings its own; `Int` has none, so a
 /// `SegTree<Int, T>` takes them from `over: lo..hi`.
@@ -83,40 +111,51 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// example: `SegTree<0..4, Int>(max, fill: 5).fold(1..3) == 5`
     /// example: `SegTree<0..4, Int>(+).all == 0`
     /// example: `var s = SegTree<Int, Int>(+, over: 0..1_000_000_000); s.set(999_999_999, 4); s.all == 4`
-    pub fn new<M, A: Acts<T, F>, O>(
+    pub fn new<M: Folds<T>, A: Acts<M.Fold, F>, O>(
         op: M = NoOp(),
         a: ?[D]T = None,
         fill: ?T = None,
         act: A = NoAction(),
         over: O = NoOver(),
-    ) -> SegTree<D, T, F>:
-        if same(over, NoOver()): return SegTree<D, T, F>.on_domain(op, a, fill, act)
-        assert a == None, "pass either `a` or `over:`, not both"
-        if same(op, NoOp()):
-            assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
-            let left = Monoid<T>(fill!, (x, _) => x)
-            let resolved = Action<T, F>.of(act, left)
-            var st = SegTree<D, T, F>.sparse(left, over, fill, Some(resolved))
-            st.dual = true
-            return st
-        let m = Monoid<T>.of(op)
-        if same(act, NoAction()): return SegTree<D, T, F>.sparse(m, over, fill, None)
-        SegTree<D, T, F>.sparse(m, over, fill, Some(Action<T, F>.of(act, op)))
+    ) -> SegTree<D, M.Fold, F>:
+        let cells: ?[D]M.Fold = if let init = a: Some(init.map(x => op.cell(x))) else: None
+        let seed: ?M.Fold = if let v = fill: Some(op.cell(v)) else: None
+        SegTree<D, M.Fold, F>.make(op.fold_monoid(), cells, seed, act, over)
 
-    fn on_domain<M, A: Acts<T, F>>(op: M, a: ?[D]T, fill: ?T, act: A) -> SegTree<D, T, F>:
-        if same(op, NoOp()):
-            // Dual tree: tags only, read one point at a time. Internal nodes hold tags and never
-            // values, so `apply` runs on leaves only.
-            assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
-            let seed = if let init = a: init[D.at(0)] else: fill!
-            let left = Monoid<T>(seed, (x, _) => x)
-            let resolved = Action<T, F>.of(act, left)
-            var st = SegTree<D, T, F>.build_lazy(left, a, fill, resolved)
-            st.dual = true
-            return st
-        let m = Monoid<T>.of(op)
-        if same(act, NoAction()): return SegTree<D, T, F>.build(m, a, fill)
-        SegTree<D, T, F>.build_lazy(m, a, fill, Action<T, F>.of(act, op))
+    fn make<A: Acts<T, F>, O>(
+        fold: ?Monoid<T>,
+        a: ?[D]T,
+        fill: ?T,
+        act: A,
+        over: O,
+    ) -> SegTree<D, T, F>:
+        if same(over, NoOver()): return SegTree<D, T, F>.on_domain(fold, a, fill, act)
+        assert a == None, "pass either `a` or `over:`, not both"
+        if let m = fold:
+            if same(act, NoAction()): return SegTree<D, T, F>.sparse(m, over, fill, None)
+            let resolved = Action<T, F>.of(act, m)
+            return SegTree<D, T, F>.sparse(m, over, fill, Some(resolved))
+        assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
+        let left = Monoid<T>(fill!, (x, _) => x)
+        let resolved = Action<T, F>.of(act, left)
+        var st = SegTree<D, T, F>.sparse(left, over, fill, Some(resolved))
+        st.dual = true
+        st
+
+    fn on_domain<A: Acts<T, F>>(fold: ?Monoid<T>, a: ?[D]T, fill: ?T, act: A) -> SegTree<D, T, F>:
+        if let m = fold:
+            if same(act, NoAction()): return SegTree<D, T, F>.build(m, a, fill)
+            let resolved = Action<T, F>.of(act, m)
+            return SegTree<D, T, F>.build_lazy(m, a, fill, resolved)
+        // Dual tree: tags only, read one point at a time. Internal nodes hold tags and never
+        // values, so `apply` runs on leaves only.
+        assert not same(act, NoAction()), "a tree with no fold op needs `act:`"
+        let seed = if let init = a: init[D.at(0)] else: fill!
+        let left = Monoid<T>(seed, (x, _) => x)
+        let resolved = Action<T, F>.of(act, left)
+        var st = SegTree<D, T, F>.build_lazy(left, a, fill, resolved)
+        st.dual = true
+        st
 
     fn sparse(m: Monoid<T>, over: Range<Int>, fill: ?T, act: ?Action<T, F>) -> SegTree<D, T, F>:
         let (lo, hi) = over.ends

@@ -18,6 +18,8 @@ use std.math.{gcd}
 pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreversed):
     law assoc(a: T, b: T, c: T) = op(op(a, b), c) == op(a, op(b, c))
     law ident(a: T) = op(id, a) == a and op(a, id) == a
+    // Made by `Monoid.of(+)`, so a stock action knows a range's fold sums its span.
+    sums: Bool = false
 
     /// The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its
     /// identity: zero for `+`, `^`, `|` and `gcd`, one for `*`, all bits for `&`, and for `min` /
@@ -32,7 +34,7 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreverse
     /// example: `Monoid<?Int>.of(min).id == None`
     @from_op
     pub fn of<M>(m: M) -> Monoid<T>:
-        if same(m, +): return Monoid(T.zero, (a, b) => a + b, x => x)
+        if same(m, +): return Monoid(T.zero, (a, b) => a + b, x => x) with sums: true
         if same(m, *): return Monoid(T.one, (a, b) => a * b, x => x)
         if same(m, ^): return Monoid(T.zero, (a, b) => a ^ b, x => x)
         if same(m, |): return Monoid(T.zero, (a, b) => a | b, x => x)
@@ -180,7 +182,9 @@ pub struct Action<T, F>(
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `Action<Int, Int>.of(add, +).apply(2, 10, 3) == 16`
-    pub fn of<A: Acts<T, F>, M>(a: A, op: M) -> Action<T, F> = a.action(Monoid<T>.of(op), same(op, +))
+    pub fn of<A: Acts<T, F>, M>(a: A, op: M) -> Action<T, F>:
+        let over = Monoid<T>.of(op)
+        a.action(over, same(op, +) or over.sums)
 
 /// What an `act:` argument is: a stock action or an `Action`, acting with tags `F` on values `T`.
 /// The impl fixes `F` from `T`, so `SegTree(+, a, act: assign)` has `?T` tags without naming them.

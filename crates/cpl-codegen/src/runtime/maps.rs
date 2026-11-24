@@ -355,6 +355,8 @@ template <class V> struct Lent {
 template <class V> Lent<V> lend(const V& v) { return {&v}; }
 template <class V> Lent<V> lend_opt(const std::optional<V>& o) { return {o ? &*o : nullptr}; }
 template <class V> Lent<V> lend_opt(Lent<V> l) { return l; }
+// Any other optional layout, such as a niche `OptField`.
+template <class O> auto lend_opt(const O& o) -> Lent<std::decay_t<decltype(*o)>> { return {o ? &*o : nullptr}; }
 ",
     },
     Piece {

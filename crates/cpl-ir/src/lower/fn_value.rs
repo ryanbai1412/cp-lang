@@ -153,7 +153,7 @@ impl<'a> Lowerer<'a> {
             let want: Vec<Ty> = args.iter().map(|t| self.resolve_ty(t)).collect();
             let known: Vec<Option<Ty>> = want.iter().cloned().map(Some).collect();
             return self
-                .impl_trait_args(&ty, trait_name, &known)
+                .impl_trait_args(&ty, trait_name, &known, None)
                 .is_some_and(|(got, _)| got == want);
         }
         let by_impl = match self.gen_env.get(param) {

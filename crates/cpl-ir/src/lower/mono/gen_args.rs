@@ -111,6 +111,15 @@ impl<'a> Lowerer<'a> {
                 }
                 // `Comb<Z.MOD>`: a number a type holds, by the type's name.
                 if let Some((owner, member)) = name.text.split_once('.') {
+                    // `M.Fold` naming a range the impl was given: `Fold.MIN` is its low end.
+                    if let Some(GenArg::Ty(t)) = self.gen_env.get(owner).cloned() {
+                        self.assoc_range = None;
+                        if self.assoc_type(&t, member).is_some() {
+                            if let Some(g) = self.assoc_range.take() {
+                                return g;
+                            }
+                        }
+                    }
                     if let Some(v) = self.const_of_type(owner, member, name.span) {
                         return GenArg::Int(v);
                     }
@@ -127,9 +136,6 @@ impl<'a> Lowerer<'a> {
                     if self.globals[gid].ty == Ty::Int {
                         return GenArg::RuntimeInt(gid);
                     }
-                }
-                if let Some(v) = self.const_ints.get(&name.text).copied() {
-                    return GenArg::Int(v);
                 }
                 if let Some(Sym::ModConst(cid)) = self.get_sym(&name.text) {
                     if let Some(v) = self.eval_const_int(self.mod_consts[cid].init) {

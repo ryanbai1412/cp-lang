@@ -48,8 +48,9 @@ impl<'a> Lowerer<'a> {
                     "Keyed" | "Indexed" | "IndexedMut" => (args.first(), args.get(1)),
                     _ => {
                         let known = self.known_trait_args(args, m, env);
+                        // `A: Acts<T, F>` with `T = -10..=10`: the impl's `T` is that range.
                         if let Some((given, opened)) =
-                            self.impl_trait_args(&seq, trait_name, &known)
+                            self.impl_trait_args(&seq, trait_name, &known, Some((args, &*env)))
                         {
                             env.extend(opened);
                             for (arg, ty) in args.iter().zip(&given) {
@@ -129,7 +130,9 @@ impl<'a> Lowerer<'a> {
     fn known_trait_args(&mut self, args: &[ast::Type], m: ModId, env: &GenEnv) -> Vec<Option<Ty>> {
         args.iter()
             .map(|a| {
-                let fixed = self.impl_params(m, a).iter().all(|n| env.contains_key(n));
+                // `M.Fold` is fixed once `M` is.
+                let fixed = (self.impl_params(m, a).iter())
+                    .all(|n| env.contains_key(n.split('.').next().unwrap_or(n)));
                 fixed.then(|| {
                     let saved = (
                         std::mem::replace(&mut self.cur_mod, m),
@@ -163,6 +166,7 @@ impl<'a> Lowerer<'a> {
         ty: &Ty,
         name: &str,
         known: &[Option<Ty>],
+        ranged: Option<(&[ast::Type], &GenEnv)>,
     ) -> Option<(Vec<Ty>, GenEnv)> {
         let Ty::Struct(sid) = *ty else {
             return None;
@@ -184,6 +188,21 @@ impl<'a> Lowerer<'a> {
             }
             if open.iter().any(|n| !env.contains_key(n)) {
                 return None;
+            }
+            for (i, t) in trait_args.iter().enumerate() {
+                let Some((args, outer)) = ranged else { break };
+                let (
+                    ast::TypeKind::Named { name, .. },
+                    Some(ast::TypeKind::Named { name: given, .. }),
+                ) = (&t.kind, args.get(i).map(|a| &a.kind))
+                else {
+                    continue;
+                };
+                if let Some(g @ GenArg::Range(..)) = outer.get(&given.text) {
+                    if open.contains(&name.text) {
+                        env.insert(name.text.clone(), g.clone());
+                    }
+                }
             }
             let opened: GenEnv = open
                 .iter()
