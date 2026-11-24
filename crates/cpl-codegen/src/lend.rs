@@ -1250,6 +1250,9 @@ const GIVEN: &str = "a part of a value that still holds it, given by value";
 pub(crate) const SET_COPY: &str =
     "a store keeps its own value, and the place it reads still holds it";
 
+/// Why an item of a tuple that reads a place copies.
+const ITEM_COPY: &str = "a tuple holds its own value, and the place it reads still holds it";
+
 /// Why `Some(xs)` of a place copies.
 const SOME_COPY: &str = "an optional holds its own value";
 pub(crate) const STATIC_COPY: &str =
@@ -1749,6 +1752,7 @@ impl Emitter<'_> {
             self.moves_last = false;
             self.taken_items.clear();
         }
+        self.copied_items = self.copied_items(&block.stmts[k]);
         self.pushed_moves = crate::uses::pushed_last_reads(self.program, block, k, outer);
         // A fn's params live through its whole body: one dead after a call
         // there may move into it, if the fn owns it.
@@ -1764,6 +1768,7 @@ impl Emitter<'_> {
         self.stmt_presized(&block.stmts, k, out);
         self.moves_last = false;
         self.taken_items.clear();
+        self.copied_items.clear();
         self.pushed_moves.clear();
         self.called_moves.clear();
     }
@@ -1804,11 +1809,40 @@ impl Emitter<'_> {
     }
 
     /// `std::move(text)` when `item` is one of the literal's taken items.
-    pub(crate) fn taken_item(&self, item: &Expr, text: String) -> String {
-        match self.taken_items.contains(&(item as *const Expr)) {
-            true => format!("std::move({text})"),
-            false => text,
+    /// Item `item` of a literal, written `text`: moved in when it is taken,
+    /// and its copy recorded when it copies a place.
+    pub(crate) fn taken_item(&mut self, item: &Expr, text: String) -> String {
+        if self.taken_items.contains(&(item as *const Expr)) {
+            return self.moved_if(true, text);
         }
+        if self.copied_items.contains(&(item as *const Expr)) && names_a_place(&text) {
+            self.note_copy(item.span, ITEM_COPY, None);
+        }
+        text
+    }
+
+    /// The items of `let x = (a, b.c, ..)` that read a heap place and are
+    /// not taken ([`Self::taken_items`]): the tuple holds a copy of each.
+    fn copied_items(&self, stmt: &Stmt) -> BTreeSet<*const Expr> {
+        let Stmt::Let(_, Some(init)) = stmt else {
+            return BTreeSet::new();
+        };
+        let (ExprKind::Tuple(items), Ty::Tuple(_)) = (&init.kind, &init.ty) else {
+            return BTreeSet::new();
+        };
+        items
+            .iter()
+            .filter(|item| {
+                (matches!(item.kind, ExprKind::Local(_) | ExprKind::Global(_))
+                    || (matches!(
+                        item.kind,
+                        ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
+                    ) && rooted_in_a_name(item)))
+                    && holds_heap(self.program, &item.ty)
+                    && !self.taken_items.contains(&(*item as *const Expr))
+            })
+            .map(|item| item as *const Expr)
+            .collect()
     }
 
     /// Whether item `idx` of a returned literal reads a place on a local
@@ -1839,10 +1873,11 @@ impl Emitter<'_> {
         }
     }
 
-    /// The items of `let x = T(a, b.c, ..)` that read a place `rest` sets
-    /// before reading it, which no other item of the literal reads either:
-    /// g++ builds a `std::tuple` from its last item first, so an earlier
-    /// item that reads the place too would see it moved out.
+    /// The items of `let x = T(a, b.c, ..)` that read a place for the last
+    /// time, which every other item reads only inside a call's arguments:
+    /// a call's value is built before any item is, while the order items
+    /// are built in differs between libstdc++ and libc++, so an item that
+    /// reads the place itself could see it moved out.
     fn taken_items(
         &self,
         block: &Block,
@@ -1867,16 +1902,25 @@ impl Emitter<'_> {
                 !item.ty.is_scalar()
                     && !matches!(item.ty, Ty::Fn(..))
                     && !(!path.0 .0 && self.ref_bound.contains(&path.0 .1))
-                    && !items
-                        .iter()
-                        .enumerate()
-                        .any(|(j, other)| j != i && touches(&Stmt::Expr(other.clone()), &path))
+                    && !items.iter().enumerate().any(|(j, other)| {
+                        j != i
+                            && !self.a_call_value(other)
+                            && touches(&Stmt::Expr(other.clone()), &path)
+                    })
                     && (overwritten_before_read(item, rest)
                         || crate::uses::place_dies(self.program, block, k, item, outer)
                         || self.sunk_dies(block, k, item))
             })
             .map(|(_, item)| item as *const Expr)
             .collect()
+    }
+
+    /// A call whose value is its own, built before the literal holding it:
+    /// what its arguments read is done with once it returns.
+    fn a_call_value(&self, e: &Expr) -> bool {
+        matches!(e.kind, ExprKind::Call(..))
+            && !e.ty.holds_view()
+            && !self.lent_fields.holds_lent(&e.ty)
     }
 
     /// A by-value param of the fn being written that nothing after statement

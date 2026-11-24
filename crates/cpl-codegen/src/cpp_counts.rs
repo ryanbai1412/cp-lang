@@ -205,6 +205,8 @@ pub fn container_copies(cpp: &str) -> usize {
         }
         if line.contains("cpl_f(") {
             count += tuples_of_places(line);
+        } else if !line.contains(".first, ") && decl.starts_with("std::tuple<") {
+            count += tuple_decl_copies(decl);
         }
         let Some(open) = line.find("= [") else {
             continue;
@@ -273,6 +275,75 @@ fn tuples_of_places(line: &str) -> usize {
         );
     }
     count
+}
+
+/// Copies in a by-value `std::tuple<..> t = place;` that holds a
+/// container, grid or array, and each such item of `std::tuple<..> t = T{a.x, b};`
+/// read from a place. Mirrors tuple_copies in
+/// scripts/specgate/explain_copies.py.
+fn tuple_decl_copies(decl: &str) -> usize {
+    let rest = &decl["std::tuple<".len()..];
+    let mut depth = 1;
+    let Some(end) = rest.char_indices().find_map(|(i, c)| {
+        depth += match c {
+            '<' => 1,
+            '>' => -1,
+            _ => 0,
+        };
+        (depth == 0).then_some(i)
+    }) else {
+        return 0;
+    };
+    let tys = top_level(&rest[..end]);
+    let Some((name, init)) = rest[end + 1..].split_once('=') else {
+        return 0;
+    };
+    let init = init.trim().trim_end_matches(';').trim();
+    if !is_place(name) || name.contains('.') {
+        return 0;
+    }
+    let place = |a: &str| is_place(a) || place_text(a);
+    let heap =
+        |t: &str| is_container(t) || t.starts_with("cpl::Grid<") || t.starts_with("std::array<");
+    if place(init) {
+        return usize::from(tys.iter().any(|t| heap(t)));
+    }
+    let Some(items) = init
+        .find('{')
+        .filter(|_| init.ends_with('}'))
+        .map(|at| &init[at + 1..init.len() - 1])
+    else {
+        return 0;
+    };
+    tys.iter()
+        .zip(top_level(items))
+        .filter(|(t, a)| heap(t) && place(a))
+        .count()
+}
+
+/// A name with parts, `a.b[i].c`, as the explain gate's counter reads one.
+fn place_text(text: &str) -> bool {
+    let ident = |t: &str| {
+        t.find(|c: char| !(c.is_alphanumeric() || c == '_'))
+            .unwrap_or(t.len())
+    };
+    let text = text.trim();
+    let mut at = ident(text);
+    if at == 0 || text.starts_with(|c: char| c.is_ascii_digit()) {
+        return false;
+    }
+    while at < text.len() {
+        let rest = &text[at..];
+        at += match rest.as_bytes()[0] {
+            b'.' if ident(&rest[1..]) > 0 => 1 + ident(&rest[1..]),
+            b'[' => match rest.find(']') {
+                Some(close) if close > 1 && !rest[1..close].contains('[') => close + 1,
+                _ => return false,
+            },
+            _ => return false,
+        };
+    }
+    true
 }
 
 /// `a, std::map<ll, ll>, c` split at its top-level commas.

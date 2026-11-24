@@ -12,6 +12,7 @@
 //   products. O(n log n).
 // original: corpus/submissions/3927929.cpp
 // Bounds: n: 1..=3e5; score: -1e9..=1e9
+// copies: 2
 
 let n: 1..=3e5 = read()
 let s: Str = read()

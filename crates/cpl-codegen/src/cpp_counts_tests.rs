@@ -21,6 +21,16 @@ fn a_part_returned_by_value_is_a_copy_and_by_reference_is_not() {
 }
 
 #[test]
+fn a_tuple_built_from_places_copies_each_container_it_reads() {
+    let items = "  std::tuple<std::vector<ll>, std::vector<ll>, ll> t = std::tuple<std::vector<ll>, std::vector<ll>, ll>{std::move(a), g[i].xs, n};";
+    let whole = "  std::tuple<std::vector<ll>, ll> u = best;";
+    let built = "  std::tuple<std::vector<ll>, ll> u = f(xs);";
+    assert_eq!(container_copies(items), 1);
+    assert_eq!(container_copies(whole), 1);
+    assert_eq!(container_copies(built), 0);
+}
+
+#[test]
 fn a_place_passed_to_a_fn_that_moves_it_into_a_struct_is_a_sunk_copy() {
     let cpp = "inline H wrap(std::vector<ll> xs) {\n  return H{std::move(xs)};\n}\nvoid solve() {\n  s = (*wrap(a).xs).size() + wrap(f(a)).xs.size() + wrap(std::move(a)).xs.size();\n}\n";
     assert_eq!(sunk_copies(cpp), 1);

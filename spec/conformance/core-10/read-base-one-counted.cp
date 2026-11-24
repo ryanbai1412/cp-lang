@@ -1,6 +1,7 @@
 // expect: ok, output "1"
 // rule: 10.2.2
 // input: "3\n2\n"
+// copies: 1
 let n: 1..=10 = read()
 domain V = [n]
 with io(base: 1):

@@ -480,7 +480,15 @@ impl<'p> Emitter<'p> {
                     Some(l @ cpl_ir::NarrowLayout::Map(..)) => {
                         self.expr_with_elem_layout(value, Some(&l)).text
                     }
-                    _ => v.text,
+                    _ => match &value.kind {
+                        ExprKind::Field(base, index) => match base.kind {
+                            ExprKind::Local(of) if self.spent.contains(&of) => {
+                                format!("std::get<{index}>(std::move({}))", self.names[of])
+                            }
+                            _ => v.text,
+                        },
+                        _ => v.text,
+                    },
                 };
                 let v = self.as_stored(value, text);
                 self.note_set_copy(value, &v);

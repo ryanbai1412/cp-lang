@@ -1,6 +1,7 @@
 // expect: ok, output "0.5000000000 2 7"
 // A table keys a Map in both engines: a 2-D board of optional enum cells inside a tuple, and a
 // 1-D array. The C++ hash walks the cells, so equal tables find the same entry.
+// copies: 1
 domain R = 0..2
 domain C = 0..3
 enum P = J | D

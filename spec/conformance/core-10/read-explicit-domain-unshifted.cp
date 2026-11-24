@@ -1,6 +1,7 @@
 // expect: ok, output "1"
 // rule: 10.2.2
 // input: "2\n"
+// copies: 1
 domain V = 1..=5
 with io(base: 1):
     let v = read<V>()

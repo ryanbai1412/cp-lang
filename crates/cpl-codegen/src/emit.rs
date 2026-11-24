@@ -233,6 +233,9 @@ pub(crate) struct Emitter<'p> {
     /// next statements set before reading it (`let out = T(xs); xs = []`):
     /// each is moved in, not copied.
     pub taken_items: BTreeSet<*const Expr>,
+    /// Items of the tuple a `let` builds that read a place holding a heap
+    /// value and are not taken: each copies it.
+    pub copied_items: BTreeSet<*const Expr>,
     /// The locals the statement being written pushes for the last time.
     pub pushed_moves: Vec<*const Expr>,
     /// The arguments of a call statement it reads for the last time
@@ -432,6 +435,7 @@ impl<'p> Emitter<'p> {
             loop_vars: crate::lend::loop_vars(program),
             spread: BTreeMap::new(),
             taken_items: BTreeSet::new(),
+            copied_items: BTreeSet::new(),
             pushed_moves: Vec::new(),
             called_moves: Vec::new(),
             pushers: BTreeMap::new(),

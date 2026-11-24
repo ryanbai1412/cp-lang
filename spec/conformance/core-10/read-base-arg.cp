@@ -1,6 +1,7 @@
 // expect: ok, output "1\n1 2\n-1 7"
 // input: "3\n2\n1 2\n-1 7"
 // rule: 10.2.2
+// copies: 1
 let m = read<1..=10>()
 domain E = [m]
 let x = read<E>(base: 1)

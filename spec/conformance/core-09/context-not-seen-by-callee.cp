@@ -1,5 +1,6 @@
 // expect: ok, output "1 2\n1,2"
 // rule: 09.1.3
+// copies: 1
 fn show(xs: List<Int>):
     print(xs)
 with io(sep: ","):

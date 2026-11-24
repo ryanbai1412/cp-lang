@@ -6,6 +6,7 @@
 // `read_all` takes the whole `seed n` input, a `Wire` puts the run in interactive mode, then
 // seeded random `yes` calls (default words, `answers:`, and a `with io(answers:)` scope) are
 // checked against the plain `if`. Reads `seed n`; prints the first op that differs.
+// copies: 2
 use std.rand.{Rng}
 let wire = Wire()
 let input = read_all<Int>()

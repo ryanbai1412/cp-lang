@@ -1,5 +1,6 @@
 // expect: ok, output "1,2\n1-2\n10\n20"
 // rule: 09.1.3
+// copies: 2
 context opt:
     k: Int = 1
 

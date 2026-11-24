@@ -2,6 +2,7 @@
 // rule: 02.1.2
 // A local two items of one tuple read, dead after it, is still read by both:
 // neither item may take it away from the other.
+// copies: 8
 use std.poly.{gcd_poly}
 fn f(q: List<Int>) -> (List<Int>, List<Int>, List<Int>, List<Int>):
     let one: List<Int> = [1]

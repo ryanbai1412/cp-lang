@@ -136,13 +136,14 @@ def tuple_copies(decl):
     name, init = name.strip(), init.strip().removesuffix(";").strip()
     if not eq or not re.fullmatch(r"\w+", name):
         return 0
+    heap = lambda a: a.startswith(CONTAINERS + ("cpl::Grid<", "std::array<"))
     if is_place(init):
-        return int(any(a.startswith(CONTAINERS) for a in args))
+        return int(any(heap(a) for a in args))
     brace = init.find("{")
     if brace < 0 or not init.endswith("}"):
         return 0
     items = split_top(init[brace + 1 : -1])
-    return sum(1 for a, x in zip(args, items) if a.startswith(CONTAINERS) and is_place(x))
+    return sum(1 for a, x in zip(args, items) if heap(a) and is_place(x))
 
 
 def program(cpp):

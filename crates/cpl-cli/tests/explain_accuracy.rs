@@ -1024,6 +1024,12 @@ const CASES: &[&str] = &[
     "core-07/step-on-list.cp",
     "std-models/graph-cuts.cp",
     "std-poly/generic-shift-div-match-brute.cp",
+    "core-02/tuple-literal-keeps-a-local-two-items-read.cp",
+    "std-models/poly-algebra.cp",
+    "std-poly/subproduct-gcd-compose-inv-match-brute.cp",
+    "std-hashmap/table-keys-a-map.cp",
+    "std-models/merge-trees.cp",
+    "std-segtree/merge-segs-first-ge-is-read-only.cp",
 ];
 
 #[test]

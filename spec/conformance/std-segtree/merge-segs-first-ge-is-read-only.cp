@@ -1,6 +1,7 @@
 // expect: ok, output "YES"
 // MergeSegs.first_ge and any_in answer from a merged set without changing it or its inputs,
 // checked against sets kept as [D]Bool after every merge.
+// copies: 2
 use std.segtree.{MergeSeg, MergeSegs}
 
 domain D = 0..40

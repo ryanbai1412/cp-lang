@@ -1,5 +1,6 @@
 // BOI 2017 "Toll": roads only join block i to block i + 1 (blocks of k places), so the cheapest
 // path a -> b is the min-plus product of the hop tables between their blocks.
+// copies: 2
 let (k, n, m, o): (Int, Int, Int, Int) = read()
 domain Slot = 0..k
 domain Gap = 0..max(ceil_div(n, k) - 1, 1)

@@ -171,7 +171,8 @@ impl Scopes {
 /// fields can be moved out of it rather than copied a second time.
 ///
 /// A slot qualifies when its `let` is directly followed by the `let`s
-/// of its fields, each field at most once, and those are its only uses.
+/// of its fields, or stores of them (`(x, y) = f(..)`), each field at most
+/// once, and those are its only uses.
 pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> {
     let mut reads: BTreeMap<usize, usize> = BTreeMap::new();
     let mut barred = Touch::of_block(body).stored_locals();
@@ -211,7 +212,7 @@ pub(crate) fn spent(program: &cpl_ir::Program, body: &Block) -> BTreeSet<usize> 
             }
         }
         close(&mut run);
-        if let Some((slot, init)) = stmt {
+        if let Some((Some(slot), init)) = stmt {
             if matches!(init.ty, cpl_ir::Ty::Tuple(_)) {
                 run = Some((slot, BTreeSet::new(), false));
             }

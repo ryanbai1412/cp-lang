@@ -2,6 +2,7 @@
 // rule: 09.1.4
 // tool: explain
 // has: "show"
+// copies: 2
 fn show(a: Int, b: Int) uses io = print(a, b)
 
 with io(sep: ","):

@@ -778,6 +778,35 @@ print(f([5]))
 }
 
 #[test]
+fn a_local_another_tuple_item_reads_in_a_call_moves_into_its_item() {
+    let out = cpp("fn g(xs: List<Int>) -> List<Int>:
+    [xs.len]
+fn f() -> (List<Int>, List<Int>):
+    let zero: List<Int> = [0]
+    let step = (zero, g(zero))
+    print(step.1.len)
+    step
+print(f())
+");
+    assert!(out.contains("std::move(zero)"), "{out}");
+}
+
+#[test]
+fn a_tuple_stored_into_two_names_moves_its_fields_out() {
+    let out = cpp("fn g(a: List<Int>, b: List<Int>) -> (List<Int>, List<Int>):
+    ([b.len], [a.len])
+fn f() -> Int:
+    var x: List<Int> = [1]
+    var y: List<Int> = [2, 3]
+    (x, y) = g(x, y)
+    x.len + y.len
+print(f())
+");
+    assert!(out.contains("std::get<0>(std::move("), "{out}");
+    assert!(out.contains("std::get<1>(std::move("), "{out}");
+}
+
+#[test]
 fn a_local_dead_after_a_let_of_a_call_moves_into_its_param() {
     let out = cpp(concat!(
         "fn walk<T>(n: Int, acc: T) -> (Int, T):\n",

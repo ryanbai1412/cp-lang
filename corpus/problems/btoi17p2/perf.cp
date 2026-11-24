@@ -12,6 +12,7 @@
 //   each order by folding gaps a / k ..= b / k - 1 and reading entry (a % k, b % k).
 //   O(k^3 (n / k + o log n)).
 // original: corpus/submissions/4456186.cpp
+// copies: 2
 
 let (k, n, m, o): (Int, Int, Int, Int) = read()
 domain E = 0..m

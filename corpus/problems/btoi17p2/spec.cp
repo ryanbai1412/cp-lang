@@ -1,6 +1,7 @@
 // BOI 2017 "Toll": roads only join layer i to layer i+1 (layers of k nodes);
 // cheapest path a -> b is the min-plus product of the hop matrices between.
 // No two places share more than one street, so m <= k n.
+// copies: 2
 let (k, n, m, q) = read<(1..=5, 1..=5e4, 0..=2.5e5, 1..=1e4)>()
 domain Node = [n]
 domain Layer = [n.ceil_div(k)]

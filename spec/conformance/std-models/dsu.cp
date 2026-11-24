@@ -5,6 +5,7 @@
 // Dsu<V> and DsuOf<V, Int> (a join that does not commute) against a root-per-position list:
 // seeded random unite, merge, set, mark and undo_to, with find, same, size, components, roots,
 // values and groups compared after each op. Reads `seed n`; prints the first op that differs.
+// copies: 1
 use std.dsu.{Mark}
 use std.rand.{Rng}
 let seed0 = read<Int>()

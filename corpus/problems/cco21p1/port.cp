@@ -10,6 +10,7 @@
 //   longer one, memoised per pair. Initial count by std `inversions`. O(n sqrt(q) log n).
 // original: corpus/submissions/4538969.cpp
 // Bounds: n: 1..=1e5; k: 2..=1e5; q: 1..=1e6; a: 1..=k; swaps: 1..k
+// copies: 2
 let (n, k, q): (1..=1e5, 2..=1e5, 1..=1e6) = read()
 domain Pos = 1..=n
 domain Val = 1..=k

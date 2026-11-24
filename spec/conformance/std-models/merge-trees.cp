@@ -4,6 +4,7 @@
 // A MergeTrees pool against plain arrays: seeded random set, scale and the max-convolution merge
 // `new[x] = a[x] * B(<= x) + b[x] * A(< x)` (its result replaces both inputs), with get, sum and
 // total checked after each op. Reads `seed n`; prints the first op that differs.
+// copies: 2
 use std.rand.{Rng}
 use std.segtree.{MergeTree, MergeTrees}
 type Z = Mod<998244353>
