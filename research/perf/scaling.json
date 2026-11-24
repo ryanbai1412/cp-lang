@@ -1636,7 +1636,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.BucketCount.add",
-   "measured": 0.48,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -1644,7 +1644,7 @@
    "cost": "r.\\mathit{len}",
    "documented": 4.0,
    "fn": "bag.BucketCount.clear",
-   "measured": 4.26,
+   "measured": 3.99,
    "n": 16384,
    "ok": true
   },
@@ -1652,7 +1652,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.BucketCount.count",
-   "measured": 0.76,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -1660,7 +1660,7 @@
    "cost": "\\sqrt{N}",
    "documented": 2.0,
    "fn": "bag.BucketCount.count_lt",
-   "measured": 1.54,
+   "measured": 1.38,
    "n": 16384,
    "ok": true
   },
@@ -1668,7 +1668,7 @@
    "cost": "\\sqrt{N} + \\sqrt{N} \\cdot b + \\mathit{len}",
    "documented": 7.97,
    "fn": "bag.BucketCount.each",
-   "measured": 4.71,
+   "measured": 3.92,
    "n": 16384,
    "ok": true
   },
@@ -1676,7 +1676,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.BucketCount.is_empty",
-   "measured": 0.76,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -1684,7 +1684,7 @@
    "cost": "\\sqrt{N}",
    "documented": 2.0,
    "fn": "bag.BucketCount.kth",
-   "measured": 1.68,
+   "measured": 1.6,
    "n": 16384,
    "ok": true
   },
@@ -1692,7 +1692,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.BucketCount.len",
-   "measured": 0.5,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -1700,7 +1700,7 @@
    "cost": "r.\\mathit{len}",
    "documented": 4.0,
    "fn": "bag.BucketCount.new",
-   "measured": 4.32,
+   "measured": 3.93,
    "n": 16384,
    "ok": true
   },
@@ -1708,7 +1708,23 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "bag.BucketCount.remove",
-   "measured": 0.93,
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/bucketcount.cp::bag.SortedRange.each": {
+   "cost": "\\log n + k",
+   "documented": 4.0,
+   "fn": "bag.SortedRange.each",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/bucketcount.cp::bag.SortedRange.first": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "bag.SortedRange.first",
+   "measured": 1.09,
    "n": 16384,
    "ok": true
   },
@@ -1716,7 +1732,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedRange.is_empty",
-   "measured": 1.11,
+   "measured": 1.1,
    "n": 16384,
    "ok": true
   },
@@ -1724,7 +1740,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedRange.last",
-   "measured": 1.66,
+   "measured": 1.14,
    "n": 16384,
    "ok": true
   },
@@ -1732,7 +1748,15 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "bag.SortedRange.len",
-   "measured": 1.01,
+   "measured": 1.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/bucketcount.cp::bag.SortedRange.rev": {
+   "cost": "\\log n + k",
+   "documented": 4.0,
+   "fn": "bag.SortedRange.rev",
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -17762,9 +17786,7 @@
   }
  },
  "unscaled": [
-  "bag.SortedRange.each",
-  "bag.SortedRange.first",
-  "bag.SortedRange.rev",
+  "algebra.MaxSub.repeat",
   "builtin.Array.all",
   "builtin.Array.any",
   "builtin.Array.clone",
