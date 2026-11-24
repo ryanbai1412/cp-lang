@@ -32,8 +32,27 @@ class Summarize(unittest.TestCase):
         st = bench.summarize([row(1.0), {"status": "skip"}, {"status": "mismatch"}], min_ms=10)
         self.assertEqual((st["total_ok"], st["skipped"]), (1, 2))
 
+    def test_a_pair_under_the_floor_counts_once_its_samples_repeat_to_it(self):
+        fast = {**row(1.2), "port_ms": 1.2, "orig_ms": 1.0}
+        self.assertEqual(bench.summarize([fast], min_ms=10)["measured_ge_min_ms"], 0)
+        st = bench.summarize([{**fast, "repeats": bench.repeats(0.001, 0.0012, 10)}], min_ms=10)
+        self.assertEqual((st["measured_ge_min_ms"], st["max"]), (1, 1.2))
+
     def test_there_is_no_unmatched_list(self):
         self.assertFalse(os.path.exists(os.path.join(bench.ROOT, "bench", "unmatched.txt")))
+
+
+class Repeats(unittest.TestCase):
+    def test_a_pair_at_the_floor_runs_once_per_sample(self):
+        self.assertEqual(bench.repeats(0.010, 0.004, 10), 1)
+
+    def test_a_fast_pair_repeats_until_the_slower_side_reaches_the_floor(self):
+        n = bench.repeats(0.0007, 0.0013, 10)
+        self.assertEqual(n, 8)
+        self.assertGreaterEqual(1.3 * n, 10)
+
+    def test_an_instant_pair_is_capped(self):
+        self.assertEqual(bench.repeats(0.0, 0.0, 10), bench.MAX_REPEATS)
 
 
 class CollectItems(unittest.TestCase):
