@@ -10,6 +10,7 @@ use cpl_syntax::ast::{self, TypeKind};
 pub(crate) fn impl_target_head(ty: &ast::Type) -> Option<String> {
     match &ty.kind {
         TypeKind::Fn { .. } => Some("fn".into()),
+        TypeKind::ItemOf(item) => item.fn_item_type(),
         _ => type_head(ty),
     }
 }

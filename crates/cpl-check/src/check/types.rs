@@ -68,6 +68,13 @@ impl<'a> Checker<'a> {
 
     fn resolve_written(&mut self, ty: &ast::Type) -> Ty {
         match &ty.kind {
+            TypeKind::ItemOf(item) => match item.fn_item_type() {
+                Some(name) => Ty::Named {
+                    name,
+                    args: Vec::new(),
+                },
+                None => Ty::Unknown,
+            },
             TypeKind::Named { name, args } => {
                 let args: Vec<Ty> = args.iter().map(|a| self.type_arg(a)).collect();
                 self.named_type(&name.text, name.span, args)

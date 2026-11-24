@@ -650,6 +650,7 @@ struct Lowerer<'a> {
     gen_structs: Vec<GenStructTemplate<'a>>,
     /// The empty struct each bare operator value has as its type (`op_value`).
     op_types: Vec<(BareOp, StructId)>,
+    item_types: Vec<(String, StructId)>,
     struct_insts: HashMap<(GenStructId, Vec<GenArg>), StructId>,
     /// `w.Idx` by the place of `w` and the struct's own `Idx`.
     value_domain_ids: HashMap<((bool, usize), DomainId), DomainId>,
@@ -830,6 +831,7 @@ impl<'a> Lowerer<'a> {
             structs: Vec::new(),
             gen_structs: Vec::new(),
             op_types: Vec::new(),
+            item_types: Vec::new(),
             struct_insts: HashMap::new(),
             value_domain_ids: HashMap::new(),
             range_domains: HashMap::new(),

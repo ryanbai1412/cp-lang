@@ -743,6 +743,53 @@ pub enum BinOp {
     Coalesce,
 }
 
+/// The identifier of the fn item `name`: `Max` for `max`.
+pub fn fn_item_ident(name: &str) -> String {
+    let mut cs = name.chars();
+    cs.next()
+        .map(|c| c.to_uppercase().chain(cs).collect())
+        .unwrap_or_default()
+}
+
+impl Expr {
+    /// The fn item a value names, as `type_of(..)` keys it: a name (`max`,
+    /// `gcd`) or an operator written bare (`+`).
+    pub fn fn_item_key(&self) -> Option<String> {
+        match &self.kind {
+            ExprKind::Paren(e) => e.fn_item_key(),
+            ExprKind::Name(n) => Some(n.to_string()),
+            ExprKind::Lambda { body, .. } => match &body.kind {
+                ExprKind::Binary { op, op_span, .. } if *op_span == self.span => {
+                    Some(op.text().to_string())
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// An identifier for the fn item a value names: `Max` for `max`, `Add`
+    /// for `+`.
+    pub fn fn_item_ident(&self) -> Option<String> {
+        match &self.kind {
+            ExprKind::Paren(e) => e.fn_item_ident(),
+            ExprKind::Name(n) => Some(fn_item_ident(n)),
+            ExprKind::Lambda { body, .. } => match &body.kind {
+                ExprKind::Binary { op, op_span, .. } if *op_span == self.span => {
+                    Some(format!("{op:?}"))
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
+    /// The type `type_of(..)` of the fn item this value names is filed under.
+    pub fn fn_item_type(&self) -> Option<String> {
+        self.fn_item_key().map(|k| format!("type_of({k})"))
+    }
+}
+
 impl BinOp {
     pub fn text(self) -> &'static str {
         match self {
@@ -1011,6 +1058,9 @@ pub enum TypeKind {
     },
     /// `'+' | '-'`: finite union of literal values.
     LiteralUnion(Vec<String>),
+    /// `type_of(max)`, `type_of(+)`: the zero-size type of one fn item, an
+    /// impl target apart from its fn type (R08.1.9).
+    ItemOf(Box<Expr>),
     /// A field written `total = 0`: its type is its default's.
     Infer,
     Error,

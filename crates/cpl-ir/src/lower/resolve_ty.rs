@@ -158,6 +158,10 @@ impl<'a> Lowerer<'a> {
                 };
                 Spec::Plain(ty)
             }
+            ast::TypeKind::ItemOf(item) => Spec::Plain(match item.fn_item_ident() {
+                Some(ident) => Ty::Struct(self.item_type(&ident)),
+                None => Ty::Error,
+            }),
             ast::TypeKind::Infer | ast::TypeKind::Error => Spec::Plain(Ty::Error),
         }
     }

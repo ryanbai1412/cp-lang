@@ -73,8 +73,27 @@ impl<'a> Lowerer<'a> {
         if let Some(&(_, id)) = self.op_types.iter().find(|(o, _)| *o == op) {
             return id;
         }
-        let id = self.push_synth_struct(format!("Op_{op:?}"), Vec::new());
+        let id = self.item_type(&format!("{op:?}"));
         self.op_types.push((op, id));
+        id
+    }
+
+    /// Whether `ty` is the zero-size type of the fn item `name`.
+    pub(super) fn is_item_type_of(&self, name: &str, ty: &Ty) -> bool {
+        let Ty::Struct(sid) = ty else { return false };
+        let ident = ast::fn_item_ident(name);
+        self.item_types.iter().any(|(k, s)| s == sid && *k == ident)
+    }
+
+    /// The zero-size type of one fn item, `type_of(f)`: an empty struct the
+    /// item's value has and impls on `type_of(f)` attach to.
+    pub(super) fn item_type(&mut self, ident: &str) -> StructId {
+        if let Some(&(_, id)) = self.item_types.iter().find(|(k, _)| k == ident) {
+            return id;
+        }
+        let id = self.push_synth_struct(format!("Op_{ident}"), Vec::new());
+        self.item_types.push((ident.to_string(), id));
+        self.attach_impls_for_struct(id);
         id
     }
 

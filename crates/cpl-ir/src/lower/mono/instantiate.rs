@@ -292,10 +292,16 @@ impl<'a> Lowerer<'a> {
 
     /// Finds and attaches all `impl` blocks matching concrete struct `sid`.
     pub(in crate::lower) fn attach_impls_for_struct(&mut self, sid: StructId) {
-        let Some(sdecl) = self.structs[sid].decl else {
-            return;
+        let item = self
+            .item_types
+            .iter()
+            .find(|(_, s)| *s == sid)
+            .map(|(k, _)| k.clone());
+        let struct_decl_name = match self.structs[sid].decl {
+            Some(sdecl) => sdecl.name.text.clone(),
+            None if item.is_some() => String::new(),
+            None => return,
         };
-        let struct_decl_name = sdecl.name.text.clone();
         let struct_mod = self.structs[sid].mod_id;
         let origin_args: Vec<GenArg> = self.structs[sid]
             .origin_gen
@@ -312,23 +318,26 @@ impl<'a> Lowerer<'a> {
             let imp_target = self.impls[idx].target;
             let imp_body = self.impls[idx].body;
 
-            let ast::TypeKind::Named {
-                name: tname,
-                args: targs,
-            } = &imp_target.kind
-            else {
-                continue;
-            };
-            // Check whether `tname` in `imp_mod` refers to the same struct.
-            let keyed = cpl_check::arity_key(&tname.text, targs.len());
-            let syms = &self.mod_syms[imp_mod];
-            let target_matches = match syms.get(&keyed).or_else(|| syms.get(&tname.text)).copied() {
-                Some(Sym::Struct(id)) => id == sid,
-                Some(Sym::GenStruct(gid)) => self.structs[sid]
-                    .origin_gen
-                    .as_ref()
-                    .is_some_and(|(g, _)| *g == gid),
-                _ => tname.text == struct_decl_name && imp_mod == struct_mod,
+            let (target_matches, targs): (bool, &[ast::Type]) = match &imp_target.kind {
+                ast::TypeKind::Named {
+                    name: tname,
+                    args: targs,
+                } if item.is_none() => {
+                    // Check whether `tname` in `imp_mod` refers to the same struct.
+                    let keyed = cpl_check::arity_key(&tname.text, targs.len());
+                    let syms = &self.mod_syms[imp_mod];
+                    let hit = match syms.get(&keyed).or_else(|| syms.get(&tname.text)).copied() {
+                        Some(Sym::Struct(id)) => id == sid,
+                        Some(Sym::GenStruct(gid)) => self.structs[sid]
+                            .origin_gen
+                            .as_ref()
+                            .is_some_and(|(g, _)| *g == gid),
+                        _ => tname.text == struct_decl_name && imp_mod == struct_mod,
+                    };
+                    (hit, targs)
+                }
+                ast::TypeKind::ItemOf(of) => (item.is_some() && of.fn_item_ident() == item, &[]),
+                _ => continue,
             };
             if !target_matches {
                 continue;
