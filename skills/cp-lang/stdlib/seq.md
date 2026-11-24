@@ -300,7 +300,7 @@ Fields: `k: Int,`.
 - `fn max_k<S: Seq<T>, T, K>(self: S, k: Len, by: T -> K = x => x) -> List<T>` — \(O(n)\) expected, \(O(k)\) memory: one pass into a buffer of at most `2k`, cut back to `k` by `select` whenever it fills; \(O(n)\) expected, \(O(k)\) memory.; traps: when `k < 0` or `k >= 2^31`; `k > n` gives every element
 - `fn partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(1)\) extra space; \(O(n)\).
 - `fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool) -> Int` — \(O(n)\), \(O(n)\) memory
-- `fn adjacent_diff<S: Seq<T>, T>(self: S) -> List<T>` — \(O(n)\), \(O(n)\) memory
+- `fn adjacent_diff<S: Seq<T>, T: Sub>(self: S) -> List<T>` — \(O(n)\), \(O(n)\) memory
 - `fn span<D>(lo: Cut<D>, hi: Cut<D>) -> Range<D>` — \(O(1)\); traps: when `lo > hi`
 - `fn bsearch<D, T>(self: [D]T, ok: T -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end; \(O(\log n)\).; traps: when `ok` flips the other way; any other `ok` that is not monotone gives an
 - `fn equal_range<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> Range<D>` — \(O(\log n)\); traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;

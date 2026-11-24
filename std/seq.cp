@@ -2433,7 +2433,7 @@ pub fn stable_partition_in_place<S: IndexedMut, T>(mut self: S, keep: T -> Bool)
 /// order: a new `List`, keyed from 0
 /// traps: never
 /// example: `[3, 5, 4].adjacent_diff() == [3, 2, -1]`
-pub fn adjacent_diff<S: Seq<T>, T>(self: S) -> List<T>:
+pub fn adjacent_diff<S: Seq<T>, T: Sub>(self: S) -> List<T>:
     var out: List<T> = []
     var prev: ?T = None
     for x in self:
