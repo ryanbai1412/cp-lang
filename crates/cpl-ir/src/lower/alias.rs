@@ -6,6 +6,20 @@ use super::*;
 
 impl<'a> Lowerer<'a> {
     /// Runs `f` on alias `aid`'s right side, where it was declared.
+    /// The generic argument a bare name stands for: a bound type
+    /// parameter, or a range alias, which passes its range so that
+    /// `T.MIN` of `type M = -10..=10` is `-10`.
+    pub(super) fn named_gen_arg(&mut self, name: &str) -> Option<GenArg> {
+        if let Some(a) = self.gen_env.get(name).cloned() {
+            return Some(a);
+        }
+        let Some(Sym::Alias(aid)) = self.get_sym(name) else {
+            return None;
+        };
+        let range = matches!(self.aliases[aid].1.kind, ast::TypeKind::Range { .. });
+        range.then(|| self.in_alias(aid, |lw, ty| lw.resolve_gen_arg(ty)))
+    }
+
     pub(super) fn in_alias<T>(
         &mut self,
         aid: usize,

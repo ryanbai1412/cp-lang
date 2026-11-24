@@ -580,7 +580,7 @@ impl<'a> Lowerer<'a> {
                 GenArg::Int(1)
             }
             ast::TypeKind::Named { name, args } if args.is_empty() => {
-                if let Some(a) = self.gen_env.get(&name.text).cloned() {
+                if let Some(a) = self.named_gen_arg(&name.text) {
                     return a;
                 }
                 // `Comb<Z.MOD>`: a number a type holds, by the type's name.
@@ -608,12 +608,6 @@ impl<'a> Lowerer<'a> {
                 if let Some(Sym::ModConst(cid)) = self.get_sym(&name.text) {
                     if let Some(v) = self.eval_const_int(self.mod_consts[cid].init) {
                         return GenArg::Int(v);
-                    }
-                }
-                // `type M = -10..=10` passes its range, so `T.MIN` is `-10`.
-                if let Some(Sym::Alias(aid)) = self.get_sym(&name.text) {
-                    if matches!(self.aliases[aid].1.kind, ast::TypeKind::Range { .. }) {
-                        return self.in_alias(aid, |lw, ty| lw.resolve_gen_arg(ty));
                     }
                 }
                 let resolved = self.resolve_ty(ty);
