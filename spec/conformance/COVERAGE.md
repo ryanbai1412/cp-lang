@@ -7,7 +7,7 @@ names output that must not appear. Status comes from `research/scoreboard.json` 
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3725 (3600 passing). Rules: 617.
+Cases: 3726 (3600 passing). Rules: 617.
 
 ## Summary per chapter
 
@@ -18,7 +18,7 @@ Cases: 3725 (3600 passing). Rules: 617.
 - R04a (04a-identity-vs-offset.md): 39 rules, 56 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R04b (04b-keys.md): 28 rules, 81 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R05 (05-ownership.md): 50 rules, 257 cases; 0 uncovered, 0 happy-path only, 0 negative only
-- R06 (06-control-functions.md): 26 rules, 126 cases; 0 uncovered, 0 happy-path only, 0 negative only
+- R06 (06-control-functions.md): 26 rules, 127 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R07 (07-sequences.md): 97 rules, 263 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R08 (08-traits-generics.md): 31 rules, 114 cases; 0 uncovered, 0 happy-path only, 0 negative only
 - R09 (09-contexts-checks.md): 28 rules, 70 cases; 0 uncovered, 0 happy-path only, 0 negative only
@@ -431,7 +431,7 @@ Each rule: positive / negative case counts, then the gap if any.
 - R06.1.6 [2+ 1-]: No overloading by type: one name and label set has one generic signature (decision 127). O...
 - R06.1.7 [6+ 1-]: .
 - R06.1.8 [7+ 1-]: A `fn` passed where a function of fewer parameters is expected takes only those, when ever...
-- R06.2.1 [6+ 2-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
+- R06.2.1 [7+ 2-]: **Captures act as call-time arguments.** A closure holds no lend between calls: each call ...
 - R06.2.2 [1+ 2-]: A captured variable cannot be moved while the closure is alive, and a closure cannot outli...
 - R06.2.3 [2+ 1-]: A `let`-bound lambda may call itself; a `var` binding cannot. When recursion leaves the re...
 - R06.2.4 [1+ 1-]: There is no `pure` and no `mut fn` marker. Purity that a library needs (lazy `map`, `@memo...
