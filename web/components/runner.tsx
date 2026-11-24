@@ -18,7 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { cpl, started, stop, type Diagnostic, type StressOutcome } from '@/lib/cpl';
 import { LspDoc } from '@/lib/lsp';
-import { tools } from '@/lib/tools';
+import { hasStressTarget, tools } from '@/lib/tools';
 import { cn } from '@/lib/utils';
 
 const compilerVersion = tools.version.replace(/^cpl /, '');
@@ -109,7 +109,7 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
     }
   }, [program]);
   // Stress is offered where the language server offers its Stress lens. Asking
-  // it loads cpl.wasm, so until something else has loaded it, a guess stands in.
+  // it loads cpl.wasm, so until then the decorators `cpl stress --list` names stand in.
   const [lensStress, setLensStress] = useState<boolean | null>(null);
   const running = result.kind === 'running';
   useEffect(() => {
@@ -126,7 +126,7 @@ export function Runner({ source: initial, setup = '', stdin: initialStdin = '', 
       doc.close();
     };
   }, [source, running]);
-  const stressable = lensStress ?? /^@(brute|alt|check|checker|interactor)\b/m.test(source);
+  const stressable = lensStress ?? hasStressTarget(source);
 
   const runLint = useCallback(async () => {
     setTab('output');
