@@ -1183,6 +1183,7 @@ impl<'a> Checker<'a> {
                         fields,
                         alias: *alias,
                         assoc,
+                        structural: stmt.decorators.iter().any(|d| d.name.text == "structural"),
                     },
                 )]
             }
@@ -1607,7 +1608,8 @@ impl<'a> Checker<'a> {
             return true;
         }
         match trait_name {
-            "Eq" | "Ord" | "Hash" => self.derives_structural(ty, trait_name, seen),
+            "Eq" | "Ord" => self.derives_structural(ty, trait_name, seen),
+            t if self.is_structural(t) => self.derives_structural(ty, trait_name, seen),
             "Show" => self.derives_print(ty, false, seen),
             "Seq" => ty.is_seq() || self.walks_by_each(ty),
             "Sized" => ty.is_sized(),
@@ -1696,23 +1698,30 @@ impl<'a> Checker<'a> {
         })
     }
 
+    /// Whether std declares `trait_name` `@structural`, as `Hash`.
+    fn is_structural(&mut self, trait_name: &str) -> bool {
+        matches!(
+            self.type_def(trait_name).as_deref(),
+            Some(Def::Trait {
+                structural: true,
+                ..
+            })
+        )
+    }
+
     fn derives_structural(&mut self, ty: &Ty, trait_name: &str, seen: &mut Vec<String>) -> bool {
         match ty {
             Ty::Error | Ty::Unknown | Ty::Const(_) => true,
             Ty::Param(p) => self.param_has_bound(p, trait_name),
             // Its trait's `type X: Bound` is not tracked yet, so it is taken as met.
             Ty::Assoc { .. } => true,
-            Ty::Int
-            | Ty::I128
-            | Ty::U64
-            | Ty::Bool
-            | Ty::Char
-            | Ty::Str
-            | Ty::Unit
-            | Ty::Range { .. }
-            | Ty::Pos(_)
-            | Ty::Domain(_) => true,
-            Ty::Float => trait_name != "Hash",
+            // A `@structural` trait reaches a scalar only by its impl, already looked for.
+            Ty::Int | Ty::I128 | Ty::U64 | Ty::Bool | Ty::Char | Ty::Str | Ty::Float => {
+                !self.is_structural(trait_name)
+            }
+            Ty::Unit | Ty::Range { .. } => true,
+            // A position is its index.
+            Ty::Pos(_) | Ty::Domain(_) => self.implements_trait_inner(&Ty::Int, trait_name, seen),
             Ty::Fn { .. } => false,
             Ty::Optional(inner) => self.implements_trait_inner(inner, trait_name, seen),
             Ty::Tuple(items) => items

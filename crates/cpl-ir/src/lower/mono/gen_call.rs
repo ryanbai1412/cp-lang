@@ -767,8 +767,13 @@ impl<'a> Lowerer<'a> {
                                 && self.implements(ty, tr_name.text.as_str()))
                     }
                     // A fn has no order, equality, hash or text; it can be a `Next`.
-                    "Ord" | "Eq" | "Hash" | "Show" => !matches!(ty, Ty::Fn(..)),
-                    _ => true,
+                    "Ord" | "Eq" | "Show" => !matches!(ty, Ty::Fn(..)),
+                    t => match self.get_sym(t) {
+                        Some(Sym::Trait(tid)) if self.traits[tid].structural => {
+                            !matches!(ty, Ty::Fn(..))
+                        }
+                        _ => true,
+                    },
                 };
                 if !ok {
                     self.report(

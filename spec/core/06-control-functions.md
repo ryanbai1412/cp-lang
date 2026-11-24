@@ -171,6 +171,10 @@ library or by this spec:
 - `@from_op` on a struct's static fn (std's `Monoid.of`): a bare operator
   (`+`, `max`) passed where that struct is wanted, or for a bound the struct
   has an impl of, becomes a call of the fn (R08.1.9).
+- `@structural` on a trait (std's `Hash`): a tuple, record, optional,
+  array or struct has it when each part does, a position when `Int` does,
+  and a built-in scalar only through its own `impl` (so `F64`, with none, is
+  not `Hash`).
 - `@lint(name, from: "<code>", to: "<code>")` on a `pub fn` or a struct's
   or enum's method: a lint the
   library declares, so its users are told to call the fn where they write

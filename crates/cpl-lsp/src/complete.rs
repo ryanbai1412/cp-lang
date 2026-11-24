@@ -275,6 +275,10 @@ const DECORATORS: &[(&str, &str)] = &[
         "on a struct's static fn: a bare op passed where the struct is wanted goes through it",
     ),
     (
+        "structural",
+        "on a trait: a tuple, record, optional, array or struct has it when each part does",
+    ),
+    (
         "lint",
         "`@lint(name, from:, to:)` on a `pub fn`: a library's own lint",
     ),

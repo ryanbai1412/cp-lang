@@ -171,13 +171,17 @@ impl<'a> Lowerer<'a> {
             }),
             Some(GenArg::Ty(ty)) => {
                 let ty = ty.clone();
+                let position = matches!(ty, Ty::Pos(_) | Ty::Bound(_));
                 builtin_has(&ty, trait_name)
                     || builtin_seq_has(&ty, trait_name)
                     || self.has_plain_impl(&ty, trait_name)
                     || (matches!(ty, Ty::Bound(_)) && self.has_domain_blanket_impl(trait_name))
+                    || (position && self.index_has_structural(trait_name))
             }
             Some(GenArg::Domain(d)) => {
-                builtin_has(&Ty::Pos(*d), trait_name) || self.has_domain_blanket_impl(trait_name)
+                builtin_has(&Ty::Pos(*d), trait_name)
+                    || self.has_domain_blanket_impl(trait_name)
+                    || self.index_has_structural(trait_name)
             }
             _ => false,
         };
@@ -193,6 +197,15 @@ impl<'a> Lowerer<'a> {
     }
 
     /// `ty` (`Int`, `F64`, ...) has an `impl Tr` written for exactly it, not for a generic type.
+    /// Whether `trait_name` is `@structural` and `Int`, a position's index, has an impl of it.
+    fn index_has_structural(&mut self, trait_name: &str) -> bool {
+        let structural = match self.get_sym(trait_name) {
+            Some(Sym::Trait(tid)) => self.traits[tid].structural,
+            _ => false,
+        };
+        structural && self.has_plain_impl(&Ty::Int, trait_name)
+    }
+
     fn has_plain_impl(&mut self, ty: &Ty, trait_name: &str) -> bool {
         for idx in 0..self.impls.len() {
             let imp = &self.impls[idx];
@@ -331,11 +344,10 @@ fn builtin_has(ty: &Ty, trait_name: &str) -> bool {
     let position = matches!(ty, Ty::Pos(_) | Ty::Bound(_));
     match trait_name {
         "Domain" | "Index" => position,
-        "Eq" | "Ord" | "Hash" if position => true,
+        "Eq" | "Ord" if position => true,
         "Add" => number || *ty == Ty::Str,
         "Sub" | "Mul" | "Div" | "Rem" | "Neg" | "Num" => number,
         "Eq" | "Ord" | "Show" => scalar,
-        "Hash" => scalar && *ty != Ty::Float,
         _ => false,
     }
 }

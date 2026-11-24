@@ -409,6 +409,7 @@ impl<'a> Lowerer<'a> {
                         })
                         .collect(),
                     unimplemented,
+                    structural: stmt.decorators.iter().any(|d| d.name.text == "structural"),
                     alias_of,
                     alias_tys: if *alias {
                         supers.iter().collect()

@@ -57,8 +57,10 @@ pub fn show_fields<T>(a: T) -> Str:
 /// example: `struct P(a: Int, b: Int); read_fields<P>().b == 5` (stdin `4 5`)
 pub fn read_fields<T>() -> T = T(read() for _ in fields(T))
 
-/// A value's 64-bit hash: equal values hash equal. `Int`, `U64`, `Char`, `Bool` and `Str`
-/// have it here (splitmix64, decision 28.8); a struct gets it from `hash_fields`.
+/// A value's 64-bit hash: equal values hash equal. `Int`, `I128`, `U64`, `Char`, `Bool` and
+/// `Str` have it here (splitmix64, decision 28.8); a struct gets it from `hash_fields`, and
+/// `@structural` gives a tuple, record, optional or array it when each part has it.
+@structural
 pub trait Hash:
     fn hash(self) -> U64
 
@@ -74,6 +76,13 @@ impl Hash for Int:
     /// cost: \(O(1)\)
     /// example: `5.hash() == 5.hash()`
     fn hash(self) -> U64 = mix64(U64(self))
+
+impl Hash for I128:
+    /// cost: \(O(1)\)
+    /// example: `I128(-5).hash() != I128(5).hash()`
+    fn hash(self) -> U64:
+        let low = (I128(1) << 64) - I128(1)
+        mix64(U64(self & low) ^ mix64(U64((self >> 64) & low)))
 
 impl Hash for U64:
     /// cost: \(O(1)\)

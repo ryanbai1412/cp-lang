@@ -133,6 +133,8 @@ pub(super) struct TraitInfo<'a> {
     /// `@on_unimplemented("{T} can't ...")`: the trait's own words for a
     /// type with no `impl` of it.
     pub unimplemented: Option<String>,
+    /// `@structural trait Hash`: a compound type has it when each part does.
+    pub structural: bool,
     /// `trait Both = Sh + Nm`: implemented exactly when each of these is.
     pub alias_of: Option<Vec<String>>,
     /// An alias's traits with their args: `Next<V>` of `trait WNext<V, W> = Next<V>`.
