@@ -11,6 +11,9 @@ use cpl_lsp::Server;
 use std::collections::HashSet;
 use std::path::Path;
 
+#[path = "../../cpl-cli/tests/support/shards.rs"]
+mod shards;
+
 fn message(id: Option<u32>, method: &str, params: Value) -> Value {
     let mut members = vec![("jsonrpc".to_string(), Value::from("2.0"))];
     if let Some(id) = id {
@@ -274,20 +277,46 @@ fn cp_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
 /// Every corpus program (`spec.cp`, `port.cp`, `dream.cp`) and every
 /// conformance case, walked as the hill-climb ports are; broken and rejected
 /// programs included.
-#[test]
-fn every_corpus_program_and_conformance_case_is_served() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+const SHARDS: usize = 8;
+
+fn root() -> std::path::PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+/// Every corpus program, then every conformance case, and how many are corpus.
+fn served() -> (Vec<std::path::PathBuf>, usize) {
+    let root = root();
     let mut files = Vec::new();
     for dir in cpl_corpus::packages(&root) {
         cp_files(&dir, &mut files);
     }
     let corpus = files.len();
     cp_files(&root.join("spec/conformance"), &mut files);
+    (files, corpus)
+}
+
+/// A file's path under the repo root, which picks its shard.
+fn key(path: &Path) -> String {
+    path.strip_prefix(root()).unwrap().display().to_string()
+}
+
+fn keys() -> Vec<String> {
+    served().0.iter().map(|p| key(p)).collect()
+}
+
+#[test]
+fn the_corpus_and_conformance_cases_are_all_found() {
+    let (files, corpus) = served();
     assert!(
         corpus >= 1000 && files.len() - corpus >= 500,
         "{corpus} corpus files, {} cases",
         files.len() - corpus
     );
+}
+
+fn every_corpus_program_and_conformance_case_is_served(k: usize) {
+    let root = root();
+    let mut files = shards::mine(served().0, |p| key(p), k, SHARDS);
     files.sort();
 
     // Each thread takes the next file as it frees up, so a run of long
@@ -337,3 +366,19 @@ fn every_corpus_program_and_conformance_case_is_served() {
         failures.join("\n")
     );
 }
+
+shards::shard_tests!(
+    every_corpus_program_and_conformance_case_is_served,
+    keys(),
+    the_served_shards_cover_every_file,
+    [
+        every_corpus_program_and_conformance_case_is_served_0 = 0,
+        every_corpus_program_and_conformance_case_is_served_1 = 1,
+        every_corpus_program_and_conformance_case_is_served_2 = 2,
+        every_corpus_program_and_conformance_case_is_served_3 = 3,
+        every_corpus_program_and_conformance_case_is_served_4 = 4,
+        every_corpus_program_and_conformance_case_is_served_5 = 5,
+        every_corpus_program_and_conformance_case_is_served_6 = 6,
+        every_corpus_program_and_conformance_case_is_served_7 = 7,
+    ]
+);
