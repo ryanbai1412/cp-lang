@@ -116,3 +116,23 @@ fn nested_closures_each_return_to_the_cx_they_were_entered_from() {
         print(f(2))\n";
     assert_eq!(runs(source, ""), "30\n");
 }
+
+#[test]
+fn laws_hold_lowers_its_named_samples_in_the_order_written() {
+    let source = "use std.algebra.{Action}\n\
+        let good = Action<Int, ?Int>(None, (nf, of) => nf ?? of, (f, v, span) => f ?? v, over: max, replaces: f => f != None)\n\
+        print(laws_hold(good, T: [1, 5, -3], F: [None, Some(2), Some(7)]))\n";
+    let lowered = || {
+        let mut db = cpl_check::Session::new();
+        db.set_file("t.cp", source);
+        let analysis = db.analyze("t.cp").expect("analysis");
+        format!("{:?}", cpl_ir::lower(&analysis).expect("lowers"))
+    };
+    let first = lowered();
+    for _ in 0..8 {
+        assert!(
+            lowered() == first,
+            "lowering laws_hold gave a different program"
+        );
+    }
+}

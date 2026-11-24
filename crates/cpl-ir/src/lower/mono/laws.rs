@@ -103,11 +103,12 @@ impl<'a> Lowerer<'a> {
 
         // Lower positional default samples and named sample lists (e.g. `T: [...], F: [...]`).
         let mut default_samples: Option<Expr> = None;
-        let mut named_samples: HashMap<String, Expr> = HashMap::new();
+        let mut named_samples: Vec<(String, Expr)> = Vec::new();
         for arg in &args[1..] {
             let v = self.expr(&arg.value, None);
             if let Some(n) = &arg.name {
-                named_samples.insert(n.text.clone(), v);
+                named_samples.retain(|(k, _)| *k != n.text);
+                named_samples.push((n.text.clone(), v));
             } else {
                 default_samples = Some(v);
             }
