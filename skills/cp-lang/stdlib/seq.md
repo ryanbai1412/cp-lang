@@ -240,7 +240,7 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn flatten<S: Seq, U: Seq, T>(self: S) -> yields T` — \(O(1)\) per yielded element
 - `fn present<S: Seq, T>(self: S) -> yields T` — \(O(1)\) per step
 - `fn all_some<S: Seq, T>(self: S) -> ?List<T>` — \(O(n)\), \(O(n)\) memory
-- `fn chain<A: Seq, B: Seq, T>(a: A, b: B) -> yields T` — \(O(1)\) per step
+- `fn chain<Ss, T>(..seqs: Ss) -> yields T` — \(O(1)\) per step
 - `fn product<A: Seq<T>, B: Indexed<L, U>, L, T, U>(a: A, b: B) -> yields (T, U)` — \(O(1)\) per step, \(O(\lvert a \rvert \cdot \lvert b \rvert)\) to walk; \(O(1)\) per step.
 - `fn iterate<T>(from: ?T, step: T -> ?T) -> yields T` — \(O(1)\) per step plus one call of `step`; \(O(1)\) per step.
 - `fn with_next<S: Seq, T>(self: S) -> yields (T, ?T)` — \(O(1)\) per step
