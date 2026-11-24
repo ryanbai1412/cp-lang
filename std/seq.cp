@@ -895,18 +895,18 @@ pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>
     if self.is_empty:
         for c in cuts: assert a <= c <= b, "pieces: cut outside range"
         domain P = 0..0
-        return (P, [P] _ => a..a)
-    var pts: List<D> = [a, b]
+        return (P, [P] _ => span(a, a))
+    var pts: List<Cut<D>> = [a, b]
     for c in cuts:
         assert a <= c <= b, "pieces: cut outside range"
         pts.push(c)
     pts.sort()
-    var uniq: List<D> = []
+    var uniq: List<Cut<D>> = []
     for x in pts:
         if uniq.is_empty or uniq.last != x: uniq.push(x)
     let m = uniq.len - 1
     domain P = 0..m
-    let ps = [P] i => uniq[i.ord]..uniq[i.ord + 1]
+    let ps = [P] i => span(uniq[i.ord], uniq[i.ord + 1])
     (P, ps)
 
 /// The range of pieces exactly covering `r`, whose ends must be among the cuts the pieces were
