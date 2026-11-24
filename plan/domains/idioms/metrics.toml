@@ -32,7 +32,7 @@ target = "305/305 v0.3 re-ports (as spec.cp or migrated port.cp)"
 [[metric]]
 name = "dreams_check_v03"
 command = "for p in $(cat corpus/sets/ecnerwala.txt); do cpl check corpus/problems/$p/dream.cp; done"
-today = "235/305 (2026-11-23, on 8222d26d1)"
+today = "236/305 (2026-11-23, on 21fb1298a)"
 target = "tracked, not a gate: each failing dream is a logged gap in plan/domains/spec/delta/hillclimb.md"
 
 [[metric]]
