@@ -500,7 +500,6 @@ pub struct OnlineHull:
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.add(Pt(1, 1)) == false`
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(0, 0)) == false`
     pub fn add(mut self, p: Pt) -> Bool:
-        with lint(unproven_list_index: allow)
         if self.locate(p) != Location.Outside: return false
         var pts = hull.collect()
         pts.push(p)
@@ -523,7 +522,6 @@ pub struct OnlineHull:
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.locate(Pt(2, 0)) == Location.Boundary`
     /// example: `OnlineHull().locate(Pt(0, 0)) == Location.Outside`
     pub fn locate(self, p: Pt) -> Location:
-        with lint(unproven_list_index: allow)
         let m = hull.len
         if m == 0: return Location.Outside
         if m == 1: return if p == hull[0]: Location.Boundary else: Location.Outside
@@ -566,7 +564,6 @@ pub struct OnlineHull:
     /// example: `var h = OnlineHull(); h.add(Pt(0, 0)); h.add(Pt(4, 0)); h.add(Pt(0, 4)); h.extreme(Pt(0, 1)) == Some(Pt(0, 4))`
     /// example: `OnlineHull().extreme(Pt(1, 0)) == None`
     pub fn extreme(self, dir: Pt) -> ?Pt:
-        with lint(unproven_list_index: allow)
         if hull.is_empty: return None
         var best = hull[0]
         var best_v = best.dot128(dir)
@@ -1409,7 +1406,6 @@ fn is_ear(poly: List<Pt>, rem: List<Int>, i: Int) -> Bool:
 /// example: `polygon_triangulate([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]).len == 2`
 /// example: `polygon_triangulate([Pt(0, 0), Pt(1, 0), Pt(0, 1)]).len == 1`
 pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)>:
-    with lint(unproven_list_index: allow)
     let n = poly.len
     if n < 3: return []
     let area2: I128 = sum(poly[i].cross128(poly[(i + 1) % n]) for i in 0..n)
@@ -2803,7 +2799,6 @@ fn cover(
 /// example: `planar_faces([Pt(0, 0), Pt(1, 0), Pt(0, 1)], [(0, 1), (1, 2), (2, 0)]) == [[0, 1, 2], [0, 2, 1]]`
 /// example: `planar_faces([Pt(0, 0), Pt(1, 0)], [(0, 1)]) == [[0, 1]]`
 pub fn planar_faces<V>(pts: [V]Pt, edges: List<(V, V)>) -> List<List<V>>:
-    with lint(unproven_list_index: allow)
     let keys = pts.keys.collect()
     let walk = planar_walk([pts[k] for k in keys], [(a.ord, b.ord) for (a, b) in edges])
     [[keys[i] for i in f] for f in walk.faces]
@@ -2815,16 +2810,13 @@ struct PlanarWalk:
     half: List<(Int, Int, Int)>
 
     fn at(self, u: Int, v: Int) -> Int:
-        with lint(unproven_list_index: allow)
         let lo = (0..half.len).first_true(mid => (half[mid].0, half[mid].1) >= (u, v)) ?? half.len
         half[lo].2
 
     fn side(self, u: Int, v: Int) -> Int:
-        with lint(unproven_list_index: allow)
         return face_of[off[u] + self.at(u, v)]
 
 fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
-    with lint(unproven_list_index: allow)
     let n = ps.len
     var adj: List<List<Int>> = [[] for _ in 0..n]
     var norm: List<(Int, Int)> = []
@@ -2870,7 +2862,7 @@ fn planar_walk(ps: List<Pt>, edges: List<(Int, Int)>) -> PlanarWalk:
 
 fn least_rotation(cyc: List<Int>) -> List<Int>:
     // `<` on lists is lexicographic; `best min= rot` would take the cellwise minimum.
-    with lint(unproven_list_index: allow, chmin_chmax_if: allow)
+    with lint(chmin_chmax_if: allow)
     let m = cyc.len
     var best: List<Int> = copy(cyc)
     for s in 1..m:
@@ -2906,7 +2898,6 @@ impl Ord for SweepSeg:
         if c == 0: s.id < t.id else: c > 0
 
 fn locate_planar(ps: List<Pt>, edges: List<(Int, Int)>, queries: List<Pt>) -> List<?Int>:
-    with lint(unproven_list_index: allow)
     let walk = planar_walk(ps, edges)
     let nf = walk.faces.len
     var outer = List.filled(nf, false)
@@ -2957,7 +2948,6 @@ fn sweep_below(
     walk: PlanarWalk,
     probes: List<Pt>,
 ) -> List<(?Int, Bool)>:
-    with lint(unproven_list_index: allow)
     var segs: List<(Int, Int)> = []
     for (u, v) in edges:
         if ps[u].x < ps[v].x: segs.push((u, v))
@@ -3008,12 +2998,10 @@ fn sweep_below(
 /// example: `delaunay([Pt(0, 0), Pt(4, 0), Pt(0, 4), Pt(1, 1)]) == [(0, 1, 3), (0, 3, 2), (1, 2, 3)]`
 /// example: `delaunay([Pt(0, 0), Pt(1, 1), Pt(2, 2)]) == []`
 pub fn delaunay<D>(pts: [D]Pt) -> List<(D, D, D)>:
-    with lint(unproven_list_index: allow)
     let keys = pts.keys.collect()
     [(keys[a], keys[b], keys[c]) for (a, b, c) in delaunay_idx([pts[k] for k in keys])]
 
 fn delaunay_idx(ps: List<Pt>) -> List<(Int, Int, Int)>:
-    with lint(unproven_list_index: allow)
     let n = ps.len
     var order = (0..n).collect()
     order.sort(by: i => (ps[i].x, ps[i].y))
@@ -3045,22 +3033,17 @@ struct DelQuads:
     s: List<Pt>
 
     fn r(self, e: Int) -> Int:
-        with lint(unproven_list_index: allow)
         return rot[rot[e]]
     fn dest(self, e: Int) -> Int:
-        with lint(unproven_list_index: allow)
         return p[rot[rot[e]]]
     fn prev(self, e: Int) -> Int:
-        with lint(unproven_list_index: allow)
         return rot[o[rot[e]]]
     fn next(self, e: Int) -> Int = self.prev(self.r(e))
     fn turn(self, a: Int, b: Int, c: Int) -> Int:
-        with lint(unproven_list_index: allow)
         let k = cross128_3(s[a], s[b], s[c])
         if k > I128(0): 1 else: if k < I128(0): -1 else: 0
 
     fn in_circle(self, q: Int, a: Int, b: Int, c: Int) -> Bool:
-        with lint(unproven_list_index: allow)
         let q2 = s[q].norm2_128
         let da = s[a].norm2_128 - q2
         let db = s[b].norm2_128 - q2
@@ -3072,7 +3055,6 @@ struct DelQuads:
         ) * db > I128(0)
 
     fn edge(mut self, a: Int, b: Int) -> Int:
-        with lint(unproven_list_index: allow)
         let e = rot.len
         for i in 0..4:
             rot.push(e + (i + 1) % 4)
@@ -3087,7 +3069,6 @@ struct DelQuads:
         e
 
     fn splice(mut self, a: Int, b: Int):
-        with lint(unproven_list_index: allow)
         let x = rot[o[a]]
         let y = rot[o[b]]
         let t = o[x]
@@ -3162,7 +3143,6 @@ struct DelQuads:
         (ra, rb)
 
     fn face(mut self, e: Int, mut queue: List<Int>) -> List<Int>:
-        with lint(unproven_list_index: allow)
         var f: List<Int> = []
         var c = e
         while true:
@@ -3187,7 +3167,6 @@ struct DelQuads:
 /// example: `voronoi_cells([Pt(-1, 0), Pt(1, 0)], 2.0)[1] == [Vec(0.0, -2.0), Vec(2.0, -2.0), Vec(2.0, 2.0), Vec(0.0, 2.0)]`
 /// example: `voronoi_cells([Pt(0, 0)], 1.0)[0] == [Vec(-1.0, -1.0), Vec(1.0, -1.0), Vec(1.0, 1.0), Vec(-1.0, 1.0)]`
 pub fn voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec>:
-    with lint(unproven_list_index: allow)
     assert bound > 0.0, "`voronoi_cells` needs `bound > 0.0`"
     let keys = D.collect()
     let cells = voronoi_idx([pts[k] for k in keys], bound)
@@ -3196,7 +3175,6 @@ pub fn voronoi_cells<D>(pts: [D]Pt, bound: F64) -> [D]List<Vec>:
     out
 
 fn voronoi_idx(ps: List<Pt>, bound: F64) -> List<List<Vec>>:
-    with lint(unproven_list_index: allow)
     let n = ps.len
     var near: List<List<Int>> = [[] for _ in 0..n]
     let tris = delaunay_idx(ps)

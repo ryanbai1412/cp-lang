@@ -1273,7 +1273,6 @@ pub fn power_sums<P>(xs: List<Mod<P>>, deg: Int) -> List<Mod<P>>:
     out
 
 fn fact_tables<P>(n: Int) -> (List<Mod<P>>, List<Mod<P>>):
-    with lint(unproven_list_index: allow)
     var fact = List.filled(n + 1, Mod<P>(1))
     for i in 1..=n: fact[i] = fact[i - 1] * Mod<P>(i)
     var inv_fact = List.filled(n + 1, Mod<P>(1))
@@ -1305,7 +1304,6 @@ pub fn stirling1_row<P>(n: Int) -> List<Mod<P>>:
 /// traps: when `n < 0`, or `n >= P` (it divides by factorials up to `n`)
 /// example: `type Z = Mod<998244353>; let s: List<Z> = stirling2_row(3); s == [Z(0), Z(1), Z(3), Z(1)]`
 pub fn stirling2_row<P>(n: Int) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     assert 0 <= n < P, "stirling2_row requires 0 <= n < P"
     if n == 0: return [Mod<P>(1)]
     let (_, inv_fact) = fact_tables<P>(n)
@@ -1374,7 +1372,6 @@ pub fn stirling2_col<P>(k: Int, n: Int) -> List<Mod<P>>:
 /// traps: when `n < 0`, or `n >= P`
 /// example: `type Z = Mod<998244353>; let b: List<Z> = bell_table(4); b == [Z(1), Z(1), Z(2), Z(5), Z(15)]`
 pub fn bell_table<P>(n: Int) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     assert 0 <= n < P, "bell_table requires 0 <= n < P"
     if n == 0: return [Mod<P>(1)]
     let (fact, inv_fact) = fact_tables<P>(n)
@@ -1391,7 +1388,6 @@ pub fn bell_table<P>(n: Int) -> List<Mod<P>>:
 /// traps: when `n < 0`, or `n + 1 >= P`
 /// example: `type Z = Mod<998244353>; let b: List<Z> = bernoulli_table(2); b == [Z(1), Z(-1) / Z(2), Z(1) / Z(6)]`
 pub fn bernoulli_table<P>(n: Int) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     assert n >= 0 and n + 1 < P, "bernoulli_table requires 0 <= n and n + 1 < P"
     if n == 0: return [Mod<P>(1)]
     let (fact, inv_fact) = fact_tables<P>(n + 1)
@@ -1407,7 +1403,6 @@ pub fn bernoulli_table<P>(n: Int) -> List<Mod<P>>:
 /// traps: when `n < 0`
 /// example: `type Z = Mod<998244353>; let p: List<Z> = partition_table(5); p == [Z(1), Z(1), Z(2), Z(3), Z(5), Z(7)]`
 pub fn partition_table<P>(n: Int) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     assert n >= 0, "partition_table requires n >= 0"
     if n == 0: return [Mod<P>(1)]
     var f = List.filled(n + 1, Mod<P>(0))

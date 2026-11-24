@@ -932,7 +932,6 @@ pub struct Compressed<D, T>(vals: [D]T):
 /// traps: never
 /// example: `let (domain C, xs) = compress([30, 10, 30]); xs.len == 2 and xs.index_of(30) == C.last!`
 pub fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>):
-    with lint(unproven_list_index: allow)
     var raw: List<T> = self.collect()
     raw.sort()
     var uniq: List<T> = []
@@ -955,7 +954,6 @@ pub fn compress<S: Seq, T: Ord>(self: S) -> (domain C, Compressed<C, T>):
 /// traps: when a cut lies outside the range
 /// example: `let (domain P, piece) = (0..10).pieces(cuts: [3, 7]); [piece[p].len for p in P] == [3, 4, 3]`
 pub fn pieces<D: Ord, S: Seq>(self: Range<D>, cuts: S) -> (domain P, [P]Range<D>):
-    with lint(unproven_list_index: allow)
     let a = self.l
     let b = self.r
     if self.is_empty:
@@ -3400,7 +3398,6 @@ pub fn maximal<D, T, St: Track<T>>(
     ok: St -> Bool,
     anchor: Anchor = Anchor.End,
 ) -> [D]Range<D>:
-    with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
     var out: [D]Range<D> = D.cuts.nth(0)..D.cuts.nth(0)
@@ -3447,7 +3444,6 @@ pub fn minimal<D, T, St: Track<T>>(
     ok: St -> Bool,
     anchor: Anchor = Anchor.End,
 ) -> [D]?Range<D>:
-    with lint(unproven_list_index: allow)
     let n = self.len
     var st = state
     var out: [D]?Range<D> = None

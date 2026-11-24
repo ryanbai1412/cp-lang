@@ -288,7 +288,6 @@ pub fn split_best<G, D, T: Ord>(
     range: G -> Range<D>,
     best: (G, Range<D>) -> (T, D),
 ) -> yields T:
-    with lint(unproven_list_index: allow)
     var g_list: List<G> = []
     var r_list: List<Range<D>> = []
     var p_list: List<D> = []

@@ -1188,7 +1188,6 @@ pub struct MergeSegs<D>:
         self.node(0, self.build(k, mid, hi))
 
     fn cat(mut self, a: Int, b: Int, lo: Int, hi: Int) -> Int:
-        with lint(unproven_list_index: allow)
         if a == 0: return b
         if b == 0 or lo + 1 == hi: return a
         let mid = (lo + hi) / 2
@@ -1197,7 +1196,6 @@ pub struct MergeSegs<D>:
         self.node(l, r)
 
     fn prune(mut self, u: Int, lo: Int, hi: Int, alive: D -> Bool) -> (Int, ?D):
-        with lint(unproven_list_index: allow)
         if u == 0: return (0, None)
         if lo + 1 == hi:
             let x = D.nth(lo)
@@ -1211,7 +1209,6 @@ pub struct MergeSegs<D>:
         if let x = b: (u, Some(x)) else: (0, None)
 
     fn first_from(self, u: Int, lo: Int, hi: Int, k: Int) -> ?Int:
-        with lint(unproven_list_index: allow)
         if u == 0 or hi <= k: return None
         if lo + 1 == hi: return Some(lo)
         let mid = (lo + hi) / 2

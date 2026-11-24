@@ -141,7 +141,6 @@ pub fn convolve<T: Add + Sub + Mul, O, R>(
     shape: ?Curved = None,
     cyclic: Bool = false,
 ) -> List<T>:
-    with lint(unproven_list_index: allow)
     let na = a.len
     let nb = b.len
     if cyclic:
@@ -270,7 +269,6 @@ fn residues<P>(_: Mod<P>, a: List<Int>, b: List<Int>) -> ?List<Mod<P>> =
 /// `convolve` over another semiring: `out[i + j]` folds `over.mul(a[i], b[j])` with `over.add`.
 /// `shape: Both` merges slopes (both inputs convex for `min`, concave for `max`, `mul` is `+`).
 fn semiring_convolve<T: Add + Sub, R>(a: List<T>, b: List<T>, over: R, shape: ?Curved) -> List<T>:
-    with lint(unproven_list_index: allow)
     if a.is_empty or b.is_empty: return []
     let add = Monoid<T>.of(over.add)
     let mul = Monoid<T>.of(over.mul)
@@ -541,13 +539,11 @@ pub fn subset_log<P>(a: List<Mod<P>>) -> List<Mod<P>>:
     ranked(a, false)
 
 fn window<P>(x: List<Mod<P>>, s: Int, w: Int) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     [x[s + t] for t in 0..min(w, x.len - s)]
 
 // Takes the windows rather than the whole lists: a whole `self` list beside `mut self.c` is copied
 // at the call.
 fn add_block<P>(mut c: List<Mod<P>>, xa: List<Mod<P>>, ya: List<Mod<P>>, base: Int, at: Int):
-    with lint(unproven_list_index: allow)
     if xa.is_empty or ya.is_empty: return
     let prod = times(xa, ya)
     while c.len < base + prod.len: c.push(Mod<P>(0))
@@ -556,7 +552,6 @@ fn add_block<P>(mut c: List<Mod<P>>, xa: List<Mod<P>>, ya: List<Mod<P>>, base: I
             if base + t >= at: c[base + t] += prod[t]
 
 fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     if a.is_empty or b.is_empty: return []
     let n = a.len + b.len - 1
     if min(a.len, b.len) <= 32:
@@ -580,7 +575,6 @@ fn times<P>(a: List<Mod<P>>, b: List<Mod<P>>) -> List<Mod<P>>:
     fa
 
 fn ranked<P>(a: List<Mod<P>>, exp: Bool) -> List<Mod<P>>:
-    with lint(unproven_list_index: allow)
     let n = a.len
     let k = ctz(n)
     var f = List.filled((k + 1) * n, Mod<P>(0))
