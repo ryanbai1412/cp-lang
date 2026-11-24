@@ -639,6 +639,26 @@ mod cli {
         assert_eq!(code, 0);
         assert_eq!(out.lines().count(), crate::LINTS.len());
         assert!(out.contains("L0412  domain_keyed_map"), "{out}");
+        let (code, out, _) = lint(&["--list", "--json"]);
+        assert_eq!(code, 0);
+        let json = cpl_json::parse(&out).unwrap();
+        let records = json.at(&["lints"]).as_array().unwrap();
+        assert_eq!(
+            records.len(),
+            crate::LINTS.len() + crate::CHECKER_RECORDS.len()
+        );
+        let codes: Vec<_> = records.iter().map(|r| r.at(&["code"]).as_str()).collect();
+        assert!(codes.windows(2).all(|w| w[0] <= w[1]), "not in code order");
+        let checker = records
+            .iter()
+            .find(|r| r.at(&["name"]).as_str() == Some("literal_slice_index"))
+            .unwrap();
+        assert!(checker.at(&["rule"]).is_null());
+        assert_eq!(
+            checker.at(&["dir"]).as_str(),
+            Some("spec/checker-lints/literal_slice_index")
+        );
+        assert!(checker.at(&["before"]).as_str().unwrap().contains("w["));
         let (code, out, _) = lint(&["--help"]);
         assert_eq!(code, 0);
         assert!(out.starts_with("usage: cpl lint"), "{out}");

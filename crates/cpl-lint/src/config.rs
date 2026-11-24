@@ -8,7 +8,7 @@
 //! memory_mb = 64          # the budget `memo_key_space` checks against
 //! ```
 
-use crate::checker::CHECKER_LINTS;
+use crate::CHECKER_LINTS;
 use crate::{any_lint_named, closest_lint, Group, Level, Lint};
 use cpl_diag::Code;
 use std::collections::HashMap;

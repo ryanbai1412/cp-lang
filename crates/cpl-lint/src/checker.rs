@@ -3,7 +3,7 @@
 //! names them, so `cp.toml [lints]` and `with lint(name: allow)` set
 //! their level and `cpl lint` reports them.
 
-use crate::{Allows, Config, Group, Level};
+use crate::{Allows, Config, Group, Level, CHECKER_LINTS};
 use cpl_diag::{Code, Diagnostic, Severity};
 
 /// One spec name of a lint the checker emits.
@@ -13,28 +13,13 @@ pub struct CheckerLint {
     pub group: Group,
 }
 
-const fn named(code: &'static str, name: &'static str, group: Group) -> CheckerLint {
+pub(crate) const fn named(code: &'static str, name: &'static str, group: Group) -> CheckerLint {
     CheckerLint {
         code: Code(code),
         name,
         group,
     }
 }
-
-/// Every name the spec gives a checker lint; L0608 has two.
-pub const CHECKER_LINTS: &[CheckerLint] = &[
-    named("L0601", "same_place_read_write", Group::Correctness),
-    named("L0602", "chain_walked_twice", Group::Perf),
-    named("L0603", "map_recomputed", Group::Perf),
-    named("L0604", "mut_generator_rewalked", Group::Perf),
-    named("L0605", "literal_slice_index", Group::Correctness),
-    named("L0606", "wide_array", Group::Perf),
-    named("L0607", "padding", Group::Perf),
-    named("L0608", "parens_on_o1", Group::Style),
-    named("L0608", "missing_parens", Group::Style),
-    named("L0609", "cache_field_written_outside", Group::Correctness),
-    named("L0610", "mut_param_unused", Group::Style),
-];
 
 pub(crate) fn checker_lint_named(name: &str) -> Option<&'static CheckerLint> {
     CHECKER_LINTS.iter().find(|lint| lint.name == name)

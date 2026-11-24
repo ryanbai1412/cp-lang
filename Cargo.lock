@@ -138,6 +138,7 @@ dependencies = [
  "cpl-diag",
  "cpl-fmt",
  "cpl-ir",
+ "cpl-json",
  "cpl-prover",
  "cpl-syntax",
 ]

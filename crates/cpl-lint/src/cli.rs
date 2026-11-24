@@ -23,7 +23,8 @@ options:
             a line per file with findings, then the total by lint
   --save    write the input a bound lint names (L0302, L0304, L0305, L0306,
             L0599) as a case in <file>.tests/, which `cpl test` runs
-  --list    print every lint with its code and default level
+  --list    print every lint with its code and default level; with --json,
+            every lint's and checker lint's record (spec/tools/cli.md)
   --json    print the files and their findings as `cpl check --json` does
 ";
 
@@ -91,27 +92,15 @@ pub fn run_with(
     let mut fix = false;
     let mut taste = false;
     let mut to_save = false;
+    let mut list = false;
     let mut paths: Vec<PathBuf> = Vec::new();
     for arg in args {
         match arg.as_str() {
             "--fix" => fix = true,
             "--taste" => taste = true,
-            "--json" if json.is_some() => as_json = true,
+            "--json" if json.is_some() || args.iter().any(|a| a == "--list") => as_json = true,
             "--save" if save.is_some() => to_save = true,
-            "--list" => {
-                for lint in LINTS {
-                    let _ = writeln!(
-                        stdout,
-                        "{}  {:<26} {:<11} {:<5}  {}",
-                        lint.code.0,
-                        lint.name,
-                        lint.group.as_str(),
-                        lint.default.as_str(),
-                        crate::plain_math(lint.summary)
-                    );
-                }
-                return 0;
-            }
+            "--list" => list = true,
             "-h" | "--help" => {
                 let _ = write!(stdout, "{USAGE}");
                 return 0;
@@ -123,6 +112,24 @@ pub fn run_with(
             }
             path => paths.push(PathBuf::from(path)),
         }
+    }
+    if list {
+        if as_json {
+            let _ = writeln!(stdout, "{}", list_json());
+            return 0;
+        }
+        for lint in LINTS {
+            let _ = writeln!(
+                stdout,
+                "{}  {:<26} {:<11} {:<5}  {}",
+                lint.code.0,
+                lint.name,
+                lint.group.as_str(),
+                lint.default.as_str(),
+                crate::plain_math(lint.summary)
+            );
+        }
+        return 0;
     }
     if paths.is_empty() {
         paths.push(PathBuf::from("."));
@@ -382,4 +389,39 @@ fn collect(path: &Path, files: &mut Vec<PathBuf>) -> std::io::Result<()> {
         }
     }
     Ok(())
+}
+
+/// `cpl lint --list --json`: `{"lints": [...]}`, every record in
+/// `spec/lints/` and `spec/checker-lints/` in code order, keyed as the
+/// record's `lint.toml` keys and file names.
+pub fn list_json() -> String {
+    use cpl_json::{obj, Value};
+    let text = |s: &str| Value::String(s.to_string());
+    let maybe = |s: Option<&str>| s.map_or(Value::Null, text);
+    let mut all: Vec<&crate::Lint> = LINTS.iter().chain(crate::CHECKER_RECORDS).collect();
+    all.sort_by_key(|l| (l.code.0, l.name));
+    let lints = all
+        .into_iter()
+        .map(|l| {
+            obj([
+                ("code", text(l.code.0)),
+                ("name", text(l.name)),
+                ("dir", text(l.dir)),
+                ("level", text(l.default.as_str())),
+                ("group", text(l.group.as_str())),
+                ("title", text(l.title)),
+                ("summary", text(l.summary)),
+                ("rule", maybe(l.rule)),
+                ("no_fix", maybe(l.no_fix)),
+                ("removed", maybe(l.removed)),
+                ("family", maybe(l.family)),
+                ("practice", maybe(l.practice)),
+                ("explain", text(l.explanation.trim_end())),
+                ("before", text(l.trigger.trim_end())),
+                ("after", text(l.fix.trim_end())),
+                ("near_miss", text(l.near_miss.trim_end())),
+            ])
+        })
+        .collect();
+    cpl_json::to_string(&obj([("lints", Value::Array(lints))]))
 }

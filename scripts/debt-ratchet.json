@@ -75,6 +75,7 @@
     "cpl-ir -> cpl-syntax",
     "cpl-lint -> cpl-check",
     "cpl-lint -> cpl-diag",
+    "cpl-lint -> cpl-json",
     "cpl-lint -> cpl-prover",
     "cpl-lint -> cpl-syntax",
     "cpl-lsp -> cpl-check",

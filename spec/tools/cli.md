@@ -98,6 +98,12 @@ was there already), the `tests` folder and its `sample_count`.
 `cpl migrate --json` prints `{"files": [{"path", "changed", "applied",
 "diagnostics"}]}`. `cpl lint --json` prints `{"files": [{"path", "ok",
 "diagnostics"}]}`, as `cpl check --json` does, the diagnostics its lints.
+`cpl lint --list --json` prints `{"lints": [{"code", "name", "dir",
+"level", "group", "title", "summary", "rule", "no_fix", "removed",
+"family", "practice", "explain", "before", "after", "near_miss"}]}`: every
+record in `spec/lints/` and `spec/checker-lints/` in code order, keyed as
+its `lint.toml` and files are, `null` for a key the record leaves out (a
+checker lint has no `rule`). The site's lint pages read it.
 `cpl run --format json` prints `{"stdout", "time_ms", "values": [{"line",
 "name", "value"}]}`: what the program printed, how long it ran and the
 top-level `values` it ended with; with `--trace` it prints the trace

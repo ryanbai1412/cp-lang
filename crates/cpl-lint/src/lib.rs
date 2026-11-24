@@ -40,7 +40,7 @@ mod walk;
 
 pub mod cli;
 
-pub use checker::{at_levels, checked_analysis, Checked, CheckerLint, CHECKER_LINTS};
+pub use checker::{at_levels, checked_analysis, Checked, CheckerLint};
 #[cfg(test)]
 pub(crate) use checker::{checked, checker_lints};
 pub use config::{Config, ConfigError};
@@ -132,13 +132,15 @@ impl Group {
 pub struct Lint {
     pub code: Code,
     pub name: &'static str,
+    /// Its record's directory, `spec/lints/<name>`; empty for a library's lint.
+    pub dir: &'static str,
     pub default: Level,
     pub group: Group,
     pub title: &'static str,
     pub summary: &'static str,
     /// The checklist rule the lint enforces, `<topic>/R<n>`, defined in
-    /// `handbook/guidelines/<topic>-checklist.md`.
-    pub rule: &'static str,
+    /// `handbook/guidelines/<topic>-checklist.md`; `None` for a checker lint.
+    pub rule: Option<&'static str>,
     /// Why `cpl lint --fix` (and the editor's quick fix) has no rewrite for
     /// it; `None` when it has one.
     /// The std call it names replaces its span whole, so a finding inside
@@ -148,6 +150,10 @@ pub struct Lint {
     /// The checker error `trigger` shows because it uses a removed spelling;
     /// `None` when it passes `cpl check`.
     pub removed: Option<&'static str>,
+    /// Where `spec/idioms/lints.md` places it, `S.seq: building`.
+    pub family: Option<&'static str>,
+    /// The practices of `spec/idioms/principles.md` it serves, `#2 #7`.
+    pub practice: Option<&'static str>,
     pub explanation: &'static str,
     pub trigger: &'static str,
     pub fix: &'static str,

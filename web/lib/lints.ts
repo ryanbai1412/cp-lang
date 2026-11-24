@@ -1,13 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-// Lint pages are generated from lint-fmt's records in spec/lints/<name>/, the
-// same files crates/cpl-lint/build.rs builds the registry from, and from the
-// checker's lints' records in spec/checker-lints/<name>/ (L06xx).
+// Lint pages come from the compiler's own registry, `cpl lint --list --json`
+// (spec/tools/cli.md): every record of spec/lints/ and spec/checker-lints/.
 const repoRoot = join(process.cwd(), '..');
-const roots = ['spec/lints', 'spec/checker-lints'];
 
 export const groups = {
   correctness: {
@@ -50,16 +48,7 @@ export type Lint = {
   inputs: { before: string; after: string; nearMiss: string };
 };
 
-function toml(text: string): Record<string, string> {
-  const out: Record<string, string> = {};
-  for (const line of text.split('\n')) {
-    const m = /^(\w+)\s*=\s*("(?:[^"\\]|\\.)*")\s*$/.exec(line);
-    if (m) out[m[1]] = JSON.parse(m[2]);
-  }
-  return out;
-}
-
-// Each lint record's lint.toml names its family (`family = "S.seq: reductions"`,
+// Each lint record names its family (`family = "S.seq: reductions"`,
 // a subfamily of the catalog heading `## S. ...`) and the practices it serves
 // (`practice = "#2 #7"`), titled in spec/idioms/principles.md.
 const idioms = join(process.cwd(), '../spec/idioms');
@@ -98,47 +87,51 @@ function runs(src: string, input: string): boolean {
   return spawnSync(cpl, ['check', file], { encoding: 'utf8' }).status === 0;
 }
 
+/** One record of `cpl lint --list --json`. */
+type Record = {
+  code: string;
+  name: string;
+  dir: string;
+  level: Lint['level'];
+  group: Group;
+  title: string;
+  summary: string;
+  family: string | null;
+  practice: string | null;
+  explain: string;
+  before: string;
+  after: string;
+  near_miss: string;
+};
+
 export function lints(): Lint[] {
+  if (cache) return cache;
   const families = headings();
   const byNumber = new Map(principles().map((p) => [p.n, p]));
-  cache ??= roots
-    .flatMap((root) =>
-      existsSync(join(repoRoot, root))
-        ? readdirSync(join(repoRoot, root), { withFileTypes: true }).map((e) => ({ e, root }))
-        : [],
-    )
-    .filter(({ e, root }) => e.isDirectory() && existsSync(join(repoRoot, root, e.name, 'lint.toml')))
-    .map(({ e, root }) => {
-      const at = join(repoRoot, root, e.name);
-      const file = (f: string) => (existsSync(join(at, f)) ? readFileSync(join(at, f), 'utf8').trimEnd() : '');
-      const t = toml(file('lint.toml'));
-      return {
-        name: e.name,
-        dir: `${root}/${e.name}`,
-        code: t.code,
-        level: t.level as Lint['level'],
-        group: t.group as Group,
-        title: t.title,
-        summary: t.summary,
-        practice: t.practice,
-        ...placed(t.family, families),
-        principles: [...(t.practice ?? '').matchAll(/#(\d+)/g)].flatMap((m) => byNumber.get(Number(m[1])) ?? []),
-        explain: file('explain.md'),
-        before: file('before.cp'),
-        after: file('after.cp'),
-        nearMiss: file('near_miss.cp'),
-        inputs: {
-          before: sampled[`${root}/${e.name}/before.cp`] ?? '',
-          after: sampled[`${root}/${e.name}/after.cp`] ?? '',
-          nearMiss: sampled[`${root}/${e.name}/near_miss.cp`] ?? '',
-        },
-        runs: {
-          before: runs(file('before.cp'), sampled[`${root}/${e.name}/before.cp`] ?? ''),
-          after: runs(file('after.cp'), sampled[`${root}/${e.name}/after.cp`] ?? ''),
-          nearMiss: runs(file('near_miss.cp'), sampled[`${root}/${e.name}/near_miss.cp`] ?? ''),
-        },
-      };
-    })
-    .sort((a, b) => a.code.localeCompare(b.code));
+  const listed = spawnSync(cpl, ['lint', '--list', '--json'], { encoding: 'utf8', maxBuffer: 64 << 20 });
+  if (listed.status !== 0) throw new Error(`lints: \`${cpl} lint --list --json\` failed: ${listed.stderr}`);
+  const input = (r: Record, f: string) => sampled[`${r.dir}/${f}`] ?? '';
+  cache = (JSON.parse(listed.stdout).lints as Record[]).map((r) => ({
+    name: r.name,
+    dir: r.dir,
+    code: r.code,
+    level: r.level,
+    group: r.group,
+    title: r.title,
+    summary: r.summary,
+    practice: r.practice ?? undefined,
+    ...placed(r.family ?? undefined, families),
+    principles: [...(r.practice ?? '').matchAll(/#(\d+)/g)].flatMap((m) => byNumber.get(Number(m[1])) ?? []),
+    explain: r.explain,
+    before: r.before,
+    after: r.after,
+    nearMiss: r.near_miss,
+    inputs: { before: input(r, 'before.cp'), after: input(r, 'after.cp'), nearMiss: input(r, 'near_miss.cp') },
+    runs: {
+      before: runs(r.before, input(r, 'before.cp')),
+      after: runs(r.after, input(r, 'after.cp')),
+      nearMiss: runs(r.near_miss, input(r, 'near_miss.cp')),
+    },
+  }));
   return cache;
 }

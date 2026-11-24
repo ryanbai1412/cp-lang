@@ -42,7 +42,7 @@ pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut S
                     cpl_json::escape_string(lint.trigger),
                     cpl_json::escape_string(lint.fix),
                     cpl_json::escape_string(lint.name),
-                    cpl_json::escape_string(lint.rule),
+                    lint.rule.map_or("null".to_string(), cpl_json::escape_string),
                 );
             }
             let _ = writeln!(stdout, "\n]");
@@ -78,15 +78,13 @@ pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut S
                 let _ = writeln!(stdout, "\n{text}");
                 let _ = writeln!(stdout, "\nTrigger:\n{}", lint.trigger.trim_end());
                 let _ = writeln!(stdout, "\nFix:\n{}", lint.fix.trim_end());
-                let topic = lint
-                    .rule
-                    .split_once('/')
-                    .map_or(lint.rule, |(topic, _)| topic);
-                let _ = writeln!(
-                    stdout,
-                    "\nRule: {} (handbook/guidelines/{topic}-checklist.md)",
-                    lint.rule
-                );
+                if let Some(rule) = lint.rule {
+                    let topic = rule.split_once('/').map_or(rule, |(topic, _)| topic);
+                    let _ = writeln!(
+                        stdout,
+                        "\nRule: {rule} (handbook/guidelines/{topic}-checklist.md)"
+                    );
+                }
                 return 0;
             }
             if explain_library_lint(code, stdout) {
