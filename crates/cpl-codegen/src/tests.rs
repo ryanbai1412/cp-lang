@@ -750,12 +750,13 @@ fn a_printed_sequence_streams_into_out() {
 }
 
 #[test]
-fn a_program_with_lists_keeps_its_freed_heap() {
+fn a_program_that_sorts_keeps_its_freed_heap() {
     let cpp = cpp(concat!(
         "let n: Int = read()\n",
         "for r in 0..n:\n",
-        "    let v = [0..n] i => i * r\n",
-        "    print(v[n - 1])\n",
+        "    var v = [0..n] i => (i * r) % 7\n",
+        "    v.sort(by: x => -x)\n",
+        "    print(v[0])\n",
     ));
     assert!(cpp.contains("#include <malloc.h>\n"), "{cpp}");
     assert!(
@@ -776,7 +777,7 @@ fn the_program_runs_with_the_profile_stack() {
         cpp.contains("pthread_attr_setstacksize") && !cpp.contains("CreateThread"),
         "{cpp}"
     );
-    // One thread, so glibc keeps malloc's single-thread fast path; no list,
+    // One thread, so glibc keeps malloc's single-thread fast path; no sort,
     // so no heap to keep.
     assert!(!cpp.contains("mallopt"), "{cpp}");
     let mut db = cpl_check::Session::new();

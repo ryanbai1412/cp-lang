@@ -1045,7 +1045,17 @@ impl<'p> Emitter<'p> {
                 .collect();
             *text = crate::runtime::shake::without(text, &here);
         }
-        crate::runtime::shake::without(&out, &unused)
+        let out = crate::runtime::shake::without(&out, &unused);
+        // Kept for a sort's merge buffer: once the sort is shaken out, so is it.
+        if out.contains(KEEP_HEAP) && !out.contains("merge_sort(") {
+            for (_, name, text) in &mut self.chunks {
+                if name == "thread stack" {
+                    *text = without_keep_heap(text);
+                }
+            }
+            return without_keep_heap(&out);
+        }
+        out
     }
 
     fn write_all(&mut self, name: &str, source: Option<&str>) -> String {
@@ -1763,11 +1773,11 @@ impl<'p> Emitter<'p> {
                 runner.push_str(
                     &THREAD_MAIN.replace("STACK_BYTES", &format!("(size_t){} << 20", bytes >> 20)),
                 );
-                // A program with lists frees and rebuilds them; one without
-                // keeps the bytes.
-                let heap = out.contains("std::vector");
+                // A stable sort allocates its merge buffer anew on each call;
+                // a program that never sorts keeps the bytes.
+                let heap = self.used.contains("sorted");
                 runner = runner
-                    .replace("MALLOC_H", if heap { "#include <malloc.h>\n" } else { "" })
+                    .replace("MALLOC_H", if heap { MALLOC_H } else { "" })
                     .replace("KEEP_HEAP", if heap { KEEP_HEAP } else { "" });
                 out.push_str(&runner);
                 self.chunks
@@ -1834,11 +1844,17 @@ static bool cpl_on(size_t n) {
 }
 ";
 
-/// glibc trims the heap's free top back to the OS, so a buffer freed and
-/// built again each round faults its pages in anew: keep them instead.
+/// glibc trims the heap's free top back to the OS, so a sort's merge buffer,
+/// freed and built again on every call, faults its pages in anew: keep them.
 const KEEP_HEAP: &str = "    // Freed heap is kept, not trimmed and faulted back in.
     mallopt(M_TRIM_THRESHOLD, -1), mallopt(M_MMAP_THRESHOLD, 32 << 20);
 ";
+
+fn without_keep_heap(text: &str) -> String {
+    text.replacen(KEEP_HEAP, "", 1).replacen(MALLOC_H, "", 1)
+}
+
+const MALLOC_H: &str = "#include <malloc.h>\n";
 
 const POSIX_THREAD: &str = "
 // ASan follows a thread's stack, not one `setcontext` switched to.
