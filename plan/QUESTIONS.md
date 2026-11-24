@@ -116,3 +116,11 @@ Answered 2026-11-22 by the recommendation: decision 267, yes, behaviour-free mov
 
 ### tech-debt: how strict are the debt ratchets?
 Answered 2026-11-22 by the recommendation: decision 268, hard-fail; a named `--update` plus a decision raises one.
+
+### stdlib: Q6 folds of an identity-less op are `?T` only through the op's type (needs compiler)
+`lib/ops-ranges.md` §2 says an `Op` without an identity still builds every structure and its folds return `?T` (`op.opt()`); spec confirmed `SegTree.all` is included. But `SegTree.new<M>(op: M, a: [D]T)` returns `SegTree<D, T, F>`, whose `fold`/`all` return `T`; making them `?T` only when `M` has no identity means the return type depends on the op's kind, and fns don't overload (R07.1.7). Today `SegTree(f.opt(), a.map(Some))` works (cac7b89df); `SegTree(f, a)` fails in `Monoid.of` (std-segtree/closure-op-picks-index).
+- (a) An associated type on the op: `trait Op<T>: type Fold`, with `Fold = T` for anything `Monoid.of` accepts and `Fold = ?T` otherwise; `SegTree<D, T, F>` stores `M.Fold` cells and its folds return `M.Fold`. Same associated-type mechanism as Q5 (a). Needs: associated types chosen by impl, and an impl "for every op without `zero`" (or the checker picking `opt()` when `Monoid.of` has no identity).
+- (b) Keep folds `T` and require `f.opt()` plus `Some` cells at the call; reverse the §2 sentence.
+Recommendation: (a); it's the mechanism Q4 and Q5 need too, so the three land together.
+How to reverse it: drop the associated type; folds return `T`.
+Meanwhile: `op.opt()` is the spelling; closure-op-picks-index stays known-failing.
