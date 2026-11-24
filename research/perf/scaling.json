@@ -4376,6 +4376,254 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/geometry_poly.cp::geometry.area2": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.area2",
+   "measured": 3.89,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.area2_128": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.area2_128",
+   "measured": 3.81,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.circle_polygon_area": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.circle_polygon_area",
+   "measured": 4.18,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.convex_hull": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "geometry.convex_hull",
+   "measured": 4.37,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.convex_hull_idx": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "geometry.convex_hull_idx",
+   "measured": 4.43,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.convex_polygon_intersect": {
+   "cost": "(\\lvert a \\rvert + \\lvert b \\rvert) \\log(\\lvert a \\rvert + \\lvert b \\rvert)",
+   "documented": 4.67,
+   "fn": "geometry.convex_polygon_intersect",
+   "measured": 4.83,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.convex_polygons_overlap": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.convex_polygons_overlap",
+   "measured": 4.13,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.diameter2": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.diameter2",
+   "measured": 4.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.farthest_pair": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "geometry.farthest_pair",
+   "measured": 4.24,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.half_plane_intersect": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "geometry.half_plane_intersect",
+   "measured": 4.62,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.hull_extreme": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "geometry.hull_extreme",
+   "measured": 1.08,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.hull_line_intersect": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "geometry.hull_line_intersect",
+   "measured": 1.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.hull_tangents": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "geometry.hull_tangents",
+   "measured": 1.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.hull_width": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.hull_width",
+   "measured": 4.14,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.locate": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.locate",
+   "measured": 3.84,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.locate_convex": {
+   "cost": "\\log n",
+   "documented": 1.18,
+   "fn": "geometry.locate_convex",
+   "measured": 1.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.lower_hull": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.lower_hull",
+   "measured": 4.26,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.lower_hull_idx": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.lower_hull_idx",
+   "measured": 4.1,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.min_bounding_box": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.min_bounding_box",
+   "measured": 4.01,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.minkowski_lower": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.minkowski_lower",
+   "measured": 4.05,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.minkowski_sum": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.minkowski_sum",
+   "measured": 4.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.minkowski_upper": {
+   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "geometry.minkowski_upper",
+   "measured": 4.22,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.pick_boundary": {
+   "cost": "n \\log \\mathit{max\\_coord}",
+   "documented": 4.73,
+   "fn": "geometry.pick_boundary",
+   "measured": 4.12,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.pick_interior": {
+   "cost": "n \\log \\mathit{max\\_coord}",
+   "documented": 4.73,
+   "fn": "geometry.pick_interior",
+   "measured": 4.11,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.polygon_area": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.polygon_area",
+   "measured": 3.9,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.polygon_centroid": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.polygon_centroid",
+   "measured": 3.93,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.polygon_cut": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.polygon_cut",
+   "measured": 4.07,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.polygon_kernel": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "geometry.polygon_kernel",
+   "measured": 4.73,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.polygon_triangulate": {
+   "cost": "n \\log n",
+   "documented": 4.73,
+   "fn": "geometry.polygon_triangulate",
+   "measured": 4.37,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.upper_hull": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.upper_hull",
+   "measured": 4.28,
+   "n": 2048,
+   "ok": true
+  },
+  "bench/scaling/geometry_poly.cp::geometry.upper_hull_idx": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "geometry.upper_hull_idx",
+   "measured": 4.02,
+   "n": 2048,
+   "ok": true
+  },
   "bench/scaling/graph.cp::graph.Graph.directed": {
    "cost": "n + m",
    "documented": 4.0,
@@ -8804,7 +9052,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "geometry.OnlineHull.add",
-   "measured": 1.24,
+   "measured": 1.23,
    "n": 16384,
    "ok": true
   },
@@ -8812,7 +9060,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "geometry.OnlineHull.area2",
-   "measured": 0.99,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -8820,7 +9068,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "geometry.OnlineHull.clear",
-   "measured": 0.99,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -8828,7 +9076,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "geometry.OnlineHull.extreme",
-   "measured": 0.84,
+   "measured": 0.87,
    "n": 16384,
    "ok": true
   },
@@ -8844,7 +9092,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "geometry.OnlineHull.iter",
-   "measured": 5.04,
+   "measured": 5.02,
    "n": 16384,
    "ok": true
   },
@@ -8852,7 +9100,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "geometry.OnlineHull.len",
-   "measured": 1.04,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -8860,7 +9108,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "geometry.OnlineHull.locate",
-   "measured": 1.3,
+   "measured": 1.26,
    "n": 16384,
    "ok": true
   },
@@ -8868,7 +9116,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "geometry.OnlineHull.new",
-   "measured": 1.0,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -8876,7 +9124,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "geometry.OnlineHull.vertices",
-   "measured": 5.98,
+   "measured": 5.82,
    "n": 16384,
    "ok": true
   },
@@ -16004,49 +16252,18 @@
   "geometry.PointSet.remove",
   "geometry.any_segments_meet",
   "geometry.any_segments_meet_idx",
-  "geometry.area2",
-  "geometry.area2_128",
-  "geometry.circle_polygon_area",
   "geometry.circles_union_area",
   "geometry.closest_pair",
   "geometry.closest_pair2",
-  "geometry.convex_hull",
   "geometry.convex_hull_3d",
   "geometry.convex_hull_3d_idx",
-  "geometry.convex_hull_idx",
-  "geometry.convex_polygon_intersect",
-  "geometry.convex_polygons_overlap",
   "geometry.delaunay",
-  "geometry.diameter2",
-  "geometry.farthest_pair",
-  "geometry.half_plane_intersect",
-  "geometry.hull_extreme",
-  "geometry.hull_line_intersect",
-  "geometry.hull_tangents",
-  "geometry.hull_width",
-  "geometry.locate",
-  "geometry.locate_convex",
-  "geometry.lower_hull",
-  "geometry.lower_hull_idx",
   "geometry.manhattan_mst",
-  "geometry.min_bounding_box",
   "geometry.min_enclosing_circle",
-  "geometry.minkowski_lower",
-  "geometry.minkowski_sum",
-  "geometry.minkowski_upper",
-  "geometry.pick_boundary",
-  "geometry.pick_interior",
   "geometry.planar_faces",
   "geometry.point_location_planar",
-  "geometry.polygon_area",
-  "geometry.polygon_centroid",
-  "geometry.polygon_cut",
-  "geometry.polygon_kernel",
-  "geometry.polygon_triangulate",
   "geometry.polyhedron_volume6",
   "geometry.rects_union_area",
-  "geometry.upper_hull",
-  "geometry.upper_hull_idx",
   "geometry.voronoi_cells",
   "grid.GridCols.at",
   "grid.GridCols.each",
