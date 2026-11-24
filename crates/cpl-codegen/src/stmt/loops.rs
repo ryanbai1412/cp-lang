@@ -91,7 +91,8 @@ impl<'p> Emitter<'p> {
         let sep = if call.is_empty() { "" } else { ", " };
         // A body that never stops says so in its type, so the form's
         // `if (int cpl_r = cpl_f(..))` folds away even where it isn't inlined.
-        let go = if cpl_ir::pushed::stops(body) {
+        // Inside a pusher, a yield forwards the outer callback's stop.
+        let go = if self.pushing.is_some() || cpl_ir::pushed::stops(body) {
             "int"
         } else {
             "std::integral_constant<int, 0>"
