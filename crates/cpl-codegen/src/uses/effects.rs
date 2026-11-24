@@ -13,7 +13,6 @@ use crate::lend::{whole_reads, Tail};
 use crate::walk;
 
 pub(crate) use cpl_ir::effects::{in_domain, known_where, pure_path, trap_free_stmts, Effects};
-/// The locals and globals code assigns and the fns it calls by name.
 
 /// [`cpl_ir::effects::pure_fns`], knowing the closures `devirt` resolves.
 pub(crate) fn pure_fns(program: &Program, devirt: &Devirt, traps: bool) -> BTreeSet<usize> {
