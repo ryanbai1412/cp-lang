@@ -11,6 +11,7 @@
 //   label arrives must take it. Original LCAs are kept, and the shape never matters, only c and
 //   the deadlines, so a DP over the Subset of pending deadlines, run from the last label
 //   back, counts the ways: O(m 2^k k) per test (k = 0 leaves one state and a product).
+//   A state's terms add as plain Int residue products (each below 7e13) and reduce once.
 // original: corpus/submissions/5723059.cpp
 // Bounds: tc_id: 0..=20; tcs: 1..=15; n: 1..=30000; m: 0..=3000; k: 0..=10; parents: 1..=n
 type Z = Mod<1_000_000_007>
@@ -35,9 +36,9 @@ for _ in 0..tcs:
                 next[wait] = ways[later]
                 continue
             let c = n + i + wait.len
-            var w = Z(2 * c - 1) * ways[later]
-            if let first = Slot.first: w += Z(c - 1) * ways[later.with(first)]
-            for b in wait: w += ways[wait.without(b).shifted(1)]
-            next[wait] = w
+            var w = (2 * c - 1) * ways[later].v
+            if let first = Slot.first: w += (c - 1) * ways[later.with(first)].v
+            for b in wait: w += ways[wait.without(b).shifted(1)].v
+            next[wait] = Z.new(w)
         ways = next
     print(ways[Subset<Slot>.empty])
