@@ -32,6 +32,22 @@ fn run(f: Tag, c: Cell) -> Cell:
     let hist = c.hist + p.seen.scale(abs(c.val))
     if let s = f.set: (s.val, hist + s.hist) else: (abs(c.val) * p.to, hist)
 
+fn step(mut p: Path, g: Tag):
+    let h = path(g, p.to)
+    p.to = h.to
+    p.seen = p.seen + h.seen
+
+// `then(g, f)` in place, field by field: the tag is about 200 bytes, so rebuilding it on each
+// composition dominated the run.
+fn then_in(mut f: Tag, g: Tag):
+    if let s = f.set:
+        f.set = run(g, s)
+        return
+    step(mut f.neg, g)
+    step(mut f.zero, g)
+    step(mut f.pos, g)
+    f.set = g.set
+
 fn then(g: Tag, f: Tag) -> Tag:
     if let s = f.set: return (f.neg, f.zero, f.pos, run(g, s))
     fn via(p: Path) -> Path = (path(g, p.to).to, p.seen + path(g, p.to).seen)
@@ -55,6 +71,7 @@ var st = SegTree<I, Cell, Tag>(
         compose: (g, f) => then(g, f),
         apply: (f, c, _) => run(f, c),
         over: unfolded,
+        compose_in: (mut f, g) => then_in(mut f, g),
     ),
 )
 var last: U64 = 0

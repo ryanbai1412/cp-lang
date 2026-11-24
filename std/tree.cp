@@ -2481,7 +2481,7 @@ pub struct LazyLinkCut<V, T, F>(act: Action<T, F>):
     fn put(mut self, x: V, f: F):
         val[x] = act.apply(f, val[x], 1)
         agg[x] = act.apply(f, agg[x], cnt[x])
-        lz[x] = act.compose(f, lz[x])
+        act.compose_onto(mut lz[x], f)
 
     fn push(mut self, x: V):
         if flip[x]:
@@ -3639,7 +3639,7 @@ pub struct LazyEulerTourTree<V, T, F>(act: Action<T, F>):
             let v = V.nth(x)
             val[v] = act.apply(f, val[v], 1)
         agg[x] = act.apply(f, agg[x], cnt[x])
-        lz[x] = act.compose(f, lz[x])
+        act.compose_onto(mut lz[x], f)
 
     fn push(mut self, x: Int):
         let f = lz[x]

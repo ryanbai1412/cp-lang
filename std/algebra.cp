@@ -117,6 +117,9 @@ fn unreversed<T>(x: T) -> T:
 ///   `apply(f, val, span)` is the same for every `val`, as with assignment. A `SegTree` fold
 ///   then answers from the first such tag it meets instead of reading below it. Leave it out
 ///   (the default) when no tag does; `id` never does.
+/// - `compose_in(mut old_f, new_f)`, when given, sets `old_f` to `compose(new_f, old_f)` in place.
+///   Trees compose a pending tag with it (`compose_onto`), so a large tag is updated field by
+///   field instead of rebuilt and copied on every update.
 ///
 /// The positional form `Action(id, compose, apply, over: op)` is the same call. A flipped
 /// `compose` still type-checks, so check a hand-written action once with
@@ -128,12 +131,14 @@ pub struct Action<T, F>(
     pub over: Monoid<T>,
     pub commutes: Bool = false,
     pub replaces: ?(F -> Bool) = None,
+    pub compose_in: ?((mut F, F) -> ()) = None,
 ):
     law ident(a: T) = apply(id, a, 1) == a
     law replace(f: F, a: T, b: T) = not (replaces ?? (_ => false))(f) or apply(f, a, 1) == apply(f, b, 1)
     law commute(f: F, g: F, a: T) = not commutes or apply(compose(f, g), a, 1) == apply(compose(g, f), a, 1)
     // `compose(f, g)` applies `g` first, then `f`.
     law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
+    law composes_in_place(f: F, g: F, a: T) = apply(self.composed_in(f, g), a, 1) == apply(compose(f, g), a, 1)
 
     /// A lazy action of tags `F` on values `T` folded with `over`.
     ///
@@ -153,8 +158,22 @@ pub struct Action<T, F>(
         over: M = (+),
         commutes: Bool = false,
         replaces: ?(F -> Bool) = None,
+        compose_in: ?((mut F, F) -> ()) = None,
     ) -> Action<T, F>:
-        Action(id, compose, apply, Monoid<T>.of(over), commutes, replaces)
+        Action(id, compose, apply, Monoid<T>.of(over), commutes, replaces, compose_in)
+
+    /// Set `old` to `compose(new, old)`: in place through `compose_in` when given.
+    ///
+    /// cost: one `compose_in` or `compose` call
+    /// traps: never
+    /// example: `var f = 2; Action<Int, Int>(apply: (d, x, span) => x + d * span).compose_onto(mut f, 5); f == 7`
+    pub fn compose_onto(self, mut old: F, new: F):
+        if let c = compose_in: c(mut old, new) else: old = compose(new, old)
+
+    fn composed_in(self, new: F, old: F) -> F:
+        var f = old
+        self.compose_onto(mut f, new)
+        f
 
     /// Resolve a stock action (`add`, `assign`, `affine`, `flip`) or an `Action` against fold `op`.
     ///
@@ -891,4 +910,24 @@ impl Show for Each<Ms>:
         var k = 0
         for _ in fields(e.ms): k += 1
         "each of {k} ops"
+
+fn affine_onto(mut old: (Int, Int), new: (Int, Int)):
+    old = (new.0 * old.0, new.0 * old.1 + new.1)
+
+@test
+fn compose_onto_matches_compose_with_and_without_compose_in():
+    let fs = [(1, 0), (2, 3), (-1, 5), (0, 7)]
+    let comp = (nf: (Int, Int), of: (Int, Int)) => (nf.0 * of.0, nf.0 * of.1 + nf.1)
+    let app = (f: (Int, Int), v: Int, span: Int) => f.0 * v + f.1 * span
+    let good = Action<Int, (Int, Int)>(id: (1, 0), compose: comp, apply: app, compose_in: (mut o, nf) => affine_onto(mut o, nf))
+    let plain = Action<Int, (Int, Int)>(id: (1, 0), compose: comp, apply: app)
+    assert laws_hold(good, T: [-3, 0, 4], F: fs)
+    for f in fs:
+        for g in fs:
+            var h = g
+            good.compose_onto(mut h, f)
+            assert h == comp(f, g)
+            var k = g
+            plain.compose_onto(mut k, f)
+            assert k == comp(f, g)
 

@@ -302,10 +302,19 @@ pub struct Action<T, F>(
     apply: (F, T, Int) -> T,
     over: Monoid<T>,
     commutes: Bool = false,
+    replaces: ?(F -> Bool) = None,
+    compose_in: ?((mut F, F) -> ()) = None,
 )
 // hom:  apply(f, over.op(a, b), 2) == over.op(apply(f, a, 1), apply(f, b, 1))
 // comp: apply(compose(g, f), x, 1) == apply(g, apply(f, x, 1), 1)
+// in:   compose_in(mut f, g) leaves f acting as compose(g, f)
 ```
+
+`compose_in`, when given, composes a new tag onto a pending one in place;
+`act.compose_onto(mut old, new)` uses it and falls back to `old = compose(new,
+old)`. Every tree that keeps pending tags (`SegTree`, the link-cut and splay
+trees) composes through `compose_onto`, so a tag of many fields is updated
+field by field instead of rebuilt and copied on each update.
 
 **Stock actions are generic over the fold op**, so one name works on every
 fold it makes sense for, and the pairing is checked:

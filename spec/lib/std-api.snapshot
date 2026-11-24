@@ -1,4 +1,5 @@
-std/algebra.cp: Action.new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+), commutes: Bool = false) -> Action<T, F>
+std/algebra.cp: Action.compose_onto(self, mut old: F, new: F)
+std/algebra.cp: Action.new<M>(id: F = F.zero, compose: (F, F) -> F = (+), apply: (F, T, Int) -> T, over: M = (+), commutes: Bool = false, replaces: ?(F -> Bool) = None, compose_in: ?((mut F, F) -> ()) = None) -> Action<T, F>
 std/algebra.cp: Action.of<A: Acts<T, F>, M>(a: A, op: M) -> Action<T, F>
 std/algebra.cp: Affine.eval(self, x: T) -> T
 std/algebra.cp: Affine.id() -> Affine<T>

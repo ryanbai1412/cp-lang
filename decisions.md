@@ -9181,7 +9181,11 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 
 ## 604. (reserved, perf)
 
-## 605. (reserved, content)
+## 605. `Action.compose_in` composes a pending tag in place; trees compose through `compose_onto` (stdlib, 2026-11-24)
+
+- **Call.** `Action` gains `compose_in: ?((mut F, F) -> ()) = None`: `compose_in(mut old, new)` leaves `old` acting as `compose(new, old)`, checked by the `composes_in_place` law. `act.compose_onto(mut old, new)` uses it when given and otherwise does `old = compose(new, old)`. `SegTree.put` and the splay and link-cut trees' `put` compose pending tags through `compose_onto`. `compose` stays required, because pure reads (`SegTree.below`, `PersistentSegTree`) need a fresh tag.
+- **Why.** `lz[p] = compose(f, lz[p])` builds a whole new tag and copies it back on every update. cf2255e1's 200-byte tag (three sign paths of a `MaxSub` each, plus an optional assignment) spent 68% of its run there, 1.43 s against the reference's 0.94 s. Updating the tag field by field in place takes it to about the reference's time. Small tags are unaffected, since `compose_in` defaults to `None`.
+- **Reverse.** Drop the field and method and go back to `lz[p] = act.compose(f, lz[p])`. Then a large tag needs the compiler to write a result into an aliased argument.
 
 ## 606. `cpp_deep_copies` counts shipped programs; `spec_required_copies` counts the spec's (factory, 2026-11-24)
 

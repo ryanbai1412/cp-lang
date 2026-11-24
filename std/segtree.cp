@@ -256,7 +256,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
             if w == 0: return
             if leaf or not dual: t[p] = act!.apply(f, t[p], w)
             if not leaf:
-                lz[p] = act!.compose(f, lz[p])
+                act!.compose_onto(mut lz[p], f)
                 has_lz[p] = true
 
     // Hand node `p`'s pending tag to its children `l` and `r`, holding `wl` and `wr` positions.
@@ -1893,4 +1893,30 @@ impl Show for DynamicOrderTree<D, T>:
             if not out.is_empty: out += " "
             out += "{t.get(D.at(i))}"
         out
+
+fn affine_onto(mut old: (Int, Int), new: (Int, Int)):
+    old = (new.0 * old.0, new.0 * old.1 + new.1)
+
+@test
+fn an_in_place_compose_matches_a_plain_array():
+    let n = 13
+    var a = [rand(-5, 5) for _ in 0..n]
+    let act = Action<Int, (Int, Int)>(
+        id: (1, 0),
+        compose: (nf, of) => (nf.0 * of.0, nf.0 * of.1 + nf.1),
+        apply: (f, v, span) => f.0 * v + f.1 * span,
+        compose_in: (mut o, nf) => affine_onto(mut o, nf),
+    )
+    var st = SegTree(+, a, act:)
+    for _ in 0..300:
+        let l = rand(0, n - 1)
+        let r = rand(l + 1, n)
+        let f = (if rand(0, 1) == 0: -1 else: 1, rand(-3, 3))
+        st.apply(l..r, f)
+        for i in l..r: a[i] = f.0 * a[i] + f.1
+        let ql = rand(0, n - 1)
+        let qr = rand(ql + 1, n)
+        assert st.fold(ql..qr) == sum(a[i] for i in ql..qr)
+        assert st.get(ql) == a[ql]
+    assert st.all == a.sum()
 
