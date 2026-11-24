@@ -1460,6 +1460,163 @@ pub struct MergeSegs<D>:
         let (lo, hi) = r.ends
         if let k = self.first_from(s.root, 0, D.count, lo): k < hi else: false
 
+/// One tree of values in a `MergeTrees<D, Z>` pool: a handle, so copying it is O(1).
+/// `MergeTree<D>()` holds `Z.zero` at every position.
+pub struct MergeTree<D>:
+    var root: Int = 0
+
+/// A pool of sparse segment trees over `D` holding values `Z`, each with a whole-tree multiply tag.
+/// `merge` combines two trees position by position through a hook that sees both values and both
+/// trees' sums left of the position, the segment-tree merge that DP over a tree uses for a max- or
+/// min-convolution. A tree costs nodes only where it has been `set`.
+pub struct MergeTrees<D, Z: Add + Mul>:
+    ls: List<Int>
+    rs: List<Int>
+    sm: List<Z>
+    tag: List<Z>
+
+    /// An empty pool.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
+    pub fn new() -> MergeTrees<D, Z> = MergeTrees([0], [0], [Z.zero], [Z.one])
+
+    fn node(mut self) -> Int:
+        ls.push(0)
+        rs.push(0)
+        sm.push(Z.zero)
+        tag.push(Z.one)
+        ls.len - 1
+
+    fn scale_node(mut self, u: Int, k: Z):
+        if u == 0: return
+        sm[u] *= k
+        tag[u] *= k
+
+    fn down(mut self, u: Int):
+        self.scale_node(ls[u], tag[u])
+        self.scale_node(rs[u], tag[u])
+        tag[u] = Z.one
+
+    fn put(mut self, u0: Int, lo: Int, hi: Int, k: Int, v: Z) -> Int:
+        let u = if u0 == 0: self.node() else: u0
+        if lo + 1 == hi:
+            sm[u] = v
+            return u
+        self.down(u)
+        let mid = (lo + hi) / 2
+        if k < mid:
+            let l = self.put(ls[u], lo, mid, k, v)
+            ls[u] = l
+        else:
+            let r = self.put(rs[u], mid, hi, k, v)
+            rs[u] = r
+        sm[u] = sm[ls[u]] + sm[rs[u]]
+        u
+
+    fn part(self, u: Int, lo: Int, hi: Int, a: Int, b: Int) -> Z:
+        if u == 0 or b <= lo or hi <= a: return Z.zero
+        if a <= lo and hi <= b: return sm[u]
+        let mid = (lo + hi) / 2
+        (self.part(ls[u], lo, mid, a, b) + self.part(rs[u], mid, hi, a, b)) * tag[u]
+
+    fn join(mut self, a: Int, b: Int, lo: Int, hi: Int, pa: Z, pb: Z, leaf: (Z, Z, Z, Z) -> Z) -> Int:
+        if b == 0:
+            self.scale_node(a, leaf(Z.one, Z.zero, pa, pb))
+            return a
+        if a == 0:
+            self.scale_node(b, leaf(Z.zero, Z.one, pa, pb))
+            return b
+        if lo + 1 == hi:
+            sm[a] = leaf(sm[a], sm[b], pa, pb)
+            return a
+        self.down(a)
+        self.down(b)
+        let mid = (lo + hi) / 2
+        let la = sm[ls[a]]
+        let lb = sm[ls[b]]
+        let l = self.join(ls[a], ls[b], lo, mid, pa, pb, leaf)
+        let r = self.join(rs[a], rs[b], mid, hi, pa + la, pb + lb, leaf)
+        ls[a] = l
+        rs[a] = r
+        sm[a] = sm[l] + sm[r]
+        a
+
+    /// Sets position `x` of `t` to `v`.
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\) time and new nodes
+    /// traps: never
+    /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.set(mut t, D(6), 2); p.total(t) == 7`
+    pub fn set(mut self, mut t: MergeTree<D>, x: D, v: Z):
+        t.root = self.put(t.root, 0, D.count, x.ord, v)
+
+    /// The sum of `t` over the positions in `r`.
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\)
+    /// empty: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.sum(t, D(3)..D(3)) == 0`
+    /// traps: never
+    /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.set(mut t, D(6), 2); p.sum(t, D(0)..D(4)) == 5 and p.sum(t, D(4)..D(4)) == 0`
+    pub fn sum(self, t: MergeTree<D>, r: Range<D>) -> Z:
+        let (lo, hi) = r.ends
+        self.part(t.root, 0, D.count, lo, hi)
+
+    /// The value of `t` at `x`.
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\)
+    /// traps: never
+    /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.get(t, D(3)) == 5 and p.get(t, D(4)) == 0`
+    pub fn get(self, t: MergeTree<D>, x: D) -> Z = self.part(t.root, 0, D.count, x.ord, x.ord + 1)
+
+    /// The sum of every value of `t`.
+    ///
+    /// cost: \(O(1)\)
+    /// empty: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
+    /// traps: never
+    /// example: `domain D = 0..8; let p = MergeTrees<D, Int>(); p.total(MergeTree<D>()) == 0`
+    pub fn total(self, t: MergeTree<D>) -> Z = sm[t.root]
+
+    /// Multiplies every value of `t` by `k`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain D = 0..8; var p = MergeTrees<D, Int>(); var t = MergeTree<D>(); p.set(mut t, D(3), 5); p.scale(t, 3); p.get(t, D(3)) == 15`
+    pub fn scale(mut self, t: MergeTree<D>, k: Z) = self.scale_node(t.root, k)
+
+    /// The tree holding `leaf(a[x], b[x], pre_a, pre_b)` at each position `x`, where `pre_a` and
+    /// `pre_b` are the sums of `a` and `b` over the positions before `x`, plus the `pre_a:` and
+    /// `pre_b:` arguments (0 by default). Both inputs are used up: their nodes now belong to the
+    /// result.
+    ///
+    /// A subtree only `a` reaches is scaled by `leaf(Z.one, Z.zero, pre_a, pre_b)` at its first
+    /// position, and one only `b` reaches by `leaf(Z.zero, Z.one, pre_a, pre_b)`. That is exact when
+    /// `leaf(v, 0, pa, pb)` is `v` times a factor free of `pa`, and `leaf(0, v, pa, pb)` is `v` times
+    /// a factor free of `pb`, as for `(va, vb, pa, pb) => va * (pb + vb) + vb * pa` (a max-convolution:
+    /// the result at `x` counts pairs whose larger position is `x`).
+    ///
+    /// cost: \(O(\log \lvert D \rvert)\) amortized per `set`, over a sequence of merges whose results
+    /// replace their inputs; \(O(\text{overlap})\) for one merge
+    /// traps: never
+    /// example: `domain D = 0..4; var p = MergeTrees<D, Int>(); var a = MergeTree<D>(); var b = MergeTree<D>(); p.set(mut a, D(1), 2); p.set(mut b, D(2), 3); let m = p.merge(a, b, (va, vb, pa, pb) => va * (pb + vb) + vb * pa); p.get(m, D(1)) == 0 and p.get(m, D(2)) == 6`
+    pub fn merge(mut self, a: MergeTree<D>, b: MergeTree<D>, leaf: (Z, Z, Z, Z) -> Z, pre_a: Z = Z.zero, pre_b: Z = Z.zero) -> MergeTree<D> =
+        MergeTree(self.join(a.root, b.root, 0, D.count, pre_a, pre_b, leaf))
+
+impl Show for MergeSeg<D>:
+    /// The handle's root node in its pool, `#0` for the empty set.
+    fn show(s) = "#{s.root}"
+
+impl Show for MergeSegs<D>:
+    /// The pool's node count, past the shared empty node.
+    fn show(p) = "{p.ls.len - 1} nodes"
+
+impl Show for MergeTree<D>:
+    /// The handle's root node in its pool, `#0` for the all-zero tree.
+    fn show(t) = "#{t.root}"
+
+impl Show for MergeTrees<D, Z>:
+    /// The pool's node count, past the shared empty node.
+    fn show(p) = "{p.ls.len - 1} nodes"
+
 @test
 fn merge_sort_and_sparse_segtree_match_brute():
     domain I = 1..=14
