@@ -117,7 +117,16 @@ pub(crate) fn ty_name(
 }
 
 /// A type as the program writes it: `Pt`, not the module's `m1_Pt`.
+/// A name lowering already wrote as the source does (`Mod<7>`, `Box<D>`) stays.
 fn shown(name: &str, source: &str, args: &str) -> String {
+    let source = cpl_check::written_name(source);
+    if !source.is_empty()
+        && name
+            .strip_prefix(source)
+            .is_some_and(|r| r.starts_with('<'))
+    {
+        return name.into();
+    }
     match (source, args) {
         ("", _) => source_name(name).into(),
         (source, "") => source.into(),

@@ -38,7 +38,8 @@ impl<'a> Lowerer<'a> {
                     GenArg::Op(op) => format!("{op:?}"),
                 })
                 .collect();
-            structs[sid].name = format!("{}<{}>", decl.name.text, args.join(", "));
+            let written = cpl_check::written_name(&decl.name.text);
+            structs[sid].name = format!("{written}<{}>", args.join(", "));
         }
         structs
     }
