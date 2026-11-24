@@ -553,7 +553,7 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
     var adj: [V]List<V> = []
     for u in V:
         for a in g.out(u): adj[u].push(a.to)
-    var idx: [V]Int = -1
+    var idx: [V]?Int = None
     var low: [V]Int = 0
     var done: [V]Int = 0
     var ptr: [V]Int = 0
@@ -563,7 +563,7 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
     var t = 0
     var k = 0
     for s in V:
-        if idx[s] != -1: continue
+        if idx[s] != None: continue
         idx[s] = t
         low[s] = t
         t += 1
@@ -575,7 +575,7 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
             if ptr[u] < adj[u].len:
                 let v = adj[u][ptr[u]]
                 ptr[u] += 1
-                if idx[v] == -1:
+                if idx[v] == None:
                     idx[v] = t
                     low[v] = t
                     t += 1
@@ -583,13 +583,13 @@ pub fn scc<V>(g: Next<V>) -> (domain C, comp: [V]C):
                     on[v] = true
                     call.push(v)
                 elif on[v]:
-                    low[u] min= idx[v]
+                    low[u] min= idx[v]!
             else:
                 call.pop()
                 if call.len > 0:
                     let p = call.last!
                     low[p] min= low[u]
-                if low[u] == idx[u]:
+                if low[u] == idx[u]!:
                     while true:
                         let w = st.pop()!
                         on[w] = false
@@ -628,8 +628,7 @@ pub fn undirected_of_pairs<V>(edges: List<(V, V)>) -> [V]List<V>:
     var adj: [V]List<V> = []
     for v in V: adj[v].reserve(deg[v])
     for (u, v) in edges:
-        adj[u].push(v)
-        adj[v].push(u)
+        for (a, b) in [(u, v), (v, u)]: adj[a].push(b)
     adj
 
 /// The number of arcs out of `u` in an adjacency list, as `Graph.deg` is for a `Graph`.
@@ -687,7 +686,7 @@ pub fn transpose<V>(self: [V]List<V>) -> [V]List<V>:
 /// traps: never
 /// example: `domain V = 0..4; let g: [V]List<V> = [[2], [], [0], []]; let (domain C, comp) = components(g); C.count == 3 and comp[0] == comp[2] and Int(comp[3]) == 2`
 pub fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C):
-    var cid: [V]Int = -1
+    var cid: [V]?Int = None
     var k = 0
     if G: ReachesUnvisited:
         var unvisited = V.collect()
@@ -705,18 +704,18 @@ pub fn components<V, G: Next<V>>(g: G) -> (domain C, comp: [V]C):
     else:
         var q = Deque<V>()
         for s in V:
-            if cid[s] != -1: continue
+            if cid[s] != None: continue
             cid[s] = k
             q.push(s)
             while let u = q.pop_front():
                 for a in g.out(u):
                     let v = a.to
-                    if cid[v] == -1:
+                    if cid[v] == None:
                         cid[v] = k
                         q.push(v)
             k += 1
     domain C = 0..k
-    (C:, comp: [V] v => C(cid[v]))
+    (C:, comp: [V] v => C(cid[v]!))
 
 /// The arcs between components: `out[comp[u]]` gets `(to: comp[a.to])` for every arc `a`
 /// of `u` that leaves its component. Arcs inside a component are dropped; repeats are kept.
@@ -748,23 +747,23 @@ pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>:
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 1)]; let (domain C, comp) = two_edge_components(Graph.undirected(es)); comp[1] == comp[2] and comp[0] != comp[1]`
 pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C):
     let is_bridge = bridges(g)
-    var cid: [V]Int = -1
+    var cid: [V]?Int = None
     var k = 0
     var q = Deque<V>()
     for s in V:
-        if cid[s] != -1: continue
+        if cid[s] != None: continue
         cid[s] = k
         q.push(s)
         while let Some(u) = q.pop_front():
             for a in g.out(u):
                 if is_bridge[a.e]: continue
                 let v = a.to
-                if cid[v] == -1:
+                if cid[v] == None:
                     cid[v] = k
                     q.push(v)
         k += 1
     domain C = 0..k
-    (C:, comp: [V] v => C(cid[v]))
+    (C:, comp: [V] v => C(cid[v]!))
 
 /// Which vertices are cut vertices: removing one (and its arcs) leaves more components than before.
 ///
@@ -777,7 +776,7 @@ pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C):
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2)]; cut_vertices(Graph.undirected(es)) == [false, true, false]`
 pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
-    var tin: [V]Int = -1
+    var tin: [V]?Int = None
     var low: [V]Int = 0
     var is_cut: [V]Bool = false
     var timer = 0
@@ -787,7 +786,7 @@ pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
     var stk_ch = List<Int>()
     var stk_nbrs = List<List<(to: V, e: E)>>()
     for s in V:
-        if tin[s] != -1: continue
+        if tin[s] != None: continue
         tin[s] = timer
         low[s] = timer
         timer += 1
@@ -813,7 +812,7 @@ pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
                 else:
                     let p = stk_u.last!
                     low[p] min= low[u]
-                    if low[u] >= tin[p] and stk_u.len > 1:
+                    if low[u] >= tin[p]! and stk_u.len > 1:
                         is_cut[p] = true
                 continue
             stk_i[k] = i + 1
@@ -822,8 +821,8 @@ pub fn cut_vertices<V, E>(g: EdgedNext<V, E>) -> [V]Bool:
             let eid = arc.e
             if let Some(pe) = stk_pe[k]:
                 if eid == pe: continue
-            if tin[v] != -1:
-                low[u] min= tin[v]
+            if let t = tin[v]:
+                low[u] min= t
             else:
                 stk_ch[k] += 1
                 tin[v] = timer
@@ -1002,8 +1001,7 @@ fn components_of_an_undirected_graph():
         var d = Dsu<V>()
         for _ in 0..rand(0, 8):
             let (u, v) = (V.nth(rand(0, 7)), V.nth(rand(0, 7)))
-            adj[u].push(v)
-            adj[v].push(u)
+            for (a, b) in [(u, v), (v, u)]: adj[a].push(b)
             d.unite(u, v)
         let (domain C, comp) = components(adj)
         assert C.count == d.components
@@ -1074,12 +1072,9 @@ fn two_color_finds_a_colouring_or_an_odd_cycle():
         var es: List<(V, V)> = []
         for _ in 0..rand(0, 8):
             let (u, v) = (V.nth(rand(0, 6)), V.nth(rand(0, 6)))
-            adj[u].push(v)
-            adj[v].push(u)
+            for (a, b) in [(u, v), (v, u)]: adj[a].push(b)
             es.push((u, v))
-        var any = false
-        for m in 0..128:
-            if es.all(e => ((m >> e.0.ord) & 1) != ((m >> e.1.ord) & 1)): any = true
+        let any = (0..128).any(m => es.all(e => ((m >> e.0.ord) & 1) != ((m >> e.1.ord) & 1)))
         let got = two_color(adj)
         assert (got != None) == any
         if let side = got:
@@ -1554,7 +1549,7 @@ pub fn find_cycle<V>(g: Next<V>) -> ?List<V>:
 /// traps: in checked builds, when the graph is not undirected (an arc without its reverse on the same `e`)
 /// example: `domain V = 0..3; domain E = 0..3; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 1)]; bridges(Graph.undirected(es)) == [true, false, false]`
 pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
-    var tin: [V]Int = -1
+    var tin: [V]?Int = None
     var low: [V]Int = 0
     var is_bridge: [E]Bool = false
     var timer = 0
@@ -1563,7 +1558,7 @@ pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
     var stk_i = List<Int>()
     var stk_nbrs = List<List<(to: V, e: E)>>()
     for s in V:
-        if tin[s] != -1: continue
+        if tin[s] != None: continue
         tin[s] = timer
         low[s] = timer
         timer += 1
@@ -1584,7 +1579,7 @@ pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
                 if stk_u.len > 0:
                     let p = stk_u.last!
                     low[p] min= low[u]
-                    if low[u] > tin[p]:
+                    if low[u] > tin[p]!:
                         if let Some(eid) = pe:
                             is_bridge[eid] = true
                 continue
@@ -1594,8 +1589,8 @@ pub fn bridges<V, E>(g: EdgedNext<V, E>) -> [E]Bool:
             let eid = arc.e
             if let Some(pe) = stk_pe[k]:
                 if eid == pe: continue
-            if tin[v] != -1:
-                low[u] min= tin[v]
+            if let t = tin[v]:
+                low[u] min= t
             else:
                 tin[v] = timer
                 low[v] = timer
@@ -2494,10 +2489,10 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
     var hist_u = List<Int>()
     var hist_v = List<Int>()
     var adj = [List<Int>() for _ in 0..n]
-    var tin = [-1 for _ in 0..n]
+    var tin: List<?Int> = List.filled(n, None)
     var low = [0 for _ in 0..n]
     var on_stk = [false for _ in 0..n]
-    var comp = [-1 for _ in 0..n]
+    var comp: List<?Int> = List.filled(n, None)
     var used = List<Int>()
     var tstk = List<Int>()
 
@@ -2542,22 +2537,22 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                 let ru = find(arcs[e].u.ord)
                 let rv = find(arcs[e].v.ord)
                 if ru != rv:
-                    if adj[ru].len == 0 and tin[ru] == -1:
-                        tin[ru] = -2
+                    if adj[ru].len == 0 and not on_stk[ru]:
+                        on_stk[ru] = true
                         used.push(ru)
-                    if adj[rv].len == 0 and tin[rv] == -1:
-                        tin[rv] = -2
+                    if adj[rv].len == 0 and not on_stk[rv]:
+                        on_stk[rv] = true
                         used.push(rv)
                     adj[ru].push(rv)
         for u in used:
-            tin[u] = -1
-            comp[u] = -1
+            tin[u] = None
+            comp[u] = None
             on_stk[u] = false
         var timer = 0
         var ccnt = 0
         tstk.clear()
         for start in used:
-            if tin[start] != -1: continue
+            if tin[start] != None: continue
             var dfs_u = [start]
             var dfs_i = [0]
             tin[start] = timer
@@ -2572,7 +2567,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                 if idx < adj[u].len:
                     dfs_i[top] = idx + 1
                     let v = adj[u][idx]
-                    if tin[v] == -1:
+                    if tin[v] == None:
                         tin[v] = timer
                         low[v] = timer
                         timer += 1
@@ -2581,9 +2576,9 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                         dfs_u.push(v)
                         dfs_i.push(0)
                     elif on_stk[v]:
-                        low[u] min= tin[v]
+                        low[u] min= tin[v]!
                 else:
-                    if low[u] == tin[u]:
+                    if low[u] == tin[u]!:
                         while true:
                             let w = tstk.pop()!
                             on_stk[w] = false
@@ -2604,7 +2599,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
             let rv = find(arcs[e].v.ord)
             if ru == rv:
                 left_es.push(e)
-            elif e.ord <= mid and comp[ru] != -1 and comp[ru] == comp[rv]:
+            elif e.ord <= mid and comp[ru] != None and comp[ru] == comp[rv]:
                 left_es.push(e)
                 to_merge_u.push(ru)
                 to_merge_v.push(rv)
@@ -2612,8 +2607,8 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                 right_es.push(e)
         for u in used:
             adj[u].clear()
-            tin[u] = -1
-            comp[u] = -1
+            tin[u] = None
+            comp[u] = None
         solve(l, mid, left_es)
         let snap = hist_u.len
         for i in 0..to_merge_u.len:
@@ -2636,7 +2631,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
         var timer = 0
         var ccnt = 0
         for s in 0..n:
-            if tin[s] != -1: continue
+            if tin[s] != None: continue
             var dfs_u = [s]
             var dfs_i = [0]
             tin[s] = timer
@@ -2651,7 +2646,7 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                 if idx < adj[u].len:
                     dfs_i[top] = idx + 1
                     let v = adj[u][idx]
-                    if tin[v] == -1:
+                    if tin[v] == None:
                         tin[v] = timer
                         low[v] = timer
                         timer += 1
@@ -2660,9 +2655,9 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                         dfs_u.push(v)
                         dfs_i.push(0)
                     elif on_stk[v]:
-                        low[u] min= tin[v]
+                        low[u] min= tin[v]!
                 else:
-                    if low[u] == tin[u]:
+                    if low[u] == tin[u]!:
                         while true:
                             let w = tstk.pop()!
                             on_stk[w] = false
@@ -2680,8 +2675,8 @@ pub fn scc_times<V, E>(arcs: [E](u: V, v: V)) -> [E]?Int:
                 active.push(e)
         for u in 0..n:
             adj[u].clear()
-            tin[u] = -1
-            comp[u] = -1
+            tin[u] = None
+            comp[u] = None
             on_stk[u] = false
         tstk.clear()
         solve(0, m - 1, active)
@@ -2700,14 +2695,14 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
     for u in V:
         for a in g.out(u):
             adj[u].push(a.to)
-    var tin: [V]Int = -1
+    var tin: [V]?Int = None
     var low: [V]Int = 0
     var is_cut: [V]Bool = false
     var timer = 0
     var vstk = List<V>()
     var raw_blocks = List<List<V>>()
     for root in V:
-        if tin[root] != -1: continue
+        if tin[root] != None: continue
         var root_children = 0
         tin[root] = timer
         low[root] = timer
@@ -2724,7 +2719,7 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
                 stk_i[top] = idx + 1
                 let v = adj[u][idx]
                 if v == u: continue
-                if tin[v] == -1:
+                if tin[v] == None:
                     if u == root: root_children += 1
                     tin[v] = timer
                     low[v] = timer
@@ -2734,7 +2729,7 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
                     stk_i.push(0)
                     stk_p.push(u)
                 elif v != par:
-                    low[u] min= tin[v]
+                    low[u] min= tin[v]!
             else:
                 stk_u.pop()
                 stk_i.pop()
@@ -2742,7 +2737,7 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
                 if stk_u.len > 0:
                     let p = stk_u.last!
                     low[p] min= low[u]
-                    if low[u] >= tin[p]:
+                    if low[u] >= tin[p]!:
                         if p != root: is_cut[p] = true
                         var blk = List<V>()
                         while let w = vstk.pop():
@@ -2773,18 +2768,18 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
 /// example: `domain V = 0..4; domain E = 0..4; let es: [E](u: V, v: V) = [(u: 0, v: 1), (u: 1, v: 2), (u: 2, v: 0), (u: 2, v: 3)]; let (domain B, block) = blocks(Graph.undirected(es)); B.count == 2 and block[0] == block[1] and block[1] == block[2] and block[3] != block[0]`
 pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
     let out = [V] u => [(to: a.to, e: a.e) for a in g.out(u)]
-    var tin: [V]Int = -1
+    var tin: [V]?Int = None
     var low: [V]Int = 0
     var timer = 0
     var estk = List<E>()
     var in_stk: [E]Bool = false
-    var raw: [E]Int = -1
+    var raw: [E]?Int = None
     var nblocks = 0
     var stk_v = List<V>()
     var stk_pe = List<?E>()
     var stk_i = List<Int>()
     for root in V:
-        if tin[root] != -1: continue
+        if tin[root] != None: continue
         tin[root] = timer
         low[root] = timer
         timer += 1
@@ -2802,7 +2797,7 @@ pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
                 let e = a.e
                 if v == u: continue
                 if stk_pe[top] == Some(e): continue
-                if tin[v] == -1:
+                if tin[v] == None:
                     in_stk[e] = true
                     estk.push(e)
                     tin[v] = timer
@@ -2811,11 +2806,11 @@ pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
                     stk_v.push(v)
                     stk_pe.push(Some(e))
                     stk_i.push(0)
-                elif tin[v] < tin[u]:
+                elif tin[v]! < tin[u]!:
                     if not in_stk[e]:
                         in_stk[e] = true
                         estk.push(e)
-                    low[u] min= tin[v]
+                    low[u] min= tin[v]!
             else:
                 let pe = stk_pe[top]
                 stk_v.pop()
@@ -2824,18 +2819,18 @@ pub fn blocks<V, E>(g: EdgedNext<V, E>) -> (domain B, block: [E]B):
                 if stk_v.len > 0:
                     let p = stk_v.last!
                     low[p] min= low[u]
-                    if low[u] >= tin[p]:
+                    if low[u] >= tin[p]!:
                         let pe_val = pe!
                         while let x = estk.pop():
                             raw[x] = nblocks
                             if x == pe_val: break
                         nblocks += 1
     for e in E:
-        if raw[e] == -1:
+        if raw[e] == None:
             raw[e] = nblocks
             nblocks += 1
     domain B = 0..nblocks
-    (B, [E] e => B.nth(raw[e]))
+    (B, [E] e => B.nth(raw[e]!))
 
 /// The complement of `missing` over a domain `V`: an arc `u -> v` for every `v != u` that
 /// `missing.out(u)` does not reach. Its own `out(u)` is \(O(\lvert V \rvert)\), but
@@ -2945,7 +2940,7 @@ pub fn odd_cycle<V>(g: Next<V>) -> ?List<V>:
 /// example: `domain V = 0..3; let g: [V]List<V> = [[1], [2], []]; dominators(g, root: V(1)) == [None, None, Some(1)]`
 pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V:
     let out = [V] u => [a.to for a in g.out(u)]
-    var dfn: [V]Int = -1
+    var dfn: [V]?Int = None
     var ord = List<V>()
     var par = List<Int>()
     var stk_v = [root]
@@ -2960,10 +2955,10 @@ pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V:
         if i < out[u].len:
             stk_i[top] = i + 1
             let v = out[u][i]
-            if dfn[v] == -1:
+            if dfn[v] == None:
                 dfn[v] = ord.len
                 ord.push(v)
-                par.push(dfn[u])
+                par.push(dfn[u]!)
                 stk_v.push(v)
                 stk_i.push(0)
         else:
@@ -2974,8 +2969,7 @@ pub fn dominators<V>(g: Next<V>, root: V) -> [V]?V:
     for i in 0..m:
         let u = ord[i]
         for v in out[u]:
-            let j = dfn[v]
-            if j != -1: preds[j].push(i)
+            if let j = dfn[v]: preds[j].push(i)
     var sdom = (0..m).collect()
     var idom = [0 for _ in 0..m]
     var dsu = (0..m).collect()
@@ -3314,14 +3308,14 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
             if v != cur_root:
                 total += in_w[v]
         var vis = [-1 for _ in 0..cur_n]
-        var id = [-1 for _ in 0..cur_n]
+        var id: List<?Int> = List.filled(cur_n, None)
         var cnt = 0
         for i in 0..cur_n:
             var v = i
-            while vis[v] != i and id[v] == -1 and v != cur_root:
+            while vis[v] != i and id[v] == None and v != cur_root:
                 vis[v] = i
                 v = in_u[v]
-            if v != cur_root and id[v] == -1:
+            if v != cur_root and id[v] == None:
                 var x = in_u[v]
                 while x != v:
                     id[x] = cnt
@@ -3338,18 +3332,19 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
             hist_prev_idx.push(List<Int>())
             break
         for i in 0..cur_n:
-            if id[i] == -1:
+            if id[i] == None:
                 id[i] = cnt
                 cnt += 1
-        hist_id.push(id.clone())
+        let ids = [x! for x in id]
+        hist_id.push(ids.clone())
         var nxt_u = List<Int>()
         var nxt_v = List<Int>()
         var nxt_w = List<W>()
         var nxt_orig = List<E>()
         var prev_idx = List<Int>()
         for i in 0..cur_u.len:
-            let nu = id[cur_u[i]]
-            let nv = id[cur_v[i]]
+            let nu = ids[cur_u[i]]
+            let nv = ids[cur_v[i]]
             if nu != nv:
                 nxt_u.push(nu)
                 nxt_v.push(nv)
@@ -3358,7 +3353,7 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
                 prev_idx.push(i)
         hist_prev_idx.push(prev_idx)
         cur_n = cnt
-        cur_root = id[cur_root]
+        cur_root = ids[cur_root]
         cur_u = nxt_u
         cur_v = nxt_v
         cur_w = nxt_w
@@ -3581,7 +3576,7 @@ pub struct Functional<V>:
 /// \(O(\log n)\) amortized per edge: 2-edge-connectivity under edge insertions.
 pub struct IncrementalBridges<V>:
     pub bridges: Int
-    _par: List<Int>
+    _par: List<?Int>
     _cc: List<Int>
     _cc_sz: List<Int>
     _ecc: List<Int>
@@ -3589,7 +3584,6 @@ pub struct IncrementalBridges<V>:
     _iter: Int
 
     fn _find_ecc(mut self, x: Int) -> Int:
-        if x == -1: return -1
         var r = x
         while _ecc[r] != r:
             r = _ecc[r]
@@ -3612,16 +3606,16 @@ pub struct IncrementalBridges<V>:
         r
 
     fn _make_root(mut self, x: Int):
-        var cur = x
-        var prev = -1
+        var cur: ?Int = x
+        var prev: ?Int = None
         var root = x
-        while cur != -1:
-            let p = self._find_ecc(_par[cur])
-            _par[cur] = prev
-            _cc[cur] = x
-            prev = cur
-            root = cur
-            cur = p
+        while let c = cur:
+            let up = _par[c]
+            _par[c] = prev
+            _cc[c] = x
+            prev = c
+            root = c
+            cur = if up == None: None else: self._find_ecc(up!)
         _cc_sz[x] = _cc_sz[root]
 
     /// No edges yet: every vertex alone.
@@ -3633,7 +3627,7 @@ pub struct IncrementalBridges<V>:
         let n = V.count
         IncrementalBridges<V>(
             bridges: 0,
-            _par: [-1 for _ in 0..n],
+            _par: List.filled(n, None),
             _cc: (0..n).collect(),
             _cc_sz: [1 for _ in 0..n],
             _ecc: (0..n).collect(),
@@ -3670,33 +3664,34 @@ pub struct IncrementalBridges<V>:
             _iter += 1
             var pa = List<Int>()
             var pb = List<Int>()
-            var x = a
-            var y = b
-            var lca = -1
-            while lca == -1:
-                if x != -1:
-                    x = self._find_ecc(x)
-                    pa.push(x)
-                    if _vis[x] == _iter:
-                        lca = x
+            var x: ?Int = a
+            var y: ?Int = b
+            var lca: ?Int = None
+            while lca == None:
+                if let xv = x:
+                    let r = self._find_ecc(xv)
+                    pa.push(r)
+                    if _vis[r] == _iter:
+                        lca = r
                         break
-                    _vis[x] = _iter
-                    x = _par[x]
-                if y != -1:
-                    y = self._find_ecc(y)
-                    pb.push(y)
-                    if _vis[y] == _iter:
-                        lca = y
+                    _vis[r] = _iter
+                    x = _par[r]
+                if let yv = y:
+                    let r = self._find_ecc(yv)
+                    pb.push(r)
+                    if _vis[r] == _iter:
+                        lca = r
                         break
-                    _vis[y] = _iter
-                    y = _par[y]
+                    _vis[r] = _iter
+                    y = _par[r]
+            let top = lca!
             for node in pa:
-                _ecc[node] = lca
-                if node == lca: break
+                _ecc[node] = top
+                if node == top: break
                 bridges -= 1
             for node in pb:
-                _ecc[node] = lca
-                if node == lca: break
+                _ecc[node] = top
+                if node == top: break
                 bridges -= 1
 
     /// Are `u` and `v` joined by two edge-disjoint paths? True for `u == v`.
