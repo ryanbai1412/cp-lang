@@ -61,6 +61,13 @@ pub fn outline(text: &str) -> String {
                 continue;
             }
         }
+        if comment {
+            // Docs reach hover through cpl-doc, never through the outline.
+            if line.ends_with('\n') {
+                out.push('\n');
+            }
+            continue;
+        }
         if open > 0 || top || declares {
             out.push_str(line);
             if !comment {

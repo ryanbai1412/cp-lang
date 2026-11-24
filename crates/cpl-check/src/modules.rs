@@ -835,6 +835,26 @@ mod tests {
     /// which holds every crate's strings too. Make room by cutting what the
     /// browser embeds or std itself; after a cut, lower the cap with it.
     #[test]
+    fn std_in_the_browser_build_has_no_comments_or_tests() {
+        for (name, text) in std_sources() {
+            let shipped = crate::std_bundle::browser_index(&name, &text);
+            assert_eq!(
+                shipped.lines().count(),
+                text.lines().count(),
+                "{name}: lines moved"
+            );
+            for (at, line) in shipped.lines().enumerate() {
+                let line = line.trim_start();
+                assert!(
+                    !line.starts_with("//") && !line.starts_with("@test"),
+                    "std.{name}:{} ships `{line}` to the browser",
+                    at + 1
+                );
+            }
+        }
+    }
+
+    #[test]
     fn std_in_the_browser_build_is_within_its_gzipped_cap() {
         const CAP: usize = 47_900;
         let sources = std_sources();
