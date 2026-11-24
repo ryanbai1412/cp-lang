@@ -481,14 +481,21 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - uses: actions/cache@v4
+      # corpus.py caches each built reference under CXX_CACHE; save it even
+      # when the audit fails or times out, so the next run starts warm.
+      - uses: actions/cache/restore@v4
         with:
-          path: target/corpus-audit
-          key: corpus-audit-${{ github.run_id }}
-          restore-keys: corpus-audit-
+          path: ~/.cache/cpl/cxx/corpus
+          key: corpus-audit-cxx-${{ github.run_id }}
+          restore-keys: corpus-audit-cxx-
       - name: Audit every problem package
         timeout-minutes: 12
         run: uv run --quiet python scripts/corpus.py verify --only package -j "$(nproc)"
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: ~/.cache/cpl/cxx/corpus
+          key: corpus-audit-cxx-${{ github.run_id }}
 
   site:
     name: site build
