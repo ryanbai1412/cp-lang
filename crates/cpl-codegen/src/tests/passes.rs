@@ -521,3 +521,23 @@ fn each_sink_reports_lets_and_stores_in_statement_order() {
         "let k, the store, then let j: {order}"
     );
 }
+
+#[test]
+fn each_sink_reports_a_for_binding_and_a_return() {
+    use crate::uses::split::{each_sink, Sink};
+    let program = lower(concat!(
+        "fn f(n: Int) -> Int:\n",
+        "    var s = 0\n",
+        "    for i in 0..n:\n",
+        "        s += i\n",
+        "    return s\n",
+        "print(f(3))\n",
+    ));
+    let (mut fors, mut returns) = (0, 0);
+    each_sink(&program.fns[0].body, &mut |sink| match sink {
+        Sink::For(_) => fors += 1,
+        Sink::Return(_) => returns += 1,
+        _ => {}
+    });
+    assert_eq!((fors, returns), (1, 1));
+}

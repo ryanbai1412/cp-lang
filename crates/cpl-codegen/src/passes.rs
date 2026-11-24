@@ -156,7 +156,14 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "cold-frame",
         "frame.rs",
-        Uses(&["effects::reaching", "effects::calls_back"]),
+        Uses(&[
+            "effects::reaching",
+            "effects::calls_back",
+            "each_sink",
+            "each_value",
+            "each_loop",
+            "each_put",
+        ]),
         "a_recursive_fns_branch_past_its_last_call_has_its_own_frame",
     ),
     pass(

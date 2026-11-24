@@ -5,6 +5,9 @@
 //! leave the recursive frame (R13.3.6).
 
 use crate::uses::effects;
+use crate::uses::loops::each_loop;
+use crate::uses::places::{each_put, Put};
+use crate::uses::split::{each_sink, each_value, Sink};
 use crate::walk;
 use cpl_ir::{Arg, Block, Expr, ExprKind, FnId, Program, Stmt};
 use std::collections::{BTreeMap, BTreeSet};
@@ -144,11 +147,11 @@ fn returns_outer(stmts: &[Stmt]) -> bool {
     };
     let inner = declared(&b);
     let mut found = false;
-    walk::deep_stmts(&b, &mut |s| {
-        if let Stmt::Return(Some(Expr {
+    each_sink(&b, &mut |sink| {
+        if let Sink::Return(Expr {
             kind: ExprKind::Local(slot),
             ..
-        })) = s
+        }) = sink
         {
             found |= !inner.contains(slot);
         }
@@ -168,12 +171,13 @@ fn declared(b: &Block) -> BTreeSet<usize> {
 /// non-scalar value a call, builtin or block builds.
 fn heavy(f: &Fn, b: &Block) -> bool {
     let mut heavy = false;
-    walk::deep_stmts(b, &mut |s| match s {
-        Stmt::For(..) | Stmt::While(..) => heavy = true,
-        Stmt::Let(slot, _) => heavy |= !(f.scalar)(*slot),
-        _ => {}
+    each_loop(b, &mut |_, _| heavy = true);
+    each_sink(b, &mut |sink| {
+        if let Sink::Let(slot, _) = sink {
+            heavy |= !(f.scalar)(slot);
+        }
     });
-    walk::deep_exprs(b, &mut |e| {
+    each_value(b, &mut |e| {
         heavy |= matches!(
             e.kind,
             ExprKind::Call(..) | ExprKind::Builtin(..) | ExprKind::Do(_) | ExprKind::Closure(_)
@@ -191,12 +195,12 @@ fn inputs(f: &Fn, b: &Block) -> Inputs {
             read.insert(slot);
         }
     };
-    walk::deep_stmts(b, &mut |s| {
-        if let Stmt::Assign(p, ..) = s {
+    each_put(b, &mut |put, _| {
+        if let Put::Store(p, _) = put {
             write(p, &mut read);
         }
     });
-    walk::deep_exprs(b, &mut |e| match &e.kind {
+    each_value(b, &mut |e| match &e.kind {
         ExprKind::Local(s) => {
             read.insert(*s);
         }
