@@ -23,11 +23,9 @@ fn cut(v: Node) -> Int:  // the edge above v times the other side's size
     edges[kt.w[p]!].w * (leaves[p] - leaves[v])
 let total = tree.down(0, (above, v) => above + cut(v))
 let joins = [
-    (
-        cost: if total[v] > max_w / leaves[v]: max_w else: total[v] * leaves[v],
-        v:,
-        p:,
-    ) for v in Node if let p = tree.parent(v)
+    (cost: if total[v] > max_w / leaves[v]: max_w else: total[v] * leaves[v], v:, p:)
+    for v in Node
+    if let p = tree.parent(v)
 ].sorted(by: j => desc(j.cost))
 
 var sets = DsuOf<Node, Int>(v => if v.ord < n: 1 else: 0, (a, b) => a + b)

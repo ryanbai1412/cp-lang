@@ -22,8 +22,10 @@ for i in V:
 // That is a half-integer for some triangles, so sum twice the excess and halve once at the end.
 fn twice_excess(inside: Int) -> Int = inside * (inside - 1) - inside * (n - 4)
 let twice_total = sum(
-    twice_excess(
-        (left[i, j] & left[j, k] & left[k, i]).len
-    ) for i in V for j in V.after(i) for k in V.after(i) if k in left[i, j]
+    twice_excess((left[i, j] & left[j, k] & left[k, i]).len)
+    for i in V
+    for j in V.after(i)
+    for k in V.after(i)
+    if k in left[i, j]
 )
 print(choose(n, 5) + twice_total / 2)

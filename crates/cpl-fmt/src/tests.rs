@@ -263,6 +263,34 @@ fn breaks_a_long_bracket_one_element_per_line() {
 }
 
 #[test]
+fn breaks_a_comprehension_and_an_if_else_at_their_clauses() {
+    let src = "let pairs = [(a.first_long_name, b.second_long_name) for a in some_list_name for b in another_list if a.key == b.key]\n";
+    let want = "let pairs = [
+    (a.first_long_name, b.second_long_name)
+    for a in some_list_name
+    for b in another_list
+    if a.key == b.key
+]
+";
+    assert_eq!(fmt(src), want, "a tuple inside a comprehension stays whole");
+
+    let src = "print(if a_long_condition_name and another_long_condition_name: first_long_value_name + 1 else: second_long_value_name)\n";
+    let want = "print(
+    if a_long_condition_name and another_long_condition_name: first_long_value_name + 1
+    else: second_long_value_name
+)
+";
+    assert_eq!(fmt(src), want);
+
+    let src = "fn plausible() -> Bool:
+    all(not (if let x = digit[at[0, c]] and let y = digit[at[1, c]] and let z = digit[at[2, c]]: (x.ord + y.ord) % n != z.ord and (x.ord + y.ord + 1) % n != z.ord else: false) for c in Col)
+";
+    let out = fmt(src);
+    assert!(out.lines().all(|l| l.len() <= 100), "{out}");
+    assert!(out.contains("\n            else: false\n"), "{out}");
+}
+
+#[test]
 fn keeps_the_rows_of_a_table() {
     let src = "let segs: [0..12]((Int, Int), (Int, Int)) = [
     ((2, 0), (2, 1)), ((2, 1), (2, 2)), ((1, 1), (2, 1)), ((1, 1), (2, 0)),
@@ -338,7 +366,7 @@ fn breaks_nested_brackets_only_as_far_as_needed() {
 #[test]
 fn does_not_add_a_comma_to_a_comprehension() {
     let src = "let total = sum(weight_of_edge[e] * multiplier_for_edge[e] + offset_for_edge[e] for e in edges if is_kept[e] and not is_removed[e])\n";
-    let want = "let total = sum(\n    weight_of_edge[e] * multiplier_for_edge[e] + offset_for_edge[e] for e in edges if is_kept[e] and not is_removed[e]\n)\n";
+    let want = "let total = sum(\n    weight_of_edge[e] * multiplier_for_edge[e] + offset_for_edge[e]\n    for e in edges\n    if is_kept[e] and not is_removed[e]\n)\n";
     assert_eq!(fmt(src), want);
 }
 

@@ -19,9 +19,8 @@ let t = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first!)
 let layers = t.bfs.runs(by: t.depth).collect()
 
 let ans = [
-    layer.len + Int(
-        d > 0 and layer.all(u => t.parent(u) == t.parent(layer.first!))
-    ) for (d, layer) in layers.items
+    layer.len + Int(d > 0 and layer.all(u => t.parent(u) == t.parent(layer.first!)))
+    for (d, layer) in layers.items
 ].max()!
 
 domain Slot = 0..ans

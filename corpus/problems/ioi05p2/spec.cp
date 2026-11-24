@@ -22,11 +22,8 @@ let track = Monoid<Rise>(
 let slope = Action<Rise, ?Int>(
     id: None,
     compose: (new, old) => new ?? old,
-    apply: (d, x, _) => if let Some(v) = d: (
-        rise: v * x.len,
-        peak: max(0, v * x.len),
-        len: x.len,
-    ) else: x,
+    apply: (d, x, _) => if let Some(v) = d: (rise: v * x.len, peak: max(0, v * x.len), len: x.len)
+    else: x,
     over: track,
 )
 var t = SegTree(track, [P] p => (rise: 0, peak: 0, len: piece[p].len), act: slope)

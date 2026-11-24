@@ -39,11 +39,9 @@ var total: [Node]Int = 0
 for v in Node.rev if let c = cut[v]: total[v] = c.w + total[c.parent]
 
 let joins = [
-    (
-        cost: if total[v] > max_w / c.size: max_w else: total[v] * c.size,
-        v:,
-        parent: c.parent,
-    ) for v in Node if let c = cut[v]
+    (cost: if total[v] > max_w / c.size: max_w else: total[v] * c.size, v:, parent: c.parent)
+    for v in Node
+    if let c = cut[v]
 ].sorted(by: j => desc(j.cost))
 
 var leaves = DsuOf<Node, Int>(v => if v.ord < n: 1 else: 0, (a, b) => a + b)

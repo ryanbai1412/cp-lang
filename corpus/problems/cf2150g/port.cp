@@ -73,10 +73,9 @@ for z in 0..k:
         rays[Cnt(z + 1), Cnt(o - 1)] += rays[Cnt(z), Cnt(o)]
 print(
     ans + sum(
-        rays[z, o] * long_lnds(
-            x - z.ord,
-            y - o.ord,
-            k,
-        ) for z in Cnt for o in Cnt if rays[z, o] != Z.zero
+        rays[z, o] * long_lnds(x - z.ord, y - o.ord, k)
+        for z in Cnt
+        for o in Cnt
+        if rays[z, o] != Z.zero
     )
 )

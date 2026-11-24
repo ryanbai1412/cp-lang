@@ -37,10 +37,9 @@ fn best(u: Int, depth: Int, flags: Int) -> List<?Int>:
         return [0, 1].map(
             b => Some(
                 (if plan[i] != b: switch[i] else: 0) + sum(
-                    reach.fold(
-                        i..=i,
-                        users(u >> (m - d - 1) ^ 1, d + 1),
-                    ) for d in 0..m if flags.bit(d) != (b == 1)
+                    reach.fold(i..=i, users(u >> (m - d - 1) ^ 1, d + 1))
+                    for d in 0..m
+                    if flags.bit(d) != (b == 1)
                 )
             )
         )

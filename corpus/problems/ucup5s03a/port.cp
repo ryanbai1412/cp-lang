@@ -34,8 +34,7 @@ let (t00, t01) = (binomial_transform(0, 0), binomial_transform(0, 1))
 let (t10, t11) = (binomial_transform(1, 0), binomial_transform(1, 1))
 let s = [Z(if j == 0: 1 else: 0) - spread(t00, 1, j) + spread(t01, 2, j) for j in 0..=n]
 let a = [
-    Z(
-        if j == 0: 1 elif j == 1: -(k + 1) else: 0
-    ) + spread(t10, 2, j) - spread(t11, 3, j) for j in 0..=n
+    Z(if j == 0: 1 elif j == 1: -(k + 1) else: 0) + spread(t10, 2, j) - spread(t11, 3, j)
+    for j in 0..=n
 ]
 print(convolve(s, inv(a, n + 1))[n] + n % 2)

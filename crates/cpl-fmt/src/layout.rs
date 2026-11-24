@@ -76,6 +76,7 @@ pub(crate) fn render(src: &str, lexed: &Lexed, style: &Style, chains: bool) -> S
                 indent
             },
             chains,
+            nest: 0,
             pending: None,
             tail: 0,
             at_line_start: true,
@@ -371,6 +372,8 @@ struct Emitter<'a, 'b> {
     hang: usize,
     /// Whether a long operator chain may break after its operators.
     chains: bool,
+    /// How many brackets the sequence being laid out is in.
+    nest: usize,
     /// A trailing comment waiting for the comma that may follow its token.
     pending: Option<&'b str>,
     /// Columns written right after the sequence being laid out, on its
@@ -566,6 +569,9 @@ impl<'a, 'b> Emitter<'a, 'b> {
             if self.column() + self.flat_width(nodes, &mut prev) + self.tail <= self.width {
                 return self.flat(nodes);
             }
+            if let Some((cont, cuts)) = self.clause_cuts(nodes, indent) {
+                return self.chain(nodes, indent, cont, &cuts);
+            }
         }
         let pivot = forced.or_else(|| {
             // The widest bracket with something in it: opening it up frees
@@ -594,15 +600,20 @@ impl<'a, 'b> Emitter<'a, 'b> {
             }
             _ => false,
         };
-        if let Some(pivot) = pivot.filter(|_| self.chains && forced.is_none()) {
-            if nodes.iter().enumerate().skip(pivot + 1).any(loose) && self.chain(nodes, indent) {
-                return;
+        let cuts = self
+            .op_cuts(nodes)
+            .filter(|_| self.chains && forced.is_none());
+        let cont = indent + self.hang;
+        if let (Some(pivot), Some(cuts)) = (pivot, &cuts) {
+            if nodes.iter().enumerate().skip(pivot + 1).any(loose) {
+                return self.chain(nodes, indent, cont, cuts);
             }
         }
         let Some(pivot) = pivot else {
             // No bracket worth opening: break after the loosest operators.
-            if !self.chains || !self.chain(nodes, indent) {
-                self.flat(nodes);
+            match cuts {
+                Some(cuts) => self.chain(nodes, indent, cont, &cuts),
+                None => self.flat(nodes),
             }
             return;
         };
@@ -616,44 +627,71 @@ impl<'a, 'b> Emitter<'a, 'b> {
         self.seq(&nodes[pivot + 1..], indent);
     }
 
-    /// Writes `nodes` with a line break after each of its loosest binary
-    /// operators, one operand per line. A line that ends in an operator
-    /// continues (`TokenKind::continues_line`), so this needs no brackets.
-    /// Returns false when `nodes` has no operator to break after, or is a
-    /// comprehension or `if`-`else` expression, whose clauses come first.
-    fn chain(&mut self, nodes: &[Node], indent: usize) -> bool {
+    /// Where a comprehension or an `if`-`else` expression in brackets
+    /// breaks: before each `for`, each filter `if`, and each `elif` and
+    /// `else`, with the clauses at the indentation of the first.
+    fn clause_cuts(&self, nodes: &[Node], indent: usize) -> Option<(usize, Vec<usize>)> {
+        let kind = |n: usize| match nodes[n] {
+            Node::Tok(i) => Some(self.toks[i].kind),
+            Node::Group { .. } => None,
+        };
+        let first_for = (1..nodes.len()).find(|&n| kind(n) == Some(K::For));
+        let cuts: Vec<usize> = (1..nodes.len())
+            .filter(|&n| match (kind(n), first_for) {
+                (Some(K::For), _) => true,
+                (Some(K::If), Some(f)) => n > f,
+                (Some(K::Else | K::Elif), None) => true,
+                _ => false,
+            })
+            .collect();
+        (self.nest > 0 && !cuts.is_empty()).then_some((indent, cuts))
+    }
+
+    /// Where `nodes` breaks after each of its loosest binary operators, one
+    /// operand per line. A line that ends in an operator continues
+    /// (`TokenKind::continues_line`), so this needs no brackets. None when
+    /// `nodes` has no operator to break after, or is a comprehension or
+    /// `if`-`else` expression, whose clauses come first.
+    fn op_cuts(&self, nodes: &[Node]) -> Option<Vec<usize>> {
         let clause = |node: &Node| matches!(node, Node::Tok(i) if matches!(self.toks[*i].kind, K::For | K::If | K::Else));
         if nodes.iter().skip(1).any(clause) {
-            return false;
+            return None;
         }
         let ops: Vec<(u8, usize)> = nodes
             .iter()
             .enumerate()
             .filter_map(|(n, node)| match node {
                 Node::Tok(i) if n > 0 && n + 1 < nodes.len() && self.roles[*i] == Role::Plain => {
-                    looseness(self.toks[*i].kind).map(|p| (p, n))
+                    looseness(self.toks[*i].kind).map(|p| (p, n + 1))
                 }
                 _ => None,
             })
             .collect();
-        let Some(loosest) = ops.iter().map(|(p, _)| *p).max() else {
-            return false;
-        };
+        let loosest = ops.iter().map(|(p, _)| *p).max()?;
+        Some(
+            ops.iter()
+                .filter(|(p, _)| *p == loosest)
+                .map(|(_, n)| *n)
+                .collect(),
+        )
+    }
+
+    /// Writes `nodes` with a line break before each of `cuts`, the lines
+    /// after the first at `cont`.
+    fn chain(&mut self, nodes: &[Node], indent: usize, cont: usize, cuts: &[usize]) {
         let outer_cont = self.cont;
-        let cont = indent + self.hang;
         let mut start = 0;
         let tail = std::mem::take(&mut self.tail);
-        for &(_, cut) in ops.iter().filter(|(p, _)| *p == loosest) {
-            self.seq(&nodes[start..=cut], if start == 0 { indent } else { cont });
+        for &cut in cuts {
+            self.seq(&nodes[start..cut], if start == 0 { indent } else { cont });
             self.flush_pending();
             self.start_line(cont, false);
             self.cont = cont;
-            start = cut + 1;
+            start = cut;
         }
         self.tail = tail;
         self.seq(&nodes[start..], cont);
         self.cont = outer_cont;
-        true
     }
 
     /// Writes a bracket pair with one element per line.
@@ -662,6 +700,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
         let inner = indent + self.indent;
         self.tok(open);
         self.cont = inner;
+        self.nest += 1;
         // A comma inside `<..>` separates type arguments, not elements:
         // `Version<Tree<D, T>>` stays whole.
         let mut generic = 0usize;
@@ -700,6 +739,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
                 self.out.last_mut().unwrap().code.push(',');
             }
         }
+        self.nest -= 1;
         self.flush_pending();
         for comment in &self.toks[close].leading {
             self.comment_line(inner, comment);

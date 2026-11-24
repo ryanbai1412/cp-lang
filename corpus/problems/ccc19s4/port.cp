@@ -50,7 +50,8 @@ fn most_quadratic(score: [Spot]Score) -> Int:
             (
                 days: plan[Cut(j)].days + 1,
                 loss: plan[Cut(j)].loss - max(score[Spot(t)] for t in j + 1..=i)!,
-            ) for j in max(i - k, 0)..i
+            )
+            for j in max(i - k, 0)..i
         )!
     -plan[Cut.last!].loss
 

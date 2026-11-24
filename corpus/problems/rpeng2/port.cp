@@ -26,11 +26,9 @@ for i in V: span[i, Len.first!] = (lo: ring[i].x, hi: ring[i].x)
 for len in Len.drop(1):
     for i in V:
         let parts = [
-            join(
-                ring[j].op,
-                span[i, Len(left)],
-                span[j, Len(len.ord - left - 1)],
-            ) for left in 0..len.ord for j in [V.nth((i.ord + left + 1) % n)]
+            join(ring[j].op, span[i, Len(left)], span[j, Len(len.ord - left - 1)])
+            for left in 0..len.ord
+            for j in [V.nth((i.ord + left + 1) % n)]
         ]
         span[i, len] = (lo: parts.map(p => p.lo).min()!, hi: parts.map(p => p.hi).max()!)
 

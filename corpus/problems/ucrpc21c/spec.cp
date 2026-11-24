@@ -9,7 +9,9 @@ for round in 1..=m:
     b -= x * y
     if a <= 0 or b <= 0:
         print(
-            if a <= 0 and b <= 0: "It's a tie at round {round}!" elif a <= 0: "Team 1 wins at round {round}!" else: "Team 2 wins at round {round}!"
+            if a <= 0 and b <= 0: "It's a tie at round {round}!"
+            elif a <= 0: "Team 1 wins at round {round}!"
+            else: "Team 2 wins at round {round}!"
         )
         break
 else:

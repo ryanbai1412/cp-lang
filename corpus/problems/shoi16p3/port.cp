@@ -36,6 +36,8 @@ for c in Course:
         still[j] * comb.choose(j.label, keep.label) * comb.choose(
             n - 1 - j.label,
             below - keep.label,
-        ) for j in Others if j >= keep
+        )
+        for j in Others
+        if j >= keep
     )
 print(still[Others.at(k)!])

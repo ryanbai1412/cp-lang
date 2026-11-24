@@ -37,11 +37,8 @@ fn feasible(v: Int) -> Bool:
     let pre = prefix_fold((x, y) => x ^ y, [I] i => a[i] & v)
     var ids = Interner<Int>()
     var cuts = [
-        (
-            class: C(ids.id(min(pre[c], pre[c] ^ v))),
-            at: c,
-            odd: (pre[c] ^ v) < pre[c],
-        ) for c in I.cuts
+        (class: C(ids.id(min(pre[c], pre[c] ^ v))), at: c, odd: (pre[c] ^ v) < pre[c])
+        for c in I.cuts
     ]
     cuts.counting_sort(by: x => x.class)
     var stk: List<(top: Int, ends: Ends)> = []

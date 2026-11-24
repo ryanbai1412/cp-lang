@@ -23,7 +23,8 @@ fn covered(rad: Int) -> Int:
             r1: min(n, z.r + rad) + 1,
             c0: max(1, z.c - rad),
             c1: min(m, z.c + rad) + 1,
-        ) for z in zombies
+        )
+        for z in zombies
     ]
     squares.sort(by: s => s.r0)
     var cuts = [s.c0 for s in squares] + [s.c1 for s in squares]

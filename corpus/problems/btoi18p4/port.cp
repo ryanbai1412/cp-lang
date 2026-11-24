@@ -24,10 +24,10 @@ let hi = [Wire] w => Int(ends[w].b) + (if ends[w].b < ends[w].a: n else: 0)
 fn covers(on: List<Wire>, part: (lo: Int, hi: Int)) -> Bool:
     var upto = part.lo - 1
     let laps = [
-        (
-            lo[w] + s,
-            hi[w] + s,
-        ) for w in on for s in [-n, 0, n] if lo[w] + s <= part.hi and hi[w] + s >= part.lo
+        (lo[w] + s, hi[w] + s)
+        for w in on
+        for s in [-n, 0, n]
+        if lo[w] + s <= part.hi and hi[w] + s >= part.lo
     ]
     for (l, h) in laps.sorted():
         if upto >= part.hi:

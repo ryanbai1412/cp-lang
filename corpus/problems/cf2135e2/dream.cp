@@ -42,8 +42,7 @@ for n in ns:
             M(odd_div_sum[i] - narrow)
 
     let bad = sum(
-        2 * (
-            2 * g(d) - g(d - 1) - g(d + 1)
-        ) * comb.choose(n, (n + d) / 2) for d in (n % 2..=n).step(2)
+        2 * (2 * g(d) - g(d - 1) - g(d + 1)) * comb.choose(n, (n + d) / 2)
+        for d in (n % 2..=n).step(2)
     )
     print(M(2) ** n - bad)

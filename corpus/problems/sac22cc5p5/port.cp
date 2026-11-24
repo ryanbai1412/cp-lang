@@ -16,10 +16,9 @@ let g: [Row, Col]Char = read()
 
 let h = Hash2D<Row, Col>.new((r, c) => Int(g[r, c]))
 var squares = [
-    h.rect(
-        Row(r)..=Row(r + k - 1),
-        Col(c)..=Col(c + k - 1),
-    ).hash_token for r in 0..=n - k for c in 0..=m - k
+    h.rect(Row(r)..=Row(r + k - 1), Col(c)..=Col(c + k - 1)).hash_token
+    for r in 0..=n - k
+    for c in 0..=m - k
 ]
 squares.sort()
 squares.dedup()

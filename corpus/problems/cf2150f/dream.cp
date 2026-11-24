@@ -24,9 +24,10 @@ let d = t.diameter()
 let half = ceil_div(d.len, 2)
 
 let skips = [
-    [j, i, k] for i in V for (j, k) in List(
-        chain([t.parent(i)].present(), t.children(i))
-    ).pairs() if not g[j].contains(k)
+    [j, i, k]
+    for i in V
+    for (j, k) in List(chain([t.parent(i)].present(), t.children(i))).pairs()
+    if not g[j].contains(k)
 ]
 fn joined(i: V, j: V) -> Bool = g[i].contains(j) or t.dist(i, j) == 2
 

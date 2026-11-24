@@ -37,10 +37,9 @@ fn away(side: List<Int>) -> (List<Int>, List<Int>):
 // walk one side and come back, then walk the other; the start city is visited or not
 fn best(round_trip: List<Int>, one_way: List<Int>) -> Int:
     [
-        here + round_trip[t] + one_way[days - spent - t] for (spent, here) in [
-            (0, 0),
-            (1, fun[home]),
-        ] for t in 0..=days - spent
+        here + round_trip[t] + one_way[days - spent - t]
+        for (spent, here) in [(0, 0), (1, fun[home])]
+        for t in 0..=days - spent
     ].max()!
 
 let (left_back, left_on) = away(fun[..home].rev.collect())

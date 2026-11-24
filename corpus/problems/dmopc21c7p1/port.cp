@@ -28,9 +28,8 @@ for r in Row.rev:
 
 fn below(p: (Row, Col), q: ?(Row, Col)) -> Bool = if let q = q: a[p] < a[q] else: true
 let fits = all(
-    a[r, c] in 1..=TOP and below((r, c), (r, c).down()) and below(
-        (r, c),
-        (r, c).right(),
-    ) for r in Row for c in Col
+    a[r, c] in 1..=TOP and below((r, c), (r, c).down()) and below((r, c), (r, c).right())
+    for r in Row
+    for c in Col
 )
 if fits: print(a) else: print(-1)

@@ -117,7 +117,8 @@ fn plan(u: City, tp: Tops, done: Bool, back: Bool, keep: Bool) -> (gain: Int, pa
                         Kid(p.y, false, true),
                         Rest,
                         Kid(p.z, true, false),
-                    ] else: [],
+                    ]
+                    else: [],
                 )
             if let p = pick2(tp.tt, tp.ff):
                 offer(

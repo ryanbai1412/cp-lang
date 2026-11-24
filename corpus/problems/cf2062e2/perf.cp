@@ -36,24 +36,18 @@ for v in order:
     let c = pre[pre.len - 1]
     let x = w[v].ord
     pre.push(
-        if x > c.w: (w: x, l: v, r: v, cnt: 1) elif x == c.w: (
-            w: x,
-            l: c.l,
-            r: v,
-            cnt: c.cnt + 1,
-        ) else: c
+        if x > c.w: (w: x, l: v, r: v, cnt: 1)
+        elif x == c.w: (w: x, l: c.l, r: v, cnt: c.cnt + 1)
+        else: c
     )
 var suf = [empty]
 for v in order.rev:
     let c = suf[suf.len - 1]
     let x = w[v].ord
     suf.push(
-        if x > c.w: (w: x, l: v, r: v, cnt: 1) elif x == c.w: (
-            w: x,
-            l: v,
-            r: c.r,
-            cnt: c.cnt + 1,
-        ) else: c
+        if x > c.w: (w: x, l: v, r: v, cnt: 1)
+        elif x == c.w: (w: x, l: v, r: c.r, cnt: c.cnt + 1)
+        else: c
     )
 
 var inside = Fenwick<t.Pre, Int>.new()

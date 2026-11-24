@@ -39,8 +39,10 @@ repeat m:
                     f,
                     Z(a + t - j),
                 )
-            ) for j in 0..=t
-        ) * inv_falling_n[t] for t in 0..3
+            )
+            for j in 0..=t
+        ) * inv_falling_n[t]
+        for t in 0..3
     ]
 
 let q: 1..=5e5 = read()

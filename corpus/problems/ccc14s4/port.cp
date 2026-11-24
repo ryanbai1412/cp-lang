@@ -34,9 +34,9 @@ for (i, next) in X.all.adjacent:
 
 print(
     sum(
-        (xs.get(i2) - xs.get(i)) * (ys.get(j2) - ys.get(j)) for (i, i2) in X.all.adjacent for (
-            j,
-            j2,
-        ) in Y.all.adjacent if tint[i, j] >= need
+        (xs.get(i2) - xs.get(i)) * (ys.get(j2) - ys.get(j))
+        for (i, i2) in X.all.adjacent
+        for (j, j2) in Y.all.adjacent
+        if tint[i, j] >= need
     )
 )

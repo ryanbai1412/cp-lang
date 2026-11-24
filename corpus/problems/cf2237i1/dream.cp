@@ -55,10 +55,11 @@ fn merge_edge(parent: State, child: State, edge: Edge, w: Z, mut out: List<Table
 
 fn states(rows: List<Table>) -> List<(State, Z)> =
     [
-        (
-            State(d, a, r),
-            rows[d][a, r],
-        ) for d in 0..rows.len for a in Bool for r in Bool if rows[d][a, r] != Z(0)
+        (State(d, a, r), rows[d][a, r])
+        for d in 0..rows.len
+        for a in Bool
+        for r in Bool
+        if rows[d][a, r] != Z(0)
     ]
 
 fn add(mut out: List<Table>, s: State, w: Z):

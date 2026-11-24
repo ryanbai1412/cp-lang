@@ -23,10 +23,8 @@ fn convolve_2d(x: [0..=n, 0..=n]Z, y: [0..=n, 0..=n]Z, rows: Int, cols: Int) -> 
     let stride = 2 * rows - 1
     fn flat(m: [0..=n, 0..=n]Z) -> List<Z> =
         [
-            if t % stride < rows: m[
-                t % stride,
-                t / stride,
-            ] else: Z(0) for t in 0..stride * (cols - 1) + rows
+            if t % stride < rows: m[t % stride, t / stride] else: Z(0)
+            for t in 0..stride * (cols - 1) + rows
         ]
     let prod = convolve(flat(x), flat(y))
     [0..=n, 0..=n] (i, j) => if i < rows and j < cols: prod[i + stride * j] else: Z(0)

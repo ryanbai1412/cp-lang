@@ -32,9 +32,8 @@ fn powers(m: Int) -> List<Int>:
     t
 let low = [powers(modulus(d)) for d in 0..moduli.len]
 let high = [
-    [
-        pow_mod(base, h * step, modulus(d)) for h in 0..=2 * modulus(d + 1) / step
-    ] for d in 0..moduli.len
+    [pow_mod(base, h * step, modulus(d)) for h in 0..=2 * modulus(d + 1) / step]
+    for d in 0..moduli.len
 ]
 
 // the least k with base^k >= modulus(d), None when base^k never gets there

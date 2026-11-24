@@ -28,8 +28,13 @@ fn set(l: Letter, d: ?Digit):
 fn plausible() -> Bool:
     all(
         not (
-            if let x = digit[at[0, c]] and let y = digit[at[1, c]] and let z = digit[at[2, c]]: (x.ord + y.ord) % n != z.ord and (x.ord + y.ord + 1) % n != z.ord else: false
-        ) for c in Col
+            if let x = digit[at[0, c]] and
+                let y = digit[at[1, c]] and
+                let z = digit[at[2, c]]: (x.ord + y.ord) % n != z.ord and
+                (x.ord + y.ord + 1) % n != z.ord
+            else: false
+        )
+        for c in Col
     )
 
 // fix the columns from the units up: guess the two addend letters, then the

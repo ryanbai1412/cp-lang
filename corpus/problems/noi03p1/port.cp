@@ -44,22 +44,17 @@ let total = sum(d.weight * d.value for d in digits)
 fn gain(d: Digit, to: Int) -> Int = (to - d.value) * d.weight
 
 let moves = [
-    [(a.at, d)] for a in digits for d in 0..10 if linked(
-        reshape,
-        a.value,
-        d,
-    ) and total + gain(a, d) == 0
+    [(a.at, d)]
+    for a in digits
+    for d in 0..10
+    if linked(reshape, a.value, d) and total + gain(a, d) == 0
 ] + [
-    [
-        (a.at, x),
-        (b.at, y),
-    ] for a in digits for x in loses[a.value] for b in digits for y in gains[b.value] if b.at != a.at and total + gain(
-        a,
-        x,
-    ) + gain(
-        b,
-        y,
-    ) == 0
+    [(a.at, x), (b.at, y)]
+    for a in digits
+    for x in loses[a.value]
+    for b in digits
+    for y in gains[b.value]
+    if b.at != a.at and total + gain(a, x) + gain(b, y) == 0
 ]
 if let changes = moves.first:
     var out = eq.clone()

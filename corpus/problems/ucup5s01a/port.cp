@@ -30,9 +30,8 @@ for p in parent: deg[p] += 1
 var unmarked = [Z(1)]
 for d in deg if d > 0:
     unmarked = [
-        (
-            if j < unmarked.len: unmarked[j] * d else: Z(0)
-        ) + (if j > 0: unmarked[j - 1] else: Z(0)) for j in 0..=unmarked.len
+        (if j < unmarked.len: unmarked[j] * d else: Z(0)) + (if j > 0: unmarked[j - 1] else: Z(0))
+        for j in 0..=unmarked.len
     ]
 // leaves and unmarked vertices each number at most n + m
 var dp: [0..=n + m, 0..=n + m]Z = 0

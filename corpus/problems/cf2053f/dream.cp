@@ -11,9 +11,9 @@ let blank = [R] i => a[i].count(None)
 let cnt = [R] i => a[i].present().tally()
 
 var credit = sum(
-    blank[i] * blank[j] + sum(
-        cnt[i][k] * cnt[j][k] for k in cnt[i].keys
-    ) for i in R if let j = i.next
+    blank[i] * blank[j] + sum(cnt[i][k] * cnt[j][k] for k in cnt[i].keys)
+    for i in R
+    if let j = i.next
 )
 var stay: [V]Int = 0
 var fresh = 0
