@@ -197,10 +197,13 @@ library or by this spec:
   finding only where each listed hole (compared with `>=`, `>`, `<=` or `<`
   and an integer, comma-separated) is proven in bounds: it matched an
   integer literal, or code whose range type's ends lie in them (`k: 1..=10`
-  for `k >= 1`). `to` calls the fn by name or
-  as a method or getter (`xs.f`), or calls nothing and writes only
-  operators the fn's one-expression body writes (`self % d` on `divmod`,
-  whose body is `(self / d, self % d)`). A hole whose parameter is written
+  for `k >= 1`). `to` calls the fn by name, as
+  a method or getter (`xs.f`), as its compound assignment (`x max= e`,
+  R01.6.4), or calls nothing and writes only operators the fn's
+  one-expression body writes (`self % d` on `divmod`, whose body is
+  `(self / d, self % d)`); a compound `to` runs its right side before the
+  place's indices, so then every hole matches only code that calls
+  nothing. A hole whose parameter is written
   as a scalar type (`Int`, `I128`, `U64`, `F64`, `Bool`, `Char`, `Str`)
   matches only code the checker gives that type (a range type is an
   `Int`). One fn's spellings of a name share their sites: the first
@@ -208,7 +211,10 @@ library or by this spec:
   record reports as that record: its code, level and explanation, and
   with no fix when the record gives `no_fix` (its `to` is then only the
   advice). `from` does not match an assigned place (`xs[i] = v`) or the
-  base it indexes.
+  base it indexes. The finding spans the matched
+  tokens and labels what `to`'s first hole matched (the receiver a
+  record's `on` types name); where a comment falls inside the match it
+  has no fix, since `to` would drop the comment.
   It applies in every file that uses the module, and in the module outside
   the fn. A struct's or enum's method may declare one like a top-level fn. E0505 (`bad_library_lint`) when `@lint` is not on a fn, lacks a
   name, `from:` or `to:`, when `from` or `to` is not one expression or
@@ -216,8 +222,8 @@ library or by this spec:
   not, when `holes:` names a name `from` does not use, when `when:` is not
   holes `from` uses compared with integers, when `to` neither calls the
   fn nor writes only its body's operators, or when one module declares a
-  name on two fns (one fn may
-  declare a name more than once, one `from` per spelling). (R06.4.9)
+  name twice with the same `from` (a name is declared once per spelling,
+  on several fns when its fix calls one of them: `min=` or `max=`). (R06.4.9)
 - An idiom whose fix is one library call is declared this way beside the
   fn it teaches, not as a lint in the linter: std's own idiom lints are
   `@lint` declarations in `std/`, and the linter keeps only lints a pattern

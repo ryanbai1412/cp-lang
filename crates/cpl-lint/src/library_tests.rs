@@ -312,3 +312,45 @@ fn a_lint_writes_its_fns_operator_and_holes_keep_their_scalar_type() {
     let floats = "let f: F64 = read()\nprint((f + 2.0) % 2.0)\n";
     assert!(found(floats).is_empty(), "{:?}", found(floats));
 }
+
+/// `to` may use the fn as its compound assignment; then every hole must call
+/// nothing (R11), the hole after `=` keeps no brackets, the finding labels
+/// what `to`'s first hole matched and ends at its last token, and a comment
+/// inside the match leaves it without a fix. Rule: R06.4.9.
+#[test]
+fn a_compound_to_needs_pure_holes_and_a_comment_drops_the_fix() {
+    let decl = "@lint(keep_max, from: \"x = if e > x: e else: x\", to: \"x max= e\", holes: \"x, e\")\n@lint(keep_max, from: \"if not (x >= e): x = e\", to: \"x max= e\", holes: \"x, e\")\npub fn max(a: Int, b: Int) -> Int = if a > b: a else: b\n";
+    let found = |body: &str| -> Vec<(String, String, Option<String>)> {
+        let src = format!("{decl}{body}");
+        crate::lint(&src, &crate::Config::default())
+            .into_iter()
+            .filter(|d| d.code.0 == "keep_max")
+            .map(|d| {
+                let label = d.labels[0].span.text(&src).to_string();
+                let fix = d.fixes.first().map(|f| f.edits[0].1.clone());
+                (d.span.text(&src).to_string(), label, fix)
+            })
+            .collect()
+    };
+    let hit = "fn bump() -> Int = 1\nvar best = 0\nfor v in [3, 1]:\n    best = if v + 1 > best: v + 1 else: best\n    best = if bump() > best: bump() else: best\n    if not (best >= v):\n        best = v\n    if not (best >= v):  // a comment\n        best = v\nprint(best)\n";
+    assert_eq!(
+        found(hit),
+        [
+            (
+                "best = if v + 1 > best: v + 1 else: best".into(),
+                "best".into(),
+                Some("best max= v + 1".into())
+            ),
+            (
+                "if not (best >= v):\n        best = v".into(),
+                "best".into(),
+                Some("best max= v".into())
+            ),
+            (
+                "if not (best >= v):  // a comment\n        best = v".into(),
+                "best".into(),
+                None
+            ),
+        ]
+    );
+}

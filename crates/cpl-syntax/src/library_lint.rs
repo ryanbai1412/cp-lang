@@ -240,7 +240,8 @@ fn declared_on(stmt: &Stmt, offset: u32) -> (Vec<LibraryLint>, Vec<Diagnostic>) 
         let calls = to_toks.windows(2).any(|w| {
             (w[0].0 == TokenKind::Ident && w[0].1 == f.name.text && w[1].0 == TokenKind::LParen)
                 || (w[0].0 == TokenKind::Dot && w[1].0 == TokenKind::Ident && w[1].1 == f.name.text)
-        }) || writes_body_ops(f, &to, &to_toks);
+        }) || writes_body_ops(f, &to, &to_toks)
+            || compound(&to_toks, &f.name.text);
         if !calls {
             error(
                 &msgs::syntax::LINT_TO_NO_CALL,
@@ -307,28 +308,43 @@ fn writes_body_ops(f: &FnDecl, to: &str, to_toks: &[(TokenKind, String)]) -> boo
     !calls && !used.0.is_empty() && used.0.iter().all(|op| have.0.contains(op))
 }
 
+/// Whether `to` uses `f` as its compound assignment, `p f= e` (`min=`,
+/// `max=`, R01.6.4).
+pub fn compound(to: &[(TokenKind, String)], f: &str) -> bool {
+    to.windows(3).any(|w| {
+        w[0].0 != TokenKind::Dot
+            && w[1].0 == TokenKind::Ident
+            && w[1].1 == f
+            && w[2].0 == TokenKind::Eq
+    })
+}
+
 /// The errors for the `@lint`s of one module, given as its items and their
-/// offsets: those [`declared`] reports, and a name declared on two fns (one
-/// fn may declare a name more than once: each `from` is a spelling of it).
+/// offsets: those [`declared`] reports, and one name declared twice with the
+/// same `from`. A name may be declared once per spelling, on several fns
+/// when its fix calls one of them (`min=` or `max=`).
 pub fn module_errors<'a>(
     items: impl IntoIterator<Item = (u32, &'a ParsedItem)>,
 ) -> Vec<Diagnostic> {
-    let (mut first, mut errors): (Vec<(String, Span, Span)>, Vec<Diagnostic>) =
-        (Vec::new(), Vec::new());
+    type Seen = (String, Option<Tokens>, Span);
+    let (mut first, mut errors): (Vec<Seen>, Vec<Diagnostic>) = (Vec::new(), Vec::new());
     for (offset, item) in items {
         for stmt in &item.stmts {
             let (lints, found) = declared(stmt, offset);
             errors.extend(found);
             for lint in lints {
-                match first.iter().find(|(name, _, _)| *name == lint.name) {
-                    Some((_, _, item)) if *item == lint.item => {}
-                    Some((_, at, _)) => errors.push(
+                let from = run(&lint.from).map(|(toks, _)| toks);
+                match first
+                    .iter()
+                    .find(|(name, f, _)| *name == lint.name && *f == from)
+                {
+                    Some((_, _, at)) => errors.push(
                         msgs::syntax::LINT_TWICE
                             .error(lint.decorator, &[&lint.name])
-                            .with_help("give each lint its own name")
+                            .with_help("give each spelling of a lint its own `from`")
                             .with_label(*at, "first declared here"),
                     ),
-                    None => first.push((lint.name, lint.decorator, lint.item)),
+                    None => first.push((lint.name, from, lint.decorator)),
                 }
             }
         }
@@ -441,7 +457,7 @@ mod tests {
     }
 
     #[test]
-    fn one_fn_may_declare_a_lint_twice_but_two_fns_may_not() {
+    fn a_lint_has_one_from_per_spelling_on_any_of_its_fns() {
         let errors = |src: &str| {
             let parsed = crate::parse_file(src);
             let items = parsed.items.iter().map(|(off, item)| (*off, item));
@@ -453,7 +469,18 @@ mod tests {
         let one = "@lint(by_hand, from: \"x * x\", to: \"sq(x)\")\n@lint(by_hand, from: \"x ** 2\", to: \"sq(x)\")\npub fn sq(x: Int) -> Int = x * x\n";
         assert!(errors(one).is_empty(), "{:?}", errors(one));
         let two = "@lint(by_hand, from: \"x * x\", to: \"sq(x)\")\npub fn sq(x: Int) -> Int = x * x\n@lint(by_hand, from: \"x * x * x\", to: \"cube(x)\")\npub fn cube(x: Int) -> Int = x * x * x\n";
-        assert_eq!(errors(two).len(), 1);
+        assert!(errors(two).is_empty(), "{:?}", errors(two));
+        let again = "@lint(by_hand, from: \"x * x\", to: \"sq(x)\")\npub fn sq(x: Int) -> Int = x * x\n@lint(by_hand, from: \"x  *  x\", to: \"sq2(x)\")\npub fn sq2(x: Int) -> Int = x * x\n";
+        assert_eq!(errors(again).len(), 1);
+        let keep = "@lint(keep_max, from: \"x = max(x, e)\", to: \"x max= e\", holes: \"x, e\")\npub fn max(a: Int, b: Int) -> Int = a\n";
+        let ok = |src: &str| {
+            crate::parse_file(src).items.iter().all(|(off, item)| {
+                item.stmts
+                    .iter()
+                    .all(|s| super::declared(s, *off).1.is_empty())
+            })
+        };
+        assert!(ok(keep));
     }
 
     #[test]

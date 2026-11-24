@@ -293,8 +293,11 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
             to.iter()
                 .any(|t| &d.decl.to[t.span.start as usize..t.span.end as usize] == h)
         };
+        // R11: a compound `to` runs its right side before the place's indices.
+        let compound = library_lint::code(&d.decl.to)
+            .is_some_and(|to| library_lint::compound(&to, &d.decl.fn_name));
         let repeated: Vec<bool> = (d.decl.holes.iter())
-            .map(|h| all.iter().filter(|(_, t)| t == h).count() > 1 || !in_to(h))
+            .map(|h| compound || all.iter().filter(|(_, t)| t == h).count() > 1 || !in_to(h))
             .collect();
         let matcher = |pat, stmt| Matcher {
             pat,
@@ -379,6 +382,10 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 continue;
             }
             taken.push(span);
+            let first = before(span.start);
+            let commented = (first..stop - 1).any(|i| {
+                file.src[toks[i].span.end as usize..toks[i + 1].span.start as usize].contains("//")
+            });
             let got: HashMap<&str, &str> = (d.decl.holes.iter().zip(&holes))
                 .filter_map(|(h, run)| {
                     let (a, b) = (*run)?;
@@ -404,6 +411,9 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                 .take_while(|c| *c == ' ' || *c == '\t')
                 .collect();
             let fix = fill(&d.decl.to, &got, &names, &d.spell, &indent, &stmts);
+            let subject = (to.iter())
+                .map(|t| &d.decl.to[t.span.start as usize..t.span.end as usize])
+                .find_map(|w| holes[d.decl.holes.iter().position(|h| h == w)?]);
             let from = if d.module.is_empty() {
                 "this file".to_string()
             } else {
@@ -415,7 +425,11 @@ pub(crate) fn find(file: &File, declared: &[Declared]) -> Vec<Finding> {
                     "{from} declares this lint with `@lint` on `{}`",
                     d.decl.fn_name
                 ));
-            if d.lint.no_fix.is_none() {
+            if let Some((a, b)) = subject {
+                let at = Span::new(toks[a].span.start, toks[b - 1].span.end);
+                diag = diag.with_label(at, format!("what `{}` takes", d.decl.fn_name));
+            }
+            if !commented && d.lint.no_fix.is_none() {
                 diag.fix(format!("use `{}`", d.decl.fn_name), span, fix);
             }
             out.push(Finding { lint: d.lint, diag });
@@ -596,8 +610,9 @@ fn fill(
         } else if let Some(m) = got.get(word).filter(|_| is_name(t.kind, word)) {
             let before = i.checked_sub(1).map(|i| toks[i].kind);
             let after = toks.get(i + 1).map(|t| t.kind);
-            let delimited = matches!(before, Some(K::LParen | K::Comma) | None)
-                && matches!(after, Some(K::RParen | K::Comma) | None);
+            let delimited = (matches!(before, Some(K::LParen | K::Comma) | None)
+                && matches!(after, Some(K::RParen | K::Comma) | None))
+                || (before == Some(K::Eq) && after.is_none());
             let inner = m
                 .strip_prefix('(')
                 .and_then(|m| m.strip_suffix(')'))

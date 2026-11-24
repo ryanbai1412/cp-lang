@@ -56,7 +56,7 @@ super::msgs! {
     LINT_TO_NO_CALL = BAD_LIBRARY_LINT, "`to` of `@lint({})` does not call `{}`";
     LINT_HOLE_UNUSED = BAD_LIBRARY_LINT, "`holes:` of `@lint({})` names `{}`, which `from` does not use";
     LINT_WHEN = BAD_LIBRARY_LINT, "`when:` of `@lint({})` is not holes `from` uses compared with integers";
-    LINT_TWICE = BAD_LIBRARY_LINT, "`@lint({})` is declared on two fns in this module";
+    LINT_TWICE = BAD_LIBRARY_LINT, "`@lint({})` declares the same `from` twice in this module";
     RECORD_HAS_NO_FIELD = TYPE_MISMATCH, "the record has no field `{}`";
     PATTERN_LEAVES_OUT = TYPE_MISMATCH, "the pattern leaves out `{}`; add it or `..`";
 }

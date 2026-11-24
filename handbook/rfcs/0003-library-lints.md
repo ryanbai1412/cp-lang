@@ -60,7 +60,7 @@ The rules:
 6. The checker reports a malformed `@lint` where it is written (E0505):
    `from` or `to` that is not one expression or statement, a parameter
    `from` matches that `to` drops, a `to` that does not call the function,
-   or a name declared twice in one module.
+   or one name declared twice in a module with the same `from`.
 
 Matching is syntactic, on the parsed tree: one pass per file over the
 patterns of the modules it uses, as fast as the existing rules.
