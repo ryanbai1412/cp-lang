@@ -1060,12 +1060,17 @@ fn generics_of(header: &str) -> Vec<String> {
 fn members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, u8)> {
     let mut out = own_members_of_ty(cursor, std, ty);
     let mut seen: HashSet<String> = out.iter().map(|(e, _)| e.name.clone()).collect();
-    // A domain named as a value walks its positions; a type with `each` is a Seq.
+    // A domain named as a value walks its positions; a type with `iter` (Seq's one method) is a Seq.
     let ty = match ty {
         Ty::TypeName(name) if is_domain(cursor.analysis, name) => &Ty::Domain(name.clone()),
         ty => ty,
     };
-    let walks = seen.contains("each");
+    // `impl Seq` gives `iter` even where a library keeps it out of the list.
+    let walks = seen.contains("iter")
+        || seen.contains("each")
+        || matches!(ty, Ty::Named { name, .. } if outlines_for(cursor, std, name)
+            .iter()
+            .any(|o| o.members_of(name).any(|m| m.instance && m.name == "iter")));
     let imported = cursor.analysis.imports();
     for entry in std_methods(cursor, std) {
         // A `fn f<T>(self: T)` a `use` names is everyone's member; unnamed, it would crowd every list.

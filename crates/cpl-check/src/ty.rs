@@ -239,8 +239,9 @@ impl Ty {
     /// Whether this type meets the sequence-trait bound named `bound` (`Seq`, `Sized`, `Bidir`,
     /// `Keyed`, `Indexed`, `IndexedMut`); `walks` says a `for` can walk it, which is enough for
     /// `Seq`. Any other bound is false.
+    /// The bound's own arguments (`Seq<T>`) don't change which types meet it.
     pub fn meets_seq_bound(&self, bound: &str, walks: bool) -> bool {
-        match bound {
+        match bound.split('<').next().unwrap_or(bound).trim() {
             "Seq" => self.is_seq() || walks,
             "Sized" => self.is_sized(),
             "Bidir" => self.is_bidir(),
