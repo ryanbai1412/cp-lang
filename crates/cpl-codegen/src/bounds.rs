@@ -402,9 +402,20 @@ impl<'p> Emitter<'p> {
         let pushed = inside.len();
         self.inside.extend(inside);
         let rows = self.loop_rows(slot, body);
+        let carry = self.loop_carry(id, slot, iter, body);
         let (start, mark) = (out.len(), self.row_ptrs.len());
         self.row_ptrs.extend(rows);
+        let decl = carry.map(|(c, decl)| {
+            self.carries.push(c);
+            decl
+        });
         self.for_stmt(id, slot, iter, body, out);
+        if let Some(decl) = decl {
+            self.carries.pop();
+            let lead = pad(self.indent);
+            out.insert_str(start, &format!("{lead}{{\n{lead}{decl}\n"));
+            self.line(out, "}");
+        }
         let rows = self.row_ptrs.split_off(mark);
         if !rows.is_empty() {
             self.need("lazy");

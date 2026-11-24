@@ -3,6 +3,7 @@
 mod bounds;
 mod built;
 mod capfn;
+mod carry;
 mod checks;
 mod compact;
 mod devirt;

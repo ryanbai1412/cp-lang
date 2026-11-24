@@ -243,6 +243,9 @@ impl<'p> Emitter<'p> {
         if let Some(row) = self.cached_row(crate::rowcache::of_expr(e)) {
             return Code::primary(row);
         }
+        if let Some(cell) = self.carried(e) {
+            return Code::primary(cell);
+        }
         match &e.kind {
             ExprKind::Binary(BinOp::Coalesce, ..)
                 if let Some(code) = self.moved_entry_code(e, e) =>

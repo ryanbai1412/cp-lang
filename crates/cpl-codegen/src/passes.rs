@@ -287,6 +287,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_row_a_loop_never_moves_is_checked_once_per_loop",
     ),
     pass(
+        "carry-prev-cell",
+        "carry.rs",
+        Uses(&["Touch::of_block"]),
+        "a_cell_the_round_before_stored_is_read_from_a_local",
+    ),
+    pass(
         "scope-hoist",
         "scope.rs",
         Uses(&["copied_once", "Touch"]),

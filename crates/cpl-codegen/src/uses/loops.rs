@@ -1,7 +1,7 @@
 //! How code runs: its loops, how far its labeled jumps reach, and its size.
 
 use crate::walk;
-use cpl_ir::{Block, Iter, LoopId, Slot, Stmt};
+use cpl_ir::{Arg, Block, Builtin, Expr, ExprKind, Iter, LoopId, Slot, Stmt};
 use std::collections::BTreeSet;
 
 /// A loop's head.
@@ -41,4 +41,62 @@ pub(crate) fn stmt_count(block: &Block) -> usize {
     let mut count = 0;
     walk::deep_stmts(block, &mut |_| count += 1);
     count
+}
+
+/// `j` of a read `a[j.prev!]`, and the variable `a`.
+pub(crate) fn prev_cell(e: &Expr) -> Option<((bool, usize), &Expr)> {
+    let ExprKind::Index(base, idx) = &e.kind else {
+        return None;
+    };
+    let [i] = idx.as_slice() else {
+        return None;
+    };
+    let ExprKind::Unwrap(v, true) = &i.kind else {
+        return None;
+    };
+    let ExprKind::Builtin(Builtin::PosPrev, args) = &v.kind else {
+        return None;
+    };
+    let at = match base.kind {
+        ExprKind::Local(slot) => (false, slot),
+        ExprKind::Global(id) => (true, id),
+        _ => return None,
+    };
+    Some((at, args.first()?))
+}
+
+/// The `slot` of a read `at[slot.prev!]` in the body of loop `id` over
+/// `slot`, when the body stores to `at` once, never takes it `mut` or
+/// rebinds it, and no `break` or `continue` ends a round early: then
+/// every round's one store is the cell the next round reads.
+pub(crate) fn carried_read(
+    block: &Block,
+    id: LoopId,
+    slot: Slot,
+    at: (bool, usize),
+) -> Option<&Expr> {
+    let (mut read, mut stores, mut other) = (None, 0, false);
+    walk::deep_exprs(block, &mut |e| {
+        if let Some((a, j)) = prev_cell(e) {
+            if a == at && matches!(j.kind, ExprKind::Local(s) if s == slot) {
+                read.get_or_insert(j);
+            }
+        }
+        other |= match &e.kind {
+            ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => args
+                .iter()
+                .any(|a| matches!(a, Arg::Mut(p) if walk::root(p) == at)),
+            ExprKind::Mutate(_, p, _) | ExprKind::Sort(p, ..) | ExprKind::MutSlice(p, ..) => {
+                walk::root(p) == at
+            }
+            _ => false,
+        };
+    });
+    walk::deep_stmts(block, &mut |stmt| match stmt {
+        Stmt::Assign(p, ..) if walk::root(p) == at => stores += 1,
+        Stmt::Break(to) | Stmt::Continue(to) => other |= to.is_none() || *to == Some(id),
+        Stmt::Let(s, _) | Stmt::For(_, s, ..) => other |= (false, *s) == at,
+        _ => {}
+    });
+    read.filter(|_| stores == 1 && !other)
 }

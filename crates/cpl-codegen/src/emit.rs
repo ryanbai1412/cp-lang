@@ -272,6 +272,8 @@ pub(crate) struct Emitter<'p> {
     /// Rows the loops being written reach once: the row, the pointer
     /// that holds it, and the C++ that reaches it the first time.
     pub row_ptrs: Vec<(crate::rowcache::Row, String, String)>,
+    /// Cells the loops being written keep in a local (`carry.rs`).
+    pub carries: Vec<crate::carry::Carry>,
     /// How deep the statement being written is indented.
     pub indent: usize,
     /// For a profiled build: the span of each statement that counts its
@@ -401,6 +403,7 @@ impl<'p> Emitter<'p> {
             found: Vec::new(),
             inside: Vec::new(),
             row_ptrs: Vec::new(),
+            carries: Vec::new(),
             indent: 0,
             sites: None,
             counted: Default::default(),

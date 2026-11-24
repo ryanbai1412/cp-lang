@@ -1336,3 +1336,37 @@ fn a_table_comprehension_writes_cells_nothing_filled_first() {
     assert!(cpp.contains("cpl::blank<ll>("), "{cpp}");
     assert_eq!(cpp.matches("cpl::blank<ll>(").count(), 1, "{cpp}");
 }
+
+#[test]
+fn a_cell_the_round_before_stored_is_read_from_a_local() {
+    let src = |body: &str| {
+        format!(
+            "let n: 2..=9 = read()\ndomain I = 0..n\nvar s: [I]Int = 0\nfor i in I:\n    s[i] = read()\n\
+             var inner: [I]0..=n = 0\nfor i in I.rev:\n    var need: [I]0..=n = 0\n    for j in i.after:\n{body}\
+             \x20   inner = need\nprint(inner[I.last!])\n"
+        )
+    };
+    let dp = "        need[j] = if s[i] == s[j]: inner[j.prev!] else: min(1 + min(inner[j], need[j.prev!]), n)\n";
+    let carried = cpp(&src(dp));
+    assert!(carried.contains("ll carry = 0;"), "{carried}");
+    assert!(carried.contains("need[j] = uint8_t(carry);"), "{carried}");
+    assert!(
+        carried.contains("std::min<ll>(ll(inner[j]), carry)"),
+        "{carried}"
+    );
+    assert!(!carried.contains("need[j - 1]"), "{carried}");
+    let twice = cpp(&src(&format!("{dp}        need[i] = 0\n")));
+    assert!(!twice.contains("carry"), "the store is not last: {twice}");
+    let skips = cpp(&src(&format!(
+        "        if s[j] == 0:\n            continue\n{dp}"
+    )));
+    assert!(
+        !skips.contains("carry"),
+        "a round may skip the store: {skips}"
+    );
+    let first = cpp(&src(dp).replace("for j in i.after", "for j in I"));
+    assert!(
+        !first.contains("carry"),
+        "j.prev! is unproven from I's first: {first}"
+    );
+}

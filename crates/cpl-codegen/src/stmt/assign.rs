@@ -264,6 +264,13 @@ impl<'p> Emitter<'p> {
         } else {
             self.expr(value)
         };
+        if let Some(cell) = (op == AssignOp::Set)
+            .then(|| self.carried_store(place))
+            .flatten()
+        {
+            self.line(out, &format!("{cell} = {};", v.text));
+            v.text = cell;
+        }
         if let PlaceKind::Index(base, _) = &place.kind {
             if op == AssignOp::Set {
                 if let Some(l @ (cpl_ir::NarrowLayout::Int(_) | cpl_ir::NarrowLayout::Tuple(_))) =
