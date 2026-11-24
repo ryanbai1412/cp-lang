@@ -23,18 +23,23 @@ let unmarked = prod(Poly<Z>([d, 1]) for d in deg if d > 0)
 domain Count = 0..=n + m
 var dp: [Count, Count]Z = 0
 let init_leaves = Count(deg.count(0))
-for (j, c) in unmarked.items: dp[init_leaves, Count(j)] = c
+for (j, c) in unmarked.c.items: dp[init_leaves, Count(j)] = c
+// A read past either end of the table is 0.
+fn at(dp: [Count, Count]Z, i: Int, j: Int) -> Z =
+    if let a = Count.at(i), let b = Count.at(j): dp[a, b] else: 0
 for z in 0..m:
     let others = n + z
     // `i` leaves and `j` unmarked; every other vertex is marked internal
     dp = [Count, Count] (i, j) => (
         // below a leaf: it becomes internal, marked now (j) or later (j - 1)
-        i * (dp[i, j] + dp.get(i, j - 1))
+        Z(i.ord) * (
+            dp[i, j] + at(dp, i.ord, j.ord - 1)
+        )
         // below an unmarked vertex, marking the new leaf now
-        + (j + 1) * dp.get(i - 1, j + 1)
+        + (j + 1) * at(dp, i.ord - 1, j.ord + 1)
         // below an unmarked vertex without marking, or below a marked one
-        + (others - (i - 1)) * dp.get(i - 1, j)
+        + (others - (i - 1)) * at(dp, i.ord - 1, j.ord)
     )
 
-let numer = sum(dp[i, Count.first] / Z(i.ord) for i in Count if i > Count.first)
+let numer = sum(dp[i, Count.first!] / Z(i.ord) for i in Count if i > Count.first!)
 print(numer / prod(Z(n + z) for z in 0..m))
