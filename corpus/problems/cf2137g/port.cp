@@ -1,4 +1,5 @@
 // Source: Codeforces 2137G (Cry Me a River), https://codeforces.com/contest/2137/problem/G
+// limits: 2000 ms, 256 MB
 // Problem: a DAG with n, m <= 2e5, all nodes blue. Cry (first) and River alternately move a token
 //   along an edge; Cry wins when it reaches a node with no out-edges, River when it reaches a red
 //   node (red sinks go to River). q <= 2e5 queries: paint u red, or ask whether Cry wins from u.

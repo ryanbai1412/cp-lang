@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 import sys, random
-# seed size: n <= size (capped at 30) per test, sum n^2 <= 900, t <= 50; a random connected simple graph
+# --max: see below. seed size: n <= size (capped at 30) per test, sum n^2 <= 900, t <= 50; a random connected simple graph
 # grown edge by edge while every vertex stays on at most 5 simple cycles
-rng = random.Random(int(sys.argv[1])); S = int(sys.argv[2])
+MAX = sys.argv[1] == "--max"
+rng = random.Random(0 if MAX else int(sys.argv[1])); S = 30 if MAX else int(sys.argv[2])
 big = S >= 30
 
 def cycle_counts(n, adj, cap):
@@ -46,6 +47,12 @@ def graph(n):
     rng.shuffle(edges)
     return [(u, v) if rng.random() < .5 else (v, u) for u, v in edges]
 
+if MAX:
+    # one test at n = 30 (sum n^2 = 900): the densest of 20 greedy graphs, every vertex still on <= 5 cycles
+    best = max((graph(30) for _ in range(20)), key=len)
+    print(1); print(30, len(best))
+    for u, v in best: print(u, v)
+    sys.exit()
 if big:
     shape = rng.randint(0, 2)
     ns = [30] if shape == 0 else [4] * 50 if shape == 1 else [21, 21, 3]

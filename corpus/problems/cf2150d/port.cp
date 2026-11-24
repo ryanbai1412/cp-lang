@@ -1,4 +1,5 @@
 // Source: Codeforces 2150D (Attraction Theory), https://codeforces.com/contest/2150/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: n people stand at 1..n. Placing an attraction at x moves everyone one step toward
 //   x. Over all distinct position arrays reachable by any sequence of placements, sum
 //   score(p) = sum of a[p_i], modulo 998244353. n, sum n <= 2e5, a_i <= 1e9. Multitest.

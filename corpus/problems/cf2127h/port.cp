@@ -1,4 +1,5 @@
 // Source: Codeforces 2127H (23 Rises Again), https://codeforces.com/contest/2127/problem/H
+// limits: 5000 ms, 1024 MB
 // Problem: a simple connected graph, 3 <= n <= 30 vertices, n - 1 <= m <= n(n - 1)/2 edges,
 //   each vertex on at most 5 simple cycles (t <= 50 tests, sum of n^2 <= 900). Print the most
 //   edges of a subgraph in which every vertex has degree at most 2.

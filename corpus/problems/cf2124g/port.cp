@@ -1,4 +1,5 @@
 // Source: Codeforces 2124G (Maximise Sum), https://codeforces.com/contest/2124/problem/G
+// limits: 4000 ms, 512 MB
 // Problem: an array a of n <= 1e6 values in 0..=n (sum n <= 1e6, multitest). At most once pick
 //   i < j, set a[i] += a[j] and a[j] = 0, at cost j - i (0 for no move). For each x in 0..n print
 //   the max over moves of cost >= x of the sum of prefix minima.

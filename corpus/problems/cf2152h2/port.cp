@@ -1,5 +1,6 @@
 // Source: Codeforces 2152H2 (Victorious Coloring, Hard Version),
 //   https://codeforces.com/contest/2152/problem/H2
+// limits: 3000 ms, 1024 MB
 // Problem: a tree, n <= 2.5e5, edge weights <= 1e9. For vertex weights x >= 0 let f(x) be the min
 //   over nonempty vertex sets S of x(S) + w(edges leaving S). For each of q <= 2.5e5 queries
 //   l <= 1e9, print the least sum of x with f(x) >= l. Multitest, sums of n and q <= 2.5e5.

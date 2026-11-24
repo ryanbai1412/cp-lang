@@ -1,4 +1,5 @@
 // Source: Codeforces 2157F (Git Gud), https://codeforces.com/contest/2157/problem/F
+// limits: 2000 ms, 256 MB
 // Problem: unknown skill s in 1..=n (n = 4 or 250000). A mission (difficulty y, length l) costs
 //   l, plus 1000 if y is above the previous mission's difficulty, and adds l to s when y == s.
 //   Print at most 1e6 missions, total cost <= 1e6, that bring every possible s to >= n.

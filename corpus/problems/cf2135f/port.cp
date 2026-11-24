@@ -1,4 +1,5 @@
 // Source: Codeforces 2135F (To the Infinity), https://codeforces.com/contest/2135/problem/F
+// limits: 2000 ms, 1024 MB
 // Problem: a full binary tree on n <= 4e5 nodes (n odd), root 1; a leaf has f(x) = x and an inner
 //   node f_u = f_l ^ f_r. Print the nodes sorted by f_u as x -> infinity, ties by smaller index.
 //   Multitest, sum n <= 4e5.
