@@ -410,3 +410,47 @@ fn a_case_newer_than_the_scoreboard_cannot_regress_unseen() {
     let fixed = make_board("conformance", &[("new.cp", "pass")]);
     assert!(check_prev(&committed, &prev, &fixed).is_empty());
 }
+
+#[test]
+fn docs_example_tags_name_how_an_example_stops() {
+    use cpl_conform::docs::parse_example_body;
+    let code = |s: &str| Some(s.to_string());
+    assert_eq!(
+        parse_example_body("`a[5]` (traps R0101)"),
+        (code("a[5]"), String::new(), code("R0101"))
+    );
+    assert_eq!(
+        parse_example_body("`read()` (stdin `3`) (error E0302)"),
+        (code("read()"), "3\n".to_string(), code("E0302"))
+    );
+    assert_eq!(
+        parse_example_body("`x` and then some prose"),
+        (None, String::new(), None),
+        "prose after the code is not an example"
+    );
+}
+
+#[test]
+fn docs_examples_run_or_stop_as_tagged() {
+    use cpl_conform::docs::{run_one, DocExample};
+    let root = find_repo_root().expect("repo root");
+    let mut db = cpl_check::Database::new();
+    let ex = |snippet: Option<&str>, expect: Option<&str>| DocExample {
+        id: "t.cp#x:1".into(),
+        module: String::new(),
+        snippet: snippet.map(str::to_string),
+        stdin: String::new(),
+        block: false,
+        expect: expect.map(str::to_string),
+    };
+    let status = |db: &mut cpl_check::Database, e: DocExample| run_one(db, &root, &e).status;
+    assert_eq!(status(&mut db, ex(Some("1 + 1 == 2"), None)), "pass");
+    assert_eq!(
+        status(&mut db, ex(Some("[1, 2][5] == 0"), Some("R0101"))),
+        "pass"
+    );
+    assert_eq!(status(&mut db, ex(Some("[1, 2][5] == 0"), None)), "trap");
+    assert_eq!(status(&mut db, ex(Some("1 == 1"), Some("R0101"))), "fail");
+    assert_eq!(status(&mut db, ex(Some("1 == 1"), Some("R0402"))), "bad");
+    assert_eq!(status(&mut db, ex(None, None)), "prose");
+}

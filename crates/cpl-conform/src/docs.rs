@@ -14,6 +14,9 @@ pub struct DocExample {
     pub stdin: String,
     /// A fenced multi-line block rather than an `example:` line.
     pub block: bool,
+    /// The diagnostic or trap code a `(error E0302)` / `(traps R0401)` tag says the example
+    /// stops with; `None` means it must run to the end with its assertion true.
+    pub expect: Option<String>,
 }
 
 /// The `/// example:` lines of one std file, as `(id, body)`. The id is
@@ -137,8 +140,8 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
                     continue;
                 }
             }
-            let (snippet, stdin) = if block {
-                (Some(body), String::new())
+            let (snippet, stdin, expect) = if block {
+                (Some(body), String::new(), None)
             } else {
                 parse_example_body(&body)
             };
@@ -148,30 +151,49 @@ pub fn discover(root: &Path, filter: Option<&str>) -> Vec<DocExample> {
                 snippet,
                 stdin,
                 block,
+                expect,
             });
         }
     }
     out
 }
 
-fn parse_example_body(body: &str) -> (Option<String>, String) {
+/// Splits `` `code` (stdin `x`) (traps R0401) `` into the code, its stdin and the expected
+/// trap or error code. The tags may come in any order; anything else after the code is not
+/// an example (`None` code).
+pub fn parse_example_body(body: &str) -> (Option<String>, String, Option<String>) {
+    let none = (None, String::new(), None);
     let Some(after_open) = body.strip_prefix('`') else {
-        return (None, String::new());
+        return none;
     };
     let Some(end) = after_open.find('`') else {
-        return (None, String::new());
+        return none;
     };
     let code = after_open[..end].to_string();
-    let tail = after_open[end + 1..].trim();
+    let mut tail = after_open[end + 1..].trim();
     let mut stdin = String::new();
-    if let Some(inner) = tail
-        .strip_prefix("(stdin `")
-        .and_then(|s| s.strip_suffix("`)"))
-    {
-        stdin = inner.to_string();
-        stdin.push('\n');
+    let mut expect = None;
+    while !tail.is_empty() {
+        if let Some(rest) = tail.strip_prefix("(stdin `") {
+            let Some(close) = rest.find("`)") else {
+                return none;
+            };
+            stdin = format!("{}\n", &rest[..close]);
+            tail = rest[close + 2..].trim_start();
+        } else if let Some(rest) = tail
+            .strip_prefix("(traps ")
+            .or_else(|| tail.strip_prefix("(error "))
+        {
+            let Some(close) = rest.find(')') else {
+                return none;
+            };
+            expect = Some(rest[..close].trim().to_string());
+            tail = rest[close + 1..].trim_start();
+        } else {
+            return none;
+        }
     }
-    (Some(code), stdin)
+    (Some(code), stdin, expect)
 }
 
 /// Splits a semicolon-separated example snippet at top level (ignoring `;` inside
@@ -294,10 +316,42 @@ fn build_example_program(ex: &DocExample, code: &str, import_module: bool) -> St
 pub fn run_one(db: &mut Database, root: &Path, ex: &DocExample) -> CaseOutcome {
     let Some(code) = &ex.snippet else {
         return CaseOutcome {
-            status: "skip".into(),
-            detail: "prose example".into(),
+            status: "prose".into(),
+            detail: "`example:` must be backticked code, optionally followed by `(stdin `...`)`, \
+                     `(traps RXXXX)` or `(error EXXXX)`; move prose to the doc text"
+                .into(),
         };
     };
+    if ex.expect.as_deref() == Some("R0402") {
+        return CaseOutcome {
+            status: "bad".into(),
+            detail: "a `todo` body is unfinished, not an expected trap: write the body".into(),
+        };
+    }
+    let outcome = run_unchecked(db, root, ex, code);
+    match &ex.expect {
+        None => outcome,
+        Some(want) => {
+            let stopped = outcome.status == "error" || outcome.status == "trap";
+            if stopped && outcome.detail.contains(&format!("[{want}]")) {
+                CaseOutcome {
+                    status: "pass".into(),
+                    detail: String::new(),
+                }
+            } else {
+                CaseOutcome {
+                    status: "fail".into(),
+                    detail: format!(
+                        "expected {want}, got {}: {}",
+                        outcome.status, outcome.detail
+                    ),
+                }
+            }
+        }
+    }
+}
+
+fn run_unchecked(db: &mut Database, root: &Path, ex: &DocExample, code: &str) -> CaseOutcome {
     let safe_id: String = ex
         .id
         .chars()

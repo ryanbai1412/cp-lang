@@ -59,7 +59,7 @@ pub struct Wire():
 /// traps: when a token is not a valid `T`
 /// example: `read_all<Int>() == [3, 1, 2]` (stdin `3 1 2`)
 /// example: `read_all<Int>(until: x => x == 0) == [5, 7] and read<Int>() == 9` (stdin `5 7 0 9`)
-/// example: `read_all<Int>() == []` (empty stdin)
+/// example: `read_all<Int>() == []` (stdin ``)
 pub fn read_all<T>(until: ?(T -> Bool) = None) -> List<T> = todo
 
 /// Compile-time I/O settings: 0/1-based counted domains, field separator, `yes` words, and float precision.
