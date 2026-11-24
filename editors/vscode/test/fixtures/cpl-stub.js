@@ -31,7 +31,7 @@ const input = fs.readFileSync(0, 'utf8');
 if (args[0] === 'stress') {
     console.log(JSON.stringify({
         status: 'fail',
-        cases: 313,
+        case_count: 313,
         counterexample: {
             case: 313,
             input: 'n = 2  k = 0  a = [7, 7]',

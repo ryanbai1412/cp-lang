@@ -766,7 +766,7 @@ fn a_native_profile_builds_with_the_judges_flags_on_the_judges_stack() {
     ]);
     assert_eq!(out.code, 0, "{}", out.stderr);
     let json = String::from_utf8_lossy(&out.stdout);
-    assert!(json.contains("\"hits\":1000001"), "{json}");
+    assert!(json.contains("\"hit_count\":1000001"), "{json}");
 }
 
 #[test]

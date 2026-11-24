@@ -45,7 +45,7 @@ fn hits(json: &str) -> Vec<(u64, u64)> {
         .skip(1)
         .map(|row| {
             let line = row[..row.find(',').unwrap()].parse().unwrap();
-            let hits = &row[row.find("\"hits\":").unwrap() + 7..];
+            let hits = &row[row.find("\"hit_count\":").unwrap() + 12..];
             (line, hits[..hits.find(',').unwrap()].parse().unwrap())
         })
         .collect()
@@ -126,7 +126,9 @@ fn cover_lists_lines_and_branches_no_input_reached() {
         "json",
     ]);
     assert!(
-        out.contains("\"covered\":7,\"uncovered\":[],\"one_way\":[{\"line\":5,\"always\":true}]"),
+        out.contains(
+            "\"covered_count\":7,\"uncovered\":[],\"one_way\":[{\"line\":5,\"always\":true}]"
+        ),
         "{out}"
     );
     let (out, _, _) = cpl(&[

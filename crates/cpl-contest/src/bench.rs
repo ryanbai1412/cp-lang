@@ -342,7 +342,7 @@ fn json(runs: &[Run], limits: Limits) -> String {
         .iter()
         .map(|run| {
             format!(
-                "{{\"shape\":{},\"numbers\":{},\"status\":{},\"ms\":{},\"kb\":{},\"error\":{}}}",
+                "{{\"shape\":{},\"number_count\":{},\"status\":{},\"time_ms\":{},\"peak_kb\":{},\"error\":{}}}",
                 json_string(run.shape.name()),
                 run.numbers,
                 json_string(run.status),

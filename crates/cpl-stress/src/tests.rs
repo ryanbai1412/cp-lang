@@ -652,7 +652,10 @@ mod cli {
             file, "--fast", &bad, "--brute", &good, "--cases", "300", "--format", "json",
         ]);
         assert_eq!(code, 1);
-        assert!(out.starts_with("{\"status\":\"fail\",\"cases\":"), "{out}");
+        assert!(
+            out.starts_with("{\"status\":\"fail\",\"case_count\":"),
+            "{out}"
+        );
         // The case the text run saved runs first and still fails.
         assert!(
             out.contains("\"raw_input\":\"1 1\\n1001\\n1 1\\n\""),
@@ -669,7 +672,7 @@ mod cli {
             file, "--fast", &good, "--brute", &good, "--cases", "5", "--format", "json",
         ]);
         assert!(
-            out.starts_with("{\"status\":\"ok\",\"cases\":5,\"saved_passed\":1,\"tried\":\""),
+            out.starts_with("{\"status\":\"ok\",\"case_count\":5,\"saved_count\":1,\"tried\":\""),
             "{out}"
         );
         std::fs::remove_dir_all(dir).unwrap();

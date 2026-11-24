@@ -400,7 +400,7 @@ test("stress finds and shrinks a planted bug in wasm with first differing value"
 
   const fixed = buggy.replace("if i > 0: best max= a[i]", "best max= a[i]");
   const ok = cpl.stress(fixed, { cases: 25, seed: 1, size: 6 });
-  assert.deepEqual([ok.status, ok.cases], ["ok", 25]);
+  assert.deepEqual([ok.status, ok.case_count], ["ok", 25]);
 });
 
 

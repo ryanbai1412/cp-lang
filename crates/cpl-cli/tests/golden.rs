@@ -176,7 +176,7 @@ fn fetch_writes_a_pages_samples_and_keeps_other_tests() {
     assert_eq!(again.status.code(), Some(0), "{}", text(&again.stderr));
     assert_eq!(
         text(&again.stdout),
-        "{\"path\":\"a.cp\",\"created\":false,\"tests\":\"a.tests\",\"samples\":2}\n"
+        "{\"path\":\"a.cp\",\"created\":false,\"tests\":\"a.tests\",\"sample_count\":2}\n"
     );
     std::fs::write(dir.join("a.tests/2.out"), "12\n").unwrap();
     let kept = cpl(&dir, &["fetch", url, "--html", "page.html"]);
@@ -214,7 +214,7 @@ fn new_creates_the_solution_and_its_tests_folder() {
         assert_eq!(out.status.code(), Some(0), "{}", text(&out.stderr));
         assert_eq!(
             text(&out.stdout),
-            format!("{{\"path\":\"{name}.cp\",\"created\":true,\"tests\":\"{name}.tests\",\"samples\":0}}\n")
+            format!("{{\"path\":\"{name}.cp\",\"created\":true,\"tests\":\"{name}.tests\",\"sample_count\":0}}\n")
         );
     }
 }
@@ -1088,8 +1088,8 @@ fn test_json_runs_the_cases_of_a_file_given_by_path_or_name() {
             text(&out.stderr)
         );
         let json = cpl_json::parse(&text(&out.stdout)).expect("cpl test --json is JSON");
-        assert_eq!(json.at(&["passed"]).as_i64(), Some(1), "{args:?}");
-        assert_eq!(json.at(&["total"]).as_i64(), Some(1), "{args:?}");
+        assert_eq!(json.at(&["passed_count"]).as_i64(), Some(1), "{args:?}");
+        assert_eq!(json.at(&["case_count"]).as_i64(), Some(1), "{args:?}");
     }
 }
 
@@ -1113,13 +1113,13 @@ fn submit_json_says_whether_it_is_ready_and_why() {
         assert_eq!(code, Some(0), "{args:?}: {json:?}");
         assert_eq!(json.at(&["ready"]).as_bool(), Some(true));
         assert_eq!(json.at(&["build", "path"]).as_str(), Some("a.cpp"));
-        assert_eq!(json.at(&["test", "passed"]).as_i64(), Some(1));
+        assert_eq!(json.at(&["test", "passed_count"]).as_i64(), Some(1));
     }
     std::fs::write(dir.join("a.tests/1.out"), "4\n").unwrap();
     let (code, json) = submit(&["submit", "a.cp", "--json"]);
     assert_eq!(code, Some(EXIT_ERRORS.into()));
     assert_eq!(json.at(&["ready"]).as_bool(), Some(false));
-    assert_eq!(json.at(&["test", "passed"]).as_i64(), Some(0));
+    assert_eq!(json.at(&["test", "passed_count"]).as_i64(), Some(0));
     std::fs::write(dir.join("bad.cp"), "let x: Int = \"a\"\n").unwrap();
     let (code, json) = submit(&["submit", "bad.cp", "--json"]);
     assert_eq!(code, Some(EXIT_ERRORS.into()));

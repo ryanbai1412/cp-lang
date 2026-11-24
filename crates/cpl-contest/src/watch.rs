@@ -190,7 +190,7 @@ impl Watch {
         };
         obj([
             ("path", text(&self.source.shown())),
-            ("passed", Value::Bool(passed)),
+            ("ok", Value::Bool(passed)),
             ("diagnostics", Value::Array(diagnostics)),
             ("test", test),
             ("skipped", skipped),

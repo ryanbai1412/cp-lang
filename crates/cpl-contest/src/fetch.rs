@@ -507,7 +507,7 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     if args.has("--json") {
         let _ = writeln!(
             stdout,
-            "{{\"path\":{},\"created\":{created},\"tests\":{},\"samples\":{samples}}}",
+            "{{\"path\":{},\"created\":{created},\"tests\":{},\"sample_count\":{samples}}}",
             cpl_json::escape_string(&source.shown()),
             cpl_json::escape_string(&tests.shown()),
         );
@@ -595,7 +595,7 @@ fn fetch_contest(
                 first.get_or_insert_with(|| source.clone());
                 if json {
                     rows.push(format!(
-                        "{{\"url\":{},\"path\":{},\"created\":{created},\"tests\":{},\"samples\":{samples}}}",
+                        "{{\"url\":{},\"path\":{},\"created\":{created},\"tests\":{},\"sample_count\":{samples}}}",
                         cpl_json::escape_string(page),
                         cpl_json::escape_string(&source.shown()),
                         cpl_json::escape_string(&tests.shown()),

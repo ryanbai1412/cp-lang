@@ -7,12 +7,12 @@ platform and `\` on Windows too; `d.tests/` sits beside `d.cp`.
 
 | Command | Does |
 |---|---|
-| `cpl new d` | creates `d.cp` from the template and `d.tests/`; `--json` prints `{"path", "created", "tests", "samples"}` as `cpl fetch --json` does |
+| `cpl new d` | creates `d.cp` from the template and `d.tests/`; `--json` prints `{"path", "created", "tests", "sample_count"}` as `cpl fetch --json` does |
 | `cpl fetch <url> [d]` | downloads the samples of a Codeforces, AtCoder or CSES problem page into `d.tests/`, and creates `d.cp` with the title and limits if it is new; `--html` reads a page saved from the browser (Codeforces refuses scripts); a contest's page fetches each problem it lists into a folder named after the contest (`abc300/a.cp`, ...), `--json` printing `{"contest", "folder", "problems"}` |
 | `cpl check d...` | every error in the files: names, types, lending, input ranges; nothing runs |
 | `cpl fix d...` | applies each error's suggested fix and reports what is left |
 | `cpl run d [files]` | checked build in the interpreter, on files or stdin; with neither (stdin a terminal) it runs every sample in `d.tests/` as `cpl test d` does, and `cpl run d 2` runs the sample `2`; compares with `.out` files if present; `--release` runs the judge's C++ with every check a local build makes (`--checks` as for `build`; `--checks none` is the judge build); `--trace` writes the HTML trace (`tools/trace-debug.md`); `--time-limit MS` stops the run after MS milliseconds; on a file with an `@interactor` it runs the program against it |
-| `cpl test d` | every case in `d.tests/` (`1.in` with an optional `1.out`, numbered from 1) and `@test` fns; with an `@interactor`, `N.in` is the hidden test and the interactor's verdict decides, so `N.out` is not needed; `--case 2` runs one; `--add FILE [--expect OUT]` adds the next numbered case and runs it; output matches `.out` token by token, except that two tokens which both parse as numbers, either with a `.` or an exponent, match within \(10^{-6}\) absolute or relative error (`0.625` is `0.625000000`), and a `@check` overrides both; without a `@check` or `--checker`, a `checker.py` in the cases folder (or beside a sibling `tests/` folder) judges as `--checker checker.py` does; `submit` and `watch` compare the same way; `cpl test abc300`, a contest folder from `cpl fetch`, runs each `.cp` in it that has a `.tests/` folder and prints `k of n problems pass every case` (JSON: `{"problems": [{"path", "report"}], "passed", "total"}`), exiting with the worst problem's code |
+| `cpl test d` | every case in `d.tests/` (`1.in` with an optional `1.out`, numbered from 1) and `@test` fns; with an `@interactor`, `N.in` is the hidden test and the interactor's verdict decides, so `N.out` is not needed; `--case 2` runs one; `--add FILE [--expect OUT]` adds the next numbered case and runs it; output matches `.out` token by token, except that two tokens which both parse as numbers, either with a `.` or an exponent, match within \(10^{-6}\) absolute or relative error (`0.625` is `0.625000000`), and a `@check` overrides both; without a `@check` or `--checker`, a `checker.py` in the cases folder (or beside a sibling `tests/` folder) judges as `--checker checker.py` does; `submit` and `watch` compare the same way; `cpl test abc300`, a contest folder from `cpl fetch`, runs each `.cp` in it that has a `.tests/` folder and prints `k of n problems pass every case` (JSON: `{"problems": [{"path", "report"}], "passed_count", "problem_count"}`), exiting with the worst problem's code |
 | `cpl stress d` | alternatives, generators, checkers, law sampling; shrinks and saves failures (`tools/stress.md`) |
 | `cpl locate d` | the smallest failing input and the first part whose alt disagrees |
 | `cpl judge d input [output answer]` | runs the file's `@interactor` as a judge program, or its `@check` on an output; exit 0 accepts |
@@ -75,7 +75,7 @@ marks among `stable`, `edge`, `default` and `rollback`; `cpl self channel
 installed; every other `cpl self` command prints `{"ok", "message"}` or
 `{"ok", "error"}`, as `cpl self rollback --json` prints `{"ok", "message"?,
 "error"?}`.
-`cpl watch --json` prints `{"path", "passed", "diagnostics", "test",
+`cpl watch --json` prints `{"path", "ok", "diagnostics", "test",
 "skipped", "error"}` for each round, on one line: the errors (or, with none, the
 lints) in `cpl check --json`'s diagnostic shape, `test` as `cpl test --json`
 prints it or `null` when the cases did not run, why they were `skipped`, and
@@ -85,12 +85,16 @@ any `error` that stopped the round (`null` when none).
 --version` prints it, and `json` is how the command asks for JSON output
 (`"--json"` or `"--format json"`; both work) or `null` when it has none.
 
+Keys follow one rule: a key names its quantity with the unit as a suffix
+(`time_ms`, `time_ns`, `peak_kb`, `time_limit_ms`); a plural noun is a list
+(`files`, `cases`); a count is `<noun>_count` (`case_count`); and one
+meaning has one key in every command, so the source is always `path` and a
+pass flag always `ok`.
 A key marked `?` is in some of a command's outputs only, as its sentence
 says; `crates/cpl-cli/tests/json_contract.rs` runs every command below and
 checks its keys against these shapes. The other commands with JSON output:
-`cpl new --json` and `cpl fetch --json` print `{"path", "created", "tests",
-"samples"}`: the source's `path`, whether it was `created` (false when it
-was there already), the `tests` folder and how many `samples` it holds.
+`cpl new --json` and `cpl fetch --json` print `{"path", "created", "tests", "sample_count"}`: the source's `path`, whether it was `created` (false when it
+was there already), the `tests` folder and its `sample_count`.
 `cpl migrate --json` prints `{"files": [{"path", "changed", "applied",
 "diagnostics"}]}`. `cpl lint --json` prints `{"files": [{"path", "ok",
 "diagnostics"}]}`, as `cpl check --json` does, the diagnostics its lints.
@@ -99,7 +103,7 @@ was there already), the `tests` folder and how many `samples` it holds.
 top-level `values` it ended with; with `--trace` it prints the trace
 instead (`tools/trace/trace-schema.json`).
 `cpl judges --json` prints `{"judges": [{"name", "title", "chosen",
-"command", "os", "stack", "thread_stack_mb", "time_ms", "memory_mb",
+"command", "os", "stack", "thread_stack_mb", "time_limit_ms", "memory_limit_mb",
 "source_limit_kb", "evidence"}]}`, `chosen` on the profile the file builds for.
 `cpl explain --json` prints `[{"code", "title", "summary", "explanation",
 "trigger", "fix", "mode", "lint_name", "input"?, "rule"?}]`, one entry
@@ -109,19 +113,19 @@ per code: the lint's `rule` when `mode` is `lint`, else the `input` its
 per choice it explains.
 `cpl doc --format json` prints `{"modules": [{"name", "path", "doc", "items",
 "examples", "links"}]}`.
-`cpl test --format json` prints `{"passed", "total", "cases": [{"name",
-"verdict", "ms", "peak_kb", "output", "expected", "why", "explained"}]}`.
-`cpl stress --format json` prints `{"status", "cases", "saved_passed"?,
-"tried"?, "counterexample"?}`: how many `cases` ran, then `saved_passed` and
+`cpl test --format json` prints `{"passed_count", "case_count", "cases": [{"name",
+"verdict", "time_ms", "peak_kb", "output", "expected", "why", "explained"}]}`.
+`cpl stress --format json` prints `{"status", "case_count", "saved_count"?,
+"tried"?, "counterexample"?}`: how many cases ran (`case_count`), then `saved_count` and
 what it `tried` when it found no counterexample, or the `counterexample`.
 `cpl locate --json` prints `{"input", "part", "alt", "output", "alt_output",
 "divergence"}`.
 `cpl bench --format json` prints `{"status", "time_limit_ms",
-"memory_limit_kb", "runs": [{"shape", "numbers", "status", "ms", "kb",
+"memory_limit_kb", "runs": [{"shape", "number_count", "status", "time_ms", "peak_kb",
 "error"}]}`.
-`cpl profile --format json` prints `{"file", "engine", "nanos", "failure",
-"lines": [{"line", "hits", "nanos"}]}`.
-`cpl cover --format json` prints `{"file", "inputs", "lines", "covered",
+`cpl profile --format json` prints `{"path", "engine", "time_ns", "failure",
+"lines": [{"line", "hit_count", "time_ns"}]}`.
+`cpl cover --format json` prints `{"path", "input_count", "line_count", "covered_count",
 "uncovered", "one_way": [{"line", "always"}]}`: `uncovered` holds the
 numbers of the lines no input ran.
 `cpl replay --json` prints `{"call": {"name", "ordinal", "entry", "exit",

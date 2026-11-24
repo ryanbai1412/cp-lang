@@ -41,9 +41,10 @@ options:
   --time-limit MS    per case (default: the problem's limit)
   --memory-limit MB  peak memory per case, past which a case is MLE (default:
                      the problem's limit)
-  --format json      print `{\"cases\": [...], \"passed\", \"total\"}`, each case
-                     with its name, verdict (null when unjudged), ms, peak_kb,
-                     expected, output, why and explained
+  --format json      print `{\"cases\": [...], \"passed_count\",
+                     \"case_count\"}`, each case with its name, verdict (null
+                     when unjudged), time_ms, peak_kb, expected, output, why
+                     and explained
 ";
 
 /// What happened on one case.
@@ -213,7 +214,7 @@ pub fn results_json(results: &[CaseResult]) -> cpl_json::Value {
         obj([
             ("name", text(&r.name)),
             ("verdict", maybe(r.verdict.as_ref().map(Verdict::code))),
-            ("ms", Value::Int(r.elapsed.as_millis() as i64)),
+            ("time_ms", Value::Int(r.elapsed.as_millis() as i64)),
             (
                 "peak_kb",
                 r.peak_kb.map_or(Value::Null, |kb| Value::Int(kb as i64)),
@@ -227,8 +228,8 @@ pub fn results_json(results: &[CaseResult]) -> cpl_json::Value {
     let passed = results.iter().filter(|r| r.passed()).count();
     obj([
         ("cases", Value::Array(cases.collect())),
-        ("passed", Value::Int(passed as i64)),
-        ("total", Value::Int(results.len() as i64)),
+        ("passed_count", Value::Int(passed as i64)),
+        ("case_count", Value::Int(results.len() as i64)),
     ])
 }
 
@@ -358,7 +359,7 @@ fn run_folder(
     if json {
         let _ = writeln!(
             stdout,
-            "{{\"problems\":[{}],\"passed\":{passed},\"total\":{total}}}",
+            "{{\"problems\":[{}],\"passed_count\":{passed},\"problem_count\":{total}}}",
             rows.join(",")
         );
     } else {

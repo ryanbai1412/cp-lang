@@ -411,7 +411,10 @@ fn the_test_command_judges_with_a_checker_or_an_interactor() {
     assert_eq!(code, 1);
     let json = cpl_json::parse(&out).expect("cpl test --format json is JSON");
     assert_eq!(
-        (json.at(&["passed"]).as_i64(), json.at(&["total"]).as_i64()),
+        (
+            json.at(&["passed_count"]).as_i64(),
+            json.at(&["case_count"]).as_i64()
+        ),
         (Some(2), Some(3)),
         "{out}"
     );
@@ -650,7 +653,7 @@ fn the_bench_command_prints_a_report_or_json() {
         ],
     );
     assert_eq!(code, 0);
-    assert!(out.starts_with("{\"status\":\"ok\",\"time_limit_ms\":5000,\"memory_limit_kb\":65536,\"runs\":[{\"shape\":\"random\",\"numbers\":41,\"status\":\"ok\",\"ms\":"), "{out}");
+    assert!(out.starts_with("{\"status\":\"ok\",\"time_limit_ms\":5000,\"memory_limit_kb\":65536,\"runs\":[{\"shape\":\"random\",\"number_count\":41,\"status\":\"ok\",\"time_ms\":"), "{out}");
     let (code, _, _) = cli(
         bench::run,
         &[
@@ -759,8 +762,8 @@ fn a_watch_round_checks_then_tests_and_recovers_after_a_fix() {
     let (code, out, _) = cli(watch::run, &[path, "--once", "--json", "--fast", &solution]);
     assert_eq!(code, 0, "{out}");
     let json = cpl_json::parse(&out).expect("one JSON line");
-    assert_eq!(json.at(&["passed"]).as_bool(), Some(true), "{out}");
-    assert_eq!(json.at(&["test", "total"]).as_i64(), Some(3), "{out}");
+    assert_eq!(json.at(&["ok"]).as_bool(), Some(true), "{out}");
+    assert_eq!(json.at(&["test", "case_count"]).as_i64(), Some(3), "{out}");
     assert_eq!(json.at(&["error"]), &cpl_json::Value::Null);
     std::fs::write(&source, "let n: 1..=5 = read()\nprint(m)\n").unwrap();
     let (code, out, _) = cli(watch::run, &[path, "--once", "--json", "--fast", &solution]);

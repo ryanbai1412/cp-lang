@@ -268,7 +268,7 @@ pub fn profile(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8
             .iter()
             .map(|(line, tally)| {
                 format!(
-                    "{{\"line\":{line},\"hits\":{},\"nanos\":{}}}",
+                    "{{\"line\":{line},\"hit_count\":{},\"time_ns\":{}}}",
                     tally.hits, tally.nanos
                 )
             })
@@ -276,7 +276,7 @@ pub fn profile(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8
         let failure = run.failure.as_deref().map_or("null".into(), json_string);
         let _ = writeln!(
             stdout,
-            "{{\"file\":{},\"engine\":\"{engine}\",\"nanos\":{total},\"failure\":{failure},\"lines\":[{}]}}",
+            "{{\"path\":{},\"engine\":\"{engine}\",\"time_ns\":{total},\"failure\":{failure},\"lines\":[{}]}}",
             json_string(options.file),
             rows.join(",")
         );
@@ -479,7 +479,7 @@ pub fn cover(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
             .collect();
         let _ = writeln!(
             stdout,
-            "{{\"file\":{},\"inputs\":{},\"lines\":{},\"covered\":{covered},\"uncovered\":[{}],\"one_way\":[{}]}}",
+            "{{\"path\":{},\"input_count\":{},\"line_count\":{},\"covered_count\":{covered},\"uncovered\":[{}],\"one_way\":[{}]}}",
             json_string(options.file),
             inputs.len(),
             lines.len(),

@@ -61,6 +61,11 @@ fn check(value: &Value, shape: &Shape, at: &str, errors: &mut Vec<String>) {
             }
         }
         (Shape::Object(keys), Value::Object(map)) => {
+            for (name, value) in map {
+                if let Some(why) = misnamed(name, value) {
+                    errors.push(format!("{at}.{name}: {why}"));
+                }
+            }
             for (name, optional, inner) in keys {
                 match map.get(name) {
                     Some(value) => check(value, inner, &format!("{at}.{name}"), errors),
@@ -74,6 +79,29 @@ fn check(value: &Value, shape: &Shape, at: &str, errors: &mut Vec<String>) {
         }
         _ => errors.push(format!("{at}: not the published kind: {shape:?}")),
     }
+}
+
+/// cli.md's naming rule, where a key's spelling can show it: a time or
+/// memory quantity ends in its unit, a count is `<noun>_count` rather than a
+/// plural, and the source and the pass flag are `path` and `ok`.
+fn misnamed(name: &str, value: &Value) -> Option<&'static str> {
+    let units = ["_ms", "_ns", "_kb", "_mb"];
+    if matches!(name, "file" | "passed" | "total" | "ms" | "kb" | "nanos") {
+        return Some("spelt as cli.md's naming rule forbids");
+    }
+    if ["time", "memory", "peak"].iter().any(|q| name.contains(q))
+        && !units.iter().any(|u| name.ends_with(u))
+    {
+        return Some("a time or memory key without its unit");
+    }
+    if matches!(value, Value::Int(_))
+        && name.ends_with('s')
+        && name != "bytes"
+        && !units.iter().any(|u| name.ends_with(u))
+    {
+        return Some("a plural key holding a count; write `<noun>_count`");
+    }
+    None
 }
 
 /// The published shapes, by the command words before the flag: each

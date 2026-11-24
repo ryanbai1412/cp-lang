@@ -583,7 +583,7 @@ fn report(
             if json {
                 let _ = writeln!(
                     stdout,
-                    "{{\"path\":{},\"created\":true,\"tests\":{},\"samples\":{samples}}}",
+                    "{{\"path\":{},\"created\":true,\"tests\":{},\"sample_count\":{samples}}}",
                     cpl_json::escape_string(&created[0].shown()),
                     cpl_json::escape_string(&created[1].shown()),
                 );

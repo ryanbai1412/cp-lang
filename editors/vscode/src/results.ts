@@ -156,8 +156,8 @@ export function parseStressReport(json: string): StressReport | undefined {
     }
     const status: 'pass' | 'fail' = root.status === 'fail' ? 'fail' : 'pass';
     const report: StressReport = { status };
-    if (typeof root.cases === 'number') {
-        report.cases = root.cases;
+    if (typeof root.case_count === 'number') {
+        report.cases = root.case_count;
     }
     const found = root.counterexample;
     if (status === 'fail' && isObject(found)) {
@@ -480,8 +480,8 @@ export function parseSubmitReport(stdout: string): SubmitReport | undefined {
         bytes: num(report.build?.bytes),
         limit: num(report.build?.limit),
         judge: str(report.build?.judge),
-        passed: num(report.test?.passed),
-        total: num(report.test?.total),
+        passed: num(report.test?.passed_count),
+        total: num(report.test?.case_count),
     };
 }
 
@@ -524,7 +524,7 @@ export function parseTestReport(json: string): TestCase[] | undefined {
         cases.push({
             name,
             verdict: str(item.verdict),
-            ms: typeof item.ms === 'number' ? item.ms : 0,
+            ms: typeof item.time_ms === 'number' ? item.time_ms : 0,
             expected: str(item.expected),
             output: str(item.output) ?? '',
             why: str(item.why),

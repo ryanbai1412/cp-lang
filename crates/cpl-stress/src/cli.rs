@@ -386,7 +386,7 @@ pub fn report_json(
 ) -> String {
     let Some(failure) = &report.failure else {
         return format!(
-            "{{\"status\":\"ok\",\"cases\":{},\"saved_passed\":{},\"tried\":{}}}\n",
+            "{{\"status\":\"ok\",\"case_count\":{},\"saved_count\":{},\"tried\":{}}}\n",
             report.cases,
             report.saved,
             json_string(&report.reached.describe())
@@ -418,7 +418,7 @@ pub fn report_json(
         false => "",
     };
     format!(
-        "{{\"status\":\"fail\",\"cases\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error}{toolchain},\"stages\":[{}],\"saved\":{},\"rerun\":{},\"trace\":{}{explain}}}}}\n",
+        "{{\"status\":\"fail\",\"case_count\":{},\"counterexample\":{{\"case\":{},\"seed\":{},\"input\":{},\"raw_input\":{},\"expected\":{},\"got\":{},\"verdict\":{}{error}{toolchain},\"stages\":[{}],\"saved\":{},\"rerun\":{},\"trace\":{}{explain}}}}}\n",
         report.cases,
         failure.case,
         failure.seed,

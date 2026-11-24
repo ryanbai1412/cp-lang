@@ -53,7 +53,7 @@ test('parseRunReport keeps a runtime error and rejects other output', () => {
 
 const FAIL = JSON.stringify({
     status: 'fail',
-    cases: 313,
+    case_count: 313,
     counterexample: {
         case: 313,
         input: 'n = 2  a = [7, 7]  q = 1  qs = [(l: 2, r: 2)]',
@@ -67,7 +67,7 @@ const FAIL = JSON.stringify({
 
 const CLI_FAIL = JSON.stringify({
     status: 'fail',
-    cases: 17,
+    case_count: 17,
     counterexample: {
         case: 17,
         seed: 42,
@@ -90,8 +90,8 @@ test('parseStressReport reads stage diffs, ok status, and whole-program CLI repo
         ['answer', 13, true],
     ]);
     assert.equal(firstDifference(found)?.name, 'answer');
-    assert.deepEqual(parseStressReport('{"status": "pass", "cases": 1000}'), { status: 'pass', cases: 1000 });
-    assert.deepEqual(parseStressReport('{"status": "ok", "cases": 500}'), { status: 'pass', cases: 500 });
+    assert.deepEqual(parseStressReport('{"status": "pass", "case_count": 1000}'), { status: 'pass', cases: 1000 });
+    assert.deepEqual(parseStressReport('{"status": "ok", "case_count": 500}'), { status: 'pass', cases: 500 });
     assert.equal(parseStressReport('312 cases ... FAIL'), undefined);
 
     const cli = parseStressReport(CLI_FAIL);
@@ -133,7 +133,7 @@ test('renderCounterexample lays out stage diffs and whole-program diffs', () => 
 test('a stress report with a wrong part call shows that call', () => {
     const json = JSON.stringify({
         status: 'fail',
-        cases: 3,
+        case_count: 3,
         counterexample: {
             case: 3, seed: 1, input: 'k = 1', raw_input: '1\n', expected: '1\n', got: '0\n', verdict: 'WA', stages: [], saved: null, trace: null,
             explain: {
@@ -256,11 +256,11 @@ test('the editor reads what the real trace viewer posts, and nothing else', () =
 test('parseSubmitReport reads `cpl submit --json` and submitSummary says if it is ready', () => {
     const stdout =
         '{"build":{"bytes":4593,"checks":"none","judge":"codeforces","limit":65536,"path":"a.cpp","sizes":[]},' +
-        '"ready":true,"test":{"cases":[],"passed":2,"total":2}}\n';
+        '"ready":true,"test":{"cases":[],"passed_count":2,"case_count":2}}\n';
     const report = parseSubmitReport(stdout);
     assert.deepEqual(report, { ready: true, path: 'a.cpp', bytes: 4593, limit: 65536, judge: 'codeforces', passed: 2, total: 2 });
     assert.equal(submitSummary(report!), "ready to send: a.cpp (4.5 KB, 7% of codeforces's limit), 2/2 samples");
-    const failed = parseSubmitReport('{"ready":false,"build":{"path":"a.cpp","bytes":10},"test":{"passed":0,"total":1}}');
+    const failed = parseSubmitReport('{"ready":false,"build":{"path":"a.cpp","bytes":10},"test":{"passed_count":0,"case_count":1}}');
     assert.equal(submitSummary(failed!), 'not ready to send: a.cpp (0.0 KB), 0/1 samples');
     assert.equal(parseSubmitReport('wrote a.cpp'), undefined);
     assert.equal(parseSubmitReport('{"cases":[]}'), undefined);
@@ -270,13 +270,13 @@ test('parseTestReport reads each case, with null fields left out', () => {
     const cases = parseTestReport(
         JSON.stringify({
             cases: [
-                { name: '1', verdict: 'ok', ms: 25, expected: '4\n', output: '4\n', why: null, explained: null },
-                { name: '2', verdict: 'WA', ms: 19, expected: '7\n', output: '6\n', why: 'expected `7`, got `6`', explained: null },
-                { name: '3', verdict: null, ms: 3, expected: null, output: '9\n', why: null, explained: null },
+                { name: '1', verdict: 'ok', time_ms: 25, expected: '4\n', output: '4\n', why: null, explained: null },
+                { name: '2', verdict: 'WA', time_ms: 19, expected: '7\n', output: '6\n', why: 'expected `7`, got `6`', explained: null },
+                { name: '3', verdict: null, time_ms: 3, expected: null, output: '9\n', why: null, explained: null },
                 { verdict: 'ok' },
             ],
-            passed: 1,
-            total: 3,
+            passed_count: 1,
+            case_count: 3,
         }),
     );
     assert.deepEqual(cases, [
