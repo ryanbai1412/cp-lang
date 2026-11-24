@@ -108,15 +108,6 @@ impl<'a> Lowerer<'a> {
                 None => self.err_expr(span),
             },
             ast::ExprKind::Bool(value) => self.mk(ExprKind::Bool(*value), Ty::Bool, span),
-            ast::ExprKind::None
-                if self.lookup("none").is_some()
-                    || matches!(
-                        self.mod_syms[self.cur_mod].get("none"),
-                        Some(Sym::Global(_))
-                    ) =>
-            {
-                self.name("none", inner_hint, span)
-            }
             ast::ExprKind::None => match hint {
                 Some(ty @ Ty::Opt(_)) => self.mk(ExprKind::None, ty.clone(), span),
                 Some(Ty::Error) => self.err_expr(span),

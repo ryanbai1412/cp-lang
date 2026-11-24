@@ -1,0 +1,7 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"g":{"name":"g","type":"G","kind":"json"},"none":{"name":"none","type":"List\u003cInt>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":6,"label":"let none: List\u003cInt> = [7]","stage":"main","values":{"stdout":[]},"locals":{"none":[7]},"frames":[{"fn":"mk","line":6},{"fn":"main","line":12}]},
+{"id":1,"line":12,"label":"let g = mk()","stage":"main","values":{"stdout":[],"g":{"a":[[7],[7]],"b":null}},"locals":{},"frames":[{"fn":"main","line":12}]},
+{"id":2,"line":13,"label":"let none = [1, 2]","stage":"main","values":{"stdout":[],"g":{"a":[[7],[7]],"b":null},"none":[1,2]},"locals":{},"frames":[{"fn":"main","line":13}]},
+{"id":3,"line":10,"label":"let none: ?Int = None","stage":"main","values":{"stdout":[],"g":{"a":[[7],[7]],"b":null},"none":[1,2]},"locals":{"none":null},"frames":[{"fn":"h","line":10},{"fn":"main","line":14}]},
+{"id":4,"line":14,"label":"print → 2 7 YES 12 YES","stage":"main","values":{"stdout":["2 7 YES 12 YES"],"g":{"a":[[7],[7]],"b":null},"none":[1,2]},"locals":{},"checkpoint":"print 1","frames":[{"fn":"main","line":14}]},
+{"id":5,"line":14,"label":"the program ended","stage":"main","values":{"stdout":["2 7 YES 12 YES"],"g":{"a":[[7],[7]],"b":null},"none":[1,2]},"locals":{},"checkpoint":"end","frames":[{"fn":"main","line":14}]}]}}}
+stderr:

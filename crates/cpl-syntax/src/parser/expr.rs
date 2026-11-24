@@ -1054,9 +1054,10 @@ impl<'a> Parser<'a> {
                 self.bump();
                 ExprKind::Bool(value)
             }
+            // Lowercase `none` is a name (a user's, or the old spelling of `None`).
             T::None => {
                 self.bump();
-                ExprKind::None
+                ExprKind::Name("none".into())
             }
             T::SelfKw => {
                 self.bump();

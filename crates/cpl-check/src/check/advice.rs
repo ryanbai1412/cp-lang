@@ -336,13 +336,8 @@ fn method_list(names: &[String]) -> Option<String> {
 }
 
 impl Checker<'_> {
-    /// The `None` literal; where `none` is bound, the lowercase word is that name.
-    pub(super) fn none_literal(&mut self, span: Span) -> Ty {
-        let bound = self.local("none").is_some() || self.global("none").is_some();
-        if self.text(span) == "none" && bound {
-            return self.name_ty("none", span);
-        }
-        self.old_optional_spelling(span, "None");
+    /// The `None` literal, whose optional the context gives.
+    pub(super) fn none_literal(&mut self, _span: Span) -> Ty {
         Ty::Unknown
     }
 

@@ -759,7 +759,14 @@ impl<'a> Checker<'a> {
     /// The type of a name as a value. One that a test has shown to hold a
     /// value is the value it holds (see [`cpl_syntax::narrow`]).
     fn name_ty(&mut self, name: &str, span: Span) -> Ty {
-        if name == "some" && self.local(name).is_none() && self.global(name).is_none() {
+        if matches!(name, "some" | "none")
+            && self.local(name).is_none()
+            && self.global(name).is_none()
+        {
+            if name == "none" {
+                self.old_optional_spelling(span, "None");
+                return Ty::Unknown;
+            }
             self.old_optional_spelling(span, "Some");
         }
         let moved_at = self.moved.get(name).copied().filter(|at| {
