@@ -290,20 +290,23 @@ fn every_corpus_program_and_conformance_case_is_served() {
     );
     files.sort();
 
-    let threads = std::thread::available_parallelism()
-        .map_or(4, |n| n.get())
-        .min(8);
-    let chunk = files.len().div_ceil(threads);
+    // Each thread takes the next file as it frees up, so a run of long
+    // corpus files doesn't keep one thread busy after the rest finish.
+    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
+    let next = std::sync::atomic::AtomicUsize::new(0);
     let failures: Vec<String> = std::thread::scope(|scope| {
-        let workers: Vec<_> = files
-            .chunks(chunk)
-            .map(|files| {
-                let root = &root;
+        let workers: Vec<_> = (0..threads)
+            .map(|_| {
+                let (root, files, next) = (&root, &files, &next);
                 scope.spawn(move || {
                     let mut server = server();
                     let mut id = 1;
                     let mut failures = Vec::new();
-                    for path in files {
+                    loop {
+                        let n = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+                        let Some(path) = files.get(n) else {
+                            break failures;
+                        };
                         let src = std::fs::read_to_string(path).unwrap();
                         let name = path
                             .strip_prefix(root)
@@ -319,7 +322,6 @@ fn every_corpus_program_and_conformance_case_is_served() {
                             &mut Definitions::default(),
                         );
                     }
-                    failures
                 })
             })
             .collect();
