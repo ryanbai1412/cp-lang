@@ -33,5 +33,10 @@
  "difficulty": "hard",
  "dream": "draft",
  "spec": "draft",
- "notes": "TwoSat<(P, Side)> over a tuple of a list-key domain and an enum; at_most_one + add_xor; TwoSat and Lit join the prelude."
+ "notes": "TwoSat<(P, Side)> over a tuple of a list-key domain and an enum; at_most_one + add_xor; TwoSat and Lit join the prelude.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 11,
+  "sha": "acf5479ac54b774c24ce98ea409a3256a87d9369"
+ }
 }
