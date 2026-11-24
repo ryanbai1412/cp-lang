@@ -988,6 +988,18 @@ fn a_sorted_temporary_is_freed_right_after_its_last_read() {
 }
 
 #[test]
+fn a_list_a_lent_let_points_into_is_not_freed_under_it() {
+    let out = cpp(concat!(
+        "fn first(xs: List<Int>) -> Int = xs[0]\n",
+        "let a = [4, read<Int>()]\n",
+        "let rows = [[7, 8], [9]]\n",
+        "let r = rows[1]\n",
+        "print(first(a), first(r))\n",
+    ));
+    assert!(!out.contains("std::move(rows); }"), "{out}");
+}
+
+#[test]
 fn a_list_a_closure_reads_later_is_not_freed_before_that_read() {
     let out = cpp(concat!(
         "let n: 1..=100 = read()\n",
