@@ -465,6 +465,37 @@ impl Checker<'_> {
             _ => None,
         }
         .map(|h| h.ty.clone());
+        // `list(map(int, input().split()))`: Python reads a line of numbers;
+        // CP Lang reads tokens, and how many is the contestant's call.
+        let numbers = |c: &Self, a: &[Arg]| {
+            matches!(a, [f, xs] if matches!(c.text(f.value.span), "int" | "float")
+                && c.text(xs.value.span).contains("input()"))
+        };
+        if name == "map" && numbers(self, args) {
+            let whole = call.span;
+            self.sink.drop_where(|d| {
+                d.code == codes::UNRESOLVED_NAME && whole.contains(d.span) && d.span != at
+            });
+            if let Some(diag) = self
+                .sink
+                .last_mut()
+                .filter(|d| d.code == code && d.span == at)
+            {
+                diag.help = Some("CP Lang reads numbers by token, not by line: `let (n, m): (Int, Int) = read()` reads two, `read<[n]Int>()` reads n of them".to_string());
+                diag.fixes.clear();
+            }
+            return;
+        }
+        let mapped = |c: &Self, x: &Arg| match &x.value.kind {
+            ExprKind::Call { callee, args } => {
+                matches!(&callee.kind, ExprKind::Name(m) if m == "map") && numbers(c, args)
+            }
+            _ => false,
+        };
+        if name == "list" && matches!(args, [x] if mapped(self, x)) {
+            self.sink.drop_where(|d| d.code == code && d.span == at);
+            return;
+        }
         // `" ".join(map(str, a))`: `join` shows each item, so `a` is enough.
         let joined = |c: &Self| {
             let before = Span::new(call.span.start.saturating_sub(6), call.span.start);
