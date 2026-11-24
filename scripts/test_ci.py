@@ -412,6 +412,13 @@ class TailTest(unittest.TestCase):
         with self.assertRaises(ValueError):
             ci.time_shard(listing, times, "3/2")
 
+    def test_a_shard_starts_its_long_tests_longest_first(self) -> None:
+        times = {"default_s": 1, "tests": {"a::x slow": 148.3, "b t2": 30.4, "b short": 4}}
+        self.assertEqual(ci.time_priorities([("b", "t2"), ("a::x", "slow"), ("b", "short"), ("b", "new")], times),
+                         '[[profile.gate.overrides]]\nfilter = "binary_id(a::x) & test(=slow)"\npriority = 100\n'
+                         '[[profile.gate.overrides]]\nfilter = "binary_id(b) & test(=t2)"\npriority = 30\n')
+        self.assertEqual(ci.time_priorities([("b", "short")], times), "")
+
     def test_test_times_reads_nextests_result_lines(self) -> None:
         log = ("2026-11-24T17:40:00.1Z         PASS [ 145.827s] (165/241) cpl-cli::judges every_x_3\n"
                "2026-11-24T17:40:01.1Z         PASS [   0.300s] (166/241) b t\n"
@@ -433,7 +440,8 @@ class TailTest(unittest.TestCase):
         listed = next(e for e in ev if e.startswith("cargo nextest list"))
         self.assertIn("--archive-file a.tar.zst --workspace-remap . --extract-to . --extract-overwrite", listed)
         run = next(e for e in ev if e.startswith("cargo nextest run"))
-        self.assertIn("--no-fail-fast -E (binary_id(b) & test(=short)) --no-tests=warn", run)
+        self.assertRegex(run, r"--no-fail-fast --tool-config-file ci:\S+nextest-priorities.toml "
+                              r"-E \(binary_id\(b\) & test\(=short\)\) --no-tests=warn")
         self.assertNotIn("--partition", run)
         self.assertIn("check: test partition time:2/2 passed in", out)
         self.assertEqual(code3, 0)

@@ -95,6 +95,16 @@ def time_shard(listing: str, times: dict, shard: str) -> list[tuple[str, str]]:
     return mine
 
 
+def time_priorities(mine: list[tuple[str, str]], times: dict, floor: float = 10.0) -> str:
+    """A nextest tool config that starts a shard's tests of `floor` s or more longest first
+    (priority = their seconds, capped at nextest's 100); nextest's own order would start a
+    2-min test last and end the shard on it alone."""
+    secs = times.get("tests", {})
+    long = sorted(((secs[f"{b} {t}"], b, t) for b, t in mine if secs.get(f"{b} {t}", 0) >= floor), reverse=True)
+    return "".join(f"[[profile.gate.overrides]]\nfilter = {json.dumps(f'binary_id({b}) & test(={t})')}\n"
+                   f"priority = {min(100, round(s))}\n" for s, b, t in long)
+
+
 def test_times(logs: list[str], floor: float = 2.0) -> str:
     """The record time_shard deals by, from nextest's result lines in CI test parts' logs:
     each test at or over `floor` s, and the mean of the rest as `default_s`."""
@@ -885,8 +895,13 @@ class Tail:
                                    "--message-format", "json"], cwd=ROOT, capture_output=True, text=True)
                 if listed.returncode:
                     raise Failed("cargo nextest list failed; the lines above say why")
-                mine = time_shard(listed.stdout, json.loads(TEST_TIMES.read_text()), part.removeprefix("time:"))
-                select = ["-E", " | ".join(f"(binary_id({b}) & test(={t}))" for b, t in mine) or "none()",
+                times = json.loads(TEST_TIMES.read_text())
+                mine = time_shard(listed.stdout, times, part.removeprefix("time:"))
+                first = target_dir() / "nextest-priorities.toml"
+                first.parent.mkdir(parents=True, exist_ok=True)
+                first.write_text(time_priorities(mine, times))
+                select = ["--tool-config-file", f"ci:{first}",
+                          "-E", " | ".join(f"(binary_id({b}) & test(={t}))" for b, t in mine) or "none()",
                           "--no-tests=warn"]
                 self.step(f"cargo nextest run: shard {part.removeprefix('time:')} by measured time"
                           f" ({len(mine)} tests, without the --full tests)")
