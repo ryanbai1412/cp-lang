@@ -46,6 +46,7 @@ The distinct values of a coordinate compression, in increasing order, indexed by
 \(O(1)\) to make.
 
 - `@get fn src(self) -> S` — \(O(1)\)
+- `fn scan<D, T, M>(self: Rev<[D]T>, f: M, from: ?T = None) -> Prefix<D, T>` — \(O(n)\) calls of `f`; \(O(n)\) space; \(O(n)\) calls of `f`.; traps: never (beyond what `f` traps on); see `fold` for range reads
 - `fn nth<T>(self, k: Int) -> T` — \(O(1)\); traps: unless `0 <= k < self.len`
 - `fn take(self, k: Int) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
 - `fn drop(self, k: Int = 1) -> Rev<Slice<S>>` — \(O(1)\); traps: when `k < 0`
@@ -141,16 +142,6 @@ Which end of a piece a two-pointer result is keyed by.
 - `fn maximal<St>(self, state: St, ok: St -> Bool) -> [D]RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; Two pointers round the cycle: for each position as the last element, the longest wrapping piece (at most n elements) ending there that is `ok`, fed through `state: Track`.
 - `fn minimal<St>(self, state: St, ok: St -> Bool) -> [D]?RingSlice<D, T>` — \(O(n)\) pushes and pops on `state`; For each position as the last element, the shortest wrapping piece ending there that is `ok`, or None.
 
-## `struct RingRange<D>()`
-
-A run of positions of `D` read cyclically, possibly wrapping past the last position, at most `D.count` of them.
-
-- `@get fn len(self) -> Int` — \(O(1)\); The number of positions in the run.
-- `@get fn start(self) -> D` — \(O(1)\)
-- `@get fn end(self) -> D` — \(O(1)\); traps: on an empty span
-- `@get fn keys(self) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; \(O(1)\) to make.
-- `fn contains(self, i: D) -> Bool` — \(O(1)\); Whether position `i` is in the run, counting the wrap past the last position.
-
 ## `struct RingSlice<D, T>()`
 
 A contiguous piece of a ring, possibly wrapping past the end, at most n elements.
@@ -215,16 +206,6 @@ A contiguous piece of a ring, possibly wrapping past the end, at most n elements
 - `fn find<S: Seq, T>(self: S, p: T -> Bool) -> ?T` — \(O(\text{position found})\) calls of `p`; The first element satisfying `p`, `None` if None does; stops there.
 - `fn with_domain<T>(self: List<T>) -> (domain I, [I]T)` — \(O(1)\); moves the list; Gives the items of a list a fresh domain, so arrays over them are index-safe: `let (domain Arc, arcs) = [...].with_domain()`.
 - `fn cycle<D>(self: [D]D, from: D) -> yields D` — \(O(1)\) to make, \(O(1)\) per step; The cycle of a permutation through `from`: `from`, `perm[from]`, ...; traps: never; a non-permutation that never returns to `from` walks forever
-- `@get fn l<D>(self: Range<D>) -> Cut<D>` — \(O(1)\); Left boundary cut of a range (valid even when empty).
-- `@get fn r<D>(self: Range<D>) -> Cut<D>` — \(O(1)\); Right boundary cut of a range (valid even when empty).
-- `fn halve<D>(self: Range<D>) -> ?(Range<D>, Range<D>)` — \(O(1)\)
-- `@get fn splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)` — \(O(1)\) to make, \(O(1)\) per pair, nothing allocated; Every way to cut the range into two non-empty pieces, as `(left, right)` with `left.r == right.l`.
-- `@get fn mid<D>(self: Range<D>) -> Cut<D>` — \(O(1)\)
-- `fn clip<D>(self: Range<D>, other: Range<D>) -> Range<D>` — \(O(1)\)
-- `fn first_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`, plus one when the answer is the first element or `None`; \(O(\log n)\) calls to `ok`.; traps: when `ok` is true at the start and false at the end; any other `ok` that is not
-- `fn last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D` — \(O(\log n)\) calls of `ok`, plus one when the answer is the last element or `None`; \(O(\log n)\) calls to `ok`.; traps: when `ok` is false at the start and true at the end; any other `ok` that is not
-- `fn bsearch<D>(self: Range<D>, ok: D -> Bool, last: Bool = false) -> Cut<D>` — \(O(\log n)\) calls of `ok`, plus one when the cut is an end of `r`; The cut where `ok` flips: false then true along `r` by default, true then false with `last: true`.; traps: when `ok` flips the other way (true then false by default, false then true with
-- `@get fn ends<D>(self: Range<D>) -> (Int, Int)` — \(O(1)\); The two ends of a range as offsets, `(lo, hi)` with `lo <= hi`: what a range query walks.; traps: when the range is written backwards
 - `fn first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); First index in sorted `self` with `by(self[i]) > target`, or `None`.; traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 - `fn last_lt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D` — \(O(\log n)\); Last index in sorted `self` with `by(self[i]) < target`, or `None`.; traps: a checked build may trap R0401 on unsorted input, whose search is then wrong-way;
 - `fn inverse<I, V>(self: [I]V) -> [V]I` — \(O(\lvert I \rvert)\); Inverse of bijection `self: [I]V`: `inv[self[i]] == i` for all `i in I`.; traps: when `self` is not a bijection
