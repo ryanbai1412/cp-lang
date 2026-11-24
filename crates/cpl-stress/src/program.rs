@@ -991,8 +991,9 @@ impl Program {
 /// Waits for `child` to end, stopping it once it is charged more than
 /// `limit`, and samples its peak memory meanwhile; its exit wakes the wait
 /// at once. It is charged its CPU time, as judges charge it, so a loaded
-/// machine doesn't make it late; the wall clock only stops one that idles
-/// (sleeps, or waits on something that never comes) at [`idle_limit`].
+/// machine doesn't make it late; one that idles (sleeps, or waits on
+/// something that never comes) stops once it has slept [`idle_limit`],
+/// and time it spends ready to run but waiting for a CPU is not sleep.
 fn supervise(
     child: std::process::Child,
     start: Instant,
@@ -1002,12 +1003,12 @@ fn supervise(
     let mut child = cpl_wait::on_exit(child);
     let mut charge = Charge::new(pid);
     let mut peak = None;
-    let idle = start + idle_limit(limit);
+    let idle = idle_limit(limit);
     loop {
         peak = peak_memory(pid).max(peak);
         charge.sample();
         let spent = charge.spent(|| start.elapsed());
-        let tick = (Instant::now() + Duration::from_micros(300)).min(idle);
+        let tick = Instant::now() + Duration::from_micros(300);
         match child.by(tick) {
             Ok(Some(_)) if spent > limit => return (Exit::TimedOut, peak, spent),
             Ok(Some(status)) => {
@@ -1018,7 +1019,7 @@ fn supervise(
                 let _ = child.kill();
                 return (Exit::TimedOut, peak, spent);
             }
-            Ok(None) if Instant::now() >= idle => {
+            Ok(None) if charge.slept(|| start.elapsed()) >= idle => {
                 let _ = child.kill();
                 return (Exit::TimedOut, peak, start.elapsed());
             }
@@ -1028,8 +1029,8 @@ fn supervise(
     }
 }
 
-/// How long a run may take by the wall clock while charged less than
-/// `limit`: a program this far behind is idle, not slow.
+/// How long a run may sleep while charged less than `limit`: a program
+/// this far behind is idle, not slow.
 fn idle_limit(limit: Duration) -> Duration {
     limit * 3
 }
@@ -1041,17 +1042,40 @@ fn idle_limit(limit: Duration) -> Duration {
 pub(crate) struct Charge {
     pid: u32,
     cpu: Option<Duration>,
+    slept: Option<Duration>,
+    sampled: Instant,
 }
 
 impl Charge {
     pub(crate) fn new(pid: u32) -> Self {
-        Charge { pid, cpu: None }
+        Charge {
+            pid,
+            cpu: None,
+            slept: None,
+            sampled: Instant::now(),
+        }
     }
 
-    /// Notes the program's CPU time so far; the last note before it is
+    /// Notes the program's CPU time so far, and the time since the last
+    /// note as sleep when it is asleep now; the last note before it is
     /// reaped is what it is charged.
     pub(crate) fn sample(&mut self) {
-        self.cpu = cpu_time(self.pid).or(self.cpu);
+        let now = Instant::now();
+        if let Some((cpu, asleep)) = cpu_time(self.pid) {
+            self.cpu = Some(cpu);
+            let slept = self.slept.get_or_insert(Duration::ZERO);
+            if asleep {
+                *slept += now - self.sampled;
+            }
+        }
+        self.sampled = now;
+    }
+
+    /// How long it has slept, waiting on input or a timer: not the time a
+    /// loaded machine kept it waiting for a CPU. `fallback` where the
+    /// system doesn't say.
+    pub(crate) fn slept(&self, fallback: impl FnOnce() -> Duration) -> Duration {
+        self.slept.unwrap_or_else(fallback)
     }
 
     /// The time charged so far: the CPU time, or `fallback` where there is none.
@@ -1109,17 +1133,20 @@ fn peak_memory(pid: u32) -> Option<u64> {
 }
 
 /// The CPU time a running process has spent, user and system, with that
-/// of the children it has waited for: what a judge charges it. `None`
-/// where the system doesn't say (no `/proc`) or once it is gone.
-fn cpu_time(pid: u32) -> Option<Duration> {
+/// of the children it has waited for: what a judge charges it; and whether
+/// it is asleep. `None` where the system doesn't say (no `/proc`) or once
+/// it is gone.
+fn cpu_time(pid: u32) -> Option<(Duration, bool)> {
     let stat = std::fs::read_to_string(format!("/proc/{pid}/stat")).ok()?;
-    // Fields after the parenthesized name: utime, stime, cutime and cstime
-    // are the 12th to the 15th, in ticks of 1/100 s (USER_HZ).
+    // Fields after the parenthesized name: the state is the 1st; utime,
+    // stime, cutime and cstime are the 12th to the 15th, in ticks of
+    // 1/100 s (USER_HZ).
     let after = &stat[stat.rfind(')')? + 1..];
+    let asleep = after.split_whitespace().next() == Some("S");
     let ticks: u64 = (after.split_whitespace().skip(11).take(4))
         .map(|field| field.parse::<u64>().ok())
         .sum::<Option<u64>>()?;
-    Some(Duration::from_millis(ticks * 10))
+    Some((Duration::from_millis(ticks * 10), asleep))
 }
 
 #[cfg(test)]

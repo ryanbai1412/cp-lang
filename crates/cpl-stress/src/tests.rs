@@ -347,6 +347,22 @@ fn a_program_is_charged_its_cpu_time_not_its_idle_wait() {
     assert_eq!(idle.exit, Exit::TimedOut);
 }
 
+/// A loaded machine keeps a ready program from a CPU; a stopped one is the
+/// extreme of that, ready and given no CPU for several idle limits. It is
+/// not asleep, so it still runs to its verdict.
+#[cfg(target_os = "linux")]
+#[test]
+fn a_program_kept_from_the_cpu_is_not_idle_so_load_cannot_time_it_out() {
+    let starved = sh("(sleep 0.9; kill -CONT $$) & kill -STOP $$; echo up")
+        .run("", Duration::from_millis(100))
+        .unwrap();
+    assert_eq!(
+        (&starved.exit, starved.stdout.as_str()),
+        (&Exit::Code(0), "up\n"),
+        "{starved:?}"
+    );
+}
+
 #[test]
 fn programs_resolve_by_extension() {
     let dir = scratch("resolve");
