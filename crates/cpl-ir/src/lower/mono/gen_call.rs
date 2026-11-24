@@ -15,6 +15,7 @@ impl<'a> Lowerer<'a> {
         args: &[ast::Arg],
         span: Span,
     ) -> Expr {
+        self.emit_anon_product_defs(&explicit, span);
         let (hint, want) = std::mem::take(&mut self.call_hint);
         let owner_ranges = std::mem::take(&mut self.owner_ranges);
         let tpl_mod = self.gen_fns[gfid].mod_id;
