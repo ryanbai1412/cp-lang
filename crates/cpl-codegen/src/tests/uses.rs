@@ -143,6 +143,12 @@ fn a_name_destructured_from_a_fresh_tuple_is_moved_not_copied() {
 }
 
 #[test]
+fn part_of_a_call_result_is_moved_not_copied() {
+    let source = "let (n, s) = \"4 x\".parse<(Int, Str)>()!\nprint(n, s)\n";
+    assert_eq!(copy_reasons(source), [] as [&str; 0]);
+}
+
+#[test]
 fn a_clone_or_sorted_of_a_place_is_listed_as_a_copy() {
     let source = "var a = [3, 1, 2]\nvar b = a.clone()\nb.push(4)\nprint(a, b)\n";
     assert_eq!(copy_reasons(source), [crate::uses::CLONED]);

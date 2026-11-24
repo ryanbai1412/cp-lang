@@ -934,6 +934,20 @@ pub(crate) enum Copied {
     Capture(usize, String, &'static str),
 }
 
+/// Whether `e` reads part of a named value: `a.f`, `xs[i]!`. Part of a
+/// call's result (`xs.pop()!`, `s.parse()!.0`) is a temporary the C++
+/// moves from, so binding it copies nothing.
+fn rooted_in_a_name(e: &Expr) -> bool {
+    match &e.kind {
+        ExprKind::Field(base, _)
+        | ExprKind::Payload(base, ..)
+        | ExprKind::Index(base, _)
+        | ExprKind::Unwrap(base, _) => rooted_in_a_name(base),
+        ExprKind::Local(_) | ExprKind::Global(_) => true,
+        _ => false,
+    }
+}
+
 const KEPT: &str = "the closure may be kept (stored, returned or passed where it is kept), so it owns what it reads";
 
 impl Emitter<'_> {
@@ -1007,7 +1021,7 @@ impl Emitter<'_> {
                 | ExprKind::Payload(..)
                 | ExprKind::Index(..)
                 | ExprKind::Unwrap(..)
-        );
+        ) && rooted_in_a_name(init);
         // A temporary bound by reference names the place it was bound to.
         let whole = matches!(init.kind, ExprKind::Local(s)
                 if !self.locals()[s].name.is_empty() || self.ref_bound.contains(&s))
