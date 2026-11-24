@@ -421,6 +421,14 @@ impl Database {
                 span: decl.shift(item.offset),
             });
         }
+        // The fn the checker resolved the name to, a method form's
+        // candidate among std's of the name (`(0..5).bsearch`) included.
+        let resolved = item.check.resolved.iter().find(|(s, _)| *s == entry.span);
+        if let Some((_, picked)) = resolved.filter(|(_, r)| !r.module.is_empty()) {
+            if let Some(def) = self.picked_method(path, &analysis, &picked.clone()) {
+                return Some(def);
+            }
+        }
         if let Some(span) = analysis.decl_span(&entry.name) {
             return Some(Definition {
                 path: path.to_string(),
