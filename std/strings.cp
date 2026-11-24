@@ -311,8 +311,8 @@ pub fn replace(self: Str, from: Str, to: Str) -> Str:
 /// cost: \(O(\lvert \mathit{self} \rvert)\)
 /// empty: `None`
 /// traps: when `base` is outside `2..=36`
-/// example: `"ff".parse_int(base: 16) == Some(255)`
 /// example: `"-12".parse_int() == Some(-12)`
+/// example: `"ff".parse_int(base: 16) == Some(255)`
 /// example: `"12a".parse_int() == None`
 pub fn parse_int(self: Str, base: Int = 10) -> ?Int:
     assert 2 <= base <= 36

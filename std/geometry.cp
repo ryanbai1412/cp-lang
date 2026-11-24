@@ -1389,15 +1389,6 @@ fn edge_planes(poly: List<Vec>) -> List<HalfPlane>:
         if poly[i] != q: hs.push(HalfPlane.through(poly[i], q))
     hs
 
-/// A triangulation of the counter-clockwise simple polygon `poly` into `n - 2` triangles of
-/// vertex indices, each listed counter-clockwise.
-///
-/// cost: \(O(n \log n)\) time, \(O(n)\) memory
-/// empty: `[]` (also for fewer than 3 vertices)
-/// order: deterministic for a given input; each triple counter-clockwise
-/// traps: when `poly` is not counter-clockwise
-/// example: `polygon_triangulate([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]).len == 2`
-/// example: `polygon_triangulate([Pt(0, 0), Pt(1, 0), Pt(0, 1)]).len == 1`
 fn in_corner(a: Pt, b: Pt, c: Pt, q: Pt) -> Bool =
     cross128_3(a, b, q) >= 0 and cross128_3(b, c, q) >= 0 and cross128_3(c, a, q) >= 0
 
@@ -1408,6 +1399,15 @@ fn is_ear(poly: List<Pt>, rem: List<Int>, i: Int) -> Bool:
     if cross128_3(a, b, c) <= 0: return false
     not rem.any(q => q != ai and q != bi and q != ci and in_corner(a, b, c, poly[q]))
 
+/// A triangulation of the counter-clockwise simple polygon `poly` into `n - 2` triangles of
+/// vertex indices, each listed counter-clockwise.
+///
+/// cost: \(O(n \log n)\) time, \(O(n)\) memory
+/// empty: `[]` (also for fewer than 3 vertices)
+/// order: deterministic for a given input; each triple counter-clockwise
+/// traps: when `poly` is not counter-clockwise
+/// example: `polygon_triangulate([Pt(0, 0), Pt(2, 0), Pt(2, 2), Pt(0, 2)]).len == 2`
+/// example: `polygon_triangulate([Pt(0, 0), Pt(1, 0), Pt(0, 1)]).len == 1`
 pub fn polygon_triangulate(poly: List<Pt>) -> List<(Int, Int, Int)>:
     with lint(unproven_list_index: allow)
     let n = poly.len

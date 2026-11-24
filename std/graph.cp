@@ -1487,6 +1487,7 @@ pub fn floyd_warshall<V, W, R>(mut d: [V, V]?W, over: R = Semiring(min, +)) -> B
 /// `d.closure(over: r) == Some(d)`.
 ///
 /// cost: \(O(n^3)\) time, \(O(n^2)\) memory
+/// empty: `Some` of the empty matrix
 /// traps: never
 /// example: `domain V = 0..2; var d: [V, V]?Int = None; d[0, 1] = Some(2); let c = d.closure()!; c[0, 1] == Some(2) and c[0, 0] == Some(0) and c[1, 0] == None`
 pub fn closure<V, W, R>(self: [V, V]?W, over: R = Semiring(min, +)) -> ?[V, V]?W:

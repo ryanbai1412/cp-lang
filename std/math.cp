@@ -11,7 +11,6 @@ use std.range.{last_true}
 /// example: `gcd(-4, 6) == 2`
 /// example: `gcd(0, -5) == 5`
 /// example: `gcd(0, 0) == 0`
-
 pub fn gcd(a: Int, b: Int) -> Int:
     var (x, y) = (abs(a), abs(b))
     while y != 0: (x, y) = (y, x % y)
@@ -429,9 +428,9 @@ pub fn digits(self: Int, base: Int = 10) -> List<Int>:
 ///
 /// cost: \(O(\log \lvert \mathit{self} \rvert)\)
 /// traps: when `base` is outside `2..=36`
+/// example: `0.to_str() == "0"`
 /// example: `255.to_str(base: 16) == "ff"`
 /// example: `(-10).to_str(base: 2) == "-1010"`
-/// example: `0.to_str() == "0"`
 pub fn to_str(self: Int, base: Int = 10) -> Str:
     assert 2 <= base <= 36
     if self == 0: return "0"

@@ -181,6 +181,10 @@ pub struct Prefix<D, T: Add + Sub>:
             p[c] = acc
         Prefix(p, forward and same(f, +), forward and rises, not forward)
 
+    /// The suffix table of `a` under `f`, `of_scan`'s mirror: the fold right of each cut.
+    ///
+    /// cost: \(O(n)\) calls of `f`
+    /// traps: never (beyond what `f` traps on)
     pub fn of_rev_scan<M>(a: [D]T, f: M, from: ?T) -> Prefix<D, T>:
         let m = Monoid<T>.of(f)
         var p: [D.cuts]T = from ?? m.id
@@ -221,8 +225,9 @@ pub struct Prefix<D, T: Add + Sub>:
         if s.ord <= e.ord: return self.between(s.l, e.r)
         self.between(s.l, D.cuts.nth(D.count)) + self.between(D.cuts.nth(0), e.r)
 
-    /// `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`; at a position `v`,
-    /// `p[v]` is the sum through `v`, the same as `p[v.r]` (R07.1.6). On `Int` keys an index is the
+    /// `p[c]`: the sum of everything left of cut `c`, the same as `prefix(c)`.
+    ///
+    /// At a position `v`, `p[v]` is the sum through `v`, the same as `p[v.r]` (R07.1.6). On `Int` keys an index is the
     /// cut (decision 349). On a suffix table (`a.rev.scan(f)`), `p[c]` folds everything right of `c`.
     ///
     /// cost: \(O(1)\)
@@ -231,7 +236,9 @@ pub struct Prefix<D, T: Add + Sub>:
     pub fn at(self, c: Cut<D>) -> T = self.p[c]
 
     /// The fold of the first `k` positions, whatever `D`'s base: the value at the cut `k`
-    /// positions in, the identity at `0` and `all` at `D.count`. An `Int` index `pre[k]` is an
+    /// positions in, the identity at `0` and `all` at `D.count`.
+    ///
+    /// An `Int` index `pre[k]` is an
     /// error (E0320, decision 507): a count reads the table here, a typed cut or position by `[]`.
     ///
     /// cost: \(O(1)\)

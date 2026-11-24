@@ -234,6 +234,7 @@ pub struct Mat<T>:
             return piv
 
     /// The determinant over a field, by Gaussian elimination. The `0 x 0` determinant is `T.one`.
+    ///
     /// Over an ordered `T` such as `F64` the pivot is the largest `abs` entry of its column and an
     /// entry within `eps` of zero counts as zero; over `Mod<P>` the pivot is the first nonzero entry.
     ///

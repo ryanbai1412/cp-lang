@@ -14,9 +14,9 @@
 ///
 /// cost: `steps + 1` calls of `ok`
 /// traps: when `lo > hi` or `steps < 0`
+/// example: `abs(bsearch_real(0.0, 2.0, x => x * x >= 2.0)! - 1.4142135623730951) <= 1e-9`
 /// example: `bsearch_real(0.0, 8.0, x => x >= 3.0, steps: 3) == Some(3.0)`
 /// example: `bsearch_real(0.0, 1.0, x => x > 2.0) == None`
-/// example: `abs(bsearch_real(0.0, 2.0, x => x * x >= 2.0)! - 1.4142135623730951) <= 1e-9`
 pub fn bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64:
     assert lo <= hi and steps >= 0
     if not ok(hi): return None

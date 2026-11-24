@@ -29,7 +29,7 @@ A fn that can see empty input says what it returns; one that picks among equals 
 
 - **Why:** these are the edge cases contestants get wrong.
 - **Example:** `empty: None`, `ties: the first`, `order: increasing key`.
-- **Enforced by:** review; `missing` (generated edge-case suite driven by the labels).
+- **Enforced by:** `scripts/std-docs-lint.py` fails a public fn over a `[D]T` with no `empty:`; the generated edge-case suite driven by the labels is stdlib.md's edge row.
 
 ### R3. The cost names its variables and every phase
 
@@ -37,7 +37,7 @@ A fn that can see empty input says what it returns; one that picks among equals 
 
 - **Why:** "fast" can't be compared with a time limit; \(O(n \log n)\) can.
 - **Example:** ``cost: \(O(n)\) to build, \(O(1)\) per `fold` ``.
-- **Enforced by:** review; `missing` (scaling test per fn, time at n and 4n).
+- **Enforced by:** `bench/scaling.py --check` times each fn at n and 4n against its `cost:` (in `scripts/check.sh`).
 
 ### R4. `traps:` lists every trap, or says `never`
 
@@ -77,7 +77,7 @@ The first example shows what most callers do, with the shortest input that shows
 
 - **Why:** a reader stops at the first example.
 - **Example:** for `scan`, `[3, 1, 4].scan(+).prefix(2) == 4` before the `from:` example.
-- **Enforced by:** review.
+- **Enforced by:** `scripts/std-docs-lint.py` fails a first example that passes a defaulted option while a later one passes none.
 
 ## Readability
 
@@ -103,7 +103,7 @@ A `//!` line names the module's job and its main types.
 
 - **Why:** it is the first thing go-to-definition and the site's module page show.
 - **Example:** ``//! Ordered multiset and set with order statistics, range views, and cursors: `SortedBag<K>`, `SortedSet<K>`. ``
-- **Enforced by:** review; `missing` (module-doc presence check).
+- **Enforced by:** `scripts/std-docs-lint.py` fails a std module whose first line is not `//!`.
 
 ## Verification
 

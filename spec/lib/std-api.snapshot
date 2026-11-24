@@ -1427,7 +1427,9 @@ std/segtree.cp: DynamicOrderTree.get(self, i: D) -> T
 std/segtree.cp: DynamicOrderTree.kth(self, r: Range<D>, k: Int) -> ?T
 std/segtree.cp: DynamicOrderTree.new(a: [D]T) -> DynamicOrderTree<D, T>
 std/segtree.cp: DynamicOrderTree.set(mut self, i: D, x: T)
+std/segtree.cp: MergeSegs.any_in(self, s: MergeSeg<D>, r: Range<D>) -> Bool
 std/segtree.cp: MergeSegs.first_alive(mut self, mut s: MergeSeg<D>, alive: D -> Bool) -> ?D
+std/segtree.cp: MergeSegs.first_ge(self, s: MergeSeg<D>, x: D) -> ?D
 std/segtree.cp: MergeSegs.merge(mut self, a: MergeSeg<D>, b: MergeSeg<D>) -> MergeSeg<D>
 std/segtree.cp: MergeSegs.singleton(mut self, x: D) -> MergeSeg<D>
 std/segtree.cp: MergeSortTree.count_ge(self, r: Range<D>, x: T) -> Int

@@ -246,6 +246,8 @@ pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>:
             todo.push((mid + 1, hi, at, to))
     next
 
+const TWO_31 = 2_147_483_648
+
 /// The interval DP over cuts `0..=n`: `dp[i][i + 1] = 0` and `dp[i][j] = cost(i, j) + min over
 /// i < k < j of dp[i][k] + dp[k][j]`, returned as the full `(n + 1) x (n + 1)` table. Entries with
 /// `j <= i` are 0.
@@ -262,8 +264,6 @@ pub fn dnc_layer(prev: List<?Int>, cost: (Int, Int) -> Int) -> List<?Int>:
 /// example: `knuth(2, (i, j) => j - i)[0][2] == 2`
 /// example: `knuth(3, (i, j) => j - i)[0][3] == 5`
 /// example: `knuth(1, (i, j) => j - i) == [[0, 0], [0, 0]]`
-const TWO_31 = 2_147_483_648
-
 pub fn knuth(n: Int, cost: (Int, Int) -> Int) -> List<List<Int>>:
     assert n >= 0, "knuth requires n >= 0"
     var dp: List<List<Int>> = []

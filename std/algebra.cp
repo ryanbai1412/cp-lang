@@ -197,8 +197,9 @@ pub fn fold<T, M, S: Seq>(m: M, xs: S) -> T:
         acc = k.op(acc, x)
     acc
 
-/// `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`, with `op` anything
-/// `Monoid.of` accepts; a plain power is `x ** k`. `k = 0` gives the identity of `op`. Powers of one
+/// `x` folded with itself `k` times by squaring: `op(x, op(x, ...))`; a plain power is `x ** k`.
+///
+/// `op` is anything `Monoid.of` accepts, and `k = 0` gives its identity. Powers of one
 /// value commute, so any associative `op` works: a number, `Mod<P>`, an `Affine` map
 /// (`op: Affine.monoid()`), a permutation (`op: Monoid(id, compose)`).
 ///
