@@ -431,7 +431,7 @@ impl<'p> Emitter<'p> {
         // showed something: `start` is where the line began.
         let sparse = args.len() > 1 && args.iter().any(|arg| arg.value.ty.may_show_nothing());
         if sparse {
-            parts.push("{ cpl::capturing++; size_t cpl_line = cpl::out.size();".to_string());
+            parts.push("{ cpl::capturing++; size_t cpl_line = cpl::out.n;".to_string());
         }
         let shown_values: Vec<&cpl_ir::Expr> = args.iter().map(|a| &a.value).chain(end).collect();
         let marked = self.mark_read_in_place(&shown_values, None, &[]);
@@ -456,9 +456,9 @@ impl<'p> Emitter<'p> {
                 (true, false) if !lead => parts.push(shown),
                 (true, false) => parts.push(format!("cpl::put_char(' '); {shown}")),
                 (true, true) if arg.value.ty.may_show_nothing() => parts.push(format!(
-                    "{{ size_t cpl_at = cpl::out.size(); if (cpl_at > cpl_line) cpl::put_char(' '); size_t cpl_from = cpl::out.size(); {shown} if (cpl::out.size() == cpl_from) cpl::out.resize(cpl_at); }}"
+                    "{{ size_t cpl_at = cpl::out.n; if (cpl_at > cpl_line) cpl::put_char(' '); size_t cpl_from = cpl::out.n; {shown} if (cpl::out.n == cpl_from) cpl::out.n = cpl_at; }}"
                 )),
-                (true, true) => parts.push(format!("if (cpl::out.size() > cpl_line) cpl::put_char(' '); {shown}")),
+                (true, true) => parts.push(format!("if (cpl::out.n > cpl_line) cpl::put_char(' '); {shown}")),
             }
         }
         if sparse {

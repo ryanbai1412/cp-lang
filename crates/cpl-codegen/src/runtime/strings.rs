@@ -84,7 +84,7 @@ inline ll parse_int(StrView s) { return std::stoll(s.to_str()); }
         name: "put_str_view",
         needs: &["out", "str_view"],
         code: "\
-inline void put_str(StrView s) { append_str_view(out, s); spill(); }
+inline void put_str(StrView s) { if (!s.rev) out.append(s.sv.data(), s.sv.size()); else for (size_t i = s.sv.size(); i-- > 0;) *out.room(1) = s.sv[i], out.n++; spill(); }
 ",
     },
     Piece {

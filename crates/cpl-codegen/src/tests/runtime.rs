@@ -31,7 +31,7 @@ fn interactive_flushes_before_each_read_not_after_each_print() {
         .unwrap();
     assert!(!solve.contains("flush"), "{solve}");
     assert!(
-        out.contains("if (!out.empty()) { flush(); fflush(stdout); }"),
+        out.contains("if (out.n) { flush(); fflush(stdout); }"),
         "{out}"
     );
 }

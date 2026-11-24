@@ -9,19 +9,24 @@ pub(super) const PIECES: &[Piece] = &[
         needs: &[],
         code: "\
 // Output, written out 64 KiB at a time, mid-line too.
-std::string out;
+struct Out {
+  char* b = 0; size_t n = 0, cap = 0;
+  char* room(size_t k) { if (n + k >= cap) b = (char*)realloc(b, cap = std::max(n + k, 2 * cap + 64)); return b + n; }
+  void append(const char* s, size_t k) { __builtin_memcpy(room(k), s, k); n += k; }
+};
+inline Out out;
 #ifdef _WIN32
 // Binary mode, so Windows writes \\n as \\n, not \\r\\n: the same bytes on every OS.
 inline const int binary_stdout = _setmode(_fileno(stdout), _O_BINARY);
 #endif
-// While a `Capture` lives, `out` holds only what it collects.
+// While a `Capture` lives, `out` is not written out.
 inline int capturing = 0;
-inline void flush() { fwrite(out.data(), 1, out.size(), stdout); out.clear(); }
-inline void spill() { if (out.size() >= (1u << 16) && !capturing) flush(); }
-inline void put_char(u8 c) { out.push_back((char)c); spill(); }
-inline void put_str(const std::string& s) { out += s; spill(); }
-inline void put_str(const char* s) { out += s; spill(); }
-inline void put_line() { out.push_back('\\n'); spill(); }
+inline void flush() { if (out.n) fwrite(out.b, 1, out.n, stdout); out.n = 0; }
+inline void spill() { if (out.n >= (1u << 16) && !capturing) flush(); }
+inline void put_char(u8 c) { *out.room(1) = (char)c; out.n++; spill(); }
+inline void put_str(const std::string& s) { out.append(s.data(), s.size()); spill(); }
+inline void put_str(const char* s) { out.append(s, __builtin_strlen(s)); spill(); }
+inline void put_line() { put_char('\\n'); }
 ",
     },
     Piece {
@@ -32,11 +37,15 @@ inline void put_line() { out.push_back('\\n'); spill(); }
 // with it in one append.
 inline void put_int(ll x, char end = 0) {
   unsigned long long u = x < 0 ? 0ULL - (unsigned long long)x : (unsigned long long)x;
-  char b[25]; int i = 24, e = 24 + (end != 0);
-  b[24] = end;
-  do { b[--i] = char('0' + u % 10); u /= 10; } while (u);
-  if (x < 0) b[--i] = '-';
-  out.append(b + i, (size_t)(e - i));
+  int d = 1;
+  for (unsigned long long t = u; t >= 10; t /= 10) d++;
+  char* p = out.room(22);
+  if (x < 0) *p++ = '-';
+  char* e = p + d;
+  do { *--e = char('0' + u % 10); u /= 10; } while (u);
+  p += d;
+  if (end) *p++ = end;
+  out.n = (size_t)(p - out.b);
   spill();
 }
 ",
@@ -81,8 +90,8 @@ inline void put_float(double x, int digits) { char b[400]; out.append(b, (size_t
 // \"{n:05}\", \"{x:8.3f}\": the sign, then zeros or spaces up to the width.
 inline void put_padded(const char* s, size_t n, bool zero, size_t width) {
     bool neg = n > 0 && s[0] == '-';
-    if (zero) { if (neg) out.push_back('-'); if (n < width) out.append(width - n, '0'); out.append(s + neg, n - neg); }
-    else { if (n < width) out.append(width - n, ' '); out.append(s, n); }
+    if (zero) { if (neg) out.append(\"-\", 1); if (n < width) { __builtin_memset(out.room(width - n), '0', width - n); out.n += width - n; } out.append(s + neg, n - neg); }
+    else { if (n < width) { __builtin_memset(out.room(width - n), ' ', width - n); out.n += width - n; } out.append(s, n); }
     spill();
 }
 inline void put_num(ll x, int base, bool zero, int width) {
@@ -107,9 +116,9 @@ inline void put_fixed(double x, int digits, bool zero, int width) {
         code: "\
 // Collects what is printed while it lives: how a \"{x}\" string is built.
 struct Capture {
-    std::string saved;
-    Capture() { saved.swap(out); ++capturing; }
-    std::string take() { std::string text; text.swap(out); out.swap(saved); --capturing; return text; }
+    size_t at = out.n;
+    Capture() { ++capturing; }
+    std::string take() { std::string text(out.b + at, out.n - at); out.n = at; --capturing; return text; }
 };
 ",
     },
@@ -191,7 +200,7 @@ inline bool is_space(char c) { return (unsigned char)c <= ' ' && (c == ' ' || (u
 // `in_at` that `read_line` looks back at, so `in` stays one chunk plus the
 // token it is in the middle of, however long the input is.
 inline bool more() {
-    if (!out.empty()) { flush(); fflush(stdout); }
+    if (out.n) { flush(); fflush(stdout); }
     if (in_at > 1) { size_t keep = in_at - 1; in.erase(0, keep); in_at -= keep; }
     // Read into a buffer of its own: growing `in` first would zero 64 KiB
     // per refill, which an interactive program pays on every answer.

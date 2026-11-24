@@ -67,8 +67,21 @@ fn only_the_runtime_a_program_uses_is_written() {
             && !hello.contains("put_float"),
         "{hello}"
     );
-    // About 1 kB of it runs the program on a thread with the judge's stack.
-    assert!(hello.len() < 2500, "{} bytes for hello world", hello.len());
+    // About 1 kB of it runs the program on a thread with the judge's stack,
+    // and about 300 B is the output buffer.
+    assert!(hello.len() < 2850, "{} bytes for hello world", hello.len());
+}
+
+#[test]
+fn a_printed_number_is_written_in_place_into_the_output_buffer() {
+    let cpp = cpp("let n: Int = read()\nprint(n)\n");
+    let put = &cpp[cpp.find("inline void put_int(").unwrap()..];
+    let put = &put[..put.find("\n}").unwrap()];
+    assert!(
+        put.contains("out.room(22)") && !put.contains("append"),
+        "{put}"
+    );
+    assert!(!cpp.contains("std::string out"), "{cpp}");
 }
 
 #[test]
@@ -725,7 +738,10 @@ fn a_printed_sequence_streams_into_out() {
         assert!(!body.contains("-> std::vector<ll>"), "{body}");
     }
     let put = cpp("let s: Str = read()\nprint(s, 7)\n");
-    assert!(put.contains("out += s; spill(); }"), "{put}");
+    assert!(
+        put.contains("out.append(s.data(), s.size()); spill(); }"),
+        "{put}"
+    );
     let put_int = &put[put.find("inline void put_int").unwrap()..];
     assert!(
         put_int[..put_int.find("\n}").unwrap()].contains("spill();"),
