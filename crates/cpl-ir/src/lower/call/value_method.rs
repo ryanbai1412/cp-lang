@@ -945,14 +945,21 @@ impl<'a> Lowerer<'a> {
                     None => self.err_expr(span),
                 }
             }
-            // `r.nth(k)` on an I128 range: its `k`-th value, `r.start + k`.
-            (Ty::Range(inner), "nth") if **inner == Ty::I128 && args.len() == 1 => {
+            // `r.nth(k)` on an `I128` or `U64` range, whose ends are `I128`s: its
+            // `k`-th value, `r.start + k`.
+            (Ty::Range(inner), "nth")
+                if matches!(**inner, Ty::I128 | Ty::U64) && args.len() == 1 =>
+            {
                 let Some(k) = self.one_arg("nth", args, &Ty::Int, span) else {
                     return self.err_expr(span);
                 };
                 let k = self.cast(Cast::IntToI128, k, Ty::I128);
                 let lo = self.mk_builtin(Builtin::RangeLo, [value], Ty::I128, span);
-                self.mk_binary(BinOp::Add, lo, k, Ty::I128, span)
+                let at = self.mk_binary(BinOp::Add, lo, k, Ty::I128, span);
+                match **inner {
+                    Ty::U64 => self.cast(Cast::I128ToU64, at, Ty::U64),
+                    _ => at,
+                }
             }
             // `r.nth(k)` on an Int range: its `k`-th value, `r.start + k` (R04b.5.9).
             (Ty::Range(inner), "nth") if **inner == Ty::Int && args.len() == 1 => {

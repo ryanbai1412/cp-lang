@@ -220,6 +220,11 @@ impl<'a> Lowerer<'a> {
             } => {
                 let lo = self.expr(lo, None);
                 let ty = lo.ty.clone();
+                if matches!(ty, Ty::I128 | Ty::U64) && step.is_none() {
+                    let hi = self.expr_as(hi, &ty);
+                    let range = self.wide_range(lo, hi, *inclusive, ty.clone(), span);
+                    return (Head::Iter(Iter::RangeVal(range, false)), ty);
+                }
                 if !matches!(ty, Ty::Int | Ty::Pos(_) | Ty::Bound(_) | Ty::Error) {
                     self.report(
                         span,

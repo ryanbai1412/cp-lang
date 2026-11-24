@@ -563,7 +563,23 @@ impl<'p> Emitter<'p> {
                 self.line(out, "{");
                 self.indent += 1;
                 self.line(out, &format!("auto {held} = {};", r_code.text));
-                if *rev {
+                let wider = match &r_expr.ty {
+                    Ty::Range(elem) => crate::names::wider_range_ends(elem),
+                    _ => None,
+                };
+                // Ends wider than the items: walk the ends and narrow each one.
+                if let Some(ends) = wider {
+                    let w = self.temp();
+                    let mut lines = vec![format!("{cpp} {var} = ({cpp}){w};")];
+                    lines.extend(first.iter().cloned());
+                    let head = if *rev {
+                        format!("for ({ends} {w} = {held}.hi; {w}-- > {held}.lo; ) {{")
+                    } else {
+                        format!("for ({ends} {w} = {held}.lo; {w} < {held}.hi; {w}++) {{")
+                    };
+                    self.line(out, &head);
+                    self.loop_body(id, &lines, body, out);
+                } else if *rev {
                     self.line(
                         out,
                         &format!("for ({cpp} {var} = {held}.hi; {var}-- > {held}.lo; ) {{"),

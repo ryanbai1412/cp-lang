@@ -1418,12 +1418,12 @@ pub(crate) enum Op {
         dst: u16,
         src: u16,
     },
-    /// `lo..hi` with `F64` (or else `I128`) ends, held in value registers.
+    /// `lo..hi` with `F64` ends, or `I128` ends of `wide` items, held in value registers.
     MakeRangeV {
         dst: u16,
         lo: u16,
         hi: u16,
-        float: bool,
+        wide: Option<crate::value::WideElem>,
     },
     /// A domain as a value: its current `(lo, len)`.
     DomainValV {

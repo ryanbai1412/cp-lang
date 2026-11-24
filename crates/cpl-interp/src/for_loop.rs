@@ -209,7 +209,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                 .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))
                 .collect(),
             Value::Range(lo, hi) => (*lo..*hi).map(Value::Int).collect(),
-            Value::Range128(r) => (r.0..r.1).map(|v| Value::I128(v.into())).collect(),
+            Value::Range128(r) => (r.0..r.1).map(|v| r.2.item(v)).collect(),
             _ => return Err(interp_failed(span)),
         })
     }

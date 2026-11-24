@@ -92,7 +92,7 @@ impl<'a> Lowerer<'a> {
     /// Whether `x[k]` names a key: a view keeps its source's keys (R04b.1),
     /// and a range's keys are its own elements (R04.4.31).
     pub(super) fn keyed_index(ty: &Ty) -> bool {
-        Self::keyed_view(ty) || matches!(ty, Ty::Range(of) if **of != Ty::I128)
+        Self::keyed_view(ty) || matches!(ty, Ty::Range(of) if !matches!(**of, Ty::I128 | Ty::U64))
     }
 
     /// The domain `rest` that `prefix` holds: `D` of `let xs = compress(all)`, `t.Idx` of a rebase.

@@ -180,27 +180,29 @@ fn a_read_that_names_a_domain_inside_a_tuple_is_an_error() {
 }
 
 #[test]
-fn a_range_of_u64_is_unsupported_not_a_mismatch() {
+fn a_range_of_u64_runs_up_to_its_greatest_value() {
     let dir = std::env::temp_dir().join(format!("cpl-cli-wide-range-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    for src in [
-        "let r = U64(0)..=U64(3)\nprint(r.len)\n",
-        "let lo = U64(1)\nprint((lo..=U64(10)).first_true(x => x >= U64(3))!)\n",
+    for (src, want) in [
+        ("let r = U64(0)..=U64(3)\nprint(r.len)\n", "4\n"),
+        (
+            "let lo = U64(1)\nprint((lo..=U64(10)).first_true(x => x >= U64(3))!)\n",
+            "3\n",
+        ),
+        (
+            "for x in U64(-2)..=U64(-1): print(x)\n",
+            "18446744073709551614\n18446744073709551615\n",
+        ),
     ] {
         let path = dir.join("wide_range.cp");
         std::fs::write(&path, src).unwrap();
         let out = Command::new(env!("CARGO_BIN_EXE_cpl"))
-            .arg("check")
+            .arg("run")
             .arg(&path)
             .output()
             .expect("cpl runs");
-        assert_eq!(out.status.code(), Some(1));
-        let stderr = String::from_utf8(out.stderr).unwrap();
-        assert!(
-            stderr.contains("can't handle a range of `U64` values"),
-            "{stderr}"
-        );
-        assert!(!stderr.contains("expected `U64`, found `U64`"), "{stderr}");
+        assert_eq!(String::from_utf8_lossy(&out.stdout), want, "{src}");
+        assert_eq!(out.status.code(), Some(0), "{src}");
     }
 }
 

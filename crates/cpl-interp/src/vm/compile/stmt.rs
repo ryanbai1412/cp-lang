@@ -1266,8 +1266,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
         }
         let in_i = matches!(self.slot_loc(slot), SlotLoc::I(..));
         match iter {
-            // An `I128` range, or one whose items aren't ints, walks its items.
-            Iter::RangeVal(e, rev) if !in_i => {
+            // An `I128` or `U64` range, or one whose items aren't ints, walks its items.
+            Iter::RangeVal(e, rev)
+                if !in_i || crate::value::WideElem::of_range(&e.ty).is_some() =>
+            {
                 self.compile_for_seq(id, slot, e, None, *rev, body);
                 return true;
             }

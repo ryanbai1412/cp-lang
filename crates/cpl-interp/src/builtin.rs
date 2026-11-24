@@ -913,11 +913,11 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
                     Value::List(Rc::new(crate::value::Cells::from(out)))
                 }
                 Value::Range128(r) => {
-                    let (lo, hi) = *r;
+                    let (lo, hi, wide) = *r;
                     let mut out = Vec::with_capacity(hi.saturating_sub(lo).max(0) as usize);
                     let mut v = hi - 1;
                     while v >= lo {
-                        out.push(Value::I128(v.into()));
+                        out.push(wide.item(v));
                         if v == lo {
                             break;
                         }

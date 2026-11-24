@@ -385,12 +385,11 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let (lo, len) = self.domains[dom as usize];
                 regs_v[dst as usize] = Value::DomainVal(lo, len);
             }
-            Op::MakeRangeV { dst, lo, hi, float } => {
+            Op::MakeRangeV { dst, lo, hi, wide } => {
                 let (lo, hi) = (&regs_v[lo as usize], &regs_v[hi as usize]);
-                regs_v[dst as usize] = if float {
-                    Value::RangeF(lo.float(), hi.float())
-                } else {
-                    Value::range128(lo.i128(), hi.i128())
+                regs_v[dst as usize] = match wide {
+                    Some(wide) => Value::range128(lo.i128(), hi.i128(), wide),
+                    None => Value::RangeF(lo.float(), hi.float()),
                 };
             }
             Op::ContainsV { dst, src_v, key_v } => {

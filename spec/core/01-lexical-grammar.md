@@ -365,7 +365,10 @@ match dir: L => -1, R => 1, U => 0, D => 0  // one-line match
   its `len`, `first` and `last` are \(O(1)\). An open range's end is an
   `Int` or a domain value: `lo..` runs to `Int.MAX` or the end of `lo`'s
   domain and `..hi` starts at 0 or the domain's first value, so `1.0..`
-  or `..'z'` is E0302. (R01.8.4)
+  or `..'z'` is E0302. A range of `I128` or of `U64` values has both ends
+  written; its end is held wider than its values, so `U64(0)..=U64(-1)`
+  ends one past `U64`'s greatest value and its `len` traps only when it
+  passes `Int.MAX`. (R01.8.4)
 - **Indexing** `a[i]`, `g[r, c]` (never `g[r][c]`); `a[i]` on `[I, J]T`
   is the row place. A table whose cells are arrays takes the cell's index
   in the same brackets: `dp[r, c, k]` on `[R, C][K]T`. `a[l..r]` is a slice view keeping the source keys.

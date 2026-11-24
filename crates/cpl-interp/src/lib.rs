@@ -1000,9 +1000,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             Value::StrView(view) => pick(view.len).and_then(|i| view.get(i)).map(Value::Char),
             Value::Array(array) => pick(array.len()).and_then(|i| array.get(i)),
             Value::Range(lo, hi) => (lo < hi).then(|| Value::Int(if last { hi - 1 } else { *lo })),
-            Value::Range128(r) => {
-                (r.0 < r.1).then(|| Value::I128((if last { r.1 - 1 } else { r.0 }).into()))
-            }
+            Value::Range128(r) => (r.0 < r.1).then(|| r.2.item(if last { r.1 - 1 } else { r.0 })),
             _ => return bug(span, "`first`/`last` of a value without ends"),
         })
     }
@@ -1177,8 +1175,8 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             ExprKind::Range { lo, hi } => {
                 if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::Float) {
                     Value::RangeF(self.eval(lo)?.float(), self.eval(hi)?.float())
-                } else if matches!(&e.ty, Ty::Range(inner) if **inner == Ty::I128) {
-                    Value::range128(self.eval(lo)?.i128(), self.eval(hi)?.i128())
+                } else if let Some(wide) = crate::value::WideElem::of_range(&e.ty) {
+                    Value::range128(self.eval(lo)?.i128(), self.eval(hi)?.i128(), wide)
                 } else {
                     let lo = self.eval(lo)?.int();
                     let hi = self.eval(hi)?.int();

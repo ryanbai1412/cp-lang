@@ -752,9 +752,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::DomainValV { dst, dom }, span);
                 dst
             }
-            ExprKind::Range { lo, hi } if matches!(&expr.ty, Ty::Range(inner) if matches!(**inner, Ty::Float | Ty::I128)) =>
+            ExprKind::Range { lo, hi } if matches!(&expr.ty, Ty::Range(inner) if matches!(**inner, Ty::Float | Ty::I128 | Ty::U64)) =>
             {
-                let float = matches!(&expr.ty, Ty::Range(inner) if **inner == Ty::Float);
+                let wide = crate::value::WideElem::of_range(&expr.ty);
                 let lo_v = self.compile_expr_v(lo);
                 let hi_v = self.compile_expr_v(hi);
                 let dst = self.alloc_v();
@@ -763,7 +763,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         dst,
                         lo: lo_v,
                         hi: hi_v,
-                        float,
+                        wide,
                     },
                     span,
                 );

@@ -214,6 +214,39 @@ impl std::fmt::Display for Wide {
     }
 }
 
+/// What a [`Value::Range128`] walks: its items are `I128`s or `U64`s.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub(crate) enum WideElem {
+    I128,
+    U64,
+}
+
+impl WideElem {
+    pub(crate) fn of(elem: &Ty) -> Option<WideElem> {
+        match elem {
+            Ty::I128 => Some(WideElem::I128),
+            Ty::U64 => Some(WideElem::U64),
+            _ => None,
+        }
+    }
+
+    /// What a range of type `range` walks, when it is a `Range128`.
+    pub(crate) fn of_range(range: &Ty) -> Option<WideElem> {
+        match range {
+            Ty::Range(elem) => WideElem::of(elem),
+            _ => None,
+        }
+    }
+
+    /// The item at `v`, which lies between the range's ends.
+    pub(crate) fn item(self, v: i128) -> Value {
+        match self {
+            WideElem::I128 => Value::I128(v.into()),
+            WideElem::U64 => Value::U64(v as u64),
+        }
+    }
+}
+
 #[derive(Clone, Debug, Default)]
 pub(crate) enum Value {
     #[default]
@@ -231,8 +264,9 @@ pub(crate) enum Value {
     Opt(OptVal),
     /// A half-open range `(lo, hi)`.
     Range(i64, i64),
-    /// A half-open 128-bit integer range `(lo, hi)`.
-    Range128(Rc<(i128, i128)>),
+    /// A half-open range `(lo, hi)` of `I128` or `U64` values, its ends held
+    /// as `i128`s so a `U64` range can end past `U64`'s greatest value.
+    Range128(Rc<(i128, i128, WideElem)>),
     /// An interval of reals `(lo, hi)`: searched, never walked.
     RangeF(f64, f64),
     /// A runtime domain handle `(lo, len)`.
@@ -564,6 +598,7 @@ impl Value {
     pub fn i128(&self) -> i128 {
         match self {
             Value::I128(v) => v.get(),
+            Value::U64(v) => i128::from(*v),
             _ => 0,
         }
     }
@@ -586,8 +621,8 @@ impl Value {
         matches!(self, Value::Bool(true))
     }
 
-    pub fn range128(lo: i128, hi: i128) -> Value {
-        Value::Range128(Rc::new((lo, hi)))
+    pub fn range128(lo: i128, hi: i128, wide: WideElem) -> Value {
+        Value::Range128(Rc::new((lo, hi, wide)))
     }
 
     pub fn some(value: Value) -> Value {
@@ -696,7 +731,9 @@ pub(crate) fn zero(ty: &Ty, program: &Program) -> Value {
         Ty::Str => Value::Str(Rc::new(Vec::new())),
         Ty::StrView => Value::StrView(Rc::new(StrViewVal::whole(Rc::new(Vec::new()), false))),
         Ty::Opt(_) => Value::Opt(OptVal::None),
-        Ty::Range(inner) if **inner == Ty::I128 => Value::range128(0, 0),
+        Ty::Range(inner) if WideElem::of(inner).is_some() => {
+            Value::range128(0, 0, WideElem::of(inner).unwrap_or(WideElem::I128))
+        }
         Ty::Range(_) => Value::Range(0, 0),
         Ty::DomainVal => Value::DomainVal(0, 0),
         Ty::Fn(..) | Ty::Mut(_) => Value::Unit,
