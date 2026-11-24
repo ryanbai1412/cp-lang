@@ -1,7 +1,7 @@
 //! What a browser build of cpl-check embeds of `std`: shared by build.rs,
 //! which writes it, and by the test that holds it to its gzipped cap.
 
-use crate::std_files::{call_names, outline, without_tests, EMBEDDED};
+use crate::std_files::{call_names, nesting, outline, without_tests, EMBEDDED};
 
 /// The browser build blanks whole-line comments: nothing it runs reads std's
 /// docs, and they are half of std's compressed size. Blank lines keep every
@@ -49,7 +49,7 @@ pub fn without_private_fns(text: &str) -> String {
         let indent = code.len() - trimmed.len();
         if let Some(at) = dropped {
             if open > 0 || trimmed.is_empty() || indent > at {
-                open += brackets(code);
+                open += nesting(code);
                 out.push_str(&line[code.len()..]);
                 continue;
             }
@@ -60,7 +60,7 @@ pub fn without_private_fns(text: &str) -> String {
         }
         if !in_trait && private_fn(trimmed) {
             dropped = Some(indent);
-            open = brackets(code).max(0);
+            open = nesting(code).max(0);
             out.push_str(&line[code.len()..]);
             continue;
         }
@@ -84,17 +84,6 @@ fn private_fn(mut line: &str) -> bool {
         line = after;
     }
     line.starts_with("fn ")
-}
-
-/// How many more brackets `line` opens than it closes.
-fn brackets(line: &str) -> i32 {
-    line.chars()
-        .map(|c| match c {
-            '(' | '[' => 1,
-            ')' | ']' => -1,
-            _ => 0,
-        })
-        .sum()
 }
 
 /// How often the `sources`, doc examples included, write `.name`, for the

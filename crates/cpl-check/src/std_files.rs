@@ -116,7 +116,7 @@ fn typed_head(line: &str) -> Option<&str> {
 }
 
 /// How many more brackets `line` opens than it closes.
-fn nesting(line: &str) -> i32 {
+pub(crate) fn nesting(line: &str) -> i32 {
     line.chars()
         .map(|c| match c {
             '(' | '[' => 1,
