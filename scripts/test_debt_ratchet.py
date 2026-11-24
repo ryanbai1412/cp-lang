@@ -1464,7 +1464,8 @@ class DebtRatchetTest(unittest.TestCase):
             port.parent.mkdir(parents=True)
             port.write_text("// copies: 1\nprint(1)\n")
             (root / f"{PKGS}/cf1/notes.md").write_text("// copies: 5\n")
-            self.assertEqual(len(dr.cpp_deep_copies(root)), 3)
+            self.assertEqual(dr.cpp_deep_copies(root), [f"{PKGS}/cf1/port.cp 0"])
+            self.assertEqual(len(dr.spec_required_copies(root)), 2)
             self.assertEqual(len(dr.cpp_std_functions(root)), 1)
             self.assertEqual(len(dr.cpp_sunk_copies(root)), 2)
 

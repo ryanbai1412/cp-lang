@@ -54,9 +54,10 @@ A `// copies: N` header line states how many deep copies the case's
 judge C++ makes (none without the line; `N` above 0, at most one line).
 `crates/cpl-cli/tests/read_only_copies.rs` builds every case and every
 corpus program and fails, naming the file, on any whose C++ makes a
-different number; `scripts/debt-ratchet.py` sums the lines as the
-shrink-only `cpp_deep_copies` counter, so a copy is only added by writing
-it down where it happens.
+different number; `scripts/debt-ratchet.py` sums the case lines as the
+shrink-only `spec_required_copies` counter (corpus programs have the
+hard-zero `cpp_deep_copies`), so a copy is only added by writing it down
+where it happens.
 
 A word holding `{case}` or `{dir}` takes the copy's path or the scratch
 directory there, and the copy is not passed first:

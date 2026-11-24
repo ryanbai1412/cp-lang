@@ -1023,12 +1023,13 @@ def helper_env_vars(root: Path) -> list[str]:
     return sorted(found.values())
 
 
-def _header_counts(root: Path, key: str) -> list[str]:
+def _header_counts(root: Path, key: str,
+                   bases: tuple[str, ...] = ("corpus/problems", "spec/conformance")) -> list[str]:
     """The `// <key>: N` header lines of the programs `read_only_copies` builds (the
     `.cp` files one directory down from corpus/problems and spec/conformance), one
     item per unit: the test holds each program's C++ to its own header, this sums them."""
     out = []
-    for base in ("corpus/problems", "spec/conformance"):
+    for base in bases:
         for path in sorted((root / base).glob("*/*.cp")):
             for line in path.read_text().splitlines():
                 rest = line.strip()
@@ -1042,7 +1043,14 @@ def _header_counts(root: Path, key: str) -> list[str]:
 
 
 def cpp_deep_copies(root: Path) -> list[str]:
-    return _header_counts(root, "copies")
+    """Deep copies in shipped programs (corpus ports, dreams and specs): each one is avoidable."""
+    return _header_counts(root, "copies", ("corpus/problems",))
+
+
+def spec_required_copies(root: Path) -> list[str]:
+    """Deep copies a spec/conformance case exists to require (decision 458): shrink-only, so a
+    header raised to hide a regression, or a new required copy, is a visible baseline bump."""
+    return _header_counts(root, "copies", ("spec/conformance",))
 
 
 def cpp_optional_copies(root: Path) -> list[str]:
@@ -2744,6 +2752,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
+    "cpp_deep_copies",
     "habit_matchers", "corpus_fmt_dirty", "judge_tables", "v02_port_files", "lint_std_names", "cpl_env_reads", "dead_code_allows",
     "lint_name_matchers", "lint_type_syntax",
     "corpus_no_statement", "dup_fn_bodies", "near_dup_fns", "layer_violations", "event_models",
@@ -2844,7 +2853,9 @@ COUNTERS = {
     "ir_reinfer": ("lowering re-inferring a type the checker's facts give", ir_reinfer, True),
     "stress_hand_json": ("hand-built JSON in cpl-stress and cpl-wasm", stress_hand_json, True),
     "helper_env_vars": ("CPL_* helper side channels beyond CPL_SEED", helper_env_vars, True),
-    "cpp_deep_copies": ("`// copies:` header sum over the corpus (read_only_copies)", cpp_deep_copies, True),
+    "cpp_deep_copies": ("`// copies:` header sum over corpus programs (read_only_copies)", cpp_deep_copies, True),
+    "spec_required_copies": ("`// copies:` header sum over spec/conformance cases (read_only_copies)",
+                             spec_required_copies, True),
     "cpp_optional_copies": ("`// optional_copies:` header sum over the corpus (read_only_copies)",
                             cpp_optional_copies, True),
     "cpp_std_functions": ("`// std_functions:` header sum over the corpus (read_only_copies)", cpp_std_functions, True),
@@ -3122,6 +3133,7 @@ def evaluate(actual: dict, baseline: dict) -> tuple[list[str], list[str], list[s
 MEASURED_BY = {
     "corpus_fmt_dirty": ("crates/cpl-fmt/src",),
     "cpp_deep_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
+    "spec_required_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_optional_copies": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
     "cpp_std_functions": ("crates/cpl-cli/tests/support/cpp_counts.rs",),
 }
