@@ -290,7 +290,6 @@
 6 corpus/problems/cf2115f1/dream.cp
 20 corpus/problems/cf2115f1/port.cp
 3 corpus/problems/cf2124d/dream.cp
-9 corpus/problems/cf2124d/perf.cp
 9 corpus/problems/cf2124d/port.cp
 3 corpus/problems/cf2124e/dream.cp
 1 corpus/problems/cf2124e/port.cp
