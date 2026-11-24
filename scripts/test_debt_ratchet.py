@@ -788,6 +788,18 @@ class DebtRatchetTest(unittest.TestCase):
         self.assertEqual(len(errs), 1)
         self.assertIn("must stay at 0", errs[0])
 
+    def test_a_package_without_tests_toml_fails_the_ratchet(self) -> None:
+        self.assertIn("corpus_no_tests", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"corpus_no_tests": 1}, {"corpus_no_tests": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+
+    def test_an_optional_copies_header_fails_the_ratchet(self) -> None:
+        self.assertIn("cpp_optional_copies", dr.HARD_ZERO)
+        errs, _, _ = dr.evaluate({"cpp_optional_copies": 1}, {"cpp_optional_copies": 0})
+        self.assertEqual(len(errs), 1)
+        self.assertIn("must stay at 0", errs[0])
+
     def test_hard_zero_is_assigned_once(self) -> None:
         src = Path(dr.__file__).read_text(encoding="utf-8")
         self.assertEqual(len(re.findall(r"^HARD_ZERO\s*[|:]?=", src, re.M)), 1,
