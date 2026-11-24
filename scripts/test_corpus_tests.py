@@ -42,6 +42,11 @@ class SeedListTest(unittest.TestCase):
         (self.dir / "meta.json").write_text(json.dumps({"submissions": subs}))
         self.assertEqual(ct.accepted_cpp("p1"), str(cpp))
 
+    def test_the_reference_is_orig_cpp_when_there_is_one(self):
+        (self.dir / "orig.cpp").write_text("")
+        (self.dir / "meta.json").write_text(json.dumps({"submissions": []}))
+        self.assertEqual(ct.accepted_cpp("p1"), str(self.dir / "orig.cpp"))
+
     def test_no_list_means_none(self):
         self.assertIsNone(ct.seed_list("p1"))
 

@@ -1,27 +1,4 @@
 # corpus/differential.py findings not yet fixed; this list only shrinks.
-cpl-test-fails cf2062g sample1
-cpl-test-fails cf2066f sample1
-cpl-test-fails cf2084a 1
-cpl-test-fails cf2084c 1
-cpl-test-fails cf2089d 1
-cpl-test-fails cf2101a sample1
-cpl-test-fails cf2115c sample1
-cpl-test-fails cf2124a sample1
-cpl-test-fails cf2124e sample1
-cpl-test-fails cf2124i sample1
-cpl-test-fails cf2127e sample1
-cpl-test-fails cf2129a sample1
-cpl-test-fails cf2137d sample1
-cpl-test-fails cf2147h sample1
-cpl-test-fails cf2178d sample1
-cpl-test-fails cf2183d2 sample1
-cpl-test-fails cf2187b sample1
-cpl-test-fails cf2201b sample1
-cpl-test-fails cf2207e1 sample1
-cpl-test-fails cf2211b sample1
-cpl-test-fails cf2219c sample1
-cpl-test-fails cf2229c1 sample1
-cpl-test-fails cf2229c2 sample1
 cpl-test-no-cases ucup5s02f -
 over-32kb cf2201e -
 over-32kb cf2229i -

@@ -1,0 +1,7 @@
+# Cases for scripts/corpus-tests.py make (problem-packages/R9).
+
+[[case]]
+input = "3\n5\n-1 -2 -3 -5 -4\n5\n-1 -2 3 -5 4\n4\n5 7 10 19\n"
+
+[[case]]
+args = ["--max"]

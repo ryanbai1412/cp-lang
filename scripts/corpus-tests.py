@@ -28,11 +28,13 @@ hidden tests, and both commands judge the accepted C++ on them with
 `cpl test --interactor` (`$CPL`, default `target/debug/cpl`), the same
 judge `cpl test` and `cpl stress` use, so each case runs the interactor once.
 """
-import argparse, hashlib, inspect, json, os, random, resource, shutil, subprocess, sys, tempfile, tomllib
+import argparse, hashlib, inspect, json, os, random, shutil, subprocess, sys, tempfile, tomllib
+
+import corpus
+from corpus import binary, judge_stack
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROBLEMS = os.path.join(ROOT, "corpus", "problems")
-CACHE = os.path.join(ROOT, "target", "corpus-cxx")
 OUT = os.path.join(ROOT, "target", "corpus-tests")
 INLINE = 200
 CPL = os.environ.get("CPL", os.path.join(ROOT, "target", "debug", "cpl"))
@@ -129,11 +131,9 @@ def inputs(p, gens, n, tmp):
 
 
 def accepted_cpp(p):
-    meta = json.load(open(os.path.join(PROBLEMS, p, "meta.json")))
-    for s in meta.get("submissions", []):
-        if s.get("result") == "AC" and s["file"].endswith(".cpp") and os.path.exists(os.path.join(ROOT, s["file"])):
-            return os.path.join(ROOT, s["file"])
-    return None
+    """The accepted C++ the package's answers come from (scripts/corpus.py)."""
+    ref = corpus.Package.at(os.path.join(PROBLEMS, p)).reference()
+    return str(ref) if ref else None
 
 
 def interactor(p):
@@ -150,22 +150,6 @@ def judged(p, cpp, tests):
     except (ValueError, KeyError):
         raise RuntimeError(f"cpl test: {r.stderr.strip()[:200]}")
     return {c["name"]: c["verdict"] for c in cases}
-
-
-def binary(src):
-    os.makedirs(CACHE, exist_ok=True)
-    key = hashlib.sha1(open(src, "rb").read()).hexdigest()[:16]
-    exe = os.path.join(CACHE, key)
-    if not os.path.exists(exe):
-        r = subprocess.run(["g++", "-std=c++17", "-O2", "-o", exe, src], capture_output=True, text=True)
-        if r.returncode:
-            raise RuntimeError("g++: " + r.stderr[:200])
-    return exe
-
-
-def judge_stack():
-    """The judges' stack (Codeforces gives 256 MB), so a deep recursion in the accepted C++ runs as it did there."""
-    resource.setrlimit(resource.RLIMIT_STACK, (resource.RLIM_INFINITY, resource.RLIM_INFINITY))
 
 
 def stamp(p, cpp):
