@@ -72,8 +72,8 @@ impl Checker<'_> {
     /// `Counter(0)` where `new` takes `xs: Seq<K>`: each bound of the
     /// method's type parameters holds for what the call binds it to, checked
     /// at the call as a free fn's are, so a type that misses one never
-    /// reaches the body. A parameter typed by the trait reads as that
-    /// parameter's type mismatch, at its argument.
+    /// reaches the body. A parameter in `params` typed by the trait reads as
+    /// that parameter's type mismatch, at its argument.
     pub(crate) fn method_bounds_hold(
         &mut self,
         callee: &str,

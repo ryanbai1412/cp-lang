@@ -1464,7 +1464,9 @@ impl<'a> Checker<'a> {
                     let bounds = (bounds.iter())
                         .flat_map(|(p, ts)| ts.iter().map(move |t| (p.clone(), t.clone())))
                         .collect::<Vec<_>>();
-                    self.method_bounds_hold(fn_name, (&bounds, &params), &bindings, (args, call));
+                    // A free fn's trait-typed parameter is E0606 at the call (R08.2.1), so no
+                    // parameter is offered for an argument-local mismatch.
+                    self.method_bounds_hold(fn_name, (&bounds, &[]), &bindings, (args, call));
                 }
                 if let (
                     ExprKind::Name(_),
