@@ -68,7 +68,10 @@ pub struct Comm<T>(pub m: Monoid<T>):
     pub fn monoid(self) -> Monoid<T> = m
 
 impl<T> Op<T> for Comm<T>:
+    type Fold = T
     fn op(self, a: T, b: T) -> T = m.op(a, b)
+    fn folds(self) -> Monoid<T> = m
+    fn lift(self, x: T) -> T = x
 
 impl<T> HasId<T> for Comm<T>:
     @get fn id(self) = m.id
@@ -704,11 +707,43 @@ pub fn minmax<T: Ord>(a: T, b: T) -> (T, T) = if b < a: (b, a) else: (a, b)
 /// it. `Semiring(+, *)` is the default wherever one is accepted.
 pub struct Semiring<A, M>(pub add: A, pub mul: M)
 
-/// An associative operation, possibly without an identity (round 5). Bare operators
-/// (`+ * ^ | & min max gcd and or`) implement it. Folds over an `Op` of an empty range
-/// return `None`. Law (promised, sampled by stress): `op(op(a, b), c) == op(a, op(b, c))`.
+/// An associative operation, possibly without an identity (round 5). A `Monoid`, a `Group`, a
+/// `Semigroup` and any `(T, T) -> T` fn implement it; a bare operator (`+ * ^ | & min max gcd
+/// and or`) passed as an `Op` is its `Monoid`. `Fold` is what a fold over the op returns: `T`
+/// when it has an identity, `?T`, `None` for an empty range, when it has none (decision 456).
+/// Law (promised, sampled by stress): `op(op(a, b), c) == op(a, op(b, c))`.
 pub trait Op<T>:
+    type Fold = ?T
     fn op(self, a: T, b: T) -> T
+    /// The op on folds, with the fold of nothing as its identity.
+    fn folds(self) -> Monoid<Self.Fold> =
+        Monoid(None, (a: ?T, b: ?T) => if let x = a: (if let y = b: Some(self.op(x, y)) else: a) else: b)
+    /// The fold of the single value `x`.
+    fn lift(self, x: T) -> Self.Fold = Some(x)
+
+impl<T> Op<T> for Monoid<T>:
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = self.op(a, b)
+    fn folds(self) -> Monoid<T> = self
+    fn lift(self, x: T) -> T = x
+
+impl<T> Op<T> for Group<T>:
+    type Fold = T
+    fn op(self, a: T, b: T) -> T = self.op(a, b)
+    fn folds(self) -> Monoid<T> = Monoid(self.id, self.op)
+    fn lift(self, x: T) -> T = x
+
+impl<T> Op<T> for Semigroup<T>:
+    type Fold = ?T
+    fn op(self, a: T, b: T) -> T = self.op(a, b)
+    fn folds(self) -> Monoid<?T> = self.opt()
+    fn lift(self, x: T) -> ?T = Some(x)
+
+impl<T> Op<T> for (T, T) -> T:
+    type Fold = ?T
+    fn op(self, a: T, b: T) -> T = self(a, b)
+    fn folds(self) -> Monoid<?T> = self.opt()
+    fn lift(self, x: T) -> ?T = Some(x)
 
 /// The identity of an operation. Law: `op(id, a) == a == op(a, id)`.
 pub trait HasId<T>:
