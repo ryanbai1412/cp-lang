@@ -1226,7 +1226,7 @@ impl<'p> Emitter<'p> {
         }
 
         out.push_str(
-            "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\n",
+            "// What the program below leans on.\nnamespace cpl {\nusing u8 = unsigned char;\nusing u64 = unsigned long long;\n",
         );
         for (at, piece) in [
             "niche",

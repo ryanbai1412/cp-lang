@@ -101,10 +101,7 @@ fn a_u64_sum_with_a_default_of_builds_no_list_at_each_call() {
         "print(ways, sum(dp[v] for v in V))\n",
     ));
     let solve = &cpp[cpp.find("void solve()").unwrap()..];
-    assert!(
-        !solve.contains("std::vector<unsigned long long>()"),
-        "{solve}"
-    );
+    assert!(!solve.contains("std::vector<cpl::u64>()"), "{solve}");
     assert!(!solve.contains("push_back"), "{solve}");
 }
 

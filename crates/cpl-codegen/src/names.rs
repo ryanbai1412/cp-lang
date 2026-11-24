@@ -245,7 +245,7 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         Ty::Unit | Ty::Error => "void".into(),
         Ty::Int => "ll".into(),
         Ty::I128 => "__int128".into(),
-        Ty::U64 => "unsigned long long".into(),
+        Ty::U64 => "cpl::u64".into(),
         Ty::Float => "double".into(),
         Ty::Bool => "bool".into(),
         Ty::Char => "cpl::u8".into(),
