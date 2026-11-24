@@ -372,6 +372,28 @@ def callers(names):
             and call.search(open(os.path.join(ROOT, f), encoding="utf-8", errors="replace").read())]
 
 
+def importers(paths):
+    """Conformance cases and corpus programs that `use` a changed std module: a change inside a
+    body, a struct field or a law reaches them with no signature line changing (0c04f356d added
+    Action's `replace` law and core-08/laws-are-a-derived-member went red only on main)."""
+    mods = sorted({Path(p).stem for p in paths if p.startswith("std/") and p.endswith(".cp")})
+    if not mods:
+        return []
+    use = re.compile(r"^\s*use\s+std\.(?:" + "|".join(map(re.escape, mods)) + r")\b", re.M)
+    out = subprocess.run(["git", "ls-files", "-z", "--", *CALLER_GLOBS], cwd=ROOT,
+                         capture_output=True, check=True).stdout
+    files = [p.decode("utf-8", "surrogateescape") for p in out.split(b"\0") if p]
+    return [f for f in files if os.path.isfile(os.path.join(ROOT, f))
+            and use.search(open(os.path.join(ROOT, f), encoding="utf-8", errors="replace").read())]
+
+
+def std_cases(*revs):
+    """Every case and corpus program a std change between `revs` can break: callers of a changed
+    `pub fn` signature, and importers of a changed module."""
+    old, new = std_snapshots(*revs)
+    return sorted(set(callers(changed_pub_fns(old, new))) | set(importers(new)))
+
+
 def std_snapshots(*revs):
     """`({path: text}, {path: text})` before and after for the std files `git diff *revs` changes:
     `()` is HEAD against the work tree, `("--cached",)` HEAD against the index, `(a, b)` a against b."""
@@ -417,7 +439,7 @@ def main(argv):
     as_json = "--json" in argv
     argv = [a for a in argv if a != "--json"]
     if argv[:1] == ["--sig-callers"]:
-        print("\n".join(callers(changed_pub_fns(*std_snapshots(argv[1], "HEAD")))))
+        print("\n".join(std_cases(argv[1], "HEAD")))
         return 0
     if argv[:1] == ["--base"]:
         paths = changed_since(argv[1])
@@ -427,7 +449,7 @@ def main(argv):
         diff = () if argv else ("--cached",)
     sel = select(paths, crate_dirs())
     if any(p.startswith("std/") and p.endswith(".cp") for p in paths) and (argv[:1] == ["--base"] or not argv):
-        add_callers(sel, callers(changed_pub_fns(*std_snapshots(*diff))))
+        add_callers(sel, std_cases(*diff))
     if as_json:
         print(json.dumps(sel))
         return 0

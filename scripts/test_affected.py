@@ -110,6 +110,11 @@ class AffectedTest(unittest.TestCase):
                          ["matroid_intersection"])
         self.assertEqual(affected.changed_pub_fns({"std/flow.cp": sig.format("x")}, {"std/flow.cp": sig.format("x") + "        pass\n"}), [])
         self.assertIn("spec/conformance/std-models/flow-matching.cp", affected.callers(["matroid_intersection"]))
+        # 0c04f356d added a law to Action, changing no signature; laws-are-a-derived-member uses std.algebra.
+        found = affected.importers(["std/algebra.cp"])
+        self.assertIn("spec/conformance/core-08/laws-are-a-derived-member.cp", found)
+        self.assertNotIn("spec/conformance/std-deque/splice-empty-lists.cp", found)
+        self.assertEqual(affected.importers(["crates/cpl-check/src/lib.rs"]), [])
         found = affected.callers(["splice_back"])
         self.assertIn("spec/conformance/std-deque/splice-empty-lists.cp", found)
         self.assertFalse([f for f in found if not f.startswith(("spec/conformance/", "corpus/problems/"))])
