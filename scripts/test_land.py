@@ -386,6 +386,47 @@ class LandTest(unittest.TestCase):
         taken = [int(s.split()[3]) for s in stamps.read_text().splitlines() if " other " not in f" {s} "]
         self.assertTrue(taken and taken[0] >= int(freed[0]), (taken, freed))
 
+    def test_two_worktrees_landing_at_once_each_run_their_own_copy_of_mains_land_sh(self):
+        a = self.clone("a")
+        b = self.tmp / "b"
+        git(a, "worktree", "add", "-q", "-b", "b", str(b), "HEAD")
+        (a / "a.txt").write_text("a\n")
+        self.commit(a, "a")
+        (b / "b.txt").write_text("b\n")
+        self.commit(b, "b")
+        theirs = self.clone("theirs")
+        land = theirs / "scripts" / "land.sh"
+        # v1 stops a's land in its copy until b has landed with v2 (once: a re-execs
+        # into v2 after its pull).
+        v1 = land.read_text().replace("set -euo pipefail\n", 'set -euo pipefail\n[ -z "${CPL_TEST_GO:-}" ] || '
+                                      '{ echo >"$CPL_TEST_READY"; read -r _ <"$CPL_TEST_GO"; unset CPL_TEST_GO; }\n', 1)
+        land.write_text(v1)
+        self.commit(theirs, "main's land.sh v1")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        ready, go = self.tmp / "ready", self.tmp / "go"
+        os.mkfifo(ready)
+        os.mkfifo(go)
+        env = {**{k: v for k, v in os.environ.items() if not k.startswith("CPL_LAND")}, "CPL_LAND_TRIES": "3",
+               "CPL_TEST_READY": str(ready), "CPL_TEST_GO": str(go)}
+        first = subprocess.Popen(["bash", "scripts/land.sh"], cwd=a, env=env, stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE, text=True)
+        ready.read_text()
+        # main's land.sh changes while a's land waits in its copy of v1; b's land copies v2,
+        # whose long first line puts a's read offset mid-line in a shared copy.
+        shebang, rest = v1.split("\n", 1)
+        land.write_text(f"{shebang}\n#{'x' * (len(v1) // 4)}\n{rest}")
+        self.commit(theirs, "main's land.sh v2")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        second = self.land(b, CPL_LAND_TRIES="3")
+        go.write_text("\n")
+        out, err = first.communicate(timeout=120)
+        self.assertEqual(first.returncode, 0, err)
+        self.assertEqual(second.returncode, 0, second.stderr)
+        git(theirs, "fetch", "-q")
+        log = git(theirs, "log", "--format=%s", "origin/main")
+        self.assertIn("a", log.split())
+        self.assertIn("b", log.split())
+
     def test_a_change_to_land_sh_lands_with_its_own_copy(self):
         ours = self.clone("ours")
         land = ours / "scripts" / "land.sh"

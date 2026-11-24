@@ -26,8 +26,11 @@ git fetch -q "$remote" main
 # every lane at once instead of after its next rebase.
 if [ -z "${CPL_LAND_MAIN:-}" ] && git cat-file -e FETCH_HEAD:scripts/land.sh 2>/dev/null &&
     ! git show FETCH_HEAD:scripts/land.sh | cmp -s - scripts/land.sh; then
-    dir="$(git rev-parse --git-common-dir)/cpl-land-main"
-    mkdir -p "$dir"
+    # A copy per run: bash reads its script as it goes, so a copy shared by the
+    # worktrees, rewritten by another land when main moved, broke this one mid-run.
+    gd=$(git rev-parse --absolute-git-dir)
+    find "$gd" -maxdepth 1 -name 'cpl-land-main.*' -mmin +1440 -exec rm -rf {} +
+    dir=$(mktemp -d "$gd/cpl-land-main.XXXXXX")
     for f in land.sh retry.sh; do git show "FETCH_HEAD:scripts/$f" >"$dir/$f"; done
     CPL_LAND_MAIN=1 exec bash "$dir/land.sh" "$@"
 fi
