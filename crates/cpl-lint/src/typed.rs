@@ -303,3 +303,22 @@ pub(crate) fn safe_fixes(
     }
     crate::apply_fixes(text, &safe[..1])
 }
+
+#[cfg(test)]
+mod own_state_tests {
+    use crate::tests::all_on;
+
+    #[test]
+    fn a_struct_steps_the_depths_it_keeps() {
+        let code = crate::DEPTH_BY_HAND.code.0;
+        let by_hand = "domain V = 0..4\nvar dep: [V]Int = 0\nfor v in V:\n    if v.ord > 0:\n        dep[v] = dep[V(v.ord - 1)] + 1\nprint(dep[V(3)])\n";
+        assert!(crate::lint(by_hand, &all_on())
+            .iter()
+            .any(|d| d.code.0 == code));
+        let own = "domain V = 0..4\nstruct Depths:\n    var dep: [V]Int = 0\n    pub fn add(mut self, v: V, p: V):\n        dep[v] = dep[p] + 1\n    pub fn depth(self, v: V) -> Int = dep[v]\nvar d = Depths()\nd.add(V(1), V(0))\nprint(d.depth(V(1)))\n";
+        assert!(
+            !crate::lint(own, &all_on()).iter().any(|d| d.code.0 == code),
+            "{own}"
+        );
+    }
+}

@@ -14,6 +14,16 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
     let mut v = HandGraph {
         src: file.src,
         base: 0,
+        structs: file
+            .top_level()
+            .filter_map(|(base, s)| match &s.kind {
+                StmtKind::Struct(decl) => Some((
+                    s.span.shift(base),
+                    decl.fields.iter().map(|f| f.name.text.clone()).collect(),
+                )),
+                _ => None,
+            })
+            .collect(),
         out: Vec::new(),
     };
     file.walk(&mut v, |v, base| v.base = base);
@@ -23,6 +33,9 @@ pub(crate) fn check(file: &File) -> Vec<Finding> {
 struct HandGraph<'a> {
     src: &'a str,
     base: u32,
+    /// Each struct and its fields: a depth table that is a struct's own
+    /// field (std's `Rooted`, `JumpTree`) is how that type answers depths.
+    structs: Vec<(Span, Vec<String>)>,
     out: Vec<Finding>,
 }
 
@@ -255,6 +268,12 @@ impl HandGraph<'_> {
             return;
         };
         if int(rhs) != Some(1) || index1(lhs).map(|(b, _)| b) != Some(t) {
+            return;
+        }
+        let at = stmt.span.shift(self.base);
+        if self.structs.iter().any(|(s, fields)| {
+            s.start <= at.start && at.end <= s.end && fields.iter().any(|f| f == t)
+        }) {
             return;
         }
         self.warn(
