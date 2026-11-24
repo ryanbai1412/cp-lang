@@ -1064,7 +1064,8 @@ fn fill(
                 || (before == Some(K::Eq) && after.is_none())
                 || (before == Some(K::LBracket)
                     && after == Some(K::For)
-                    && !clauses(m.trim_matches(['(', ')'])));
+                    && !clauses(m.trim_matches(['(', ')'])))
+                || (matches!(before, Some(K::If | K::Elif | K::While)) && after == Some(K::Colon));
             let inner = m
                 .strip_prefix('(')
                 .and_then(|m| m.strip_suffix(')'))
