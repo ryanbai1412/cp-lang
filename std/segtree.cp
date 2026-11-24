@@ -413,21 +413,30 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
     /// example: `var s = SegTree(+, [1, 2, 3], act: add); s.apply(1..3, 1); s.fold(1..3) == 7`
     pub fn fold(self, r: Range<D>) -> T:
         let (lo, hi) = r.ends
+        if lc.len > 0 or act != None: return self.fold_tagged(lo, hi)
+        self.fold_leaves(lo + size, hi + size)
+
+    // Without tags or a dynamic tree, a fold is this one loop, short enough for g++ to inline
+    // into the caller's query loop the way a hand-written segment tree's is.
+    fn fold_leaves(self, lo: Int, hi: Int) -> T:
+        var (l, h) = (lo, hi)
+        var (a, b) = (m.id, m.id)
+        unchecked:
+            while l < h:
+                if l % 2 == 1:
+                    a = m.op(a, t[l])
+                    l += 1
+                if h % 2 == 1:
+                    h -= 1
+                    b = m.op(t[h], b)
+                l /= 2
+                h /= 2
+        m.op(a, b)
+
+    fn fold_tagged(self, lo: Int, hi: Int) -> T:
         if lc.len > 0: return if lo < hi: self.fold_at(1, 0, size, self.slot(lo), self.slot(hi - 1) + 1, None) else: m.id
         var (l, h) = (lo + size, hi + size)
         var (a, b) = (m.id, m.id)
-        if act == None:
-            unchecked:
-                while l < h:
-                    if l % 2 == 1:
-                        a = m.op(a, t[l])
-                        l += 1
-                    if h % 2 == 1:
-                        h -= 1
-                        b = m.op(t[h], b)
-                    l /= 2
-                    h /= 2
-            return m.op(a, b)
         let f = act!
         if let set = f.replaces: return if lo < hi: self.fold_set(1, 0, size, lo, hi, set) else: m.id
         // `a` folds `na` leaves under node `l - 1`, `b` folds `nb` under node `h`; each takes the
