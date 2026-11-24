@@ -9119,3 +9119,5 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 - **Reverse.** Restore the `Builtin` variants and the prelude arm, and drop the four entries.
 
 ## 592. (reserved, compiler)
+
+## 593. (reserved, compiler)
