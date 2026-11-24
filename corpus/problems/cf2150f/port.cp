@@ -9,7 +9,7 @@
 //   every other pair an L-edge path: if dist >= L, walk the tree path skipping every other vertex
 //   over its first 2(dist - L) steps; else, at the median of i, j and the far diameter end, detour
 //   towards that end and back to pad to L edges. O(n^3) with LCA tree paths.
-// Bounds: n: 3..=200; m: n - 1..=n * (n - 1) / 2
+// Bounds: n: 3..=200; m: n - 1..=n * (n - 1) / 2; edges.0, edges.1: 1..=n
 
 @!multitest
 let n: 3..=200 = read()
