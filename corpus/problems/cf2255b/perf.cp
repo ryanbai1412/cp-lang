@@ -1,11 +1,13 @@
 // Codeforces 2255 B: A Ribbon for Tomorrow, tuned.
 // port.cp's count, in one pass over the characters: a digit opens a block
 // where it differs from the one before, instead of `s.runs()`, which builds
-// a list of every run (it calls a fn value, so it can't feed the loop).
+// a list of every run (it calls a fn value, so it can't feed the loop), and
+// each digit's binomial as one product of k terms instead of `Comb` tables up to n.
 
 type Z = Mod<998_244_353>
-let comb = Comb<Z>()
 domain Bit = 0..2
+
+fn choose(n: Int, k: Int) -> Z = fold(*, Z(n - i) for i in 0..k) / fold(*, Z(i) for i in 1..=k)
 
 @!multitest
 let n: 1..=1e6 = read()
@@ -17,4 +19,4 @@ for i in 0..s.len:
     let d = Bit(s[i] - '0')
     total[d] += 1
     if i == 0 or s[i] != s[i - 1]: blocks[d] += 1
-print(fold(*, comb.choose(total[d] - 1, blocks[d] - 1) for d in Bit if blocks[d] > 0))
+print(fold(*, choose(total[d] - 1, blocks[d] - 1) for d in Bit if blocks[d] > 0))
