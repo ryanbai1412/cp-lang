@@ -227,10 +227,9 @@ documented. The stdlib's own gaps are in `std/GAPS.md`.
 - core-08/extension-concrete-and-generic-ambiguous.cp: compiler
 - core-08/trait-message-bound-holds.cp: compiler
 - core-01/comprehension-filter-if-let.cp: compiler
-- core-04/grid-rows-cols-views.cp: stdlib
 - core-04/list-fill-copies-per-key.cp: compiler
 - core-07/chain-takes-any-number.cp: stdlib
-- core-04/grid-rows-is-a-getter.cp: stdlib
+- core-04/grid-rows-is-a-getter.cp: compiler (E0304 for a std `@get` fn called with `()`)
 - core-09/release-division-by-zero-fallback.cp: compiler
 - core-09/release-list-index-unchecked.cp: perf
 - core-09/release-skips-assert.cp: compiler

@@ -247,3 +247,103 @@ pub fn ray<R, C, D>(self: (R, C), d: D) -> yields (R, C):
 /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = [R, C] (r, c) => 10 * Int(r) + Int(c); g.transposed()[C(2), R(1)] == 12`
 /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = [R, C] (r, c) => 10 * Int(r) + Int(c); g.transposed()[C(0)].collect() == [0, 10]`
 pub fn transposed<R, C, T>(self: [R, C]T) -> [C, R]T = [C, R] (c, r) => self[r, c]
+
+/// \(O(1)\). Every row of `g` as a view keyed by `R`: `g.rows[r]` is `g[r]` (R04b.1.12).
+///
+/// cost: \(O(1)\) to make, \(O(1)\) per row
+/// empty: an empty view when `R` is empty
+/// order: by `R`
+/// traps: never
+/// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows.len == 2`
+@get pub fn rows<R, C, T>(self: [R, C]T) -> lends GridRows<R, C, T> = GridRows(self)
+
+/// \(O(1)\). Every column of `g` as a view keyed by `C`: `g.cols[c]` is `g[.., c]` (R04b.1.12).
+///
+/// cost: \(O(1)\) to make, \(O(1)\) per column
+/// empty: an empty view when `C` is empty
+/// order: by `C`
+/// traps: never
+/// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols.len == 3`
+@get pub fn cols<R, C, T>(self: [R, C]T) -> lends GridCols<R, C, T> = GridCols(self)
+
+/// The rows of a grid, made by `g.rows`; lends the grid.
+pub struct GridRows<R, C, T>(g: [R, C]T):
+    /// \(O(1)\). How many rows: `R.count`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows.len == 2`
+    @get pub fn len(self) -> Int = R.count
+
+    /// \(O(1)\). Whether there are no rows: `R` is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; not g.rows.is_empty`
+    @get pub fn is_empty(self) -> Bool = R.count == 0
+
+    /// \(O(1)\). Row `r`, the same view as `g[r]`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows[R(1)].sum() == 3`
+    pub fn at(self, r: R) -> lends [C]T = g[r]
+
+    /// The rows in `R` order.
+    ///
+    /// cost: \(O(1)\) per row
+    /// empty: yields nothing
+    /// order: by `R`
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.rows.each().count() == 2`
+    pub fn each(self) -> yields [C]T:
+        for r in R: yield g[r]
+
+/// The columns of a grid, made by `g.cols`; lends the grid.
+pub struct GridCols<R, C, T>(g: [R, C]T):
+    /// \(O(1)\). How many columns: `C.count`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols.len == 3`
+    @get pub fn len(self) -> Int = C.count
+
+    /// \(O(1)\). Whether there are no columns: `C` is empty.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; not g.cols.is_empty`
+    @get pub fn is_empty(self) -> Bool = C.count == 0
+
+    /// \(O(1)\). Column `c`, the same view as `g[.., c]`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols[C(1)].sum() == 2`
+    pub fn at(self, c: C) -> lends [R]T = g[.., c]
+
+    /// The columns in `C` order.
+    ///
+    /// cost: \(O(1)\) per column
+    /// empty: yields nothing
+    /// order: by `C`
+    /// traps: never
+    /// example: `domain R = 0..2; domain C = 0..3; let g: [R, C]Int = 1; g.cols.each().count() == 3`
+    pub fn each(self) -> yields [R]T:
+        for c in C: yield g[.., c]
+
+impl Show for GridRows<R, C, T>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += "\n"
+            out += "{x}"
+        out
+
+impl Show for GridCols<R, C, T>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += "\n"
+            out += "{x}"
+        out
