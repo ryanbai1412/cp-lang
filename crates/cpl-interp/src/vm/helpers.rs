@@ -865,12 +865,33 @@ pub(super) fn with_place_cell<R>(
     span: Span,
     f: impl FnOnce(&mut Value) -> Res<R>,
 ) -> Res<R> {
+    with_place_cell_by(
+        root,
+        steps,
+        regs_i,
+        keys,
+        span,
+        &mut crate::value::keys::tree_only(span),
+        f,
+    )
+}
+
+/// [`with_place_cell`], searching map entries with `cmp`.
+pub(super) fn with_place_cell_by<R>(
+    root: &mut Value,
+    steps: &[PlaceStep],
+    regs_i: &[i64],
+    keys: &[Value],
+    span: Span,
+    cmp: &mut crate::value::keys::Cmp<'_>,
+    f: impl FnOnce(&mut Value) -> Res<R>,
+) -> Res<R> {
     if let Some((
         &last @ (PlaceStep::Index1(_) | PlaceStep::Index2(..) | PlaceStep::IndexN(..)),
         prefix,
     )) = steps.split_last()
     {
-        let container = walk_place_mut(root, prefix, regs_i, keys, span)?;
+        let container = walk_place_mut_by(root, prefix, regs_i, keys, span, cmp)?;
         if let Value::Array(arr) = container {
             if !matches!(arr.data, Cells::Values(_)) {
                 let flat = array_flat_index(arr, last, regs_i, span)?;
@@ -884,27 +905,61 @@ pub(super) fn with_place_cell<R>(
             }
         }
     }
-    f(walk_place_mut(root, steps, regs_i, keys, span)?)
+    f(walk_place_mut_by(root, steps, regs_i, keys, span, cmp)?)
+}
+
+/// The key types of `place`'s map-entry steps, root first, as its path's `keys`.
+pub(super) fn place_key_tys<'p>(place: &'p cpl_ir::Place, out: &mut Vec<&'p cpl_ir::Ty>) {
+    use cpl_ir::{PlaceKind, Ty};
+    match &place.kind {
+        PlaceKind::Index(base, indices) => {
+            place_key_tys(base, out);
+            if let (Ty::Map(k, _) | Ty::HashMap(k, _), 1) = (&base.ty, indices.len()) {
+                out.push(k);
+            }
+        }
+        PlaceKind::Field(base, _) | PlaceKind::Some(base) => place_key_tys(base, out),
+        _ => {}
+    }
 }
 
 pub(super) fn walk_place_mut<'a>(
-    mut cur: &'a mut Value,
+    cur: &'a mut Value,
     steps: &[PlaceStep],
     regs_i: &[i64],
     keys: &[Value],
     span: Span,
 ) -> Res<&'a mut Value> {
+    walk_place_mut_by(
+        cur,
+        steps,
+        regs_i,
+        keys,
+        span,
+        &mut crate::value::keys::tree_only(span),
+    )
+}
+
+/// [`walk_place_mut`], searching map entries with `cmp`.
+pub(super) fn walk_place_mut_by<'a>(
+    mut cur: &'a mut Value,
+    steps: &[PlaceStep],
+    regs_i: &[i64],
+    keys: &[Value],
+    span: Span,
+    cmp: &mut crate::value::keys::Cmp<'_>,
+) -> Res<&'a mut Value> {
     for &step in steps {
         match step {
             PlaceStep::Key(n) => match cur {
-                Value::Map(entries) => match Rc::make_mut(entries)
-                    .get_mut(&keys[n as usize], &mut crate::value::keys::tree_only(span))?
-                {
-                    Some(value) => cur = value,
-                    None => {
-                        return trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]));
+                Value::Map(entries) => {
+                    match Rc::make_mut(entries).get_mut(&keys[n as usize], cmp)? {
+                        Some(value) => cur = value,
+                        None => {
+                            return trap(span, cpl_diag::msgs::interp::THIS_KEY_NOT_IN_MAP.at(&[]));
+                        }
                     }
-                },
+                }
                 _ => return bug(span, "expected map"),
             },
             PlaceStep::Field(f) => match cur {

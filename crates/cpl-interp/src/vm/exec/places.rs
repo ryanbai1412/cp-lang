@@ -504,33 +504,6 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     );
                 }
             }
-            Op::SetMapMutPlace {
-                dst,
-                path,
-                val_v,
-                is_remove,
-            } => {
-                let arg = regs_v[val_v as usize].clone();
-                let pp = &chunk.places[path as usize];
-                let keys = place_keys(pp, regs_v);
-                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
-                let target = walk_place_mut(root, &pp.steps, regs_i, &keys, spans[cur_pc])?;
-                let ok = match (is_remove, target) {
-                    (false, Value::Set(items)) => {
-                        Rc::make_mut(items).insert(arg, &mut tree_only(spans[cur_pc]))?
-                    }
-                    (true, Value::Set(items)) => {
-                        Rc::make_mut(items).remove(&arg, &mut tree_only(spans[cur_pc]))?
-                    }
-                    (true, Value::Map(entries)) => Rc::make_mut(entries)
-                        .remove(&arg, &mut tree_only(spans[cur_pc]))?
-                        .is_some(),
-                    _ => {
-                        return bug(spans[cur_pc], "this value can't be changed that way");
-                    }
-                };
-                regs_i[dst as usize] = i64::from(ok);
-            }
             Op::MapPlaceAssign {
                 path,
                 key_v,
@@ -1542,12 +1515,36 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let (arg, arg2) = (arg(0), arg(1));
                 let program = self.program;
                 let pp = &chunk.places[path as usize];
-                let keys = place_keys(pp, regs_v);
-                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
                 let span = spans[cur_pc];
-                regs_v[dst as usize] =
-                    with_place_cell(root, &pp.steps, regs_i, &keys, span, |cell| {
-                        let cmp = &mut tree_only(span);
+                let mut keys = place_keys(pp, regs_v);
+                let mut key_tys = Vec::new();
+                place_key_tys(place, &mut key_tys);
+                let by_user = key_tys.iter().any(|k| {
+                    crate::value::ty_has_cached(k, program)
+                        || crate::value::keys::user_ordered(k, program)
+                });
+                for (key, ty) in keys.iter_mut().zip(key_tys) {
+                    *key = crate::value::strip_cached(key, ty, program);
+                }
+                // User code orders the keys with the frame's locals on the
+                // stack and the root held out, so no entry is copied.
+                let root = place_root_mut(pp.root, regs_v, &mut self.globals);
+                let mut held = std::mem::replace(root, Value::Moved);
+                if by_user {
+                    sync_to_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        chunk.traced,
+                    );
+                }
+                let shown = if by_user { self.show_lent() } else { Ok(()) };
+                let got = shown.and_then(|()| {
+                    let cmp =
+                        &mut |t: &cpl_ir::Ty, a: &Value, b: &Value| self.cmp_ty_val(t, a, b, span);
+                    with_place_cell_by(&mut held, &pp.steps, regs_i, &keys, span, cmp, |cell| {
                         crate::mutation::mutate_cell(
                             *op,
                             cell,
@@ -1555,9 +1552,24 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             (arg, arg2),
                             program,
                             span,
-                            cmp,
+                            &mut tree_only(span),
                         )
-                    })?;
+                    })
+                });
+                if by_user {
+                    let hidden = self.hide_lent();
+                    sync_from_stack(
+                        &chunk.slot_map,
+                        regs_i,
+                        regs_v,
+                        &mut self.stack,
+                        self.base,
+                        chunk.traced,
+                    );
+                    hidden?;
+                }
+                *place_root_mut(pp.root, regs_v, &mut self.globals) = held;
+                regs_v[dst as usize] = got?;
             }
             Op::Step { idx } => {
                 self.step_event(chunk.steps[idx as usize]);

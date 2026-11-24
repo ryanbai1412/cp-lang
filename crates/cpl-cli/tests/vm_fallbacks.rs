@@ -53,3 +53,14 @@ fn plain_swaps_and_local_cell_reads_run_on_the_vm() {
         assert_eq!(walked(&program, traced), 0, "traced: {traced}");
     }
 }
+
+/// The map literal's entry stores still walk (a `stmt.rs` route of its own);
+/// `m[k].insert(x)` / `.remove(x)` under a user-`Ord` or `@cache` key don't.
+#[test]
+fn a_set_in_an_entry_found_by_user_order_changes_on_the_vm() {
+    let program = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../spec/conformance/core-05/map-entry-set-under-a-user-ord-or-cached-key.cp");
+    for traced in [false, true] {
+        assert_eq!(walked(&program, traced), 4, "traced: {traced}");
+    }
+}
