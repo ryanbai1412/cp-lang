@@ -34,13 +34,13 @@ else:
 
 // s[c]: sum of the values before cut c; from[c]: where the last block
 // of the best partition of those values starts.
-type Cut = Cut<Pos>
-var s: [Cut]Int = [Pos.cuts] c => 0
+type Gap = Cut<Pos>
+var s: [Gap]Int = [Pos.cuts] c => 0
 for i in Pos: s[i.r] = s[i.l] + a[i]
-var from: [Cut]Cut = [Pos.cuts] c => Pos.cuts.first!
-fn threshold(j: Cut) -> Int = 2 * s[j] - s[from[j]]
+var from: [Gap]Gap = [Pos.cuts] c => Pos.cuts.first!
+fn threshold(j: Gap) -> Int = 2 * s[j] - s[from[j]]
 
-var queue: List<Cut> = [Pos.cuts.first!]
+var queue: List<Gap> = [Pos.cuts.first!]
 var head = 0
 for i in Pos:
     let c = i.r
