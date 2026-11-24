@@ -11,8 +11,6 @@ line when the gap closes and the body lands.
 - pair: `symmetric`: `[Pair<V>]T` is rejected as an array key (E0204 "an array is indexed by a domain or a length"), and `Pair<0..4>` in the doc examples is rejected ("`Pair` takes a domain by name"); blocks egoi23p4.
 - window, `undoing`/`Tracked` with a tuple-pattern closure: `(mut d, (u, v)) => ...` is E0302 "a `Int` can't be taken apart into 2 names" (the element type is not inferred from the callee), so btoi20p3 writes `e: (V, V)`.
 - io: `read_all`: CP Lang has no end-of-input test (the interpreter has one internally, `Input::at_eof`), so reading to the end can't be written; blocks ioi05p2 and the site's `read_all<Cmd>(until:)` snippets.
-- algebra: `each`: a variadic tuple of operation values (`..ms: Ms`) returned as one fused operation needs per-component dispatch the type system can't express yet; `fold(each(+, max), ...)` has no body to call.
-- matrix: `Mat.new`/`Mat.filled` with `over:` other than the default: `Mat<T>` has no slot for a semiring and `Semiring(min, +)` carries no identity, so `*` and `pow` stay `(+, *)`; the bodies trap on a non-default `over`.
 - seq, `filter` / `map`: `Filtered<S>` and `Mapped<S, U>` have no fields and no `T` parameter to hold the closure, and a struct cannot implement `Seq` yet; the compiler's built-in views serve these calls.
 - seq, `min` / `max` (example with `by: .0`): tuple-field shorthand `.0` as a closure is not parsed.
 - segtree, `SegTree.new` (and so `all`, `monoid`, `try_fold`, `clear`, `walk`, which need a tree to test): `apply`'s tag type `F` is not a declared parameter (`F is not a type cpl run knows`), the struct's header parameter `m: Monoid<T>` captures the `op` argument, and `at`'s `-> lends mut T` does not parse.
