@@ -1,4 +1,5 @@
 // Source: Codeforces 2147E (Maximum OR Popcount), https://codeforces.com/contest/2147/problem/E
+// limits: 2000 ms, 256 MB
 // Problem: n <= 1e5 numbers a[i] <= 1e9 and q <= 1e5 independent queries b <= 1e9: using at
 //   most b increments (+1 to any element), maximize the popcount of the OR of the array.
 //   Multitest, sums of n and of q <= 1e5.

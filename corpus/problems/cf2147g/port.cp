@@ -1,4 +1,5 @@
 // Source: Codeforces 2147G (Modular Tetration), https://codeforces.com/contest/2147/problem/G
+// limits: 2000 ms, 256 MB
 // Problem: m = x y z with x, y, z <= 1e6 (multitest). a is m-tetrative when the tower b_0 = 1,
 //   b_n = a^(b_(n-1)) is eventually 1 mod m. Print the density of m-tetrative integers a, mod
 //   998244353.

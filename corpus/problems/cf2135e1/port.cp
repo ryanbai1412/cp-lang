@@ -1,5 +1,6 @@
 // Source: Codeforces 2135E1 (Beyond the Palindrome, easy version),
 //   https://codeforces.com/contest/2135/problem/E1
+// limits: 3000 ms, 1024 MB
 // Problem: f(r) deletes all "10" substrings at once, repeatedly, until none is left. Count binary
 //   strings s of length n with f(s) = f(rev(s)), mod 998244353. n <= 1e6, sum of n <= 1e6,
 //   multitest.

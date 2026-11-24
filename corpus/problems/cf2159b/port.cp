@@ -1,4 +1,5 @@
 // Source: Codeforces 2159 B (Rectangles), https://codeforces.com/contest/2159/problem/B
+// limits: 4000 ms, 1024 MB
 // Problem: an n x m binary grid (n, m >= 2). A rectangle uses two distinct rows and two distinct
 //   columns with 1s at all four corners. For each cell print the least area of a rectangle
 //   containing it, or 0. Multitest, sum of n m <= 2.5e5.

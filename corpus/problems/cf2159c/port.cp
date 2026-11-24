@@ -1,4 +1,5 @@
 // Source: Codeforces 2159C (Twin Polynomials), https://codeforces.com/contest/2159/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: f = sum a_i x^i of degree n <= 4e5 (a_n != 0) is cool when it equals
 //   g = sum i x^(a_i). Some a_i are given (<= 1e9), the rest (always a_0 and a_n) are -1.
 //   Count the cool completions mod 1e9+7. Multitest, sum n <= 4e5.

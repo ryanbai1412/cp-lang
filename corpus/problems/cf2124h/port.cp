@@ -1,5 +1,6 @@
 // Source: Codeforces 2124H (Longest Good Subsequence),
 //   https://codeforces.com/contest/2124/problem/H
+// limits: 7000 ms, 1024 MB
 // Problem: b of length m is good if 1 <= b[i] <= i and some permutation p has, for every i, b[i]
 //   the smallest index with min(p[b[i]..=i]) = p[i]. Given a (n <= 15000, 1 <= a[i] <= n),
 //   print the length of its longest good subsequence. Multitest, sum of n^2 <= 15000^2.

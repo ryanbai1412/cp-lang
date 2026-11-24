@@ -1,6 +1,11 @@
 #!/usr/bin/env python3
 # gen.py SEED SIZE: SIZE 0/1 small multitests; SIZE >= 2 sum of n = 1e6 (one test of 1e6, or many).
 import random, sys
+if sys.argv[1:] == ["--max"]:
+    # sum n = 1e6 in one test of the largest n.
+    print(1)
+    print(10**6)
+    sys.exit()
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 if size <= 1:
