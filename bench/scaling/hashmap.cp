@@ -79,4 +79,6 @@ for _ in 0..1 << 20:
     tf = x.take()
     var y = tc.take() // timed: hashmap.Counter.take
     tc = y.take()
+for r in 0..64:
+    s += xs.tally()[r % n] // timed: hashmap.tally
 print(s)

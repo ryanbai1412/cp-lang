@@ -13,6 +13,7 @@ for i in 0..reps:
     h ^= hash_fields(xs[i % n]) // timed: derive.hash_fields
     h ^= i.hash() // timed: derive.Int.hash
     h ^= U64(i).hash() // timed: derive.U64.hash
+    h ^= I128(i).hash() // timed: derive.I128.hash
     h ^= Char(97 + i % 26).hash() // timed: derive.Char.hash
     h ^= (i % 3 == 0).hash() // timed: derive.Bool.hash
 for i in 0..reps / 4:

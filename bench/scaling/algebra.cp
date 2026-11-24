@@ -7,6 +7,7 @@ for i in 0..8 * n:
     acc += m.monoid().op(i, 1) // timed: algebra.Monoid.monoid
     let cm = m.commutative() // timed: algebra.Monoid.commutative
     acc += cm.monoid().op(i, 1) // timed: algebra.Comm.monoid
+    acc += m.reversed(i) // timed: algebra.Monoid.reversed
     let act = Action<Int, Int>(apply: (d, x, span) => x + d * span) // timed: algebra.Action.new
     acc += act.apply(1, i, 2)
     acc += Action<Int, Int>.of(add, +).apply(2, i, 3) // timed: algebra.Action.of

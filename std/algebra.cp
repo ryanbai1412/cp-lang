@@ -56,7 +56,7 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T, pub rev: T -> T = unreverse
     /// which `Monoid.of` gives every stock op (all commutative), `.commutative()` and a
     /// `Reversible` value's own `monoid()`.
     ///
-    /// cost: one call of `rev`
+    /// cost: \(O(1)\) plus one call of `rev`
     /// traps: when the monoid was made without `rev:`
     /// example: `Monoid<Int>.of(+).reversed(5) == 5`
     /// trap: `Monoid<Int>(0, +).reversed(5)`
