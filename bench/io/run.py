@@ -5,6 +5,9 @@ g++ -std=c++17 -O2. Prints a Markdown table; writes nothing tracked.
 
     cargo build --release -p cpl-cli
     python3 bench/io/run.py               # every bench, best of 7
+
+A bench with an X_judge.cpp is interactive: the program and the judge talk
+through pipes, and the output compared is what the judge writes to stderr.
 """
 import argparse, os, random, subprocess, sys, tempfile, time
 
@@ -23,7 +26,11 @@ def positive(n, seed):
     return f"{n}\n" + " ".join(str(rng.randint(1, 10**6)) for _ in range(n)) + "\n"
 
 
-BENCHES = {"read_ints": lambda: ints(6 * 10**6, 1), "read_range": lambda: positive(6 * 10**6, 2)}
+BENCHES = {
+    "read_ints": lambda: ints(6 * 10**6, 1),
+    "read_range": lambda: positive(6 * 10**6, 2),
+    "ask_loop": lambda: "",
+}
 
 
 def best(exe, inp, runs):
@@ -34,6 +41,25 @@ def best(exe, inp, runs):
             p = subprocess.run([exe], stdin=f, capture_output=True, text=True, check=True)
             times.append(time.perf_counter() - t)
         out = p.stdout.strip()
+    return min(times), out
+
+
+def best_judged(exe, judge, runs):
+    times, out = [], None
+    for _ in range(runs):
+        to_judge, from_prog = os.pipe()
+        to_prog, from_judge = os.pipe()
+        t = time.perf_counter()
+        j = subprocess.Popen([judge], stdin=to_judge, stdout=from_judge, stderr=subprocess.PIPE)
+        p = subprocess.Popen([exe], stdin=to_prog, stdout=from_prog)
+        for fd in (to_judge, from_prog, to_prog, from_judge):
+            os.close(fd)
+        p.wait()
+        err = j.communicate()[1]
+        times.append(time.perf_counter() - t)
+        if p.returncode or j.returncode:
+            sys.exit(f"{exe} against {judge}: exit {p.returncode} / {j.returncode}")
+        out = err.decode().strip()
     return min(times), out
 
 
@@ -57,7 +83,13 @@ def main():
                 exe = os.path.join(tmp, f"{b}_{name}")
                 subprocess.run(["g++", "-std=c++17", "-O2", "-o", exe, src], check=True)
                 exes.append(exe)
-            (ta, oa), (tb, ob) = best(exes[0], inp, args.runs), best(exes[1], inp, args.runs)
+            judge_src = os.path.join(HERE, b + "_judge.cpp")
+            if os.path.exists(judge_src):
+                judge = os.path.join(tmp, b + "_judge")
+                subprocess.run(["g++", "-std=c++17", "-O2", "-o", judge, judge_src], check=True)
+                (ta, oa), (tb, ob) = (best_judged(e, judge, args.runs) for e in exes)
+            else:
+                (ta, oa), (tb, ob) = best(exes[0], inp, args.runs), best(exes[1], inp, args.runs)
             same = "yes" if oa == ob else f"NO ({oa} vs {ob})"
             print(f"| {b} | {ta:.3f} | {tb:.3f} | {ta / tb:.2f}x | {same} |", flush=True)
 

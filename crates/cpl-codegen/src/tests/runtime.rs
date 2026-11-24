@@ -37,6 +37,19 @@ fn interactive_flushes_before_each_read_not_after_each_print() {
 }
 
 #[test]
+fn an_input_refill_reads_into_its_own_buffer_and_zeroes_nothing() {
+    // Growing `in` before read(2) would zero 64 KiB per refill, which an
+    // interactive program pays once per answer.
+    let out = cpp("let wire = Wire()\nlet x: Int = wire.ask(\"? 1\")\nprint(\"! {x}\")\n");
+    let refill = &out[out.find("inline bool more()").expect("the reader refills")..];
+    let refill = &refill[..refill.find("\n}").unwrap_or(refill.len())];
+    assert!(
+        refill.contains("read(0, chunk,") && !refill.contains("resize"),
+        "{refill}"
+    );
+}
+
+#[test]
 fn a_shift_not_proved_in_range_traps_in_a_checked_build() {
     let out = cpp("let k: Int = read()\nvar x = 3\nx <<= k\nprint(1 << k, x)\n");
     assert!(out.contains("cpl::ishl(1, "), "{out}");

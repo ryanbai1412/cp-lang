@@ -190,10 +190,11 @@ inline bool is_space(char c) { return (unsigned char)c <= ' ' && (c == ' ' || (u
 inline bool more() {
     if (!out.empty()) { flush(); fflush(stdout); }
     if (in_at > 1) { size_t keep = in_at - 1; in.erase(0, keep); in_at -= keep; }
-    size_t have = in.size();
-    in.resize(have + (1 << 16));
-    ssize_t n = read(0, &in[have], 1 << 16);
-    in.resize(have + (n > 0 ? (size_t)n : 0));
+    // Read into a buffer of its own: growing `in` first would zero 64 KiB
+    // per refill, which an interactive program pays on every answer.
+    static char chunk[1 << 16];
+    ssize_t n = read(0, chunk, sizeof chunk);
+    if (n > 0) in.append(chunk, (size_t)n);
     return n > 0;
 }
 inline void skip_space() { for (;;) { while (in_at < in.size() && is_space(in[in_at])) in_at++; if (in_at < in.size() || !more()) return; } }
