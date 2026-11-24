@@ -15,5 +15,4 @@ super::msgs! {
     FIND_WHERE = "L0512", "a predicate search is `.find(p)`, without `where:`";
     LOOP_FOLD = "L0504", "a loop that only folds `{}` through `{}` is one `fold`";
     LOOP_ACCUMULATE = "L0504", "a loop that only accumulates `{}` is one `{}`";
-    INDEX_ONLY_LOOP = "L0505", "`{}` is only used as `{}[{}]`";
 }

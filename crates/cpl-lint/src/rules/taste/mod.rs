@@ -6,12 +6,12 @@
 use super::shapes;
 use crate::facts::Facts;
 use crate::std_fn;
-use crate::walk::{self, Bind, Visitor};
+use crate::walk::{self, Visitor};
 use crate::Calls;
 use crate::{
     File, Finding, COPY_SORT_WRITEBACK, DISCARDED_RESULT, DOMAIN_SPELLING, FREE_FOLD,
-    HAND_ROLLED_ANSWER_SEARCH, INDEX_ONLY_LOOP, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP,
-    SEARCH_LOOP, SYMMETRIC_WRITE, TREE_ORDER,
+    HAND_ROLLED_ANSWER_SEARCH, LOOP_REDUCTION, NONE_CHECK_UNWRAP, PUSH_LOOP, SEARCH_LOOP,
+    SYMMETRIC_WRITE, TREE_ORDER,
 };
 use cpl_diag::msgs;
 use cpl_diag::{Diagnostic, Fix, Span};
@@ -225,7 +225,6 @@ impl<'a> Taste<'a> {
             self.base = *base;
             self.next_base = *base;
             self.discarded(stmt);
-            self.index_only(stmt);
             self.answer_search(stmts, i);
             self.copy_mutate_writeback(stmts, i);
             if let Some((next_base, next)) = stmts.get(i + 1) {
@@ -1235,121 +1234,6 @@ impl<'a> Taste<'a> {
             });
         }
         self.push(&LOOP_REDUCTION, diag);
-    }
-
-    /// `for i in 0..xs.len` whose body uses `i` only as `xs[i]`, reading it.
-    fn index_only(&mut self, stmt: &Stmt) {
-        let StmtKind::For {
-            pat, iter, body, ..
-        } = &stmt.kind
-        else {
-            return;
-        };
-        let PatternKind::Name(index) = &pat.kind else {
-            return;
-        };
-        let Some(list) = zero_indexed_list(iter, Calls::new(self.facts, self.base)) else {
-            return;
-        };
-        let mut uses = Uses {
-            index,
-            list,
-            reads: Vec::new(),
-            names: Vec::new(),
-            ok: true,
-        };
-        for inner in &body.stmts {
-            walk::walk_stmt(&mut uses, inner);
-        }
-        let inside = |span: Span| {
-            uses.reads
-                .iter()
-                .any(|r| r.start <= span.start && span.end <= r.end)
-        };
-        if !uses.ok || uses.reads.is_empty() || !uses.names.iter().all(|s| inside(*s)) {
-            return;
-        }
-        let mut diag = msgs::lint::INDEX_ONLY_LOOP
-            .warning(pat.span.to(iter.span), &[&index, &list, &index])
-            .with_help(format!(
-            "iterate the values: `for x in {list}:`; with no index there is nothing to get wrong"
-        ));
-        if let Some(elem) = list
-            .strip_suffix('s')
-            .filter(|e| e.len() > 1 && !self.idents.contains(e))
-        {
-            let mut edits = vec![(pat.span, elem.to_string()), (iter.span, list.to_string())];
-            edits.extend(uses.reads.iter().map(|r| (*r, elem.to_string())));
-            diag.help = Some(format!(
-                "iterate the values: `for {elem} in {list}:`; with no index there is nothing to get wrong"
-            ));
-            diag.fixes.push(Fix {
-                title: format!("iterate `{list}`"),
-                edits,
-            });
-        }
-        self.push(&INDEX_ONLY_LOOP, diag);
-    }
-}
-
-/// The name `xs` of `0..xs.len` or `xs.indices`.
-fn zero_indexed_list<'e>(iter: &'e Expr, calls: Calls) -> Option<&'e str> {
-    let len_of = |e: &'e Expr, field: &str| -> Option<&'e str> {
-        match &e.kind {
-            ExprKind::Field { base, .. } if calls.is(e, field) => match &base.kind {
-                ExprKind::Name(list) => Some(list.as_str()),
-                _ => None,
-            },
-            _ => None,
-        }
-    };
-    match &walk::unparen(iter).kind {
-        ExprKind::Range {
-            lo: Some(lo),
-            hi: Some(hi),
-            inclusive: false,
-            step: None,
-        } if matches!(lo.kind, ExprKind::Int(0)) => len_of(hi, std_fn::LEN),
-        _ => len_of(iter, "indices"),
-    }
-}
-
-/// The uses of an index and its list in a loop body.
-struct Uses<'n> {
-    index: &'n str,
-    list: &'n str,
-    /// Each `xs[i]` that is read.
-    reads: Vec<Span>,
-    /// Each mention of `i` or `xs`.
-    names: Vec<Span>,
-    ok: bool,
-}
-
-impl Visitor for Uses<'_> {
-    fn stmt(&mut self, stmt: &Stmt) {
-        if let StmtKind::Assign { target, .. } = &stmt.kind {
-            if walk::root_name(target) == Some(self.list) {
-                self.ok = false;
-            }
-        }
-    }
-    fn expr(&mut self, expr: &Expr) {
-        match &expr.kind {
-            ExprKind::Index { base, indices } => {
-                if matches!(&base.kind, ExprKind::Name(n) if n == self.list)
-                    && matches!(&indices[..], [Expr { kind: ExprKind::Name(i), .. }] if i == self.index)
-                {
-                    self.reads.push(expr.span);
-                }
-            }
-            ExprKind::Name(n) if n == self.index || n == self.list => self.names.push(expr.span),
-            _ => {}
-        }
-    }
-    fn bind(&mut self, name: &str, _span: Span, _how: Bind) {
-        if name == self.index || name == self.list {
-            self.ok = false;
-        }
     }
 }
 

@@ -1387,6 +1387,8 @@ pub fn take_all<T>(mut self: List<T>) -> List<T> = self.take()
 /// (R07.3.1). Generators, adapters, collections and ranges implement it (decision 509).
 pub trait Seq<T>:
     /// Walks the sequence from its start.
+    @lint(index_only_loop, from: "for i in 0..self.len:\n    b", to: "for x in self:\n    b", reads: "self[i] -> x", each: "x in self", holes: "b")
+    @lint(index_only_loop, from: "for i in self.indices:\n    b", to: "for x in self:\n    b", reads: "self[i] -> x", each: "x in self", holes: "b")
     fn iter(self) -> yields T
 
 /// A `Seq` whose elements carry keys: `s.items` walks `(key, x)`, and keys survive `filter`
