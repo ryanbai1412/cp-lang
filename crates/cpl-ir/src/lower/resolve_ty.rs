@@ -403,6 +403,15 @@ impl<'a> Lowerer<'a> {
         self.mk(ExprKind::Do(Block { stmts }), list_ty, span)
     }
 
+    /// True when `id` is declared in another module and has a field
+    /// without `pub`, which code here can't name (R11.1.4).
+    pub(in crate::lower) fn private_fields(&self, id: StructId) -> bool {
+        self.structs[id].mod_id != self.cur_mod
+            && self.structs[id]
+                .decl
+                .is_some_and(|decl| decl.fields.iter().any(|f| !f.public))
+    }
+
     /// A struct's fields as they are read from input: with their ranges.
     pub(in crate::lower) fn struct_spec(&mut self, id: StructId) -> Spec {
         if let Some(&fn_id) = self.structs[id].methods.get("read") {
@@ -413,9 +422,15 @@ impl<'a> Lowerer<'a> {
         }
         if self.structs[id].def.fields.len() == 1 {
             if let Some(&fn_id) = self.structs[id].methods.get("new") {
-                if self.sigs[fn_id].params.len() == 1 {
+                // A defaulted parameter (`new(cap: Int = 0)`) is a setting,
+                // not the value the struct is built from.
+                let sig = &self.sigs[fn_id];
+                if sig.params.len() == 1 && sig.decl.params.iter().all(|p| p.default.is_none()) {
                     let param_ty = self.sigs[fn_id].params[0].ty.clone();
-                    if let Some(arg_spec) = self.spec_of(&param_ty) {
+                    let arg_spec = self.spec_of(&param_ty).map(|spec| self.readable(spec));
+                    if let Some(arg_spec) =
+                        arg_spec.filter(|spec| read_spec::unreadable(spec).is_none())
+                    {
                         let read_arg = self.mk(
                             ExprKind::Read(Box::new(arg_spec)),
                             param_ty,
@@ -434,6 +449,11 @@ impl<'a> Lowerer<'a> {
         let Some(decl) = self.structs[id].decl else {
             return Spec::Fields(Ty::Struct(id), Vec::new());
         };
+        // Outside its module a struct reads field by field only when every
+        // field is `pub`: `read()` builds nothing user code couldn't (R11.1.4).
+        if self.private_fields(id) {
+            return Spec::Plain(Ty::Struct(id));
+        }
         let (m, offset, env) = (
             self.structs[id].mod_id,
             self.structs[id].offset,

@@ -1303,6 +1303,19 @@ fn reading_an_optional_says_how_none_is_written() {
 }
 
 #[test]
+fn reading_a_struct_with_private_fields_says_to_build_it() {
+    let arena = check_errors(
+        "read_arena",
+        "use std.marks.{Arena}\nlet a: Arena<Int> = read()\nprint(1)\n",
+    );
+    assert!(
+        arena.contains("`read()` has no input format for a `Arena"),
+        "{arena}"
+    );
+    assert!(arena.contains("its fields are private"), "{arena}");
+}
+
+#[test]
 fn a_part_of_a_row_past_its_end_is_not_called_a() {
     let source = b"var g: [0..2, 0..3]Int = 0\nlet hi: Int = read()\nprint(g[1, 2..hi])\n";
     let path = scratch("grid-part", "a.cp", source);

@@ -488,6 +488,15 @@ pub const INTERNAL_BUILT_ON: &[(&str, &str, &str)] = &[
     ("FillPrefix", "prefix", "FillOrder"),
 ];
 
+/// The std module and struct of each shape specialization a family name
+/// stands for, as `Prefix<T>` for `_PrefixList<T>`.
+pub fn std_family(name: &str) -> impl Iterator<Item = (&'static str, &'static str)> + '_ {
+    INTERNAL_BUILT_ON
+        .iter()
+        .filter(move |(word, ..)| *word == name)
+        .map(|&(_, module, sym)| (module, sym))
+}
+
 fn int_fn(arity: usize) -> Ty {
     fn_of(arity, Ty::Int, Ty::Int)
 }

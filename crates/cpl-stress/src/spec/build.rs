@@ -5,6 +5,10 @@ use super::*;
 pub(super) struct Builder<'a> {
     pub(super) src: &'a str,
     pub(super) base: u32,
+    /// Inside a std type's declaration: its module, whose names its
+    /// fields' types are, and what its generics stand for.
+    pub(super) std_scope: Option<&'static str>,
+    pub(super) bound: Rc<HashMap<String, Bound<'a>>>,
     /// `domain V = lo..=hi` as inclusive bounds.
     pub(super) domains: HashMap<String, (Expr, Expr)>,
     /// `domain Cell = (Row, Col)`: the domains a product domain pairs.
@@ -40,6 +44,17 @@ pub(super) struct Builder<'a> {
     /// The fns of [`Builder::bodies`] being inlined, outermost first.
     pub(super) inlining: Vec<&'a str>,
     pub(super) spec: InputSpec,
+}
+
+/// The type a std generic stands for, with the text and scope it is
+/// written in.
+#[derive(Clone)]
+pub(super) struct Bound<'a> {
+    src: &'a str,
+    base: u32,
+    ty: Type,
+    scope: Option<&'static str>,
+    outer: Rc<HashMap<String, Bound<'a>>>,
 }
 
 #[derive(Clone)]
@@ -109,7 +124,7 @@ impl Builder<'_> {
     }
 
     /// The bounds of a type used as an array index: a domain or a range.
-    pub(super) fn index(&self, ty: &Type) -> Result<(Expr, Expr), SpecError> {
+    pub(super) fn index(&mut self, ty: &Type) -> Result<(Expr, Expr), SpecError> {
         match &ty.kind {
             TypeKind::Range {
                 lo: Some(lo),
@@ -117,6 +132,9 @@ impl Builder<'_> {
                 inclusive,
             } => Ok(Self::inclusive(lo, hi, *inclusive)),
             TypeKind::Named { name, args } if args.is_empty() => {
+                if let Some(bounds) = self.in_bound(&name.text, |this, ty| this.index(ty)) {
+                    return bounds;
+                }
                 if let Some(bounds) = self.domains.get(&name.text) {
                     return Ok(bounds.clone());
                 }
@@ -159,12 +177,17 @@ impl Builder<'_> {
 
     /// The bounds of each dimension an index type spans: a product domain
     /// `(Row, Col)` spans two, anything else one.
-    pub(super) fn dims(&self, ty: &Type) -> Result<Vec<(Expr, Expr)>, SpecError> {
+    pub(super) fn dims(&mut self, ty: &Type) -> Result<Vec<(Expr, Expr)>, SpecError> {
         if let TypeKind::Named { name, args } = &ty.kind {
-            if let (Some(parts), true) = (self.products.get(&name.text), args.is_empty()) {
+            if args.is_empty() {
+                if let Some(dims) = self.in_bound(&name.text, |this, ty| this.dims(ty)) {
+                    return dims;
+                }
+            }
+            if let (Some(parts), true) = (self.products.get(&name.text).cloned(), args.is_empty()) {
                 let mut dims = Vec::new();
                 for part in parts {
-                    dims.extend(self.dims(part)?);
+                    dims.extend(self.dims(&part)?);
                 }
                 return Ok(dims);
             }
@@ -175,7 +198,9 @@ impl Builder<'_> {
     /// The type of one value of a `List<T>` or a one-dimensional array.
     pub(super) fn cell<'t>(&self, ty: &'t Type) -> Option<&'t Type> {
         match &ty.kind {
-            TypeKind::Named { name, args } if name.text == "List" && args.len() == 1 => {
+            TypeKind::Named { name, args }
+                if matches!(name.text.as_str(), "List" | "Iter" | "Seq") && args.len() == 1 =>
+            {
                 Some(&args[0])
             }
             TypeKind::Array { index, elem } if index.len() == 1 => Some(elem),
@@ -192,6 +217,12 @@ impl Builder<'_> {
             )
         };
         match &ty.kind {
+            // A view of `S` reads as `S` does.
+            TypeKind::Named { name, args }
+                if matches!(name.text.as_str(), "Slice" | "Rev") && args.len() == 1 =>
+            {
+                self.shape(&args[0])
+            }
             TypeKind::Optional(inner) => {
                 let none = self.none.ok_or_else(|| unsupported(self))?;
                 match self.shape(inner)? {
@@ -215,6 +246,9 @@ impl Builder<'_> {
                 Ok(Shape::Int { lo, hi })
             }
             TypeKind::Named { name, args } if args.is_empty() => {
+                if let Some(shape) = self.in_bound(&name.text, |this, ty| this.shape(ty)) {
+                    return shape;
+                }
                 match name.text.as_str() {
                     // A whole number is an `F64` too; drawing fractions
                     // waits for a fixed-point value (decision 25.21).
@@ -234,6 +268,11 @@ impl Builder<'_> {
                     "Bool" => return Ok(Shape::Bool),
                     "Str" => return Ok(Shape::WORD),
                     _ => {}
+                }
+                if self.std_scope.is_some() {
+                    return self
+                        .std_type(&name.text, args)
+                        .unwrap_or_else(|| Err(unsupported(self)));
                 }
                 if let Some((lo, hi)) = self.domains.get(&name.text).cloned() {
                     if self.io_base != 0 && self.counted.contains(&name.text) {
@@ -260,13 +299,9 @@ impl Builder<'_> {
                     return shape;
                 }
                 let Some((base, alias)) = self.aliases.get(&name.text).cloned() else {
-                    let module =
-                        cpl_check::std_module(&name.text).ok_or_else(|| unsupported(self))?;
-                    let module = ["std".to_string(), module.to_string()];
-                    return match std_structs(&module, &[name.text.as_str()], false).pop() {
-                        Some((_, parts)) => self.record(&name.text, &Record::Shaped(parts)),
-                        None => Err(unsupported(self)),
-                    };
+                    return self
+                        .std_type(&name.text, args)
+                        .unwrap_or_else(|| Err(unsupported(self)));
                 };
                 let outer = std::mem::replace(&mut self.base, base);
                 // `type Perm = [V]V` and `type Tree = [E](u: V, v: V)`
@@ -423,6 +458,9 @@ impl Builder<'_> {
                 };
                 Ok(Shape::Str { alphabet, len })
             }
+            TypeKind::Named { name, args } => self
+                .std_type(&name.text, args)
+                .unwrap_or_else(|| Err(unsupported(self))),
             TypeKind::Record(fields) => fields
                 .iter()
                 .map(|(_, field)| self.shape(field))
@@ -1419,305 +1457,6 @@ impl Builder<'_> {
         Ok(true)
     }
 
-    /// An `if` or `match` on a tag read above it, each branch reading
-    /// its own values: `if op == 1: let (l, r) = read() else: let i = read()`.
-    /// The tag is a number read alone or first in a tuple; what is read
-    /// between it and the branch is read by every branch, before its own.
-    pub(super) fn choice(
-        &mut self,
-        expr: &Expr,
-        inside: &mut HashSet<String>,
-        parts: &mut Vec<Shape>,
-        binds: &mut Vec<Vec<Option<String>>>,
-    ) -> Result<bool, SpecError> {
-        let scalar = |shape: &Shape| {
-            matches!(
-                shape,
-                Shape::Int { .. } | Shape::Char { .. } | Shape::Bool | Shape::Str { .. }
-            )
-        };
-        for at in (0..parts.len()).rev() {
-            let Some(Some(name)) = binds[at].first().cloned() else {
-                continue;
-            };
-            let (tag, rest) = match &parts[at] {
-                shape if scalar(shape) && binds[at].len() == 1 => (shape.clone(), None),
-                Shape::Tuple {
-                    parts: inner,
-                    binds: inner_binds,
-                } if inner.len() > 1 && inner.len() == binds[at].len() && scalar(&inner[0]) => {
-                    let rest = Shape::Tuple {
-                        parts: inner[1..].to_vec(),
-                        binds: inner_binds.get(1..).unwrap_or_default().to_vec(),
-                    };
-                    (inner[0].clone(), Some((rest, binds[at][1..].to_vec())))
-                }
-                _ => continue,
-            };
-            let rebound = binds[at][1..]
-                .iter()
-                .chain(binds[at + 1..].iter().flatten())
-                .any(|n| n.as_deref() == Some(name.as_str()));
-            if rebound {
-                return Ok(false);
-            }
-            let Some((tag, mut arms)) = self.arms_on(expr, inside, &name, tag)? else {
-                continue;
-            };
-            let mut between: Vec<(Shape, Vec<Option<String>>)> = rest.into_iter().collect();
-            between.extend(parts.drain(at + 1..).zip(binds.drain(at + 1..)));
-            parts.pop();
-            binds.pop();
-            if !between.is_empty() && arms.iter().all(|arm| arm.tags.is_some()) {
-                arms.push(Arm {
-                    tags: None,
-                    parts: Vec::new(),
-                    binds: Vec::new(),
-                });
-            }
-            for arm in &mut arms {
-                let (shapes, names): (Vec<_>, Vec<_>) = between.iter().cloned().unzip();
-                arm.parts.splice(0..0, shapes);
-                arm.binds.splice(0..0, names);
-            }
-            inside.insert(name.clone());
-            parts.push(Shape::Choice {
-                tag: Box::new(tag),
-                name,
-                arms,
-            });
-            binds.push(Vec::new());
-            return Ok(true);
-        }
-        Ok(false)
-    }
-
-    /// The top-level fields from a tag on, made one choice by the branch
-    /// `expr` on that tag; false when `expr` is not one.
-    pub(super) fn top_choice(&mut self, expr: &Expr) -> Result<bool, SpecError> {
-        if !matches!(expr.kind, ExprKind::If { .. } | ExprKind::Match { .. }) {
-            return Ok(false);
-        }
-        // A tag named twice is ambiguous: which one the branch tests
-        // depends on scope the fields no longer carry.
-        let mut named = HashSet::new();
-        let names = self
-            .spec
-            .fields
-            .iter()
-            .flat_map(|field| field.names.iter().flatten());
-        if !names.into_iter().all(|name| named.insert(name)) {
-            return Ok(false);
-        }
-        let fields = std::mem::take(&mut self.spec.fields);
-        let (mut parts, mut binds): (Vec<_>, Vec<_>) = fields
-            .iter()
-            .map(|field| (field.shape.clone(), field.names.clone()))
-            .unzip();
-        let mut inside = HashSet::new();
-        let chose = self.choice(expr, &mut inside, &mut parts, &mut binds);
-        match chose {
-            Ok(true) => {
-                let kept = parts.len() - 1;
-                let line = fields[kept].line;
-                self.spec.fields = fields;
-                self.spec.fields.truncate(kept);
-                self.spec.fields.push(Field {
-                    names: Vec::new(),
-                    shape: parts.pop().expect("the choice"),
-                    line,
-                });
-                Ok(true)
-            }
-            other => {
-                self.spec.fields = fields;
-                other
-            }
-        }
-    }
-
-    /// The arms of `expr` as a choice on the tag `name`, and the tag's
-    /// shape; `None` when `expr` is not a choice on it.
-    pub(super) fn arms_on(
-        &mut self,
-        expr: &Expr,
-        inside: &HashSet<String>,
-        name: &str,
-        tag: Shape,
-    ) -> Result<Option<(Shape, Vec<Arm>)>, SpecError> {
-        let consts = self.spec.consts.clone();
-        // A `Str` tag is compared with words: each is its position in
-        // the order the arms name them.
-        let words = std::cell::RefCell::new(Vec::<String>::new());
-        let word = matches!(tag, Shape::Str { .. });
-        let literal = |expr: &Expr| match &expr.kind {
-            ExprKind::Str(pieces) if word => {
-                let [StrPiece::Text(text)] = pieces.as_slice() else {
-                    return None;
-                };
-                let mut words = words.borrow_mut();
-                let at = words.iter().position(|w| w == text).unwrap_or_else(|| {
-                    words.push(text.clone());
-                    words.len() - 1
-                });
-                Some(at as i128)
-            }
-            _ if word => None,
-            _ => eval(expr, &consts),
-        };
-        // The tags `x == 1 or x == 2` takes, with `x` the tag.
-        fn tags(
-            cond: &Expr,
-            name: &str,
-            literal: &dyn Fn(&Expr) -> Option<i128>,
-        ) -> Option<(Vec<i128>, bool)> {
-            match &cond.kind {
-                ExprKind::Paren(inner) => tags(inner, name, literal),
-                ExprKind::Binary {
-                    op: BinOp::Or,
-                    lhs,
-                    rhs,
-                    ..
-                } => {
-                    let (mut a, false) = tags(lhs, name, literal)? else {
-                        return None;
-                    };
-                    let (b, false) = tags(rhs, name, literal)? else {
-                        return None;
-                    };
-                    a.extend(b);
-                    Some((a, false))
-                }
-                ExprKind::Compare { first, rest } => {
-                    let [(op @ (CmpOp::Eq | CmpOp::Ne), other)] = rest.as_slice() else {
-                        return None;
-                    };
-                    let is_tag = |e: &Expr| matches!(&e.kind, ExprKind::Name(n) if n == name);
-                    let value = match (is_tag(first), is_tag(other)) {
-                        (true, false) => literal(other)?,
-                        (false, true) => literal(first)?,
-                        _ => return None,
-                    };
-                    Some((vec![value], *op == CmpOp::Ne))
-                }
-                _ => None,
-            }
-        }
-        let mut ways: Vec<(Option<Vec<i128>>, Option<&Block>)> = Vec::new();
-        match &expr.kind {
-            ExprKind::If {
-                branches,
-                otherwise,
-            } => {
-                for (at, (cond, block)) in branches.iter().enumerate() {
-                    let Cond::Expr(cond) = cond else {
-                        return Ok(None);
-                    };
-                    match tags(cond, name, &literal) {
-                        Some((values, false)) => ways.push((Some(values), Some(block))),
-                        // `if x != 1: A else: B` is `B` for 1, else `A`.
-                        Some((values, true)) if at == 0 && branches.len() == 1 => {
-                            ways.push((Some(values), otherwise.as_ref()));
-                            ways.push((None, Some(block)));
-                        }
-                        _ => return Ok(None),
-                    }
-                }
-                if !matches!(ways.last(), Some((None, _))) {
-                    ways.push((None, otherwise.as_ref()));
-                }
-            }
-            ExprKind::Match { scrutinee, arms } if matches!(&scrutinee.kind, ExprKind::Name(n) if n == name) =>
-            {
-                fn values(
-                    pat: &Pattern,
-                    literal: &dyn Fn(&Expr) -> Option<i128>,
-                ) -> Option<Option<Vec<i128>>> {
-                    match &pat.kind {
-                        PatternKind::Wildcard | PatternKind::Name(_) => Some(None),
-                        PatternKind::Literal(expr) => Some(Some(vec![literal(expr)?])),
-                        PatternKind::Or(pats) => {
-                            let mut all = Vec::new();
-                            for pat in pats {
-                                all.extend(values(pat, literal)??);
-                            }
-                            Some(Some(all))
-                        }
-                        _ => None,
-                    }
-                }
-                for arm in arms {
-                    if arm.guard.is_some() {
-                        return Ok(None);
-                    }
-                    let Some(tags) = values(&arm.pat, &literal) else {
-                        return Ok(None);
-                    };
-                    ways.push((tags, Some(&arm.body)));
-                }
-            }
-            _ => return Ok(None),
-        }
-        let mut arms = Vec::new();
-        for (tags, block) in ways {
-            let mut arm = Arm {
-                tags,
-                parts: Vec::new(),
-                binds: Vec::new(),
-            };
-            if let Some(block) = block {
-                let mut inside = inside.clone();
-                if !self.rows(&block.stmts, &mut inside, &mut arm.parts, &mut arm.binds)? {
-                    return Ok(None);
-                }
-            }
-            arms.push(arm);
-        }
-        // An `Int` tag read with no range takes the values its arms test,
-        // and one past them for an arm that takes the rest: the statement
-        // numbers its queries, and a far-off tag only reads as noise.
-        let tag = match tag {
-            Shape::Int { lo, hi }
-                if eval(&lo, &consts) == Some(DEFAULT_INT.0)
-                    && eval(&hi, &consts) == Some(DEFAULT_INT.1) =>
-            {
-                let named: Vec<i128> = arms
-                    .iter()
-                    .flat_map(|arm| arm.tags.iter().flatten().copied())
-                    .collect();
-                let rest = arms.iter().any(|arm| arm.tags.is_none());
-                match (named.iter().min(), named.iter().max()) {
-                    (Some(&min), Some(&max)) => Shape::Int {
-                        lo: int(min),
-                        hi: int(max + i128::from(rest)),
-                    },
-                    _ => Shape::Int { lo, hi },
-                }
-            }
-            Shape::Str { .. } => {
-                let mut words = words.into_inner();
-                if words.is_empty()
-                    || words
-                        .iter()
-                        .any(|w| w.is_empty() || w.contains(char::is_whitespace))
-                {
-                    return Ok(None);
-                }
-                // One more word for an arm that takes every other word.
-                if arms.iter().any(|arm| arm.tags.is_none()) {
-                    let mut other = String::from("x");
-                    while words.contains(&other) {
-                        other.push('x');
-                    }
-                    words.push(other);
-                }
-                Shape::Words(words.into())
-            }
-            tag => tag,
-        };
-        Ok(Some((tag, arms)))
-    }
-
     /// The shape of `ty` read with `none` written as `none`.
     /// The shape `read<T>(base: k)` (or a read under `with io(base: k)`)
     /// writes: counted domains shifted by `k`.
@@ -1798,6 +1537,131 @@ impl Builder<'_> {
         let shape = self.shape(ty);
         self.none = outer;
         shape
+    }
+
+    /// Runs `f` on what the std generic `name` stands for, in the text and
+    /// scope it is written in.
+    fn in_bound<R>(&mut self, name: &str, f: impl FnOnce(&mut Self, &Type) -> R) -> Option<R> {
+        let bound = self.bound.get(name)?.clone();
+        let saved = (
+            std::mem::replace(&mut self.src, bound.src),
+            std::mem::replace(&mut self.base, bound.base),
+            std::mem::replace(&mut self.std_scope, bound.scope),
+            std::mem::replace(&mut self.bound, bound.outer.clone()),
+        );
+        let out = f(self, &bound.ty);
+        (self.src, self.base, self.std_scope, self.bound) = saved;
+        Some(out)
+    }
+
+    /// A std type as `read()` reads it (`cpl_ir`'s `struct_spec`): a
+    /// one-field struct through its one-parameter `new`, else its fields
+    /// in order when they are all `pub`; an alias as what it names. `None`
+    /// when std declares no such type.
+    pub(super) fn std_type(
+        &mut self,
+        name: &str,
+        args: &[Type],
+    ) -> Option<Result<Shape, SpecError>> {
+        let module = self
+            .std_scope
+            .filter(|m| std_decl(m, name).is_some())
+            .or_else(|| cpl_check::std_module(name))?;
+        let found = std_decl(module, name)?;
+        // `Prefix<T>` with one argument names the family member taking one.
+        let (module, (text, base, stmt)) = cpl_check::std_family(name)
+            .filter(|_| generic_count(found.2) != Some(args.len()))
+            .find_map(|(module, sym)| {
+                std_decl(module, sym)
+                    .filter(|d| generic_count(d.2) == Some(args.len()))
+                    .map(|d| (module, d))
+            })
+            .unwrap_or((module, found));
+        let mut tagged = None;
+        let (generics, defaults, types, fields): (_, Vec<Option<Type>>, Vec<Type>, bool) =
+            match &stmt.kind {
+                StmtKind::Struct(decl) => {
+                    let method = |want: &str, params: usize| {
+                        decl.methods.iter().find_map(|m| match &m.kind {
+                            StmtKind::Fn(f)
+                                if f.name.text == want
+                                    && f.params.len() == params
+                                    && f.params.iter().all(|p| p.default.is_none()) =>
+                            {
+                                Some(f)
+                            }
+                            _ => None,
+                        })
+                    };
+                    if method("read", 0).is_some() {
+                        return None;
+                    }
+                    let new = method("new", 1).and_then(|f| f.params[0].ty.clone());
+                    let (types, fields) = match new {
+                        Some(param) if decl.fields.len() == 1 => (vec![param], false),
+                        _ if decl.fields.iter().all(|f| f.public) => {
+                            (decl.fields.iter().map(|f| f.ty.clone()).collect(), true)
+                        }
+                        _ => return None,
+                    };
+                    (&decl.generics, decl.generic_defaults.clone(), types, fields)
+                }
+                StmtKind::TypeAlias { generics, ty, .. } => (
+                    generics,
+                    vec![None; generics.len()],
+                    vec![ty.clone()],
+                    false,
+                ),
+                StmtKind::Enum(decl) => {
+                    tagged = Some(Record::tagged(stmt, decl)?);
+                    (
+                        &decl.generics,
+                        vec![None; decl.generics.len()],
+                        Vec::new(),
+                        true,
+                    )
+                }
+                _ => return None,
+            };
+        let mut bound = HashMap::new();
+        for (at, generic) in generics.iter().enumerate() {
+            let here = match args.get(at) {
+                Some(arg) => Bound {
+                    src: self.src,
+                    base: self.base,
+                    ty: arg.clone(),
+                    scope: self.std_scope,
+                    outer: self.bound.clone(),
+                },
+                None => match defaults.get(at).cloned().flatten() {
+                    Some(ty) => Bound {
+                        src: text,
+                        base,
+                        ty,
+                        scope: Some(module),
+                        outer: Rc::default(),
+                    },
+                    None => continue,
+                },
+            };
+            bound.insert(generic.text.clone(), here);
+        }
+        let saved = (
+            std::mem::replace(&mut self.src, text),
+            std::mem::replace(&mut self.base, base),
+            self.std_scope.replace(module),
+            std::mem::replace(&mut self.bound, Rc::new(bound)),
+        );
+        let parts: Result<Vec<Shape>, SpecError> = match &tagged {
+            Some(record) => self.record(name, record).map(|shape| vec![shape]),
+            None => types.iter().map(|ty| self.shape(ty)).collect(),
+        };
+        (self.src, self.base, self.std_scope, self.bound) = saved;
+        let fields = fields && tagged.is_none();
+        Some(parts.map(|mut parts| match (fields, parts.len()) {
+            (false, 1) => parts.remove(0),
+            _ => Shape::tuple(parts),
+        }))
     }
 
     /// A struct is its fields in order; an `@tags` enum is a choice on
@@ -1960,4 +1824,41 @@ fn sentinel(stmt: &Stmt, returns: bool) -> Option<Vec<(String, i128)>> {
     let mut out = Vec::new();
     tests(cond, &mut out)?;
     Some(out)
+}
+
+/// The declaration of the std type `name` in `module`, with that module's
+/// text and the base its spans are relative to.
+pub(super) fn std_decl(module: &str, name: &str) -> Option<(&'static str, u32, &'static Stmt)> {
+    thread_local! {
+        static PARSED: std::cell::RefCell<HashMap<String, &'static cpl_syntax::ParsedFile>> =
+            Default::default();
+    }
+    let text = cpl_check::bundled_std(&[module.to_string()])?;
+    let parsed = PARSED.with(|parsed| {
+        *parsed
+            .borrow_mut()
+            .entry(module.to_string())
+            .or_insert_with(|| Box::leak(Box::new(cpl_syntax::parse_file(text))))
+    });
+    parsed.items.iter().find_map(|(base, item)| {
+        item.stmts
+            .iter()
+            .find(|stmt| match &stmt.kind {
+                StmtKind::Struct(decl) => decl.name.text == name,
+                StmtKind::TypeAlias { name: alias, .. } => alias.text == name,
+                StmtKind::Enum(decl) => decl.name.text == name,
+                _ => false,
+            })
+            .map(|stmt| (text, *base, stmt))
+    })
+}
+
+/// How many generics a std struct, enum or alias declares.
+fn generic_count(stmt: &Stmt) -> Option<usize> {
+    match &stmt.kind {
+        StmtKind::Struct(decl) => Some(decl.generics.len()),
+        StmtKind::Enum(decl) => Some(decl.generics.len()),
+        StmtKind::TypeAlias { generics, .. } => Some(generics.len()),
+        _ => None,
+    }
 }
