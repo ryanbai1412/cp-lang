@@ -1,4 +1,5 @@
 // Source: Codeforces 2237A (Destroying Towers), https://codeforces.com/contest/2237/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: n <= 100 towers of heights a[i] <= 1000. Operate on each tower once, in any order:
 //   from tower i a laser cuts the first taller tower to its right down to tower i's height.
 //   Print the least possible final sum of heights. Multitest, t <= 500.

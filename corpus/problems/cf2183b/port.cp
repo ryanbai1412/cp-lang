@@ -1,5 +1,6 @@
 // Source: Codeforces 2183B (Yet Another MEX Problem),
 //   https://codeforces.com/contest/2183/problem/B
+// limits: 1500 ms, 256 MB
 // Problem: n <= 2e5 values in 0..=n and 2 <= k <= n. n - k + 1 times, pick a length-k window of
 //   maximum mex and delete one element inside it. Print the largest possible mex of the k - 1
 //   elements left. Multitest, sum n <= 2e5.

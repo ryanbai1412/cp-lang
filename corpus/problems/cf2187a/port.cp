@@ -1,4 +1,5 @@
 // Source: Codeforces 2187A (Restricted Sorting), https://codeforces.com/contest/2187/problem/A
+// limits: 2000 ms, 256 MB
 // Problem: k is piggy if a (n <= 2e5, a_i <= 1e9) can be sorted by swaps of a_i, a_j with
 //   |a_i - a_j| >= k. Print the largest piggy k, or -1 if there is none (a already sorted, so
 //   every k works). Multitest, sum n <= 2e5.

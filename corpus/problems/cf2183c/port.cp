@@ -1,4 +1,5 @@
 // Source: Codeforces 2183C (War Strategy), https://codeforces.com/contest/2183/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: n <= 1e5 bases in a line, one soldier at home base k. Each of m <= 1e9 days, move any
 //   soldiers of one base one step, all the same way, then a new soldier appears at k. Print
 //   the most bases holding a soldier after day m. Multitest, sum n <= 2e5.

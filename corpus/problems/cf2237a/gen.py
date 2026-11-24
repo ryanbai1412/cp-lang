@@ -1,4 +1,8 @@
 import sys, random
+if len(sys.argv) > 1 and sys.argv[1] == "--max":
+    # t = 500 tests of n = 100 heights up to 1000 (the full mode)
+    sys.argv[1:] = ["0", "100"]
+
 # gen.py seed size: t tests, n <= min(3 size + 2, 100) towers of heights 1..=1000.
 # No arguments, or size >= 100, gives t = 500 tests of n = 100.
 seed = int(sys.argv[1]) if len(sys.argv) > 1 else 0

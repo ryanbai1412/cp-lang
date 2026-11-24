@@ -1,5 +1,17 @@
 #!/usr/bin/env python3
 import random, sys
+if sys.argv[1] == "--max":
+    # one n = k = 2e5 test (sum n): a shuffled permutation of 0..n-1, so every value below
+    # k - 1 is marked and the mex scan runs to the end
+    g = random.Random(1)
+    n = 200_000
+    a = list(range(n))
+    g.shuffle(a)
+    print(1)
+    print(n, n)
+    print(*a)
+    sys.exit()
+
 rng = random.Random(int(sys.argv[1]))
 T = rng.randint(1, 8)
 print(T)

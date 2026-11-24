@@ -48,17 +48,11 @@ no-max cf2124b -
 no-max cf2124c -
 no-max cf2124e -
 no-max cf2180a -
-no-max cf2180b -
-no-max cf2180e -
 no-max cf2183a -
-no-max cf2183b -
-no-max cf2183c -
-no-max cf2187a -
 no-max cf2211a -
 no-max cf2222a -
 no-max cf2229a -
 no-max cf2229b -
-no-max cf2237a -
 no-max cf2237c -
 no-max cf2245b -
 no-max cf2245c -

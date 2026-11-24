@@ -1,4 +1,5 @@
 // Source: Codeforces 2180B (Ashmal), https://codeforces.com/contest/2180/problem/B
+// limits: 1000 ms, 256 MB
 // Problem: strings a_1..a_n (n <= 1000, total length L <= 4000, multitest) are added in order,
 //   each to the front or the back of an initially empty s. Print the lexicographically smallest
 //   final s.
