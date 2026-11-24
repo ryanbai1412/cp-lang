@@ -1,4 +1,5 @@
 // Source: NOIP 2006 Senior P1 (Energy Necklace), Luogu P1063 (no longer on DMOJ)
+// limits: 1000 ms, 128 MB
 // Problem: N beads (4 <= N <= 100) in a ring; bead i has head mark[i] <= 1000 and tail equal to
 //   the next bead's head. Merging adjacent beads (m, r) and (r, n) releases m * r * n and
 //   leaves (m, n). Merge the ring down to one bead; print the largest total energy (<= 2.1e9).

@@ -1,4 +1,5 @@
 // Source: SDOI 2017 Round 1, Number Table (Luogu P3704), https://dmoj.ca/problem/sdoi17r1p1
+// limits: 3000 ms, 125 MB
 // Problem: multitest (1 <= T <= 1000): given 1 <= n, m <= 1e6, print the product of f(gcd(i, j)) over
 //   1 <= i <= n, 1 <= j <= m, where f is Fibonacci (f0 = 0, f1 = 1), modulo 1e9+7.
 // Solution: Group by d = gcd and apply Mobius inversion: with g(T) = product over d | T of

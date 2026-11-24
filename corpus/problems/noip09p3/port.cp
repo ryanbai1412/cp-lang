@@ -1,4 +1,5 @@
 // Source: NOIP 2009 Senior P3 (Optimal Trade), https://dmoj.ca/problem/noip09p3
+// limits: 1000 ms, 128 MB
 // Problem: n <= 1e5 cities, m <= 5e5 one-way or two-way roads, prices in 1..=100. Walk from city
 //   1 to city n (repeats allowed), buying one item in some city and selling it in a later one;
 //   print the largest profit, or 0 if no trade gains.

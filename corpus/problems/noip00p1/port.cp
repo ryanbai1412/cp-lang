@@ -1,4 +1,5 @@
 // Source: NOIP 2000 Senior P1 (Base Conversion), https://dmoj.ca/problem/noip00p1
+// limits: 1000 ms, 125 MB
 // Problem: an integer x and a base -20 <= r <= -2; print x written in base r, digits 0..|r|-1
 //   with A, B, ... for digits over 9 (this judge wants just the digits).
 // Solution: repeat d = x mod r, x = x div r with Euclidean division: the remainder is already a

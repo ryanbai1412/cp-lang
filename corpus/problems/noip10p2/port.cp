@@ -1,4 +1,5 @@
 // Source: NOIP 2010 Senior P2 (Tortoise Chess), https://dmoj.ca/problem/noip10p2
+// limits: 1000 ms, 125 MB
 // Problem: a row of N <= 350 squares scored 0..100, and M <= 120 cards each moving 1 to 4
 //   squares, at most 40 of each kind, summing to exactly N - 1. Play all cards in some order
 //   from square 1; print the best total score of the squares visited, the start included.

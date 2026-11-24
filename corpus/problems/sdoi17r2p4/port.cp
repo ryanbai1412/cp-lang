@@ -1,4 +1,5 @@
 // Source: SDOI 2017 Round 2 Genius Hacker (Luogu P3783), https://dmoj.ca/problem/sdoi17r2p4
+// limits: 3000 ms, 500 MB
 // Problem: T <= 10 tests: a directed graph, n, m <= 5e4 (self-loops and multi-edges allowed), each
 //   edge with a cost 0 <= c <= 2e4 and a word, a node of a trie of k <= 2e4 nodes. Taking an edge costs
 //   c plus the LCP length of its word and the previous edge's word (the empty word at the start,

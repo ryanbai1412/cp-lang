@@ -1,5 +1,6 @@
 // Source: NOIP 2014 Day 1 P2 (Joint Weights); DMOJ's noip14p2 is not public, statement from
 //   Luogu P1351
+// limits: 1000 ms, 128 MB
 // Problem: a tree of n <= 2e5 vertices with weights W_i <= 10000. Each ordered pair (u, v) at
 //   distance 2 gives W_u * W_v; print the largest such product and the sum of all of them
 //   mod 10007.
