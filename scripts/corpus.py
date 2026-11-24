@@ -641,8 +641,8 @@ def bounds_findings(pid, text):
     if sum(1 for l in header if re.match(r"//\s*Bounds:", l)) > 1:
         return [f"bounds-twice {pid} -"]
     found = [f"bounds-unparsed {pid} {n}" for n, r in declared.items() if r is None]
-    # A bound on an expression of reads (`m * n: 1..=40`) is a joint bound max-short checks.
-    joint = lambda n: not re.fullmatch(r"[\w.]+", n) and set(re.findall(r"[A-Za-z_][\w.]*", n)) <= set(read)
+    # A bound on an expression of reads (`m * n: 1..=40`, `sum(n): 1..=2e5`) is one max-short checks.
+    joint = lambda n: not re.fullmatch(r"[\w.]+", n) and set(re.findall(r"[A-Za-z_][\w.]*", n)) - {"sum"} <= set(read)
     found += [f"bounds-unread {pid} {n}" for n in declared if declared[n] and n not in read and not joint(n)]
     found += [f"bounds-undeclared {pid} {n}" for n in read if n not in declared]
     for n, want in declared.items():
@@ -685,6 +685,13 @@ def read_prefix(text, upto):
     return "\n".join(l for l in lines[:upto + 1] if keep.match(l) or TOP_READ.match(l)) + "\n"
 
 
+def capped_memory():
+    """A child's address space capped at 4 GB, so a run that outgrows it fails alone instead of
+    taking its worker down."""
+    import resource
+    resource.setrlimit(resource.RLIMIT_AS, (4 << 30, 4 << 30))
+
+
 def read_values(cpl, program, data):
     """name -> value text of each top-level value `program` has after reading `data`, None when
     it fails, or TIMED_OUT past INTERP_TIMEOUT."""
@@ -693,7 +700,7 @@ def read_values(cpl, program, data):
         src.write_text(program)
         try:
             r = subprocess.run([cpl, "run", str(src), "--format", "json"], input=data, capture_output=True, text=True,
-                               timeout=INTERP_TIMEOUT)
+                               timeout=INTERP_TIMEOUT, preexec_fn=capped_memory)
             return {v["name"]: v["value"] for v in json.loads(r.stdout)["values"]} if r.returncode == 0 else None
         except subprocess.TimeoutExpired:
             return TIMED_OUT
@@ -701,23 +708,57 @@ def read_values(cpl, program, data):
             return None
 
 
-def short_of(pid, text, values):
-    """`max-short` for each sizing read whose --max value is under the statement's bound: the
-    bound as a number, or one naming other reads (`m: 1..=n - 1`) taken at their --max values."""
+def short_of(pid, text, cases):
+    """`max-short` for each sizing read whose --max value is under the statement's bound in
+    every case: the bound as a number, or one naming other reads (`m: 1..=n - 1`) taken at
+    that case's values. A bound on an expression (`r * c`, or `sum(n)` over a multitest's
+    cases) that --max reaches saturates every read it names."""
+    cases = cases if isinstance(cases, list) else [cases]
     declared, consts, found = declared_bounds(text) or {}, port_consts(text), []
-    nums = {**{k: bound_value(v) for k, v in consts.items()}, **values}
-    at = lambda t: bound_value(re.sub(r"(?<![\w.])[A-Za-z_]\w*", lambda w: f"({nums.get(w[0], w[0])})", t))
-    # A bound on an expression (`rows * cols: 1..=5e6`) that --max reaches saturates every read it names.
-    full = {w for e, r in declared.items() if r and not re.fullmatch(r"[\w.]+", e) and None not in (at(e), at(r[1]))
-            and at(e) >= at(r[1]) for w in re.findall(r"[A-Za-z_]\w*", e)}
+    nums = {k: bound_value(v) for k, v in consts.items()}
+    totals = {f"sum({k})": sum(c.get(k, 0) for c in cases) for c0 in cases for k in c0}
+
+    def at(t, vals):
+        t = re.sub(r"\bsum\(\w+\)", lambda w: f"({totals.get(w[0], w[0])})", t)
+        return bound_value(re.sub(r"(?<![\w.])[A-Za-z_]\w*", lambda w: f"({vals.get(w[0], w[0])})", t))
+    full = set()
+    for e, r in declared.items():
+        if r and not re.fullmatch(r"[\w.]+", e):
+            for c in cases:
+                got, hi = at(e, {**nums, **c}), at(r[1], {**nums, **c})
+                if None not in (got, hi) and got >= hi:
+                    full |= set(re.findall(r"[A-Za-z_]\w*", e)) - {"sum"}
     for n in size_reads(text):
-        want = declared.get(n)
-        if not want or n not in values or n in full:
+        want, seen = declared.get(n), [c for c in cases if n in c]
+        if not want or not seen or n in full:
             continue
-        hi = at(want[1])
-        if hi is not None and values[n] < hi:
-            found.append(f"max-short {pid} {n}: --max reads {values[n]}, the statement allows {want[1]}")
+        his = [(c[n], at(want[1], {**nums, **c})) for c in seen]
+        if all(h is not None and v < h for v, h in his):
+            found.append(f"max-short {pid} {n}: --max reads {max(v for v, _ in his)}, the statement allows {want[1]}")
     return found
+
+
+def case_values(cpl, text, data, names):
+    """Each multitest case's values of `names` on `data`, from a trace of the whole port watching
+    them; None when it fails, or TIMED_OUT past INTERP_TIMEOUT."""
+    with tempfile.TemporaryDirectory() as d:
+        src = Path(d, "port.cp")
+        src.write_text(text)
+        try:
+            r = subprocess.run([cpl, "run", str(src), "--trace", "--watch", ",".join(names), "--format", "json"],
+                               input=data, capture_output=True, text=True, timeout=INTERP_TIMEOUT,
+                               preexec_fn=capped_memory)
+            steps = json.loads(r.stdout)["runs"]["fast"]["steps"] if r.returncode == 0 else None
+        except subprocess.TimeoutExpired:
+            return TIMED_OUT
+        except (ValueError, KeyError):
+            return None
+    if steps is None:
+        return None
+    cases = {}
+    for st in steps:
+        cases.setdefault(st.get("stage"), {}).update({k: v for k, v in st["values"].items() if k in names})
+    return [c for c in cases.values() if c] or None
 
 
 def max_short(pkg, cpl, data):
@@ -727,8 +768,19 @@ def max_short(pkg, cpl, data):
     if not sizes:
         return []
     if re.search(r"(?m)^@!multitest", text):
-        # Each case reads its own sizes; what saturates is their sum, which no header states yet.
-        return [f"max-unread {pkg.id} multitest"]
+        lines = logical_lines(text)
+        below = lines[next(i for i, l in enumerate(lines) if l.startswith("@!multitest")):]
+        nested = any(re.search(r"(?<![\w.])read(?:\(|<)", l) and not TOP_READ.match(l) for l in below)
+        last = max(i for i, l in enumerate(lines) if TOP_READ.match(l))
+        # Each case's reads alone, when they are all top-level or there is one case: tracing the
+        # whole port keeps its tables and runs its work.
+        one = not re.search(r"(?m)^@!multitest\(", text) and data.split(None, 1)[:1] == ["1"]
+        got = None if nested and not one else case_values(cpl, read_prefix(text, last), data, sorted(sizes))
+        if got is None:
+            got = case_values(cpl, text, data, sorted(sizes))
+        if got is TIMED_OUT or got is None:
+            return [f"max-unread {pkg.id} {'timeout' if got else '-'}"]
+        return short_of(pkg.id, text, [{k: v for k, v in c.items() if isinstance(v, int)} for c in got])
     got = read_values(cpl, read_prefix(text, max(sizes.values())), data)
     if got is None or got is TIMED_OUT:
         got = read_values(cpl, text, data)  # sizes a computed domain bound needs, read by the whole port

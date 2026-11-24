@@ -556,9 +556,31 @@ class MaxShortTest(unittest.TestCase):
         self.assertEqual(corpus.bounds_findings("p", port.replace("m * n", "m * k")), ["bounds-unread p m * k"])
         self.assertEqual(corpus.short_of("p", port, {"m": 20, "n": 2}), [])
 
+    MULTI = ("// Bounds: n: 1..=2e5; sum(n): 1..=2e5; k: 1..=n; a: 1..=k\n@!multitest\nlet n: 1..=2e5 = read()\n"
+             "let k: 1..=n = read()\nlet a: [n](1..=k) = read()\n")
+
+    def test_a_multitest_size_reaches_its_bound_in_one_case_or_by_its_stated_sum(self):
+        self.assertEqual(corpus.bounds_findings("p", self.MULTI), [])
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 200000, "k": 200000}]), [])
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 100000, "k": 100000}] * 2), [])
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 100000, "k": 3}, {"n": 100000, "k": 100000}]), [])
+
+    def test_a_multitest_under_its_sum_and_every_case_bound_is_short(self):
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 1000, "k": 1000}] * 3),
+                         ["max-short p n: --max reads 1000, the statement allows 2e5"])
+        self.assertEqual(corpus.short_of("p", self.MULTI.replace("sum(n): 1..=2e5; ", ""),
+                                         [{"n": 100000, "k": 100000}] * 2),
+                         ["max-short p n: --max reads 100000, the statement allows 2e5"])
+        self.assertEqual(corpus.short_of("p", self.MULTI, [{"n": 100000, "k": 5}] * 2), [])
+
     def test_a_port_it_cant_read_is_max_unread_not_passed(self):
         pkg = types.SimpleNamespace(id="p", port=mock.Mock(read_text=lambda **_: "@!multitest\n" + self.REL))
-        self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p multitest"])
+        with mock.patch.object(corpus, "case_values", return_value=None):
+            self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p -"])
+        with mock.patch.object(corpus, "case_values", return_value=corpus.TIMED_OUT):
+            self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p timeout"])
+        with mock.patch.object(corpus, "case_values", return_value=[{"n": 9, "m": 2}, {"n": 100000, "m": 99999}]):
+            self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), [])
         pkg.port.read_text = lambda **_: self.REL
         with mock.patch.object(corpus, "read_values", return_value=None):
             self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"), ["max-unread p -"])

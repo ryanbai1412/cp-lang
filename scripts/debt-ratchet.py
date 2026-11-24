@@ -3522,6 +3522,8 @@ MEASURED_BY = {
     "spec_required_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
     "cpp_optional_copies": ("crates/cpl-codegen/src/cpp_counts.rs",),
     "cpp_std_functions": ("crates/cpl-codegen/src/cpp_counts.rs",),
+    "corpus_max_short": ("scripts/corpus.py",),
+    "corpus_max_unread": ("scripts/corpus.py",),
 }
 
 
