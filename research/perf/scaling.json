@@ -3352,159 +3352,7 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/dp.cp::dp.LineContainer.add": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "dp.LineContainer.add",
-   "measured": 0.99,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.LineContainer.at": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "dp.LineContainer.at",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.LineContainer.each": {
-   "cost": "\\mathit{len}",
-   "documented": 4.0,
-   "fn": "dp.LineContainer.each",
-   "measured": 4.68,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.LineContainer.is_empty": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.LineContainer.is_empty",
-   "measured": 1.02,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.LineContainer.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.LineContainer.len",
-   "measured": 1.01,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.LineContainer.line_at": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "dp.LineContainer.line_at",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MongePath.is_empty": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MongePath.is_empty",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MongePath.items": {
-   "cost": "\\mathit{len}",
-   "documented": 4.0,
-   "fn": "dp.MongePath.items",
-   "measured": 4.43,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MongePath.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MongePath.len",
-   "measured": 1.01,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MongePath.next": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MongePath.next",
-   "measured": 1.04,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MongePath.val": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MongePath.val",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MonotoneHull.add": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MonotoneHull.add",
-   "measured": 1.09,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MonotoneHull.at": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "dp.MonotoneHull.at",
-   "measured": 1.27,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MonotoneHull.at_next": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MonotoneHull.at_next",
-   "measured": 1.07,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MonotoneHull.best_next": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MonotoneHull.best_next",
-   "measured": 1.04,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MonotoneHull.clear": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MonotoneHull.clear",
-   "measured": 0.94,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MonotoneHull.is_empty": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MonotoneHull.is_empty",
-   "measured": 1.09,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MonotoneHull.items": {
-   "cost": "\\mathit{len}",
-   "documented": 4.0,
-   "fn": "dp.MonotoneHull.items",
-   "measured": 4.3,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.MonotoneHull.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "dp.MonotoneHull.len",
-   "measured": 1.06,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.Step.prune": {
+  "bench/scaling/dp_backtrack.cp::dp.Step.prune": {
    "cost": "1",
    "documented": 1.0,
    "fn": "dp.Step.prune",
@@ -3512,107 +3360,259 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/dp.cp::dp.aliens": {
-   "cost": "\\log \\mathit{lambdas}.\\mathit{len}",
-   "documented": 1.14,
-   "fn": "dp.aliens",
-   "measured": 1.09,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.backtrack": {
+  "bench/scaling/dp_backtrack.cp::dp.backtrack": {
    "cost": "\\mathit{visited}",
    "documented": 4.0,
    "fn": "dp.backtrack",
-   "measured": 4.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.dnc_layer": {
-   "cost": "n \\log n",
-   "documented": 4.57,
-   "fn": "dp.dnc_layer",
-   "measured": 4.11,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.knuth": {
-   "cost": "n^2",
-   "documented": 4.0,
-   "fn": "dp.knuth",
-   "measured": 4.05,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.lis_ends": {
-   "cost": "n \\log n",
-   "documented": 4.57,
-   "fn": "dp.lis_ends",
-   "measured": 4.18,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.masks_of_size": {
-   "cost": "C(\\mathit{bits}, k)",
-   "documented": 1.14,
-   "fn": "dp.masks_of_size",
-   "measured": 1.52,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.monge_path": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "dp.monge_path",
-   "measured": 4.11,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.monge_paths": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "dp.monge_paths",
-   "measured": 4.12,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.monotone_minima": {
-   "cost": "(\\mathit{rows} + \\mathit{cols}) \\log \\mathit{rows}",
-   "documented": 4.57,
-   "fn": "dp.monotone_minima",
-   "measured": 4.49,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.smawk": {
-   "cost": "\\mathit{rows} + \\mathit{cols}",
-   "documented": 4.0,
-   "fn": "dp.smawk",
-   "measured": 4.35,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.subset_folds": {
-   "cost": "2^n",
-   "documented": 4.0,
-   "fn": "dp.subset_folds",
-   "measured": 4.09,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/dp.cp::dp.subset_sums": {
-   "cost": "2^n",
-   "documented": 4.0,
-   "fn": "dp.subset_sums",
    "measured": 3.81,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/dp.cp::dp.supermasks": {
+  "bench/scaling/dp_hull.cp::dp.LineContainer.add": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "dp.LineContainer.add",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_hull.cp::dp.LineContainer.at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "dp.LineContainer.at",
+   "measured": 0.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_hull.cp::dp.LineContainer.each": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "dp.LineContainer.each",
+   "measured": 4.38,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_hull.cp::dp.LineContainer.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.LineContainer.is_empty",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_hull.cp::dp.LineContainer.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.LineContainer.len",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_hull.cp::dp.LineContainer.line_at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "dp.LineContainer.line_at",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_misc.cp::dp.aliens": {
+   "cost": "\\log \\mathit{lambdas}.\\mathit{len}",
+   "documented": 1.14,
+   "fn": "dp.aliens",
+   "measured": 1.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_misc.cp::dp.knuth": {
+   "cost": "n^2",
+   "documented": 4.0,
+   "fn": "dp.knuth",
+   "measured": 3.9,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_misc.cp::dp.lis_ends": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "dp.lis_ends",
+   "measured": 4.25,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_misc.cp::dp.masks_of_size": {
+   "cost": "C(\\mathit{bits}, k)",
+   "documented": 1.14,
+   "fn": "dp.masks_of_size",
+   "measured": 1.55,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_misc.cp::dp.subset_folds": {
+   "cost": "2^n",
+   "documented": 4.0,
+   "fn": "dp.subset_folds",
+   "measured": 4.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_misc.cp::dp.subset_sums": {
+   "cost": "2^n",
+   "documented": 4.0,
+   "fn": "dp.subset_sums",
+   "measured": 3.79,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_misc.cp::dp.supermasks": {
    "cost": "2^(\\mathit{bits} - \\mathit{popcount}(m))",
    "documented": 4.0,
    "fn": "dp.supermasks",
-   "measured": 4.0,
+   "measured": 4.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge.cp::dp.dnc_layer": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "dp.dnc_layer",
+   "measured": 3.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge.cp::dp.monge_path": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "dp.monge_path",
+   "measured": 3.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge.cp::dp.monge_paths": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "dp.monge_paths",
+   "measured": 3.91,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge.cp::dp.monotone_minima": {
+   "cost": "(\\mathit{rows} + \\mathit{cols}) \\log \\mathit{rows}",
+   "documented": 4.57,
+   "fn": "dp.monotone_minima",
+   "measured": 4.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge.cp::dp.smawk": {
+   "cost": "\\mathit{rows} + \\mathit{cols}",
+   "documented": 4.0,
+   "fn": "dp.smawk",
+   "measured": 3.76,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge_path.cp::dp.MongePath.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MongePath.is_empty",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge_path.cp::dp.MongePath.items": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "dp.MongePath.items",
+   "measured": 4.69,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge_path.cp::dp.MongePath.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MongePath.len",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge_path.cp::dp.MongePath.next": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MongePath.next",
+   "measured": 0.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monge_path.cp::dp.MongePath.val": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MongePath.val",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monotone.cp::dp.MonotoneHull.add": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MonotoneHull.add",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monotone.cp::dp.MonotoneHull.at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "dp.MonotoneHull.at",
+   "measured": 1.29,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monotone.cp::dp.MonotoneHull.at_next": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MonotoneHull.at_next",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monotone.cp::dp.MonotoneHull.best_next": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MonotoneHull.best_next",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monotone.cp::dp.MonotoneHull.clear": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MonotoneHull.clear",
+   "measured": 0.95,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monotone.cp::dp.MonotoneHull.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MonotoneHull.is_empty",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monotone.cp::dp.MonotoneHull.items": {
+   "cost": "\\mathit{len}",
+   "documented": 4.0,
+   "fn": "dp.MonotoneHull.items",
+   "measured": 3.81,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/dp_monotone.cp::dp.MonotoneHull.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "dp.MonotoneHull.len",
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
@@ -9072,102 +9072,6 @@
    "n": 2048,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.Flip.of": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "lazy.Flip.of",
-   "measured": 1.04,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.Flip.op": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "lazy.Flip.op",
-   "measured": 1.01,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.append": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyForest.append",
-   "measured": 1.18,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.apply": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyForest.apply",
-   "measured": 1.36,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.get": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyForest.get",
-   "measured": 1.36,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.len": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "lazy.LazyForest.len",
-   "measured": 1.0,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.new": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "lazy.LazyForest.new",
-   "measured": 0.95,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.push": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyForest.push",
-   "measured": 1.1,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.reverse": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyForest.reverse",
-   "measured": 1.59,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.seq": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "lazy.LazyForest.seq",
-   "measured": 0.89,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.split_at": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyForest.split_at",
-   "measured": 1.2,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyForest.to_list": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "lazy.LazyForest.to_list",
-   "measured": 5.46,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/lazy.cp::lazy.LazyTreap.apply": {
    "cost": "\\log n",
    "documented": 1.14,
@@ -9192,43 +9096,11 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.erase_at": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyTreap.erase_at",
-   "measured": 1.43,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.erase_range": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyTreap.erase_range",
-   "measured": 1.23,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/lazy.cp::lazy.LazyTreap.get": {
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.get",
    "measured": 1.47,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.insert": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyTreap.insert",
-   "measured": 1.93,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.insert_at": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyTreap.insert_at",
-   "measured": 1.21,
    "n": 16384,
    "ok": true
   },
@@ -9256,22 +9128,6 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.push": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.LazyTreap.push",
-   "measured": 1.28,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.reserve": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "lazy.LazyTreap.reserve",
-   "measured": 6.37,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/lazy.cp::lazy.LazyTreap.reverse": {
    "cost": "\\log n",
    "documented": 1.14,
@@ -9280,219 +9136,363 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.splice_back": {
+  "bench/scaling/lazy_edits.cp::lazy.LazyTreap.erase_at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.erase_at",
+   "measured": 1.13,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_edits.cp::lazy.LazyTreap.erase_range": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.erase_range",
+   "measured": 1.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_edits.cp::lazy.LazyTreap.insert_at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.insert_at",
+   "measured": 1.33,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_edits.cp::lazy.LazyTreap.push": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.push",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_edits.cp::lazy.LazyTreap.reserve": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "lazy.LazyTreap.reserve",
+   "measured": 6.72,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_edits.cp::lazy.LazyTreap.splice_back": {
    "cost": "\\min(n, m) + \\log(n + m)",
    "documented": 1.13,
    "fn": "lazy.LazyTreap.splice_back",
-   "measured": 1.34,
+   "measured": 1.21,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.split_at": {
+  "bench/scaling/lazy_edits.cp::lazy.LazyTreap.split_at": {
    "cost": "\\min(k, n - k) + \\log n",
    "documented": 1.11,
    "fn": "lazy.LazyTreap.split_at",
-   "measured": 1.26,
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.take": {
+  "bench/scaling/lazy_edits.cp::lazy.LazyTreap.take": {
    "cost": "k + \\log n",
    "documented": 1.13,
    "fn": "lazy.LazyTreap.take",
-   "measured": 1.38,
+   "measured": 1.2,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.LazyTreap.to_list": {
+  "bench/scaling/lazy_edits.cp::lazy.LazyTreap.to_list": {
    "cost": "n",
    "documented": 4.0,
    "fn": "lazy.LazyTreap.to_list",
-   "measured": 4.82,
+   "measured": 5.2,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.Rope.apply": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.Rope.apply",
-   "measured": 1.43,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.Rope.get": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.Rope.get",
-   "measured": 1.4,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.Rope.new": {
-   "cost": "\\lvert D \\rvert",
-   "documented": 4.0,
-   "fn": "lazy.Rope.new",
-   "measured": 4.41,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.Rope.query_path": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.Rope.query_path",
-   "measured": 1.44,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.Rope.reverse": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.Rope.reverse",
-   "measured": 1.55,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.Rope.set": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.Rope.set",
-   "measured": 1.41,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.Rope.to_array": {
-   "cost": "\\lvert D \\rvert",
-   "documented": 4.0,
-   "fn": "lazy.Rope.to_array",
-   "measured": 5.32,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.apply": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.SeqFold.apply",
-   "measured": 1.24,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.erase_range": {
-   "cost": "\\lvert r \\rvert + \\log n",
-   "documented": 4.0,
-   "fn": "lazy.SeqFold.erase_range",
-   "measured": 4.15,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.fold": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.SeqFold.fold",
-   "measured": 1.41,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.get": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.SeqFold.get",
-   "measured": 1.28,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.insert_at": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.SeqFold.insert_at",
-   "measured": 1.44,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.insert_many": {
-   "cost": "k + \\log n",
-   "documented": 4.0,
-   "fn": "lazy.SeqFold.insert_many",
-   "measured": 4.1,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.is_empty": {
+  "bench/scaling/lazy_flip.cp::lazy.Flip.of": {
    "cost": "1",
    "documented": 1.0,
-   "fn": "lazy.SeqFold.is_empty",
-   "measured": 1.02,
+   "fn": "lazy.Flip.of",
+   "measured": 0.99,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.SeqFold.items": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "lazy.SeqFold.items",
+  "bench/scaling/lazy_flip.cp::lazy.Flip.op": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.Flip.op",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_flip.cp::lazy.flip_action": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.flip_action",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.append": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.append",
    "measured": 1.15,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.SeqFold.len": {
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.apply": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.apply",
+   "measured": 1.4,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.get": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.get",
+   "measured": 1.38,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyForest.len",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyForest.new",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.push": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.push",
+   "measured": 1.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.reverse": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.reverse",
+   "measured": 1.63,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.seq": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyForest.seq",
+   "measured": 0.89,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.split_at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.split_at",
+   "measured": 1.2,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_forest.cp::lazy.LazyForest.to_list": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "lazy.LazyForest.to_list",
+   "measured": 5.68,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_ordered.cp::lazy.LazyTreap.insert": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyTreap.insert",
+   "measured": 1.47,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_rope.cp::lazy.Rope.apply": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.apply",
+   "measured": 1.53,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_rope.cp::lazy.Rope.get": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.get",
+   "measured": 1.5,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_rope.cp::lazy.Rope.new": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "lazy.Rope.new",
+   "measured": 4.65,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_rope.cp::lazy.Rope.query_path": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.query_path",
+   "measured": 1.53,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_rope.cp::lazy.Rope.reverse": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.reverse",
+   "measured": 1.7,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_rope.cp::lazy.Rope.set": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.Rope.set",
+   "measured": 1.51,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_rope.cp::lazy.Rope.to_array": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "lazy.Rope.to_array",
+   "measured": 5.8,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold.cp::lazy.SeqFold.fold": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.fold",
+   "measured": 1.16,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold.cp::lazy.SeqFold.get": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.get",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold.cp::lazy.SeqFold.is_empty": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.SeqFold.is_empty",
+   "measured": 0.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold.cp::lazy.SeqFold.items": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "lazy.SeqFold.items",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold.cp::lazy.SeqFold.len": {
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.SeqFold.len",
-   "measured": 1.03,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.SeqFold.new": {
+  "bench/scaling/lazy_seqfold.cp::lazy.SeqFold.new": {
    "cost": "n",
    "documented": 4.0,
    "fn": "lazy.SeqFold.new",
-   "measured": 4.49,
+   "measured": 3.46,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.SeqFold.push": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.SeqFold.push",
-   "measured": 1.27,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.reverse": {
-   "cost": "\\log n",
-   "documented": 1.14,
-   "fn": "lazy.SeqFold.reverse",
-   "measured": 1.39,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.splice": {
-   "cost": "m + \\log n",
-   "documented": 4.0,
-   "fn": "lazy.SeqFold.splice",
-   "measured": 4.05,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.split_at": {
-   "cost": "\\mathit{len} - k + \\log n",
-   "documented": 4.0,
-   "fn": "lazy.SeqFold.split_at",
-   "measured": 4.1,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/lazy.cp::lazy.SeqFold.total": {
+  "bench/scaling/lazy_seqfold.cp::lazy.SeqFold.total": {
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.SeqFold.total",
-   "measured": 1.04,
+   "measured": 1.01,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/lazy.cp::lazy.flip_action": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "lazy.flip_action",
-   "measured": 1.03,
+  "bench/scaling/lazy_seqfold_apply.cp::lazy.SeqFold.apply": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.apply",
+   "measured": 1.42,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold_apply.cp::lazy.SeqFold.reverse": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.reverse",
+   "measured": 1.44,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold_edits.cp::lazy.SeqFold.insert_at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.insert_at",
+   "measured": 2.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold_edits.cp::lazy.SeqFold.push": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.SeqFold.push",
+   "measured": 1.3,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold_splice.cp::lazy.SeqFold.erase_range": {
+   "cost": "\\lvert r \\rvert + \\log n",
+   "documented": 4.0,
+   "fn": "lazy.SeqFold.erase_range",
+   "measured": 4.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold_splice.cp::lazy.SeqFold.insert_many": {
+   "cost": "k + \\log n",
+   "documented": 4.0,
+   "fn": "lazy.SeqFold.insert_many",
+   "measured": 4.3,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold_splice.cp::lazy.SeqFold.splice": {
+   "cost": "m + \\log n",
+   "documented": 4.0,
+   "fn": "lazy.SeqFold.splice",
+   "measured": 4.14,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy_seqfold_splice.cp::lazy.SeqFold.split_at": {
+   "cost": "\\mathit{len} - k + \\log n",
+   "documented": 4.0,
+   "fn": "lazy.SeqFold.split_at",
+   "measured": 4.15,
    "n": 16384,
    "ok": true
   },
@@ -9981,6 +9981,14 @@
    "documented": 1.0,
    "fn": "marks.SparseSet.remove",
    "measured": 0.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/marks_at.cp::marks.Arena.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "marks.Arena.at",
+   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -10624,6 +10632,38 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/math_bits.cp::math.bit_ceil": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.bit_ceil",
+   "measured": 0.98,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_bits.cp::math.bit_width": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.bit_width",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_bits.cp::math.clz": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.clz",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_bits.cp::math.ctz": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.ctz",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/math_divisors.cp::math.carmichael": {
    "cost": "n^{1/4} \\log n",
    "documented": 1.62,
@@ -11136,30 +11176,6 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/ntt.cp::ntt.convolve": {
-   "cost": "n \\log n",
-   "documented": 4.57,
-   "fn": "ntt.convolve",
-   "measured": 4.3,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/ntt.cp::ntt.convolve_2d": {
-   "cost": "S \\log S",
-   "documented": 4.57,
-   "fn": "ntt.convolve_2d",
-   "measured": 4.16,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/ntt.cp::ntt.convolve_all": {
-   "cost": "S \\log^2 S",
-   "documented": 5.22,
-   "fn": "ntt.convolve_all",
-   "measured": 4.93,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/ntt.cp::ntt.fwht": {
    "cost": "n \\log n",
    "documented": 4.57,
@@ -11184,19 +11200,59 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/ntt.cp::ntt.subset_exp": {
-   "cost": "k^2 2^k",
-   "documented": 5.22,
-   "fn": "ntt.subset_exp",
-   "measured": 4.99,
+  "bench/scaling/ntt_convolve.cp::ntt.convolve": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "ntt.convolve",
+   "measured": 4.36,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/ntt.cp::ntt.subset_log": {
+  "bench/scaling/ntt_convolve_2d.cp::ntt.convolve_2d": {
+   "cost": "S \\log S",
+   "documented": 4.57,
+   "fn": "ntt.convolve_2d",
+   "measured": 4.47,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/ntt_convolve_all.cp::ntt.convolve_all": {
+   "cost": "S \\log^2 S",
+   "documented": 5.22,
+   "fn": "ntt.convolve_all",
+   "measured": 4.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/ntt_convolve_f64.cp::ntt.convolve": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "ntt.convolve",
+   "measured": 4.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/ntt_convolve_mod.cp::ntt.convolve": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "ntt.convolve",
+   "measured": 5.66,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/ntt_subset.cp::ntt.subset_exp": {
+   "cost": "k^2 2^k",
+   "documented": 5.22,
+   "fn": "ntt.subset_exp",
+   "measured": 5.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/ntt_subset.cp::ntt.subset_log": {
    "cost": "k^2 2^k",
    "documented": 5.22,
    "fn": "ntt.subset_log",
-   "measured": 4.98,
+   "measured": 5.07,
    "n": 16384,
    "ok": true
   },
@@ -13720,243 +13776,11 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.DynamicOrderTree.count_in": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.DynamicOrderTree.count_in",
-   "measured": 1.79,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.DynamicOrderTree.count_lt": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.DynamicOrderTree.count_lt",
-   "measured": 2.42,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.DynamicOrderTree.get": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "segtree.DynamicOrderTree.get",
-   "measured": 0.86,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.DynamicOrderTree.kth": {
-   "cost": "\\log^3 \\lvert D \\rvert",
-   "documented": 1.49,
-   "fn": "segtree.DynamicOrderTree.kth",
-   "measured": 1.88,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.DynamicOrderTree.new": {
-   "cost": "\\lvert D \\rvert \\log^2 \\lvert D \\rvert",
-   "documented": 5.22,
-   "fn": "segtree.DynamicOrderTree.new",
-   "measured": 5.71,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.DynamicOrderTree.set": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.DynamicOrderTree.set",
-   "measured": 1.97,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSegs.any_in": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.MergeSegs.any_in",
-   "measured": 0.98,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSegs.first_alive": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.MergeSegs.first_alive",
-   "measured": 0.9,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSegs.first_ge": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.MergeSegs.first_ge",
-   "measured": 1.31,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSegs.merge": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.MergeSegs.merge",
-   "measured": 1.19,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSegs.singleton": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.MergeSegs.singleton",
-   "measured": 1.06,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSortTree.count_ge": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.MergeSortTree.count_ge",
-   "measured": 1.39,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSortTree.count_gt": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.MergeSortTree.count_gt",
-   "measured": 1.36,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSortTree.count_in": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.MergeSortTree.count_in",
-   "measured": 1.36,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSortTree.count_le": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.MergeSortTree.count_le",
-   "measured": 1.36,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSortTree.count_lt": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.MergeSortTree.count_lt",
-   "measured": 1.81,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSortTree.first_ge": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.MergeSortTree.first_ge",
-   "measured": 1.35,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSortTree.last_le": {
-   "cost": "\\log^2 \\lvert D \\rvert",
-   "documented": 1.31,
-   "fn": "segtree.MergeSortTree.last_le",
-   "measured": 1.34,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeSortTree.new": {
-   "cost": "\\lvert D \\rvert \\log \\lvert D \\rvert",
-   "documented": 4.57,
-   "fn": "segtree.MergeSortTree.new",
-   "measured": 6.87,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeTrees.get": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.MergeTrees.get",
-   "measured": 1.83,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeTrees.merge": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.MergeTrees.merge",
-   "measured": 1.21,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeTrees.new": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "segtree.MergeTrees.new",
-   "measured": 0.86,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeTrees.scale": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "segtree.MergeTrees.scale",
-   "measured": 0.96,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeTrees.set": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.MergeTrees.set",
-   "measured": 1.44,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeTrees.sum": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.MergeTrees.sum",
-   "measured": 1.43,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.MergeTrees.total": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "segtree.MergeTrees.total",
-   "measured": 0.99,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/segtree.cp::segtree.SegTree.all": {
    "cost": "1",
    "documented": 1.0,
    "fn": "segtree.SegTree.all",
    "measured": 1.0,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.SegTree.apply": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.SegTree.apply",
-   "measured": 1.15,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.SegTree.apply_all": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "segtree.SegTree.apply_all",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.SegTree.at": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.SegTree.at",
-   "measured": 1.06,
    "n": 16384,
    "ok": true
   },
@@ -13976,22 +13800,6 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.SegTree.get": {
-   "cost": "1",
-   "documented": 1.0,
-   "fn": "segtree.SegTree.get",
-   "measured": 1.02,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.SegTree.left_while": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.SegTree.left_while",
-   "measured": 1.06,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/segtree.cp::segtree.SegTree.monoid": {
    "cost": "1",
    "documented": 1.0,
@@ -14008,38 +13816,6 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.SegTree.of": {
-   "cost": "\\lvert D \\rvert",
-   "documented": 4.0,
-   "fn": "segtree.SegTree.of",
-   "measured": 4.25,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.SegTree.refresh": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.SegTree.refresh",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.SegTree.right_while": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.SegTree.right_while",
-   "measured": 1.18,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.SegTree.set": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.SegTree.set",
-   "measured": 1.08,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/segtree.cp::segtree.SegTree.try_fold": {
    "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
@@ -14048,127 +13824,407 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.SegTree.update": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.SegTree.update",
-   "measured": 1.04,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.SegTree.walk": {
-   "cost": "\\log \\lvert D \\rvert",
-   "documented": 1.14,
-   "fn": "segtree.SegTree.walk",
-   "measured": 1.09,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.SegTree2D.all": {
+  "bench/scaling/segtree_2d.cp::segtree.SegTree2D.all": {
    "cost": "1",
    "documented": 1.0,
    "fn": "segtree.SegTree2D.all",
-   "measured": 1.0,
+   "measured": 0.73,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.SegTree2D.fold": {
+  "bench/scaling/segtree_2d.cp::segtree.SegTree2D.fold": {
    "cost": "\\log \\lvert R \\rvert \\cdot \\log \\lvert C \\rvert",
    "documented": 1.31,
    "fn": "segtree.SegTree2D.fold",
-   "measured": 1.38,
+   "measured": 0.83,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.SegTree2D.get": {
+  "bench/scaling/segtree_2d.cp::segtree.SegTree2D.get": {
    "cost": "1",
    "documented": 1.0,
    "fn": "segtree.SegTree2D.get",
-   "measured": 1.1,
+   "measured": 0.81,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.SegTree2D.new": {
+  "bench/scaling/segtree_2d.cp::segtree.SegTree2D.new": {
    "cost": "\\lvert R \\rvert \\cdot \\lvert C \\rvert",
    "documented": 4.0,
    "fn": "segtree.SegTree2D.new",
-   "measured": 4.49,
+   "measured": 2.53,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.SegTree2D.set": {
+  "bench/scaling/segtree_2d.cp::segtree.SegTree2D.set": {
    "cost": "\\log \\lvert R \\rvert \\cdot \\log \\lvert C \\rvert",
    "documented": 1.31,
    "fn": "segtree.SegTree2D.set",
-   "measured": 1.4,
+   "measured": 0.97,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.SegTree2D.update": {
+  "bench/scaling/segtree_2d.cp::segtree.SegTree2D.update": {
    "cost": "\\log \\lvert R \\rvert \\cdot \\log \\lvert C \\rvert",
    "documented": 1.31,
    "fn": "segtree.SegTree2D.update",
-   "measured": 1.31,
+   "measured": 0.93,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.WaveletMatrix.count_in": {
-   "cost": "\\log V",
+  "bench/scaling/segtree_act.cp::segtree.SegTree.apply": {
+   "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
-   "fn": "segtree.WaveletMatrix.count_in",
-   "measured": 1.09,
+   "fn": "segtree.SegTree.apply",
+   "measured": 1.11,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.WaveletMatrix.count_lt": {
-   "cost": "\\log V",
+  "bench/scaling/segtree_act.cp::segtree.SegTree.apply_all": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "segtree.SegTree.apply_all",
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_mergesegs.cp::segtree.MergeSegs.any_in": {
+   "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
-   "fn": "segtree.WaveletMatrix.count_lt",
-   "measured": 1.03,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.WaveletMatrix.kth": {
-   "cost": "\\log V",
-   "documented": 1.14,
-   "fn": "segtree.WaveletMatrix.kth",
-   "measured": 1.26,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.WaveletMatrix.new": {
-   "cost": "\\lvert D \\rvert \\log V",
-   "documented": 4.57,
-   "fn": "segtree.WaveletMatrix.new",
-   "measured": 4.42,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/segtree.cp::segtree.WaveletMatrix.next_val": {
-   "cost": "\\log V",
-   "documented": 1.14,
-   "fn": "segtree.WaveletMatrix.next_val",
+   "fn": "segtree.MergeSegs.any_in",
    "measured": 1.08,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.WaveletMatrix.prev_val": {
-   "cost": "\\log V",
+  "bench/scaling/segtree_mergesegs.cp::segtree.MergeSegs.first_alive": {
+   "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
-   "fn": "segtree.WaveletMatrix.prev_val",
+   "fn": "segtree.MergeSegs.first_alive",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_mergesegs.cp::segtree.MergeSegs.first_ge": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.MergeSegs.first_ge",
+   "measured": 1.32,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_mergesegs.cp::segtree.MergeSegs.merge": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.MergeSegs.merge",
+   "measured": 1.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_mergesegs.cp::segtree.MergeSegs.singleton": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.MergeSegs.singleton",
+   "measured": 1.27,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_mergetrees.cp::segtree.MergeTrees.get": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.MergeTrees.get",
+   "measured": 1.94,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_mergetrees.cp::segtree.MergeTrees.merge": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.MergeTrees.merge",
+   "measured": 1.42,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_mergetrees.cp::segtree.MergeTrees.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "segtree.MergeTrees.new",
+   "measured": 1.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_mergetrees.cp::segtree.MergeTrees.scale": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "segtree.MergeTrees.scale",
+   "measured": 1.54,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_mergetrees.cp::segtree.MergeTrees.set": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.MergeTrees.set",
    "measured": 1.1,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.WaveletMatrix.quantile_sum": {
-   "cost": "\\log V",
+  "bench/scaling/segtree_mergetrees.cp::segtree.MergeTrees.sum": {
+   "cost": "\\log \\lvert D \\rvert",
    "documented": 1.14,
-   "fn": "segtree.WaveletMatrix.quantile_sum",
-   "measured": 1.5,
+   "fn": "segtree.MergeTrees.sum",
+   "measured": 1.4,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/segtree.cp::segtree.WaveletMatrix.rank": {
+  "bench/scaling/segtree_mergetrees.cp::segtree.MergeTrees.total": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "segtree.MergeTrees.total",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_of.cp::segtree.SegTree.of": {
+   "cost": "\\lvert D \\rvert",
+   "documented": 4.0,
+   "fn": "segtree.SegTree.of",
+   "measured": 4.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_of.cp::segtree.SegTree.refresh": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.SegTree.refresh",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_order.cp::segtree.DynamicOrderTree.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "segtree.DynamicOrderTree.get",
+   "measured": 0.97,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_order.cp::segtree.DynamicOrderTree.new": {
+   "cost": "\\lvert D \\rvert \\log^2 \\lvert D \\rvert",
+   "documented": 5.22,
+   "fn": "segtree.DynamicOrderTree.new",
+   "measured": 5.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_order.cp::segtree.DynamicOrderTree.set": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.DynamicOrderTree.set",
+   "measured": 1.42,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_order_count.cp::segtree.DynamicOrderTree.count_in": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.DynamicOrderTree.count_in",
+   "measured": 1.55,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_order_count.cp::segtree.DynamicOrderTree.count_lt": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.DynamicOrderTree.count_lt",
+   "measured": 2.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_order_count.cp::segtree.DynamicOrderTree.kth": {
+   "cost": "\\log^3 \\lvert D \\rvert",
+   "documented": 1.49,
+   "fn": "segtree.DynamicOrderTree.kth",
+   "measured": 1.82,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_point.cp::segtree.SegTree.at": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.SegTree.at",
+   "measured": 1.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_point.cp::segtree.SegTree.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "segtree.SegTree.get",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_point.cp::segtree.SegTree.set": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.SegTree.set",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_point.cp::segtree.SegTree.update": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.SegTree.update",
+   "measured": 1.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_search.cp::segtree.SegTree.left_while": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.SegTree.left_while",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_search.cp::segtree.SegTree.right_while": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.SegTree.right_while",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_sorted.cp::segtree.MergeSortTree.count_ge": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.MergeSortTree.count_ge",
+   "measured": 1.35,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_sorted.cp::segtree.MergeSortTree.count_gt": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.MergeSortTree.count_gt",
+   "measured": 1.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_sorted.cp::segtree.MergeSortTree.count_in": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.MergeSortTree.count_in",
+   "measured": 1.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_sorted.cp::segtree.MergeSortTree.count_le": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.MergeSortTree.count_le",
+   "measured": 1.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_sorted.cp::segtree.MergeSortTree.count_lt": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.MergeSortTree.count_lt",
+   "measured": 1.68,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_sorted.cp::segtree.MergeSortTree.first_ge": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.MergeSortTree.first_ge",
+   "measured": 1.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_sorted.cp::segtree.MergeSortTree.last_le": {
+   "cost": "\\log^2 \\lvert D \\rvert",
+   "documented": 1.31,
+   "fn": "segtree.MergeSortTree.last_le",
+   "measured": 1.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_sorted.cp::segtree.MergeSortTree.new": {
+   "cost": "\\lvert D \\rvert \\log \\lvert D \\rvert",
+   "documented": 4.57,
+   "fn": "segtree.MergeSortTree.new",
+   "measured": 6.5,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_walk.cp::segtree.SegTree.walk": {
+   "cost": "\\log \\lvert D \\rvert",
+   "documented": 1.14,
+   "fn": "segtree.SegTree.walk",
+   "measured": 1.37,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_wavelet.cp::segtree.WaveletMatrix.count_in": {
+   "cost": "\\log V",
+   "documented": 1.14,
+   "fn": "segtree.WaveletMatrix.count_in",
+   "measured": 1.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_wavelet.cp::segtree.WaveletMatrix.count_lt": {
+   "cost": "\\log V",
+   "documented": 1.14,
+   "fn": "segtree.WaveletMatrix.count_lt",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_wavelet.cp::segtree.WaveletMatrix.kth": {
+   "cost": "\\log V",
+   "documented": 1.14,
+   "fn": "segtree.WaveletMatrix.kth",
+   "measured": 1.4,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_wavelet.cp::segtree.WaveletMatrix.new": {
+   "cost": "\\lvert D \\rvert \\log V",
+   "documented": 4.57,
+   "fn": "segtree.WaveletMatrix.new",
+   "measured": 4.65,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_wavelet.cp::segtree.WaveletMatrix.next_val": {
+   "cost": "\\log V",
+   "documented": 1.14,
+   "fn": "segtree.WaveletMatrix.next_val",
+   "measured": 1.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_wavelet.cp::segtree.WaveletMatrix.prev_val": {
+   "cost": "\\log V",
+   "documented": 1.14,
+   "fn": "segtree.WaveletMatrix.prev_val",
+   "measured": 1.13,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_wavelet.cp::segtree.WaveletMatrix.quantile_sum": {
+   "cost": "\\log V",
+   "documented": 1.14,
+   "fn": "segtree.WaveletMatrix.quantile_sum",
+   "measured": 1.6,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/segtree_wavelet.cp::segtree.WaveletMatrix.rank": {
    "cost": "\\log V",
    "documented": 1.14,
    "fn": "segtree.WaveletMatrix.rank",
@@ -15048,110 +15104,6 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/seq_sort.cp::seq.group": {
-   "cost": "n \\log n",
-   "documented": 4.57,
-   "fn": "seq.group",
-   "measured": 4.17,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.insert": {
-   "cost": "n - i",
-   "documented": 4.0,
-   "fn": "seq.insert",
-   "measured": 4.33,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.lis": {
-   "cost": "n \\log n",
-   "documented": 4.57,
-   "fn": "seq.lis",
-   "measured": 4.83,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.merge_sorted": {
-   "cost": "\\lvert a \\rvert + \\lvert b \\rvert",
-   "documented": 4.0,
-   "fn": "seq.merge_sorted",
-   "measured": 4.08,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.next_same": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.next_same",
-   "measured": 4.12,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.next_smaller": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.next_smaller",
-   "measured": 4.38,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.partition_in_place": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.partition_in_place",
-   "measured": 4.19,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.perm_order": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.perm_order",
-   "measured": 4.7,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.perm_sign": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.perm_sign",
-   "measured": 4.75,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.prev_same": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.prev_same",
-   "measured": 4.24,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.prev_smaller": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.prev_smaller",
-   "measured": 4.52,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.radix_sort": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.radix_sort",
-   "measured": 4.3,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.remove": {
-   "cost": "n - i",
-   "documented": 4.0,
-   "fn": "seq.remove",
-   "measured": 4.36,
-   "n": 16384,
-   "ok": true
-  },
   "bench/scaling/seq_sort.cp::seq.resized": {
    "cost": "n",
    "documented": 4.0,
@@ -15184,67 +15136,155 @@
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/seq_sort.cp::seq.rotated_left": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.rotated_left",
-   "measured": 4.48,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.rotated_right": {
-   "cost": "n",
-   "documented": 4.0,
-   "fn": "seq.rotated_right",
-   "measured": 4.31,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.sort": {
+  "bench/scaling/seq_sort_group.cp::seq.group": {
    "cost": "n \\log n",
    "documented": 4.57,
-   "fn": "seq.sort",
-   "measured": 4.81,
+   "fn": "seq.group",
+   "measured": 4.23,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/seq_sort.cp::seq.sorted_diff": {
-   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
-   "documented": 4.0,
-   "fn": "seq.sorted_diff",
-   "measured": 4.17,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.sorted_intersect": {
-   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
-   "documented": 4.0,
-   "fn": "seq.sorted_intersect",
-   "measured": 2.86,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.sorted_union": {
-   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
-   "documented": 4.0,
-   "fn": "seq.sorted_union",
-   "measured": 4.41,
-   "n": 16384,
-   "ok": true
-  },
-  "bench/scaling/seq_sort.cp::seq.spans": {
+  "bench/scaling/seq_sort_group.cp::seq.next_same": {
    "cost": "n",
    "documented": 4.0,
-   "fn": "seq.spans",
+   "fn": "seq.next_same",
    "measured": 4.27,
    "n": 16384,
    "ok": true
   },
-  "bench/scaling/seq_sort.cp::seq.stable_partition_in_place": {
+  "bench/scaling/seq_sort_group.cp::seq.prev_same": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.prev_same",
+   "measured": 4.32,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_group.cp::seq.sort": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "seq.sort",
+   "measured": 5.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_merge.cp::seq.merge_sorted": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.merge_sorted",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_merge.cp::seq.rotated_left": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.rotated_left",
+   "measured": 4.16,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_merge.cp::seq.rotated_right": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.rotated_right",
+   "measured": 4.17,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_merge.cp::seq.sorted_diff": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "seq.sorted_diff",
+   "measured": 4.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_merge.cp::seq.sorted_intersect": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "seq.sorted_intersect",
+   "measured": 2.75,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_merge.cp::seq.sorted_union": {
+   "cost": "\\lvert \\mathit{self} \\rvert + \\lvert b \\rvert",
+   "documented": 4.0,
+   "fn": "seq.sorted_union",
+   "measured": 4.23,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_part.cp::seq.partition_in_place": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.partition_in_place",
+   "measured": 4.27,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_part.cp::seq.radix_sort": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.radix_sort",
+   "measured": 4.52,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_part.cp::seq.stable_partition_in_place": {
    "cost": "n",
    "documented": 4.0,
    "fn": "seq.stable_partition_in_place",
-   "measured": 4.15,
+   "measured": 4.42,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_scan.cp::seq.lis": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "seq.lis",
+   "measured": 4.54,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_scan.cp::seq.next_smaller": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.next_smaller",
+   "measured": 4.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_scan.cp::seq.perm_order": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.perm_order",
+   "measured": 4.64,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_scan.cp::seq.perm_sign": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.perm_sign",
+   "measured": 4.67,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_scan.cp::seq.prev_smaller": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.prev_smaller",
+   "measured": 4.12,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/seq_sort_scan.cp::seq.spans": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "seq.spans",
+   "measured": 4.11,
    "n": 16384,
    "ok": true
   },
