@@ -19,7 +19,7 @@ use crate::uses::split::each_value;
 use crate::walk::path_root;
 use cpl_ir::{Arg, Block, Builtin, ClosureId, Expr, ExprKind, FnId, Place, PlaceKind};
 use cpl_ir::{Program, Slot, Stmt, Ty};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 /// `asserts` is whether the build checks them; when it does not, they go
 /// too, so a fn only an `assert` calls is not emitted.
@@ -253,15 +253,29 @@ fn bodies(program: &Program) -> impl Iterator<Item = (Option<FnId>, &Block)> {
         .chain([(None, &program.main), (None, &program.setup)])
 }
 
-/// Optional parameters that every call passes a literal `None` and the
-/// fn never stores to.
+/// Optional parameters that every call passes a literal `None`, or a
+/// parameter of its own fn that is one of them, and the fn never stores to.
+/// Starts from every such parameter and drops the ones a call passes
+/// something else, until the guess holds.
 fn none_params(program: &Program) -> BTreeSet<(FnId, Slot)> {
-    let mut seen: BTreeMap<(FnId, Slot), bool> = BTreeMap::new();
-    for (_, body) in bodies(program) {
+    enum Passed {
+        None,
+        Param(FnId, Slot),
+        Other,
+    }
+    let mut passes: Vec<(FnId, Slot, Passed)> = Vec::new();
+    for (home, body) in bodies(program) {
         each_call(body, &mut |id, args| {
             for (slot, arg) in args.iter().enumerate() {
-                let none = matches!(arg, Arg::Value(v) if v.kind == ExprKind::None);
-                *seen.entry((id, slot)).or_insert(true) &= none;
+                let passed = match (arg, home) {
+                    (Arg::Value(v), _) if v.kind == ExprKind::None => Passed::None,
+                    (Arg::Value(v), Some(f)) => match v.kind {
+                        ExprKind::Local(s) => Passed::Param(f, s),
+                        _ => Passed::Other,
+                    },
+                    _ => Passed::Other,
+                };
+                passes.push((id, slot, passed));
             }
         });
     }
@@ -271,15 +285,32 @@ fn none_params(program: &Program) -> BTreeSet<(FnId, Slot)> {
         .chain(&program.judge_fns)
         .copied()
         .collect();
-    seen.into_iter()
-        .filter(|&((id, slot), none)| {
+    let mut known: BTreeSet<(FnId, Slot)> = passes
+        .iter()
+        .map(|&(id, slot, _)| (id, slot))
+        .filter(|&(id, slot)| {
             let f = &program.fns[id];
-            none && !outside.contains(&id)
+            !outside.contains(&id)
                 && f.params.get(slot).is_some_and(|p| !p.mutable)
                 && !written(program, &f.body).contains(&slot)
         })
-        .map(|(key, _)| key)
-        .collect()
+        .collect();
+    loop {
+        let before = known.len();
+        for (id, slot, passed) in &passes {
+            let none = match passed {
+                Passed::None => true,
+                Passed::Param(f, s) => known.contains(&(*f, *s)),
+                Passed::Other => false,
+            };
+            if !none {
+                known.remove(&(*id, *slot));
+            }
+        }
+        if known.len() == before {
+            return known;
+        }
+    }
 }
 
 /// The optional fields known `None` and the list fields known empty: every
