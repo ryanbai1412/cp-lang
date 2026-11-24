@@ -2,8 +2,9 @@
 
 `<id>/port.cp` is `corpus/problems/<id>/port.cp` as it stood before the v0.3
 re-port, frozen so re-porting in place keeps its regression coverage. The
-corpus suites (`crates/cpl-cli/tests/support/v02_snapshot.rs`) walk every
-copy whose live port differs; `cpl bench --corpus` and
+build-and-agree suites (`crates/cpl-cli/tests/support/corpus_programs.rs`)
+walk every copy whose live port differs; the idiom and perf gates judge only
+the shipped programs; `cpl bench --corpus` and
 `bench/v03_perf_bench.py` time the frozen copy so the perf series stays
 comparable. Its inputs are the live problem's tests and `gen.py`.
 
