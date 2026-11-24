@@ -11,8 +11,8 @@
 //   g_hi = len / d + (len % d & 1) + 1, and popcount(g_hi) minus twice its bits at even
 //   positions >= 2, mod 4, indexes ODD_D_GRUNDY = [0, 2, 3, 1]; even d gives 0 for even len,
 //   else with g = len / d + 2 it is 0 when ctz(g) is odd, else 2 or 1 by popcount parity.
-//   XOR everything: O(1) per series.
-// Bounds: n: 1..=200_000
+//   XOR everything as the series are read: O(1) time and space per series.
+// Bounds: n: 1..=200_000; a, b, c, l, r: 1..=10 ** 18
 
 const EVEN_BITS_FROM_2 = 0x5555555555555554
 const ODD_D_GRUNDY = [0, 2, 3, 1]
@@ -32,12 +32,8 @@ fn prefix_xor(len: Int, d: Int) -> Int:
 
 @!multitest
 let n: 1..=200_000 = read()
-let qs: [0..n](
-    a: 1..=10 ** 18,
-    b: 1..=10 ** 18,
-    c: 1..=10 ** 18,
-    l: 1..=10 ** 18,
-    r: 1..=10 ** 18,
-) = read()
-let ans = fold(^, prefix_xor(r - c + 1, c - b) ^ prefix_xor(l - c, c - b) for (_, b, c, l, r) in qs)
+var ans = 0
+repeat n:
+    let (a, b, c, l, r): (1..=10 ** 18, 1..=10 ** 18, 1..=10 ** 18, 1..=10 ** 18, 1..=10 ** 18) = read()
+    ans ^= prefix_xor(r - c + 1, c - b) ^ prefix_xor(l - c, c - b)
 print(if ans != 0: "Bug" else: "Feature")
