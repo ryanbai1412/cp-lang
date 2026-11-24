@@ -287,12 +287,43 @@ class GatesTest(unittest.TestCase):
             self.assertEqual(ec.deep_copies(line + "\n"), 0, line)
         rows = {"a.cp": ("a.cp", 2, 1), "b.cp": ("b.cp", 1, 1), "c.cp": ("c.cp", 0, 2)}
         with Tree({"spec/conformance/a.cp": "", "spec/conformance/b.cp": "", "spec/conformance/c.cp": ""}), \
-                mock.patch.object(ec, "one", lambda cpl, c, tmp, exact: rows.get(c.name)):
+                mock.patch.object(ec, "one", lambda cpl, c, tmp, exact: rows.get(c.name)), \
+                mock.patch.object(ec, "default_cache_dir", lambda: None):
             over = ("a.cp", "explain over-lists copies: it lists 2, the C++ makes 1")
             under = ("c.cp", "explain under-lists copies: it lists 0, the C++ makes 2")
             self.assertEqual([(p.where, p.what) for p in run("explain-copies")], [over])
             self.assertEqual(run("explain-copies", "--max", "1"), [])
             self.assertEqual([(p.where, p.what) for p in run("explain-copies", "--exact", "--max", "1")], [over, under])
+
+    def test_explain_copies_cache_matches_a_cold_run_and_an_edit_recomputes_only_its_case(self):
+        from specgate import explain_copies as ec
+        calls = []
+
+        def one(cpl, case, tmp, exact):
+            calls.append(case.name)
+            text = case.read_text()
+            return None if not text else (case.relative_to(specgate.ROOT), text.count("c"), 1)
+
+        files = {f"spec/conformance/{n}.cp": t for n, t in (("a", "cc"), ("b", "c"), ("c", "ccc"), ("d", ""))}
+        files |= {"std/core.cp": "pub fn f() -> Int = 1\n", "target/debug/cpl": "v1"}
+        with Tree(files) as t, mock.patch.object(ec, "one", one):
+            cache = str(t.root / "cache")
+
+            def gate(*more):
+                calls.clear()
+                got = [(p.where, p.what) for p in run("explain-copies", "--exact", "--max", "0", *more)]
+                return got, sorted(calls)
+
+            uncached, _ = gate("--no-cache")
+            self.assertEqual(gate("--cache-dir", cache), (uncached, ["a.cp", "b.cp", "c.cp", "d.cp"]))
+            self.assertEqual(gate("--cache-dir", cache), (uncached, []))
+            (t.root / "spec/conformance/b.cp").write_text("cc")
+            edited, _ = gate("--no-cache")
+            self.assertNotEqual(edited, uncached)
+            self.assertEqual(gate("--cache-dir", cache), (edited, ["b.cp"]))
+            for changed in ("std/core.cp", "target/debug/cpl"):
+                (t.root / changed).write_text("changed")
+                self.assertEqual(gate("--cache-dir", cache), (edited, ["a.cp", "b.cp", "c.cp", "d.cp"]))
 
     def test_decisions(self):
         # reserve and --check-landing run against a scratch remote in test_spec_gate_decisions.py

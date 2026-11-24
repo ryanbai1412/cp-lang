@@ -13,7 +13,11 @@ judge build copies, R05.3.5).
 Enforces handbook/guidelines/conformance-checklist.md#conformancer6-results-agree-across-engines-with-and-without-sanitizers
 """
 import concurrent.futures as cf
+import hashlib
+import json
+import os
 import re
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -411,18 +415,69 @@ def one(cpl, case, tmp, exact, base=specgate.ROOT):
     return case.relative_to(base), claimed, made
 
 
+def default_cache_dir() -> Path | None:
+    """`cpl/explain-copies` beside the C++ cache (`~/.cache/cpl/cxx`)."""
+    base = os.environ.get("XDG_CACHE_HOME") or (os.environ.get("HOME") and os.path.join(os.environ["HOME"], ".cache"))
+    return Path(base) / "cpl" / "explain-copies" if base else None
+
+
+class Cache:
+    """Each case's row, keyed by its path and bytes under one version of the
+    inputs every row depends on: the cpl binary, std/, `--exact` and the CPL_
+    environment. A changed input starts a new version; the newest KEEP stay."""
+
+    KEEP = 8
+
+    def __init__(self, root: Path, cpl: str, exact: bool):
+        h = hashlib.sha256()
+        cpl_path = Path(cpl)
+        h.update(cpl_path.read_bytes() if cpl_path.is_file() else cpl.encode())
+        std = specgate.ROOT / "std"
+        for f in sorted(std.rglob("*")) if std.is_dir() else []:
+            if f.is_file():
+                h.update(f.relative_to(std).as_posix().encode() + b"\0" + f.read_bytes() + b"\0")
+        h.update(repr((exact, sorted((k, v) for k, v in os.environ.items() if k.startswith("CPL_")))).encode())
+        self.dir = root / h.hexdigest()[:32]
+        self.misses = 0
+        self.dir.mkdir(parents=True, exist_ok=True)
+        os.utime(self.dir)
+        versions = sorted((d for d in root.iterdir() if d.is_dir()), key=lambda d: d.stat().st_mtime, reverse=True)
+        for old in versions[self.KEEP:]:
+            shutil.rmtree(old, ignore_errors=True)
+
+    def row(self, case: Path, compute):
+        rel = case.relative_to(specgate.CONFORMANCE.parent.parent).as_posix()
+        entry = self.dir / hashlib.sha256(rel.encode() + b"\0" + case.read_bytes()).hexdigest()
+        try:
+            stored = json.loads(entry.read_text())
+            return None if stored is None else (Path(stored[0]), stored[1], stored[2])
+        except (OSError, ValueError):
+            pass
+        self.misses += 1
+        got = compute()
+        tmp = entry.with_suffix(f".{os.getpid()}.{id(got)}.tmp")
+        tmp.write_text(json.dumps(None if got is None else [Path(got[0]).as_posix(), got[1], got[2]]))
+        os.replace(tmp, entry)
+        return got
+
+
 def args(ap) -> None:
     ap.add_argument("--max", type=int, default=0, help="cases whose copy list differs from the C++ (shrink-only)")
     ap.add_argument("--exact", action="store_true", help="also flag a case whose explain lists fewer copies than its C++ makes")
     ap.add_argument("--jobs", type=int, default=8)
     ap.add_argument("--cpl")
+    ap.add_argument("--cache-dir", type=Path, default=default_cache_dir(),
+                    help="keep each case's result here between runs (default ~/.cache/cpl/explain-copies)")
+    ap.add_argument("--no-cache", action="store_true", help="recompute every case")
 
 
 def run(a) -> list[Problem]:
     cpl = a.cpl or str(specgate.ROOT / "target" / "debug" / "cpl")
     cases = sorted(specgate.CONFORMANCE.rglob("*.cp"))
     with tempfile.TemporaryDirectory() as tmp, cf.ThreadPoolExecutor(a.jobs) as pool:
-        rows = [r for r in pool.map(lambda c: one(cpl, c, tmp, a.exact), cases) if r]
+        cache = None if a.no_cache or a.cache_dir is None else Cache(a.cache_dir, cpl, a.exact)
+        rows = [r for r in pool.map(lambda c: cache.row(c, lambda: one(cpl, c, tmp, a.exact)) if cache
+                                    else one(cpl, c, tmp, a.exact), cases) if r]
     over = [r for r in rows if r[1] > r[2]]
     under = [r for r in rows if r[1] < r[2]] if a.exact else []
     if len(over) + len(under) <= a.max:
