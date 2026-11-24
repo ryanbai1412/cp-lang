@@ -1012,20 +1012,14 @@ impl<'a> Lowerer<'a> {
         let decl = self.gen_structs[gid].decl;
         let tpl_mod = self.gen_structs[gid].mod_id;
         let gen_names: Vec<String> = decl.generics.iter().map(|g| g.text.clone()).collect();
-        let min_explicit = decl
-            .generic_defaults
-            .iter()
-            .take_while(|d| d.is_none())
-            .count();
-        let final_args = if !explicit.is_empty()
-            && explicit.len() >= min_explicit
-            && explicit.len() <= gen_names.len()
-        {
+        // `S<Int>(1, act: Add())`: the args written fix their params, and the rest
+        // bind from the call as with none written, before defaults fill them (R08.2.5).
+        let final_args = if explicit.len() == gen_names.len() {
             explicit
         } else {
             // A hint says which instantiation is meant, even in the struct's own body
             // (`fn swap(self) -> Pair<B, A> = Pair(second, first)`).
-            if let Some(Ty::Struct(hsid)) = hint {
+            if let Some(Ty::Struct(hsid)) = hint.filter(|_| explicit.is_empty()) {
                 if let Some((hgid, _)) = &self.structs[*hsid].origin_gen {
                     if *hgid == gid {
                         return self.construct_or_new(*hsid, args, span);

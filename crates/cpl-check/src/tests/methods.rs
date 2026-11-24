@@ -183,6 +183,8 @@ print(Tw<V>.filter(x => x.a > 0).count(), Tw<V>.min(by: x => -x.a)!.a)
 #[test]
 fn a_written_type_arg_meets_a_bound_on_new() {
     let head = "trait Acts<F>:\n    fn tag(self) -> F\nstruct NoTags\nstruct NoAct\nimpl Acts<NoTags> for NoAct:\n    fn tag(self) -> NoTags = NoTags()\nstruct Add\nimpl Acts<Int> for Add:\n    fn tag(self) -> Int = 0\nstruct S<D, F = NoTags>(n: Int):\n    pub fn new<A: Acts<F>>(n: Int, act: A = NoAct()) -> S<D, F> = S<D, F>(n)\n    pub fn apply(self, f: F) -> Int = self.n\n";
+    let bound = format!("{head}let a = S<Int>(1, act: Add())\nprint(a.apply(5))\n");
+    assert!(check(&bound).is_empty(), "{:?}", check(&bound));
     let wrong = format!("{head}let b = S<Int, NoTags>(1, act: Add())\nprint(b.n)\n");
     assert_eq!(
         messages(&check(&wrong)),
