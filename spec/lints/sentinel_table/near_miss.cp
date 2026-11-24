@@ -4,3 +4,7 @@ ways[0] = 1
 for i in 1..=n:
     ways[i] = ways[i - 1] + (if i >= 2: ways[i - 2] else: 0)
 print(ways[n])
+// Zero is the count of no ways, not a sentinel.
+var seen = [0..=90]0
+seen[n] += 1
+print(seen[n])

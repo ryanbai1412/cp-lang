@@ -13,3 +13,6 @@ for s in 1..3:
     let rot = [cyc[(s + i) % 3] for i in 0..3]
     if rot < least: least = rot
 print(least)
+// `min=` read as a value is already the form this lint asks for.
+for v in [5, 2, 7, 1]:
+    if low min= v: print(v)
