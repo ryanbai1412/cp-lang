@@ -9,7 +9,6 @@
 use crate::problem::{source_path, Limits};
 use crate::test::ready;
 use cpl_diag::Shown;
-use cpl_json::escape_string as json_string;
 use cpl_stress::args::Args;
 use cpl_stress::{fit, make, Case, Exit, InputSpec, Pick, Program, Rng, Shape, TreeShape, Value};
 use std::io::Write;
@@ -338,31 +337,29 @@ pub fn render(runs: &[Run], limits: Limits) -> String {
 }
 
 fn json(runs: &[Run], limits: Limits) -> String {
-    let rows: Vec<String> = runs
-        .iter()
-        .map(|run| {
-            format!(
-                "{{\"shape\":{},\"number_count\":{},\"status\":{},\"time_ms\":{},\"peak_kb\":{},\"error\":{}}}",
-                json_string(run.shape.name()),
-                run.numbers,
-                json_string(run.status),
-                run.elapsed.as_millis(),
-                run.peak_kb.map_or("null".to_string(), |kb| kb.to_string()),
-                run.error.as_deref().map_or("null".to_string(), json_string)
-            )
-        })
-        .collect();
-    format!(
-        "{{\"status\":{},\"time_limit_ms\":{},\"memory_limit_kb\":{},\"runs\":[{}]}}\n",
-        json_string(if runs.iter().all(|run| run.status == "ok") {
-            "ok"
-        } else {
-            "fail"
-        }),
-        limits.time.as_millis(),
-        limits.memory_kb,
-        rows.join(",")
-    )
+    let ok = runs.iter().all(|run| run.status == "ok");
+    let mut out = cpl_json::write_with(|w| {
+        w.object().key("status").str(if ok { "ok" } else { "fail" });
+        w.key("time_limit_ms").int(limits.time.as_millis());
+        w.key("memory_limit_kb").int(limits.memory_kb);
+        w.key("runs").array();
+        for run in runs {
+            w.object().key("shape").str(run.shape.name());
+            w.key("number_count")
+                .int(run.numbers)
+                .key("status")
+                .str(run.status);
+            w.key("time_ms").int(run.elapsed.as_millis()).key("peak_kb");
+            match run.peak_kb {
+                Some(kb) => w.int(kb),
+                None => w.null(),
+            };
+            w.key("error").opt_str(run.error.as_deref()).end();
+        }
+        w.end().end();
+    });
+    out.push('\n');
+    out
 }
 
 /// Runs `cpl bench`. Returns the exit code: 0 when every shape is within

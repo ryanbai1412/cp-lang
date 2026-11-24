@@ -197,26 +197,23 @@ pub fn run_report(
     millis: u128,
     error: Option<cpl_json::Value>,
 ) -> String {
-    let values: Vec<String> = recording
-        .lives
-        .iter()
-        .map(|live| {
-            format!(
-                "{{\"line\":{},\"name\":{},\"value\":{}}}",
-                live.line,
-                cpl_json::escape_string(&live.name),
-                cpl_json::escape_string(&live.value)
-            )
-        })
-        .collect();
-    let mut out = format!(
-        "{{\"values\":[{}],\"stdout\":{},\"time_ms\":{millis}",
-        values.join(","),
-        cpl_json::escape_string(&String::from_utf8_lossy(stdout))
-    );
-    if let Some(error) = error {
-        out += &format!(",\"error\":{error}");
-    }
-    out.push_str("}\n");
+    let mut out = cpl_json::write_with(|w| {
+        w.object().key("values").array();
+        for live in &recording.lives {
+            w.object().key("line").int(live.line);
+            w.key("name")
+                .str(&live.name)
+                .key("value")
+                .str(&live.value)
+                .end();
+        }
+        w.end().key("stdout").str(&String::from_utf8_lossy(stdout));
+        w.key("time_ms").int(millis);
+        if let Some(error) = &error {
+            w.key("error").value(error);
+        }
+        w.end();
+    });
+    out.push('\n');
     out
 }

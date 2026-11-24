@@ -505,12 +505,19 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let tests = tests_dir(&source);
     let samples = scaffold.samples.len();
     if args.has("--json") {
-        let _ = writeln!(
-            stdout,
-            "{{\"path\":{},\"created\":{created},\"tests\":{},\"sample_count\":{samples}}}",
-            cpl_json::escape_string(&source.shown()),
-            cpl_json::escape_string(&tests.shown()),
-        );
+        let json = cpl_json::write_with(|w| {
+            w.object()
+                .key("path")
+                .str(&source.shown())
+                .key("created")
+                .bool(created);
+            w.key("tests")
+                .str(&tests.shown())
+                .key("sample_count")
+                .int(samples)
+                .end();
+        });
+        let _ = writeln!(stdout, "{json}");
         return 0;
     }
     let count = match samples {
@@ -594,12 +601,18 @@ fn fetch_contest(
                 let tests = tests_dir(&source);
                 first.get_or_insert_with(|| source.clone());
                 if json {
-                    rows.push(format!(
-                        "{{\"url\":{},\"path\":{},\"created\":{created},\"tests\":{},\"sample_count\":{samples}}}",
-                        cpl_json::escape_string(page),
-                        cpl_json::escape_string(&source.shown()),
-                        cpl_json::escape_string(&tests.shown()),
-                    ));
+                    rows.push(cpl_json::write_with(|w| {
+                        w.object()
+                            .key("url")
+                            .str(page)
+                            .key("path")
+                            .str(&source.shown());
+                        w.key("created")
+                            .bool(created)
+                            .key("tests")
+                            .str(&tests.shown());
+                        w.key("sample_count").int(samples).end();
+                    }));
                 } else {
                     let count = match samples {
                         1 => "1 sample".to_string(),
@@ -612,11 +625,14 @@ fn fetch_contest(
             Err(message) => {
                 failed += 1;
                 if json {
-                    rows.push(format!(
-                        "{{\"url\":{},\"error\":{}}}",
-                        cpl_json::escape_string(page),
-                        cpl_json::escape_string(&message)
-                    ));
+                    rows.push(cpl_json::write_with(|w| {
+                        w.object()
+                            .key("url")
+                            .str(page)
+                            .key("error")
+                            .str(&message)
+                            .end();
+                    }));
                 } else {
                     let _ = writeln!(stderr, "cpl: {page}: {message}");
                 }
@@ -624,13 +640,19 @@ fn fetch_contest(
         }
     }
     if json {
-        let _ = writeln!(
-            stdout,
-            "{{\"contest\":{},\"folder\":{},\"problems\":[{}]}}",
-            cpl_json::escape_string(contest),
-            cpl_json::escape_string(&folder.shown()),
-            rows.join(",")
-        );
+        let json = cpl_json::write_with(|w| {
+            w.object()
+                .key("contest")
+                .str(contest)
+                .key("folder")
+                .str(&folder.shown());
+            w.key("problems").array();
+            for row in &rows {
+                w.json(row);
+            }
+            w.end().end();
+        });
+        let _ = writeln!(stdout, "{json}");
     } else if let Some(first) = first {
         let _ = writeln!(
             stdout,

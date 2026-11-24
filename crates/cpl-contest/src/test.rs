@@ -354,15 +354,11 @@ fn run_folder(
         passed += usize::from(code == 0);
         let out = String::from_utf8_lossy(&out);
         if json {
-            rows.push(format!(
-                "{{\"path\":{},\"report\":{}}}",
-                cpl_json::escape_string(&source.shown()),
-                if out.trim().is_empty() {
-                    "null"
-                } else {
-                    out.trim()
-                }
-            ));
+            let report = Some(out.trim()).filter(|report| !report.is_empty());
+            rows.push(cpl_json::write_with(|w| {
+                w.object().key("path").str(&source.shown());
+                w.key("report").opt_json(report).end();
+            }));
         } else {
             let _ = writeln!(stdout, "{}:", source.shown());
             let _ = write!(stdout, "{out}");
@@ -370,11 +366,15 @@ fn run_folder(
     }
     let total = sources.len();
     if json {
-        let _ = writeln!(
-            stdout,
-            "{{\"problems\":[{}],\"passed_count\":{passed},\"problem_count\":{total}}}",
-            rows.join(",")
-        );
+        let json = cpl_json::write_with(|w| {
+            w.object().key("problems").array();
+            for row in &rows {
+                w.json(row);
+            }
+            w.end().key("passed_count").int(passed);
+            w.key("problem_count").int(total).end();
+        });
+        let _ = writeln!(stdout, "{json}");
     } else {
         let _ = writeln!(stdout, "{passed} of {total} problems pass every case");
     }

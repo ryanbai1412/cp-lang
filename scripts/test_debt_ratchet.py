@@ -426,7 +426,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "crates/a/src/lib.rs", "\n".join([
                 'let j = format!("{{\\"a\\":{}}}", 1);', 'let k = format!("x\\": {}", 1);',
                 'let c = root.join("cp.toml");', 'if l.starts_with("///") {}', "s.replace_range(0..1, \"\");",
-                "let db = Database::new();", ""]))
+                "let db = Database::new();", '    "{{\\"b\\":{}}}",', 's.push_str("],\\"c\\":[");',
+                'const USAGE: &str = "print `{\\"d\\": [...]}`";', ""]))
             self._write(root, "crates/a/src/tests_x.rs", "s.replace_range(0..1, \"\");\n")
             self._write(root, "crates/cpl-diag/src/lib.rs", "fn apply_fixes() { s.replace_range(0..1, \"\"); }\n")
             self._write(root, "crates/cpl-doc/src/lib.rs", 'l.strip_prefix("///");\n')
@@ -435,7 +436,8 @@ class DebtRatchetTest(unittest.TestCase):
             self._write(root, "scripts/read.py", "for p in root.glob('**/*.cp'):\n    out.write_text(p.name)\n")
             subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
             self.assertEqual(dr.json_outside_cpl_json(root),
-                             ["crates/a/Cargo.toml", "crates/a/src/lib.rs:1", "crates/a/src/lib.rs:2"])
+                             ["crates/a/Cargo.toml", "crates/a/src/lib.rs:1", "crates/a/src/lib.rs:2",
+                              "crates/a/src/lib.rs:7", "crates/a/src/lib.rs:8"])
             self.assertEqual(dr.config_schemas(root), ["crates/a/src/lib.rs"])
             self.assertEqual(dr.std_doc_parsers(root), ["crates/a/src/lib.rs:4"])
             self.assertEqual(dr.edit_engines(root), ["crates/a/src/lib.rs:5"])

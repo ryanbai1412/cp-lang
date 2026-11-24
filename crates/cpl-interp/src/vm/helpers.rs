@@ -1225,42 +1225,31 @@ impl VmStats {
             .collect();
         loop_entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
         if std::env::var("CPL_VM_STATS").ok().as_deref() == Some("json") {
-            let mut s = format!(
-                "{{\"total_fallbacks\":{},\"loop_fallbacks\":{},\"hot_loop_fallbacks\":{},\"walked\":{},\"top\":[",
-                self.total_fallbacks, self.loop_fallbacks, self.hot_loop_fallbacks, self.walked
-            );
-            for (i, (k, v)) in entries.iter().take(20).enumerate() {
-                if i > 0 {
-                    s.push(',');
-                }
-                let escaped = cpl_json::escape_string(k);
-                s.push_str(&format!("[{escaped},{v}]"));
-            }
-            s.push_str("],\"loop_top\":[");
-            for (i, (k, v)) in loop_entries.iter().take(20).enumerate() {
-                if i > 0 {
-                    s.push(',');
-                }
-                let escaped = cpl_json::escape_string(k);
-                s.push_str(&format!("[{escaped},{v}]"));
-            }
             let mut walked: Vec<_> = self.walked_counts.iter().collect();
             walked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
-            s.push_str("],\"walked_top\":[");
-            for (i, (k, v)) in walked.iter().take(20).enumerate() {
-                if i > 0 {
-                    s.push(',');
+            let walked: Vec<(&str, u64)> = walked.iter().map(|(k, &v)| (k.as_str(), v)).collect();
+            let s = cpl_json::write_with(|w| {
+                w.object().key("total_fallbacks").int(self.total_fallbacks);
+                w.key("loop_fallbacks").int(self.loop_fallbacks);
+                w.key("hot_loop_fallbacks").int(self.hot_loop_fallbacks);
+                w.key("walked").int(self.walked);
+                for (key, top) in [
+                    ("top", &entries),
+                    ("loop_top", &loop_entries),
+                    ("walked_top", &walked),
+                ] {
+                    w.key(key).array();
+                    for (k, v) in top.iter().take(20) {
+                        w.array().str(k).int(*v).end();
+                    }
+                    w.end();
                 }
-                s.push_str(&format!("[{},{v}]", cpl_json::escape_string(k)));
-            }
-            s.push_str("],\"kinds\":[");
-            for (i, (k, _)) in entries.iter().enumerate() {
-                if i > 0 {
-                    s.push(',');
+                w.key("kinds").array();
+                for (k, _) in &entries {
+                    w.str(k);
                 }
-                s.push_str(&cpl_json::escape_string(k));
-            }
-            s.push_str("]}");
+                w.end().end();
+            });
             eprintln!("{s}");
         } else {
             eprintln!(

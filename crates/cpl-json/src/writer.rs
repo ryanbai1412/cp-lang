@@ -121,6 +121,17 @@ impl<'a> Writer<'a> {
         self
     }
 
+    /// `x` with `places` digits after the point, or `null` when it is not finite.
+    pub fn fixed(&mut self, x: f64, places: usize) -> &mut Self {
+        self.item();
+        if x.is_finite() {
+            let _ = write!(self.out, "{x:.places$}");
+        } else {
+            self.out.push_str("null");
+        }
+        self
+    }
+
     pub fn bool(&mut self, b: bool) -> &mut Self {
         self.item();
         self.out.push_str(if b { "true" } else { "false" });
@@ -219,6 +230,15 @@ mod tests {
         ]);
         assert_eq!(parse(&text).unwrap(), expected);
         assert_eq!(crate::to_string(&expected).len(), text.len());
+    }
+
+    #[test]
+    fn fixed_rounds_to_its_places_and_writes_null_when_not_finite() {
+        let text = write_with(|w| {
+            w.array().fixed(1.23456, 3).fixed(2.0, 1).fixed(f64::NAN, 2);
+            w.fixed(f64::INFINITY, 2).end();
+        });
+        assert_eq!(text, "[1.235,2.0,null,null]");
     }
 
     #[test]

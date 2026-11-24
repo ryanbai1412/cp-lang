@@ -7,45 +7,35 @@ use crate::{commands::EXPLAIN_USAGE, compile, EXIT_USAGE};
 pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut String) -> u8 {
     match rest {
         ["--json"] => {
-            let _ = writeln!(stdout, "[");
-            let mut first = true;
-            for info in cpl_diag::REGISTRY {
-                if !first {
-                    let _ = writeln!(stdout, ",");
+            let json = cpl_json::write_with(|w| {
+                w.array();
+                for info in cpl_diag::REGISTRY {
+                    w.object()
+                        .key("code")
+                        .str(info.code.0)
+                        .key("title")
+                        .str(info.title);
+                    w.key("summary").str(info.summary);
+                    w.key("explanation").str(info.explanation);
+                    w.key("trigger").str(info.trigger).key("fix").str(info.fix);
+                    w.key("mode").str(info.mode).key("input").str(info.input);
+                    w.key("lint_name").null().end();
                 }
-                first = false;
-                let _ = write!(
-                    stdout,
-                    "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":{},\"input\":{},\"lint_name\":null}}",
-                    cpl_json::escape_string(info.code.0),
-                    cpl_json::escape_string(info.title),
-                    cpl_json::escape_string(info.summary),
-                    cpl_json::escape_string(info.explanation),
-                    cpl_json::escape_string(info.trigger),
-                    cpl_json::escape_string(info.fix),
-                    cpl_json::escape_string(info.mode),
-                    cpl_json::escape_string(info.input),
-                );
-            }
-            for lint in cpl_lint::LINTS {
-                if !first {
-                    let _ = writeln!(stdout, ",");
+                for lint in cpl_lint::LINTS {
+                    w.object()
+                        .key("code")
+                        .str(lint.code.0)
+                        .key("title")
+                        .str(lint.title);
+                    w.key("summary").str(lint.summary);
+                    w.key("explanation").str(lint.explanation);
+                    w.key("trigger").str(lint.trigger).key("fix").str(lint.fix);
+                    w.key("mode").str("lint").key("lint_name").str(lint.name);
+                    w.key("rule").opt_str(lint.rule).end();
                 }
-                first = false;
-                let _ = write!(
-                    stdout,
-                    "  {{\"code\":{},\"title\":{},\"summary\":{},\"explanation\":{},\"trigger\":{},\"fix\":{},\"mode\":\"lint\",\"lint_name\":{},\"rule\":{}}}",
-                    cpl_json::escape_string(lint.code.0),
-                    cpl_json::escape_string(lint.title),
-                    cpl_json::escape_string(lint.summary),
-                    cpl_json::escape_string(lint.explanation),
-                    cpl_json::escape_string(lint.trigger),
-                    cpl_json::escape_string(lint.fix),
-                    cpl_json::escape_string(lint.name),
-                    lint.rule.map_or("null".to_string(), cpl_json::escape_string),
-                );
-            }
-            let _ = writeln!(stdout, "\n]");
+                w.end();
+            });
+            let _ = writeln!(stdout, "{json}");
             0
         }
         [arg] if arg.ends_with(".cp") || std::path::Path::new(arg).is_file() => {
@@ -121,13 +111,8 @@ pub(crate) fn explain_file(
         let entries = cpl_codegen::explain_closures(&compiled.program);
         let dropped = cpl_codegen::explain_dropped_fields(&compiled.program);
         const DROPPED: &str = "never read; it and its stores are left out";
-        let row = |site: &str, lowering: &str, detail: &str| {
-            format!(
-                "  {{\"site\":{},\"lowering\":{},\"detail\":{}}}",
-                cpl_json::escape_string(site),
-                cpl_json::escape_string(lowering),
-                cpl_json::escape_string(detail),
-            )
+        let row = |site: &str, lowering: &'static str, detail: &str| {
+            (site.to_string(), lowering, detail.to_string())
         };
         let mut rows = Vec::new();
         for entry in &entries {
@@ -171,7 +156,19 @@ pub(crate) fn explain_file(
             let detail = format!("{}: {}", rep.ty, cpl_lsp::explain::describe(&rep));
             rows.push(row(&name, "storage", &detail));
         }
-        let _ = writeln!(stdout, "[\n{}\n]", rows.join(",\n"));
+        let json = cpl_json::write_with(|w| {
+            w.array();
+            for (site, lowering, detail) in &rows {
+                w.object()
+                    .key("site")
+                    .str(site)
+                    .key("lowering")
+                    .str(lowering);
+                w.key("detail").str(detail).end();
+            }
+            w.end();
+        });
+        let _ = writeln!(stdout, "{json}");
         return 0;
     }
     let section = crate::with_db(|db| cpl_lsp::explain::storage_section(db, path));

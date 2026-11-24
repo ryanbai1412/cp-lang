@@ -15,8 +15,6 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use cpl_json::escape_string as json_string;
-
 use crate::zero_cost::emit_cpp;
 use cpl_diag::Shown;
 
@@ -105,24 +103,14 @@ fn find_orig_cpp(prob_dir: &Path) -> Option<PathBuf> {
     }
     // Fall back to `submissions[*].file` in meta.json.
     let meta = std::fs::read_to_string(prob_dir.join("meta.json")).ok()?;
-    let needle = "\"file\": \"";
-    let mut rest = meta.as_str();
-    while let Some(pos) = rest.find(needle) {
-        let after = &rest[pos + needle.len()..];
-        if let Some(end) = after.find('"') {
-            let rel = &after[..end];
-            if rel.ends_with(".cpp") {
-                let cand = PathBuf::from(rel);
-                if cand.is_file() {
-                    return Some(cand);
-                }
-            }
-            rest = &after[end + 1..];
-        } else {
-            break;
-        }
-    }
-    None
+    let meta = cpl_json::parse(&meta).ok()?;
+    meta.get("submissions")?
+        .as_array()?
+        .iter()
+        .filter_map(|submission| submission.get("file")?.as_str())
+        .filter(|rel| rel.ends_with(".cpp"))
+        .map(PathBuf::from)
+        .find(|cand| cand.is_file())
 }
 
 fn choose_port(prob_dir: &Path) -> Option<(PathBuf, bool)> {
@@ -475,11 +463,18 @@ fn git_short_commit() -> String {
         .unwrap_or_else(|| "unknown".to_string())
 }
 
-fn dist_json(d: &Dist) -> String {
-    format!(
-        "{{\"n\":{},\"median\":{:.3},\"p90\":{:.3},\"p95\":{:.3},\"p99\":{:.3},\"worst\":{:.3}}}",
-        d.n, d.median, d.p90, d.p95, d.p99, d.worst
-    )
+fn dist_json(w: &mut cpl_json::Writer, d: &Dist) {
+    w.object()
+        .key("n")
+        .int(d.n)
+        .key("median")
+        .fixed(d.median, 3);
+    w.key("p90").fixed(d.p90, 3).key("p95").fixed(d.p95, 3);
+    w.key("p99")
+        .fixed(d.p99, 3)
+        .key("worst")
+        .fixed(d.worst, 3)
+        .end();
 }
 
 fn build_json(
@@ -501,76 +496,85 @@ fn build_json(
         .max_by_key(|r| r.emitted_bytes)
         .map(|r| (r.emitted_bytes, r.port.as_str()))
         .unwrap_or((0, ""));
-    let over_64k: Vec<String> = records
-        .iter()
-        .filter(|r| r.emitted_bytes > SIZE_LIMIT)
-        .map(|r| json_string(&r.port))
-        .collect();
-
     let cores = std::thread::available_parallelism().map_or(1, |n| n.get());
-    let ports_json: Vec<String> = records
-        .iter()
-        .map(|r| {
-            let mut fields = vec![
-                format!("\"problem\":{}", json_string(&r.problem)),
-                format!("\"port\":{}", json_string(&r.port)),
-                format!("\"emitted_bytes\":{}", r.emitted_bytes),
-            ];
+    let mut out = cpl_json::write_with(|w| {
+        w.object().key("meta").object();
+        w.key("commit").str(&git_short_commit());
+        w.key("cpl_version").str(env!("CARGO_PKG_VERSION"));
+        w.key("gxx").str(&gxx_version()).key("runs").int(runs);
+        w.key("problems").int(total_problems);
+        w.key("cpu")
+            .str(std::env::consts::ARCH)
+            .key("cores")
+            .int(cores);
+        w.end().key("summary").object();
+        w.key("measured")
+            .int(measured.len())
+            .key("above_floor")
+            .int(above.len());
+        w.key("floor_ms").fixed(FLOOR_S * 1000.0, 1);
+        w.key("max_emitted_bytes").int(largest.0);
+        w.key("emitted_files").int(emitted_files);
+        w.key("emitted_over_64kb").array();
+        for r in records.iter().filter(|r| r.emitted_bytes > SIZE_LIMIT) {
+            w.str(&r.port);
+        }
+        w.end().key("largest_emitted_port").str(largest.1);
+        for (key, dist) in [
+            ("time_all", &time_all),
+            ("rss_all", &rss_all),
+            ("time_above_floor", &time_above),
+            ("rss_above_floor", &rss_above),
+        ] {
+            w.key(key);
+            dist_json(w, dist);
+        }
+        w.key("target_met").bool(target_met).end();
+        w.key("ports").array();
+        for r in records {
+            w.object()
+                .key("problem")
+                .str(&r.problem)
+                .key("port")
+                .str(&r.port);
+            w.key("emitted_bytes").int(r.emitted_bytes);
             if r.tuned {
-                fields.push("\"tuned\":true".to_string());
+                w.key("tuned").bool(true);
             }
             if let Some(inp) = &r.input {
-                fields.push(format!("\"input\":{}", json_string(inp)));
+                w.key("input").str(inp);
             }
-            if let Some(v) = r.orig_s {
-                fields.push(format!("\"orig_s\":{v:.6}"));
+            for (key, v, places) in [("orig_s", r.orig_s, 6), ("port_s", r.port_s, 6)] {
+                if let Some(v) = v {
+                    w.key(key).fixed(v, places);
+                }
             }
-            if let Some(v) = r.port_s {
-                fields.push(format!("\"port_s\":{v:.6}"));
-            }
-            if let Some(v) = r.orig_rss_kb {
-                fields.push(format!("\"orig_rss_kb\":{v}"));
-            }
-            if let Some(v) = r.port_rss_kb {
-                fields.push(format!("\"port_rss_kb\":{v}"));
+            for (key, v) in [
+                ("orig_rss_kb", r.orig_rss_kb),
+                ("port_rss_kb", r.port_rss_kb),
+            ] {
+                if let Some(v) = v {
+                    w.key(key).int(v);
+                }
             }
             if let Some(v) = r.time_ratio {
-                fields.push(format!("\"time_ratio\":{v:.4}"));
-                fields.push(format!("\"above_floor\":{}", r.above_floor));
+                w.key("time_ratio")
+                    .fixed(v, 4)
+                    .key("above_floor")
+                    .bool(r.above_floor);
             }
             if let Some(v) = r.rss_ratio {
-                fields.push(format!("\"rss_ratio\":{v:.4}"));
+                w.key("rss_ratio").fixed(v, 4);
             }
             if let Some(sk) = &r.skip {
-                fields.push(format!("\"skip\":{}", json_string(sk)));
+                w.key("skip").str(sk);
             }
-            format!("{{{}}}", fields.join(","))
-        })
-        .collect();
-
-    format!(
-        "{{\n  \"meta\": {{\"commit\":{},\"cpl_version\":{},\"gxx\":{},\"runs\":{},\"problems\":{},\"cpu\":{},\"cores\":{}}},\n  \"summary\": {{\"measured\":{},\"above_floor\":{},\"floor_ms\":{:.1},\"max_emitted_bytes\":{},\"emitted_files\":{},\"emitted_over_64kb\":[{}],\"largest_emitted_port\":{},\"time_all\":{},\"rss_all\":{},\"time_above_floor\":{},\"rss_above_floor\":{},\"target_met\":{}}},\n  \"ports\": [\n    {}\n  ]\n}}\n",
-        json_string(&git_short_commit()),
-        json_string(env!("CARGO_PKG_VERSION")),
-        json_string(&gxx_version()),
-        runs,
-        total_problems,
-        json_string(std::env::consts::ARCH),
-        cores,
-        measured.len(),
-        above.len(),
-        FLOOR_S * 1000.0,
-        largest.0,
-        emitted_files,
-        over_64k.join(","),
-        json_string(largest.1),
-        dist_json(&time_all),
-        dist_json(&rss_all),
-        dist_json(&time_above),
-        dist_json(&rss_above),
-        target_met,
-        ports_json.join(",\n    "),
-    )
+            w.end();
+        }
+        w.end().end();
+    });
+    out.push('\n');
+    out
 }
 
 pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u8 {

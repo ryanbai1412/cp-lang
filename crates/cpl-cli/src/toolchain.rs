@@ -724,11 +724,15 @@ pub fn self_command(args: &[&str], stdout: &mut dyn Write, stderr: &mut String) 
             Ok(()) => ("message", out.trim_end()),
             Err(e) => ("error", e.trim_end()),
         };
-        out = format!(
-            "{{\"ok\":{},\"{key}\":{}}}\n",
-            result.is_ok(),
-            cpl_json::escape_string(said)
-        );
+        out = cpl_json::write_with(|w| {
+            w.object()
+                .key("ok")
+                .bool(result.is_ok())
+                .key(key)
+                .str(said)
+                .end();
+        });
+        out.push('\n');
     }
     let _ = stdout.write_all(out.as_bytes());
     match result {

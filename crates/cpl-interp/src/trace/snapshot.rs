@@ -452,7 +452,10 @@ pub(super) fn snapshot(
         match kind {
             Kind::Array | Kind::Parents | Kind::Grid | Kind::Dp => out.push_str("[]"),
             Kind::Adjacency | Kind::Csr | Kind::Rooted => {
-                out.push_str("{\"nodes\":[],\"edges\":[]}")
+                out = cpl_json::write_with(|w| {
+                    w.object().key("nodes").array().end();
+                    w.key("edges").array().end().end();
+                })
             }
             Kind::Scalar | Kind::Json => string(&mut out, &format!("{} values", cells(value))),
         }

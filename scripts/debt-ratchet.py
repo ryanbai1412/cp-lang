@@ -1790,6 +1790,15 @@ def _outside(rel: str, owners: tuple[str, ...]) -> bool:
 
 
 JSON_FORMAT_RE = re.compile(r'format!\("(?:\{\{\\"|[^"]*\\":)')
+# A JSON key inside any string literal: `{{\"` (a format brace before a key) or a
+# compact `\":`, whether the literal is a format!/write! argument on its own line
+# or a push_str piece.
+JSON_LITERAL_RE = re.compile(r'\{\{\\"|\\":(?! )')
+
+
+def _hand_json(line: str) -> bool:
+    return bool(JSON_FORMAT_RE.search(line)) or any(
+        JSON_LITERAL_RE.search(lit) for lit in RUST_LITERAL_RE.findall(line))
 
 
 def json_outside_cpl_json(root: Path) -> list[str]:
@@ -1798,7 +1807,7 @@ def json_outside_cpl_json(root: Path) -> list[str]:
     found = [rel for rel in _git(root, "ls-files", "Cargo.toml", "crates/*/Cargo.toml")
              if _outside(rel, ("crates/cpl-json/",)) and "serde_json" in (root / rel).read_text(encoding="utf-8")]
     return found + [f"{rel}:{i}" for rel, i, line in _src_lines(root)
-                    if _outside(rel, ("crates/cpl-json/",)) and JSON_FORMAT_RE.search(line)]
+                    if _outside(rel, ("crates/cpl-json/",)) and _hand_json(line)]
 
 
 # The one config module, named by its owner (Consumers' tools child) once it exists.

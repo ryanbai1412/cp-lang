@@ -274,9 +274,13 @@ impl Playground {
             }
         };
         // The trace is JSON text already: it goes in as it is.
-        let mut json = result.to_string();
-        json.pop();
-        json += &format!(",\"debug\":{},\"trace\":{trace}}}", Value::from(debug));
+        let json = cpl_json::write_with(|w| {
+            w.object();
+            for (key, value) in result.as_object().into_iter().flatten() {
+                w.key(key).value(value);
+            }
+            w.key("debug").str(&debug).key("trace").json(&trace).end();
+        });
         (stdout, json)
     }
 

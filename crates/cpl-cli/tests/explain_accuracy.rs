@@ -23,18 +23,12 @@ fn sources() -> Vec<PathBuf> {
 
 /// The `"lowering"` and `"detail"` of each row of `cpl explain --json`.
 fn rows(json: &str) -> Vec<(String, String)> {
-    let field = |line: &str, key: &str| -> Option<String> {
-        let start = line.find(&format!("\"{key}\":\""))? + key.len() + 4;
-        let rest = &line[start..];
-        let mut end = 0;
-        let bytes = rest.as_bytes();
-        while end < bytes.len() && !(bytes[end] == b'"' && (end == 0 || bytes[end - 1] != b'\\')) {
-            end += 1;
-        }
-        Some(rest[..end].to_string())
-    };
-    json.lines()
-        .filter_map(|l| Some((field(l, "lowering")?, field(l, "detail")?)))
+    let json = cpl_json::parse(json).expect("cpl explain --json is JSON");
+    let field = |row: &cpl_json::Value, key: &str| row.get(key)?.as_str().map(str::to_string);
+    json.as_array()
+        .unwrap_or_default()
+        .iter()
+        .filter_map(|row| Some((field(row, "lowering")?, field(row, "detail")?)))
         .collect()
 }
 

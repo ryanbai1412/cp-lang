@@ -164,12 +164,11 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
             Ok(done) => ("message", done),
             Err(e) => ("error", e),
         };
-        let _ = writeln!(
-            stdout,
-            "{{\"editor\":{},\"ok\":{ok},\"{key}\":{}}}",
-            cpl_json::escape_string(editor),
-            cpl_json::escape_string(said.trim_end())
-        );
+        let json = cpl_json::write_with(|w| {
+            w.object().key("editor").str(editor).key("ok").bool(ok);
+            w.key(key).str(said.trim_end()).end();
+        });
+        let _ = writeln!(stdout, "{json}");
     } else {
         match outcome {
             Ok(done) => {

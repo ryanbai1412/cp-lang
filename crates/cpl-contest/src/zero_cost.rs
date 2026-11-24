@@ -14,7 +14,6 @@ use std::process::{Command, Stdio};
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 use cpl_diag::Shown;
-use cpl_json::escape_string as json_string;
 
 pub const DEFAULT_DIR: &str = "bench/zero-cost";
 pub const DEFAULT_REPS: usize = 5;
@@ -434,42 +433,30 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     let all_pass = results.iter().all(|r| r.passed);
 
     if as_json {
-        let rows: Vec<String> = results
-            .iter()
-            .map(|r| {
-                let asm = match r.asm_equal {
-                    Some(true) => "\"equal\"",
-                    Some(false) => "\"different\"",
-                    None => "null",
-                };
-                let cpp_ms = r
-                    .cpp_ms
-                    .map_or("null".to_string(), |v| format!("{v:.3}"));
-                let cpp_ratio = r
-                    .cpp_ratio
-                    .map_or("null".to_string(), |v| format!("{v:.4}"));
-                format!(
-                    "{{\"name\":{},\"abstract_ms\":{:.3},\"direct_ms\":{:.3},\"cpp_ms\":{},\"ratio\":{:.4},\"cpp_ratio\":{},\"asm\":{},\"passed\":{},\"error\":{}}}",
-                    json_string(&r.name),
-                    r.abstract_ms,
-                    r.direct_ms,
-                    cpp_ms,
-                    if r.ratio.is_finite() { r.ratio } else { 0.0 },
-                    cpp_ratio,
-                    asm,
-                    r.passed,
-                    r.error.as_deref().map_or("null".to_string(), json_string),
-                )
-            })
-            .collect();
-        let _ = writeln!(
-            stdout,
-            "{{\"status\":{},\"reps\":{},\"max_ratio\":{:.2},\"pairs\":[{}]}}",
-            json_string(if all_pass { "ok" } else { "fail" }),
-            reps,
-            max_ratio,
-            rows.join(",")
-        );
+        let json = cpl_json::write_with(|w| {
+            w.object()
+                .key("status")
+                .str(if all_pass { "ok" } else { "fail" });
+            w.key("reps").int(reps).key("max_ratio").fixed(max_ratio, 2);
+            w.key("pairs").array();
+            for r in &results {
+                w.object().key("name").str(&r.name);
+                w.key("abstract_ms").fixed(r.abstract_ms, 3);
+                w.key("direct_ms").fixed(r.direct_ms, 3);
+                w.key("cpp_ms").fixed(r.cpp_ms.unwrap_or(f64::NAN), 3);
+                let ratio = if r.ratio.is_finite() { r.ratio } else { 0.0 };
+                w.key("ratio").fixed(ratio, 4);
+                w.key("cpp_ratio").fixed(r.cpp_ratio.unwrap_or(f64::NAN), 4);
+                w.key("asm").opt_str(
+                    r.asm_equal
+                        .map(|equal| if equal { "equal" } else { "different" }),
+                );
+                w.key("passed").bool(r.passed);
+                w.key("error").opt_str(r.error.as_deref()).end();
+            }
+            w.end().end();
+        });
+        let _ = writeln!(stdout, "{json}");
     } else {
         let _ = writeln!(
             stdout,
