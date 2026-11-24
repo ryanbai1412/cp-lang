@@ -10,9 +10,9 @@ across 200+ corpus ports, with every emitted file under 64 KB.
     python3 bench/corpus_p95_bench.py --ports dpl,noi22p5 --no-write
     python3 bench/corpus_p95_bench.py --check          # exit 1 unless p95 < 1.1x over 200+ ports and all files < 64 KB
 
-One port is measured per problem. The candidates come from
-research/perf/corpus-500-registry.json (refresh it with bench/corpus_registry.py), the
-canonical port first. A port is measured when
+One port is measured per problem. The candidates are each corpus package's
+port.cp, then its spec.cp, against its accepted C++ (scripts/corpus.py's
+problems() and reference()). A port is measured when
 
   1. `cpl build` accepts it and g++ compiles both it and its original,
   2. a maximum-size input exists for it, and
@@ -41,14 +41,14 @@ import argparse, concurrent.futures, json, math, os, platform, re, resource, shu
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BENCH = os.path.join(ROOT, "bench")
 RESULTS = os.path.join(ROOT, "research", "perf")
+sys.path.insert(0, os.path.join(ROOT, "scripts"))
+from corpus import problems  # noqa: E402
 CPL = os.environ.get("CPL") or os.path.join(ROOT, "target", "release", "cpl")
-REGISTRY = os.path.join(RESULTS, "corpus-500-registry.json")
 OUT_JSON = os.path.join(RESULTS, "corpus-p95-results.json")
 OUT_MD = os.path.join(RESULTS, "corpus-p95-report.md")
 SIZE_LIMIT = 64 * 1024
 TARGET_P95, TARGET_PORTS = 1.1, 200
 FLOOR_S = 0.010          # below this on both sides a ratio is process start-up noise
-FORM_RANK = {"regression": 0, "runnable": 1, "spec": 2, "draft": 3}
 SHAPES = ("random", "all smallest", "all largest", "ascending", "descending", "alternating", "path", "star")
 
 
@@ -105,29 +105,35 @@ def hand_generators():
 
 
 def candidates(only):
-    reg = json.load(open(REGISTRY))
-    canonical = {name: p["canonical"] for name, p in reg["problems"].items()}
+    """problem id -> its measurable ports, the port before the spec."""
     by_problem = {}
-    for p in reg["ports"]:
-        if p["form"] == "support" or p.get("original_language") != "cpp" or not p.get("original"): continue
-        if not (os.path.exists(os.path.join(ROOT, p["path"])) and os.path.exists(os.path.join(ROOT, p["original"]))): continue
-        stem = os.path.basename(p["path"])[:-3]
-        if only and p["problem"] not in only and stem not in only: continue
-        by_problem.setdefault(p["problem"], []).append(p)
-    if only:
-        found = set(by_problem) | {os.path.basename(p["path"])[:-3] for ports in by_problem.values() for p in ports}
-        if only - found:
-            sys.exit(f"--ports: no measurable port for {', '.join(sorted(only - found))} (see research/perf/corpus-500-registry.json)")
-    for name, ports in by_problem.items():
-        ports.sort(key=lambda p: (p["path"] != canonical.get(name), FORM_RANK.get(p["form"], 9), p["path"]))
+    for pkg in problems():
+        ref = pkg.reference()
+        if not ref or ref.suffix != ".cpp":
+            continue
+        for form, f in (("port", pkg.port), ("spec", pkg.spec)):
+            if f and (not only or pkg.id in only or f.stem in only):
+                by_problem.setdefault(pkg.id, []).append(
+                    {"problem": pkg.id, "path": short(f), "original": short(ref), "form": form})
+    if only and only - set(by_problem):
+        sys.exit(f"--ports: no measurable port for {', '.join(sorted(only - set(by_problem)))}")
     return by_problem
+
+
+def short(path):
+    return os.path.relpath(path, ROOT)
+
+
+def label(rel):
+    """`rel` without its corpus/problems/ prefix and .cp suffix."""
+    return rel.removeprefix("corpus/problems/").removesuffix(".cp")
 
 
 def prepare(port, work, timeout, hand, hand_by_prob, audit2):
     """Build both sides and find the inputs they agree on. Returns the candidate's record."""
     rel = port["path"]
     r = {"problem": port["problem"], "port": rel, "original": port["original"], "form": port["form"]}
-    d = os.path.join(work, rel.removeprefix("corpus/problems/").removeprefix("proto/ports/").removesuffix(".cp").replace("/", "__")); os.makedirs(d)
+    d = os.path.join(work, label(rel).replace("/", "__")); os.makedirs(d)
     r["dir"] = d
     name = os.path.basename(rel)[:-3]
     src = os.path.join(d, name + ".cp"); shutil.copy(os.path.join(ROOT, rel), src)
@@ -138,7 +144,7 @@ def prepare(port, work, timeout, hand, hand_by_prob, audit2):
     r["emitted_bytes"] = os.path.getsize(cpp)
 
     orig = os.path.join(ROOT, port["original"])
-    spec = hand.get(rel.removeprefix("corpus/problems/").removeprefix("proto/ports/").removesuffix(".cp")) or hand_by_prob.get(port["problem"])
+    spec = hand.get(label(rel)) or hand_by_prob.get(port["problem"])
     osrc = orig
     if spec and audit2 and name in audit2.bc5.DRIVERS:      # grader-style originals need a stdin driver
         if name == "noiwc22p3":
@@ -247,7 +253,7 @@ def line(st):
 
 
 def offender(i, r):
-    return (f"{i}. `{r['port'].removeprefix('corpus/problems/').removeprefix('proto/ports/')}`: **{r['time_ratio']:.2f}x** ({r['orig_s'] * 1e3:.0f} ms -> {r['port_s'] * 1e3:.0f} ms), "
+    return (f"{i}. `{label(r['port'])}.cp`: **{r['time_ratio']:.2f}x** ({r['orig_s'] * 1e3:.0f} ms -> {r['port_s'] * 1e3:.0f} ms), "
             f"RSS {r['rss_ratio']:.2f}x ({r['orig_rss_kb'] / 1024:.0f} -> {r['port_rss_kb'] / 1024:.0f} MB), "
             f"{r['emitted_bytes'] / 1024:.1f} KB emitted, input: {r['input']}")
 
@@ -268,14 +274,14 @@ def report(meta, s, rows):
                 f"- **Runtime ratio over the {s['above_floor']} ports where either side runs {s['floor_ms']:.0f} ms or more:** {line(s['time_above_floor'])}." if heavy else "- No port ran long enough to time.",
                 f"- Runtime ratio over all {s['measured']}: {line(s['time_all'])}. Below {s['floor_ms']:.0f} ms a ratio is mostly process start-up, so the line above is the one to quote.",
                 f"- **Peak RSS ratio** over all {s['measured']}: {line(s['rss_all'])}." + (f" Over the {s['above_floor']} timed ones: {line(s['rss_above_floor'])}." if heavy else ""),
-                f"- **Largest emitted C++17 file: {s['max_emitted_bytes'] / 1024:.1f} KB** (`{s['largest_emitted_port'].removeprefix('corpus/problems/').removeprefix('proto/ports/')}`), over all {s['emitted_files']} port files `cpl build` accepts; "
+                f"- **Largest emitted C++17 file: {s['max_emitted_bytes'] / 1024:.1f} KB** (`{label(s['largest_emitted_port'])}.cp`), over all {s['emitted_files']} port files `cpl build` accepts; "
                 + (f"{len(s['emitted_over_64kb'])} at or over 64 KB." if s["emitted_over_64kb"] else "none reaches 64 KB."), ""]
         over = [r for r in heavy if r["time_ratio"] >= TARGET_P95]
         out += [f"{len(over)} of the {len(heavy)} timed ports are at or over {TARGET_P95}x; for p95 to pass, at most {len(heavy) - math.ceil(0.95 * len(heavy))} may be.", "",
                 "## Top 20 runtime offenders", "", "Ranked by ratio among ports where either side runs at least " + f"{s['floor_ms']:.0f} ms.", ""]
         out += [offender(i, r) for i, r in enumerate(heavy[:20], 1)]
         out += ["", "## Top 10 peak-RSS offenders", ""]
-        out += [f"{i}. `{r['port'].removeprefix('corpus/problems/').removeprefix('proto/ports/')}`: **{r['rss_ratio']:.2f}x** ({r['orig_rss_kb'] / 1024:.1f} -> {r['port_rss_kb'] / 1024:.1f} MB), runtime {r['time_ratio']:.2f}x"
+        out += [f"{i}. `{label(r['port'])}.cp`: **{r['rss_ratio']:.2f}x** ({r['orig_rss_kb'] / 1024:.1f} -> {r['port_rss_kb'] / 1024:.1f} MB), runtime {r['time_ratio']:.2f}x"
                 for i, r in enumerate(sorted(done, key=lambda r: -r["rss_ratio"])[:10], 1)]
         hand = sum(r["input"].startswith("judge limits") for r in done)
         out += ["", "## What was measured", "",

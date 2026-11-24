@@ -39,7 +39,7 @@ python3 bench/corpus_p95_bench.py --tail 25 --no-write   # the 25 slowest in the
 python3 bench/corpus_p95_bench.py --check             # exit 1 unless the target is met
 ```
 
-It takes one port per problem from `corpus-500-registry.json`, builds it and
+It takes one port per problem from `scripts/corpus.py`'s `problems()`, builds it and
 its original, and times both on a maximum-size input where their outputs
 match: the judge-limit generators of `rust_max_n_audit.py` where one exists,
 otherwise the worst cases `cpl bench` derives from the port's typed `read()`s.
@@ -72,24 +72,6 @@ g++ -std=c++17 -O2 -o cxx bench/trees/tree_bench.cpp
 
 `root_bench` measures building a `Rooted` alone the same way.
 Results and the remaining gap: `bench/trees/README.md`.
-
-## Corpus registry
-
-`corpus_registry.py` is the deduplicated scoreboard over every port in `proto/ports/`: how many
-`.cp` files there are against how many distinct problems they solve, which port is the canonical
-one for each problem, raw and library-stripped line counts, which ports a harness actually
-verified, and which hard corpus problems are still unported.
-
-```
-python3 bench/corpus_registry.py                  # rewrite the registry and the report (about a second)
-python3 bench/corpus_registry.py --run-harnesses  # first re-run every batch harness (about 15 minutes)
-python3 bench/corpus_registry.py --check          # exit 1 if the committed outputs are stale
-```
-
-It writes `corpus-500-report.md` (read this one), `corpus-500-registry.json` (every port, problem
-and aggregate) and, with `--run-harnesses`, `corpus-500-harness-runs.json` (each harness's exit
-code and the line behind every pass or fail). Verification is never inferred: a port added after
-the last recorded harness run shows as `not run` until the harnesses are run again.
 
 ## Graph searches
 
