@@ -265,8 +265,8 @@ fn dijkstra<V, W, G: WeightedNext<V, W>, M>(
   let g = Graph.directed(es)
   let s = V(0) -->
 ```cp
-let d = dijkstra(g, from: [(s, 0)])                                                 // sum of weights
-let b = dijkstra(g, from: [(s, 0)], step: max)                                      // bottleneck path
+let d = dijkstra(g, from: [(s, 0)])             // sum of weights
+let b = dijkstra(g, from: [(s, 0)], step: max)  // bottleneck path
 let c = dijkstra(g.weighted(a => (a.w, 1)), from: [(s, (0, 0))], step: each(+, +))  // cost, then hops
 ```
 

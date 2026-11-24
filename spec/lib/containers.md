@@ -271,19 +271,19 @@ struct Bitset<D>                                // O(K / 64) words, 1 bit/pos
 
 <!-- signatures: std/bitset.cp -->
 ```cp
-struct BitTrieArena<W>                                                           // the nodes of every BitTrie<W> built in it
-    fn new(cap: Int = 0) -> BitTrieArena<W>                                      // O(cap), reserves cap nodes
-    @get fn node_count(self) -> Int                                              // O(1), nodes held
-struct BitTrie<W>                                                                // multiset of 0..2^W: a root handle into an arena
-    fn new() -> BitTrie<W>                                                       // O(1), no node
-    fn of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>                         // O(W), traps unless x in 0..2^W
-    fn len(self, ar: BitTrieArena<W>) -> Int                                     // O(1), with multiplicity
-    @get fn is_empty(self) -> Bool                                               // O(1)
-    fn each(self, ar: BitTrieArena<W>) -> yields Int                             // O(nodes + len), ascending
-    fn add(mut self, mut ar: BitTrieArena<W>, x: Int)                            // O(W)
-    fn count(self, ar: BitTrieArena<W>, x: Int) -> Int                           // O(W), 0 when absent
+struct BitTrieArena<W>  // the nodes of every BitTrie<W> built in it
+    fn new(cap: Int = 0) -> BitTrieArena<W>               // O(cap), reserves cap nodes
+    @get fn node_count(self) -> Int                       // O(1), nodes held
+struct BitTrie<W>  // multiset of 0..2^W: a root handle into an arena
+    fn new() -> BitTrie<W>                                // O(1), no node
+    fn of(mut ar: BitTrieArena<W>, x: Int) -> BitTrie<W>  // O(W), traps unless x in 0..2^W
+    fn len(self, ar: BitTrieArena<W>) -> Int              // O(1), with multiplicity
+    @get fn is_empty(self) -> Bool                        // O(1)
+    fn each(self, ar: BitTrieArena<W>) -> yields Int      // O(nodes + len), ascending
+    fn add(mut self, mut ar: BitTrieArena<W>, x: Int)     // O(W)
+    fn count(self, ar: BitTrieArena<W>, x: Int) -> Int    // O(W), 0 when absent
     fn walk(self, ar: BitTrieArena<W>, x: Int) -> yields (bit: Int, count: Int)  // O(W), path of x from bit W - 1
-    fn absorb(mut self, mut ar: BitTrieArena<W>, mut other: BitTrie<W>)          // O(min nodes), links other's nodes in, no copy; empties other
+    fn absorb(mut self, mut ar: BitTrieArena<W>, mut other: BitTrie<W>)  // O(min nodes), links other's nodes in, no copy; empties other
 ```
 
 Laws: every set operation agrees pointwise with `[D]Bool`; `b.first` equals
@@ -615,31 +615,31 @@ struct PArena<T>                       // append-only node pool
     fn get(self, id: Id<T>) -> T       // O(1); traps past len
     fn reserve(mut self, cap: Int)     // O(cap)
 
-struct PMultiset<D>                                                                         // hashed persistent multiset
-    fn empty() -> PMultiset<D>                                                              // O(1), no node
-    @get fn len(self) -> Int                                                                // O(1)
-    fn with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>                       // O(log |D|) time and nodes
-    fn without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>                    // O(log |D|); self when absent
-    fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int                                   // O(log |D|)
+struct PMultiset<D>                                                    // hashed persistent multiset
+    fn empty() -> PMultiset<D>                                         // O(1), no node
+    @get fn len(self) -> Int                                           // O(1)
+    fn with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>  // O(log |D|) time and nodes
+    fn without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>  // O(log |D|); self when absent
+    fn count(self, ar: PArena<PMultiset<D>>, x: D) -> Int              // O(log |D|)
     fn cmp(self, ar: PArena<PMultiset<D>>, other: PMultiset<D>, desc: Bool = false) -> Int  // O(log |D|)
-    fn within(self, ar: PArena<PMultiset<D>>) -> lends PMultisetWithin<D>                   // O(1); len, is_empty, each (ascending, copies), Show
+    fn within(self, ar: PArena<PMultiset<D>>) -> lends PMultisetWithin<D>  // O(1); len, is_empty, each (ascending, copies), Show
     // ==: O(1) by size and a 64-bit sum of fixed per-key weights
 
 struct Version<S>(root: Int)  // a version of tree or array type S; only S takes it
 
-trait Versioned<D, T>                                         // PersistentSegTree, PersistentLazySegTree, PersistentArray
-    fn get(self, v: Version<Self>, i: D) -> T                 // O(log |D|)
+trait Versioned<D, T>  // PersistentSegTree, PersistentLazySegTree, PersistentArray
+    fn get(self, v: Version<Self>, i: D) -> T  // O(log |D|)
 
 impl<S: Versioned<D, T>, D: Domain, T> Version<S>
     fn within(self, store: S) -> lends VersionWithin<S, D, T>  // O(1); len, is_empty, each, items (ascending D, O(|D| log |D|)), Show
 
-struct PersistentDsu<V>                                                         // one version of a union-find (std.dsu)
-    fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>                      // O(n) time, 2n - 1 nodes
+struct PersistentDsu<V>  // one version of a union-find (std.dsu)
+    fn new(mut ar: PArena<DsuNode<V>>) -> PersistentDsu<V>  // O(n) time, 2n - 1 nodes
     fn find(self, ar: PArena<DsuNode<V>>, v: V) -> V                            // O(log^2 n)
     fn same(self, ar: PArena<DsuNode<V>>, a: V, b: V) -> Bool                   // O(log^2 n)
     fn size(self, ar: PArena<DsuNode<V>>, v: V) -> Int                          // O(log^2 n)
     fn unite(self, mut ar: PArena<DsuNode<V>>, a: V, b: V) -> PersistentDsu<V>  // O(log^2 n), O(log n) nodes; self when already one set
-    fn within(self, ar: PArena<DsuNode<V>>) -> lends PersistentDsuWithin<V>     // O(1); len, is_empty, items (v, find(v)), Show as Dsu
+    fn within(self, ar: PArena<DsuNode<V>>) -> lends PersistentDsuWithin<V>  // O(1); len, is_empty, items (v, find(v)), Show as Dsu
 ```
 
 `cmp` orders the sorted elements lexicographically (largest first with

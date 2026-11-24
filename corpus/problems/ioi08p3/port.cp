@@ -28,7 +28,7 @@ let eaten = fish.sorted(by: f => f.len)
 var lens: [Rank]List<Int> = []  // each kind's fish lengths, increasing
 for (len, kind) in eaten: lens[rank_of[kind]].push(len)
 
-var small: [Rank]Int = 0                          // fish of each kind at most half the current top fish
+var small: [Rank]Int = 0  // fish of each kind at most half the current top fish
 var choices = SegTree<Rank, Z>.of(*, _ => Z.one)  // small[q] + 1 per kind
 var next = 0
 var total: Z = 0

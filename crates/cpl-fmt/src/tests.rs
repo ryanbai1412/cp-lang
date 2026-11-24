@@ -210,6 +210,36 @@ fn aligns_trailing_comments_of_consecutive_lines() {
     assert_eq!(fmt(src), want);
 }
 
+/// fmt-corpus friction: aligning a comment never pushes its line past the
+/// width. The group lines up at the column that keeps the most comments in
+/// width; the rest keep two spaces.
+#[test]
+fn alignment_gives_way_to_the_width() {
+    let src = "let order = [3, 1, 2].sorted(by: w => (w, desc(w)))  // by start, longest first
+for s in [0, 3]:  // the circle twice, so a wire past n can hold the ones it wraps over
+    print(s)
+";
+    assert_eq!(fmt(src), src);
+    let src = "print(ans) // single value
+print(a, b) // space-separated
+print(arr) // space-separated elements on one line, and [D]Char prints contiguously, so pass sep
+print(arr, sep: \"\\n\") // one element per line
+let a_long_name_for_a_value = compute(the, arguments) // a comment past the width at any column, so it sets the column
+";
+    let want = "print(ans)                                             // single value
+print(a, b)                                            // space-separated
+print(arr)  // space-separated elements on one line, and [D]Char prints contiguously, so pass sep
+print(arr, sep: \"\\n\")                                  // one element per line
+let a_long_name_for_a_value = compute(the, arguments)  // a comment past the width at any column, so it sets the column
+";
+    assert_eq!(fmt(src), want);
+    let src =
+        "let other = if top == i: h[j] else: h[i]         // j−i and k−j when they sum to k−i, as shown now
+if other == j - i or other == k - j: found += 1  // h[top] = k−i, so the other two are
+";
+    assert_eq!(fmt(src), src, "the width counts characters, not bytes");
+}
+
 #[test]
 fn joins_a_bracket_that_fits_on_one_line() {
     let src = "let xs = [\n    1,\n    2,\n    3,\n]\nf(\n  a,\n  b\n)\n";

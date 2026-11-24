@@ -52,7 +52,7 @@ fn covers_ring(on: List<Wire>) -> Bool:
 var holder: [Wire]?Wire = None
 var reach: ?(end: Int, by: Wire) = None
 let order = Wire.collect().sorted(by: w => (lo[w], desc(hi[w])))  // by start, longest first
-for s in [0, n]:                                                  // the circle twice, so a wire past n can hold the ones it wraps over
+for s in [0, n]:  // the circle twice, so a wire past n can hold the ones it wraps over
     for w in order:
         match reach:
             Some(r) if hi[w] + s <= r.end and r.by != w => holder[w] = holder[w] ?? Some(r.by)

@@ -32,7 +32,7 @@ fn run_around(c: Col, limit: Int) -> Range<Col>:
 
 var layer: [Col]?Layer = None  // a layer is named by the column that opened it
 var up: [Col]?(Col, Drop) = None
-var open = SortedMap<Col, Col>()                       // layers not yet inside a later run, by first column
+var open = SortedMap<Col, Col>()  // layers not yet inside a later run, by first column
 var waiting = Deque.of(Col.all.sorted(by: c => h[c]))  // columns not yet free, driest first
 var home: [Col]?Col = None                             // row-0 layer of each free column
 for r in t.record_highs():                             // rows with a new maximum temperature

@@ -20,7 +20,7 @@ fn create_map<V, E>(pairs: [E](u: V, v: V)) -> [V.count * 2][V.count * 2]V:
     let g = Graph.undirected(pairs)
     let (tree, tree_edge) = g.dfs_tree(root: V.first!)
     let tour = tree.euler_tour().collect()
-    let room = (i: Int) => min(i, 2 * n - 2 - i)                            // how far visit i is from either end
+    let room = (i: Int) => min(i, 2 * n - 2 - i)  // how far visit i is from either end
     let best = [V] v => tour.keys.filter(i => tour[i] == v).max(by: room)!  // v's roomiest visit
     var held: [V]List<V> = []
     for e in g.edges().filter(e => not tree_edge[e.e]):

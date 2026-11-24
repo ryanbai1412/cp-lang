@@ -89,7 +89,7 @@ pub(crate) fn render(src: &str, lexed: &Lexed, style: &Style, chains: bool) -> S
             out.last_mut().unwrap().comment = Some(comment.trim_end().to_string());
         }
     }
-    align_comments(&mut out);
+    align_comments(&mut out, style.line_width);
 
     let mut text = String::with_capacity(src.len() + src.len() / 8);
     for (i, line) in out.iter().enumerate() {
@@ -122,9 +122,11 @@ fn comment_depth(col: u32, next_depth: usize, prev_depth: usize, widths: &[u32])
         .max(next_depth)
 }
 
-/// Lines up the trailing comments of consecutive lines.
-fn align_comments(out: &mut [OutLine]) {
+/// Lines up the trailing comments of consecutive lines at the column that
+/// keeps the most of them within `width`; the rest keep two spaces.
+fn align_comments(out: &mut [OutLine], width: usize) {
     let has_both = |l: &OutLine| !l.code.is_empty() && l.comment.is_some();
+    let end = |l: &OutLine| l.indent + l.code.len() + 2;
     let mut i = 0;
     while i < out.len() {
         if !has_both(&out[i]) {
@@ -135,14 +137,24 @@ fn align_comments(out: &mut [OutLine]) {
         while j < out.len() && has_both(&out[j]) && !out[j].blank_before {
             j += 1;
         }
-        let column = out[i..j]
-            .iter()
-            .map(|l| l.indent + l.code.len())
-            .max()
-            .unwrap()
-            + 2;
-        for line in &mut out[i..j] {
-            let pad = column - line.indent - line.code.len();
+        let group = &mut out[i..j];
+        // A line whose comment is past the width even unaligned may still
+        // set the column.
+        let joins = |l: &OutLine, column: usize| {
+            let len = l.comment.as_ref().map_or(0, |c| c.chars().count());
+            end(l) == column || end(l) < column && column + len <= width
+        };
+        let mut best = (0, 0);
+        for l in group.iter() {
+            let c = end(l);
+            best = best.max((group.iter().filter(|l| joins(l, c)).count(), c));
+        }
+        for line in group {
+            let pad = if joins(line, best.1) {
+                best.1 + 2 - end(line)
+            } else {
+                2
+            };
             line.code.extend(std::iter::repeat_n(' ', pad));
         }
         i = j;

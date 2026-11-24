@@ -10,7 +10,7 @@
 //   digit loses a stick and the other gains one, checking the new total in O(1): O(D^2).
 // original: corpus/submissions/3738358.cpp
 const STICKS = [6, 2, 5, 5, 4, 5, 6, 3, 7, 6]
-let reshape = Set([(0, 6), (0, 9), (2, 3), (3, 5), (6, 9)])                  // same count, one stick moved
+let reshape = Set([(0, 6), (0, 9), (2, 3), (3, 5), (6, 9)])  // same count, one stick moved
 let one_off = Set([(0, 8), (1, 7), (3, 9), (5, 6), (5, 9), (6, 8), (8, 9)])  // one stick added or removed
 
 fn linked(pairs: Set<(Int, Int)>, a: Int, b: Int) -> Bool = (min(a, b), max(a, b)) in pairs

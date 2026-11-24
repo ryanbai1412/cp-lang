@@ -143,8 +143,8 @@ fn same_dir(a: Pt, b: Pt) -> Bool    // O(1), I128; parallel and same ray
 
 <!-- signatures: std/geometry.cp -->
 ```cp
-struct ByAngle(p: Pt)                                     // Ord: CCW in [0, 2*pi) from +x; zero first; I128
-struct ByAngleFrom(base: Pt, p: Pt)                       // Ord: CCW in [base, base + 2*pi); zero first; I128
+struct ByAngle(p: Pt)                // Ord: CCW in [0, 2*pi) from +x; zero first; I128
+struct ByAngleFrom(base: Pt, p: Pt)  // Ord: CCW in [base, base + 2*pi); zero first; I128
 fn angle_less(a: Pt, b: Pt, from: Pt = Pt(1, 0)) -> Bool  // O(1), I128; a precedes b CCW from base
 ```
 
@@ -239,10 +239,10 @@ struct Vec(x: F64, y: F64)         // Add, Sub, Neg; intentionally no Show
     fn dist(self, o: Vec) -> F64   // O(1)
     fn rot(self, by: Vec) -> Vec   // O(1); rotate by unit vector `by`
 
-fn polygon_area(poly: List<Vec>) -> F64                      // O(n); signed area (+ CCW, - CW)
-fn project(p: Vec, a: Vec, b: Vec) -> Vec                    // O(1); orthogonal projection onto line ab
-fn reflect(p: Vec, a: Vec, b: Vec) -> Vec                    // O(1); reflection across line ab
-fn line_dist(p: Vec, a: Vec, b: Vec) -> F64                  // O(1); perpendicular distance from p to line ab
+fn polygon_area(poly: List<Vec>) -> F64      // O(n); signed area (+ CCW, - CW)
+fn project(p: Vec, a: Vec, b: Vec) -> Vec    // O(1); orthogonal projection onto line ab
+fn reflect(p: Vec, a: Vec, b: Vec) -> Vec    // O(1); reflection across line ab
+fn line_dist(p: Vec, a: Vec, b: Vec) -> F64  // O(1); perpendicular distance from p to line ab
 fn seg_dist(p: Vec, a: Vec, b: Vec, eps: F64 = 1e-9) -> F64  // O(1); distance from p to segment [a, b]
 fn line_intersect(a: Vec, b: Vec, c: Vec, d: Vec, eps: F64 = 1e-9) -> ?Vec
 // O(1); intersection of lines ab and cd, None if parallel

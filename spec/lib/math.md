@@ -123,7 +123,7 @@ fn lcm(a: Int, b: Int) -> Int  // O(log min(|a|, |b|)); >= 0, traps on overflow
 fn ext_gcd(a: Int, b: Int) -> (g: Int, x: Int, y: Int)
 // O(log min(|a|, |b|)); a*x + b*y == g >= 0
 fn ceil_div(self: Int, b: Int) -> Int        // O(1); b != 0
-fn divmod(self: Int, d: Int) -> (Int, Int)   // O(1); Euclidean (self / d, self % d), 0 <= r < |d|, d != 0
+fn divmod(self: Int, d: Int) -> (Int, Int)  // O(1); Euclidean (self / d, self % d), 0 <= r < |d|, d != 0
 fn fixed(num: Int, den: Int, k: Int) -> Str  // O(k); exact integer decimal formatting
 fn choose(n: Int, k: Int) -> Int             // O(min(k, n - k)); 0 outside 0..=n
 fn choose2(n: Int) -> Int                    // O(1); n * (n - 1) / 2, 0 for n < 2
@@ -209,7 +209,7 @@ struct Comb<M: Add + Sub + Mul>:
     fn fact(self, n: Int) -> M                 // O(1) amortized; 0 for n >= M.MOD
     fn inv_fact(self, n: Int) -> M             // O(1) amortized; 0 <= n < M.MOD
     fn inv(self, i: Int) -> M                  // O(1) amortized; 1 <= i < M.MOD
-    fn choose(self, n: Int, k: Int) -> M       // O(1) for n < M.MOD; Lucas O(log_P n) for n >= M.MOD
+    fn choose(self, n: Int, k: Int) -> M  // O(1) for n < M.MOD; Lucas O(log_P n) for n >= M.MOD
     fn arrange(self, n: Int, k: Int) -> M      // O(1) amortized; 0 outside 0..=n
     fn multichoose(self, n: Int, k: Int) -> M  // O(1) amortized; stars and bars
     fn multinomial(self, ks: List<Int>) -> M   // O(ks.len) amortized; (sum ks)! / prod(k!)
@@ -287,14 +287,14 @@ argument that can go out of sync with `a.len`.
 <!-- signatures: std/matrix.cp -->
 ```cp
 struct Mat<T>
-    fn zeros(rows: Int, cols: Int) -> Mat<T>                           // O(n m)
-    fn identity(n: Int) -> Mat<T>                                      // O(n^2)
-    fn of(rows: List<List<T>>) -> Mat<T>                               // O(n m)
-    fn get(self, r: Int, c: Int) -> T                                  // O(1)
-    fn at(self, r: Int, c: Int) -> lends mut T                         // O(1); writable cell: m.at(i, j) += x
-    fn pow(a, e: Int) -> Mat<T>                                        // O(n^3 log e); square matrix, e >= 0
-    fn mul_vec(self, v: List<T>) -> List<T>                            // O(n m); A * v
-    fn transpose(self) -> Mat<T>                                       // O(n m)
+    fn zeros(rows: Int, cols: Int) -> Mat<T>    // O(n m)
+    fn identity(n: Int) -> Mat<T>               // O(n^2)
+    fn of(rows: List<List<T>>) -> Mat<T>        // O(n m)
+    fn get(self, r: Int, c: Int) -> T           // O(1)
+    fn at(self, r: Int, c: Int) -> lends mut T  // O(1); writable cell: m.at(i, j) += x
+    fn pow(a, e: Int) -> Mat<T>                 // O(n^3 log e); square matrix, e >= 0
+    fn mul_vec(self, v: List<T>) -> List<T>     // O(n m); A * v
+    fn transpose(self) -> Mat<T>                // O(n m)
     fn product<S>(n: Int, over: S = Semiring(+, *)) -> Monoid<Mat<T>>  // O(n^2); monoid for SegTree<D, Mat<T>>
     // impls: Add, Sub, Neg, Mul (ikj order, skipping zero entries)
 
