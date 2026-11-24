@@ -181,6 +181,38 @@ class LandTest(unittest.TestCase):
         self.assertIn("NEW red: cpl-codegen tests::new_red", r.stderr)
         self.assertNotIn("new-reds: rerunning", r.stderr)
 
+    def test_a_test_missing_or_unbuilt_at_the_base_is_a_new_red(self):
+        # 617dc8f83 landed with its own new test red: a test the base doesn't have
+        # (nextest exits 4, no tests) or can't build (exit 101) is the change's red.
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / "scripts" / "fake-tests.sh").write_text(
+            "#!/bin/sh\n"
+            "if [ -f new-red.txt ]; then echo '        FAIL [   0.010s] cpl-codegen tests::brand_new'; exit 100; fi\n"
+            "[ -f new-pass.txt ] && exit 0\n"
+            "[ -f base-broken.txt ] && exit 101\n"
+            "exit 4\n")
+        self.commit(theirs, "fake tests")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "pull", "-q", "origin", "main")
+        cmd = [sys.executable, "scripts/new_reds.py", "--base", "origin/main", "--", "sh", "scripts/fake-tests.sh"]
+        (ours / "new-pass.txt").write_text("x\n")
+        r = subprocess.run(cmd, cwd=ours, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        (ours / "new-pass.txt").unlink()
+        (ours / "new-red.txt").write_text("x\n")
+        r = subprocess.run(cmd, cwd=ours, capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("NEW red: cpl-codegen tests::brand_new", r.stderr)
+        self.assertNotIn("pre-existing red", r.stderr)
+        (theirs / "base-broken.txt").write_text("x\n")
+        self.commit(theirs, "base doesn't build")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        git(ours, "fetch", "-q", "origin")
+        r = subprocess.run(cmd, cwd=ours, capture_output=True, text=True)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("NEW red: cpl-codegen tests::brand_new", r.stderr)
+        self.assertNotIn("pre-existing red", r.stderr)
+
     def test_the_ratchet_measures_with_a_cpl_built_at_the_rebased_tip(self):
         # corpus_fmt_dirty refuses a cpl older than the sources the rebase brought in.
         theirs, ours = self.clone("theirs"), self.clone("ours")
