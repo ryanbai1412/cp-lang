@@ -55,7 +55,7 @@ pub(crate) const PASSES: &[Pass] = &[
     pass(
         "unbuilt-struct-fields",
         "built.rs",
-        Unasked,
+        Uses(&["each_built"]),
         "a_fn_field_of_a_struct_never_built_is_no_std_function",
     ),
     pass(

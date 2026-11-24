@@ -3,14 +3,13 @@
 
 use std::collections::BTreeSet;
 
-use cpl_ir::{ClosureId, ExprKind, FnId, Program, Ty};
+use cpl_ir::{ClosureId, FnId, Program, Ty};
 
-use crate::walk;
+use crate::uses::places::each_built;
 
 /// The structs with a fn field that no expression of the program builds,
 /// or of only the fns and closures `within` names (those the file writes).
-/// A struct value is only ever made by a literal (every other value of it
-/// is a copy of one), so none of these exists when the program runs.
+/// None of these exists when the program runs.
 pub(crate) fn unbuilt(
     program: &Program,
     within: Option<(&BTreeSet<FnId>, &BTreeSet<ClosureId>)>,
@@ -43,10 +42,8 @@ pub(crate) fn unbuilt(
             .map(|(_, c)| &c.body),
     );
     for block in blocks {
-        walk::deep_exprs(block, &mut |e| {
-            if let (ExprKind::Tuple(_), Ty::Struct(s)) = (&e.kind, &e.ty) {
-                unbuilt.remove(s);
-            }
+        each_built(block, &mut |s, _| {
+            unbuilt.remove(&s);
         });
     }
     unbuilt

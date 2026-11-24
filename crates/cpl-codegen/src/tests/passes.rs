@@ -193,3 +193,24 @@ fn each_written_reports_every_store_set_and_mut_arg() {
         "a stored, b passed mut, c pushed: {roots:?}"
     );
 }
+
+#[test]
+fn each_built_reports_a_struct_literal_nested_in_a_fn() {
+    let program = lower(concat!(
+        "struct P:\n",
+        "    x: Int\n",
+        "struct Q:\n",
+        "    p: P\n",
+        "fn make(k: Int) -> Q:\n",
+        "    Q(p: P(x: k))\n",
+        "print(make(1).p.x)\n",
+    ));
+    let mut built = Vec::new();
+    for f in &program.fns {
+        crate::uses::places::each_built(&f.body, &mut |s, fields| {
+            built.push((program.structs[s].name.clone(), fields.len()));
+        });
+    }
+    built.sort();
+    assert_eq!(built, [("P".to_string(), 1), ("Q".to_string(), 1)]);
+}
