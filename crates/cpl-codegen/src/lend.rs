@@ -265,7 +265,7 @@ impl<'p> Emitter<'p> {
             Some(id) => vec![&program.fns[id].body],
             None => vec![&program.setup, &program.main],
         };
-        if self.facts.stores((self.fn_id, false, slot)) > 1
+        if self.facts.stores(self.facts_local(slot)) > 1
             || !blocks.iter().all(|b| only_called(program, b, slot, 3))
         {
             return None;

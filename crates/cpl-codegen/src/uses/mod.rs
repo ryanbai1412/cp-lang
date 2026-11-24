@@ -302,6 +302,16 @@ pub(crate) const WHOLE: &str = "a `let` of a whole variable is a second value, n
 
 impl crate::emit::Emitter<'_> {
     /// Where the code being written binds its locals.
+    /// The key `Facts` has for the body being emitted.
+    pub(crate) fn facts_home(&self) -> Option<usize> {
+        self.facts.key(self.home())
+    }
+
+    /// The variable local `slot` of the body being emitted is to `Facts`.
+    pub(crate) fn facts_local(&self, slot: usize) -> crate::ranges::Var {
+        self.facts.local(self.facts_home(), slot)
+    }
+
     pub(crate) fn home(&self) -> Home {
         match (self.closure_id, self.fn_id) {
             (Some(cid), _) => Home::Closure(cid),
@@ -390,8 +400,7 @@ impl crate::emit::Emitter<'_> {
             return Some(SOURCE_CALLED);
         };
         let home = self.home();
-        if self.uses.of_binding(home, slot).mutated
-            || self.facts.stores((self.fn_id, false, slot)) > 1
+        if self.uses.of_binding(home, slot).mutated || self.facts.stores(self.facts_local(slot)) > 1
         {
             return Some(SET_AGAIN);
         }
@@ -402,7 +411,7 @@ impl crate::emit::Emitter<'_> {
             // it apart, and a reference it holds was checked for all the
             // statements after it, which cover this name.
             return changed(self.spent.contains(&root), SOURCE_MOVED).or(changed(
-                self.facts.stores((self.fn_id, false, root)) != 1,
+                self.facts.stores(self.facts_local(root)) != 1,
                 SOURCE_SET,
             ));
         }

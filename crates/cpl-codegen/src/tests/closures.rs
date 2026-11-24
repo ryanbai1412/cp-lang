@@ -337,3 +337,55 @@ fn explain_names_closure_params_and_top_level_fn_vars() {
         "{reasons:?}"
     );
 }
+
+#[test]
+fn a_closure_param_has_no_range_from_the_maker_slot_it_shares() {
+    // Closure slot 0 is `a` and top-level slot 0 is `n`: `a`'s facts are
+    // its own, so `a * b` is not taken to fit 32 bits from `n`'s range.
+    let out = cpp(concat!(
+        "let (n, m): (1..=1e5, 2..=1e9) = read()\n",
+        "domain V = 1..=n\n",
+        "let tree = Rooted(Graph.undirected(read<[n - 1](V, V)>()), V.first!)\n",
+        "let ways = tree.reroot(Monoid(1, (a, b) => a * b % m), (x, _, _) => (x + 1) % m, (u, _) => u)\n",
+        "for v in V: print(ways[v])\n",
+    ));
+    assert!(!out.contains("uint32_t(a * b)"), "{out}");
+}
+
+#[test]
+fn a_by_value_capture_keeps_the_facts_of_what_it_copies() {
+    let out = cpp(concat!(
+        "fn go(m: 1..=1000) -> Int:\n",
+        "    let f = (x: 0..=1000) => (x * 7 + 1) % m\n",
+        "    f(read()) + f(read())\n",
+        "print(go(read()))\n",
+    ));
+    assert!(!out.contains("cpl::emod("), "{out}");
+}
+
+#[test]
+fn the_emitter_asks_facts_only_through_its_own_key() {
+    // A body's slots are keyed by `facts_home`: `self.fn_id` is the
+    // enclosing fn's key inside a closure, and its slots are other variables.
+    let src = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
+    let mut bad = Vec::new();
+    let mut stack = vec![src];
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                if !path.ends_with("tests") {
+                    stack.push(path);
+                }
+            } else if path.extension().is_some_and(|e| e == "rs") && !path.ends_with("tests.rs") {
+                let text = std::fs::read_to_string(&path).unwrap();
+                for (i, line) in text.lines().enumerate() {
+                    if line.contains("self.facts.") && line.contains("self.fn_id") {
+                        bad.push(format!("{}:{}", path.display(), i + 1));
+                    }
+                }
+            }
+        }
+    }
+    assert!(bad.is_empty(), "use facts_home/facts_local: {bad:?}");
+}

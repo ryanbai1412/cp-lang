@@ -25,16 +25,16 @@ impl<'p> Emitter<'p> {
         b: &Code,
         both_narrow: bool,
     ) -> Code {
-        let dividend = self.facts.sign(self.fn_id, l);
-        let divisor = self.facts.sign(self.fn_id, r);
+        let dividend = self.facts.sign(self.facts_home(), l);
+        let divisor = self.facts.sign(self.facts_home(), r);
         if dividend != Sign::Unknown && divisor == Sign::Positive {
             // Nothing is negative: C++'s own operator agrees, and in 32
             // bits when both fit, where division is several times faster.
             let sym = if div { "/" } else { "%" };
             if !both_narrow
                 && !matches!(r.kind, ExprKind::Int(_))
-                && self.facts.fits_u32(self.fn_id, l)
-                && self.facts.fits_u32(self.fn_id, r)
+                && self.facts.fits_u32(self.facts_home(), l)
+                && self.facts.fits_u32(self.facts_home(), r)
             {
                 let int = self.ty(&cpl_ir::Ty::Int);
                 return Code::primary(format!(

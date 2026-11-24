@@ -1357,7 +1357,7 @@ impl<'p> Emitter<'p> {
             | ExprKind::DomainLo(_) => true,
             ExprKind::Local(slot) => {
                 (e.ty.is_scalar() || matches!(e.ty, Ty::Fn(..)))
-                    && self.facts.stable((self.fn_id, false, *slot))
+                    && self.facts.stable(self.facts_local(*slot))
             }
             ExprKind::Global(id) => e.ty.is_scalar() && self.facts.stable((None, true, *id)),
             ExprKind::Cast(_, inner) | ExprKind::Unary(_, inner) => self.is_fixed(inner),

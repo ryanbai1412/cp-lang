@@ -144,7 +144,7 @@ impl<'p> Emitter<'p> {
             self.elem_layout(cpl_ir::ElemLoc::Local(self.current_scope(), slot)),
         );
         let name = self.names[slot].clone();
-        let stable = self.facts.stable((self.fn_id, false, slot));
+        let stable = self.facts.stable(self.facts_local(slot));
         let hoisted = self.hoisted.contains(&slot);
         let enum_range = matches!(ty, Ty::Enum(_)) && matches!(iter, Iter::Range { .. });
         // The loop's own counter, when the body may change the variable.
@@ -235,7 +235,7 @@ impl<'p> Emitter<'p> {
                             // of its type: `<=` ends the loop.
                             None if cpp == "int"
                                 || hi_code.narrow
-                                || self.facts.below_max(self.fn_id, hi) =>
+                                || self.facts.below_max(self.facts_home(), hi) =>
                             {
                                 format!(
                                     "for ({cpp} {var} = {start}{extra}; {var} <= {bound}; {var}++) {{"

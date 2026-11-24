@@ -224,7 +224,7 @@ impl<'p> Emitter<'p> {
                         return;
                     }
                     let positive =
-                        self.facts.sign(self.fn_id, value) == crate::ranges::Sign::Positive;
+                        self.facts.sign(self.facts_home(), value) == crate::ranges::Sign::Positive;
                     let helper = match (positive, bop == BinOp::Div) {
                         (true, true) => "divp",
                         (true, false) => "modp",

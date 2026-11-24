@@ -430,7 +430,7 @@ impl<'p> Emitter<'p> {
                     && self.closure_id.is_none()
                     && !self.hoisted.contains(slot)
                     && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.local_rec(*slot, cid))
-                    && self.facts.stores((self.fn_id, false, *slot)) <= 1 =>
+                    && self.facts.stores(self.facts_local(*slot)) <= 1 =>
             {
                 let ExprKind::Closure(cid) = init.kind else {
                     unreachable!()
@@ -594,7 +594,7 @@ impl<'p> Emitter<'p> {
                     }
                     _ => text,
                 };
-                let stores = self.facts.stores((self.fn_id, false, *slot));
+                let stores = self.facts.stores(self.facts_local(*slot));
                 let auto = matches!(ty, Ty::Fn(..))
                     && matches!(init.kind, ExprKind::Closure(cid) if self.devirt.let_auto(self.closure_id, *slot, cid, stores));
                 // Slots are per fn: one another fn lent says nothing of this one.

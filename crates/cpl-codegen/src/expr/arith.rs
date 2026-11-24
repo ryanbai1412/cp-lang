@@ -120,7 +120,7 @@ impl<'p> Emitter<'p> {
         let both_narrow = a.narrow && b.narrow;
         match (&l.ty, op) {
             (Ty::Int, BinOp::Add | BinOp::Sub | BinOp::Mul)
-                if !both_narrow && !self.facts.fits(self.fn_id, op, l, r) =>
+                if !both_narrow && !self.facts.fits(self.facts_home(), op, l, r) =>
             {
                 let f = self.overflow_checked(&l.ty, op);
                 Code::primary(format!("{f}({}, {})", a.text, b.text))
@@ -155,7 +155,7 @@ impl<'p> Emitter<'p> {
                 code.narrow = both_narrow;
                 code
             }
-            (Ty::Int, BinOp::Shl) if !self.facts.fits(self.fn_id, op, l, r) => {
+            (Ty::Int, BinOp::Shl) if !self.facts.fits(self.facts_home(), op, l, r) => {
                 let b = self.shift_amount(b, 64);
                 self.need("ishl");
                 Code::primary(format!("cpl::ishl({}, {})", a.text, b.text))

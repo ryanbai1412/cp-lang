@@ -9,6 +9,7 @@
 //! counts only if it is stored exactly once, so a later assignment can't
 //! undo the fact.
 
+use crate::uses::Home;
 use cpl_ir::{
     Arg, AssignOp, BinOp, Block, Builtin, Cast, Expr, ExprKind, Iter, Place, PlaceKind, Program,
     Spec, Stmt, Ty,
@@ -66,6 +67,12 @@ pub(crate) struct Facts<'p> {
     /// Ranged params: every call checks its argument into the range, and
     /// every store to the param is checked too (R04.4.24).
     param_ranges: BTreeMap<Var, &'p Spec>,
+    /// The fns before closure 0 in the [`Facts::key`] numbering.
+    fns: usize,
+    /// Where each closure is made: a home for each `Closure` expr.
+    closure_homes: BTreeMap<usize, BTreeSet<Option<usize>>>,
+    /// A closure's by-value capture: the variable it holds a copy of.
+    captured: BTreeMap<Var, Var>,
 }
 
 fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
@@ -80,7 +87,10 @@ fn var(fn_id: Option<usize>, kind: &PlaceKind) -> Option<Var> {
 
 impl<'p> Facts<'p> {
     pub fn collect(program: &'p Program) -> Facts<'p> {
-        let mut facts = Facts::default();
+        let mut facts = Facts {
+            fns: program.fns.len(),
+            ..Facts::default()
+        };
         facts.block(None, &program.setup);
         facts.block(None, &program.main);
         for (id, f) in program.fns.iter().enumerate() {
@@ -96,7 +106,28 @@ impl<'p> Facts<'p> {
             facts.block(Some(id), &f.body);
         }
         for (cid, c) in program.closures.iter().enumerate() {
-            facts.block(Some(program.fns.len() + cid), &c.body);
+            let home = facts.key(Home::Closure(cid));
+            // A closure's parameter comes from each call: unknown.
+            for &slot in &c.params {
+                let v = (home, false, slot);
+                *facts.stores.entry(v).or_default() += 2;
+                facts.tainted.insert(v);
+            }
+            facts.block(home, &c.body);
+        }
+        for (cid, c) in program.closures.iter().enumerate() {
+            let homes = facts.closure_homes.get(&cid).filter(|h| h.len() == 1);
+            let Some(&made) = homes.and_then(BTreeSet::first) else {
+                continue;
+            };
+            for cap in c.captures.iter().filter(|cap| !cap.by_ref) {
+                let outer = match cap.is_global {
+                    true => (None, true, cap.outer),
+                    false => (made, false, cap.outer),
+                };
+                let inner = (facts.key(Home::Closure(cid)), false, cap.inner);
+                facts.captured.insert(inner, outer);
+            }
         }
         for (sid, s) in program.structs.iter().enumerate() {
             for (&fi, &w) in &s.narrow_ints {
@@ -292,6 +323,9 @@ impl<'p> Facts<'p> {
 
     /// Finds the stores and blocks inside an expression.
     fn expr(&mut self, fn_id: Option<usize>, e: &'p Expr) {
+        if let ExprKind::Closure(cid) = e.kind {
+            self.closure_homes.entry(cid).or_default().insert(fn_id);
+        }
         match &e.kind {
             ExprKind::Do(block) => self.block(fn_id, block),
             ExprKind::Call(_, args) | ExprKind::CallExpr(_, args) => {
@@ -390,9 +424,9 @@ impl<'p> Facts<'p> {
         match &e.kind {
             ExprKind::Int(n) => Some(*n),
             ExprKind::Local(slot) => {
-                let v = (fn_id, false, *slot);
+                let v = self.local(fn_id, *slot);
                 let init = self.init(v)?;
-                self.const_int(fn_id, init, depth + 1)
+                self.const_int(v.0, init, depth + 1)
             }
             ExprKind::Global(id) => {
                 let v = (None, true, *id);
@@ -414,15 +448,15 @@ impl<'p> Facts<'p> {
                 _ => None,
             },
             ExprKind::Local(slot) => {
-                let v = (fn_id, false, *slot);
+                let v = self.local(fn_id, *slot);
                 if let (1, Some(&(hi, closed))) = (self.stores(v), self.loop_hi.get(&v)) {
-                    let hi = self.upper_bound(fn_id, hi, depth + 1)?;
+                    let hi = self.upper_bound(v.0, hi, depth + 1)?;
                     return if closed { Some(hi) } else { hi.checked_sub(1) };
                 }
                 if self.stores(v) == 1 {
                     self.init
                         .get(&v)
-                        .and_then(|init| self.upper_bound(fn_id, init, depth + 1))
+                        .and_then(|init| self.upper_bound(v.0, init, depth + 1))
                 } else {
                     None
                 }
@@ -514,7 +548,7 @@ impl<'p> Facts<'p> {
             return true;
         }
         let set_once = |v: Var| {
-            let home = if v.1 { None } else { fn_id };
+            let home = v.0;
             self.stores(v) == 1
                 && self
                     .init
@@ -526,19 +560,19 @@ impl<'p> Facts<'p> {
             | ExprKind::Builtin(Builtin::Len | Builtin::AxisLen, _)
             | ExprKind::Cast(Cast::Ord, _) => true,
             ExprKind::Local(slot) => {
-                let v = (fn_id, false, *slot);
+                let v = self.local(fn_id, *slot);
                 set_once(v)
                     || matches!((self.stores(v), self.loop_hi.get(&v)), (1, Some(&(hi, closed)))
-                        if !closed || self.below_max_at(fn_id, hi, depth + 1))
+                        if !closed || self.below_max_at(v.0, hi, depth + 1))
             }
             ExprKind::Global(id) => set_once((None, true, *id)),
             ExprKind::Field(base, index) => {
                 let v = match &base.kind {
-                    ExprKind::Local(slot) => (fn_id, false, *slot),
+                    ExprKind::Local(slot) => self.local(fn_id, *slot),
                     ExprKind::Global(id) => (None, true, *id),
                     _ => return false,
                 };
-                let home = if v.1 { None } else { fn_id };
+                let home = v.0;
                 self.stores(v) == 1
                     && matches!(self.init.get(&v).map(|init| &init.kind),
                         Some(ExprKind::Tuple(items)) if items
@@ -565,6 +599,26 @@ impl<'p> Facts<'p> {
 
     /// True when the variable is stored once, so its first value is its
     /// only value.
+    /// The key a body's variables have: a fn's id, or past the fns for a
+    /// closure, whose slots are its own and not its maker's.
+    pub fn key(&self, home: Home) -> Option<usize> {
+        match home {
+            Home::Top => None,
+            Home::Fn(id) => Some(id),
+            Home::Closure(cid) => Some(self.fns + cid),
+        }
+    }
+
+    /// Local `slot` of the body keyed `fn_id`; a by-value capture is the
+    /// variable it copies, whose facts hold for the copy.
+    pub fn local(&self, fn_id: Option<usize>, slot: usize) -> Var {
+        let mut v = (fn_id, false, slot);
+        while let Some(&outer) = self.captured.get(&v) {
+            v = outer;
+        }
+        v
+    }
+
     pub fn stable(&self, v: Var) -> bool {
         self.stores.get(&v).copied().unwrap_or(0) <= 1
     }
@@ -576,7 +630,7 @@ impl<'p> Facts<'p> {
         match &e.kind {
             ExprKind::Local(_) | ExprKind::Global(_) => {
                 let v = match &e.kind {
-                    ExprKind::Local(slot) => (fn_id, false, *slot),
+                    ExprKind::Local(slot) => self.local(fn_id, *slot),
                     ExprKind::Global(id) => (None, true, *id),
                     _ => return None,
                 };
@@ -590,9 +644,7 @@ impl<'p> Facts<'p> {
                 match &init.kind {
                     ExprKind::Read(spec) => Some(spec),
                     // `let (c, w) = item[v]`: a copy of a path into input.
-                    ExprKind::Index(..) | ExprKind::Field(..) => {
-                        self.spec(if v.1 { None } else { fn_id }, init)
-                    }
+                    ExprKind::Index(..) | ExprKind::Field(..) => self.spec(v.0, init),
                     _ => None,
                 }
             }
@@ -700,7 +752,7 @@ impl<'p> Facts<'p> {
                     }
                 }
                 let v = match &e.kind {
-                    ExprKind::Local(slot) => (fn_id, false, *slot),
+                    ExprKind::Local(slot) => self.local(fn_id, *slot),
                     ExprKind::Global(id) => (None, true, *id),
                     _ => return Unknown,
                 };
@@ -711,8 +763,8 @@ impl<'p> Facts<'p> {
                         Unknown
                     };
                 }
-                // A global is set by top-level code, a local by its own fn.
-                let home = if v.1 { None } else { fn_id };
+                // A global is set by top-level code, a local by its own body.
+                let home = v.0;
                 if let Some(lo) = self.loop_lo.get(&v) {
                     return self.sign_at(home, lo, depth + 1);
                 }
