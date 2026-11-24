@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest X (Tower), https://atcoder.jp/contests/dp/tasks/dp_x
+// limits: 2000 ms, 1024 MB
 // Problem: N <= 1000 blocks, block i with weight w_i <= 1e4, solidness s_i <= 1e4 and value
 //   v_i <= 1e9. Stack some of them so every block carries a total weight above it of at most
 //   its s; print the largest total value of the tower.

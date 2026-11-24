@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest S (Digit Sum), https://atcoder.jp/contests/dp/tasks/dp_s
+// limits: 2000 ms, 1024 MB
 // Problem: K < 10^10000 (a decimal string) and d <= 100. Count the integers in 1..=K whose digit
 //   sum is a multiple of d, mod 1e9+7.
 // Solution: digit DP over K's digits: below[r] counts the numbers under K's prefix read so far

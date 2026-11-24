@@ -1,4 +1,5 @@
 // Source: SAC '22 Code Challenge 3 P3 (Bob Sort), https://dmoj.ca/problem/sac22cc3p3
+// limits: 1000 ms, 256 MB
 // Problem: n <= 1e5 distinct 1 <= A_i <= 1e9. Round r (r = 1 .. digits of max A) sorts the
 //   array by d_r, its elements' r-th digit from the right (0 when missing), ties in any
 //   order; print the array after each round.

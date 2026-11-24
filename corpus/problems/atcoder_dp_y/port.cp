@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest Y (Grid 2), https://atcoder.jp/contests/dp/tasks/dp_y
+// limits: 2000 ms, 1024 MB
 // Problem: an H x W grid (H, W <= 1e5) with N <= 3000 wall cells. Count the right/down paths
 //   from (1, 1) to (H, W) that avoid the walls, mod 1e9+7.
 // Solution: sort the walls; clean[i] = paths to wall i through no earlier wall = paths(start,

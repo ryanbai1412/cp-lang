@@ -1,4 +1,5 @@
 // Source: CCC 2021 S2 (Modern Art), https://dmoj.ca/problem/ccc21s2
+// limits: 3000 ms, 1024 MB
 // Problem: an M x N canvas (M N <= 5e6) starts black; K <= 1e6 strokes each flip a whole row (R r)
 //   or column (C c) between black and gold. Print the number of gold cells.
 // Solution: a cell is gold iff its row and column flip counts differ in parity. Keep one parity

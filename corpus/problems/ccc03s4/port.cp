@@ -1,4 +1,5 @@
 // Source: CCC 2003 S4 (Substrings), https://dmoj.ca/problem/ccc03s4
+// limits: 1000 ms, 256 MB
 // Problem: for each of N strings of 1 to 5000 alphanumeric characters, print the number of its
 //   distinct substrings, the empty one included.
 // Solution: each distinct non-empty substring is a prefix of some suffix; in suffix-array order

@@ -1,4 +1,5 @@
 // Source: AtCoder Educational DP Contest N (Slimes), https://atcoder.jp/contests/dp/tasks/dp_n
+// limits: 2000 ms, 1024 MB
 // Problem: n <= 400 slimes in a row with sizes a_i <= 1e9. Merging two adjacent slimes costs
 //   the sum of their sizes and leaves one slime of that size. Print the least total cost to
 //   merge everything into one slime.
