@@ -4,23 +4,16 @@
 //!
 //! Rule: `errors/R12`, handbook/guidelines/errors-checklist.md#r12-every-tool-shows-the-same-diagnostic.
 
-use std::io::Write;
 use std::path::Path;
-use std::process::{Command, Stdio};
 
-/// The `error[...]` header and `-->` location lines `cpl <args>` prints.
-fn errors(args: &[&str], dir: &Path) -> (bool, Vec<String>) {
-    let mut child = Command::new(env!("CARGO_BIN_EXE_cpl"))
-        .args(args)
-        .current_dir(dir)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::null())
-        .stderr(Stdio::piped())
-        .spawn()
-        .unwrap();
-    drop(child.stdin.take().map(|mut s| s.write_all(b"")));
-    let out = child.wait_with_output().unwrap();
-    let text = String::from_utf8_lossy(&out.stderr).into_owned();
+#[path = "support/parallel.rs"]
+mod parallel;
+
+/// The `error[...]` header and `-->` location lines `cpl <args>` prints,
+/// run in process on empty input.
+fn errors(args: &[&str]) -> (bool, Vec<String>) {
+    let out = cpl_cli::run_with_input(args, b"");
+    let text = out.stderr;
     let mut lines = Vec::new();
     let mut in_error = false;
     for line in text.lines() {
@@ -34,7 +27,7 @@ fn errors(args: &[&str], dir: &Path) -> (bool, Vec<String>) {
             in_error = false;
         }
     }
-    (out.status.success(), lines)
+    (out.code == 0, lines)
 }
 
 #[test]
@@ -47,19 +40,19 @@ fn check_run_and_build_report_the_same_errors() {
         .filter(|n| n.ends_with(".cp"))
         .collect();
     names.sort();
-    let mut compared = 0;
-    let mut differ = Vec::new();
-    for name in &names {
-        let (ok, check) = errors(&["check", name], &dir);
+    let compared_each = parallel::parallel(&names, |name| {
+        let file = dir.join(name);
+        let file = file.to_str().unwrap();
+        let (ok, check) = errors(&["check", file]);
         if ok || check.is_empty() {
-            continue;
+            return None;
         }
-        compared += 1;
+        let mut differ = Vec::new();
         for (cmd, args) in [
-            ("run", vec!["run", name.as_str()]),
-            ("build", vec!["build", name.as_str(), "-o", "-"]),
+            ("run", vec!["run", file]),
+            ("build", vec!["build", file, "-o", "-"]),
         ] {
-            let (ok, got) = errors(&args, &dir);
+            let (ok, got) = errors(&args);
             if ok || got != check {
                 differ.push(format!(
                     "{name}: `cpl check` reports\n  {}\nbut `cpl {cmd}` reports\n  {}",
@@ -68,7 +61,10 @@ fn check_run_and_build_report_the_same_errors() {
                 ));
             }
         }
-    }
+        Some(differ)
+    });
+    let compared = compared_each.iter().flatten().count();
+    let differ: Vec<String> = compared_each.into_iter().flatten().flatten().collect();
     println!("{compared} failing goldens compared across check, run and build");
     assert!(compared > 50, "only {compared} goldens fail to check");
     assert!(
