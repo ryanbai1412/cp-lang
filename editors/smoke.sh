@@ -16,7 +16,7 @@ root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cpl="${CPL:-$root/target/debug/cpl}"
 [ -x "$cpl" ] || { echo "editors: build cpl first: cargo build -p cpl-cli" >&2; exit 1; }
 
-echo "editors: keyword lists match crates/cpl-syntax/src/token.rs"
+echo "editors: keyword lists match crates/cpl-syntax/src/token.rs (Vim's and Emacs's are generated from it)"
 python3 - "$root" <<'PY'
 import pathlib, re, sys
 root = pathlib.Path(sys.argv[1])
@@ -24,10 +24,6 @@ token = (root / "crates/cpl-syntax/src/token.rs").read_text()
 body = token.split("pub fn keyword(text: &str)")[1].split("_ => return")[0]
 compiler = set(re.findall(r'"([a-z]+)" =>', body))
 lists = {
-    "editors/neovim/syntax/cp.vim": lambda s: " ".join(
-        l.split(None, 3)[3] for l in s.splitlines() if re.match(r"syntax keyword cp(Keyword|Boolean) ", l)),
-    "editors/emacs/cp-mode.el": lambda s: " ".join(
-        re.search(r"\(defconst cp-%s\s+'\((.*?)\)\)" % n, s, re.S).group(1) for n in ("keywords", "constants")),
     "editors/tree-sitter-cp/grammar.js": lambda s: " ".join(
         re.findall(r"'([a-z]+)'", re.search(r"boolean: _ =>(.*?)function_definition:", s, re.S).group(1))),
     "editors/jetbrains/src/main/kotlin/dev/cplang/ide/CpLexer.kt": lambda s: " ".join(

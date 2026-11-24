@@ -7,6 +7,7 @@ use std::path::{Path, PathBuf};
 
 pub(crate) const USAGE: &str = "\
 usage: cpl setup <neovim | vim | vscode | jetbrains> [OPTIONS]
+       cpl setup <vim | emacs> --grammar
 
 Writes CP Lang's editor files where the editor loads them at startup, then
 says where. Neovim gets the filetype, highlighting and `cpl lsp`:
@@ -28,6 +29,9 @@ options:
   --zip FILE    install this JetBrains plugin file instead of downloading it
   --check       JetBrains: say whether each IDE loaded the plugin when it
                 last started
+  --grammar     print the highlighting the editor reads without `cpl lsp`
+                (Vim's syntax/cp.vim, Emacs's font-lock rules), generated
+                from the lexer's tables, and install nothing
   --json        print one JSON object: the `editor`, `ok`, and the `message`
                 (or the `error`) the text output gives
 ";
@@ -48,10 +52,6 @@ const COMMON: &[(&str, &str)] = &[
     (
         "compiler/cpl.vim",
         include_str!("../../../editors/neovim/compiler/cpl.vim"),
-    ),
-    (
-        "syntax/cp.vim",
-        include_str!("../../../editors/neovim/syntax/cp.vim"),
     ),
     (
         "plugin/cplang.vim",
@@ -106,6 +106,7 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
     let mut zip = None;
     let mut check = false;
     let mut json = false;
+    let mut grammar = false;
     let mut rest = args.iter();
     while let Some(arg) = rest.next() {
         match *arg {
@@ -119,6 +120,7 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
             },
             "--check" => check = true,
             "--json" => json = true,
+            "--grammar" => grammar = true,
             "--vsix" => match rest.next() {
                 Some(f) => vsix = Some(PathBuf::from(f)),
                 None => return usage(stderr, "`--vsix` needs a file"),
@@ -139,6 +141,20 @@ pub(crate) fn setup(args: &[&str], stdout: &mut (dyn Write + Send), stderr: &mut
         "intellij" | "idea" => "jetbrains",
         other => other,
     };
+    if grammar {
+        let text = match editor {
+            "vim" | "neovim" => cpl_syntax::grammar::vim(),
+            "emacs" => cpl_syntax::grammar::emacs(),
+            _ => {
+                return usage(
+                    stderr,
+                    &format!("no `--grammar` for `{editor}`: `vim` or `emacs`"),
+                )
+            }
+        };
+        let _ = write!(stdout, "{text}");
+        return 0;
+    }
     let outcome = match editor {
         "vscode" => install_vscode(vsix),
         "jetbrains" if check => check_jetbrains(),
@@ -199,7 +215,10 @@ fn write_files(
     let dir = dir
         .or_else(|| package_dir(editor))
         .ok_or("no home folder to install into; pass --dir")?;
-    write_all(&dir, files).map_err(|e| {
+    let syntax = cpl_syntax::grammar::vim();
+    let mut files = files.to_vec();
+    files.push(("syntax/cp.vim", &syntax));
+    write_all(&dir, &files).map_err(|e| {
         format!(
             "can't write {}: {e}\nhelp: pass `--dir DIR` to install into a folder you can write",
             dir.shown()
@@ -989,7 +1008,7 @@ mod tests {
     fn every_editor_file_ships() {
         let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../editors/neovim");
         let shipped: Vec<&str> = files("neovim").unwrap().iter().map(|(p, _)| *p).collect();
-        for sub in ["ftdetect", "ftplugin", "syntax", "plugin", "queries/cp"] {
+        for sub in ["ftdetect", "ftplugin", "plugin", "queries/cp"] {
             for entry in std::fs::read_dir(root.join(sub)).unwrap() {
                 let name = format!("{sub}/{}", entry.unwrap().file_name().to_string_lossy());
                 assert!(
