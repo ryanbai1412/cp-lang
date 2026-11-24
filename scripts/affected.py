@@ -53,6 +53,8 @@ SLICES = [
      ["cpl-cli::trace_goldens", "cpl-cli::vm_fallbacks"]),
     ("corpus-warnings", "consumers", ["std/*"],
      ["cpl-lint corpus_tests::corpus_warnings_only_go_down"]),
+    ("copies", "perf (codegen)", [f"{PACKAGES}/*.cp", "spec/conformance/*.cp", "std/*", "crates/cpl-codegen/*"],
+     ["cpl-cli::read_only_copies"]),
 ]
 EDITOR_CRATES = {"editors/neovim/": "cpl-cli", "editors/vscode/": "cpl-cli",
                  "editors/jetbrains/": "cpl-cli", "editors/tree-sitter-cp/": "cpl-cli",
