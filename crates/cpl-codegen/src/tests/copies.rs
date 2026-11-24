@@ -3,6 +3,30 @@
 use super::{body, cpp};
 
 #[test]
+fn a_long_str_literal_is_built_once_not_per_call() {
+    let out = cpp("fn say(s: Str) -> Int = s.len
+var n = 0
+for i in 0..3: n += say(\"a message past the short-string buffer\")
+print(n, say(\"short\"))
+");
+    assert!(
+        out.contains(
+            "static const std::string cpl_str0(\"a message past the short-string buffer\", 38);"
+        ),
+        "a long literal is one static:\n{out}"
+    );
+    let solve = out.split("void solve()").nth(1).expect("solve() emitted");
+    assert!(
+        solve.contains("say(cpl_str0)"),
+        "the call reads the static:\n{solve}"
+    );
+    assert!(
+        solve.contains("std::string(\"short\")"),
+        "a short literal stays inline:\n{solve}"
+    );
+}
+
+#[test]
 fn a_reversed_list_pays_only_for_the_view_parts_it_uses() {
     let read = "let n: Int = read()\nlet xs: List<Int> = [read() for _ in 0..n]\n";
     let size = |body: &str| cpp(&format!("{read}{body}")).len();

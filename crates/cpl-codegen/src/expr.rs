@@ -72,6 +72,9 @@ fn char_literal(c: u8) -> Code {
 }
 
 /// The bytes as a C++ string literal, quotes included.
+/// The longest `std::string` libstdc++ and libc++ hold without allocating.
+const SHORT_STR: usize = 15;
+
 pub(crate) fn string_literal(bytes: &[u8]) -> String {
     let mut out = String::from("\"");
     let mut last = 0u8;
@@ -314,6 +317,11 @@ impl<'p> Emitter<'p> {
             ExprKind::Float(v) => float_literal(*v),
             ExprKind::Bool(v) => Code::primary(if *v { "true" } else { "false" }),
             ExprKind::Char(c) => char_literal(*c),
+            ExprKind::Str(bytes) if bytes.len() > SHORT_STR => {
+                let next = self.lits.len();
+                let k = *self.lits.entry(bytes.clone()).or_insert(next);
+                Code::primary(format!("cpl_str{k}"))
+            }
             ExprKind::Str(bytes) => {
                 if bytes.contains(&0) {
                     Code::primary(format!(

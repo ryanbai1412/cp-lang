@@ -129,6 +129,9 @@ pub(crate) struct Emitter<'p> {
     pub showing: BTreeSet<Ty>,
     /// True when some type holds itself.
     pub show_cycle: bool,
+    /// Str literals past the short-string buffer, each built once as a
+    /// `static const std::string` so a call passing one allocates nothing.
+    pub(crate) lits: BTreeMap<Vec<u8>, usize>,
     pub summaries: Vec<FnSummary>,
     /// What may happen to each heap binding, and what each fn can do.
     pub uses: crate::uses::Uses,
@@ -348,6 +351,7 @@ impl<'p> Emitter<'p> {
             show_index: BTreeMap::new(),
             showing: BTreeSet::new(),
             show_cycle: false,
+            lits: BTreeMap::new(),
             summaries: Vec::new(),
             uses: Default::default(),
             fn_id: None,
@@ -1554,6 +1558,23 @@ impl<'p> Emitter<'p> {
             out.push_str(TIE_OPS);
             self.chunks
                 .push((crate::Part::Runtime, "comparisons".into(), TIE_OPS.into()));
+        }
+        let mut lits: Vec<(&usize, &Vec<u8>)> = self.lits.iter().map(|(b, k)| (k, b)).collect();
+        lits.sort();
+        let lits: String = lits
+            .into_iter()
+            .map(|(k, bytes)| {
+                let text = crate::expr::string_literal(bytes);
+                format!(
+                    "static const std::string cpl_str{k}({text}, {});\n",
+                    bytes.len()
+                )
+            })
+            .collect();
+        if !lits.is_empty() {
+            out.push_str(&lits);
+            self.chunks
+                .push((crate::Part::Globals, "string literals".into(), lits));
         }
         let mut dom_vars = String::new();
         for id in 0..program.domains.len() {
