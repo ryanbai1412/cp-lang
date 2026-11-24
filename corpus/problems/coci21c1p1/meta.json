@@ -22,5 +22,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "[1..=8]?Int last-scored table; ?? false on a mapped optional."
+ "notes": "[1..=8]?Int last-scored table; ?? false on a mapped optional.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 9,
+  "sha": "cf3d6f4fab7536124908239978d49579c95f37ae"
+ }
 }

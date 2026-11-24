@@ -25,5 +25,10 @@
  "difficulty": "medium",
  "dream": "draft",
  "spec": "draft",
- "notes": "Plain imperative stack simulation over .items."
+ "notes": "Plain imperative stack simulation over .items.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 18,
+  "sha": "e2068abbe8035821948ce99a1539c44e0c1cb0ea"
+ }
 }

@@ -24,5 +24,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Multi-source dijkstra with negated starting distances; a max-plus dijkstra (round 4 'monoid later') would remove the negation."
+ "notes": "Multi-source dijkstra with negated starting distances; a max-plus dijkstra (round 4 'monoid later') would remove the negation.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 11,
+  "sha": "8a99133616eca32b56e5829be1d7237e88ad9473"
+ }
 }
