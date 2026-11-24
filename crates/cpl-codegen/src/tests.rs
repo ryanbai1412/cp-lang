@@ -10,6 +10,7 @@ mod devirt;
 mod lend;
 mod loops;
 mod optionals;
+mod passes;
 mod runtime;
 mod uses;
 mod widths;

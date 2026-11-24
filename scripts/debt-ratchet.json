@@ -137,6 +137,7 @@
   "cpp_std_functions": 47,
   "cpp_sunk_copies": 8,
   "codegen_effect_guesses": 0,
+  "opt_without_uses": 16,
   "near_dup_fns": 5,
   "consumer_rederived": 17,
   "rs_near_cap": [],

@@ -2487,15 +2487,25 @@ def editor_logic_lines(root: Path) -> list[str]:
 
 
 
+PASS_ROW_RE = re.compile(r'\bpass\(\s*"([\w-]+)",\s*"([\w/.]+)",\s*(\w+)')
+IR_WALK_RE = re.compile(r"\bdeep_\w+\(")
+
+
 def opt_without_uses(root: Path) -> list[str]:
-    """Codegen files outside the Uses table that walk IR bodies to decide a rewrite but
-    never read `uses::`: every optimization asks the effects/Uses table what code does."""
-    found = set()
+    """Codegen passes that decide what code does without the Uses table: each `Unasked` row
+    of the PASSES table (crates/cpl-codegen/src/passes.rs), and each module that walks IR
+    bodies with no row there. Every optimization asks the effects/Uses table what code does."""
     src = root / "crates/cpl-codegen/src"
-    for rel, _, line in _src_lines(root, "crates/cpl-codegen/src"):
-        if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses"):
-            found.add(rel)
-    return sorted(rel for rel in found if not re.search(r"\buses::|\bUses\b", (root / rel).read_text(encoding="utf-8")))
+    table = src / "passes.rs"
+    rows = PASS_ROW_RE.findall(table.read_text(encoding="utf-8")) if table.is_file() else []
+    out = [f"{_rel(root, src / module)}: {name} asks no Uses query"
+           for name, module, evidence in rows if evidence == "Unasked"]
+    listed = {_rel(root, src / module) for _, module, _ in rows}
+    walkers = {rel for rel, _, line in _src_lines(root, "crates/cpl-codegen/src")
+               if IR_WALK_RE.search(line) and not (root / rel).is_relative_to(src / "uses")
+               and (root / rel) != src / "walk.rs"}
+    out += [f"{rel}: walks IR with no PASSES row" for rel in sorted(walkers - listed)]
+    return sorted(out)
 
 
 # Every tracked list file outside test data: the counter that counts its
@@ -2699,6 +2709,7 @@ COUNTERS = {
     "cpp_std_functions": ("`// std_functions:` header sum over the corpus (read_only_copies)", cpp_std_functions, True),
     "cpp_sunk_copies": ("places copied into a by-value param a fn moves into its struct (read_only_copies)", cpp_sunk_copies, True),
     "codegen_effect_guesses": ("codegen effect or purity guesses outside the Uses table", codegen_effect_guesses, True),
+    "opt_without_uses": ("codegen passes deciding what code does without the Uses table (PASSES)", opt_without_uses, True),
     "rs_near_cap": ("rs files within 100 lines of the cap", rs_near_cap, False),
     "stale_arch_paths": ("missing paths cited by ARCHITECTURE docs", stale_arch_paths, True),
     "crate_edges": ("shipped crate edges", crate_edges, False),

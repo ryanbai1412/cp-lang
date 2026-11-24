@@ -1,0 +1,331 @@
+//! Every optimization pass codegen runs, in one table: its name, the module
+//! that decides it, the evidence it decides from, and a test that shows it
+//! fires. `scripts/debt-ratchet.py --list opt_without_uses` reads this file:
+//! a module that walks IR bodies without a row here, or a row that decides
+//! what code does without asking the Uses table ([`Evidence::Unasked`]),
+//! is counted, and the count only shrinks.
+
+/// What a pass decides from.
+pub(crate) enum Evidence {
+    /// Queries of the Uses table (`crate::uses`); each name appears in the module.
+    Uses(&'static [&'static str]),
+    /// Types, declared ranges and domain sizes alone: it asks nothing of what code does.
+    Types,
+    /// Which fns, types and branches a program reaches: the call graph, not effects.
+    Reach,
+    /// Text for `cpl explain` or a trap's message: it rewrites nothing.
+    Report,
+    /// Walks IR bodies itself to decide what code reads, writes or captures: debt,
+    /// until the question moves into the Uses table.
+    Unasked,
+}
+
+pub(crate) struct Pass {
+    pub(crate) name: &'static str,
+    /// The module, relative to `crates/cpl-codegen/src`.
+    pub(crate) module: &'static str,
+    pub(crate) evidence: Evidence,
+    /// A test (by fn name) whose C++ shows the pass taken.
+    pub(crate) fires: &'static str,
+}
+
+use Evidence::*;
+
+const fn pass(
+    name: &'static str,
+    module: &'static str,
+    evidence: Evidence,
+    fires: &'static str,
+) -> Pass {
+    Pass {
+        name,
+        module,
+        evidence,
+        fires,
+    }
+}
+
+pub(crate) const PASSES: &[Pass] = &[
+    pass(
+        "check-hoist",
+        "bounds.rs",
+        Types,
+        "a_loop_that_only_computes_checks_its_indexes_once_before",
+    ),
+    pass(
+        "unbuilt-struct-fields",
+        "built.rs",
+        Unasked,
+        "a_fn_field_of_a_struct_never_built_is_no_std_function",
+    ),
+    pass(
+        "known-fn-capture",
+        "capfn.rs",
+        Unasked,
+        "a_closure_capturing_a_known_fn_param_calls_it_directly",
+    ),
+    pass(
+        "size-compact",
+        "compact.rs",
+        Report,
+        "only_the_spaces_between_tokens_that_would_join_stay",
+    ),
+    pass(
+        "devirt",
+        "devirt.rs",
+        Uses(&["safe_place"]),
+        "local_from_struct_maker_calls_its_one_closure",
+    ),
+    pass(
+        "dead-fn-values",
+        "devirt/elide.rs",
+        Unasked,
+        "a_fn_field_read_only_into_a_dropped_local_stores_no_std_function",
+    ),
+    pass(
+        "devirt-explain",
+        "devirt/explain.rs",
+        Report,
+        "explain_names_closure_params_and_top_level_fn_vars",
+    ),
+    pass(
+        "one-closure-field",
+        "devirt/functor.rs",
+        Unasked,
+        "a_struct_field_built_from_one_capturing_closure_is_that_closures_type",
+    ),
+    pass(
+        "euclid-divrem",
+        "divrem.rs",
+        Types,
+        "power_of_two_div_and_rem_use_shift_and_mask",
+    ),
+    pass(
+        "lend-bindings",
+        "emit.rs",
+        Uses(&["Uses::of", "Touch"]),
+        "a_let_of_a_list_nothing_changes_is_a_reference_not_a_copy",
+    ),
+    pass(
+        "reach",
+        "emit/reach.rs",
+        Reach,
+        "unused_structs_and_their_trait_hooks_are_omitted",
+    ),
+    pass(
+        "explain",
+        "explain.rs",
+        Report,
+        "explain_reads_closures_copies_and_dropped_fields_off_one_write",
+    ),
+    pass(
+        "extend-borrow",
+        "expr.rs",
+        Uses(&["extend_borrows", "touch"]),
+        "extend_borrows_its_source_and_push_takes_a_dying_local",
+    ),
+    pass(
+        "lend-call-args",
+        "expr/call.rs",
+        Uses(&["uses.effects"]),
+        "a_read_only_call_on_a_global_a_closure_writes_copies_nothing",
+    ),
+    pass(
+        "closure-captures",
+        "expr/closure.rs",
+        Unasked,
+        "non_escaping_closure_borrows_immutable_non_scalar_captures",
+    ),
+    pass(
+        "rows-in-place",
+        "expr/rows.rs",
+        Unasked,
+        "trie_row_field_niches_opt_int_and_avoids_temp_vector",
+    ),
+    pass(
+        "cold-frame",
+        "frame.rs",
+        Uses(&["effects::reaching", "effects::calls_back"]),
+        "a_recursive_fns_branch_past_its_last_call_has_its_own_frame",
+    ),
+    pass(
+        "product-flatten",
+        "flat.rs",
+        Types,
+        "a_grid_read_and_written_at_product_positions_indexes_the_cell_by_ordinal",
+    ),
+    pass(
+        "size-fold",
+        "fold.rs",
+        Report,
+        "instances_differing_in_a_type_and_an_integer_become_one_template",
+    ),
+    pass(
+        "loop-fusion",
+        "fuse.rs",
+        Uses(&["trap_free_block", "block_touch", "writes_own"]),
+        "filter_map_sum_fuses_without_intermediate_vectors",
+    ),
+    pass(
+        "main-globals",
+        "globals.rs",
+        Unasked,
+        "a_global_a_fn_writes_stays_a_global_and_the_rest_are_main_locals",
+    ),
+    pass(
+        "inline-list-call",
+        "inline.rs",
+        Types,
+        "a_loop_over_a_list_literal_fn_walks_the_literal",
+    ),
+    pass(
+        "lend",
+        "lend.rs",
+        Uses(&[
+            "may_touch",
+            "lends",
+            "dead_past",
+            "reads_apart",
+            "pushed_last_reads",
+        ]),
+        "a_named_map_get_lends_when_every_read_takes_a_lent_entry",
+    ),
+    pass(
+        "lent-fields",
+        "lent_fields.rs",
+        Unasked,
+        "a_struct_built_from_a_lent_param_points_to_it_unless_it_may_outlive_it",
+    ),
+    pass(
+        "lent-optional-params",
+        "lentopt.rs",
+        Unasked,
+        "an_optional_list_a_fn_only_reads_is_lent_not_copied",
+    ),
+    pass(
+        "main-lend",
+        "main_lend.rs",
+        Uses(&["effects"]),
+        "a_let_at_the_top_level_is_a_reference_while_nothing_after_it_changes_the_list",
+    ),
+    pass(
+        "niche",
+        "niche.rs",
+        Unasked,
+        "an_optional_of_a_position_a_bool_or_a_char_is_one_scalar",
+    ),
+    pass(
+        "known-optional-fn",
+        "optfn.rs",
+        Unasked,
+        "an_optional_fn_param_every_call_fills_alike_is_called_directly",
+    ),
+    pass(
+        "fn-order",
+        "order.rs",
+        Reach,
+        "a_fn_is_declared_ahead_only_when_it_is_named_before_it_is_defined",
+    ),
+    pass(
+        "presize",
+        "presize.rs",
+        Unasked,
+        "a_comprehension_reserves_its_source_size",
+    ),
+    pass(
+        "prune",
+        "prune.rs",
+        Uses(&["Touch::of_block", "Touch::of_expr"]),
+        "a_branch_on_an_op_value_keeps_only_the_one_taken",
+    ),
+    pass(
+        "sign-ranges",
+        "ranges.rs",
+        Types,
+        "division_by_a_positive_number_of_a_non_negative_one_is_plain_cpp",
+    ),
+    pass(
+        "row-cache",
+        "rowcache.rs",
+        Uses(&["Touch::of_block"]),
+        "a_row_a_loop_never_moves_is_checked_once_per_loop",
+    ),
+    pass(
+        "scope-hoist",
+        "scope.rs",
+        Uses(&["copied_once", "Touch"]),
+        "a_loop_local_list_is_one_static_buffer",
+    ),
+    pass(
+        "narrow",
+        "scope/narrow.rs",
+        Unasked,
+        "ranged_int_struct_fields_take_the_narrowest_width",
+    ),
+    pass(
+        "sink",
+        "sink.rs",
+        Uses(&["trap_free_stmts", "pure_call", "value_closure", "pure_fns"]),
+        "a_sum_over_a_generator_builds_no_list",
+    ),
+    pass(
+        "trap-site",
+        "site.rs",
+        Report,
+        "a_trap_in_a_library_fn_points_at_the_call_that_reached_it",
+    ),
+    pass(
+        "splice",
+        "splice.rs",
+        Unasked,
+        "bfs_over_a_filtered_adj4_builds_no_list_per_cell",
+    ),
+    pass(
+        "split-structs",
+        "split.rs",
+        Unasked,
+        "a_struct_built_with_several_closures_splits_per_closure",
+    ),
+    pass(
+        "last-use-move",
+        "stmt.rs",
+        Uses(&["unread_after", "mentions_any", "lends", "is_cheap_pure_key"]),
+        "a_local_read_for_the_last_time_moves_into_its_place",
+    ),
+    pass(
+        "assign-move",
+        "stmt/assign.rs",
+        Uses(&["safe_place"]),
+        "a_last_read_assigned_inside_an_if_moves",
+    ),
+    pass(
+        "loop-in-place",
+        "stmt/loops.rs",
+        Uses(&["in_place", "trap_free_stmts", "pure_call"]),
+        "map_keys_and_values_iterate_without_copying",
+    ),
+    pass(
+        "return-move",
+        "stmt/ret.rs",
+        Uses(&["mentions_any"]),
+        "a_return_moves_each_local_it_is_the_last_use_of",
+    ),
+    pass(
+        "hash-tables",
+        "unordered.rs",
+        Uses(&["Touch::of_block"]),
+        "a_map_whose_order_never_shows_is_a_hash_table",
+    ),
+    pass(
+        "tuple-unpack",
+        "unpack.rs",
+        Unasked,
+        "a_tuple_of_closures_taken_apart_is_not_a_std_function",
+    ),
+    pass(
+        "int-width",
+        "width.rs",
+        Types,
+        "a_position_of_a_sum_domain_past_32_bits_is_an_ll",
+    ),
+];

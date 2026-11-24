@@ -1201,6 +1201,24 @@ class DebtRatchetTest(unittest.TestCase):
                              ["crates/cpl-codegen/src/lend.rs:1", "crates/cpl-codegen/src/lend.rs:3",
                               "crates/cpl-codegen/src/lend.rs:4"])
 
+    def test_opt_without_uses(self) -> None:
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            src = root / "crates/cpl-codegen/src"
+            (src / "uses").mkdir(parents=True)
+            (src / "uses/mod.rs").write_text("fn a() { walk::deep_exprs(b, &mut |e| {}); }\n")
+            (src / "walk.rs").write_text("pub fn deep_exprs() {}\n")
+            (src / "fuse.rs").write_text("use crate::uses::Touch;\nfn a() { walk::deep_exprs(b, &mut |e| {}); }\n")
+            (src / "presize.rs").write_text("fn a() { walk::deep_exprs(b, &mut |e| {}); }\n")
+            (src / "stray.rs").write_text("fn a() { walk::deep_stmts(b, &mut |s| {}); }\n")
+            (src / "a_tests.rs").write_text("fn a() { walk::deep_exprs(b, &mut |e| {}); }\n")
+            (src / "passes.rs").write_text(
+                'pass("loop-fusion", "fuse.rs", Uses(&["Touch"]), "t"),\n'
+                'pass("presize", "presize.rs", Unasked, "t"),\n')
+            self.assertEqual(dr.opt_without_uses(root),
+                             ["crates/cpl-codegen/src/presize.rs: presize asks no Uses query",
+                              "crates/cpl-codegen/src/stray.rs: walks IR with no PASSES row"])
+
     def test_stress_hand_json_and_helper_env_vars(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)

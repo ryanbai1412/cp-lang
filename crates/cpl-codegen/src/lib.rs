@@ -23,6 +23,8 @@ mod names;
 mod niche;
 mod optfn;
 mod order;
+#[cfg(test)]
+mod passes;
 mod presize;
 mod prune;
 mod ranges;
