@@ -1426,9 +1426,9 @@ pub struct SortedMap<K, V>:
     pub fn new() -> SortedMap<K, V>:
         SortedMap(SortedBag<K>.keyed(), [], [])
 
-    /// Reserve the key pool and the value list for at least `cap` entries.
+    /// Preallocate key and value storage for at least `cap` entries.
     ///
-    /// cost: \(O(\mathit{cap})\) when the storage grows, \(O(1)\) otherwise
+    /// cost: \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise
     /// traps: never
     /// example: `var m: SortedMap<Int, Str> = SortedMap(); m.set(1, "a"); m.reserve(100); m.get(1) == Some("a")`
     pub fn reserve(mut self, cap: Int):
@@ -1898,9 +1898,9 @@ pub struct AugSortedBag<K, T>:
         leaf:,
     )
 
-    /// Preallocate treap node pool for at least `cap` elements.
+    /// Preallocate leaf storage for at least `cap` distinct keys.
     ///
-    /// cost: \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise
+    /// cost: \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise
     /// traps: never
     /// example: `var b: AugSortedBag<Int, Int> = AugSortedBag((x, y) => x + y, 0, k => k); b.reserve(100); b.len == 0`
     pub fn reserve(mut self, cap: Int):
@@ -2106,9 +2106,9 @@ pub struct AugSortedSet<K, T>:
         bag: AugSortedBag(op, id, leaf),
     )
 
-    /// Preallocate treap node pool for at least `cap` keys.
+    /// Preallocate leaf storage for at least `cap` keys.
     ///
-    /// cost: \(O(n)\) when the pool grows (it moves the nodes), \(O(1)\) otherwise
+    /// cost: \(O(n)\) when the storage grows (it moves the keys), \(O(1)\) otherwise
     /// traps: never
     /// example: `var s: AugSortedSet<Int, Int> = AugSortedSet((x, y) => x + y, 0, k => k); s.reserve(100); s.len == 0`
     pub fn reserve(mut self, cap: Int) = bag.reserve(cap)

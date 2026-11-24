@@ -35,10 +35,6 @@ for i in 0..64 * n:
     s += u.len
     e.set(i, i)
     e.clear() // timed: bag.SortedMap.clear
-for r in 0..40960:
-    var f: SortedMap<Int, Int> = SortedMap()
-    f.reserve(n) // timed: bag.SortedMap.reserve
-    s += f.len
 for r in 0..16:
     for (k, v) in m.items(): // timed: bag.SortedMap.items
         s += k ^ v // timed: bag.SortedMap.items
