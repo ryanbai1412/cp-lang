@@ -150,13 +150,12 @@ impl<'a> Checker<'a> {
             return;
         }
         self.expect_fits(value_ty, target_ty, value, |c, got, want| {
-            format!(
-                "`{}` is {}, so the other side is one too, cell for cell; `{}` is {}",
-                c.quote(target.span),
-                want.with_article(),
-                c.quote(value.span),
-                got.with_article()
-            )
+            cpl_diag::msgs::check::OTHER_SIDE_ONE_TOO.at(&[
+                &c.quote(target.span),
+                &want.with_article(),
+                &c.quote(value.span),
+                &got.with_article(),
+            ])
         });
     }
 

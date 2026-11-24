@@ -557,7 +557,7 @@ pub(crate) fn missing(parts: &[String], whole: Span) -> Diagnostic {
         true => &cpl_diag::msgs::check::NO_MODULE_NOT_STD,
         false => &cpl_diag::msgs::check::NO_MODULE,
     };
-    let mut diag = row.error(whole, &[&dotted]).with_help(help);
+    let mut diag = row.at(&[&dotted]).error(whole).with_help(help);
     if let Some(m) = near {
         diag.fix(format!("use `{m}`"), whole, m);
     }

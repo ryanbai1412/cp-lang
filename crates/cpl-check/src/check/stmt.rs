@@ -175,13 +175,13 @@ impl<'a> Checker<'a> {
                     && self.local("read").is_none() =>
             {
                 (
-                    format!("`{keyword} {name} = read()` doesn't say what to read"),
+                    cpl_diag::msgs::check::READ_DOESNT_SAY_WHAT.at(&[&keyword, &name]),
                     format!("annotate it: `{keyword} {name}: Int = read()`"),
                 )
             }
             _ => return false,
         };
-        if let Some(diag) = self.error(codes::INFERENCE_NEEDS_ANNOTATION, init.span, message) {
+        if let Some(diag) = self.report_said(init.span, message) {
             diag.help = Some(help);
         }
         true
@@ -809,12 +809,12 @@ impl<'a> Checker<'a> {
                         ExprKind::Name(_) | ExprKind::Field { .. } | ExprKind::Index { .. }
                     );
                     let message = |c: &Self, got: &Ty, want: &Ty| {
-                        format!(
-                            "`{name}` is declared {}, but `{}` is {}",
-                            want.with_article(),
-                            c.quote(init.span),
-                            got.with_article()
-                        )
+                        cpl_diag::msgs::check::DECLARED_BUT.at(&[
+                            &name,
+                            &want.with_article(),
+                            &c.quote(init.span),
+                            &got.with_article(),
+                        ])
                     };
                     if fresh {
                         self.expect_fits(init_ty, declared, init, message);
@@ -969,13 +969,12 @@ impl<'a> Checker<'a> {
                 let init_ty = init.as_ref().map(|init| self.infer(init));
                 if let (Some(declared), Some(init_ty), Some(init)) = (&declared, &init_ty, init) {
                     self.expect_fits(init_ty, declared, init, |c, got, want| {
-                        format!(
-                            "`{}` is declared {}, but `{}` is {}",
-                            name.text,
-                            want.with_article(),
-                            c.quote(init.span),
-                            got.with_article()
-                        )
+                        cpl_diag::msgs::check::DECLARED_BUT.at(&[
+                            &name.text,
+                            &want.with_article(),
+                            &c.quote(init.span),
+                            &got.with_article(),
+                        ])
                     });
                 }
                 let ty = declared.or(init_ty).unwrap_or(Ty::Error);
@@ -1027,13 +1026,12 @@ impl<'a> Checker<'a> {
                         let default_ty = self.infer(default);
                         if !self.array_fills(&ty, &default_ty, default) {
                             self.expect_fits(&default_ty, &ty, default, |c, got, want| {
-                                format!(
-                                    "`{}` is {}, but its default `{}` is {}",
-                                    field.name.text,
-                                    want.with_article(),
-                                    c.quote(default.span),
-                                    got.with_article()
-                                )
+                                cpl_diag::msgs::check::BUT_DEFAULT.at(&[
+                                    &field.name.text,
+                                    &want.with_article(),
+                                    &c.quote(default.span),
+                                    &got.with_article(),
+                                ])
                             });
                         }
                     }
@@ -1407,13 +1405,12 @@ impl<'a> Checker<'a> {
                     }
                 } else if *op == AssignOp::Set && !not_assignable {
                     self.expect_moves(&value_ty, &target_ty, value, |c, got, want| {
-                        format!(
-                            "`{}` is {}, but `{}` is {}",
-                            c.quote(target.span),
-                            want.with_article(),
-                            c.quote(value.span),
-                            got.with_article()
-                        )
+                        cpl_diag::msgs::check::BUT.at(&[
+                            &c.quote(target.span),
+                            &want.with_article(),
+                            &c.quote(value.span),
+                            &got.with_article(),
+                        ])
                     });
                 }
             }
@@ -1583,13 +1580,12 @@ impl<'a> Checker<'a> {
                     if let Some(d) = &f.default {
                         let dty = self.infer(d);
                         self.expect_fits(&dty, &fty, d, |c, got, want| {
-                            format!(
-                                "`{}` is {}, but `{}` is {}",
-                                f.name.text,
-                                want.with_article(),
-                                c.quote(d.span),
-                                got.with_article()
-                            )
+                            cpl_diag::msgs::check::BUT.at(&[
+                                &f.name.text,
+                                &want.with_article(),
+                                &c.quote(d.span),
+                                &got.with_article(),
+                            ])
                         });
                     }
                     fs.push((f.name.text.clone(), fty));
@@ -1616,11 +1612,8 @@ impl<'a> Checker<'a> {
                 }
                 let ty = self.infer(body);
                 self.expect_fits(&ty, &Ty::Bool, body, |c, got, _| {
-                    format!(
-                        "a `law` must return a `Bool`, but `{}` is {}",
-                        c.quote(body.span),
-                        got.with_article()
-                    )
+                    cpl_diag::msgs::check::LAW_MUST_RETURN_BOOL
+                        .at(&[&c.quote(body.span), &got.with_article()])
                 });
 
                 self.pop_scope();
@@ -1717,12 +1710,12 @@ impl<'a> Checker<'a> {
             return;
         }
         self.expect_fits(value_ty, &ret, value, |c, got, want| {
-            format!(
-                "`{name}` returns {}, but `{}` is {}",
-                want.with_article(),
-                c.quote(value.span),
-                got.with_article()
-            )
+            cpl_diag::msgs::check::RETURNS_BUT.at(&[
+                &name,
+                &want.with_article(),
+                &c.quote(value.span),
+                &got.with_article(),
+            ])
         });
     }
 

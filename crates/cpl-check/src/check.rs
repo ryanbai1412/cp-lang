@@ -550,7 +550,7 @@ impl<'a> Checker<'a> {
     /// Reports syntax the parser read but the checker can't give a meaning
     /// to yet, as `not implemented yet: <feature>`.
     pub(crate) fn planned(&mut self, span: Span, planned: &cpl_syntax::planned::Planned) {
-        if let Some(diag) = self.error(codes::NOT_IMPLEMENTED, span, planned.message()) {
+        if let Some(diag) = self.report_said(span, planned.said()) {
             diag.help = Some(planned.now.into());
         }
     }
@@ -565,25 +565,31 @@ impl<'a> Checker<'a> {
             return None;
         }
         let before = self.sink.len();
-        self.sink.push(msg.error(span, args));
+        self.sink.push(msg.at(args).error(span));
+        (self.sink.len() > before)
+            .then(|| self.sink.last_mut())
+            .flatten()
+    }
+
+    fn report_as(
+        &mut self,
+        code: Code,
+        span: Span,
+        said: cpl_diag::msgs::Said,
+    ) -> Option<&mut Diagnostic> {
+        if self.sink.encloses_poison(span) {
+            return None;
+        }
+        let before = self.sink.len();
+        self.sink.push(said.error_as(code, span));
         (self.sink.len() > before)
             .then(|| self.sink.last_mut())
             .flatten()
     }
 
     fn report_said(&mut self, span: Span, said: cpl_diag::msgs::Said) -> Option<&mut Diagnostic> {
-        self.error(said.code(), span, said.text())
-    }
-
-    fn error(&mut self, code: Code, span: Span, message: String) -> Option<&mut Diagnostic> {
-        if self.sink.encloses_poison(span) {
-            return None;
-        }
-        let before = self.sink.len();
-        self.sink.push(Diagnostic::error(code, span, message));
-        (self.sink.len() > before)
-            .then(|| self.sink.last_mut())
-            .flatten()
+        let code = said.code();
+        self.report_as(code, span, said)
     }
 
     /// Whether an earlier fix already rewrites `span`, so an error there is its echo.
@@ -1144,21 +1150,17 @@ impl<'a> Checker<'a> {
         };
         let assigned = value && self.assigning_name == Some(span);
         let message = match (value, unknown && !in_std) {
-            _ if assigned => format!("`{name}` is assigned before it is declared"),
-            (true, false) => format!("no `{name}` in scope"),
-            (false, false) => format!("no type or domain named `{name}`"),
-            (true, true) => format!("no `{name}` in scope, and not in the stdlib (yet)"),
-            (false, true) => {
-                format!("no type or domain named `{name}`, and not in the stdlib (yet)")
-            }
+            _ if assigned => cpl_diag::msgs::check::ASSIGNED_BEFORE_DECLARED.at(&[&name]),
+            (true, false) => cpl_diag::msgs::check::NO_NAME_IN_SCOPE.at(&[&name]),
+            (false, false) => cpl_diag::msgs::check::NO_TYPE_OR_DOMAIN_NAMED.at(&[&name]),
+            (true, true) => cpl_diag::msgs::check::NO_NAME_IN_SCOPE_OR_STD.at(&[&name]),
+            (false, true) => cpl_diag::msgs::check::NO_TYPE_OR_DOMAIN_OR_STD.at(&[&name]),
         };
         let narrow = !value && matches!(name, "U8" | "I8" | "U16" | "I16" | "U32" | "I32" | "I64");
         let (code, message) = if narrow {
             (
                 codes::NO_NARROW_INT,
-                format!(
-                    "`{name}` is not a type; storage width comes from a range such as `0..=255`"
-                ),
+                cpl_diag::msgs::check::NOT_A_TYPE_STORAGE_WIDTH.at(&[&name]),
             )
         } else {
             (code, message)
@@ -1166,7 +1168,7 @@ impl<'a> Checker<'a> {
         let stream = advice::stream_fix(self.src, name, span);
         let diag = match self.rewritten(span) {
             true => None,
-            false => self.error(code, span, message),
+            false => self.report_as(code, span, message),
         };
         if let Some(diag) = diag {
             match suggestion {
@@ -1455,9 +1457,9 @@ impl<'a> Checker<'a> {
             format!("`{name}`")
         };
         let message = if keyword == "self" {
-            format!("this method takes {what}, so `self` can't be {action}")
+            cpl_diag::msgs::check::METHOD_TAKES_SO_SELF_CANT.at(&[&what, &action])
         } else {
-            format!("{subject} is {what}, so it can't be {action}")
+            cpl_diag::msgs::check::IS_WHAT_SO_IT_CANT.at(&[&subject, &what, &action])
         };
         let var_at = decl
             .filter(|_| keyword == "let")
@@ -1467,7 +1469,7 @@ impl<'a> Checker<'a> {
         } else {
             codes::ASSIGN_TO_LET
         };
-        if let Some(diag) = self.error(code, span, message) {
+        if let Some(diag) = self.report_as(code, span, message) {
             diag.help = Some(help);
             if let Some(decl) = decl {
                 diag.labels.push(cpl_diag::Label {

@@ -177,7 +177,7 @@ impl Checker<'_> {
                     hi,
                     ..
                 } => (
-                    format!("`{shown}` is a closed range of cuts, which names no piece"),
+                    cpl_diag::msgs::check::CLOSED_RANGE_OF_CUTS.at(&[&shown]),
                     match (lo, hi) {
                         (Some(lo), Some(hi)) => {
                             format!("write `{}..{}`", self.quote(lo.span), self.quote(hi.span))
@@ -186,13 +186,11 @@ impl Checker<'_> {
                     },
                 ),
                 _ => (
-                    format!(
-                        "`{shown}` is a stored `Range<{d}>`; only a literal `j..i` of cuts becomes a piece"
-                    ),
+                    cpl_diag::msgs::check::STORED_RANGE_OF_CUTS.at(&[&shown, &d]),
                     "write the range where it is used: `a[j..i]`".to_string(),
                 ),
             };
-            if let Some(diag) = self.error(codes::TYPE_MISMATCH, index.span, message) {
+            if let Some(diag) = self.report_said(index.span, message) {
                 diag.help = Some(help);
             }
             return true;

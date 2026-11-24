@@ -893,12 +893,16 @@ impl Checker<'_> {
         }
         let reported = |c: &mut Self| c.sink.last_mut().is_some_and(|d| d.span == init.span);
         if declared.is_none() && !reported(self) {
-            self.error(codes::TYPE_MISMATCH, init.span, String::new());
+            self.report(
+                init.span,
+                cpl_diag::msgs::check::EMPTY_BLOCK_NOT_EMPTY,
+                &[&kind],
+            );
         }
         let Some(diag) = self.sink.last_mut().filter(|d| d.span == init.span) else {
             return;
         };
-        diag.message = format!("`{{}}` is an empty block in CP Lang, not an empty {kind}");
+        diag.message = cpl_diag::msgs::check::EMPTY_BLOCK_NOT_EMPTY.say(&[&"{}", &kind]);
         diag.help = Some(help.say(&[&kind, &empty]));
         diag.fix(habits::WRITE.say(&[&empty]), init.span, empty.clone());
     }
@@ -1079,7 +1083,7 @@ impl Checker<'_> {
 }
 
 /// E0601's message and help: one place passed twice is said plainly.
-pub(super) fn lent_twice(a: &Arg, b: &Arg, why: &str) -> (String, String) {
+pub(super) fn lent_twice(a: &Arg, b: &Arg, why: &str) -> (cpl_diag::msgs::Said, String) {
     let (first, second) = (super::lends::show(&a.value), super::lends::show(&b.value));
     if first == second {
         let how = if a.mutable && b.mutable {
@@ -1093,7 +1097,7 @@ pub(super) fn lent_twice(a: &Arg, b: &Arg, why: &str) -> (String, String) {
             "a call can't change one place through two names"
         };
         return (
-            format!("`{first}` is lent to this call twice, {how}: {reason}"),
+            cpl_diag::msgs::check::LENT_TWICE_TO_CALL.at(&[&first, &how, &reason]),
             format!("pass `{first}` once"),
         );
     }
@@ -1103,8 +1107,9 @@ pub(super) fn lent_twice(a: &Arg, b: &Arg, why: &str) -> (String, String) {
         "one is"
     };
     (
-        format!("`{first}` and `{second}` may be the same storage, and {how} lent `mut` to this call: {why}"),
-        "guard it (`if i != j: ...`), state it (`assert i != j`), or copy the read-only one first".into(),
+        cpl_diag::msgs::check::MAY_BE_SAME_STORAGE.at(&[&first, &second, &how, &why]),
+        "guard it (`if i != j: ...`), state it (`assert i != j`), or copy the read-only one first"
+            .into(),
     )
 }
 

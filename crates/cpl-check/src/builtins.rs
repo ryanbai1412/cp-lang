@@ -59,12 +59,12 @@ impl Receiver {
 }
 
 /// `h.first_ge(k)` on a `HashMap`: a member only the ordered form has, and what to write.
-pub fn needs_order(type_name: &str, member: &str) -> Option<String> {
+pub fn needs_order(type_name: &str, member: &str) -> Option<cpl_diag::msgs::Said> {
     let hash = *Receiver::ALL.iter().find(|r| r.name() == type_name)?;
     let ordered = hash.ordered()?;
     let on = |r: Receiver| builtin_members(r).any(|m| m.name == member);
     (on(ordered) && !on(hash))
-        .then(|| format!("a {} has no order; use {}", hash.name(), ordered.name()))
+        .then(|| cpl_diag::msgs::check::NO_ORDER_USE.at(&[&hash.name(), &ordered.name()]))
 }
 
 /// How a member is written.

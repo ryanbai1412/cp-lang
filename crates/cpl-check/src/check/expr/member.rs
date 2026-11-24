@@ -210,7 +210,7 @@ impl<'a> Checker<'a> {
             // `lower_bound(..) - a.begin()`: an earlier fix already rewrites it.
             let diag = match self.rewritten(name.span) {
                 true => None,
-                false => self.error(codes::UNKNOWN_FIELD, name.span, message),
+                false => self.report_said(name.span, message),
             };
             if let Some(diag) = diag {
                 if let Some((help, fix)) = twin {
@@ -305,7 +305,7 @@ impl<'a> Checker<'a> {
         }
         if let Ty::Named { name: hash, .. } = &base_ty {
             if let Some(message) = crate::builtins::needs_order(hash, &name.text) {
-                self.error(codes::UNKNOWN_FIELD, name.span, message);
+                self.report_said(name.span, message);
                 return Ty::Error;
             }
         }

@@ -85,13 +85,12 @@ impl Checker<'_> {
             if let (Some(i), Some(fields)) = (i, want) {
                 let field = &fields[i];
                 self.expect_fits(&got, &field.ty, body, |c, got, want| {
-                    format!(
-                        "the field `{}` is {}, but `{}` is {}",
-                        field.name,
-                        want.with_article(),
-                        c.quote(body.span),
-                        got.with_article()
-                    )
+                    cpl_diag::msgs::check::FIELD_BUT.at(&[
+                        &field.name,
+                        &want.with_article(),
+                        &c.quote(body.span),
+                        &got.with_article(),
+                    ])
                 });
             }
             self.pop_scope();
@@ -267,13 +266,14 @@ impl Checker<'_> {
                         let names: Vec<String> = params.iter().map(|p| p.name.clone()).collect();
                         let suggestion = closest(&name.text, names.iter().map(String::as_str));
                         let what = if verb == "has" { "field" } else { "parameter" };
-                        let message = format!("`{callee}` has no {what} named `{}`", name.text);
+                        let message = cpl_diag::msgs::check::HAS_NO_WHAT_NAMED
+                            .at(&[&callee, &what, &name.text]);
                         let code = if callee == "Fenwick" && name.text == "act" {
                             codes::LAW_UNSUPPORTED_SPECIALIZATION
                         } else {
                             codes::UNKNOWN_ARG_NAME
                         };
-                        if let Some(diag) = self.error(code, name.span, message) {
+                        if let Some(diag) = self.report_as(code, name.span, message) {
                             let act = code == codes::LAW_UNSUPPORTED_SPECIALIZATION;
                             if let (true, Some(prev)) = (act, i.checked_sub(1)) {
                                 let cut = Span::new(args[prev].value.span.end, arg.value.span.end);
@@ -411,12 +411,14 @@ impl Checker<'_> {
                 } else {
                     format!(" for `{}`", param.name)
                 };
-                format!(
-                    "`{callee}` {verb} {}{slot}, but `{}` is {}",
-                    want.with_article(),
-                    c.quote(arg.value.span),
-                    got.with_article()
-                )
+                cpl_diag::msgs::check::BUT_2.at(&[
+                    &callee,
+                    &verb,
+                    &want.with_article(),
+                    &slot,
+                    &c.quote(arg.value.span),
+                    &got.with_article(),
+                ])
             });
             if param.mutable && !arg.mutable && is_place(&arg.value) {
                 let quoted = self.quote(arg.value.span);
@@ -532,18 +534,23 @@ impl Checker<'_> {
             };
             let verb_s = if missing.len() == 1 { "is" } else { "are" };
             let message = if what.ends_with("missing") {
-                format!(
-                    "`{callee}` {verb} {}{listed}, but {} {verb_s} missing",
-                    plural(positional.len(), noun.0, noun.1),
-                    list_names(&missing)
-                )
+                cpl_diag::msgs::check::ARGS_BUT_MISSING.at(&[
+                    &callee,
+                    &verb,
+                    &plural(positional.len(), noun.0, noun.1),
+                    &listed,
+                    &list_names(&missing),
+                    &verb_s,
+                ])
             } else {
-                format!(
-                    "`{callee}` {verb} {}, but {what}",
-                    plural(positional.len(), noun.0, noun.1)
-                )
+                cpl_diag::msgs::check::ARGS_BUT.at(&[
+                    &callee,
+                    &verb,
+                    &plural(positional.len(), noun.0, noun.1),
+                    &what,
+                ])
             };
-            self.error(codes::WRONG_ARG_COUNT, call.span, message);
+            self.report_said(call.span, message);
         }
     }
 }

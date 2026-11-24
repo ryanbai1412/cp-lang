@@ -236,7 +236,7 @@ impl<'a> Checker<'a> {
         got: &Ty,
         want: &Ty,
         at: &Expr,
-        message: &mut dyn FnMut(&Self, &Ty, &Ty) -> String,
+        message: &mut dyn FnMut(&Self, &Ty, &Ty) -> Option<cpl_diag::msgs::Said>,
     ) -> bool {
         // `none` fills whatever is declared, and code that already has an
         // error is not reported again.
@@ -341,15 +341,17 @@ impl<'a> Checker<'a> {
             return true;
         }
         if let Some(may) = self.unhandled_step(got, want, at) {
-            let text = format!(
-                "expected {want}, got {got}: `{}` {may}",
-                self.quote(at.span)
-            );
+            let text = cpl_diag::msgs::check::EXPECTED_GOT_STEP.at(&[
+                &want,
+                &got,
+                &self.quote(at.span),
+                &may,
+            ]);
             let help = self.step_help(at);
             let origin = self.origin(at, &format!("declared as {}", got.with_article()));
             // R04.8.4: a `?V` where a `V` is wanted is the wrong type, not the wrong domain.
             let code = { codes::TYPE_MISMATCH };
-            if let Some(diag) = self.error(code, at.span, text) {
+            if let Some(diag) = self.report_as(code, at.span, text) {
                 diag.help = Some(help);
                 diag.labels.extend(origin);
             }
@@ -378,7 +380,11 @@ impl<'a> Checker<'a> {
         let quoted = self.quote(at.span);
         let origin = self.origin(at, &format!("declared as {}", got.with_article()));
         let struct_of_tuple = self.struct_of_tuple(got, want, at);
-        if let Some(diag) = self.error(code, at.span, text) {
+        let reported = match text {
+            Some(text) => self.report_as(code, at.span, text),
+            None => None,
+        };
+        if let Some(diag) = reported {
             diag.labels.extend(origin);
             if let (true, Ty::Pos(domain)) = (got.is_int(), want) {
                 diag.help = Some(format!("convert it with `{domain}({quoted})`"));

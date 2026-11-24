@@ -267,11 +267,7 @@ impl<'a> Checker<'a> {
             ExprKind::By { walk, step } => {
                 let step_ty = self.infer(step);
                 self.expect_fits(&step_ty, &Ty::Int, step, |c, got, _| {
-                    format!(
-                        "a step is an Int, and `{}` is {}",
-                        c.quote(step.span),
-                        got.with_article()
-                    )
+                    cpl_diag::msgs::check::STEP_INT.at(&[&c.quote(step.span), &got.with_article()])
                 });
                 self.infer(walk)
             }
@@ -634,13 +630,12 @@ impl<'a> Checker<'a> {
                     let value_ty = self.infer(value);
                     if let Some(field_ty) = self.field_of(&ty, name) {
                         self.expect_fits(&value_ty, &field_ty, value, |c, got, want| {
-                            format!(
-                                "`{}` is {}, but `{}` is {}",
-                                name.text,
-                                want.with_article(),
-                                c.quote(value.span),
-                                got.with_article()
-                            )
+                            cpl_diag::msgs::check::BUT.at(&[
+                                &name.text,
+                                &want.with_article(),
+                                &c.quote(value.span),
+                                &got.with_article(),
+                            ])
                         });
                     }
                 }

@@ -438,7 +438,7 @@ fn hash_rows_are_what_a_hash_receiver_takes() {
         for row in cpl_check::builtin_members(ordered) {
             let listed = cpl_check::builtin_members(hash).any(|m| m.name == row.name);
             let want = format!("a {} has no order; use {}", hash.name(), ordered.name());
-            let said = cpl_check::needs_order(hash.name(), row.name);
+            let said = cpl_check::needs_order(hash.name(), row.name).map(|s| s.text());
             if listed != said.is_none() || !listed && said.as_deref() != Some(want.as_str()) {
                 wrong.push(format!(
                     "{}.{}: needs_order gave {said:?}",

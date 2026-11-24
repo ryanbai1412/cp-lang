@@ -262,14 +262,14 @@ impl<'a> Checker<'a> {
             return;
         }
         let decl = self.let_decl(&root);
-        let message = format!("`{root}` is not a var, so `{}` can't change it", show(call));
+        let message = cpl_diag::msgs::check::NOT_A_VAR_CANT_CHANGE.at(&[&root, &show(call)]);
         // R07.11.1: an in-place method needs a `var` source.
         let code = if viewed {
             codes::ASSIGN_TO_LET
         } else {
             codes::MUT_OF_IMMUTABLE
         };
-        if let Some(diag) = self.error(code, base.span, message) {
+        if let Some(diag) = self.report_as(code, base.span, message) {
             super::declare_with_var(diag, &root, decl);
         }
     }

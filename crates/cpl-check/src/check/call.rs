@@ -497,12 +497,11 @@ impl<'a> Checker<'a> {
                     };
                     if !fits_bound {
                         this.expect_fits(&ety, &k_ty, e, |c, got, want| {
-                            format!(
-                                "range bound `{}` is {}, expected {}",
-                                c.quote(e.span),
-                                got.with_article(),
-                                want.with_article()
-                            )
+                            cpl_diag::msgs::check::RANGE_BOUND_EXPECTED.at(&[
+                                &c.quote(e.span),
+                                &got.with_article(),
+                                &want.with_article(),
+                            ])
                         });
                     }
                 };
@@ -521,12 +520,11 @@ impl<'a> Checker<'a> {
                 let got = self.infer(arg);
                 if !matches!(got, Ty::Error | Ty::Unknown) {
                     self.expect_fits(&got, &want, arg, |c, g, w| {
-                        format!(
-                            "`{}` is {}, expected {}",
-                            c.quote(arg.span),
-                            g.with_article(),
-                            w.with_article()
-                        )
+                        cpl_diag::msgs::check::EXPECTED.at(&[
+                            &c.quote(arg.span),
+                            &g.with_article(),
+                            &w.with_article(),
+                        ])
                     });
                 }
             }
@@ -930,12 +928,11 @@ impl<'a> Checker<'a> {
             if arg.name.is_none() {
                 let got = self.infer(&arg.value);
                 self.expect_fits(&got, &Ty::Int, &arg.value, |c, got, _| {
-                    format!(
-                        "`{}` takes an `Int`, but `{}` is {}",
-                        c.quote(callee.span),
-                        c.quote(arg.value.span),
-                        got.with_article()
-                    )
+                    cpl_diag::msgs::check::TAKES_INT_BUT.at(&[
+                        &c.quote(callee.span),
+                        &c.quote(arg.value.span),
+                        &got.with_article(),
+                    ])
                 });
                 return Some(Ty::Pos(format!("{d}.cuts")));
             }
@@ -1485,11 +1482,12 @@ impl<'a> Checker<'a> {
                                 })
                                 .unwrap_or(&factors[i].1);
                             self.expect_fits(&arg_ty, want, &arg.value, |c, got, want| {
-                                format!(
-                                    "`{name}` expects {want}, but `{}` is {}",
-                                    c.quote(arg.value.span),
-                                    got.with_article()
-                                )
+                                cpl_diag::msgs::check::EXPECTS_BUT.at(&[
+                                    &name,
+                                    &want,
+                                    &c.quote(arg.value.span),
+                                    &got.with_article(),
+                                ])
                             });
                         }
                         return Ty::Pos(name);
@@ -1510,11 +1508,12 @@ impl<'a> Checker<'a> {
                         if matches!(arg_ty, Ty::Tuple(_) | Ty::Record(_)) {
                             let want = Ty::Pos(name.clone());
                             self.expect_fits(&arg_ty, &want, &args[0].value, |c, got, want| {
-                                format!(
-                                    "`{name}` expects {want}, but `{}` is {}",
-                                    c.quote(args[0].value.span),
-                                    got.with_article()
-                                )
+                                cpl_diag::msgs::check::EXPECTS_BUT.at(&[
+                                    &name,
+                                    &want,
+                                    &c.quote(args[0].value.span),
+                                    &got.with_article(),
+                                ])
                             });
                         }
                         return Ty::Pos(name);

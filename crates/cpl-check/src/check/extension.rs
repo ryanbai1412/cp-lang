@@ -14,17 +14,17 @@ impl<'a> Checker<'a> {
         };
         let message = Self::no_method(base_ty, name);
         let note = format!("the `{}` in reach takes a `{want}` as `self`", name.text);
-        if let Some(diag) = self.error(codes::UNKNOWN_FIELD, name.span, message) {
+        if let Some(diag) = self.report_said(name.span, message) {
             diag.help = Some(note);
         }
         true
     }
 
     /// "a `[3]Int` has no method `push`".
-    pub(super) fn no_method(base_ty: &Ty, name: &ast::Name) -> String {
+    pub(super) fn no_method(base_ty: &Ty, name: &ast::Name) -> cpl_diag::msgs::Said {
         let widened = base_ty.widen().with_article();
         let (a, ty) = widened.split_once(' ').unwrap_or(("a", &widened));
-        format!("{a} `{ty}` has no method `{}`", name.text)
+        cpl_diag::msgs::check::NO_METHOD_ON.at(&[&a, &ty, &name.text])
     }
 
     /// The did-you-mean for `name` on `base_ty`: a member it has, never a

@@ -324,17 +324,15 @@ impl<'a> Checker<'a> {
         };
         let spec = true;
         if !spec && inclusive && hi_is_bounds && !self.expected_bounds_range {
-            let message = format!(
-                "`..=` ends at a position; a range up to the boundary `{}` is written `..`",
-                self.quote(hi.span)
-            );
+            let message =
+                cpl_diag::msgs::check::WRONG_DOMAIN_ENDS_AT_A_POSITION.at(&[&self.quote(hi.span)]);
             // R04.4.6: where a piece is wanted, `j..=i` on cuts is the wrong type.
             let code = if spec {
                 codes::TYPE_MISMATCH
             } else {
                 codes::WRONG_DOMAIN
             };
-            self.error(code, range.span, message);
+            self.report_as(code, range.span, message);
         }
     }
 

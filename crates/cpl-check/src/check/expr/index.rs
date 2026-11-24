@@ -236,13 +236,12 @@ impl<'a> Checker<'a> {
                 {
                     let want = Ty::Tuple(vec![dom_ty.clone(), dom_ty.clone()]);
                     self.expect_fits(&index_tys[0], &want, &indices[0], |c, got, want| {
-                        format!(
-                            "`{}` is indexed by {}, but `{}` is {}",
-                            c.quote(base.span),
-                            want,
-                            c.quote(indices[0].span),
-                            got.with_article()
-                        )
+                        cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
+                            &c.quote(base.span),
+                            &want,
+                            &c.quote(indices[0].span),
+                            &got.with_article(),
+                        ])
                     });
                     return (**elem).clone();
                 }
@@ -300,13 +299,12 @@ impl<'a> Checker<'a> {
                 self.note_typed_index(expr, base, indices, &index_tys, &wants);
                 for ((got, want), index_expr) in index_tys.iter().zip(&wants).zip(indices) {
                     self.expect_fits(got, want, index_expr, |c, got, want| {
-                        format!(
-                            "`{}` is indexed by {}, but `{}` is {}",
-                            c.quote(base.span),
-                            want,
-                            c.quote(index_expr.span),
-                            got.with_article()
-                        )
+                        cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
+                            &c.quote(base.span),
+                            &want,
+                            &c.quote(index_expr.span),
+                            &got.with_article(),
+                        ])
                     });
                 }
                 (**elem).clone()
@@ -317,13 +315,12 @@ impl<'a> Checker<'a> {
                     && matches!(index.as_slice(), [Ty::Named { name, .. }] if name == "Range") =>
             {
                 self.expect_fits(&index_tys[0], &index[0], &indices[0], |c, got, want| {
-                    format!(
-                        "`{}` is indexed by {}, but `{}` is {}",
-                        c.quote(base.span),
-                        want,
-                        c.quote(indices[0].span),
-                        got.with_article()
-                    )
+                    cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
+                        &c.quote(base.span),
+                        &want,
+                        &c.quote(indices[0].span),
+                        &got.with_article(),
+                    ])
                 });
                 (**elem).clone()
             }
@@ -338,13 +335,12 @@ impl<'a> Checker<'a> {
                 {
                     for ((got, want), part) in got.iter().zip(index.iter()).zip(parts) {
                         self.expect_fits(got, want, part, |c, got, want| {
-                            format!(
-                                "`{}` is indexed by {}, but `{}` is {}",
-                                c.quote(base.span),
-                                want,
-                                c.quote(part.span),
-                                got.with_article()
-                            )
+                            cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
+                                &c.quote(base.span),
+                                &want,
+                                &c.quote(part.span),
+                                &got.with_article(),
+                            ])
                         });
                     }
                     return (**elem).clone();
@@ -352,13 +348,12 @@ impl<'a> Checker<'a> {
                 let want = Ty::Tuple(index.clone());
                 self.note_typed_index(expr, base, indices, &index_tys, std::slice::from_ref(&want));
                 self.expect_fits(&index_tys[0], &want, &indices[0], |c, got, want| {
-                    format!(
-                        "`{}` is indexed by {}, but `{}` is {}",
-                        c.quote(base.span),
-                        want,
-                        c.quote(indices[0].span),
-                        got.with_article()
-                    )
+                    cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
+                        &c.quote(base.span),
+                        &want,
+                        &c.quote(indices[0].span),
+                        &got.with_article(),
+                    ])
                 });
                 (**elem).clone()
             }
@@ -483,13 +478,12 @@ impl<'a> Checker<'a> {
 
                         continue;
                     }
-                    let message = format!(
-                        "`{}` is indexed by {}, but `{}` is {}",
-                        self.quote(base.span),
-                        want,
-                        self.quote(index_expr.span),
-                        got.with_article()
-                    );
+                    let message = cpl_diag::msgs::check::TYPE_MISMATCH_IS_INDEXED_BY_BUT.at(&[
+                        &self.quote(base.span),
+                        &want,
+                        &self.quote(index_expr.span),
+                        &got.with_article(),
+                    ]);
                     let base_text = self.quote(base.span);
                     let index_text = self.quote(index_expr.span);
                     let boundary = match (got, want) {
@@ -518,7 +512,8 @@ impl<'a> Checker<'a> {
                             self.origin(base, &format!("declared over {want}")),
                             self.origin(index_expr, &format!("declared as {}", got.with_article())),
                         ];
-                        let Some(diag) = self.error(codes::WRONG_DOMAIN, index_expr.span, message)
+                        let Some(diag) =
+                            self.report_as(codes::WRONG_DOMAIN, index_expr.span, message)
                         else {
                             continue;
                         };

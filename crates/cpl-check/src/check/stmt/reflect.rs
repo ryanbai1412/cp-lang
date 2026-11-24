@@ -343,7 +343,7 @@ impl Checker<'_> {
                     }
                 }
                 self.expect_fits(&got, target, &arg.value, |_, got, want| {
-                    format!("expected `{want}`, got `{got}`")
+                    cpl_diag::msgs::check::TYPE_MISMATCH_EXPECTED_GOT.at(&[&want, &got])
                 });
             }
         }

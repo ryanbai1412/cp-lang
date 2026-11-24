@@ -1207,8 +1207,9 @@ impl Database {
                 } else {
                     codes::USED_BEFORE_SET
                 };
-                let mut diag = row.error(r.span.shift(offset), &[&r.name, &line]);
-                diag.code = code;
+                let mut diag = row
+                    .at(&[&r.name, &line])
+                    .error_as(code, r.span.shift(offset));
                 if def_index != index {
                     diag = diag
                         .with_label(decl_span, "set here")

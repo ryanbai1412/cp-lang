@@ -11,11 +11,11 @@ impl Checker<'_> {
         got: &Ty,
         want: &Ty,
         at: &Expr,
-        message: impl FnOnce(&Self, &Ty, &Ty) -> String,
+        message: impl FnOnce(&Self, &Ty, &Ty) -> cpl_diag::msgs::Said,
     ) -> bool {
         let mut message = Some(message);
         self.expect_fits_by(got, want, at, &mut |c, got, want| {
-            message.take().map_or_else(String::new, |m| m(c, got, want))
+            message.take().map(|m| m(c, got, want))
         })
     }
 }

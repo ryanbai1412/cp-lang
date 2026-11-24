@@ -1237,7 +1237,7 @@ impl<'a> Checker<'a> {
                 };
                 let (message, help) = super::advice::lent_twice(a, b, &why);
                 let first_span = a.value.span;
-                if let Some(diag) = self.error(codes::LENT_TWICE, b.value.span, message) {
+                if let Some(diag) = self.report_said(b.value.span, message) {
                     diag.labels.push(cpl_diag::Label {
                         span: first_span,
                         message: "also lent here".into(),

@@ -1754,7 +1754,7 @@ impl<'a> Checker<'a> {
         got: &Ty,
         want: &Ty,
         at: &Expr,
-        message: impl FnOnce(&Self, &Ty, &Ty) -> String,
+        message: impl FnOnce(&Self, &Ty, &Ty) -> cpl_diag::msgs::Said,
     ) -> bool {
         if let (Ty::Array { elem: ge, .. }, Ty::Array { elem: we, .. }) = (got, want) {
             if matches!(**ge, Ty::Range { .. }) && we.is_int() && ge != we {
@@ -1763,7 +1763,7 @@ impl<'a> Checker<'a> {
                     "convert each cell: `{}.map(x => {we}(x))`",
                     self.quote(at.span)
                 );
-                if let Some(diag) = self.error(codes::TYPE_MISMATCH, at.span, msg) {
+                if let Some(diag) = self.report_as(codes::TYPE_MISMATCH, at.span, msg) {
                     diag.help = Some(help);
                 }
                 return false;

@@ -104,7 +104,7 @@ impl<'a> Checker<'a> {
         let (message, help) = if let Some(owner) = self_ty {
             let owner = owner.to_string();
             (
-                format!("`@memo` can't remember `{name}`: it is a fn of `{owner}`"),
+                cpl_diag::msgs::check::MEMO_FN_OF.at(&[&name, &owner]),
                 format!(
                     "only a top-level or local fn keeps a table of its answers: move `{name}` out of `{owner}` and pass it what it reads"
                 ),
@@ -112,32 +112,32 @@ impl<'a> Checker<'a> {
         } else if let Some(param) = changed {
             let param = &param.name.text;
             (
-                format!("`@memo` can't remember `{name}`: it changes its argument `{param}`"),
+                cpl_diag::msgs::check::MEMO_CHANGES_ARGUMENT.at(&[&name, &param]),
                 format!(
                     "a remembered answer is given back without running the fn, so `{param}` would be left as it was: take `{param}` without `mut`, or drop `@memo`"
                 ),
             )
         } else if generator {
             (
-                format!("`@memo` can't remember `{name}`: it yields its values one by one"),
+                cpl_diag::msgs::check::MEMO_YIELDS.at(&[&name]),
                 "collect the values into a list and return that: `-> List<T>`".to_string(),
             )
         } else if !f.generics.is_empty() {
             (
-                format!("`@memo` can't remember the generic fn `{name}`"),
+                cpl_diag::msgs::check::MEMO_GENERIC.at(&[&name]),
                 format!(
                     "there is one table of answers per fn, and `{name}` is a different fn for each type it is called with: write it for the type it is used with"
                 ),
             )
         } else if unit {
             (
-                format!("`@memo` has nothing to remember: `{name}` gives no value"),
+                cpl_diag::msgs::check::MEMO_NO_VALUE.at(&[&name]),
                 "a fn that only acts has to run every time: drop `@memo`, or return what it computes".to_string(),
             )
         } else {
             return;
         };
-        if let Some(diag) = self.error(codes::BAD_MEMO, memo, message) {
+        if let Some(diag) = self.report_said(memo, message) {
             diag.help = Some(help);
         }
     }
@@ -315,13 +315,12 @@ impl<'a> Checker<'a> {
                 let default_ty = self.infer(default);
                 if !self.array_fills(&ty, &default_ty, default) {
                     self.expect_fits(&default_ty, &ty, default, |c, got, want| {
-                        format!(
-                            "`{}` is {}, but its default `{}` is {}",
-                            param.name.text,
-                            want.with_article(),
-                            c.quote(default.span),
-                            got.with_article()
-                        )
+                        cpl_diag::msgs::check::BUT_DEFAULT.at(&[
+                            &param.name.text,
+                            &want.with_article(),
+                            &c.quote(default.span),
+                            &got.with_article(),
+                        ])
                     });
                 }
             }

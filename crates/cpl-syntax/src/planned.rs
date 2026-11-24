@@ -202,6 +202,10 @@ impl Planned {
         self.with_row(|msg, args| msg.say(args))
     }
 
+    pub fn said(&self) -> cpl_diag::msgs::Said {
+        self.with_row(|msg, args| msg.at(args))
+    }
+
     pub fn error(&self, span: Span) -> Diagnostic {
         self.with_row(|msg, args| msg.error(span, args))
     }
