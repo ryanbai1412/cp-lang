@@ -381,8 +381,16 @@ impl<'p> Devirt<'p> {
             }
         }
         self.elide_unread_fn_params();
-        self.drop_unread_fields();
-        self.drop_dead_locals();
+        // A dropped field leaves locals dead, and a dead `let f = s.op`
+        // reads `op` no more.
+        loop {
+            let before = (self.unread_fields.len(), self.dead_locals.len());
+            self.drop_unread_fields();
+            self.drop_dead_locals();
+            if (self.unread_fields.len(), self.dead_locals.len()) == before {
+                break;
+            }
+        }
     }
 
     /// A fn-valued parameter the body never names (`Heap.new`'s `by:` when
@@ -456,17 +464,26 @@ impl<'p> Devirt<'p> {
         let mut read: BTreeSet<(usize, usize)> = BTreeSet::new();
         let mut unskippable: BTreeSet<(usize, usize)> = BTreeSet::new();
         let mut whole: BTreeSet<usize> = BTreeSet::new();
-        let mut scan = |block: &Block| {
-            walk::deep_stmts(block, &mut |stmt| {
-                if let Stmt::Assign(place, op, _) = stmt {
-                    if !self.skippable_store(place, *op) {
-                        place_fields(place, &mut unskippable);
-                    }
+        // `home` is the fn or main whose dead `let`s read nothing; `None`
+        // for a closure's body.
+        let mut scan = |home: Option<Option<FnId>>, block: &Block| {
+            let mut gone: BTreeSet<*const Expr> = BTreeSet::new();
+            walk::deep_stmts(block, &mut |stmt| match stmt {
+                Stmt::Assign(place, op, _) if !self.skippable_store(place, *op) => {
+                    place_fields(place, &mut unskippable);
                 }
+                Stmt::Let(slot, Some(init))
+                    if home.is_some_and(|home| self.dead_local(home, *slot)) =>
+                {
+                    walk::deep_expr(init, &mut |e| {
+                        gone.insert(e as *const Expr);
+                    });
+                }
+                _ => {}
             });
             walk::deep_exprs(block, &mut |e| {
                 match &e.kind {
-                    ExprKind::Field(base, idx) => {
+                    ExprKind::Field(base, idx) if !gone.contains(&(e as *const Expr)) => {
                         if let Ty::Struct(s) = base.ty {
                             read.insert((s, *idx));
                         }
@@ -506,13 +523,13 @@ impl<'p> Devirt<'p> {
                 }
             });
         };
-        scan(&program.setup);
-        scan(&program.main);
-        for f in &program.fns {
-            scan(&f.body);
+        scan(Some(None), &program.setup);
+        scan(Some(None), &program.main);
+        for (id, f) in program.fns.iter().enumerate() {
+            scan(Some(Some(id)), &f.body);
         }
         for closure in &program.closures {
-            scan(&closure.body);
+            scan(None, &closure.body);
         }
         let locals = program
             .fns
@@ -1646,13 +1663,16 @@ pub(crate) fn dropped_fields(program: &Program, cpp: &str) -> Vec<String> {
 
 /// Report how every fn-typed struct field, fn parameter, and local closure
 /// binding in `program` lowers to C++17 (static vs dynamic `std::function`),
-/// over the `written` structs the file defines.
-pub fn explain_closures(program: &Program, written: &BTreeSet<usize>) -> Vec<ClosureLowering> {
+/// over the structs and fns the file defines (`written`).
+pub fn explain_closures(
+    program: &Program,
+    written: &crate::emit::lowered::Written,
+) -> Vec<ClosureLowering> {
     let devirt = Devirt::collect(program);
     let mut out = Vec::new();
 
     for (sid, s) in program.structs.iter().enumerate() {
-        if !written.contains(&sid) {
+        if !written.structs.contains(&sid) {
             continue;
         }
         for (idx, (fname, fty)) in s.fields.iter().enumerate() {
@@ -1688,6 +1708,9 @@ pub fn explain_closures(program: &Program, written: &BTreeSet<usize>) -> Vec<Clo
     }
 
     for (fid, f) in program.fns.iter().enumerate() {
+        if !written.fns.contains(&fid) {
+            continue;
+        }
         let named = crate::scope::named_params(&f.body, f.params.len());
         for slot in 0..f.params.len() {
             if !matches!(f.locals[slot].ty, Ty::Fn(..)) {

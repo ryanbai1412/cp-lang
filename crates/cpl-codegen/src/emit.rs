@@ -8,7 +8,7 @@ use cpl_ir::{Block, Expr, ExprKind, Function, Local, LoopId, OrdHook, Program, S
 use std::collections::{BTreeMap, BTreeSet};
 
 mod layout;
-mod lowered;
+pub mod lowered;
 mod text;
 
 use text::{header, inline_hint, names, Proto};
@@ -119,8 +119,8 @@ pub(crate) struct Emitter<'p> {
     pub devirt: crate::devirt::Devirt<'p>,
     /// Closures called by name, each emitted once as a fn of the program.
     pub direct: BTreeSet<usize>,
-    /// The structs the written file defines.
-    written_structs: BTreeSet<usize>,
+    /// The structs and fns the written file defines.
+    written: lowered::Written,
     /// Non-escaping closures passed to call-only parameters; immutable non-scalar
     /// captures can be borrowed by reference instead of deep-copied.
     pub borrow_closures: BTreeSet<usize>,
@@ -265,7 +265,7 @@ impl<'p> Emitter<'p> {
             niches: crate::niche::small(program),
             devirt: crate::devirt::Devirt::collect(program),
             direct: BTreeSet::new(),
-            written_structs: BTreeSet::new(),
+            written: Default::default(),
             borrow_closures: BTreeSet::new(),
             copies: Vec::new(),
             niche_types: std::cell::Cell::new(0),
@@ -1153,7 +1153,7 @@ impl<'p> Emitter<'p> {
         for &id in &reachable_structs {
             self.type_def(&Ty::Struct(id), &mut done, &mut types);
         }
-        self.written_structs = reachable_structs.clone();
+        self.written = lowered::Written::of(&reachable_structs, &reachable);
         for &id in &reachable_enums {
             self.type_def(&Ty::Enum(id), &mut done, &mut types);
         }

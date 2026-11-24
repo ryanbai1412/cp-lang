@@ -206,3 +206,15 @@ fn a_none_compared_with_a_split_optional_field_leaves_no_unsplit_struct() {
         "only the split structs are defined: {out}"
     );
 }
+
+#[test]
+fn a_fn_field_read_only_into_a_dropped_local_stores_no_std_function() {
+    let out = cpp(concat!(
+        "domain V = 0..3\n",
+        "let adj: [V]List<V> = [[1, 2], [0], [0]]\n",
+        "let t = Rooted(adj, root: 0)\n",
+        "let win = t.up(+, lift: (w, c, p) => if w: 0 else: 1, finish: (losing, v) => losing > 0)\n",
+        "print(sum(1 for v in V if win[v]))\n",
+    ));
+    assert!(!out.contains("std::function<"), "{out}");
+}
