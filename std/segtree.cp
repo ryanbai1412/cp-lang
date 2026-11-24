@@ -422,7 +422,7 @@ pub struct SegTree<D: Positions, T, F = Int>(m: Monoid<T>):
                     h /= 2
             return m.op(a, b)
         let f = act!
-        if let set = f.replaces: return self.fold_set(1, 0, size, lo, hi, set)
+        if let set = f.replaces: return if lo < hi: self.fold_set(1, 0, size, lo, hi, set) else: m.id
         // `a` folds `na` leaves under node `l - 1`, `b` folds `nb` under node `h`; each takes the
         // tags of the nodes it climbs through, so nothing is pushed.
         var (na, nb, w) = (0, 0, 1)
