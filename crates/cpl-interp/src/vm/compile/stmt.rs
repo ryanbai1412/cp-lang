@@ -1105,7 +1105,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
         body: &'p Block,
     ) -> bool {
         if let Iter::Seq(seq_expr, rev) = iter {
-            if !*rev && self.allow_fed_loops {
+            // Inside a fed fn, the body's yields feed on out; one that may
+            // stop the loop early has no such form.
+            let fed_here =
+                self.allow_fed_loops && (self.feed_acc.is_none() || !cpl_ir::pushed::escapes(body));
+            if !*rev && fed_here {
                 if let Some((fn_id, _acc_slot)) = self.feeds.feeds(id, seq_expr, body) {
                     return self.try_compile_for_fed(stmt, id, slot, fn_id, seq_expr, body);
                 }

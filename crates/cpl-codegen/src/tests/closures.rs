@@ -531,3 +531,16 @@ fn a_value_if_of_different_closures_joins_at_the_erased_fn() {
     );
     assert!(out.contains(" : std::function<ll(ll)>(low)"), "{out}");
 }
+
+#[test]
+fn a_yields_fn_that_walks_another_feeds_its_callback_on() {
+    let cpp = cpp(concat!(
+        "fn inner2(n: Int) -> yields Int:\n    for i in 0..n: yield i\n",
+        "fn outer2(n: Int) -> yields Int:\n    for x in inner2(n): yield x\n",
+        "let n: Int = read()\nvar t = 0\nfor x in outer2(n): t += x\nprint(t)\n",
+    ));
+    let outer = cpp.rsplit("int cpl_each_outer2(").next().unwrap();
+    let outer = &outer[..outer.find("\n}\n").unwrap()];
+    assert!(outer.contains("cpl_each_inner2(n_2, "), "{outer}");
+    assert!(!outer.contains("std::vector"), "{outer}");
+}

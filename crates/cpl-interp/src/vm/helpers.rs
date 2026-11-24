@@ -538,6 +538,26 @@ pub(super) struct FedCtx<'a, 'p> {
     pub(super) caller_base: usize,
     pub(super) body_pc: usize,
     pub(super) var_loc: SlotLoc,
+    /// The call feeding the frame this one's loop body runs in, when that
+    /// frame is itself a `yields` fn fed by a loop: its yields go on out.
+    pub(super) parent: Option<&'a mut (dyn FedParent<'p> + 'a)>,
+}
+
+/// A [`FedCtx`] whatever its borrows, for a fed call inside a fed call.
+pub(super) trait FedParent<'p> {
+    fn with(
+        &mut self,
+        f: &mut dyn FnMut(&mut FedCtx<'_, 'p>) -> crate::Res<ExecExit>,
+    ) -> crate::Res<ExecExit>;
+}
+
+impl<'p> FedParent<'p> for FedCtx<'_, 'p> {
+    fn with(
+        &mut self,
+        f: &mut dyn FnMut(&mut FedCtx<'_, 'p>) -> crate::Res<ExecExit>,
+    ) -> crate::Res<ExecExit> {
+        f(self)
+    }
 }
 
 pub(super) fn store_fed_val(ctx: &mut FedCtx<'_, '_>, vm_regs_i: &mut [i64], val: Value) {

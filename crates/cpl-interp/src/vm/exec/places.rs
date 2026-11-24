@@ -8,6 +8,40 @@ use cpl_ir::{AssignOp, BinOp, CmpOp, LoopId};
 use std::rc::Rc;
 
 impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
+    /// Runs the body of the loop `ctx`'s call feeds, on its value.
+    fn run_fed_body(
+        &mut self,
+        compiled: &CompiledProgram<'p>,
+        vm_regs_i: &mut Vec<i64>,
+        ctx: &mut FedCtx<'_, 'p>,
+    ) -> Res<ExecExit> {
+        let FedCtx {
+            caller_chunk,
+            caller_base_i,
+            caller_regs_v,
+            body_pc,
+            parent,
+            ..
+        } = ctx;
+        let (chunk, base_i, pc) = (*caller_chunk, *caller_base_i, *body_pc);
+        match parent.as_deref_mut() {
+            None => {
+                self.exec_chunk_core(compiled, chunk, base_i, vm_regs_i, caller_regs_v, pc, None)
+            }
+            Some(p) => p.with(&mut |up| {
+                self.exec_chunk_core(
+                    compiled,
+                    chunk,
+                    base_i,
+                    vm_regs_i,
+                    caller_regs_v,
+                    pc,
+                    Some(up),
+                )
+            }),
+        }
+    }
+
     #[allow(clippy::too_many_arguments)]
     #[inline]
     pub(super) fn exec_places_and_fallback(
@@ -1130,6 +1164,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     caller_base,
                     body_pc: fc.body_pc,
                     var_loc: fc.var_loc,
+                    parent: fed.as_deref_mut().map(|f| f as &mut dyn FedParent<'p>),
                 };
                 let res = self.exec_chunk_core(
                     compiled,
@@ -1210,6 +1245,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 back?;
                 self.call_frames.pop();
                 match res {
+                    // Fed from inside a fed fn, the loop's body never breaks: the
+                    // loop this fn feeds did, so this fn stops too.
+                    ExecExit::FeedBreak if fed.is_some() => return Ok(Some(ExecExit::FeedBreak)),
                     ExecExit::FeedNext | ExecExit::FeedBreak => {}
                     ExecExit::Return(v) => return Ok(Some(ExecExit::Return(v))),
                 }
@@ -1240,15 +1278,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let saved_base = self.base;
                 self.feeding();
                 self.base = ctx.caller_base;
-                let body_res = self.exec_chunk_core(
-                    compiled,
-                    ctx.caller_chunk,
-                    ctx.caller_base_i,
-                    vm_regs_i,
-                    ctx.caller_regs_v,
-                    ctx.body_pc,
-                    None,
-                );
+                let body_res = self.run_fed_body(compiled, vm_regs_i, &mut *ctx);
                 self.base = saved_base;
                 if chunk.has_by_ref_closure {
                     let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
@@ -1286,15 +1316,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let saved_base = self.base;
                 self.feeding();
                 self.base = ctx.caller_base;
-                let body_res = self.exec_chunk_core(
-                    compiled,
-                    ctx.caller_chunk,
-                    ctx.caller_base_i,
-                    vm_regs_i,
-                    ctx.caller_regs_v,
-                    ctx.body_pc,
-                    None,
-                );
+                let body_res = self.run_fed_body(compiled, vm_regs_i, &mut *ctx);
                 self.base = saved_base;
                 if chunk.has_by_ref_closure {
                     let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
@@ -1340,15 +1362,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     let saved_base = self.base;
                     self.feeding();
                     self.base = ctx.caller_base;
-                    let body_res = self.exec_chunk_core(
-                        compiled,
-                        ctx.caller_chunk,
-                        ctx.caller_base_i,
-                        vm_regs_i,
-                        ctx.caller_regs_v,
-                        ctx.body_pc,
-                        None,
-                    );
+                    let body_res = self.run_fed_body(compiled, vm_regs_i, &mut *ctx);
                     self.base = saved_base;
                     if chunk.has_by_ref_closure {
                         let regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
