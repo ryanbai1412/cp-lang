@@ -1243,6 +1243,8 @@ pub struct Representation {
     pub padding: u64,
     /// How an array's cells are laid out, when it is not row-major.
     pub layout: Option<&'static str>,
+    /// For a struct that grows on the heap: what each of its fields holds.
+    pub held: Option<String>,
 }
 
 pub(crate) fn represent(ty: &Ty, lookup: &mut Lookup) -> Representation {
@@ -1271,7 +1273,37 @@ pub(crate) fn represent(ty: &Ty, lookup: &mut Lookup) -> Representation {
         }
     };
     (out.none_is_spare, out.field_offsets, out.padding) = layout(cell, lookup);
+    if out.bytes.is_none() {
+        out.held = struct_note(cell, lookup);
+    }
     out
+}
+
+/// A struct's fields, its type arguments in place, each with what it takes: `Mat<?Int>`'s
+/// `cells: List<?Int>` and `raw: List<Int>`, so the storage a std type picked is in view.
+fn struct_note(ty: &Ty, lookup: &mut Lookup) -> Option<String> {
+    let Ty::Named { name, args } = ty else {
+        return None;
+    };
+    let Some(Def::Struct {
+        fields, generics, ..
+    }) = lookup(name).as_deref().cloned()
+    else {
+        return None;
+    };
+    let bindings: crate::ty::Bindings =
+        generics.iter().cloned().zip(args.iter().cloned()).collect();
+    let typed: Vec<(String, Ty)> = fields
+        .iter()
+        .map(|f| {
+            (
+                format!("{} {}", f.name, f.ty.subst(&bindings)),
+                f.ty.subst(&bindings),
+            )
+        })
+        .collect();
+    let named: Vec<(String, &Ty)> = typed.iter().map(|(n, t)| (n.clone(), t)).collect();
+    fields_note(&named, lookup)
 }
 
 /// Where `None` goes for an optional, and each field's offset and the
