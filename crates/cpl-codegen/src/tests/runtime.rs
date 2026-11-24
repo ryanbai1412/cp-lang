@@ -225,6 +225,31 @@ fn a_plain_sort_is_unstable_only_where_equal_means_the_same() {
 }
 
 #[test]
+fn a_profiled_if_let_over_a_tested_call_counts_its_line_before_the_test() {
+    let source = concat!(
+        "let e = [-1, 2, -1, 0]\n",
+        "fn ex(s: Int) -> ?Int = if e[s] == -1: None else: Some(e[s])\n",
+        "var acc = 0\n",
+        "for i in 0..100:\n",
+        "    if let x = ex(i % 4): acc += x\n",
+        "print(acc)\n",
+    );
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let analysis = db.analyze("t.cp").expect("the file was just set");
+    let program = cpl_ir::lower(&analysis).expect("lowers");
+    let (profiled, _) = crate::emit_profiled(&program, "t.cp", &crate::Target::default(), "t.prof");
+    let test = profiled
+        .find("if (ex(")
+        .expect("the call is tested where it is made");
+    let mark = profiled[..test].rfind("cpl_prof::mark(").unwrap();
+    assert!(
+        !profiled[mark..test].contains("for ("),
+        "the line is counted before its pattern is tested: {profiled}"
+    );
+}
+
+#[test]
 fn a_long_token_is_scanned_a_word_at_a_time_and_copied_out_by_chunk() {
     let cpp = cpp("let s: Str = read()\nprint(s.len)\n");
     let read = &cpp[cpp.find("inline void read_str_into(").unwrap()..];
