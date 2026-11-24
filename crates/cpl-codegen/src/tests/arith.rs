@@ -250,13 +250,12 @@ fn ntt_over_the_first_ntt_prime_leaves_primitive_root_out() {
 }
 
 #[test]
-fn a_grid_index_folds_its_dims_with_no_loop() {
+fn a_grid_index_unrolls_its_dims_from_zero() {
     let out = cpp("domain A = [3]\ndomain B = [4]\nvar g: [A, B, A]Int = 0\nlet i: 0..3 = read()\ng[A(i), B(0), A(i)] = 1\nprint(g[A(i), B(0), A(i)])\n");
     assert!(
-        out.contains("((p = p * n[k++] + (size_t)(ll)i), ...)"),
+        out.contains("_Pragma(\"GCC unroll 8\") for (int k = 0; k < K; k++) p = p * n[k] + ix[k];"),
         "{out}"
     );
-    assert!(!out.contains("for (int k = 0; k < K; k++) p ="), "{out}");
 }
 
 #[test]

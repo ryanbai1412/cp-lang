@@ -97,7 +97,7 @@ template <class T, int K> struct Grid {
     // size_t, not ll: a store to an `ll` cell can't alias the sizes, so a
     // loop over cells keeps them in registers and can vectorise.
     size_t n[K] = {};
-    template <class... I> size_t at(I... i) const { size_t p = 0; int k = 0; ((p = p * n[k++] + (size_t)(ll)i), ...); return p; }
+    template <class... I> size_t at(I... i) const { size_t ix[K] = {(size_t)(ll)i...}, p = 0; _Pragma(\"GCC unroll 8\") for (int k = 0; k < K; k++) p = p * n[k] + ix[k]; return p; }
     template <class... I> T& operator()(I... i) { return d[at(i...)]; }
     template <class... I> const T& operator()(I... i) const { return d[at(i...)]; }
     // Indexed by an `Int` that nothing has proved in range.
