@@ -131,7 +131,7 @@ pub struct Rng(s: U64):
     pub fn sample<S: Indexed, T>(mut self, k: Int, from: S) -> List<T>:
         let n = from.len
         assert 0 <= k <= n
-        var pos = [i for i in 0..n]
+        var pos = (0..n).collect()
         for i in 0..k: pos.swap_idx(i, self.int(i, n - 1))
         [from.at(pos[i]) for i in 0..k]
 

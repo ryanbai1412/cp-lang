@@ -2664,11 +2664,11 @@ fn sorted_bag_btree_grows_and_shrinks_against_a_count_table():
         cnt[x] = 1
     check_bag_against_counts(b, cnt)
     let mid = b.split_at(k / 3)
-    assert b.to_list() == [x for x in 0..k / 3] and mid.to_list() == [x for x in k / 3..k]
+    assert b.to_list() == (0..k / 3).collect() and mid.to_list() == (k / 3..k).collect()
     b.join(mid)
     check_bag_against_counts(b, cnt)
     let top = b.split_at(k - 10)
-    assert top.to_list() == [x for x in k - 10..k] and b.len == k - 10
+    assert top.to_list() == (k - 10..k).collect() and b.len == k - 10
     b.join(top)
     check_bag_against_counts(b, cnt)
 

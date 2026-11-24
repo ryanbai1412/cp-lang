@@ -364,7 +364,7 @@ pub struct Sieve:
     /// example: `Sieve(12).divisors(1).collect() == [1]`
     /// example: `Sieve(1000).divisors(720).sum() == 2418`
     pub fn divisors(self, x: Int) -> yields Int:
-        assert 1 <= x and x < spf.len
+        assert 1 <= x < spf.len
         var d = 1
         while true:
             yield d
