@@ -13,7 +13,7 @@ use cpl_diag::{Diagnostic, LineIndex, Severity};
 pub fn check_spec(db: &mut Session, path: &str, text: &str) -> (String, bool) {
     let analysis = db.analyze_text(path, text);
     db.remove_file(path);
-    let diagnostics: Vec<Diagnostic> = cpl_ir::reported(&analysis);
+    let diagnostics: Vec<Diagnostic> = cpl_ir::reported(&analysis, &db.facts_source());
     let failed = diagnostics.iter().any(|d| d.severity == Severity::Error);
     let rendered = if diagnostics.is_empty() {
         String::new()

@@ -89,7 +89,7 @@ impl Server {
 /// editor publishes and offers each diagnostic's fixes on.
 pub(super) fn reported(uri: &str, facts: &Proven) -> Vec<Diagnostic> {
     let analysis = facts.analysis();
-    let mut out = at_levels(uri, analysis, cpl_ir::reported(analysis));
+    let mut out = at_levels(uri, analysis, cpl_ir::reported(analysis, &cpl_check::OwnFacts));
     out.extend(lints(uri, facts));
     out
 }

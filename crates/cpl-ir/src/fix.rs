@@ -93,7 +93,7 @@ fn adds_a_kind(before: &[Diagnostic], after: &[Diagnostic]) -> bool {
 /// The errors the front end reports for `text` as `path`.
 pub fn errors_in(db: &mut cpl_check::Session, path: &str, text: &str) -> Vec<Diagnostic> {
     let analysis = db.analyze_text(path, text);
-    let mut out = crate::check(&analysis);
+    let mut out = crate::check(&analysis, &db.facts_source());
     out.retain(|d| d.severity == cpl_diag::Severity::Error);
     out
 }

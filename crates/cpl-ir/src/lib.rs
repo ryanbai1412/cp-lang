@@ -33,23 +33,26 @@ pub use cpl_syntax::ast::{BinOp, CmpOp, UnOp};
 /// it has no error, what lowering rejects. `cpl check`, `cpl run`,
 /// `cpl build` and the playground all answer with this, so a file one of
 /// them takes is a file all of them take.
-pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
+pub fn check(
+    analysis: &cpl_check::Analysis,
+    facts: &dyn cpl_check::FactsSource,
+) -> Vec<cpl_diag::Diagnostic> {
     let mut diagnostics = analysis.diagnostics.clone();
     if !analysis.has_errors() {
         // The judge's side and the brute are programs of their own, and
         // an error in one is an error in the file.
-        let mut results = vec![lower(analysis, &cpl_check::OwnFacts).map(|p| p.warnings)];
+        let mut results = vec![lower(analysis, facts).map(|p| p.warnings)];
         if let Some(name) = interactor(analysis) {
-            results.push(lower_judge(analysis, &cpl_check::OwnFacts, &name).map(|p| p.warnings));
+            results.push(lower_judge(analysis, facts, &name).map(|p| p.warnings));
         }
         if let Some((name, _)) = brute(analysis) {
-            results.push(lower_brute(analysis, &cpl_check::OwnFacts, &name).map(|p| p.warnings));
+            results.push(lower_brute(analysis, facts, &name).map(|p| p.warnings));
         }
         if let Some((name, _)) = generator(analysis) {
-            results.push(lower_gen(analysis, &cpl_check::OwnFacts, &name, 1).map(|p| p.warnings));
+            results.push(lower_gen(analysis, facts, &name, 1).map(|p| p.warnings));
         }
         if let Some((name, _)) = checker(analysis) {
-            results.push(lower_checker(analysis, &cpl_check::OwnFacts, &name).map(|p| p.warnings));
+            results.push(lower_checker(analysis, facts, &name).map(|p| p.warnings));
         }
         for more in results
             .into_iter()
@@ -68,7 +71,10 @@ pub fn check(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
 
 /// What `cpl check` and the editor report: exactly what `cpl run` and
 /// `cpl build` would reject, in every edition.
-pub fn reported(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
+pub fn reported(
+    analysis: &cpl_check::Analysis,
+    facts: &dyn cpl_check::FactsSource,
+) -> Vec<cpl_diag::Diagnostic> {
     let cites_spec = |d: &cpl_diag::Diagnostic| {
         d.code == cpl_diag::codes::NOT_IMPLEMENTED && d.message.contains("(see design/")
     };
@@ -97,7 +103,7 @@ pub fn reported(analysis: &cpl_check::Analysis) -> Vec<cpl_diag::Diagnostic> {
                 )
         });
     let mut out = if runs {
-        check(analysis)
+        check(analysis, facts)
     } else {
         analysis.diagnostics.clone()
     };

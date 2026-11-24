@@ -150,7 +150,7 @@ impl Stress {
         if native.is_none() {
             let analysis = (analysis.as_deref())
                 .ok_or_else(|| Unbuilt::Said(format!("could not analyze {name}")))?;
-            let diagnostics = cpl_ir::check(analysis);
+            let diagnostics = cpl_ir::check(analysis, &cpl_check::OwnFacts);
             if diagnostics.iter().any(|d| d.severity == Severity::Error) {
                 let lines = cpl_diag::LineIndex::new(source);
                 return Err(Unbuilt::Rendered(

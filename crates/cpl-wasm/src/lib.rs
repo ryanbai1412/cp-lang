@@ -156,7 +156,7 @@ impl Playground {
     /// `cpl check`: every diagnostic in `source`.
     pub fn check(&mut self, name: &str, source: &str) -> Value {
         let analysis = self.db.analyze_text(name, source);
-        let diagnostics = cpl_ir::check(&analysis);
+        let diagnostics = cpl_ir::check(&analysis, &self.db.facts_source());
         let code = if diagnostics.iter().any(|d| d.severity == Severity::Error) {
             EXIT_ERRORS
         } else {

@@ -253,7 +253,7 @@ fn every_record_before_passes_cpl_check_or_names_its_removed_spelling() {
         let mut db = cpl_check::Session::new();
         db.set_file("before.cp", lint.trigger);
         let analysis = db.analyze("before.cp").expect("analysis");
-        let mut codes: Vec<&str> = cpl_ir::reported(&analysis)
+        let mut codes: Vec<&str> = cpl_ir::reported(&analysis, &cpl_check::OwnFacts)
             .iter()
             .filter(|d| d.severity == cpl_diag::Severity::Error)
             .map(|d| d.code.0)

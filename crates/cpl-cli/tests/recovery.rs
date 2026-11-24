@@ -35,7 +35,7 @@ fn errors(path: &str, src: &str) -> Vec<Diagnostic> {
         db.set_file(path, src);
         db.analyze(path).expect("the file was just set")
     });
-    let mut out: Vec<Diagnostic> = cpl_ir::check(&analysis)
+    let mut out: Vec<Diagnostic> = cpl_ir::check(&analysis, &cpl_check::OwnFacts)
         .into_iter()
         .filter(|d| d.severity == Severity::Error)
         .collect();

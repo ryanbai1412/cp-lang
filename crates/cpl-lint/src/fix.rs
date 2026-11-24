@@ -158,7 +158,7 @@ pub fn apply_lint_fixes_where(
         let analysis = db.analyze_text(path, text);
         let mut findings = lint_analysis(&analysis, config);
         findings.retain(|d| keep(d));
-        (findings, check(&analysis))
+        (findings, check(&analysis, &db.facts_source()))
     });
     db.set_file(path, out.0.as_str());
     out

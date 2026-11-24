@@ -36,7 +36,7 @@ pub(crate) fn checker_errors(src: &str) -> Vec<String> {
     let mut db = cpl_check::Session::new();
     db.set_file("probe.cp", src);
     let analysis = db.analyze("probe.cp").expect("analysis");
-    cpl_ir::reported(&analysis)
+    cpl_ir::reported(&analysis, &cpl_check::OwnFacts)
         .iter()
         .filter(|d| d.severity == cpl_diag::Severity::Error)
         .map(|d| d.message.clone())
@@ -90,7 +90,8 @@ fn checked(
     let mut db = cpl_check::Session::new();
     let mut report = |t: &str| {
         db.set_file("<t>.cp", t);
-        let errors = check(&db.analyze("<t>.cp").expect("the file was just set"));
+        let analysis = db.analyze("<t>.cp").expect("the file was just set");
+        let errors = check(&analysis, &db.facts_source());
         let fires = still_fires || t == text;
         (if fires { findings.to_vec() } else { Vec::new() }, errors)
     };
@@ -129,7 +130,7 @@ fn a_fix_that_lowering_rejects_is_not_applied() {
     // rejected. The fix gate asks the complete check it is given.
     let text = "let x = 1\nprint(x)\n";
     let span = Span { start: 8, end: 9 };
-    let lowering_rejects_2 = move |a: &cpl_check::Analysis| {
+    let lowering_rejects_2 = move |a: &cpl_check::Analysis, _: &dyn cpl_check::FactsSource| {
         let mut out = a.diagnostics.clone();
         if a.text.contains("= 2") {
             out.push(Diagnostic::error(Code("E0302"), span, "lowering"));

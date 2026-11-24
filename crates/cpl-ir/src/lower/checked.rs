@@ -17,6 +17,9 @@ impl<'a> Lowerer<'a> {
                 return Some(Ty::Pos(d));
             }
         }
+        if !self.checked_names_known(checked) {
+            return None;
+        }
         let written = written(checked, e.span)?;
         let diags = self.diags.len();
         let ty = self.resolve_ty(&written);
@@ -26,6 +29,31 @@ impl<'a> Lowerer<'a> {
 }
 
 impl Lowerer<'_> {
+    /// False when writing `ty` out would not name what the checker meant:
+    /// a param outside the instance's env, or a generic struct, whose
+    /// written form would instantiate a new struct, not name this value's.
+    fn checked_names_known(&self, ty: &Checked) -> bool {
+        match ty {
+            Checked::Param(n) => self.gen_env.contains_key(n.as_str()),
+            Checked::Named { name, args } => {
+                let generic = !args.is_empty()
+                    && (self.view_struct(name).is_some()
+                        || matches!(self.mod_syms[self.cur_mod].get(name.as_str()), Some(Sym::GenStruct(_))));
+                !generic && args.iter().all(|t| self.checked_names_known(t))
+            }
+            Checked::Array { index, elem } => {
+                index.iter().all(|t| self.checked_names_known(t)) && self.checked_names_known(elem)
+            }
+            Checked::Optional(t) => self.checked_names_known(t),
+            Checked::Tuple(ts) => ts.iter().all(|t| self.checked_names_known(t)),
+            Checked::Record(fs) => fs.iter().all(|(_, t)| self.checked_names_known(t)),
+            Checked::Fn { params, ret } => {
+                params.iter().all(|p| self.checked_names_known(&p.ty)) && self.checked_names_known(ret)
+            }
+            _ => true,
+        }
+    }
+
     /// The checker's facts around `at` in the module being lowered: an
     /// imported body's from the caller's source, else the module's own.
     fn checked_facts(&mut self, at: Span) -> std::sync::Arc<cpl_check::Facts> {

@@ -101,7 +101,7 @@ fn apply_first_fix_it(src: &str) -> Option<String> {
     let mut db = cpl_check::Session::default();
     db.set_file("trigger.cp", src);
     let analysis = db.analyze("trigger.cp").unwrap();
-    let mut diags = cpl_ir::check(&analysis);
+    let mut diags = cpl_ir::check(&analysis, &cpl_check::OwnFacts);
     diags.sort_by_key(|d| d.span.start);
     let mut edits = diags.first()?.fixes.first()?.edits.clone();
     edits.sort_by_key(|(span, _)| std::cmp::Reverse(span.start));
