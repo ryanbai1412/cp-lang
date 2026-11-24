@@ -552,7 +552,9 @@ fi
 # Run the recovery scoreboard in parallel with the remaining fast checks
 # (nextest, doctests, and LSP latency tests have finished, so no Cargo lock contention).
 recovery_cached=0
-if cache_hit recovery; then
+if [ "$gate_part" = checks ]; then
+    recovery_cached=2
+elif cache_hit recovery; then
     recovery_cached=1
 else
     cargo test -q -p cpl-cli --test recovery >"$lib_logs/recovery.log" 2>&1 &
@@ -629,7 +631,10 @@ elif [ -n "${scoreboard_pid:-}" ]; then
     cache_save scoreboard_fast
 fi
 
-if [ "$recovery_cached" -eq 1 ]; then
+if [ "$recovery_cached" -eq 2 ]; then
+    step "cargo test: the recovery scoreboard"
+    echo "skipped: the CI test partitions run it (CPL_GATE_PART=checks)"
+elif [ "$recovery_cached" -eq 1 ]; then
     step "cargo test: the recovery scoreboard"
     echo "cached (tree unchanged outside its excludes)"
 elif [ -n "${recovery_pid:-}" ]; then
