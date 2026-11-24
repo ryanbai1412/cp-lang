@@ -436,6 +436,9 @@ dmpg16g2
 dmpg16s5
 dmpg18s5
 dwite10c3p3
+egoi22p1
+egoi22p2
+egoi22p5
 egoi23p7
 etsr23r1p3
 etsr23r1p4

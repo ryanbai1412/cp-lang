@@ -5,17 +5,18 @@
 // Solution: one new copy of i takes one operation that uses a copy of every j < i. Go down from
 //   need[n] = 1: the shortfall need[i] - f_i, if positive, costs that many operations and adds
 //   it to need[j] for every j < i. The answer is the total shortfall, O(n^2).
+// Bounds: n: 1..=50; have: 0..=1e16
 // original: corpus/submissions/5198974.cpp
-// Bounds: n: 1..=50
-@multitest
+
+@!multitest
 let n: 1..=50 = read()
-let have: [0..n]Int = read()
-var need: [0..=n]Int = 0
+let have: [0..n]0..=1e16 = read()
+var need: [0..=n]Int = 0  // copies of each value still to make
 need[n] = 1
-var ans = 0
+var ops = 0
 for i in (0..=n).rev:
     let short = need[i] - (if i < n: have[i] else: 0)
     if short > 0:
-        ans += short
+        ops += short
         for j in 0..i: need[j] += short
-print(ans)
+print(ops)

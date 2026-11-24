@@ -2,28 +2,21 @@
 // Problem: n <= 1e5 data centres with at most 1e9 free machines each, and s <= 5000 services
 //   in order: service i sorts the centres by free machines, descending, and takes m_i machines
 //   from each of the top c_i (always enough). Print the final counts in descending order.
-// Solution: keep the counts sorted descending. After taking m from the top c, both a[..c] - m
-//   and a[c..] are still descending, so one two-pointer merge restores the order instead of
-//   a sort. O(n log n + s n).
-// Runnable on proto/cpc today.
+// Solution: keep the counts sorted. After taking m from the top c, both the top c less m
+//   and the rest are still sorted, so one two-pointer merge restores the order instead of
+//   a sort (std `merge_sorted`). O(n log n + s n).
+// Bounds: n: 1..=1e5; s: 1..=5000; start: 0..=1e9
 // original: corpus/submissions/5203693.cpp
-let n: Int = read()
-let q: Int = read()
-let raw: [0..n]Int = read()
-var a = raw.sorted(by: x => -x)
-for _ in 0..q:
-    let x: Int = read()
-    let c: Int = read()
-    // a[..c] - x and a[c..] are both still descending: two-pointer merge
-    var merged: List<Int> = []
-    var i = 0
-    var j = c
-    while i < c or j < n:
-        if j == n or (i < c and a[i] - x >= a[j]):
-            merged.push(a[i] - x)
-            i += 1
-        else:
-            merged.push(a[j])
-            j += 1
-    for k in 0..n: a[k] = merged[k]
-print(a)
+
+let n: 1..=1e5 = read()
+let s: 1..=5000 = read()
+let start: [n]0..=1e9 = read()
+
+var free: List<Int> = start.sorted()  // ascending, so the top centres are the tail
+for _ in 0..s:
+    let take: 1..=1e9 = read()
+    let top: 1..=n = read()
+    // the rest and the top `top` less `take` are both still ascending
+    let cut = n - top
+    free = free[0..cut].merge_sorted([x - take for x in free[cut..n]])
+print(free.rev)
