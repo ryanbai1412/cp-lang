@@ -836,3 +836,34 @@ fn an_if_from_matches_one_branch_of_an_if_chain() {
         ]
     );
 }
+
+/// `reads:` on a loop variable `from` binds rewrites its reads in what the
+/// statement holes matched; with any other use of it, or none, and `to`
+/// dropping it, the loop is no such loop. Rule: R06.4.9.
+#[test]
+fn reads_of_a_loop_variable_are_rewritten_in_its_body() {
+    let decl = "pub trait Walk<T>:\n    @lint(index_walk, from: \"for i in 0..self.len:\\n    b\", to: \"for x in self:\\n    b\", reads: \"self[i] -> x\", holes: \"b\")\n    fn iter(self) -> yields T\n";
+    let run = |body: &str| {
+        let src = format!("{decl}var xs = [1, 2]\nfor i in 0..xs.len:\n{body}\n");
+        let found: Vec<_> = (crate::lint(&src, &crate::Config::default()).into_iter())
+            .filter(|d| d.code.0 == "index_walk")
+            .collect();
+        let (text, _) = cpl_diag::splice_fixes(&src, &found);
+        (found.len(), text[decl.len()..].to_string())
+    };
+    assert_eq!(
+        run("    print(xs[i] * 2, xs[i])"),
+        (
+            1,
+            "var xs = [1, 2]\nfor x in xs:\n    print(x * 2, x)\n".to_string()
+        )
+    );
+    for body in [
+        "    print(i, xs[i])",
+        "    xs[i] = 0",
+        "    print(1)",
+        "    xs[0] = 5\n    print(xs[i])",
+    ] {
+        assert_eq!(run(body).0, 0, "{body}");
+    }
+}

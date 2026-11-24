@@ -276,7 +276,12 @@ library or by this spec:
   `reads: "p[k] -> p.cut(k)"` makes the fix rewrite, too, every later
   use of a name `from` declares, in the rest of its block: each must
   match the read (`k` a hole), else the finding has no fix (a write
-  `p[0] = 5`, or `p.len`); `to` or the rewrite calls the fn.
+  `p[0] = 5`, or `p.len`); `to` or the rewrite calls the fn. For a loop
+  variable `from` binds (`for i in 0..self.len`), its uses are those in
+  the statement holes, rewritten in the code the holes matched (`reads:
+  "self[i] -> x"`). Where `to` drops the name, a use that is no such read,
+  or none at all, means the code does not match; nor does it where the
+  scope declares again or assigns a name the read's holes matched.
   A finding inside a wider one is shown with it when `from` still
   matches the wider fix's text, which keeps the code it is about.
   It applies in every file that uses the module, and in the module outside
