@@ -1111,3 +1111,4 @@ on input `2 / 1 / 2` prints `7` once in `cpl run` and in the C++ (`cpl_main` cal
   are each an `Observer`, and `watch::Watch` (the one slot) passes each
   event to the ones asked for. An internal call hushes the tracer and
   profiler but still counts a fallback. event_models 14 -> 0.
+- VM-memory: the test binaries' counting allocator counts per thread, and `std_allocations` and `trace_log` measure runs they make on their own thread (`*_on_this_thread`), so a test running beside them can't move the count; the self-test now allocates on a second thread while it measures. Regression: `the_counting_allocator_hands_each_call_to_the_system_one`.
