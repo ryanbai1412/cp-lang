@@ -22,6 +22,15 @@ class Growth(unittest.TestCase):
         self.assertAlmostEqual(scaling.growth("k 2^k", let={"k": r"\log n"}), 4 * 16 / 14, places=3)
         self.assertAlmostEqual(scaling.growth(r"\min(k, n - k)", let={"k": "n / 2"}), 4.0, places=3)
 
+    def test_an_exponential_cost_reads_n_as_a_let(self):
+        self.assertAlmostEqual(scaling.growth("2^n n", let={"n": r"\log n"}), 4 * 16 / 14, places=3)
+        self.assertAlmostEqual(scaling.growth("k^n", let={"k": "2", "n": r"\log n"}), 4.0, places=3)
+
+    def test_a_bare_alpha_is_constant_and_text_is_one_symbol(self):
+        self.assertEqual(scaling.growth(r"(n + m) \alpha"), 4.0)
+        self.assertEqual(scaling.growth(r"\text{path length}", fixed=("path_length",)), 1.0)
+        self.assertEqual(scaling.growth(r"\text{path length}"), 4.0)
+
     def test_function_arguments_logs_and_bases(self):
         for formula, want in [(r"\log \max(\lvert x \rvert, \lvert y \rvert)", 16 / 14),
                               (r"(n + m) \log(n + m)", 4 * 17 / 15), (r"\log \log n", math.log2(16) / math.log2(14)),
@@ -129,6 +138,11 @@ class Merge(unittest.TestCase):
 
 
 class Alias(unittest.TestCase):
+    def test_an_impls_owner_is_named_without_its_generics(self):
+        out = {"name": "out", "facts": {"cost": r"\\(O(1)\\)"}}
+        doc = {"modules": [{"name": "graph", "items": [{"name": "Complement<V, G>", "members": [out]}]}]}
+        self.assertEqual(list(scaling.costs_of(doc)), ["graph.Complement.out"])
+
     def test_a_cost_as_another_fn_reads_its_cost(self):
         costs = {"m.T.f": r"\(O(\log n)\)", "m.T.g": "as `f`", "m.U.h": "as [`T.g`](T.g), plus one call",
                  "m.T.k": "as `nope`"}

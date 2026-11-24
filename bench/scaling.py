@@ -57,17 +57,23 @@ def std_costs(cpl):
     """`module.Owner.fn` -> its `cost:` text, for every std item that has one."""
     out = subprocess.run([cpl, "doc", "--format", "json", "std"], cwd=ROOT,
                          capture_output=True, text=True, check=True).stdout
+    return costs_of(json.loads(out))
+
+
+def costs_of(doc):
+    """`module.Owner.fn` -> its `cost:` text, from `cpl doc --format json`'s output."""
     costs = {}
 
     def walk(items, prefix):
         for it in items:
-            name = f"{prefix}.{it['name']}"
+            # an impl's owner is named without its generics: `Complement<V, G>` is `Complement`
+            name = f"{prefix}.{re.sub(r'<.*', '', it['name'])}"
             cost = (it.get("facts") or {}).get("cost")
             if cost:
                 costs[name] = cost
             walk(it.get("members") or [], name)
 
-    for m in json.loads(out)["modules"]:
+    for m in doc["modules"]:
         walk(m["items"], m["name"])
     for name, cost in costs.items():
         costs[name] = alias(name, cost, costs)
@@ -128,7 +134,9 @@ def python(formula):
     # a sum grows as its term times its upper bound, or as its term when it names none
     f = re.sub(r"\\sum_(?:\{[^}]*\}|\w+)\^(\{[^}]*\}|\w+)\s*", r"\1 ", f)
     f = re.sub(r"\\sum_(?:\{[^}]*\}|\w+)\s*", "", f)
-    f = re.sub(r"\\alpha\s*\(([^)]*)\)", "1", f)
+    f = re.sub(r"\\alpha\b\s*(?:\([^)]*\))?", "1", f)
+    # a size named in words (`\text{path length}`) is one symbol
+    f = re.sub(r"\\text\{([^}]*)\}", lambda m: "_".join(m.group(1).split()), f)
     f = f.replace("\\min", "min").replace("\\max", "max")
     # `\log^k x`, `\log x`, `log_b x` and `\sqrt x`, innermost (rightmost) first
     op = re.compile(r"\\log\^(\d+)\s*|\\log\s*|\blog_(\w+)\s*|\\sqrt\s*")
@@ -160,17 +168,18 @@ def python(formula):
 def growth(formula, fixed=(), k=4.0, n=float(N), let=None):
     """f(k n) / f(n) for a cost formula in the docs' TeX. A symbol in `fixed`
     stands for 1, one in `let` for its formula in `n` (`k = \\log n` when the
-    case's n is 2^k), and every other symbol for n."""
+    case's n is 2^k; `n = \\log n` for a cost exponential in n), and every
+    other symbol for n."""
     let = {s: python(e) for s, e in (let or {}).items()}
     env = {"__builtins__": {}, "lg": lambda v: math.log2(max(v, 2.0)),
            "sqrt": math.sqrt, "min": min, "max": max,
            "C": lambda a, b: math.exp(math.lgamma(a + 1) - math.lgamma(b + 1) - math.lgamma(a - b + 1))}
 
-    def at(x, f):
+    def at(x, f, inner=False):
         names = {}
         for v in set(re.findall(r"\bv_\w+", f)):
             s = v[2:]
-            names[v] = 1.0 if s in fixed else at(x, let[s]) if s in let and s != "n" else x
+            names[v] = 1.0 if s in fixed else at(x, let[s], inner=True) if s in let and not inner else x
         try:
             return float(eval(f, env, names))
         except (ArithmeticError, TypeError, SyntaxError, NameError) as e:

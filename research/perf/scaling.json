@@ -2460,7 +2460,7 @@
    "cost": "V\u00b3",
    "documented": 8.0,
    "fn": "flow.global_min_cut",
-   "measured": 5.51,
+   "measured": 5.18,
    "n": 16384,
    "ok": true
   },
@@ -2468,7 +2468,7 @@
    "cost": "V \\cdot \\mathit{flow}",
    "documented": 8.0,
    "fn": "flow.gomory_hu",
-   "measured": 9.48,
+   "measured": 9.56,
    "n": 16384,
    "ok": true
   },
@@ -2476,7 +2476,7 @@
    "cost": "V\u00b3",
    "documented": 8.0,
    "fn": "flow.max_weight_general_matching",
-   "measured": 5.82,
+   "measured": 5.59,
    "n": 16384,
    "ok": true
   },
@@ -2534,6 +2534,830 @@
    "fn": "flow.matroid_intersection",
    "measured": 14.36,
    "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Graph.directed": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.Graph.directed",
+   "measured": 4.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Graph.lists": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.Graph.lists",
+   "measured": 4.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Graph.of": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.Graph.of",
+   "measured": 4.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Graph.peel": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.Graph.peel",
+   "measured": 4.23,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Graph.transpose": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.Graph.transpose",
+   "measured": 4.46,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Graph.undirected": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.Graph.undirected",
+   "measured": 4.29,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Only.transpose": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.Only.transpose",
+   "measured": 4.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Paths.arcs": {
+   "cost": "\\text{path length}",
+   "documented": 4.0,
+   "fn": "graph.Paths.arcs",
+   "measured": 4.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Paths.path": {
+   "cost": "\\text{path length}",
+   "documented": 4.0,
+   "fn": "graph.Paths.path",
+   "measured": 4.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.Paths.tight": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.Paths.tight",
+   "measured": 4.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.adjacency": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.adjacency",
+   "measured": 4.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.bfs": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.bfs",
+   "measured": 4.22,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.directed_of_pairs": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.directed_of_pairs",
+   "measured": 4.17,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.peel": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.peel",
+   "measured": 4.33,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.transpose": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.transpose",
+   "measured": 4.06,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph.cp::graph.undirected_of_pairs": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.undirected_of_pairs",
+   "measured": 4.23,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Complement.out": {
+   "cost": "\\lvert V \\rvert + \\deg u",
+   "documented": 4.0,
+   "fn": "graph.Complement.out",
+   "measured": 3.91,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Edged.e": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Edged.e",
+   "measured": 0.95,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Graph.at": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Graph.at",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Graph.contains": {
+   "cost": "\\deg u",
+   "documented": 1.0,
+   "fn": "graph.Graph.contains",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Graph.deg": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Graph.deg",
+   "measured": 0.97,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Graph.edges": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.Graph.edges",
+   "measured": 4.24,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Graph.next": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Graph.next",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Graph.out": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Graph.out",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Lit.neg": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Lit.neg",
+   "measured": 0.97,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Next.out": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Next.out",
+   "measured": 0.97,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Only.deg": {
+   "cost": "\\deg u",
+   "documented": 1.0,
+   "fn": "graph.Only.deg",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Only.out": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Only.out",
+   "measured": 0.99,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Paths.get": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Paths.get",
+   "measured": 0.97,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Paths.iter": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Paths.iter",
+   "measured": 0.98,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Paths.reached": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Paths.reached",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Reweighted.out": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Reweighted.out",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Target.to": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Target.to",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Walk.vertices": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Walk.vertices",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.Weighted.w": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Weighted.w",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.arc_len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.arc_len",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.deg": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.deg",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_api.cp::graph.next": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.next",
+   "measured": 0.96,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_bridges.cp::graph.IncrementalBridges.add": {
+   "cost": "\\log n",
+   "documented": 1.12,
+   "fn": "graph.IncrementalBridges.add",
+   "measured": 1.05,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_bridges.cp::graph.IncrementalBridges.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "graph.IncrementalBridges.new",
+   "measured": 4.27,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_bridges.cp::graph.IncrementalBridges.same": {
+   "cost": "\\alpha",
+   "documented": 1.0,
+   "fn": "graph.IncrementalBridges.same",
+   "measured": 1.04,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_bridges.cp::graph.IncrementalBridges.two_edge_same": {
+   "cost": "\\alpha",
+   "documented": 1.0,
+   "fn": "graph.IncrementalBridges.two_edge_same",
+   "measured": 1.02,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_clique.cp::graph.max_clique": {
+   "cost": "3^{n/3}",
+   "documented": 9.0,
+   "fn": "graph.max_clique",
+   "measured": 8.56,
+   "n": 64,
+   "ok": true
+  },
+  "bench/scaling/graph_conn.cp::graph.block_cut_tree": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.block_cut_tree",
+   "measured": 4.14,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_conn.cp::graph.blocks": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.blocks",
+   "measured": 4.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_conn.cp::graph.bridges": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.bridges",
+   "measured": 4.11,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_conn.cp::graph.components": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.components",
+   "measured": 4.2,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_conn.cp::graph.cut_vertices": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.cut_vertices",
+   "measured": 3.92,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_conn.cp::graph.odd_cycle": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.odd_cycle",
+   "measured": 4.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_conn.cp::graph.two_color": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.two_color",
+   "measured": 4.09,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_conn.cp::graph.two_edge_components": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.two_edge_components",
+   "measured": 4.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.Graph.hops": {
+   "cost": "n (n + m)",
+   "documented": 16.0,
+   "fn": "graph.Graph.hops",
+   "measured": 14.54,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.Graph.matrix": {
+   "cost": "n^2 + m",
+   "documented": 15.91,
+   "fn": "graph.Graph.matrix",
+   "measured": 16.86,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.bellman_ford": {
+   "cost": "n m",
+   "documented": 16.0,
+   "fn": "graph.bellman_ford",
+   "measured": 15.39,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.closure": {
+   "cost": "n^3",
+   "documented": 64.0,
+   "fn": "graph.closure",
+   "measured": 53.56,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.floyd_warshall": {
+   "cost": "n^3",
+   "documented": 64.0,
+   "fn": "graph.floyd_warshall",
+   "measured": 54.04,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.girth": {
+   "cost": "n m",
+   "documented": 16.0,
+   "fn": "graph.girth",
+   "measured": 13.46,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.johnson": {
+   "cost": "n m \\log m",
+   "documented": 20.57,
+   "fn": "graph.johnson",
+   "measured": 11.95,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.min_mean_cycle": {
+   "cost": "n m",
+   "documented": 16.0,
+   "fn": "graph.min_mean_cycle",
+   "measured": 15.96,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.negative_cycle": {
+   "cost": "n m",
+   "documented": 16.0,
+   "fn": "graph.negative_cycle",
+   "measured": 15.81,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_dense.cp::graph.prim": {
+   "cost": "n^2",
+   "documented": 16.0,
+   "fn": "graph.prim",
+   "measured": 17.6,
+   "n": 128,
+   "ok": true
+  },
+  "bench/scaling/graph_exp.cp::graph.chromatic_number": {
+   "cost": "2^n n",
+   "documented": 4.67,
+   "fn": "graph.chromatic_number",
+   "measured": 4.04,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/graph_exp.cp::graph.de_bruijn": {
+   "cost": "k^n",
+   "documented": 4.0,
+   "fn": "graph.de_bruijn",
+   "measured": 3.76,
+   "n": 4096,
+   "ok": true
+  },
+  "bench/scaling/graph_forest.cp::graph.boruvka": {
+   "cost": "n \\log n",
+   "documented": 4.57,
+   "fn": "graph.boruvka",
+   "measured": 4.38,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_forest.cp::graph.euler_walk": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.euler_walk",
+   "measured": 4.02,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_forest.cp::graph.spanning_forest": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.spanning_forest",
+   "measured": 3.96,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_mst.cp::graph.arborescence": {
+   "cost": "m \\log n",
+   "documented": 4.57,
+   "fn": "graph.arborescence",
+   "measured": 3.76,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_mst.cp::graph.dominators": {
+   "cost": "(n + m) \\alpha",
+   "documented": 4.0,
+   "fn": "graph.dominators",
+   "measured": 3.76,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_mst.cp::graph.kruskal": {
+   "cost": "m \\log m",
+   "documented": 4.57,
+   "fn": "graph.kruskal",
+   "measured": 4.18,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_order.cp::graph.count_paths": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.count_paths",
+   "measured": 4.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_order.cp::graph.dag_fold": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.dag_fold",
+   "measured": 3.99,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_order.cp::graph.find_cycle": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.find_cycle",
+   "measured": 3.87,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_order.cp::graph.smallest_topo": {
+   "cost": "(n + m) \\log n",
+   "documented": 4.57,
+   "fn": "graph.smallest_topo",
+   "measured": 4.15,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_order.cp::graph.topo": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.topo",
+   "measured": 4.39,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_order.cp::graph.triangles": {
+   "cost": "m \\sqrt m",
+   "documented": 8.0,
+   "fn": "graph.triangles",
+   "measured": 4.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_paths.cp::graph.bfs01": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.bfs01",
+   "measured": 4.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_paths.cp::graph.dfs": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.dfs",
+   "measured": 3.9,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_paths.cp::graph.dial": {
+   "cost": "n + m + \\mathit{max\\_w} + \\mathit{d\\_max}",
+   "documented": 4.0,
+   "fn": "graph.dial",
+   "measured": 4.19,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_paths.cp::graph.dijkstra": {
+   "cost": "(n + m) \\log m",
+   "documented": 4.57,
+   "fn": "graph.dijkstra",
+   "measured": 4.29,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_paths.cp::graph.fixed_cost_paths": {
+   "cost": "\\lvert S \\rvert \\lvert \\mathit{moves} \\rvert",
+   "documented": 4.0,
+   "fn": "graph.fixed_cost_paths",
+   "measured": 3.24,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_paths.cp::graph.k_shortest": {
+   "cost": "(n + m) \\log n + k \\log k",
+   "documented": 4.57,
+   "fn": "graph.k_shortest",
+   "measured": 4.59,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_paths.cp::graph.reachable": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "graph.reachable",
+   "measured": 4.26,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_reach.cp::graph.reach_sets": {
+   "cost": "n m / 64",
+   "documented": 16.0,
+   "fn": "graph.reach_sets",
+   "measured": 5.65,
+   "n": 1024,
+   "ok": true
+  },
+  "bench/scaling/graph_scc.cp::graph.condense": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.condense",
+   "measured": 4.29,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_scc.cp::graph.scc": {
+   "cost": "n + m",
+   "documented": 4.0,
+   "fn": "graph.scc",
+   "measured": 4.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_scc.cp::graph.scc_times": {
+   "cost": "m \\log m",
+   "documented": 4.57,
+   "fn": "graph.scc_times",
+   "measured": 4.61,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.Functional.after": {
+   "cost": "\\log k",
+   "documented": 1.0,
+   "fn": "graph.Functional.after",
+   "measured": 1.02,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.Functional.cycle_len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Functional.cycle_len",
+   "measured": 1.04,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.Functional.cycles": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "graph.Functional.cycles",
+   "measured": 3.93,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.Functional.depth": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Functional.depth",
+   "measured": 1.02,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.Functional.dist": {
+   "cost": "\\log n",
+   "documented": 1.12,
+   "fn": "graph.Functional.dist",
+   "measured": 1.02,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.Functional.jump_while": {
+   "cost": "\\log n",
+   "documented": 1.12,
+   "fn": "graph.Functional.jump_while",
+   "measured": 1.03,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.Functional.new": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "graph.Functional.new",
+   "measured": 4.23,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.Functional.on_cycle": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Functional.on_cycle",
+   "measured": 1.02,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.Functional.root_of": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.Functional.root_of",
+   "measured": 1.02,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.TwoSat.add_eq": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.TwoSat.add_eq",
+   "measured": 0.99,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.TwoSat.add_or": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.TwoSat.add_or",
+   "measured": 0.99,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.TwoSat.add_xor": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.TwoSat.add_xor",
+   "measured": 0.99,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.TwoSat.at_most_one": {
+   "cost": "k",
+   "documented": 1.0,
+   "fn": "graph.TwoSat.at_most_one",
+   "measured": 0.99,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.TwoSat.implies": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.TwoSat.implies",
+   "measured": 1.0,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.TwoSat.must": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "graph.TwoSat.must",
+   "measured": 0.98,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.TwoSat.new": {
+   "cost": "\\lvert X \\rvert",
+   "documented": 4.0,
+   "fn": "graph.TwoSat.new",
+   "measured": 4.09,
+   "n": 65536,
+   "ok": true
+  },
+  "bench/scaling/graph_types.cp::graph.TwoSat.solve": {
+   "cost": "\\lvert X \\rvert + \\mathit{clauses}",
+   "documented": 4.0,
+   "fn": "graph.TwoSat.solve",
+   "measured": 4.5,
+   "n": 65536,
    "ok": true
   },
   "bench/scaling/heap.cp::heap.ErasableHeap.clear": {
@@ -6940,6 +7764,7 @@
   "bag.BucketCount.clear",
   "bag.BucketCount.count",
   "bag.BucketCount.count_lt",
+  "bag.BucketCount.each",
   "bag.BucketCount.is_empty",
   "bag.BucketCount.kth",
   "bag.BucketCount.len",
@@ -7074,6 +7899,8 @@
   "beats.HistoricBeatsSegTree.max_val",
   "beats.HistoricBeatsSegTree.new",
   "beats.HistoricBeatsSegTree.sum",
+  "bitset.BitTrie.each",
+  "bitset.XorTrie.each",
   "builtin.Array.all",
   "builtin.Array.any",
   "builtin.Array.clone",
@@ -7231,8 +8058,12 @@
   "dp.Line.at",
   "dp.LineContainer.add",
   "dp.LineContainer.at",
+  "dp.LineContainer.each",
+  "dp.LineContainer.is_empty",
   "dp.LineContainer.len",
   "dp.LineContainer.line_at",
+  "dp.MongePath.is_empty",
+  "dp.MongePath.items",
   "dp.MongePath.len",
   "dp.MongePath.next",
   "dp.MongePath.val",
@@ -7241,6 +8072,8 @@
   "dp.MonotoneHull.at_next",
   "dp.MonotoneHull.best_next",
   "dp.MonotoneHull.clear",
+  "dp.MonotoneHull.is_empty",
+  "dp.MonotoneHull.items",
   "dp.MonotoneHull.len",
   "dp.Step.prune",
   "dp.aliens",
@@ -7294,6 +8127,8 @@
   "fenwick.XorFenwick.new",
   "fenwick.XorFenwick.prefix",
   "fenwick.XorFenwick.xor",
+  "flow.Matching.is_empty",
+  "flow.Matching.items",
   "geometry.Circle.area",
   "geometry.Circle.circumference",
   "geometry.Circle.locate",
@@ -7444,113 +8279,10 @@
   "geometry.upper_hull",
   "geometry.upper_hull_idx",
   "geometry.voronoi_cells",
-  "graph.Complement<V, G>.out",
-  "graph.Edged.e",
-  "graph.Functional.after",
-  "graph.Functional.cycle_len",
-  "graph.Functional.cycles",
-  "graph.Functional.depth",
-  "graph.Functional.dist",
-  "graph.Functional.jump_while",
-  "graph.Functional.new",
-  "graph.Functional.on_cycle",
-  "graph.Functional.root_of",
-  "graph.Graph.at",
-  "graph.Graph.contains",
-  "graph.Graph.deg",
-  "graph.Graph.directed",
-  "graph.Graph.edges",
-  "graph.Graph.hops",
-  "graph.Graph.lists",
-  "graph.Graph.matrix",
-  "graph.Graph.next",
-  "graph.Graph.of",
   "graph.Graph.only",
-  "graph.Graph.out",
-  "graph.Graph.peel",
-  "graph.Graph.transpose",
-  "graph.Graph.undirected",
   "graph.Graph.weighted",
-  "graph.IncrementalBridges.add",
-  "graph.IncrementalBridges.new",
-  "graph.IncrementalBridges.same",
-  "graph.IncrementalBridges.two_edge_same",
-  "graph.Lit.neg",
-  "graph.Next.out",
-  "graph.Only.deg",
-  "graph.Only.out",
-  "graph.Only.transpose",
-  "graph.Paths.arcs",
-  "graph.Paths.get",
-  "graph.Paths.iter",
-  "graph.Paths.path",
-  "graph.Paths.reached",
-  "graph.Paths.tight",
-  "graph.Reweighted.out",
-  "graph.Target.to",
-  "graph.TwoSat.add_eq",
-  "graph.TwoSat.add_or",
-  "graph.TwoSat.add_xor",
-  "graph.TwoSat.at_most_one",
-  "graph.TwoSat.implies",
-  "graph.TwoSat.must",
-  "graph.TwoSat.new",
-  "graph.TwoSat.solve",
-  "graph.Walk.vertices",
-  "graph.Weighted.w",
-  "graph.adjacency",
-  "graph.arborescence",
-  "graph.arc_len",
-  "graph.bellman_ford",
-  "graph.bfs",
-  "graph.bfs01",
-  "graph.block_cut_tree",
-  "graph.blocks",
-  "graph.boruvka",
-  "graph.bridges",
-  "graph.chromatic_number",
-  "graph.closure",
   "graph.complement",
-  "graph.components",
-  "graph.condense",
-  "graph.count_paths",
-  "graph.cut_vertices",
-  "graph.dag_fold",
-  "graph.de_bruijn",
-  "graph.deg",
-  "graph.dfs",
-  "graph.dial",
-  "graph.dijkstra",
-  "graph.directed_of_pairs",
-  "graph.dominators",
-  "graph.euler_walk",
-  "graph.find_cycle",
-  "graph.fixed_cost_paths",
-  "graph.floyd_warshall",
-  "graph.girth",
-  "graph.johnson",
-  "graph.k_shortest",
-  "graph.kruskal",
-  "graph.max_clique",
-  "graph.min_mean_cycle",
-  "graph.negative_cycle",
-  "graph.next",
-  "graph.odd_cycle",
   "graph.only",
-  "graph.peel",
-  "graph.prim",
-  "graph.reach_sets",
-  "graph.reachable",
-  "graph.scc",
-  "graph.scc_times",
-  "graph.smallest_topo",
-  "graph.spanning_forest",
-  "graph.topo",
-  "graph.transpose",
-  "graph.triangles",
-  "graph.two_color",
-  "graph.two_edge_components",
-  "graph.undirected_of_pairs",
   "grid.Dir4.all",
   "grid.Dir4.back",
   "grid.Dir4.ccw",
@@ -7702,6 +8434,8 @@
   "lazy.SeqFold.fold",
   "lazy.SeqFold.get",
   "lazy.SeqFold.insert_at",
+  "lazy.SeqFold.is_empty",
+  "lazy.SeqFold.items",
   "lazy.SeqFold.len",
   "lazy.SeqFold.new",
   "lazy.SeqFold.push",
@@ -7921,10 +8655,10 @@
   "seq.Rev.drop",
   "seq.Rev.drop_last",
   "seq.Rev.nth",
+  "seq.Rev.scan",
   "seq.Rev.src",
   "seq.Rev.take",
   "seq.Rev.take_last",
-  "seq.Rev<[D]T>.scan",
   "seq.Ring.from",
   "seq.Ring.maximal",
   "seq.Ring.minimal",
@@ -8337,6 +9071,8 @@
   "timetree.TimeTree.walk",
   "timetree.cdq",
   "timetree.offline_over",
+  "window.Window.is_empty",
+  "window.Window.items",
   "window.window_fold"
  ]
 }

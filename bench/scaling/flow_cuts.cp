@@ -10,6 +10,6 @@ var s = 0
 let weighted: [E](u: V, v: V, w: Int) = [E] e => (u: V(e.ord / k), v: V(e.ord % k), w: (e.ord * 7919) % 97 + 1)
 s += gomory_hu(weighted).len // timed: flow.gomory_hu
 s += global_min_cut(weighted).w // timed: flow.global_min_cut
-for _ in 0..3:
+for _ in 0..5:
     s += max_weight_general_matching(weighted).total // timed: flow.max_weight_general_matching
 print(s)

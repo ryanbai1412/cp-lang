@@ -370,7 +370,8 @@ pub struct Graph<V: Domain, A: Target<V>>:
     /// undirected one stores the same two arcs for `(u, v)` and `(v, u)`, so `u` is the end that
     /// comes first in `V` (decision 248). Needs arcs that keep `e`.
     ///
-    /// cost: \(O(1)\) to make, \(O(1)\) per edge
+    /// cost: \(O(n + m)\) for the whole walk, all of it before the first edge: it marks every edge
+    /// to yield each once, in `e` order
     /// order: increasing `e`
     /// traps: never
     /// example: `domain V = 0..3; domain E = 0..2; let es: [E](u: V, v: V) = [(u: 1, v: 0), (u: 0, v: 2)]; Graph.undirected(es).edges().collect() == [Edge(0, 0, 1), Edge(1, 0, 2)] and Graph.directed(es).edges().collect() == [Edge(0, 1, 0), Edge(1, 0, 2)]`
@@ -2349,24 +2350,22 @@ pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int):
     let g_val = gcd(abs(b.num), b.den)
     let p = b.num / g_val
     let q = b.den / g_val
-    var best_len = n + 1
-    for s in V:
-        var cur: [V]?Int = None
-        cur[s] = Some(0)
-        for step in 1..=n:
-            if step >= best_len: break
-            var nxt: [V]?Int = None
-            for u in V:
-                if let du = cur[u]:
-                    for a in g.out(u):
-                        let nd = du + q * a.w - p
-                        if nxt[a.to] == None or nd < nxt[a.to]!:
-                            nxt[a.to] = Some(nd)
-            cur = nxt
-            if cur[s] == Some(0):
-                best_len = step
-                break
-    Some((sum: p * (best_len / q), len: best_len))
+    // Under weights q w - p no cycle is negative and those of least mean are the zero ones:
+    // with shortest distances as potentials they are the cycles of tight arcs, and the
+    // shortest of them is the tight subgraph's girth.
+    var pot: [V]Int = 0
+    for _ in 0..n:
+        var changed = false
+        for u in V:
+            for a in g.out(u):
+                let nd = pot[u] + q * a.w - p
+                if nd < pot[a.to]:
+                    pot[a.to] = nd
+                    changed = true
+        if not changed: break
+    let tight = [V] u => [a.to for a in g.out(u) if pot[u] + q * a.w - p == pot[a.to]]
+    let len = girth(tight, directed: true)!
+    Some((sum: p * (len / q), len:))
 
 /// The length of a shortest cycle (the girth), or `None` if there is None.
 ///
@@ -3218,7 +3217,7 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
 /// returned edge joining two different components is taken; rounds end when one component remains
 /// or no edge is taken.
 ///
-/// cost: \(O(\log n)\) rounds, each \(O(n)\) plus the call of `cheapest`
+/// cost: \(O(n \log n)\) plus the calls of `cheapest`: \(O(\log n)\) rounds, each \(O(n)\)
 /// empty: an empty `V` gives total 0 and no edges
 /// traps: when `cheapest` returns a list whose length is not the number of components
 ///
@@ -3261,7 +3260,7 @@ pub fn boruvka<V, C, W>(
         if not merged: break
     (total:, edges:)
 
-/// A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with a skew heap):
+/// A minimum spanning arborescence rooted at `root` (Chu-Liu / Edmonds with leftist heaps):
 /// `parent[v]` is the edge entering `v`, `None` at `root`. `None` if some vertex is
 /// unreachable from `root`. Loops are ignored.
 ///
@@ -3275,129 +3274,211 @@ pub fn arborescence<V, E, W: Add + Sub, R: (u: V, v: V, w: W, ..)>(edges: [E]R, 
     total: W,
     parent: [V]?E,
 ):
-    let n0 = V.count
-    var cur_n = n0
-    var cur_root = root.ord
-    var cur_u = List<Int>()
-    var cur_v = List<Int>()
-    var cur_w = List<W>()
-    var cur_orig = List<E>()
+    // Tarjan's form of Chu-Liu/Edmonds: from each vertex, walk back along the lightest arc
+    // entering its contracted component, contracting every cycle the walk closes by merging
+    // the cycle's heaps. The heaps are leftist with a lazy weight offset; the components are
+    // a rollback DSU, so the arcs a cycle replaced can be restored afterwards.
+    let n = V.count
+    var es = List<E>()
     for e in E:
-        let r = edges[e]
-        if r.u != r.v and r.v != root:
-            cur_u.push(r.u.ord)
-            cur_v.push(r.v.ord)
-            cur_w.push(r.w)
-            cur_orig.push(e)
-
+        if edges[e].u != edges[e].v and edges[e].v != root: es.push(e)
+    let m = es.len
+    var h = ArbHeap<W>(
+        w: [edges[es[i]].w for i in 0..m],
+        lazy: [W.zero for _ in 0..m],
+        l: [-1 for _ in 0..m],
+        r: [-1 for _ in 0..m],
+        rank: [1 for _ in 0..m],
+    )
+    var heap = [-1 for _ in 0..n]
+    for i in 0..m:
+        let b = edges[es[i]].v.ord
+        heap[b] = arb_merge(mut h, heap[b], i)
+    var up = [-1 for _ in 0..n]
+    var size = [1 for _ in 0..n]
+    var joins = List<Int>()
     var total = W.zero
-    var hist_n = List<Int>()
-    var hist_root = List<Int>()
-    var hist_id = List<List<Int>>()
-    var hist_in_idx = List<List<Int>>()
-    var hist_prev_idx = List<List<Int>>()
-    var hist_v_of = List<List<Int>>()
-    var hist_orig_e = List<List<E>>()
-
-    while true:
-        var has_in = [false for _ in 0..cur_n]
-        var in_w = [W.zero for _ in 0..cur_n]
-        var in_u = [-1 for _ in 0..cur_n]
-        var in_idx = [-1 for _ in 0..cur_n]
-        for i in 0..cur_u.len:
-            let v = cur_v[i]
-            if v == cur_root: continue
-            if not has_in[v] or cur_w[i] < in_w[v]:
-                has_in[v] = true
-                in_w[v] = cur_w[i]
-                in_u[v] = cur_u[i]
-                in_idx[v] = i
-        for v in 0..cur_n:
-            if v != cur_root and not has_in[v]:
-                return None
-        for v in 0..cur_n:
-            if v != cur_root:
-                total += in_w[v]
-        var vis = [-1 for _ in 0..cur_n]
-        var id: List<?Int> = List.filled(cur_n, None)
-        var cnt = 0
-        for i in 0..cur_n:
-            var v = i
-            while vis[v] != i and id[v] == None and v != cur_root:
-                vis[v] = i
-                v = in_u[v]
-            if v != cur_root and id[v] == None:
-                var x = in_u[v]
-                while x != v:
-                    id[x] = cnt
-                    x = in_u[x]
-                id[v] = cnt
-                cnt += 1
-        hist_n.push(cur_n)
-        hist_root.push(cur_root)
-        hist_in_idx.push(in_idx)
-        hist_v_of.push(cur_v.clone())
-        hist_orig_e.push(cur_orig.clone())
-        if cnt == 0:
-            hist_id.push((0..cur_n).collect())
-            hist_prev_idx.push(List<Int>())
-            break
-        for i in 0..cur_n:
-            if id[i] == None:
-                id[i] = cnt
-                cnt += 1
-        let ids = [x! for x in id]
-        hist_id.push(ids.clone())
-        var nxt_u = List<Int>()
-        var nxt_v = List<Int>()
-        var nxt_w = List<W>()
-        var nxt_orig = List<E>()
-        var prev_idx = List<Int>()
-        for i in 0..cur_u.len:
-            let nu = ids[cur_u[i]]
-            let nv = ids[cur_v[i]]
-            if nu != nv:
-                nxt_u.push(nu)
-                nxt_v.push(nv)
-                nxt_w.push(cur_w[i] - in_w[cur_v[i]])
-                nxt_orig.push(cur_orig[i])
-                prev_idx.push(i)
-        hist_prev_idx.push(prev_idx)
-        cur_n = cnt
-        cur_root = ids[cur_root]
-        cur_u = nxt_u
-        cur_v = nxt_v
-        cur_w = nxt_w
-        cur_orig = nxt_orig
-
-    let rounds = hist_n.len
-    var chosen = List<Int>()
-    let last = rounds - 1
-    for v in 0..hist_n[last]:
-        if v != hist_root[last]:
-            chosen.push(hist_in_idx[last][v])
-    var r = last
-    while r > 0:
-        r -= 1
-        let prev_map = hist_prev_idx[r]
-        let v_of = hist_v_of[r]
-        let in_idx = hist_in_idx[r]
-        var covered = [false for _ in 0..hist_n[r]]
-        var next_chosen = List<Int>()
-        for ci in chosen:
-            let pe = prev_map[ci]
-            next_chosen.push(pe)
-            covered[v_of[pe]] = true
-        for v in 0..hist_n[r]:
-            if v != hist_root[r] and not covered[v]:
-                next_chosen.push(in_idx[v])
-        chosen = next_chosen
+    var seen = [-1 for _ in 0..n]
+    seen[root.ord] = root.ord
+    var into = [-1 for _ in 0..n]
+    var cycle_arcs = List<Int>()
+    var cycles = List<(u: Int, joins: Int, lo: Int, hi: Int)>()
+    for s in 0..n:
+        var u = s
+        var q = List<Int>()
+        var path = List<Int>()
+        while seen[u] < 0:
+            if heap[u] < 0: return None
+            let top = heap[u]
+            arb_push(mut h, top)
+            let w = h.w[top]
+            if h.l[top] >= 0: h.lazy[h.l[top]] = h.lazy[h.l[top]] - w
+            if h.r[top] >= 0: h.lazy[h.r[top]] = h.lazy[h.r[top]] - w
+            heap[u] = arb_merge(mut h, h.l[top], h.r[top])
+            q.push(top)
+            path.push(u)
+            seen[u] = s
+            total += w
+            u = arb_find(up, edges[es[top]].u.ord)
+            if seen[u] == s:
+                var cyc = -1
+                let t = joins.len
+                let lo = cycle_arcs.len
+                var joined = true
+                while joined:
+                    let x = path.pop()!
+                    cycle_arcs.push(q.pop()!)
+                    cyc = arb_merge(mut h, cyc, heap[x])
+                    let (a, b) = (arb_find(up, u), arb_find(up, x))
+                    joined = a != b
+                    if joined:
+                        let (big, small) = if size[a] < size[b]: (b, a) else: (a, b)
+                        up[small] = big
+                        size[big] += size[small]
+                        joins.push(small)
+                u = arb_find(up, u)
+                heap[u] = cyc
+                seen[u] = -1
+                cycles.push((u:, joins: t, lo:, hi: cycle_arcs.len))
+        for i in q:
+            into[arb_find(up, edges[es[i]].v.ord)] = i
+    var c = cycles.len
+    while c > 0:
+        c -= 1
+        let cy = cycles[c]
+        while joins.len > cy.joins:
+            let small = joins.pop()!
+            size[up[small]] -= size[small]
+            up[small] = -1
+        let enter = into[cy.u]
+        for i in cy.lo..cy.hi:
+            into[arb_find(up, edges[es[cycle_arcs[i]]].v.ord)] = cycle_arcs[i]
+        into[arb_find(up, edges[es[enter]].v.ord)] = enter
     var parent: [V]?E = None
-    let orig0 = hist_orig_e[0]
-    for ci in chosen:
-        let e = orig0[ci]
-        parent[edges[e].v] = Some(e)
+    for v in V:
+        if into[v.ord] >= 0: parent[v] = Some(es[into[v.ord]])
     Some((total:, parent:))
+
+// The leftist min-heaps of `arborescence`: node `i` is arc `i`, keyed by `w[i]` plus the
+// pending offsets `lazy` on the path from its root.
+struct ArbHeap<W>:
+    var w: List<W>
+    var lazy: List<W>
+    var l: List<Int>
+    var r: List<Int>
+    var rank: List<Int>
+
+fn arb_push<W: Add + Sub>(mut h: ArbHeap<W>, a: Int):
+    let d = h.lazy[a]
+    h.w[a] += d
+    if h.l[a] >= 0: h.lazy[h.l[a]] += d
+    if h.r[a] >= 0: h.lazy[h.r[a]] += d
+    h.lazy[a] = W.zero
+
+fn arb_merge<W: Add + Sub>(mut h: ArbHeap<W>, a: Int, b: Int) -> Int:
+    if a < 0: return b
+    if b < 0: return a
+    arb_push(mut h, a)
+    arb_push(mut h, b)
+    let (x, y) = if h.w[b] < h.w[a]: (b, a) else: (a, b)
+    h.r[x] = arb_merge(mut h, h.r[x], y)
+    let left = if h.l[x] >= 0: h.rank[h.l[x]] else: 0
+    if left < h.rank[h.r[x]]:
+        let t = h.l[x]
+        h.l[x] = h.r[x]
+        h.r[x] = t
+    h.rank[x] = (if h.r[x] >= 0: h.rank[h.r[x]] else: 0) + 1
+    x
+
+fn arb_find(up: List<Int>, x: Int) -> Int:
+    var y = x
+    while up[y] >= 0: y = up[y]
+    y
+
+@test
+fn arborescence_matches_trying_every_parent_choice():
+    domain V = 0..5
+    domain E = 0..10
+    for _ in 0..80:
+        let ar = random_edges<V, E>()
+        let es: [E](u: V, v: V, w: Int) = [E] e => (u: ar[e].u, v: ar[e].v, w: rand(-3, 9))
+        let root = V.nth(rand(0, V.count - 1))
+        let want = brute_arborescence(es, root)
+        if let r = arborescence(es, root:):
+            assert r.total == want!
+            assert r.parent[root] == None and rooted_at(es, r.parent, root)
+            var sum = 0
+            for v in V:
+                if v != root:
+                    assert es[r.parent[v]!].v == v
+                    sum += es[r.parent[v]!].w
+            assert sum == r.total
+        else:
+            assert want == None
+
+/// Does following `pick` from every vertex lead to `root`?
+fn rooted_at<V, E>(es: [E](u: V, v: V, w: Int), pick: [V]?E, root: V) -> Bool:
+    for v in V:
+        var x = v
+        var steps = 0
+        while x != root and steps <= V.count:
+            if let e = pick[x]:
+                x = es[e].u
+            else:
+                return false
+            steps += 1
+        if x != root: return false
+    true
+
+@test
+fn min_mean_cycle_matches_every_closed_walk():
+    domain V = 0..5
+    domain E = 0..9
+    for _ in 0..80:
+        let ar = random_edges<V, E>()
+        let es: [E](u: V, v: V, w: Int) = [E] e => (u: ar[e].u, v: ar[e].v, w: rand(-3, 9))
+        let g = Graph.directed(es)
+        // the least sum of a closed walk of exactly `len` arcs from each `s`, for len 1..=n
+        var best: ?(sum: Int, len: Int) = None
+        for len in 1..=V.count:
+            for s in V:
+                var cur: [V]?Int = None
+                cur[s] = Some(0)
+                for _ in 0..len:
+                    var nxt: [V]?Int = None
+                    for u in V:
+                        if let du = cur[u]:
+                            for a in g.out(u):
+                                if nxt[a.to] == None or du + a.w < nxt[a.to]!: nxt[a.to] = Some(du + a.w)
+                    cur = nxt
+                if let c = cur[s]:
+                    if best.is_none_or(b => c * b.len < b.sum * len): best = (sum: c, len:)
+        assert min_mean_cycle(g) == best
+
+/// The lightest arborescence by trying every choice of entering arc.
+fn brute_arborescence<V, E>(es: [E](u: V, v: V, w: Int), root: V) -> ?Int:
+    var best: ?Int = None
+    var pick: [V]?E = None
+    brute_pick(es, root, 0, mut pick, mut best)
+    best
+
+fn brute_pick<V, E>(es: [E](u: V, v: V, w: Int), root: V, i: Int, mut pick: [V]?E, mut best: ?Int):
+    if i == V.count:
+        if rooted_at(es, pick, root):
+            var w = 0
+            for v in V:
+                if v != root: w += es[pick[v]!].w
+            if best == None or w < best!: best = Some(w)
+        return
+    let v = V.nth(i)
+    if v == root:
+        brute_pick(es, root, i + 1, mut pick, mut best)
+        return
+    for e in E:
+        if es[e].v == v and es[e].u != v:
+            pick[v] = Some(e)
+            brute_pick(es, root, i + 1, mut pick, mut best)
+    pick[v] = None
 
 /// A spanning forest of an undirected graph as chosen edges: a BFS from each unvisited
 /// vertex in vertex order takes the arc that discovers each vertex.
@@ -3769,7 +3850,7 @@ pub struct Only<V, G>(g: G, keep: V -> Bool, from: V -> Bool):
 
     /// The number of arcs out of `u` the view keeps.
     ///
-    /// cost: O(deg u in `g`)
+    /// cost: \(O(\deg u)\) in `g`
     /// traps: never
     /// example: `domain V = 0..3; let g: [V]List<V> = [[1, 2], [2], []]; g.only(keep: v => v != 1).deg(0) == 1`
     pub fn deg(self, u: V) -> Int:
