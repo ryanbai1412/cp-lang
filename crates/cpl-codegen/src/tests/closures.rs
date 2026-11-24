@@ -594,3 +594,24 @@ fn a_struct_field_two_capturing_closures_reach_stays_std_function() {
         "{explained:?}"
     );
 }
+
+#[test]
+fn a_fed_body_that_never_stops_says_so_in_its_callback_type() {
+    let cpp = cpp(concat!(
+        "fn upto3(n: Int) -> yields Int:\n    for i in 0..n: yield i\n",
+        "let n: Int = read()\nvar t = 0\n",
+        "for x in upto3(n):\n    if x % 2 == 0: continue\n    t += x\n",
+        "for x in upto3(n):\n    if x > 5: break\n    t += x\n",
+        "print(t)\n",
+    ));
+    let calls: Vec<&str> = cpp
+        .lines()
+        .filter(|l| l.contains("cpl_each_upto3(n, "))
+        .collect();
+    assert_eq!(calls.len(), 2, "{cpp}");
+    assert!(
+        calls[0].contains("-> std::integral_constant<int, 0> {"),
+        "{cpp}"
+    );
+    assert!(calls[1].contains("-> int {"), "{cpp}");
+}

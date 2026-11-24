@@ -87,18 +87,25 @@ impl<'p> Emitter<'p> {
             return false;
         };
         let sep = if call.is_empty() { "" } else { ", " };
+        // A body that never stops says so in its type, so the form's
+        // `if (int cpl_r = cpl_f(..))` folds away even where it isn't inlined.
+        let go = if cpl_ir::pushed::stops(body) {
+            "int"
+        } else {
+            "std::integral_constant<int, 0>"
+        };
         if nested {
             // What the callback stops with stops this form too.
             self.line(
                 out,
-                &format!("if (int cpl_r = cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"),
+                &format!("if (int cpl_r = cpl_each_{name}({call}{sep}[&]({decl}) -> {go} {{"),
             );
             self.indent += 1;
             for line in first {
                 self.line(out, line);
             }
             self.block(body, out);
-            self.line(out, "return 0;");
+            self.line(out, "return {};");
             self.indent -= 1;
             self.line(out, "})) return cpl_r;");
             return true;
@@ -124,7 +131,7 @@ impl<'p> Emitter<'p> {
         let open = if returns { "if (" } else { "" };
         self.line(
             out,
-            &format!("{open}cpl_each_{name}({call}{sep}[&]({decl}) -> int {{"),
+            &format!("{open}cpl_each_{name}({call}{sep}[&]({decl}) -> {go} {{"),
         );
         self.indent += 1;
         for line in first {
@@ -137,7 +144,7 @@ impl<'p> Emitter<'p> {
         });
         self.block(body, out);
         self.bodies.pop();
-        self.line(out, "return 0;");
+        self.line(out, "return {};");
         self.indent -= 1;
         let close = match (returns, outermost, &result) {
             (false, ..) => "});".to_string(),

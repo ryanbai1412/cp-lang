@@ -508,7 +508,6 @@ impl Feeds {
     }
 }
 
-/// True when `body` has a `return` in it.
 /// Whether `body` may leave its loop early: a `break`, `continue` or `return`.
 pub fn escapes(body: &Block) -> bool {
     let mut escapes = false;
@@ -518,6 +517,19 @@ pub fn escapes(body: &Block) -> bool {
     escapes
 }
 
+/// Whether `body` may stop its loop: a `break`, a `return` or a labeled `continue`.
+pub fn stops(body: &Block) -> bool {
+    let mut stops = false;
+    walk::deep_stmts(body, &mut |stmt| {
+        stops |= matches!(
+            stmt,
+            Stmt::Break(_) | Stmt::Return(_) | Stmt::Continue(Some(_))
+        )
+    });
+    stops
+}
+
+/// True when `body` has a `return` in it.
 pub fn returns(body: &Block) -> bool {
     let mut returns = false;
     walk::deep_stmts(body, &mut |stmt| returns |= matches!(stmt, Stmt::Return(_)));

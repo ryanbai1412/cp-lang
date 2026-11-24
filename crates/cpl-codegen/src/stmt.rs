@@ -443,7 +443,7 @@ impl<'p> Emitter<'p> {
                     .last()
                     .is_some_and(|b| to.map_or(b.depth == 0, |to| to == b.id)) =>
             {
-                self.line(out, "return 0;")
+                self.line(out, "return {};")
             }
             Stmt::Let(slot, Some(init))
                 if matches!(self.locals()[*slot].ty, Ty::Fn(..))
