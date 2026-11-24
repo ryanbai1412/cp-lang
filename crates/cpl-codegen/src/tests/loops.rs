@@ -65,6 +65,21 @@ fn explain_names_each_table_stored_as_a_hash_table() {
 }
 
 #[test]
+fn a_stepped_range_walked_by_a_loop_or_generator_is_a_counted_loop() {
+    let out = cpp("let (n, g): (1..=100_000_000, 1..=100) = read()
+print(sum(a for a in (g..=n).step(g) if a % 3 == 0))
+var t = 0
+for a in (0..n).step(g): t += a
+print(t)
+");
+    assert!(
+        !out.contains("steps.push_back"),
+        "`.step(g)` must not list the range first:\n{out}"
+    );
+    assert!(out.contains("cpl::steps(a, n, g, true)"), "{out}");
+}
+
+#[test]
 fn a_reversed_range_find_stops_at_the_first_hit() {
     let out = cpp("var xs = [1, 2, 3, 4]
 xs.push(5)

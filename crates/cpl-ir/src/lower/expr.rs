@@ -4068,7 +4068,10 @@ impl<'a> Lowerer<'a> {
         if let Some(alias) = self.subsets_alias(e) {
             return self.iter(&alias);
         }
-        if let Some(res) = self.sorted_view_iter(e, span) {
+        if let Some(res) = self
+            .sorted_view_iter(e, span)
+            .or_else(|| self.stepped_range_iter(e))
+        {
             return res;
         }
         // Direct zero-overhead range iteration for `V.after(pos)` and `V.before(pos)`.

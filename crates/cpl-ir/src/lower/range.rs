@@ -1225,3 +1225,57 @@ impl<'a> Lowerer<'a> {
         ));
     }
 }
+
+impl<'a> Lowerer<'a> {
+    /// `(lo..hi).step(k)` written out walks as a counted loop, not a built list.
+    pub(super) fn stepped_range_iter(&mut self, e: &ast::Expr) -> Option<(Iter, Ty)> {
+        if let ast::ExprKind::Call { callee, args } = &e.kind {
+            if let (ast::ExprKind::Field { base, name }, [k]) = (&callee.kind, args.as_slice()) {
+                let mut range = &**base;
+                while let ast::ExprKind::Paren(inner) = &range.kind {
+                    range = inner;
+                }
+                if name.text == "step"
+                    && k.name.is_none()
+                    && !k.mutable
+                    && matches!(
+                        range.kind,
+                        ast::ExprKind::Range {
+                            lo: Some(_),
+                            hi: Some(_),
+                            step: None,
+                            ..
+                        }
+                    )
+                    && matches!(self.probe_ty_silent(range), Some(Ty::Range(inner)) if *inner == Ty::Int)
+                {
+                    let (
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: None,
+                            rev: false,
+                            closed,
+                        },
+                        ty,
+                    ) = self.iter(range)
+                    else {
+                        return None;
+                    };
+                    let step = self.expect(&k.value, &Ty::Int);
+                    return Some((
+                        Iter::Range {
+                            lo,
+                            hi,
+                            step: Some(step),
+                            rev: false,
+                            closed,
+                        },
+                        ty,
+                    ));
+                }
+            }
+        }
+        None
+    }
+}
