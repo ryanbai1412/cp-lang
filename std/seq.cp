@@ -1667,17 +1667,6 @@ pub struct Rev<S>(base: S):
     /// example: `List([1, 2, 3].rev.drop_last(1)) == [3, 2]`
     pub fn drop_last(self, k: Len = 1) -> Rev<Slice<S>> = self.src.drop(k).rev
 
-impl Seq<T> for Rev<S: Bidir<T>>:
-    fn iter(self) -> yields T:
-        for x in self.src.iter_rev(): yield x
-
-impl Bidir<T> for Rev<S: Bidir<T>>:
-    fn iter_rev(self) -> yields T:
-        for x in self.src.iter(): yield x
-
-impl Sized for Rev<S: Sized>:
-    @get fn len(self) -> Int = self.src.len
-
 impl Positional<T> for Rev<S: Indexed<D, T>>:
     fn nth(self, k: Int) -> T = self.src.nth(self.src.len - 1 - k)
 
