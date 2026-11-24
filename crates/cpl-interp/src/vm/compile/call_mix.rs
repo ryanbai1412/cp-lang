@@ -25,6 +25,44 @@ impl<'p, 'f> Compiler<'p, 'f> {
         {
             return None;
         }
+        if (args.iter().zip(&f.params)).any(|(a, p)| matches!(a, Arg::Mut(_)) != p.mutable) {
+            return None;
+        }
+        let tys: Vec<&'p Ty> = (f.locals.iter().take(f.params.len()))
+            .map(|l| &l.ty)
+            .collect();
+        let mix = self.compile_mix_args(&tys, args, span)?;
+        let (arg_base_i, arg_base_v) = (mix.arg_base_i, mix.arg_base_v);
+        let (dst_i, dst_v, dst_some) = match ret_mode {
+            CallRet::Unit => (0, 0, 0),
+            CallRet::I => (self.alloc_i(), 0, 0),
+            CallRet::OptI => (self.alloc_i(), 0, self.alloc_i()),
+            CallRet::V => (0, self.alloc_v(), 0),
+        };
+        self.emit(
+            Op::CallVmMix {
+                fn_id: fn_id as u16,
+                arg_base_i,
+                arg_base_v,
+                dst_i,
+                dst_v,
+                dst_some,
+                ret_mode,
+            },
+            span,
+        );
+        self.emit_mix_writebacks(mix, span);
+        Some((dst_i, dst_v, dst_some))
+    }
+
+    /// Whether [`Self::compile_mix_args`] takes `args` for params of types
+    /// `tys`: which `mut` args go by their place path, and how many int
+    /// and value arg slots they fill.
+    pub(super) fn mix_arg_plan(
+        &self,
+        tys: &[&'p Ty],
+        args: &'p [Arg],
+    ) -> Option<(Vec<bool>, usize, usize)> {
         // Several `mut` args must be places that never overlap: each is
         // taken in turn and written back after the call.
         let muts: Vec<&Place> = (args.iter())
@@ -42,44 +80,33 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let mut via_path = vec![false; args.len()];
         for (i, a) in args.iter().enumerate() {
             match a {
-                Arg::Value(_) => {
-                    if f.params[i].mutable {
-                        return None;
-                    }
-                }
-                Arg::Mut(place) => {
-                    if !f.params[i].mutable {
-                        return None;
-                    }
-                    match &place.kind {
-                        PlaceKind::Local(slot) => {
-                            if matches!(self.slot_loc(*slot), SlotLoc::SmallTuple { .. }) {
-                                return None;
-                            }
+                Arg::Value(_) => {}
+                Arg::Mut(place) => match &place.kind {
+                    PlaceKind::Local(slot) => {
+                        if matches!(self.slot_loc(*slot), SlotLoc::SmallTuple { .. }) {
+                            return None;
                         }
-                        PlaceKind::Global(_) => {}
-                        PlaceKind::Index(base, indices)
-                            if !multi
-                                && indices.len() == 1
-                                && ScalarKind::of_ty(&indices[0].ty, self.program).is_some()
-                                && ScalarKind::of_ty(&f.locals[i].ty, self.program).is_none()
-                                && ScalarKind::of_opt_ty(&f.locals[i].ty, self.program)
-                                    .is_none()
-                                && self.indexes_1d_v(base) => {}
-                        PlaceKind::Index(..) | PlaceKind::Field(..)
-                            if ScalarKind::of_opt_ty(&f.locals[i].ty, self.program).is_none() =>
-                        {
-                            via_path[i] = true;
-                        }
-                        _ => return None,
                     }
-                }
+                    PlaceKind::Global(_) => {}
+                    PlaceKind::Index(base, indices)
+                        if !multi
+                            && indices.len() == 1
+                            && ScalarKind::of_ty(&indices[0].ty, self.program).is_some()
+                            && ScalarKind::of_ty(tys[i], self.program).is_none()
+                            && ScalarKind::of_opt_ty(tys[i], self.program).is_none()
+                            && self.indexes_1d_v(base) => {}
+                    PlaceKind::Index(..) | PlaceKind::Field(..)
+                        if ScalarKind::of_opt_ty(tys[i], self.program).is_none() =>
+                    {
+                        via_path[i] = true;
+                    }
+                    _ => return None,
+                },
             }
         }
         let mut ni = 0usize;
         let mut nv = 0usize;
-        for local in f.locals.iter().take(f.params.len()) {
-            let ty = &local.ty;
+        for &ty in tys {
             if ScalarKind::of_ty(ty, self.program).is_some() {
                 ni += 1;
             } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
@@ -91,64 +118,19 @@ impl<'p, 'f> Compiler<'p, 'f> {
         if ni > 8 || nv > 8 {
             return None;
         }
-        enum WriteBack {
-            LocalI {
-                dst: u16,
-                arg_off: u16,
-            },
-            LocalOptI {
-                dst_val: u16,
-                dst_some: u16,
-                arg_off: u16,
-            },
-            LocalV {
-                dst: u16,
-                arg_off: u16,
-            },
-            GlobalI {
-                gid: u16,
-                kind: ScalarKind,
-                arg_off: u16,
-            },
-            GlobalOptI {
-                gid: u16,
-                kind: ScalarKind,
-                arg_off: u16,
-            },
-            GlobalV {
-                gid: u16,
-                arg_off: u16,
-            },
-            LocalArr1V {
-                arr_v: u16,
-                r_i: u16,
-                arg_off: u16,
-            },
-            GlobalArr1V {
-                gid: u16,
-                r_i: u16,
-                arg_off: u16,
-            },
-            LocalList1V {
-                list_v: u16,
-                r_i: u16,
-                arg_off: u16,
-            },
-            GlobalList1V {
-                gid: u16,
-                r_i: u16,
-                arg_off: u16,
-            },
-            Place {
-                path: u16,
-                arg_off: u16,
-            },
-            PlaceI {
-                path: u16,
-                kind: ScalarKind,
-                arg_off: u16,
-            },
-        }
+        Some((via_path, ni, nv))
+    }
+
+    /// The args of a call to params of types `tys`: value args first, then
+    /// each `mut` arg moved out of its place, all into consecutive arg
+    /// slots.
+    pub(super) fn compile_mix_args(
+        &mut self,
+        tys: &[&'p Ty],
+        args: &'p [Arg],
+        span: Span,
+    ) -> Option<MixArgs> {
+        let (via_path, ni, nv) = self.mix_arg_plan(tys, args)?;
         let mut i_args: Vec<u16> = vec![0; ni];
         let mut v_args: Vec<(u16, bool)> = vec![(0, false); nv];
         let mut writebacks: Vec<WriteBack> = Vec::new();
@@ -157,8 +139,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let mut param_offs: Vec<usize> = Vec::with_capacity(args.len());
         let mut cur_i = 0usize;
         let mut cur_v = 0usize;
-        for local in f.locals.iter().take(f.params.len()) {
-            let ty = &local.ty;
+        for &ty in tys {
             if ScalarKind::of_ty(ty, self.program).is_some() {
                 param_offs.push(cur_i);
                 cur_i += 1;
@@ -174,7 +155,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         // Pass 1: evaluate all value arguments first.
         for (i, a) in args.iter().enumerate() {
             if let Arg::Value(ae) = a {
-                let ty = &f.locals[i].ty;
+                let ty = tys[i];
                 let off = param_offs[i];
                 if ScalarKind::of_ty(ty, self.program).is_some() {
                     i_args[off] = self.compile_expr_i(ae);
@@ -190,7 +171,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
         // Pass 2: move out all mut arguments after value arguments are evaluated.
         for (i, a) in args.iter().enumerate() {
             if let Arg::Mut(place) = a {
-                let ty = &f.locals[i].ty;
+                let ty = tys[i];
                 let off = param_offs[i];
                 if via_path[i] {
                     let Some(path) = self.compile_place_path_to(place, true) else {
@@ -363,24 +344,20 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
         }
-        let (dst_i, dst_v, dst_some) = match ret_mode {
-            CallRet::Unit => (0, 0, 0),
-            CallRet::I => (self.alloc_i(), 0, 0),
-            CallRet::OptI => (self.alloc_i(), 0, self.alloc_i()),
-            CallRet::V => (0, self.alloc_v(), 0),
-        };
-        self.emit(
-            Op::CallVmMix {
-                fn_id: fn_id as u16,
-                arg_base_i,
-                arg_base_v,
-                dst_i,
-                dst_v,
-                dst_some,
-                ret_mode,
-            },
-            span,
-        );
+        Some(MixArgs {
+            arg_base_i,
+            arg_base_v,
+            writebacks,
+        })
+    }
+
+    /// Puts each `mut` arg of `mix` back in its place after the call.
+    pub(super) fn emit_mix_writebacks(&mut self, mix: MixArgs, span: Span) {
+        let MixArgs {
+            arg_base_i,
+            arg_base_v,
+            writebacks,
+        } = mix;
         for wb in writebacks {
             match wb {
                 WriteBack::Place { path, arg_off } => {
@@ -524,7 +501,6 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
             }
         }
-        Some((dst_i, dst_v, dst_some))
     }
 
     /// Whether `base[i]` is a 1D list or array the VM indexes in a value
@@ -596,4 +572,72 @@ fn disjoint(a: &Place, b: &Place) -> bool {
         }
     }
     false
+}
+
+/// The arg slots [`Compiler::compile_mix_args`] filled, and how each `mut`
+/// arg goes back.
+pub(super) struct MixArgs {
+    pub arg_base_i: u16,
+    pub arg_base_v: u16,
+    writebacks: Vec<WriteBack>,
+}
+
+/// Where a `mut` arg goes back after the call, from its arg slot.
+enum WriteBack {
+    LocalI {
+        dst: u16,
+        arg_off: u16,
+    },
+    LocalOptI {
+        dst_val: u16,
+        dst_some: u16,
+        arg_off: u16,
+    },
+    LocalV {
+        dst: u16,
+        arg_off: u16,
+    },
+    GlobalI {
+        gid: u16,
+        kind: ScalarKind,
+        arg_off: u16,
+    },
+    GlobalOptI {
+        gid: u16,
+        kind: ScalarKind,
+        arg_off: u16,
+    },
+    GlobalV {
+        gid: u16,
+        arg_off: u16,
+    },
+    LocalArr1V {
+        arr_v: u16,
+        r_i: u16,
+        arg_off: u16,
+    },
+    GlobalArr1V {
+        gid: u16,
+        r_i: u16,
+        arg_off: u16,
+    },
+    LocalList1V {
+        list_v: u16,
+        r_i: u16,
+        arg_off: u16,
+    },
+    GlobalList1V {
+        gid: u16,
+        r_i: u16,
+        arg_off: u16,
+    },
+    Place {
+        path: u16,
+        arg_off: u16,
+    },
+    PlaceI {
+        path: u16,
+        kind: ScalarKind,
+        arg_off: u16,
+    },
 }

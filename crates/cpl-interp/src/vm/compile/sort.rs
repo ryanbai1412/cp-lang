@@ -285,6 +285,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst_v,
                 dst_some: 0,
                 ret_mode,
+                muts: 0,
             },
             span,
         );

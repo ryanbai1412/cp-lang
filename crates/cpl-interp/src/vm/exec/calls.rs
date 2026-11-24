@@ -815,6 +815,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 dst_v,
                 dst_some,
                 ret_mode,
+                muts,
             } => {
                 if let Value::Closure(cid, _) = &regs_v[callee_v as usize] {
                     if let Some(fast) = compiled.fast_closures[*cid] {
@@ -936,6 +937,8 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     );
                     self.show_lent();
                 }
+                // The `mut` params' values, for their arg slots once the frame is synced.
+                let mut lent_back: Vec<Value> = Vec::new();
                 let val = if let Some(callee) = compiled.closures[cid].as_ref() {
                     self.tick(spans[cur_pc])?;
                     self.stack_left(spans[cur_pc], None)?;
@@ -1036,6 +1039,28 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     }
                     let res =
                         self.exec_chunk_inner(compiled, callee, c_base_i, vm_regs_i, &mut c_regs_v);
+                    if res.is_ok() && muts != 0 {
+                        for (k, &pslot) in def.params.iter().enumerate() {
+                            if muts & 1 << k == 0 {
+                                continue;
+                            }
+                            lent_back.push(match callee.slot_map[pslot] {
+                                SlotLoc::I(r, kind) => {
+                                    kind.box_val(vm_regs_i[c_base_i + r as usize])
+                                }
+                                SlotLoc::OptI { val, some, kind } => kind.box_opt(
+                                    vm_regs_i[c_base_i + val as usize],
+                                    vm_regs_i[c_base_i + some as usize],
+                                ),
+                                SlotLoc::V(r) => {
+                                    std::mem::replace(&mut c_regs_v[r as usize], Value::Unit)
+                                }
+                                SlotLoc::SmallTuple { .. } => {
+                                    unreachable!("params are never SmallTuple")
+                                }
+                            });
+                        }
+                    }
                     self.unsuspend();
                     self.frameless_base = frameless;
                     while self.saved_domains.len() > dom_mark {
@@ -1083,8 +1108,16 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                             chunk.traced,
                         );
                     }
-                    let res = self.call_value(Value::Closure(cid, caps), boxed, spans[cur_pc]);
+                    let lent: Vec<usize> = (0..def.params.len())
+                        .filter(|k| muts & 1 << k != 0)
+                        .collect();
+                    let res =
+                        self.call_lending(Value::Closure(cid, caps), boxed, &lent, spans[cur_pc]);
                     regs_i = &mut vm_regs_i[base_i..base_i + chunk.num_i];
+                    let res = res.map(|(val, back)| {
+                        lent_back = back;
+                        val
+                    });
                     if has_frame {
                         sync_from_stack(
                             &chunk.slot_map,
@@ -1107,6 +1140,34 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         self.base,
                         chunk.traced,
                     );
+                }
+                if !lent_back.is_empty() {
+                    let mut back = lent_back.into_iter();
+                    let (mut ii, mut iv) = (arg_base_i as usize, arg_base_v as usize);
+                    for (k, &pslot) in def.params.iter().enumerate() {
+                        let ty = &def.locals[pslot].ty;
+                        let v = if muts & 1 << k != 0 {
+                            back.next()
+                        } else {
+                            None
+                        };
+                        if ScalarKind::of_ty(ty, self.program).is_some() {
+                            if let Some(v) = v {
+                                regs_i[ii] = ScalarKind::unbox_val(&v);
+                            }
+                            ii += 1;
+                        } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
+                            if let Some(v) = v {
+                                (regs_i[ii], regs_i[ii + 1]) = ScalarKind::unbox_opt(&v);
+                            }
+                            ii += 2;
+                        } else {
+                            if let Some(v) = v {
+                                regs_v[iv] = v;
+                            }
+                            iv += 1;
+                        }
+                    }
                 }
                 match ret_mode {
                     CallRet::Unit => {}

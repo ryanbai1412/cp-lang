@@ -686,52 +686,29 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let Ty::Fn(params, _) = &callee.ty else {
             return None;
         };
-        if args.len() != params.len() || !args.iter().all(|a| matches!(a, Arg::Value(_))) {
+        // A `mut` param's type is `Ty::Mut` of the type the callee's slot has.
+        let tys: Vec<&'p Ty> = (params.iter())
+            .map(|t| match t {
+                Ty::Mut(of) => &**of,
+                t => t,
+            })
+            .collect();
+        let has_mut = args.iter().any(|a| matches!(a, Arg::Mut(_)));
+        // A fn value passed next to a `mut` arg may reach the lent place.
+        if args.len() != params.len()
+            || (args.iter().zip(params))
+                .any(|(a, p)| matches!(a, Arg::Mut(_)) != matches!(p, Ty::Mut(_)))
+            || (has_mut && tys.iter().any(|t| matches!(t, Ty::Fn(..))))
+        {
             return None;
         }
-        let mut ni = 0usize;
-        let mut nv = 0usize;
-        for ty in params {
-            if ScalarKind::of_ty(ty, self.program).is_some() {
-                ni += 1;
-            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
-                ni += 2;
-            } else {
-                nv += 1;
-            }
-        }
-        if ni > 8 || nv > 8 {
-            return None;
-        }
+        self.mix_arg_plan(&tys, args)?;
+        let muts = (args.iter().enumerate())
+            .filter(|(_, a)| matches!(a, Arg::Mut(_)))
+            .fold(0u16, |m, (k, _)| m | 1 << k);
         let callee_v = self.compile_expr_v(callee);
-        let mut i_args = Vec::with_capacity(ni);
-        let mut v_args = Vec::with_capacity(nv);
-        for (ty, a) in params.iter().zip(args.iter()) {
-            let Arg::Value(ae) = a else { unreachable!() };
-            if ScalarKind::of_ty(ty, self.program).is_some() {
-                i_args.push(self.compile_expr_i(ae));
-            } else if ScalarKind::of_opt_ty(ty, self.program).is_some() {
-                let (v, s) = self.compile_expr_opt_i(ae);
-                i_args.push(v);
-                i_args.push(s);
-            } else {
-                v_args.push(self.compile_expr_v(ae));
-            }
-        }
-        let arg_base_i = self.next_i;
-        for r in i_args {
-            let slot = self.alloc_i();
-            if slot != r {
-                self.emit(Op::MoveI { dst: slot, src: r }, span);
-            }
-        }
-        let arg_base_v = self.next_v;
-        for r in v_args {
-            let slot = self.alloc_v();
-            if slot != r {
-                self.emit(Op::MoveV { dst: slot, src: r }, span);
-            }
-        }
+        let mix = self.compile_mix_args(&tys, args, span)?;
+        let (arg_base_i, arg_base_v) = (mix.arg_base_i, mix.arg_base_v);
         let (dst_i, dst_v, dst_some) = match ret_mode {
             CallRet::Unit => (0, 0, 0),
             CallRet::I => (self.alloc_i(), 0, 0),
@@ -747,9 +724,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 dst_v,
                 dst_some,
                 ret_mode,
+                muts,
             },
             span,
         );
+        self.emit_mix_writebacks(mix, span);
         Some((dst_i, dst_v, dst_some))
     }
 
