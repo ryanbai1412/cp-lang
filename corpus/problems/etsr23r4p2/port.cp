@@ -23,14 +23,27 @@ fn modulus(depth: Int) -> Int = moduli[min(depth, moduli.len - 1)]
 
 // base^e mod modulus(depth), and whether the true power reaches it; `big` says e itself
 // reached modulus(depth + 1) = phi(modulus(depth)), so the true exponent is e + that.
+// base^e mod modulus(d) as low[d][e % step] * high[d][e / step]; e < 2 * modulus(d + 1)
+let step = 1 << 15
+let low = [[pow_mod(base, e, modulus(d)) for e in 0..step] for d in 0..moduli.len]
+let high = [
+    [
+        pow_mod(base, h * step, modulus(d)) for h in 0..=2 * modulus(d + 1) / step
+    ] for d in 0..moduli.len
+]
+
 fn power(e: Int, big: Bool, depth: Int) -> (big: Bool, val: Int):
     let m = modulus(depth)
     let exp = if big: e + modulus(depth + 1) else: e
     var (reached, acc) = (m <= 1, 1)
-    for _ in 0..min(exp, 64):
-        acc = min(acc * base, m)
-        reached = reached or acc >= m
-    (big: reached or (exp > 64 and base > 1), val: pow_mod(base, exp, m))
+    if base > 1:
+        for _ in 0..exp:  // base^exp >= m within log2(m) <= 27 factors
+            acc *= base
+            if acc >= m:
+                reached = true
+                break
+    let d = min(depth, moduli.len - 1)
+    (big: reached, val: low[d][exp % step] * high[d][exp / step] % m)
 
 // x raised s times, mod modulus(depth).
 fn tower(s: Int, x: Int, depth: Int) -> (big: Bool, val: Int):
