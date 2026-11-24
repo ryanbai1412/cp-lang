@@ -70,13 +70,14 @@ impl Server {
         if rechecked {
             self.db.set_file(uri, analysis.text.clone());
         }
-        // `cpl fix` on the document, for an editor's fix-all (on save).
+        // `cpl fix` on the document, for an editor's fix-all (on save):
+        // with no fix on any diagnostic it has nothing to apply.
         let only = params.at(&["context", "only"]).as_array().unwrap_or(&[]);
-        let fix_all = only.is_empty()
-            || only
-                .iter()
-                .filter_map(Value::as_str)
-                .any(|kind| "source.fixAll".starts_with(kind) || kind.starts_with("source.fixAll"));
+        let fix_all = reported.iter().any(|d| !d.fixes.is_empty())
+            && (only.is_empty()
+                || only.iter().filter_map(Value::as_str).any(|kind| {
+                    "source.fixAll".starts_with(kind) || kind.starts_with("source.fixAll")
+                }));
         let fixed = fix_all
             .then(|| fix_file(&mut self.db, uri, &analysis.text))
             .flatten();
