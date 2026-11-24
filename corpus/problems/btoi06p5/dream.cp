@@ -13,7 +13,7 @@
 //
 // Backward DP: `cost[e]` is the shortest encoding of the remaining runs when
 // the escape before run `i` is `e`. Each run needs "add to all", "assign to
-// all", "set one", and "global argmin", maintained in one `LazySegTree` with
+// all", "set one", and "global argmin", maintained in one lazy `SegTree` with
 // an assign-then-add action and `cost: none` for forbidden entries.
 
 const SWITCH_COST = 3
@@ -68,13 +68,9 @@ fn apply_tag(t: Tag, v: Entry, _span: Int) -> Entry = match t.set:
     SetOp.Set(c) => (cost: Some(c + t.add), sym: v.sym)
     SetOp.Keep => if let cur = v.cost: (cost: Some(cur + t.add), sym: v.sym) else: v
 
-let assign_add = Action<Entry, Tag>(
-    id: (SetOp.Keep, 0),
-    compose: compose_tag,
-    apply: apply_tag,
-    over: Monoid<Entry>((None, Sym.last), pick_min),
-)
-var cost = LazySegTree<Sym, Entry, Tag>.new(assign_add, a: [Sym] s => (Some(0), s))
+let cheapest = Monoid<Entry>((cost: None, sym: Sym.last!), pick_min)
+let assign_add = Action<Entry, Tag>(id: (SetOp.Keep, 0), compose: compose_tag, apply: apply_tag, over: cheapest)
+var cost = SegTree<Sym, Entry, Tag>(cheapest, a: [Sym] s => (cost: Some(0), sym: s), act: assign_add)
 
 // switch_to[i]: escape to switch to before run i when esc == runs[i].sym;
 // adopt[i]: switch to runs[i].sym from any other escape before run i.
