@@ -7112,6 +7112,14 @@
    "n": 16384,
    "ok": true
   },
+  "bench/scaling/seq_rebase.cp::seq.rebase": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "seq.rebase",
+   "measured": 0.99,
+   "n": 16384,
+   "ok": true
+  },
   "bench/scaling/sieve.cp::math.Sieve.div_count_table": {
    "cost": "n",
    "documented": 4.0,
@@ -10216,7 +10224,6 @@
   "seq.prod",
   "seq.product",
   "seq.radix_sort",
-  "seq.rebase",
   "seq.record_highs",
   "seq.reduce",
   "seq.rekey",

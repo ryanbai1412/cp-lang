@@ -1643,10 +1643,34 @@ pub fn nth<S: Indexed, T>(self: S, k: Int) -> T = self.at(self.keys[k])
 /// order: same elements, keyed `0..len` by a fresh domain
 /// traps: never
 /// example: `[5, 6, 7][1..].rebase.nth(1) == 7`
-@get pub fn rebase<S: Indexed>(self: S) -> Rebased<S> = todo
+@get pub fn rebase<S: Indexed<K, T>, K, T>(self: S) -> Rebased<S, _>:
+    domain Idx = 0..self.len
+    Rebased<S, Idx>(self, Idx.all)
 
-/// The view `rebase` returns.
-pub struct Rebased<S>(pub src: S)
+/// The view `rebase` returns: `src` keyed by `Idx`, a fresh domain `0..src.len` of its own.
+pub struct Rebased<S, Idx>(pub src: S, idx: Range<Idx>)
+
+impl Seq<T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn iter(self) -> yields T:
+        for x in src: yield x
+
+impl Sized for Rebased<S: Sized, Idx>:
+    @get fn len(self) -> Int = src.len
+
+impl Keyed<Idx, T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn items(self) -> yields (Idx, T):
+        for i in idx: yield (i, src.nth(i.ord))
+
+impl Bidir<T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn iter_rev(self) -> yields T:
+        for x in src.rev: yield x
+
+impl Positional<T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn nth(self, k: Int) -> T = src.nth(k)
+
+impl Indexed<Idx, T> for Rebased<S: Indexed<K, T>, Idx>:
+    fn at(self, i: Idx) -> T = src.nth(i.ord)
+    @get fn keys(self) -> Range<Idx> = idx
 
 /// \(O(1)\). Every `k`-th element of `self`, starting with the first: `[3, 1, 2, 4].step(2)` walks
 /// `3, 2`. Keys survive (R04a.9.3): `a.step(2)[i]` reads `a[i]`, and a key the stride skips traps.
