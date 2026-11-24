@@ -10,6 +10,7 @@
 // original: corpus/submissions/5079272.cpp
 let (n, m): (1..=6, 1..=150) = read()
 domain T = 0..n
+type Sum = -2147483647..=2147483647  // every partial sum, as |k_1 M^p_1| + ... < 2^31
 let terms: [T](k: -2147483647..=2147483647, p: 1..=2147483647) = read()
 
 // k x^p, with |k| m^p < 2^31: only k = 0 can pair a large p with x > 1
@@ -17,7 +18,7 @@ fn term(t: T, x: Int) -> Int = if terms[t].k == 0: 0 else: terms[t].k * x ** ter
 let values = [T] t => [term(t, x) for x in 1..=m]
 
 let (left, right) = T.collect().partition(t => Int(t) < n / 2)
-var low: Counter<Int, Int> = Counter()
+var low: Counter<Sum, 0..=3_375_000> = Counter()  // at most M^3 left sums
 low.reserve(m ** left.len)
 fn count_left(at: Int, s: Int):
     if at == left.len:
