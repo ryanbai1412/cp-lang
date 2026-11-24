@@ -71,7 +71,6 @@ impl<'a> Lowerer<'a> {
     ) {
         let rhs_val = self.expr(rhs, None);
         let rhs_slot = self.temp(rhs_val.ty.clone());
-        let rhs_ty = rhs_val.ty.clone();
         out.push_let(rhs_slot, rhs_val);
 
         let recv_place = self.place(base);
@@ -98,7 +97,6 @@ impl<'a> Lowerer<'a> {
                 lw.stmt(s, out);
             }
         });
-        let _ = rhs_ty;
     }
 
     /// Inlines a `lends mut` projection passed as a `mut` call argument (`f(mut base.proj(args))`).
