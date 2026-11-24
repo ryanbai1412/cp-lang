@@ -38,7 +38,7 @@ fn stmts(src: &str) -> Vec<Stmt> {
         .collect()
 }
 
-fn expr(src: &str) -> Expr {
+pub(crate) fn expr(src: &str) -> Expr {
     match stmts(src).pop().unwrap().kind {
         StmtKind::Expr(e) => e,
         other => panic!("not an expression: {other:?}"),

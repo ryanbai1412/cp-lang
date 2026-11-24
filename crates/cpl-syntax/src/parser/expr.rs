@@ -1092,6 +1092,8 @@ impl<'a> Parser<'a> {
                                     | T::RBracket
                                     // `for mask in Subset<Row>:`
                                     | T::Colon
+                                    // `[p for p in Pair<V> if p.lo.ord == 0]`
+                                    | T::If
                             ) && !p.at_line_end()
                         {
                             p.speculation_failed = true;
