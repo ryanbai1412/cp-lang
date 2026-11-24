@@ -704,7 +704,10 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 } else if let ExprKind::Local(_) = expr.kind {
                     // Reading a local for nothing does nothing.
                 } else {
-                    self.emit_fallback_stmt(stmt);
+                    let dst = self.compile_expr_v(expr);
+                    if dst >= self.num_local_v {
+                        self.emit(Op::ClearV { reg: dst }, expr.span);
+                    }
                 }
             }
             Stmt::Assert {
@@ -1268,15 +1271,18 @@ impl<'p, 'f> Compiler<'p, 'f> {
     ) -> bool {
         let seq_kind = match &seq_expr.ty {
             Ty::Array { dims, .. } if dims.len() == 1 => SeqKind::Array,
+            Ty::Array { .. } => SeqKind::List,
             Ty::List(_) | Ty::ListView(_, _) | Ty::Keyed(_, _) => SeqKind::List,
             Ty::Str | Ty::StrView => SeqKind::Str,
             Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..) => SeqKind::List,
             _ => return false,
         };
-        let items = matches!(
-            seq_expr.ty,
-            Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..)
-        );
+        // A table walks its cells in row-major order.
+        let items = match &seq_expr.ty {
+            Ty::Set(_) | Ty::HashSet(_) | Ty::Map(..) | Ty::HashMap(..) => true,
+            Ty::Array { dims, .. } => dims.len() > 1,
+            _ => false,
+        };
         let slot_loc = self.slot_loc(slot);
         match (seq_kind, slot_loc) {
             (SeqKind::Str, SlotLoc::I(..)) => {}
@@ -1287,7 +1293,9 @@ impl<'p, 'f> Compiler<'p, 'f> {
         let r_idx = self.alloc_i();
         let r_len = self.alloc_i();
         let global_id = match &seq_expr.kind {
-            ExprKind::Global(gid) if matches!(seq_expr.ty, Ty::Array { .. } | Ty::List(_)) => {
+            ExprKind::Global(gid)
+                if !items && matches!(seq_expr.ty, Ty::Array { .. } | Ty::List(_)) =>
+            {
                 Some(*gid as u16)
             }
             _ => None,

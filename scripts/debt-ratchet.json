@@ -112,7 +112,7 @@
   "why_written_twice": 0,
   "authority_drift": 0,
   "plan_delta_lines": 1627,
-  "vm_fallbacks": 31,
+  "vm_fallbacks": 29,
   "own_databases": 29,
   "cpp_deep_copies": 36,
   "cpp_std_functions": 144,

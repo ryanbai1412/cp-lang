@@ -789,7 +789,10 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                         .iter()
                         .map(|(k, v)| Value::tuple(vec![k.clone(), v.clone()]))
                         .collect(),
-                    _ => return trap(spans[cur_pc], "internal: expected a set or a map"),
+                    Value::Array(array) => (0..array.len())
+                        .map(|k| array.get_unchecked_val(k))
+                        .collect(),
+                    _ => return trap(spans[cur_pc], "internal: expected a set, map or table"),
                 };
                 regs_v[dst as usize] = Value::List(Rc::new(items));
             }
