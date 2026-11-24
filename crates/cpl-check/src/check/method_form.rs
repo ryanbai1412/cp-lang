@@ -497,9 +497,11 @@ impl Checker<'_> {
         matches!(ty, Ty::Named { .. }) && !matches!(self.element_ty(ty), Ty::Unknown | Ty::Error)
     }
 
-    /// The type of a call, index or other compound expression, for tools.
-    /// An untyped call keeps the library type `method_form_call` gave it.
+    /// The type of `expr` for `Facts::type_of`, and of a call, index or
+    /// other compound expression for the editor's `.`. An untyped call
+    /// keeps the library type `method_form_call` gave it.
     pub(super) fn record_shape(&mut self, expr: &Expr, ty: &Ty) {
+        self.expr_types.push((expr.span, ty.clone()));
         let compound = matches!(
             expr.kind,
             ExprKind::Call { .. }

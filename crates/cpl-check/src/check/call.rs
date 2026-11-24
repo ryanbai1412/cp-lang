@@ -243,6 +243,7 @@ impl<'a> Checker<'a> {
         let converts_one = match &callee.kind {
             ExprKind::Name(n) if n == "print" => {
                 self.record_io(callee.span, n, args);
+                self.expr_types.push((call.span, Ty::Unit));
                 false
             }
             ExprKind::Name(n) => {

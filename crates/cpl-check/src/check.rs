@@ -22,6 +22,7 @@ mod fall_through;
 mod index_at;
 mod index_end;
 mod known;
+mod lambda;
 pub(crate) mod lends;
 mod library_domain;
 mod method_form;
@@ -206,6 +207,8 @@ pub(crate) struct Checker<'a> {
     pub(crate) fixed_io: Vec<Span>,
     pub(crate) io_costs: Vec<(Span, String, String)>,
     shapes: Vec<(Span, Ty)>,
+    /// The type of every expression `infer` gave one, in the order it did.
+    expr_types: Vec<(Span, Ty)>,
     /// Name, return type, whether declared, and scope depth at fn entry.
     fns: Vec<(String, Ty, bool, usize)>,
     /// Where `-> T` goes in each fn declared without one.
@@ -280,6 +283,7 @@ pub(crate) struct Checked {
     pub fixed_io: Vec<Span>,
     pub io_costs: Vec<(Span, String, String)>,
     pub shapes: Vec<(Span, Ty)>,
+    pub expr_types: Vec<(Span, Ty)>,
 }
 
 impl<'a> Checker<'a> {
@@ -304,6 +308,7 @@ impl<'a> Checker<'a> {
             fixed_io: Vec::new(),
             io_costs: Vec::new(),
             shapes: Vec::new(),
+            expr_types: Vec::new(),
             fns: Vec::new(),
             ret_slots: HashMap::default(),
             changed_params: Default::default(),
@@ -465,6 +470,7 @@ impl<'a> Checker<'a> {
             fixed_io: self.fixed_io,
             io_costs: self.io_costs,
             shapes: self.shapes,
+            expr_types: self.expr_types,
         }
     }
 
@@ -520,7 +526,7 @@ impl<'a> Checker<'a> {
         let (hovers, refs, typed) = (self.hovers.len(), self.refs.len(), self.typed_indexes.len());
         let resolved = self.resolved.len();
         let (fixed, io, shapes) = (self.fixed_io.len(), self.io_costs.len(), self.shapes.len());
-        let conflicts = self.lends.conflicts.len();
+        let (conflicts, exprs) = (self.lends.conflicts.len(), self.expr_types.len());
         let moved = self.moved.clone();
         let lambda_params = self.lambda_params.clone();
         let chosen = self.chosen_methods.clone();
@@ -538,6 +544,7 @@ impl<'a> Checker<'a> {
         self.io_costs.truncate(io);
         self.shapes.truncate(shapes);
         self.lends.conflicts.truncate(conflicts);
+        self.expr_types.truncate(exprs);
         out
     }
 

@@ -337,7 +337,9 @@ fn method_list(names: &[String]) -> Option<String> {
 
 impl Checker<'_> {
     /// The `None` literal, whose optional the context gives.
-    pub(super) fn none_literal(&mut self, _span: Span) -> Ty {
+    pub(super) fn none_literal(&mut self, span: Span) -> Ty {
+        // `None` checks as anything; its fact is an optional of some type.
+        (self.expr_types).push((span, Ty::Optional(Box::new(Ty::Unknown))));
         Ty::Unknown
     }
 
