@@ -9,7 +9,6 @@
 //   hall scores 1, so the minimum is 1 and its count is the answer.
 //   A swap re-accounts the two seats and their neighbours: O(log(hw)) per swap.
 // original: corpus/submissions/4731161.cpp (grader functions give_initial_chart / swap_seats)
-// stdin: h w q, the h * w seats (row, column) of contestants 0.., then q
 // stdin: h w q, the h * w seats (row, column) of contestants 0.., then q lines a b.
 // stdout: the number of beautiful prefixes after each swap.
 use std.algebra.{MinCount}
