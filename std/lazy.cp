@@ -1,4 +1,4 @@
-//! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `SeqFold`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
+//! Range-update helpers that are not segment trees: `Flip`, `LazyTreap`, `LazyForest`, `SeqFold`, `Rope`. Range apply on a segment tree is `SegTree(op, a, act:)` (`segtree.cp`).
 //!
 //! start: `flip_action`, `LazyTreap`, `Rope`, `SeqFold`
 //! example: `flip_action(+).apply(true, Flip(3, 1), 4).now == 1`
@@ -414,7 +414,8 @@ struct TreapNode<T, F>:
 /// `compose(new_f, old_f)` applies `old_f` first then `new_f`;
 /// `mirror(f, n)` is `f` re-ranked for a run of `n` elements read backwards (default `f`).
 /// `insert`, `insert_at`, `push`, `apply_range`, `get` are \(O(\log n)\) expected; `apply_all` is \(O(1)\);
-/// `take(k)` is \(O(k + \log n)\); `to_list` is \(O(n)\); `split_at` and `splice_back` copy the smaller side.
+/// `take(k)` is \(O(k + \log n)\); `to_list` is \(O(n)\); `split_at` and `splice_back` copy the smaller side
+/// (keep the sequences in one `LazyForest` to split and join in \(O(\log n)\)).
 /// Memory is \(O(n)\) in a contiguous node arena, compacted once dropped nodes outnumber the live ones;
 /// sizes and priorities are `0..2^31`, so a treap holds fewer than 2^31 elements.
 pub struct LazyTreap<T, F>(
@@ -839,6 +840,129 @@ pub struct LazyTreap<T, F>(
     /// traps: never
     /// example: `LazyTreap<Int, Int>(apply: (v, k, f) => v + f, compose: (g, f) => g + f).to_list() == []`
     pub fn to_list(self) -> List<T> = self.take(self.len)
+
+/// One sequence of a `LazyForest`, from `seq()` or `split_at`.
+pub struct ForestSeq:
+    id: Int
+
+/// Many `LazyTreap` sequences in one shared node pool, so splitting one in two or appending one
+/// onto another is \(O(\log n)\) expected, where two separate treaps' `split_at`/`splice_back`
+/// copy the smaller side. It takes `LazyTreap`'s `apply`, `compose`, `split` and `mirror`, with
+/// the same meaning. \(O(\text{pushes})\) space: nodes are never freed, so memory grows with the
+/// elements pushed, not the elements kept.
+pub struct LazyForest<T, F>:
+    var t: LazyTreap<T, F>
+    var roots: List<?Int> = []
+
+    /// A forest with no sequences, with the tag operations its lazy updates use (see `LazyTreap.new`).
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); f.len(s) == 3`
+    pub fn new(
+        apply: (T, Int, F) -> T,
+        compose: (F, F) -> F,
+        split: (F, Int) -> (F, F) = (f, _) => (f, f),
+        mirror: (F, Int) -> F = (f, _) => f,
+    ) -> LazyForest<T, F> = LazyForest<T, F>(t: LazyTreap<T, F>.new(apply, compose, split:, mirror:))
+
+    /// A new empty sequence.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); let e = f.seq(); f.len(e) == 0`
+    pub fn seq(mut self) -> ForestSeq:
+        roots.push(None)
+        ForestSeq(id: roots.len - 1)
+
+    fn at(self, s: ForestSeq) -> ?Int:
+        assert 0 <= s.id < roots.len, "a ForestSeq this forest didn't make"
+        unchecked: return roots[s.id]
+
+    /// The number of elements in `s`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: when `s` is not from this forest
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); f.len(s) == 3`
+    pub fn len(self, s: ForestSeq) -> Int = t.sz_of(self.at(s))
+
+    /// Append `x` to the end of `s`.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `s` is not from this forest, or the forest reaches `2^31` nodes
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); f.push(s, 4); f.to_list(s) == [1, 2, 3, 4]`
+    pub fn push(mut self, s: ForestSeq, x: T):
+        t.root = self.at(s)
+        t.push(x)
+        roots[s.id] = t.root
+
+    /// Split off positions `k..len` of `s` into a new sequence and return it; `s` keeps `0..k`.
+    /// Pending tags travel with the elements they cover, and no node is copied.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `k < 0` or `k > len(s)`
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); let u = f.split_at(s, 1); f.to_list(s) == [1] and f.to_list(u) == [2, 3]`
+    pub fn split_at(mut self, s: ForestSeq, k: Int) -> ForestSeq:
+        let u = self.at(s)
+        assert 0 <= k <= t.sz_of(u), "`split_at` position out of range"
+        let (a, b) = t.split_pos(u, k)
+        roots[s.id] = a
+        roots.push(b)
+        ForestSeq(id: roots.len - 1)
+
+    /// Move every element of `other` onto the end of `s`, in order, leaving `other` empty.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `other` is `s`, or either is not from this forest
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); let u = f.split_at(s, 1); f.append(u, s); f.to_list(u) == [2, 3, 1] and f.len(s) == 0`
+    pub fn append(mut self, s: ForestSeq, other: ForestSeq):
+        assert s.id != other.id, "`append` of a sequence onto itself"
+        let b = self.at(other)
+        roots[s.id] = t.merge(self.at(s), b)
+        roots[other.id] = None
+
+    /// Tag the elements at positions `r` of `s` with `f`.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: unless `0 <= r.lo <= r.hi <= len(s)`
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); f.apply(s, 1..3, 10); f.to_list(s) == [1, 12, 13]`
+    pub fn apply(mut self, s: ForestSeq, r: Range<Int>, f: F):
+        t.root = self.at(s)
+        t.apply(r, f)
+        roots[s.id] = t.root
+
+    /// Reverse the elements at positions `r` of `s`.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: unless `0 <= r.lo <= r.hi <= len(s)`
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); f.reverse(s, 0..3); f.to_list(s) == [3, 2, 1]`
+    pub fn reverse(mut self, s: ForestSeq, r: Range<Int>):
+        t.root = self.at(s)
+        t.reverse(r)
+        roots[s.id] = t.root
+
+    /// The element at 0-based position `pos` of `s`, with its pending tags applied.
+    ///
+    /// cost: \(O(\log n)\) expected
+    /// traps: when `pos < 0` or `pos >= len(s)`
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); f.get(s, 2) == 3`
+    pub fn get(mut self, s: ForestSeq, pos: Int) -> T:
+        t.root = self.at(s)
+        let v = t.get(pos)
+        roots[s.id] = t.root
+        v
+
+    /// Every element of `s` in order, with pending tags applied.
+    ///
+    /// cost: \(O(n)\)
+    /// order: sequence order
+    /// traps: when `s` is not from this forest
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); for x in [1, 2, 3]: f.push(s, x); f.to_list(s) == [1, 2, 3]`
+    pub fn to_list(self, s: ForestSeq) -> List<T>:
+        let u = self.at(s)
+        var out: List<T> = []
+        t.walk(u, None, false, t.sz_of(u), mut out)
+        out
 
 /// Implicit-key rope over a domain `D` supporting \(O(\log n)\) expected cut, paste, reverse, range
 /// tag `apply`, path queries, and point `get`. \(O(n)\) space.
@@ -1557,6 +1681,18 @@ impl Show for Rope<D, T>:
             if not out.is_empty: out += " "
             out += "{x}"
         out
+
+impl Show for LazyForest<T, F>:
+    /// How many sequences the forest has made.
+    ///
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); "{f}" == "1 sequences"`
+    fn show(f) = "{f.roots.len} sequences"
+
+impl Show for ForestSeq:
+    /// The handle's number in its forest, in creation order.
+    ///
+    /// example: `var f = LazyForest<Int, Int>(apply: (v, k, g) => v + g, compose: (g, h) => g + h); let s = f.seq(); "{s}" == "seq 0"`
+    fn show(s) = "seq {s.id}"
 
 impl Show for LazyTreap<T, F>:
     /// Every element in sequence order, space-separated, read through `to_list` without pushing

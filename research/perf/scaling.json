@@ -9076,7 +9076,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.Flip.of",
-   "measured": 0.99,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9084,7 +9084,87 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.Flip.op",
-   "measured": 0.98,
+   "measured": 1.01,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.append": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.append",
+   "measured": 1.18,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.apply": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.apply",
+   "measured": 1.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.get": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.get",
+   "measured": 1.36,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.len": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyForest.len",
+   "measured": 1.0,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.new": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyForest.new",
+   "measured": 0.95,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.push": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.push",
+   "measured": 1.1,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.reverse": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.reverse",
+   "measured": 1.59,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.seq": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "lazy.LazyForest.seq",
+   "measured": 0.89,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.split_at": {
+   "cost": "\\log n",
+   "documented": 1.14,
+   "fn": "lazy.LazyForest.split_at",
+   "measured": 1.2,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/lazy.cp::lazy.LazyForest.to_list": {
+   "cost": "n",
+   "documented": 4.0,
+   "fn": "lazy.LazyForest.to_list",
+   "measured": 5.46,
    "n": 16384,
    "ok": true
   },
@@ -9092,7 +9172,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.apply",
-   "measured": 1.19,
+   "measured": 1.23,
    "n": 16384,
    "ok": true
   },
@@ -9100,7 +9180,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyTreap.apply_all",
-   "measured": 1.0,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9108,7 +9188,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.apply_range",
-   "measured": 1.28,
+   "measured": 1.4,
    "n": 16384,
    "ok": true
   },
@@ -9116,7 +9196,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.erase_at",
-   "measured": 1.3,
+   "measured": 1.43,
    "n": 16384,
    "ok": true
   },
@@ -9124,7 +9204,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.erase_range",
-   "measured": 1.17,
+   "measured": 1.23,
    "n": 16384,
    "ok": true
   },
@@ -9132,7 +9212,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.get",
-   "measured": 1.32,
+   "measured": 1.47,
    "n": 16384,
    "ok": true
   },
@@ -9140,7 +9220,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.insert",
-   "measured": 1.62,
+   "measured": 1.93,
    "n": 16384,
    "ok": true
   },
@@ -9148,7 +9228,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.insert_at",
-   "measured": 1.19,
+   "measured": 1.21,
    "n": 16384,
    "ok": true
   },
@@ -9156,7 +9236,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyTreap.is_empty",
-   "measured": 1.0,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9164,7 +9244,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyTreap.len",
-   "measured": 1.0,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9172,7 +9252,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.LazyTreap.new",
-   "measured": 0.99,
+   "measured": 1.0,
    "n": 16384,
    "ok": true
   },
@@ -9180,7 +9260,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.push",
-   "measured": 1.23,
+   "measured": 1.28,
    "n": 16384,
    "ok": true
   },
@@ -9188,7 +9268,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "lazy.LazyTreap.reserve",
-   "measured": 6.61,
+   "measured": 6.37,
    "n": 16384,
    "ok": true
   },
@@ -9196,7 +9276,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.LazyTreap.reverse",
-   "measured": 1.31,
+   "measured": 1.42,
    "n": 16384,
    "ok": true
   },
@@ -9204,7 +9284,7 @@
    "cost": "\\min(n, m) + \\log(n + m)",
    "documented": 1.13,
    "fn": "lazy.LazyTreap.splice_back",
-   "measured": 1.33,
+   "measured": 1.34,
    "n": 16384,
    "ok": true
   },
@@ -9212,7 +9292,7 @@
    "cost": "\\min(k, n - k) + \\log n",
    "documented": 1.11,
    "fn": "lazy.LazyTreap.split_at",
-   "measured": 1.3,
+   "measured": 1.26,
    "n": 16384,
    "ok": true
   },
@@ -9220,7 +9300,7 @@
    "cost": "k + \\log n",
    "documented": 1.13,
    "fn": "lazy.LazyTreap.take",
-   "measured": 1.33,
+   "measured": 1.38,
    "n": 16384,
    "ok": true
   },
@@ -9228,7 +9308,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "lazy.LazyTreap.to_list",
-   "measured": 5.17,
+   "measured": 4.82,
    "n": 16384,
    "ok": true
   },
@@ -9236,7 +9316,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.Rope.apply",
-   "measured": 1.47,
+   "measured": 1.43,
    "n": 16384,
    "ok": true
   },
@@ -9244,7 +9324,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.Rope.get",
-   "measured": 1.46,
+   "measured": 1.4,
    "n": 16384,
    "ok": true
   },
@@ -9252,7 +9332,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "lazy.Rope.new",
-   "measured": 4.5,
+   "measured": 4.41,
    "n": 16384,
    "ok": true
   },
@@ -9260,7 +9340,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.Rope.query_path",
-   "measured": 1.47,
+   "measured": 1.44,
    "n": 16384,
    "ok": true
   },
@@ -9268,7 +9348,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.Rope.reverse",
-   "measured": 1.64,
+   "measured": 1.55,
    "n": 16384,
    "ok": true
   },
@@ -9276,7 +9356,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.Rope.set",
-   "measured": 1.47,
+   "measured": 1.41,
    "n": 16384,
    "ok": true
   },
@@ -9284,7 +9364,7 @@
    "cost": "\\lvert D \\rvert",
    "documented": 4.0,
    "fn": "lazy.Rope.to_array",
-   "measured": 5.49,
+   "measured": 5.32,
    "n": 16384,
    "ok": true
   },
@@ -9292,7 +9372,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.SeqFold.apply",
-   "measured": 1.27,
+   "measured": 1.24,
    "n": 16384,
    "ok": true
   },
@@ -9300,7 +9380,7 @@
    "cost": "\\lvert r \\rvert + \\log n",
    "documented": 4.0,
    "fn": "lazy.SeqFold.erase_range",
-   "measured": 4.67,
+   "measured": 4.15,
    "n": 16384,
    "ok": true
   },
@@ -9308,7 +9388,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.SeqFold.fold",
-   "measured": 1.45,
+   "measured": 1.41,
    "n": 16384,
    "ok": true
   },
@@ -9316,7 +9396,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.SeqFold.get",
-   "measured": 1.33,
+   "measured": 1.28,
    "n": 16384,
    "ok": true
   },
@@ -9324,7 +9404,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.SeqFold.insert_at",
-   "measured": 1.7,
+   "measured": 1.44,
    "n": 16384,
    "ok": true
   },
@@ -9332,7 +9412,7 @@
    "cost": "k + \\log n",
    "documented": 4.0,
    "fn": "lazy.SeqFold.insert_many",
-   "measured": 4.08,
+   "measured": 4.1,
    "n": 16384,
    "ok": true
   },
@@ -9340,7 +9420,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.SeqFold.is_empty",
-   "measured": 0.99,
+   "measured": 1.02,
    "n": 16384,
    "ok": true
   },
@@ -9348,7 +9428,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "lazy.SeqFold.items",
-   "measured": 1.12,
+   "measured": 1.15,
    "n": 16384,
    "ok": true
   },
@@ -9356,7 +9436,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.SeqFold.len",
-   "measured": 0.99,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -9364,7 +9444,7 @@
    "cost": "n",
    "documented": 4.0,
    "fn": "lazy.SeqFold.new",
-   "measured": 4.29,
+   "measured": 4.49,
    "n": 16384,
    "ok": true
   },
@@ -9372,7 +9452,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.SeqFold.push",
-   "measured": 1.12,
+   "measured": 1.27,
    "n": 16384,
    "ok": true
   },
@@ -9380,7 +9460,7 @@
    "cost": "\\log n",
    "documented": 1.14,
    "fn": "lazy.SeqFold.reverse",
-   "measured": 1.37,
+   "measured": 1.39,
    "n": 16384,
    "ok": true
   },
@@ -9388,7 +9468,7 @@
    "cost": "m + \\log n",
    "documented": 4.0,
    "fn": "lazy.SeqFold.splice",
-   "measured": 4.21,
+   "measured": 4.05,
    "n": 16384,
    "ok": true
   },
@@ -9396,7 +9476,7 @@
    "cost": "\\mathit{len} - k + \\log n",
    "documented": 4.0,
    "fn": "lazy.SeqFold.split_at",
-   "measured": 4.22,
+   "measured": 4.1,
    "n": 16384,
    "ok": true
   },
@@ -9404,7 +9484,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.SeqFold.total",
-   "measured": 0.98,
+   "measured": 1.04,
    "n": 16384,
    "ok": true
   },
@@ -9412,7 +9492,7 @@
    "cost": "1",
    "documented": 1.0,
    "fn": "lazy.flip_action",
-   "measured": 0.99,
+   "measured": 1.03,
    "n": 16384,
    "ok": true
   },
@@ -10621,6 +10701,54 @@
    "documented": 1.62,
    "fn": "math.primitive_root",
    "measured": 0.74,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.abs": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.abs",
+   "measured": 1.04,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.ceil": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.ceil",
+   "measured": 1.07,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.floor": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.floor",
+   "measured": 1.05,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.round": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.round",
+   "measured": 1.03,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.sqrt": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.sqrt",
+   "measured": 1.08,
+   "n": 16384,
+   "ok": true
+  },
+  "bench/scaling/math_rounding.cp::math.trunc": {
+   "cost": "1",
+   "documented": 1.0,
+   "fn": "math.trunc",
+   "measured": 1.05,
    "n": 16384,
    "ok": true
   },
