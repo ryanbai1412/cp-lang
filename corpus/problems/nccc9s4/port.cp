@@ -16,7 +16,7 @@ let a: [0..n]V = read()
 domain Q = 0..q
 let qs: [Q](l: 1..=n, r: 1..=n) = read()
 
-var cnt: [V]Int = 0
+var cnt: [V]0..=100_000 = 0
 
 // A best is count * n + the score's rank: max on it compares (count, score) pairs.
 fn add(j: Int, best: Int) -> Int:
