@@ -4776,10 +4776,14 @@ impl<'a> Lowerer<'a> {
                 if let Ty::Range(inner) = value.ty.clone() {
                     return (Iter::RangeVal(value, false), *inner);
                 }
-                // Any struct with a zero-arg `each(self)` method (such as `Bitset<D>`)
-                // is directly iterable by calling `each`.
+                // A struct with a zero-arg `each(self)` (such as `Bitset<D>`), or the
+                // `iter(self)` of its `impl Seq`, walks what that call gives.
                 if let Ty::Struct(sid) = value.ty {
-                    if let Some(&each_fn) = self.structs[sid].methods.get("each") {
+                    let walk = ["each", "iter"].into_iter().find_map(|m| {
+                        let f = *self.structs[sid].methods.get(m)?;
+                        self.sigs[f].params.is_empty().then_some(f)
+                    });
+                    if let Some(each_fn) = walk {
                         self.queue_fn(each_fn);
                         let ret = self.ret_of(each_fn, span);
                         if let Ty::List(elem) = ret {
