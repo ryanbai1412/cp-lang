@@ -176,9 +176,16 @@ as IntelliJ's test tree and CI servers read them: per case `testStarted` (its
 when it fails (a wrong answer with a known answer as a `comparisonFailure` with
 `expected` and `actual`) and `testFinished`; a folder wraps each problem in a suite.
 `cpl stress --format json` prints `{"status", "build"?, "case_count", "saved_count"?,
-"tried"?, "counterexample"?}`: the toolchain that built the solution (`build`, when the
-CLI built one), how many cases ran (`case_count`), then `saved_count` and
-what it `tried` when it found no counterexample, or the `counterexample`.
+"tried"?, "counterexample"?, "view": {"panel", "status"?: {"line", "ok", "label"},
+"lines"?: [{"line", "kind", "label", "hover"?}]}}`: the toolchain that built the solution
+(`build`, when the CLI built one), how many cases ran (`case_count`), then `saved_count` and
+what it `tried` when it found no counterexample, or the `counterexample`; and the `view`:
+the text `cpl stress` prints as the panel, a passing run's `stress: 1000 cases passed` as
+the status, and on a failure the lines: each `debug(...)` stage's line `agrees` (`fast =
+brute = [none, 1]`) but the first that `differs` (`fast [0]  ≠  brute [1]  ← first
+difference`), the solution's line of the first divergence `differs` (`tri(k: 1) = 0  ≠
+brute 1  ← first wrong call`), and line 0 the `input` (`counterexample: n = 2  a = [7,
+7]  (fast 0 ≠ brute 1)`), each hover the case and both sides.
 `cpl locate --json` prints `{"input", "part", "alt", "output", "alt_output",
 "divergence"}`.
 `cpl bench --format json` prints `{"status", "time_limit_ms",

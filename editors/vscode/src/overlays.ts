@@ -6,12 +6,6 @@
 import * as vscode from 'vscode';
 import {
     clip,
-    Counterexample,
-    counterexampleSummary,
-    divergenceLabel,
-    divergenceTitle,
-    firstDifference,
-    stageLabel,
     View,
     VIEW_KINDS,
 } from './results';
@@ -82,10 +76,6 @@ export class Overlays implements vscode.Disposable {
     }
 
     /** Until `cpl run`'s sample verdicts come back as a view. */
-    setCounterexample(uri: vscode.Uri, counterexample: Counterexample | undefined): void {
-        this.setView(uri, 'stress', counterexample && counterexampleView(counterexample));
-    }
-
     clear(uri: vscode.Uri): void {
         this.byDocument.delete(uri.toString());
         this.diagnostics.delete(uri);
@@ -162,44 +152,4 @@ export class Overlays implements vscode.Disposable {
         editor.setDecorations(this.passType, badge?.ok ? badges : []);
         editor.setDecorations(this.failType, badge?.ok ? [] : badges);
     }
-}
-
-function codeBlock(text: string, lang: string): string {
-    return `\n\n\`\`\`${lang}\n${text}\n\`\`\``;
-}
-
-/** The counterexample's marks as `cpl stress`'s view will carry them. */
-function counterexampleView(c: Counterexample): View {
-    const lines: NonNullable<View['lines']> = [];
-    const first = firstDifference(c);
-    for (const stage of c.stages) {
-        if (stage.line !== undefined) {
-            const hover = `\`${stage.name}\` on the counterexample:` + codeBlock(`${c.input}\nfast  = ${stage.fast}\nbrute = ${stage.brute}`, 'cp');
-            // Later differences usually follow from the first, so only the first is marked.
-            lines.push({ line: stage.line, kind: stage === first ? 'differs' : 'agrees', label: stageLabel(stage, Infinity), hover });
-        }
-    }
-    const d = c.divergence;
-    const at = d?.fast?.line;
-    if (d && at !== undefined && !lines.some(l => l.line === at)) {
-        const steps = d.inside.map(step => `line ${step.line !== undefined ? step.line + 1 : '?'}: ${step.locals}`);
-        const body = [c.input, `fast  = ${d.fast?.value}`, `brute = ${d.brute?.value ?? 'nothing'}`, ...steps].join('\n');
-        lines.push({ line: at, kind: 'differs', label: divergenceLabel(d, Infinity), hover: divergenceTitle(d) + codeBlock(body, 'cp') });
-    }
-    if (!lines.some(l => l.line === 0)) {
-        let hover = 'The smallest input `cpl stress` found where the fast code and the reference disagree.';
-        if (c.saved) {
-            hover += ` Saved as \`${c.saved}\`.`;
-        }
-        if (c.stages.length === 0 && (c.got !== undefined || c.expected !== undefined)) {
-            const details = [
-                c.rawInput?.trimEnd() || c.input,
-                c.got !== undefined ? `fast  = ${c.got.trimEnd()}` : undefined,
-                c.expected !== undefined ? `brute = ${c.expected.trimEnd()}` : undefined,
-            ].filter(part => part !== undefined && part !== '');
-            hover += details.length > 0 ? codeBlock(details.join('\n'), 'cp') : '';
-        }
-        lines.push({ line: 0, kind: 'input', label: counterexampleSummary(c, Infinity), hover });
-    }
-    return { panel: '', lines };
 }

@@ -20,6 +20,7 @@ pub mod shrink;
 pub mod spec;
 pub mod stress;
 pub mod traced;
+pub mod view;
 
 pub use case::{Failed, Ran, Roles, Ruling, Side, Talked, Transcript, Wrong};
 pub use choices::ChoiceSource;

@@ -13,9 +13,7 @@ import { samplesOf } from './lenses';
 import { Overlays } from './overlays';
 import {
     parseRunReport,
-    parseStressReport,
     viewOf,
-    renderCounterexample,
 } from './results';
 import { Sample } from './samples';
 import { TraceView } from './traceView';
@@ -115,25 +113,15 @@ export class Runner {
         if (!result) {
             return;
         }
-        const report = parseStressReport(result.stdout);
-        if (!report) {
+        const view = viewOf(result.stdout);
+        if (!view) {
             this.printRaw(result);
             return;
         }
-        if (report.status === 'pass' || !report.counterexample) {
-            this.overlays.setCounterexample(document.uri, undefined);
-            this.overlays.setView(document.uri, 'error', undefined);
-            const msg =
-                report.status === 'pass'
-                    ? `stress: ${report.cases ?? 'all'} cases passed`
-                    : 'stress: FAIL (the report has no counterexample)';
-            this.output.appendLine(msg);
-            this.overlays.setView(document.uri, 'status', { panel: '', status: { line: 0, ok: report.status === 'pass', label: msg } });
-            return;
-        }
-        this.output.appendLine(renderCounterexample(report.counterexample));
+        this.output.append(view.panel);
+        this.overlays.setView(document.uri, 'error', undefined);
         this.overlays.setView(document.uri, 'status', undefined);
-        this.overlays.setCounterexample(document.uri, report.counterexample);
+        this.overlays.setView(document.uri, 'stress', view);
     }
 
     /**

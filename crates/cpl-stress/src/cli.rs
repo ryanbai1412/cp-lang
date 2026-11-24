@@ -369,18 +369,7 @@ pub fn print_divergence(stdout: &mut dyn Write, d: &cpl_interp::trace::Divergenc
         }
         return;
     }
-    let _ = match d.name.split_once('(').filter(|_| d.call) {
-        Some((f, _)) => writeln!(
-            stdout,
-            "  first wrong call: `{}`, the {ordinal} call of `{f}`",
-            d.name
-        ),
-        None => writeln!(
-            stdout,
-            "  first differing value: `{}`, its {ordinal} value",
-            d.name
-        ),
-    };
+    let _ = writeln!(stdout, "  {}", divergence_title(d));
     for (who, side) in [("solution", &d.fast), ("brute", &d.brute)] {
         let _ = match side {
             Some((line, value)) => {
@@ -401,6 +390,19 @@ pub fn print_divergence(stdout: &mut dyn Write, d: &cpl_interp::trace::Divergenc
         for (line, locals) in &d.inside {
             let _ = writeln!(stdout, "      line {line}: {locals}");
         }
+    }
+}
+
+/// The headline of a divergence: `` first wrong call: `tri(k: 1)`, the 1st
+/// call of `tri` ``.
+pub(crate) fn divergence_title(d: &cpl_interp::trace::Divergence) -> String {
+    let ordinal = ordinal(d.nth);
+    match d.name.split_once('(').filter(|_| d.call) {
+        Some((f, _)) => format!(
+            "first wrong call: `{}`, the {ordinal} call of `{f}`",
+            d.name
+        ),
+        None => format!("first differing value: `{}`, its {ordinal} value", d.name),
     }
 }
 
@@ -645,8 +647,275 @@ pub fn run_with(
         _ => None,
     };
     let trap_json = stressed.result.trap.clone().filter(|_| args.json);
+    let bug = (report.failure.as_ref()).is_some_and(|f| toolchain_bug(&args, f));
+    // With --format json, the text is the view's panel.
+    let mut panel = Vec::new();
+    let code = {
+        let stdout: &mut dyn Write = if args.json { &mut panel } else { &mut *stdout };
+        'text: {
+            let judged_by = match &judge {
+        Judge::Tokens if unjudged => "checker: none; only runtime errors and the time limit fail a case, and an `@alt(program)` fn would check the answers".to_string(),
+        Judge::Tokens => "checker: none".to_string(),
+        Judge::Checker(program) => format!("checker: {}", program.name),
+        Judge::Interactor(program, _) => format!("interactor: {}", program.name),
+    };
+            let _ = writeln!(
+                stdout,
+                "  brute: {}      {judged_by}",
+                stress.roles.brute.as_ref().map_or("none", |b| b.name())
+            );
+            // The build the cases ran, so a judge's verdict can be laid beside it
+            // (use case stress/U29).
+            if let Some(stamp) = build_stamp(&args, &src) {
+                let _ = writeln!(stdout, "  build: {stamp}; checked, as `cpl run`");
+            }
+            let Some(failure) = &report.failure else {
+                let skipped = match report.skipped {
+                    0 => String::new(),
+                    n => format!(" ({n} seeds made no valid case)"),
+                };
+                let ran = report.cases - report.skipped;
+                let skipped = match args.options.budget {
+                    Some(budget) if report.cases < args.options.cases => match budget.as_millis() {
+                        ms if ms % 1000 == 0 => format!("{skipped} in {}s", ms / 1000),
+                        ms => format!("{skipped} in {ms}ms"),
+                    },
+                    _ => skipped,
+                };
+                let again = match report.saved.min(from_files) {
+                    0 => String::new(),
+                    1 => "the saved case passes; ".to_string(),
+                    n => format!("the {n} saved cases pass; "),
+                } + &match report.saved.saturating_sub(from_files) {
+                    0 => String::new(),
+                    1 => "the input `cpl lint` names at the bounds passes; ".to_string(),
+                    n => format!("the {n} inputs `cpl lint` names at the bounds pass; "),
+                };
+                let _ = match unjudged {
+                    true => writeln!(
+                        stdout,
+                        "  {again}{ran} cases ran with no runtime error or time limit{skipped}"
+                    ),
+                    false => writeln!(stdout, "  {again}{ran} cases agree{skipped}"),
+                };
+                let tried = report.reached.describe();
+                if !tried.is_empty() {
+                    let _ = writeln!(stdout, "  tried: {tried}");
+                }
+                // A bound lint's input stress could not make is pointed at.
+                let unmade: Vec<String> = (witnesses.iter())
+                    .filter_map(|(lint, _, input)| {
+                        Some(format!("{lint}: {}", input.as_ref().err()?))
+                    })
+                    .collect();
+                if !unmade.is_empty() {
+                    let _ = writeln!(
+                stdout,
+                "  cases reach size {}; `cpl lint` names inputs at the bounds that fail, which stress can't make ({})",
+                args.options.size,
+                unmade.join("; ")
+            );
+                }
+                if report.discarded > 0 {
+                    let inputs = if report.discarded == 1 {
+                        "1 input"
+                    } else {
+                        &format!("{} inputs", report.discarded)
+                    };
+                    let _ = writeln!(
+                stdout,
+                "  {inputs} that stopped the program thrown away; the rest were made with {}",
+                report.narrowed.join("; ")
+            );
+                    let _ = writeln!(
+                stdout,
+                "  write the range in the program to test with it, like `let n: 1..=100 = read()`"
+            );
+                }
+                break 'text 0;
+            };
+            let _ = match (&saved, failure.saved) {
+                (Some(path), true) if failure.case > from_files => writeln!(
+                    stdout,
+                    "  FAIL on the input `cpl lint` names at the bounds, saved as {}: {}",
+                    path.shown(),
+                    failure.verdict.code()
+                ),
+                (Some(path), true) => writeln!(
+                    stdout,
+                    "  FAIL on the saved case {}: {}",
+                    path.shown(),
+                    failure.verdict.code()
+                ),
+                _ => writeln!(
+                    stdout,
+                    "  FAIL on case {} (seed {}): {}",
+                    failure.case,
+                    failure.seed,
+                    failure.verdict.code()
+                ),
+            };
+            if let Some((from, to)) = failure.shrunk {
+                let _ = writeln!(stdout, "  shrunk from {from} numbers to {to}:");
+            }
+            let _ = writeln!(stdout, "{}", indent(&failure.input));
+            if let Some(described) = &failure.described {
+                let _ = writeln!(stdout, "  that is: {described}");
+            }
+            // A wrong answer or a crash of the built C++ can stop the debug
+            // interpreter at its cause: an overflow, an index out of range.
+            let verdict = &failure.verdict;
+            let trapped = (args.fast.is_none()
+                && (verdict.wrong() || verdict.trapped() == Some(Trapped::Solution)))
+            .then(|| crate::explain::runtime_error(&args.file, &failure.input))
+            .flatten();
+            let why = verdict.why();
+            match verdict.trapped() {
+                // A checker alone rules on the output: there is no answer to show.
+                None if verdict.wrong() && failure.expected.is_empty() => {
+                    let _ = writeln!(stdout, "  got:\n{}\n  {why}", indent(&failure.got));
+                }
+                None if verdict.wrong() => {
+                    let _ = writeln!(
+                        stdout,
+                        "  expected:\n{}\n  got:\n{}\n  {why}",
+                        indent(&failure.expected),
+                        indent(&failure.got)
+                    );
+                    if let Some(explained) = &trapped {
+                        let _ = writeln!(
+                            stdout,
+                            "  a debug run of the solution stops:\n{}",
+                            indent(explained.trim_end())
+                        );
+                    } else if bug {
+                        let _ = writeln!(
+                    stdout,
+                    "  toolchain bug: the debug interpreter prints the expected answer on this case\n  and the built C++ prints something else, so this is no WA of yours\n  `cpl report {}` writes the bug report",
+                    args.file.shown()
+                );
+                    }
+                }
+                Some(Trapped::Brute) => {
+                    let brute_name = stress.roles.brute.as_ref().map_or("brute", |b| b.name());
+                    let trap = stress.brute_trap(&failure.input).map(|t| t.text());
+                    let _ = match trap {
+                        Some(trap) => writeln!(
+                    stdout,
+                    "  the brute {brute_name} failed, so there is nothing to compare with:\n{}",
+                    indent(trap.trim_end())
+                ),
+                        None => writeln!(
+                    stdout,
+                    "  the brute {brute_name} failed, so there is nothing to compare with: {why}"
+                ),
+                    };
+                    let _ = writeln!(
+                stdout,
+                "  fix the brute, or narrow the input it is meant for, then `cpl stress` again"
+            );
+                }
+                Some(kind @ (Trapped::Checker | Trapped::Interactor)) => {
+                    let kind = kind.name();
+                    let _ = writeln!(
+                        stdout,
+                        "  the {kind} failed, so the run can't be judged:\n{}",
+                        indent(why.trim_end())
+                    );
+                    let _ = writeln!(stdout, "  fix the {kind}, then `cpl stress` again");
+                }
+                Some(Trapped::Solution) => match &trapped {
+                    Some(explained) => {
+                        let _ = writeln!(
+                            stdout,
+                            "  the solution failed:\n{}",
+                            indent(explained.trim_end())
+                        );
+                    }
+                    None => {
+                        let _ = writeln!(stdout, "  the solution failed: {why}");
+                    }
+                },
+                _ => {
+                    let _ = writeln!(stdout, "  the solution ran past the time limit");
+                }
+            }
+            if !stages.is_empty() {
+                let _ = writeln!(stdout, "  debug(...) both ran, solution | brute:");
+                let first = stages.iter().position(|stage| stage.fast != stage.brute);
+                for (index, stage) in stages
+                    .iter()
+                    .enumerate()
+                    .take(first.map_or(12, |first| first + 1))
+                {
+                    let mark = if stage.fast == stage.brute { " " } else { "!" };
+                    let _ = writeln!(
+                        stdout,
+                        "  {mark} line {}: {}: {} | {}",
+                        stage.line, stage.name, stage.fast, stage.brute
+                    );
+                    if Some(index) == first {
+                        let _ = writeln!(stdout, "    ^ the first one that differs");
+                    }
+                }
+            }
+            match &explained {
+                // The trap above is the explanation, and where it stopped the
+                // solution gave no more values.
+                Some(Ok(Some(d))) if trapped.is_some() && d.fast.is_none() => {}
+                Some(Ok(None)) if trapped.is_some() => {}
+                Some(Ok(Some(d))) => print_divergence(stdout, d),
+                Some(Ok(None)) => {
+                    let _ = writeln!(
+                stdout,
+                "  first differing value: none; no variable both name takes different values"
+            );
+                }
+                Some(Err(why)) => {
+                    let _ = writeln!(stderr, "warning: no explanation: {why}");
+                }
+                None => {}
+            }
+            if let Some(path) = &trace_path {
+                let _ = writeln!(stdout, "  trace {}", path.shown());
+            }
+            if let Some(note) = &trace_note {
+                let _ = writeln!(stderr, "warning: {note}");
+            }
+            match &saved {
+                Some(path) => {
+                    if !failure.saved {
+                        let _ = writeln!(stdout, "  saved {}", path.shown());
+                    }
+                    let file = args.file.shown();
+                    if !part_alts(&src).is_empty() && explained.is_none() {
+                        let _ = writeln!(
+                            stdout,
+                            "  next: `cpl locate {file}` names the first part whose alt disagrees"
+                        );
+                    } else if trace_path.is_none() {
+                        let _ = writeln!(
+                            stdout,
+                            "  next: `cpl run {file} --trace` steps through this case"
+                        );
+                    }
+                    let _ = writeln!(
+                stdout,
+                "  after a fix: `cpl test {file}` reruns it, then `cpl stress {file}` again"
+            );
+                }
+                None if !helper_failed(failure) => {
+                    let _ = writeln!(
+                        stderr,
+                        "warning: the case could not be saved next to {name}"
+                    );
+                }
+                None => {}
+            }
+            1
+        }
+    };
     if args.json {
-        let toolchain_bug = (report.failure.as_ref()).is_some_and(|f| toolchain_bug(&args, f));
         let result = crate::StressResult {
             build: build_stamp(&args, &src),
             saved: saved.as_deref().map(|path| path.shown()),
@@ -654,270 +923,13 @@ pub fn run_with(
             stages: stages.to_vec(),
             explained: explained.clone(),
             trap: trap_json,
-            toolchain_bug,
+            toolchain_bug: bug,
             report: report.clone(),
+            panel: Some(String::from_utf8_lossy(&panel).into_owned()),
         };
         let _ = write!(stdout, "{}", result.render());
-        return report.failure.is_some() as u8;
     }
-    let judged_by = match &judge {
-        Judge::Tokens if unjudged => "checker: none; only runtime errors and the time limit fail a case, and an `@alt(program)` fn would check the answers".to_string(),
-        Judge::Tokens => "checker: none".to_string(),
-        Judge::Checker(program) => format!("checker: {}", program.name),
-        Judge::Interactor(program, _) => format!("interactor: {}", program.name),
-    };
-    let _ = writeln!(
-        stdout,
-        "  brute: {}      {judged_by}",
-        stress.roles.brute.as_ref().map_or("none", |b| b.name())
-    );
-    // The build the cases ran, so a judge's verdict can be laid beside it
-    // (use case stress/U29).
-    if let Some(stamp) = build_stamp(&args, &src) {
-        let _ = writeln!(stdout, "  build: {stamp}; checked, as `cpl run`");
-    }
-    let Some(failure) = &report.failure else {
-        let skipped = match report.skipped {
-            0 => String::new(),
-            n => format!(" ({n} seeds made no valid case)"),
-        };
-        let ran = report.cases - report.skipped;
-        let skipped = match args.options.budget {
-            Some(budget) if report.cases < args.options.cases => match budget.as_millis() {
-                ms if ms % 1000 == 0 => format!("{skipped} in {}s", ms / 1000),
-                ms => format!("{skipped} in {ms}ms"),
-            },
-            _ => skipped,
-        };
-        let again = match report.saved.min(from_files) {
-            0 => String::new(),
-            1 => "the saved case passes; ".to_string(),
-            n => format!("the {n} saved cases pass; "),
-        } + &match report.saved.saturating_sub(from_files) {
-            0 => String::new(),
-            1 => "the input `cpl lint` names at the bounds passes; ".to_string(),
-            n => format!("the {n} inputs `cpl lint` names at the bounds pass; "),
-        };
-        let _ = match unjudged {
-            true => writeln!(
-                stdout,
-                "  {again}{ran} cases ran with no runtime error or time limit{skipped}"
-            ),
-            false => writeln!(stdout, "  {again}{ran} cases agree{skipped}"),
-        };
-        let tried = report.reached.describe();
-        if !tried.is_empty() {
-            let _ = writeln!(stdout, "  tried: {tried}");
-        }
-        // A bound lint's input stress could not make is pointed at.
-        let unmade: Vec<String> = (witnesses.iter())
-            .filter_map(|(lint, _, input)| Some(format!("{lint}: {}", input.as_ref().err()?)))
-            .collect();
-        if !unmade.is_empty() {
-            let _ = writeln!(
-                stdout,
-                "  cases reach size {}; `cpl lint` names inputs at the bounds that fail, which stress can't make ({})",
-                args.options.size,
-                unmade.join("; ")
-            );
-        }
-        if report.discarded > 0 {
-            let inputs = if report.discarded == 1 {
-                "1 input"
-            } else {
-                &format!("{} inputs", report.discarded)
-            };
-            let _ = writeln!(
-                stdout,
-                "  {inputs} that stopped the program thrown away; the rest were made with {}",
-                report.narrowed.join("; ")
-            );
-            let _ = writeln!(
-                stdout,
-                "  write the range in the program to test with it, like `let n: 1..=100 = read()`"
-            );
-        }
-        return 0;
-    };
-    let _ = match (&saved, failure.saved) {
-        (Some(path), true) if failure.case > from_files => writeln!(
-            stdout,
-            "  FAIL on the input `cpl lint` names at the bounds, saved as {}: {}",
-            path.shown(),
-            failure.verdict.code()
-        ),
-        (Some(path), true) => writeln!(
-            stdout,
-            "  FAIL on the saved case {}: {}",
-            path.shown(),
-            failure.verdict.code()
-        ),
-        _ => writeln!(
-            stdout,
-            "  FAIL on case {} (seed {}): {}",
-            failure.case,
-            failure.seed,
-            failure.verdict.code()
-        ),
-    };
-    if let Some((from, to)) = failure.shrunk {
-        let _ = writeln!(stdout, "  shrunk from {from} numbers to {to}:");
-    }
-    let _ = writeln!(stdout, "{}", indent(&failure.input));
-    if let Some(described) = &failure.described {
-        let _ = writeln!(stdout, "  that is: {described}");
-    }
-    // A wrong answer or a crash of the built C++ can stop the debug
-    // interpreter at its cause: an overflow, an index out of range.
-    let verdict = &failure.verdict;
-    let trapped = (args.fast.is_none()
-        && (verdict.wrong() || verdict.trapped() == Some(Trapped::Solution)))
-    .then(|| crate::explain::runtime_error(&args.file, &failure.input))
-    .flatten();
-    let why = verdict.why();
-    match verdict.trapped() {
-        // A checker alone rules on the output: there is no answer to show.
-        None if verdict.wrong() && failure.expected.is_empty() => {
-            let _ = writeln!(stdout, "  got:\n{}\n  {why}", indent(&failure.got));
-        }
-        None if verdict.wrong() => {
-            let _ = writeln!(
-                stdout,
-                "  expected:\n{}\n  got:\n{}\n  {why}",
-                indent(&failure.expected),
-                indent(&failure.got)
-            );
-            if let Some(explained) = &trapped {
-                let _ = writeln!(
-                    stdout,
-                    "  a debug run of the solution stops:\n{}",
-                    indent(explained.trim_end())
-                );
-            } else if toolchain_bug(&args, failure) {
-                let _ = writeln!(
-                    stdout,
-                    "  toolchain bug: the debug interpreter prints the expected answer on this case\n  and the built C++ prints something else, so this is no WA of yours\n  `cpl report {}` writes the bug report",
-                    args.file.shown()
-                );
-            }
-        }
-        Some(Trapped::Brute) => {
-            let brute_name = stress.roles.brute.as_ref().map_or("brute", |b| b.name());
-            let trap = stress.brute_trap(&failure.input).map(|t| t.text());
-            let _ = match trap {
-                Some(trap) => writeln!(
-                    stdout,
-                    "  the brute {brute_name} failed, so there is nothing to compare with:\n{}",
-                    indent(trap.trim_end())
-                ),
-                None => writeln!(
-                    stdout,
-                    "  the brute {brute_name} failed, so there is nothing to compare with: {why}"
-                ),
-            };
-            let _ = writeln!(
-                stdout,
-                "  fix the brute, or narrow the input it is meant for, then `cpl stress` again"
-            );
-        }
-        Some(kind @ (Trapped::Checker | Trapped::Interactor)) => {
-            let kind = kind.name();
-            let _ = writeln!(
-                stdout,
-                "  the {kind} failed, so the run can't be judged:\n{}",
-                indent(why.trim_end())
-            );
-            let _ = writeln!(stdout, "  fix the {kind}, then `cpl stress` again");
-        }
-        Some(Trapped::Solution) => match &trapped {
-            Some(explained) => {
-                let _ = writeln!(
-                    stdout,
-                    "  the solution failed:\n{}",
-                    indent(explained.trim_end())
-                );
-            }
-            None => {
-                let _ = writeln!(stdout, "  the solution failed: {why}");
-            }
-        },
-        _ => {
-            let _ = writeln!(stdout, "  the solution ran past the time limit");
-        }
-    }
-    if !stages.is_empty() {
-        let _ = writeln!(stdout, "  debug(...) both ran, solution | brute:");
-        let first = stages.iter().position(|stage| stage.fast != stage.brute);
-        for (index, stage) in stages
-            .iter()
-            .enumerate()
-            .take(first.map_or(12, |first| first + 1))
-        {
-            let mark = if stage.fast == stage.brute { " " } else { "!" };
-            let _ = writeln!(
-                stdout,
-                "  {mark} line {}: {}: {} | {}",
-                stage.line, stage.name, stage.fast, stage.brute
-            );
-            if Some(index) == first {
-                let _ = writeln!(stdout, "    ^ the first one that differs");
-            }
-        }
-    }
-    match &explained {
-        // The trap above is the explanation, and where it stopped the
-        // solution gave no more values.
-        Some(Ok(Some(d))) if trapped.is_some() && d.fast.is_none() => {}
-        Some(Ok(None)) if trapped.is_some() => {}
-        Some(Ok(Some(d))) => print_divergence(stdout, d),
-        Some(Ok(None)) => {
-            let _ = writeln!(
-                stdout,
-                "  first differing value: none; no variable both name takes different values"
-            );
-        }
-        Some(Err(why)) => {
-            let _ = writeln!(stderr, "warning: no explanation: {why}");
-        }
-        None => {}
-    }
-    if let Some(path) = &trace_path {
-        let _ = writeln!(stdout, "  trace {}", path.shown());
-    }
-    if let Some(note) = &trace_note {
-        let _ = writeln!(stderr, "warning: {note}");
-    }
-    match saved {
-        Some(path) => {
-            if !failure.saved {
-                let _ = writeln!(stdout, "  saved {}", path.shown());
-            }
-            let file = args.file.shown();
-            if !part_alts(&src).is_empty() && explained.is_none() {
-                let _ = writeln!(
-                    stdout,
-                    "  next: `cpl locate {file}` names the first part whose alt disagrees"
-                );
-            } else if trace_path.is_none() {
-                let _ = writeln!(
-                    stdout,
-                    "  next: `cpl run {file} --trace` steps through this case"
-                );
-            }
-            let _ = writeln!(
-                stdout,
-                "  after a fix: `cpl test {file}` reruns it, then `cpl stress {file}` again"
-            );
-        }
-        None if !helper_failed(failure) => {
-            let _ = writeln!(
-                stderr,
-                "warning: the case could not be saved next to {name}"
-            );
-        }
-        None => {}
-    }
-    1
+    code
 }
 
 /// The cases `cpl stress` saved for `file` before, by seed.
