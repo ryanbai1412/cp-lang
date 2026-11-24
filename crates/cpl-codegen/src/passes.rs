@@ -264,6 +264,12 @@ pub(crate) const PASSES: &[Pass] = &[
         "a_last_opened_where_it_is_made_is_a_check_and_a_read",
     ),
     pass(
+        "return-into",
+        "into.rs",
+        Uses(&["each_call", "each_local", "each_written", "each_return"]),
+        "a_cell_fn_tested_by_its_caller_builds_no_opt_tuple",
+    ),
+    pass(
         "known-optional-fn",
         "optfn.rs",
         Uses(&["each_call", "each_closure", "each_write", "each_loop"]),

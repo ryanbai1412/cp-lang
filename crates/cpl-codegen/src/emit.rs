@@ -267,6 +267,10 @@ pub(crate) struct Emitter<'p> {
     pub mut_bound: BTreeSet<usize>,
     /// Optionals emitted as their parts (see [`crate::opened`]).
     pub(crate) opened: BTreeMap<usize, crate::opened::Parts>,
+    /// Fns returning `?T` through a `T& cpl_out` (see [`crate::into`]).
+    pub(crate) into: BTreeSet<usize>,
+    /// The variable the next call of an into fn writes.
+    pub(crate) into_arg: Option<String>,
     pub taken: BTreeSet<String>,
     pub fresh: usize,
     /// Loops that a `break` or `continue` names from an inner loop.
@@ -376,6 +380,8 @@ impl<'p> Emitter<'p> {
             given_parts: BTreeSet::new(),
             mut_bound: BTreeSet::new(),
             opened: BTreeMap::new(),
+            into: BTreeSet::new(),
+            into_arg: None,
             taken: BTreeSet::new(),
             fresh: 0,
             break_targets: BTreeSet::new(),
@@ -445,6 +451,7 @@ impl<'p> Emitter<'p> {
         emitter.fn_refs = crate::uses::fn_refs::fn_refs(program, &emitter.devirt, &emitter.uses);
         emitter.messages = crate::uses::message::message_slots(program, &emitter.uses);
         emitter.pushers = feeds.pushers;
+        emitter.into = crate::into::into_fns(program, &emitter.devirt);
         emitter.eager = feeds.eager;
         emitter.feed_scope = feeds.scope;
         emitter
@@ -826,14 +833,22 @@ impl<'p> Emitter<'p> {
         if self.devirt.returns_lambda(id) {
             ret = "auto".into();
         }
-        let lends = match self.devirt.returns_lambda(id) {
+        let mut lends = match self.devirt.returns_lambda(id) {
             true => None,
             false => self.lends_its_result(id, f, &by_ref),
         };
         if lends.is_some() {
             ret = format!("const {ret}&");
         }
-        let holds = match (lends, self.devirt.returns_lambda(id)) {
+        let mut params = params;
+        if let Some(out) = self.out_param(id) {
+            (ret, lends) = ("bool".into(), None);
+            params.push(out);
+        }
+        let holds = match (
+            lends,
+            self.devirt.returns_lambda(id) || self.into.contains(&id),
+        ) {
             (None, false) => self.holds_its_result(id, f, &by_ref),
             _ => None,
         };

@@ -698,6 +698,7 @@ impl<'p> Emitter<'p> {
                     ),
                 }
             }
+            Stmt::Return(Some(value)) if self.returns_into(value) => self.return_into(value, out),
             Stmt::Return(Some(_)) if self.pushing.is_some() && self.closure_id.is_none() => {
                 self.line(out, "return 0;")
             }

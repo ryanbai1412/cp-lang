@@ -163,3 +163,21 @@ pub(crate) fn each_stmt_expr<'p>(block: &'p Block, f: &mut dyn FnMut(&'p Expr)) 
         }
     });
 }
+
+/// Every local `block` reads, at any depth.
+pub(crate) fn each_local(block: &Block, f: &mut dyn FnMut(Slot)) {
+    walk::deep_exprs(block, &mut |e| {
+        if let ExprKind::Local(s) = e.kind {
+            f(s);
+        }
+    });
+}
+
+/// Every `return` in `block`, at any depth: its value, if any.
+pub(crate) fn each_return(block: &Block, f: &mut dyn FnMut(Option<&Expr>)) {
+    walk::deep_stmts(block, &mut |s| {
+        if let Stmt::Return(value) = s {
+            f(value.as_ref());
+        }
+    });
+}

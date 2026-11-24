@@ -334,3 +334,37 @@ fn a_domain_position_mapped_and_tested_builds_no_position_optional() {
         "{p}"
     );
 }
+
+#[test]
+fn a_cell_fn_tested_by_its_caller_builds_no_opt_tuple() {
+    let src = "let h: 1..=9 = read()\nlet w: 1..=9 = read()\ndomain Row = 0..h\ndomain Col = 0..w\ntype Cell = (Row, Col)\n\
+         fn step(p: Cell, m: Int) -> ?Cell =\n    if m == 0: Col.at(p.1 - 1).map(c => (p.0, c))\n    else: Row.at(p.0 + 1).map(r => (r, p.1))\n\
+         fn kept(p: Cell) -> ?Cell = Row.at(p.0 + 1).map(r => (r, p.1))\n\
+         var at: Cell = (Row(0), Col(w - 1))\nfor m in 0..4:\n    if let next = step(at, m % 2): at = next\n\
+         print(at.0.idx, at.1.idx, yes(kept(at) == None))\n";
+    let cpp = cpp(src);
+    let p = prog(&cpp);
+    assert!(
+        p.contains("bool step(const std::tuple<int, int>& p, ll m, std::tuple<int, int>& cpl_out)"),
+        "{p}"
+    );
+    assert!(
+        p.contains("cpl_out = std::tuple<int, int>{std::get<0>(p), c};"),
+        "{p}"
+    );
+    assert!(p.contains("if (::prog::step(at, "), "{p}");
+    let body = p
+        .split("bool step(")
+        .nth(1)
+        .and_then(|s| s.split("\n}\n").next())
+        .unwrap_or("");
+    assert!(
+        !body.contains("OptTuple") && !body.contains("OptPos"),
+        "{body}"
+    );
+    // A call the caller compares, not tests, keeps the optional.
+    assert!(
+        p.contains("cpl::OptTuple<std::tuple<int, int>, 0> kept("),
+        "{p}"
+    );
+}

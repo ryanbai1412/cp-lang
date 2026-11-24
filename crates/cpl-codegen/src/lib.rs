@@ -16,6 +16,7 @@ mod frame;
 mod fuse;
 mod globals;
 mod inline;
+mod into;
 mod invariant;
 mod lap;
 mod lend;

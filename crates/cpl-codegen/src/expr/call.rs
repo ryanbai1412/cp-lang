@@ -78,6 +78,7 @@ impl<'p> Emitter<'p> {
 
     pub(super) fn call(&mut self, e: &Expr, id: usize, args: &[Arg]) -> Code {
         let last_use = std::mem::take(&mut self.last_use_call);
+        let into = self.into_arg.take();
         if let Some(code) = self
             .try_fused_bitset_op(e, id, args)
             .or_else(|| self.try_lap_fusion(e, id, args))
@@ -247,6 +248,7 @@ impl<'p> Emitter<'p> {
             } else {
                 "::prog::"
             };
+            texts.extend(into.clone());
             let mut call = format!("{home}{name}({})", texts.join(", "));
             if this.held_roots.contains_key(&id) {
                 call.push_str(".take()");
