@@ -28,7 +28,12 @@ impl<'a> Checker<'a> {
     /// `b.count()` or `count(b)` on bools: `count()` counts every element, the falses too, so it
     /// is an error naming the two questions it could mean (decision 378, R07.9.4).
     pub(super) fn bool_count(&mut self, call: &Expr, over: &Ty) {
-        if self.element_ty(over) != Ty::Bool || self.own_method(over, "count").is_some() {
+        // A `count` of the type's own, not the `Seq` one every sequence has, settles it.
+        let own = self.method_def(over, "count").is_some_and(|def| {
+            !matches!(&*def, Def::Fn { ty: Ty::Fn { params, .. }, .. }
+                if matches!(params.first().map(|p| &p.ty), Some(Ty::Param(_))))
+        });
+        if self.element_ty(over) != Ty::Bool || own {
             return;
         }
         let message = "`count()` with no test counts every element, the falses too".to_string();
