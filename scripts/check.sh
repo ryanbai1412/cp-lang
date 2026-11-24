@@ -771,8 +771,7 @@ if [ "$mode" = full ]; then
     uv run scripts/tool-vocab.py || fail "help, explain or hover uses a spelling spec/GLOSSARY.md bans; see above"
     uv run scripts/conformance-flakes.py --runs 2 --check || fail "a conformance case changed verdict between runs; see above"
     step "conformance gaps: every failing case has a // gap: line, every gap case fails (scripts/spec-gate.py gaps)"
-    "$target/debug/cpl-conform" conformance --write --scoreboard "$target/gaps-board.json" >/dev/null 2>&1 || true
-    uv run --quiet python scripts/spec-gate.py gaps --board "$target/gaps-board.json" \
+    uv run --quiet python scripts/spec-gate.py gaps --conform "$target/debug/cpl-conform" \
         || fail "a failing case has no // gap: line or a gap case passes; see above"
 
     step "cargo test: every port compiled with every judge profile's flags"

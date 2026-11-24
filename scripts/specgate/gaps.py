@@ -3,13 +3,15 @@
 The gap line is the one record of a known failure: no shared list, no
 reason text. The time is when the gap was opened (UTC, to the hour); the
 `gap-age` gate fails a gap past 48 h. Results come from `--board` (a
-scoreboard JSON, default the committed `research/scoreboard.json`).
+scoreboard JSON) or from a fresh run of `--conform <cpl-conform>`.
 """
 from __future__ import annotations
 
 import datetime
 import json
 import pathlib
+import subprocess
+import tempfile
 import re
 
 import specgate
@@ -53,12 +55,24 @@ def all_gaps() -> dict[str, tuple[str, object]]:
 
 
 def args(p):
-    p.add_argument("--board", default=str(specgate.ROOT / "research" / "scoreboard.json"),
-                   help="scoreboard JSON with today's verdicts")
+    g = p.add_mutually_exclusive_group(required=True)
+    g.add_argument("--board", help="scoreboard JSON with today's verdicts")
+    g.add_argument("--conform", help="cpl-conform binary to run the suite with")
+
+
+def board(a) -> dict[str, str]:
+    if a.board:
+        return json.loads(pathlib.Path(a.board).read_text())["suites"]["conformance"]["cases"]
+    with tempfile.TemporaryDirectory() as tmp:
+        out = pathlib.Path(tmp) / "board.json"
+        # The suite exits non-zero when a case fails; the verdicts are what this gate judges.
+        subprocess.run([a.conform, "conformance", "--write", "--scoreboard", str(out)],
+                       cwd=specgate.ROOT, capture_output=True)
+        return json.loads(out.read_text())["suites"]["conformance"]["cases"]
 
 
 def run(a) -> list[Problem]:
-    status = json.loads(pathlib.Path(a.board).read_text())["suites"]["conformance"]["cases"]
+    status = board(a)
     gaps = all_gaps()
     problems = [Problem(c, f"`{line}` {p}") for c, (line, p) in gaps.items() if isinstance(p, str)]
     for c, verdict in sorted(status.items()):
