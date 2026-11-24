@@ -182,6 +182,12 @@ def stress_inputs(pkg):
     return []
 
 
+def judge_args(pkg):
+    """How `cpl test` judges the package: its interactor, else its checker, else the answers."""
+    return ["--interactor", str(pkg.interactor)] if pkg.interactor else \
+        ["--checker", str(pkg.checker)] if pkg.checker else []
+
+
 def package_limits(pkg):
     """The problem's limits, from its port's `// limits:` line, so a dream is judged as the port is."""
     if not pkg.port:
@@ -208,9 +214,7 @@ def judged(pkg, source, inputs, cpl):
                 if r.returncode:
                     raise InfraError(f"{pkg.id}: accepted C++ exits {r.returncode} on case {i}")
                 Path(cases, f"{i:02}.ans").write_text(r.stdout)
-        judge = ["--interactor", str(pkg.interactor)] if pkg.interactor else \
-                ["--checker", str(pkg.checker)] if pkg.checker else []
-        r = subprocess.run([cpl, "test", str(source), "--tests", cases, "--format", "json", *judge, *package_limits(pkg)],
+        r = subprocess.run([cpl, "test", str(source), "--tests", cases, "--format", "json", *judge_args(pkg), *package_limits(pkg)],
                            cwd=ROOT, capture_output=True, text=True)
         try:
             results = json.loads(r.stdout)["cases"]
@@ -506,10 +510,18 @@ def cpl_cases(cpl, program, *args):
 
 
 def check_tests(pkg, ctx):
-    """`cpl test port.cp` reads the package's cases and passes every one (problem-packages/R8)."""
-    if not pkg.port or not ctx.runs(pkg):
+    """`cpl test port.cp` passes every case `make` writes from tests.toml, judged
+    like the judge would: answers from the accepted C++, or the checker or
+    interactor, at the package's limits (problem-packages/R8)."""
+    if not pkg.port or not pkg.tests or not ctx.runs(pkg):
         return []
-    cases = cpl_cases(ctx.cpl, pkg.port)
+    if not pkg.interactor and pkg.reference() is None:
+        return [f"no-reference {pkg.id} -"]
+    try:
+        make_cases(pkg)
+    except (RuntimeError, subprocess.SubprocessError) as e:
+        raise InfraError(f"{pkg.id}: {e}") from e
+    cases = cpl_cases(ctx.cpl, pkg.port, "--tests", os.path.join(OUT, pkg.id), *judge_args(pkg), *package_limits(pkg))
     if isinstance(cases, str):
         return [f"{cases} {pkg.id} -"]
     found = [f"cpl-test-fails {pkg.id} {c['name']}" for c in cases if c["verdict"] not in (None, "ok")]

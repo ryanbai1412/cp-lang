@@ -215,6 +215,33 @@ class LsTest(Corpus):
             self.assertEqual(got, want)
 
 
+class CheckTestsTest(Corpus):
+    """tests mode runs the port on the cases tests.toml makes, never on a missing tests/."""
+
+    def run_tests(self, cases):
+        d = self.package("p", port_cp="print(1)\n", tests_toml="", checker_py="")
+        calls = []
+
+        def cpl_cases(cpl, program, *args):
+            calls.append(args)
+            return cases
+        ctx = mock.Mock(cpl="cpl")
+        with mock.patch.object(corpus.Package, "reference", lambda self: "orig.cpp"), \
+                mock.patch.object(corpus, "make_cases", mock.Mock()), mock.patch.object(corpus, "cpl_cases", cpl_cases):
+            found = corpus.check_tests(corpus.Package.at(d), ctx)
+        return found, calls, d
+
+    def test_judges_the_made_cases_with_the_checker_at_the_limits(self):
+        found, (args,), d = self.run_tests([{"name": "01", "verdict": "ok"}])
+        self.assertEqual(found, [])
+        self.assertEqual(args[:4], ("--tests", os.path.join(corpus.OUT, "p"), "--checker", str(d / "checker.py")))
+        self.assertIn("--time-limit", args)
+
+    def test_no_cases_is_a_finding(self):
+        found, *_ = self.run_tests("cpl-test-no-cases")
+        self.assertEqual(found, ["cpl-test-no-cases p -"])
+
+
 class InteractedTest(Corpus):
     """An interactive package: both sides judged by interactor.py, never fed the case."""
 
