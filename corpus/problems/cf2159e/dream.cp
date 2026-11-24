@@ -11,19 +11,29 @@ const N = 3e5, B = 1200
 
 let (a, b, c): (Z, Z, Z) = read()
 
+let comb = Comb<Z>()
+let inv_c = 1 / c
+
 fn coeffs_of_power(m: Int) -> List<Z>:
     var f: List<Z> = [c ** m]
     for z in 1..=2 * m:
         let two_back = f.get(z - 2) ?? 0          // no coefficient below x^0
-        f.push((b * f[z - 1] * (m - z + 1) + a * two_back * (2 * m - z + 2)) / (c * z))
+        f.push((b * f[z - 1] * (m - z + 1) + a * two_back * (2 * m - z + 2)) * comb.inv(z) * inv_c)
     f
 
-let small = [0..B] j => coeffs_of_power(j)
-let big = [0..=N / B] i => coeffs_of_power(i * B).scan(+)
+fn running_sums(f: List<Z>) -> List<Z>:
+    let p = f.scan(+)
+    [p.cut(t + 1) for t in 0..f.len]
+
+// Only the powers the queries reach get expanded.
+var small: [0..B]?List<Z> = None
+var big: [0..=N / B]?List<Z> = None
 
 var ans: Z = 0
 repeat read():
     let (n, k): (0..=N, Int) = (read<Int>() ^ ans.v, read<Int>() ^ ans.v)
     let (i, j) = n.divmod(B)
-    ans = sum(small[j][z] * big[i].prefix(min(2 * i * B, k - z) + 1) for z in 0..=min(2 * j, k))
+    small[j] ??= coeffs_of_power(j)
+    big[i] ??= running_sums(coeffs_of_power(i * B))
+    ans = sum(small[j]![z] * big[i]![min(2 * i * B, k - z)] for z in 0..=min(2 * j, k))
     print(ans)

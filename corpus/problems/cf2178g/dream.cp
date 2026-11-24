@@ -22,7 +22,7 @@ use std.rand.Rng
 var rng = Rng.new(48)
 
 @!multitest
-let n: 1..=200_000 = read()
+let n: 2..=500_000 = read()
 domain P = 1..=2 * n
 let chords: [0..n](a: P, b: P) = read()
 
