@@ -39,7 +39,6 @@ mod test_count;
 mod types;
 mod unreachable;
 mod vertex_ids;
-mod while_pop;
 mod wide_shift;
 mod zero_div;
 
@@ -60,8 +59,6 @@ pub(crate) fn run(file: &File, config: &Config) -> Vec<Finding> {
     findings.extend(scopes::check(file));
     findings.extend(types::check(file));
     findings.extend(assign::check(file));
-    findings.extend(while_pop::check(file));
-    findings.extend(while_pop::coalesce(file));
     findings.extend(map_lookup::check(file));
     findings.extend(test_count::check(file));
     findings.extend(euclid::check(file));

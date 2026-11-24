@@ -163,6 +163,9 @@ pub struct Heap<T>:
     /// empty: `var h = Heap<Int>(); h.pop() == None`
     /// traps: never
     /// example: `var h = Heap.of([2, 1]); h.pop() == Some(1) and h.pop() == Some(2) and h.pop() == None`
+    @lint(while_not_empty_pop, from: "while not self.is_empty:\n    let x = self.pop()!\n    b", to: "while let x = self.pop():\n    b", holes: "x, b")
+    @lint(while_not_empty_pop, from: "while self.len > 0:\n    let x = self.pop()!\n    b", to: "while let x = self.pop():\n    b", holes: "x, b")
+    @lint(while_not_empty_pop, from: "while self.len != 0:\n    let x = self.pop()!\n    b", to: "while let x = self.pop():\n    b", holes: "x, b")
     pub fn pop(mut self) -> ?T:
         if self.xs.len == 0: return None
         let top = self.xs[0]
