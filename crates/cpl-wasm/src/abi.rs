@@ -142,6 +142,13 @@ pub extern "C" fn cpl_provide_std() {
     command(|playground, name, text, _, _| playground.provide_std(name, text).to_string());
 }
 
+/// Gives this module `TEXT`, a JSON object of path to text, as the files
+/// beside the one it checks.
+#[no_mangle]
+pub extern "C" fn cpl_set_files() {
+    command(|playground, _, text, _, _| playground.set_files(text).to_string());
+}
+
 /// Checks `TEXT`.
 #[no_mangle]
 pub extern "C" fn cpl_check() {

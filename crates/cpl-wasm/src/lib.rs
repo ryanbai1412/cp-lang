@@ -126,6 +126,22 @@ impl Playground {
         }
     }
 
+    /// Gives the compiler the files beside the one it checks, by path
+    /// (`{"cp.toml": "...", "kit/m.cp": "..."}`), for every command after:
+    /// a `use kit.m` finds `kit/m.cp` as `cpl` finds it on disk.
+    pub fn set_files(&mut self, files: &str) -> Value {
+        let given = json::parse(files).ok().and_then(|v| {
+            (v.as_object()?.iter())
+                .map(|(path, text)| Some((path.clone(), text.as_str()?.to_string())))
+                .collect::<Option<BTreeMap<_, _>>>()
+        });
+        let Some(given) = given else {
+            return obj([("error", "files are an object of path to text".into())]);
+        };
+        self.db = Session::with_loader(Box::new(cpl_check::GivenFiles::new(given)));
+        obj([])
+    }
+
     /// `cpl check`: every diagnostic in `source`.
     pub fn check(&mut self, name: &str, source: &str) -> Value {
         self.db.set_file(name, source);

@@ -78,6 +78,8 @@ export class Cpl {
   #maxStack;
   // The std modules given with `provideStd`, given again to a new instance.
   #provided = new Map();
+  // The files given with `setFiles`, given again to a new instance.
+  #files = null;
 
   constructor(module, instance) {
     this.#module = module;
@@ -106,6 +108,17 @@ export class Cpl {
     if (!this.#exports.cpl_provide_std) return { changed: false };
     const result = this.#call("cpl_provide_std", { name: module, source: text });
     if (result.changed) this.#provided.set(module, text);
+    return result;
+  }
+
+  /**
+   * Gives the compiler the files beside the one it checks, by path
+   * (`{ "cp.toml": "...", "kit/m.cp": "..." }`), for every call after: a
+   * `use kit.m` finds them as `cpl` finds them on disk.
+   */
+  setFiles(files) {
+    const result = this.#call("cpl_set_files", { source: JSON.stringify(files) });
+    this.#files = files;
     return result;
   }
 
@@ -287,6 +300,10 @@ export class Cpl {
         this.#write(NAME, encoder.encode(module));
         this.#write(TEXT, encoder.encode(text));
         this.#exports.cpl_provide_std();
+      }
+      if (this.#files) {
+        this.#write(TEXT, encoder.encode(JSON.stringify(this.#files)));
+        this.#exports.cpl_set_files();
       }
     } catch {
       // The next call says what is wrong with the new instance.
