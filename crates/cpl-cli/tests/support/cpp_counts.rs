@@ -69,7 +69,7 @@ const SCALARS: [&str; 9] = [
 /// The name a scalar local declares, `int f = 0;` or `for (int f = lo; ..`,
 /// which a lambda then captures as a scalar, not the container named `f`
 /// further out.
-fn scalar_decl(line: &str) -> Option<&str> {
+pub fn scalar_decl(line: &str) -> Option<&str> {
     let decl = line.strip_prefix("for (").unwrap_or(line);
     let (ty, rest) = decl.split_once(' ')?;
     if !SCALARS.contains(&ty) {

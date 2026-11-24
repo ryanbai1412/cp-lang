@@ -1317,7 +1317,8 @@ impl Emitter<'_> {
     }
 
     /// Records the copy `p = q` makes when the stored text `text` names
-    /// the place `value`, whose heap value it still holds after.
+    /// the place `value`, whose heap value it still holds after, or `value`
+    /// calls a fn that lends what it returns, `n = a.get(i)`.
     pub(crate) fn note_set_copy(&mut self, value: &Expr, text: &str) {
         let place = matches!(value.kind, ExprKind::Local(_) | ExprKind::Global(_))
             || (matches!(
@@ -1325,7 +1326,8 @@ impl Emitter<'_> {
                 ExprKind::Field(..) | ExprKind::Payload(..) | ExprKind::Index(..)
             ) && rooted_in_a_name(value));
         let named = names_a_place(text);
-        if place && named && holds_heap(self.program, &value.ty) && !moved(text) {
+        let lent = matches!(value.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(&f));
+        if (place && named || lent) && holds_heap(self.program, &value.ty) && !moved(text) {
             self.note_copy(value.span, SET_COPY, None);
         }
     }

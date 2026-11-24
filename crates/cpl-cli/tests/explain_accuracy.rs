@@ -11,7 +11,9 @@ use std::path::{Path, PathBuf};
 
 #[path = "support/cpp_counts.rs"]
 mod cpp_counts;
-use cpp_counts::{deep_copies, is_container, is_place, optional_copies, std_functions, CONTAINERS};
+use cpp_counts::{
+    deep_copies, is_container, is_place, optional_copies, scalar_decl, std_functions, CONTAINERS,
+};
 
 /// The `.cp` files one directory down from the corpus problems and the
 /// conformance cases.
@@ -341,17 +343,29 @@ fn array_capture_copies(cpp: &str) -> usize {
             }
         }
     }
-    lines
-        .iter()
-        .flat_map(|line| line.split('[').skip(1))
-        .filter_map(|tail| tail.split_once("]("))
-        .flat_map(|(caps, _)| caps.split(','))
-        .filter(|cap| {
-            cap.split_once('=').is_some_and(|(name, src)| {
-                !name.trim().starts_with('&') && arrays.contains(src.trim())
+    // A scalar the current fn declares under an array's name is not it.
+    let mut scalars = HashSet::new();
+    let mut count = 0;
+    for line in &lines {
+        if !line.starts_with([' ', '}', '#']) && line.trim_end().ends_with('{') {
+            scalars.clear();
+        }
+        scalars.extend(scalar_decl(line.trim()));
+        count += line
+            .split('[')
+            .skip(1)
+            .filter_map(|tail| tail.split_once("]("))
+            .flat_map(|(caps, _)| caps.split(','))
+            .filter(|cap| {
+                cap.split_once('=').is_some_and(|(name, src)| {
+                    !name.trim().starts_with('&')
+                        && arrays.contains(src.trim())
+                        && !scalars.contains(src.trim())
+                })
             })
-        })
-        .count()
+            .count();
+    }
+    count
 }
 
 /// `decl` cut where its declaration ends (the first `=`, `(`, `;`, `,`,
@@ -880,6 +894,12 @@ fn explain_lists_the_copies_the_judge_cpp_makes() {
 /// Cases whose copies explain once miscounted, against the C++ for the
 /// judge.
 const CASES: &[&str] = &[
+    "core-05/let-of-a-lend-keeps-its-value-when-the-source-changes.cp",
+    "std-persistent/parena-handles-stay-valid.cp",
+    "std-tree/centroids-doc-tree.cp",
+    "std-tree/centroids-path-of-two.cp",
+    "std-tree/centroids-single-vertex.cp",
+    "std-tree/lca-table-and-jump-while-match-climbing.cp",
     "core-05/param-unchanged-by-a-callee-writing-its-source.cp",
     "core-05/param-unchanged-by-a-write-to-its-global-source.cp",
     "core-05/read-only-call-reads-a-global-a-closure-writes.cp",

@@ -23,7 +23,7 @@ from specgate import Problem
 
 HELP = "`cpl explain` lists exactly the deep copies the judge C++ makes (--max mismatched cases allowed, shrink-only)"
 
-COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;()=]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*)\)(?!>)|cpl::to_list\(|cpl::to_str\(|cpl::sorted(?:<[^<>()]*>)?\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*)\)")
+COPY = re.compile(r"(?:(?:std::(?:vector|array|map|set|unordered_map|deque)|cpl::Grid)<[^;(){}=]*?>|std::string)\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*)\)(?!>)|cpl::to_list\(|cpl::to_str\(|cpl::sorted(?:<[^<>()]*>)?\((?:cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*)\)")
 CONTAINERS = ("std::vector<", "std::map<", "std::set<", "std::unordered_map<", "std::deque<", "std::string")
 NAME = re.compile(r"[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*")
 BUILT = re.compile(r"(?<![\w:.])(\w+)\((cpl::at\([^()]*\)|[A-Za-z_]\w*(?:\[[^\[\]]+\]|\.[A-Za-z_]\w*)*)\)(?!>)")
@@ -340,10 +340,10 @@ def deep_copies(cpp):
     heap = lambda ty: bool(ty) and (ty.startswith(CONTAINERS) or ty in holders)
     count += optional_copies(program(cpp), holders) + returned_parts(program(cpp), holders)
     arrays = set(ARRAY.findall(program(cpp)))
-    held, types = set(), {}
+    held, types, scalars = set(), {}, set()
     for raw in program(cpp).splitlines():
         if opens_fn(raw):
-            held, types = set(PARAM.findall(raw)), params(raw)
+            held, types, scalars = set(PARAM.findall(raw)), params(raw), set()
         line = raw.strip()
         decl = line.removeprefix("const ")
         if "](" in line and line.endswith("{"):
@@ -362,6 +362,7 @@ def deep_copies(cpp):
                     count += 1
         if (scalar := scalar_decl(decl)) is not None:
             held.discard(scalar)
+            scalars.add(scalar)
         if decl.startswith(CONTAINERS):
             head, name, rest = declared(decl)
             if name and len(name) < len(head):
@@ -382,7 +383,7 @@ def deep_copies(cpp):
         for caps in CAPTURES.findall(line):
             for cap in re.split(r"\s*,\s*", caps):
                 name, eq, src = cap.partition("=")
-                if eq and not name.strip().startswith("&") and (src.strip() in held or src.strip() in arrays):
+                if eq and not name.strip().startswith("&") and (src.strip() in held or (src.strip() in arrays and src.strip() not in scalars)):
                     count += 1
     return count
 
