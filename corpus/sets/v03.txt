@@ -52,6 +52,7 @@ btoi20p3
 canada21p5
 ccc00s5
 ccc01s5
+ccc02s4hard
 ccc03s4
 ccc04s5
 ccc05s5
