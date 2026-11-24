@@ -47,7 +47,9 @@ impl Visitor for Stores<'_> {
             return;
         };
         if let Some(name) = self.outer(base) {
-            let values = args.iter().map(|a| &a.value);
+            // A `mut` argument is lent for the call and can't be kept:
+            // `rng.shuffle(mut perm)` reorders `perm` and stores nothing.
+            let values = args.iter().filter(|a| !a.mutable).map(|a| &a.value);
             let values = values.filter(|v| !matches!(v.kind, ExprKind::Lambda { .. }));
             self.found.extend(values.map(|v| (name.clone(), v.span)));
         }
