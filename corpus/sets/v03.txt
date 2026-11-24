@@ -401,9 +401,11 @@ ioi09p5
 ioi10p3
 ioi10p6
 ioi11p4
+ioi12p3
 ioi13p4
 ioi14p1
 ioi14p2
+ioi14p5
 ioi15p1
 ioi15p4
 ioi15p5

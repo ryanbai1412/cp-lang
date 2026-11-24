@@ -8,30 +8,21 @@
 //   allowed), 2 like adjacent twins (at most one). O(n).
 // input: n, the n confidences, then `host protocol` for persons 1..n-1
 // original: corpus/submissions/6567598.cpp
-let n: Int = read()
+let n: 2..=1e5 = read()
 domain P = 0..n
-let conf: [P]Int = read()
-var joins: List<(host: P, how: Int)> = []
-for _ in 1..n:
-    let j: (P, Int) = read()
-    joins.push((host: j.0, how: j.1))
+domain Joiner = 1..n  // the people who joined, 1..n-1
+let conf: [P]1..=1e4 = read()
+let joins: [Joiner](host: P, how: 0..=2) = read()
 
-var with_: [P]Int = copy(conf)  // best of the group with its person picked
-var without: [P]Int = 0
-for u in P.rev:
-    if u == P.first: break
-    let (h, how) = joins[u.ord - 1]
-    let either = max(with_[u], without[u])
+var pick: [P]Int = [P] p => conf[p]  // best of the group with its person picked
+var skip: [P]Int = 0  // ... and with it left out
+for j in Joiner.rev:
+    let (u, (h, how)) = (P(j.label), joins[j])
+    let either = max(pick[u], skip[u])
     if how == 0:  // friends with the host: not both
-        (with_[h], without[h]) = (with_[h] + without[u], without[h] + either)
+        (pick[h], skip[h]) = (pick[h] + skip[u], skip[h] + either)
     elif how == 1:  // same friends as the host: both or either
-        (with_[h], without[h]) = (
-            max(with_[h] + either, without[h] + with_[u]),
-            without[h] + without[u],
-        )
+        (pick[h], skip[h]) = (max(pick[h] + either, skip[h] + pick[u]), skip[h] + skip[u])
     else:  // both rules: exactly one of the two, or neither
-        (with_[h], without[h]) = (
-            max(with_[h] + without[u], without[h] + with_[u]),
-            without[h] + without[u],
-        )
-print(max(with_[P.first!], without[P.first!]))
+        (pick[h], skip[h]) = (max(pick[h] + skip[u], skip[h] + pick[u]), skip[h] + skip[u])
+print(max(pick[P.first!], skip[P.first!]))
