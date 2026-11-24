@@ -1393,7 +1393,11 @@ fn drop_fix_declared(diags: &mut Vec<Diagnostic>) {
     let declared: Vec<String> = (diags.iter())
         .filter(|d| d.code != codes::UNRESOLVED_NAME)
         .flat_map(|d| d.fixes.iter().flat_map(|f| f.edits.iter()))
-        .filter_map(|(_, text)| text.strip_prefix("let ").or(text.strip_prefix("var ")))
+        .filter_map(|(_, text)| {
+            ["let ", "var ", "const "]
+                .iter()
+                .find_map(|k| text.strip_prefix(k))
+        })
         .flat_map(|rest| {
             let names = rest.split([':', '=']).next().unwrap_or_default().trim();
             let names = names.trim_start_matches('(').trim_end_matches(')');

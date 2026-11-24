@@ -8,6 +8,9 @@ impl<'a> Parser<'a> {
     /// The help for a token where a statement should have ended: `;`
     /// from C, or the comma of Python's swap.
     pub(super) fn statement_end_help(&self, found: T, span: Span, diag: Diagnostic) -> Diagnostic {
+        if let Some(decl) = self.c_decl_error() {
+            return decl;
+        }
         if found == T::Semi {
             return diag
                 .with_help(
@@ -27,12 +30,8 @@ impl<'a> Parser<'a> {
     /// `a, b = b, a`, Python's swap: the line as a tuple assignment.
     /// `n, m = map(int, input().split())` reads the names as a tuple.
     fn tuple_assign(&self) -> Option<(Span, String, &'static str)> {
-        let at = self.tokens.get(self.pos)?.span.start as usize;
-        let begin = self.src[..at].rfind('\n').map_or(0, |i| i + 1);
-        let end = self.src[at..].find('\n').map_or(self.src.len(), |i| at + i);
-        let line = self.src[begin..end].trim_end();
-        let indent = line.len() - line.trim_start().len();
-        let (lhs, rhs) = line[indent..].split_once(" = ")?;
+        let (begin, line) = self.this_line()?;
+        let (lhs, rhs) = line.split_once(" = ")?;
         let place = |c: char| c.is_alphanumeric() || matches!(c, '_' | ',' | ' ' | '.' | '[' | ']');
         if !lhs.contains(',')
             || !lhs.chars().all(place)
@@ -41,7 +40,7 @@ impl<'a> Parser<'a> {
         {
             return None;
         }
-        let span = Span::new((begin + indent) as u32, (begin + line.len()) as u32);
+        let span = Span::new(begin as u32, (begin + line.len()) as u32);
         if let Some(read) = python_read(lhs, rhs) {
             let help = "CP Lang reads numbers by token, so the names are declared as a tuple read";
             return Some((self.rel(span), read, help));
@@ -53,6 +52,70 @@ impl<'a> Parser<'a> {
         };
         let help = "several names are assigned at once in parentheses: `(a, b) = (b, a)`";
         Some((self.rel(span), format!("({lhs}) = {rhs}"), help))
+    }
+
+    /// Where the current token's line starts past its indent, and its
+    /// text from there.
+    fn this_line(&self) -> Option<(usize, &'a str)> {
+        let at = self.tokens.get(self.pos)?.span.start as usize;
+        let begin = self.src[..at].rfind('\n').map_or(0, |i| i + 1);
+        let end = self.src[at..].find('\n').map_or(self.src.len(), |i| at + i);
+        let line = self.src[begin..end].trim_end();
+        let indent = line.len() - line.trim_start().len();
+        Some((begin + indent, &line[indent..]))
+    }
+
+    /// `int x;`, `long long s = 0;` or `vector<int> a(n);` as a whole
+    /// line: C++'s declaration, type first. The line's span, the type's
+    /// span and text, and the line as `let` or `var`.
+    pub(super) fn c_decl(&self) -> Option<(Span, Span, &'a str, String)> {
+        let (begin, line) = self.this_line()?;
+        let (ty_len, decl) = c_declaration(line.strip_suffix(';').unwrap_or(line).trim_end())?;
+        let at = |from: usize, to: usize| self.rel(Span::new(from as u32, to as u32));
+        let written = &line[..ty_len];
+        Some((
+            at(begin, begin + line.len()),
+            at(begin, begin + ty_len),
+            written,
+            decl,
+        ))
+    }
+
+    /// `auto x = 0`, `int x = 0` or `auto (a, b) = ..`: a C++ keyword
+    /// where `let` goes.
+    pub(super) fn c_auto_ahead(&self) -> bool {
+        matches!(
+            self.text(),
+            "auto" | "int" | "long" | "double" | "bool" | "string" | "char"
+        ) && (self.peek_n(1) == T::Ident && matches!(self.peek_n(2), T::Eq | T::Colon)
+            || self.text() == "auto" && matches!(self.peek_n(1), T::LParen | T::LBracket))
+    }
+
+    /// One error, then the line is read as `let`.
+    pub(super) fn c_auto(&mut self) -> StmtKind {
+        let kw = self.span();
+        self.error(
+            Diagnostic::error(
+                codes::REMOVED_SYNTAX,
+                kw,
+                format!("CP Lang declares a variable with `let`, not `{}`", self.text()),
+            )
+            .with_help("`let x = 0` for a value that stays, `var x = 0` for one that changes; the type comes from the value")
+            .with_fix("write `let`", kw, "let"),
+        );
+        self.let_stmt()
+    }
+
+    /// The one error for a C++ declaration line, its fix the whole line.
+    pub(super) fn c_decl_error(&self) -> Option<Diagnostic> {
+        let (at, ty, written, decl) = self.c_decl()?;
+        let message =
+            format!("CP Lang writes a variable's type after its name, not `{written}` before it");
+        Some(
+            Diagnostic::error(codes::REMOVED_SYNTAX, ty, message)
+                .with_help("`let x: Int = 0` for a value that stays, `var x: Int = 0` for one that changes")
+                .with_fix(format!("write `{decl}`"), at, decl.clone()),
+        )
     }
 
     /// `fn f(x: Int): Int = x`, TypeScript's return type: CP Lang writes
@@ -1291,4 +1354,188 @@ fn python_read(lhs: &str, rhs: &str) -> Option<String> {
     }
     let tys = vec![ty; names.len()].join(", ");
     Some(format!("let ({}): ({tys}) = read()", names.join(", ")))
+}
+
+/// A C++ type written in CP Lang, and its zero value if it has one.
+struct CType {
+    ty: String,
+    zero: Option<String>,
+    elem: Option<Box<CType>>,
+}
+
+/// `int`, `long long`, `vector<pair<int, int>>`: the whole of `s` as a type.
+fn c_type(s: &str) -> Option<CType> {
+    let s = s.trim();
+    let scalar = |ty: &str, zero: Option<&str>| CType {
+        ty: ty.into(),
+        zero: zero.map(Into::into),
+        elem: None,
+    };
+    let words: Vec<&str> = s.split_whitespace().collect();
+    let ints = [
+        "int", "long", "short", "unsigned", "signed", "ll", "ull", "size_t",
+    ];
+    if words
+        .iter()
+        .all(|w| ints.contains(w) || w.ends_with("int64_t") || w.ends_with("int32_t"))
+    {
+        return Some(scalar("Int", Some("0")));
+    }
+    match s {
+        "double" | "float" | "long double" => return Some(scalar("F64", Some("0.0"))),
+        "bool" => return Some(scalar("Bool", Some("false"))),
+        "char" => return Some(scalar("Char", None)),
+        "string" => return Some(scalar("Str", Some("\"\""))),
+        _ => {}
+    }
+    let (head, args) = s.strip_suffix('>')?.split_once('<')?;
+    let args: Vec<CType> = split_top(args)
+        .into_iter()
+        .map(c_type)
+        .collect::<Option<_>>()?;
+    let list = |a: &[CType]| {
+        a.iter()
+            .map(|t| t.ty.as_str())
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    Some(match (head.trim(), args.as_slice()) {
+        ("vector", [elem]) => CType {
+            ty: format!("List<{}>", elem.ty),
+            zero: Some("[]".into()),
+            elem: args.into_iter().next().map(Box::new),
+        },
+        ("map" | "unordered_map", [_, _]) => CType {
+            ty: format!("Map<{}>", list(&args)),
+            zero: Some("Map()".into()),
+            elem: None,
+        },
+        ("set" | "unordered_set", [_]) => CType {
+            ty: format!("Set<{}>", list(&args)),
+            zero: Some("Set()".into()),
+            elem: None,
+        },
+        ("pair" | "tuple", [_, _, ..]) => {
+            let zeros: Option<Vec<String>> = args.iter().map(|t| t.zero.clone()).collect();
+            CType {
+                ty: format!("({})", list(&args)),
+                zero: zeros.map(|z| format!("({})", z.join(", "))),
+                elem: None,
+            }
+        }
+        _ => return None,
+    })
+}
+
+/// `a, f(b, c), d` split at its top-level commas.
+fn split_top(s: &str) -> Vec<&str> {
+    let (mut depth, mut from, mut parts) = (0i32, 0, Vec::new());
+    for (i, c) in s.char_indices() {
+        match c {
+            '(' | '[' | '{' | '<' => depth += 1,
+            ')' | ']' | '}' | '>' => depth -= 1,
+            ',' if depth == 0 => {
+                parts.push(s[from..i].trim());
+                from = i + 1;
+            }
+            _ => {}
+        }
+    }
+    parts.push(s[from..].trim());
+    parts
+}
+
+/// `vector<int>(n)` or `vector<int>(n, v)` as `List.filled(n, v)`; any
+/// other value as written, its braces (`{1, 2}`) as the type's own.
+fn c_value(e: &str, ty: Option<&CType>) -> Option<String> {
+    let e = e.trim();
+    if let Some(inner) = e.strip_prefix('{').and_then(|e| e.strip_suffix('}')) {
+        let ty = ty?;
+        return Some(if ty.ty.starts_with("List<") {
+            format!("[{inner}]")
+        } else if ty.ty.starts_with('(') {
+            format!("({inner})")
+        } else {
+            return None;
+        });
+    }
+    let made = e.strip_suffix(')').and_then(|e| {
+        let open = e.find(">(")? + 1;
+        Some((c_type(&e[..open])?, &e[open + 1..]))
+    });
+    match made {
+        Some((ty, args)) => c_construct(&ty, args),
+        None => Some(e.to_string()),
+    }
+}
+
+/// `(n)` or `(n, v)` after a vector type: `n` copies of `v` or of zero.
+fn c_construct(ty: &CType, args: &str) -> Option<String> {
+    let elem = ty.elem.as_deref()?;
+    let (n, fill) = match split_top(args).as_slice() {
+        [n] => (n.to_string(), elem.zero.clone()?),
+        [n, v] => (n.to_string(), c_value(v, Some(elem))?),
+        _ => return None,
+    };
+    Some(format!("List.filled({n}, {fill})"))
+}
+
+/// `long long s = 0`, `int a, b` or `vector<int> a(n)`: the type's
+/// length, and the line as CP Lang. A given value stays (`let`, or
+/// `const` for C++'s `const`); a value
+/// C++ leaves to be filled in later (`int x;`, `vector<int> a(n);`) gets
+/// `var`.
+fn c_declaration(line: &str) -> Option<(usize, String)> {
+    let (keep, line) = match line.strip_prefix("const ") {
+        Some(rest) => (true, rest),
+        None => (false, line),
+    };
+    let skip = usize::from(keep) * "const ".len();
+    let name_at = |s: &str| s.ends_with(|c: char| c.is_alphanumeric() || c == '_' || c == '>');
+    let ty_end = (1..line.len())
+        .rev()
+        .filter(|&i| line.as_bytes()[i] == b' ' && name_at(&line[..i]))
+        .find(|&i| c_type(&line[..i]).is_some())?;
+    let ty = c_type(&line[..ty_end])?;
+    let rest = line[ty_end..].trim();
+    let ident = |s: &str| {
+        s.starts_with(|c: char| c.is_alphabetic() || c == '_')
+            && s.chars().all(|c| c.is_alphanumeric() || c == '_')
+    };
+    let name_len = rest
+        .find(|c: char| !(c.is_alphanumeric() || c == '_'))
+        .unwrap_or(rest.len());
+    let (name, tail) = rest.split_at(name_len);
+    if !ident(name) {
+        return None;
+    }
+    let tail = tail.trim();
+    let t = &ty.ty;
+    let decl = if tail.is_empty() && !keep {
+        format!("var {name}: {t} = {}", ty.zero.as_ref()?)
+    } else if let Some(value) = tail.strip_prefix('=') {
+        format!(
+            "{} {name}: {t} = {}",
+            if keep { "const" } else { "let" },
+            c_value(value, Some(&ty))?
+        )
+    } else if let Some(args) = tail.strip_prefix('(').and_then(|t| t.strip_suffix(')')) {
+        format!("var {name}: {t} = {}", c_construct(&ty, args)?)
+    } else if tail.starts_with(',') && !keep {
+        let names = split_top(rest);
+        if !names.iter().all(|n| ident(n)) {
+            return None;
+        }
+        let zero = ty.zero.as_ref()?;
+        let each = |s: &str| vec![s; names.len()].join(", ");
+        format!(
+            "var ({}): ({}) = ({})",
+            names.join(", "),
+            each(t),
+            each(zero)
+        )
+    } else {
+        return None;
+    };
+    Some((skip + ty_end, decl))
 }

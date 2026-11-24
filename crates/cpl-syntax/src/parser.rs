@@ -671,6 +671,9 @@ impl<'a> Parser<'a> {
 
     /// `{1, 2}`, a set written the other languages' way: `Set([1, 2])`.
     fn brace_set(&mut self, span: Span, open: Span, close: Span) {
+        if self.c_decl().is_some() {
+            return;
+        }
         let mut diag = Diagnostic::error(
             codes::REMOVED_SYNTAX,
             span,

@@ -433,27 +433,7 @@ impl<'a> Parser<'a> {
         match self.peek() {
             T::Let | T::Var => self.let_stmt(),
             // `auto x = 0`, `int x = 0`: C++'s declarations, read as `let`.
-            T::Ident
-                if matches!(
-                    self.text(),
-                    "auto" | "int" | "long" | "double" | "bool" | "string" | "char"
-                ) && (self.peek_n(1) == T::Ident
-                    && matches!(self.peek_n(2), T::Eq | T::Colon)
-                    || self.text() == "auto"
-                        && matches!(self.peek_n(1), T::LParen | T::LBracket)) =>
-            {
-                let kw = self.span();
-                self.error(
-                    Diagnostic::error(
-                        codes::REMOVED_SYNTAX,
-                        kw,
-                        format!("CP Lang declares a variable with `let`, not `{}`", self.text()),
-                    )
-                    .with_help("`let x = 0` for a value that stays, `var x = 0` for one that changes; the type comes from the value")
-                    .with_fix("write `let`", kw, "let"),
-                );
-                self.let_stmt()
-            }
+            T::Ident if self.c_auto_ahead() => self.c_auto(),
             // `extern fn transaction(m: Int) -> Int`: the judge supplies the body.
             T::Ident if self.text() == "extern" && self.peek_n(1) == T::Fn => {
                 self.bump();
@@ -807,7 +787,7 @@ impl<'a> Parser<'a> {
         false
     }
 
-    fn let_stmt(&mut self) -> StmtKind {
+    pub(super) fn let_stmt(&mut self) -> StmtKind {
         let stmt_start = self.start();
         let mut mutable = self.at(T::Var);
         self.bump();
@@ -1065,6 +1045,12 @@ impl<'a> Parser<'a> {
     fn const_stmt(&mut self) -> StmtKind {
         self.bump();
         let name = self.expect_name("a name after `const`");
+        // `const int MOD = 1e9 + 7;`: the name read was C++'s type.
+        if let Some(diag) = self.at(T::Ident).then(|| self.c_decl_error()).flatten() {
+            self.error(diag);
+            self.skip_line();
+            return StmtKind::Error;
+        }
         let (generics, mut bounds) = self.generic_params();
         let ty = self.eat(T::Colon).then(|| self.ty());
         let init = if self.eat(T::Eq) {
