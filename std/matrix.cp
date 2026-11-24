@@ -32,7 +32,7 @@ pub struct Mat<T>:
     /// `Mat(over: Semiring(min, +), d)` with `d: [V, V]?Int` multiplies shortest walks.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
-    /// empty: a matrix with zero rows or columns
+    /// empty: `domain R = 0..0; domain C = 0..3; let m = Mat([R, C] (r, c) => Int(c)); m.rows == 0 and m.cols == 3`
     /// traps: never
     ///
     /// example: `domain R = 0..2; domain C = 0..3; Mat([R, C] (r, c) => 10 * Int(r) + Int(c)).get(1, 2) == 12`
@@ -47,7 +47,7 @@ pub struct Mat<T>:
     /// as nested lists. Row `i` is `rows[i]`.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
-    /// empty: a `0 x 0` matrix
+    /// empty: `let e: List<List<Int>> = []; let m = Mat<Int>.of(e); m.rows == 0 and m.cols == 0`
     /// traps: when the rows differ in length
     /// example: `let m = Mat<Int>.of([[1, 2, 3], [4, 5, 6]]); m.get(1, 2) == 6 and m.get(0, 1) == 2`
     pub fn of(rows: List<List<T>>) -> Mat<T>:
@@ -93,7 +93,7 @@ pub struct Mat<T>:
     /// is `data[r * cols + c]`.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
-    /// empty: a matrix with zero rows or columns when `data` is empty
+    /// empty: `let m = Mat<Int>.from_flat(0, 3, []); m.rows == 0 and m.cols == 3`
     /// traps: when `rows < 0`, `cols < 0` or `data.len != rows * cols`
     /// example: `Mat<Int>.from_flat(2, 3, [1, 2, 3, 4, 5, 6]).get(1, 0) == 4`
     pub fn from_flat(rows: Int, cols: Int, data: List<T>) -> Mat<T>:
@@ -115,7 +115,7 @@ pub struct Mat<T>:
     /// Build a matrix from a list of equal-length rows: `grid[r][c]` is entry `(r, c)`.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time and space
-    /// empty: `[]` gives the `0 x 0` matrix
+    /// empty: `let m = Mat<Int>.from_rows([]); m.rows == 0 and m.cols == 0`
     /// traps: when the rows differ in length
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).get(1, 0) == 3`
     pub fn from_rows(grid: List<List<T>>) -> Mat<T>:
@@ -182,7 +182,7 @@ pub struct Mat<T>:
     /// `get(r, c) * v[c]` over `c` with the semiring's addition.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) time, \(O(\mathit{rows})\) space
-    /// empty: `rows` copies of the semiring's zero when `cols == 0`
+    /// empty: `Mat<Int>.zeros(2, 0).mul_vec([]) == [0, 0]`
     /// order: indexed by row
     /// traps: when `v.len != cols`
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).mul_vec([1, 1]) == [3, 7]`
@@ -274,7 +274,7 @@ pub struct Mat<T>:
     /// The rank over a field: the number of pivots elimination finds, pivoting as `det` does.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space
-    /// empty: zero
+    /// empty: `Mat<Mod<7>>.zeros(0, 3).rank() == 0`
     /// traps: never for a field `T`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).rank() == 1`
     /// example: `Mat<F64>.from_rows([[1.0, 2.0], [2.0, 4.0]]).rank(eps: 1e-9) == 1`
@@ -307,7 +307,7 @@ pub struct Mat<T>:
     /// and whatever the pivot columns need. It is empty when the solution is unique.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space
-    /// empty: with `cols == 0`, `Some(([], []))` when `b` is all zero, else `None`
+    /// empty: `let m = Mat<Mod<7>>.zeros(2, 0); m.solve_space([Mod<7>(0), Mod<7>(0)]) == Some(([], [])) and m.solve_space([Mod<7>(1), Mod<7>(0)]) == None`
     /// order: basis vectors by increasing free column
     /// traps: when `b.len != rows`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).solve_space([1, 2]) == Some(([Mod<7>(1), Mod<7>(0)], [[Mod<7>(5), Mod<7>(1)]]))`
@@ -359,7 +359,7 @@ pub struct Mat<T>:
     /// zero.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space
-    /// empty: with `cols == 0`, `Some([])` when `b` is all zero, else `None`
+    /// empty: `let m = Mat<Mod<7>>.zeros(2, 0); m.solve([Mod<7>(0), Mod<7>(0)]) == Some([]) and m.solve([Mod<7>(1), Mod<7>(0)]) == None`
     /// order: indexed by column (variable)
     /// traps: when `b.len != rows`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).solve([5, 6]) == Some([Mod<7>(3), Mod<7>(1)])`
@@ -375,7 +375,7 @@ pub struct Mat<T>:
     /// Gauss-Jordan elimination.
     ///
     /// cost: \(O(n^3)\) time, \(O(n^2)\) space
-    /// empty: the `0 x 0` matrix is its own inverse
+    /// empty: `let inv = Mat<Mod<7>>.zeros(0, 0).inverse()!; inv.rows == 0 and inv.cols == 0`
     /// traps: when the matrix is not square
     /// example: `let inv = Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).inverse()!; inv.get(0, 0) == Mod<7>(5) and inv.get(1, 1) == Mod<7>(3)`
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [2, 4]]).inverse() == None`
@@ -414,7 +414,7 @@ pub struct Mat<T>:
     /// so is the result.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space
-    /// empty: rank zero, no pivots
+    /// empty: `let (mat: e, rank: k, pivots: p) = Mat<Mod<7>>.zeros(0, 0).rref(); k == 0 and p == []`
     /// order: pivot columns increasing
     /// traps: never for a field `T`
     /// example: `let (mat: e, rank: k, pivots: p) = Mat<Mod<7>>.from_rows([[2, 4], [1, 2]]).rref(); k == 1 and p == [0] and e.get(0, 1) == Mod<7>(2) and e.get(1, 1) == Mod<7>(0)`
@@ -445,7 +445,7 @@ pub struct Mat<T>:
     /// included.
     ///
     /// cost: \(O(n^3 \log m)\)
-    /// empty: `1 % m` for the `0 x 0` matrix
+    /// empty: `Mat<Int>.zeros(0, 0).det_mod(6) == 1 and Mat<Int>.zeros(0, 0).det_mod(1) == 0`
     /// traps: when the matrix is not square or `m < 1`
     /// example: `Mat<Int>.from_rows([[1, 2], [3, 4]]).det_mod(6) == 4`
     /// example: `Mat<Int>.from_rows([[2, 0], [0, 3]]).det_mod(6) == 0`
@@ -473,7 +473,7 @@ pub struct Mat<T>:
     /// `n + 1` coefficients, the last one `T.one`.
     ///
     /// cost: \(O(n^3)\) time, \(O(n^2)\) space
-    /// empty: `[T.one]` for the `0 x 0` matrix
+    /// empty: `Mat<Mod<7>>.zeros(0, 0).char_poly() == [Mod<7>(1)]`
     /// order: coefficient of `x^0` first
     /// traps: when the matrix is not square
     /// example: `Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).char_poly() == [Mod<7>(5), Mod<7>(2), Mod<7>(1)]`
@@ -517,7 +517,7 @@ pub struct Mat<T>:
     /// skew-symmetry is not checked.
     ///
     /// cost: \(O(n^3)\) time, \(O(n^2)\) space
-    /// empty: `T.one` for the `0 x 0` matrix
+    /// empty: `Mat<Mod<7>>.zeros(0, 0).pfaffian() == Mod<7>(1)`
     /// traps: when the matrix is not square or `n` is odd
     /// example: `Mat<Mod<7>>.from_rows([[0, 3], [4, 0]]).pfaffian() == Mod<7>(3)`
     pub fn pfaffian(self) -> T:
@@ -559,7 +559,7 @@ pub struct Mat<T>:
     /// `rank < n - 1`).
     ///
     /// cost: \(O(n^3)\) time, \(O(n^2)\) space
-    /// empty: the `0 x 0` matrix
+    /// empty: `let a = Mat<Mod<7>>.zeros(0, 0).adjugate(); a.rows == 0 and a.cols == 0`
     /// traps: when the matrix is not square
     /// example: `let a = Mat<Mod<7>>.from_rows([[1, 2], [3, 4]]).adjugate(); a.get(0, 0) == Mod<7>(4) and a.get(0, 1) == Mod<7>(5)`
     /// example: `Mat<Mod<7>>.from_rows([[5]]).adjugate().get(0, 0) == Mod<7>(1)`
@@ -737,8 +737,10 @@ pub struct XorBasis:
 
     /// The maximum value of `init ^ s` over all `s` in the span.
     ///
+    /// The maximum value is unique, so there is no tie to break.
+    ///
     /// cost: \(O(W)\)
-    /// ties: None possible; the maximum value is unique
+    /// ties: `var b = XorBasis(); b.add(3); b.add(5); b.add(6); b.max_xor() == 6`
     /// traps: when `init < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.max_xor() == 6 and b.max_xor(1) == 7`
     pub fn max_xor(self, init: Int = 0) -> Int:
@@ -753,8 +755,10 @@ pub struct XorBasis:
     /// The minimum value of `init ^ s` over all `s` in the span: the same as `reduce(init)`, and 0 for
     /// the default `init`.
     ///
+    /// The minimum value is unique, so there is no tie to break.
+    ///
     /// cost: \(O(W)\)
-    /// ties: None possible; the minimum value is unique
+    /// ties: `var b = XorBasis(); b.add(3); b.add(5); b.add(6); b.min_xor(7) == 1`
     /// traps: when `init < 0`
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.min_xor(4) == 1 and b.min_xor() == 0`
     pub fn min_xor(self, init: Int = 0) -> Int:
@@ -770,8 +774,8 @@ pub struct XorBasis:
     /// is 0, and `kth` over `0..2^rank` is strictly increasing and lists the whole span.
     ///
     /// cost: \(O(W^2)\)
-    /// empty: only `kth(0) == Some(0)` for an empty basis
-    /// ties: None possible; span values are distinct
+    /// empty: `let b = XorBasis(); b.kth(0) == Some(0) and b.kth(1) == None`
+    /// ties: `var b = XorBasis(); b.add(3); b.add(5); b.add(6); [b.kth(k) for k in 0..5] == [Some(0), Some(3), Some(5), Some(6), None]`
     /// traps: never
     /// example: `var b = XorBasis(); b.add(6); b.add(5); [b.kth(k) for k in 0..5] == [Some(0), Some(3), Some(5), Some(6), None]`
     pub fn kth(self, k: Int) -> ?Int:
@@ -812,7 +816,7 @@ pub struct XorBasis:
     /// bit set), so the list depends only on the span. One vector per rank.
     ///
     /// cost: \(O(W)\) time and space
-    /// empty: `[]`
+    /// empty: `let b = XorBasis(); b.basis_vecs() == []`
     /// order: decreasing (by highest set bit)
     /// traps: never
     /// example: `var b = XorBasis(); b.add(6); b.add(5); b.basis_vecs() == [5, 3]`
@@ -890,7 +894,7 @@ pub struct MatPow<T>:
     /// for the set bits of `e`. `e == 0` returns `v`.
     ///
     /// cost: \(O(n^2 \log e)\) time, \(O(n)\) space
-    /// empty: `v` itself when `e == 0`
+    /// empty: `let p = MatPow(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(0, [3, 4]) == [3, 4]`
     /// order: indexed by row
     /// traps: when `e` is not in `0..=max_exp` or `v.len != n`
     /// example: `let p = MatPow(Mat<Int>.from_rows([[1, 1], [1, 0]]), 10); p.apply_pow(0, [1, 0]) == [1, 0]`
@@ -960,7 +964,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// The rank over GF(2).
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
-    /// empty: zero
+    /// empty: `BitMat(0, 3).rank() == 0`
     /// traps: never
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.rank() == 1`
     pub fn rank(self) -> Int:
@@ -971,7 +975,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// variable `false`, as in `Mat.solve`.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
-    /// empty: with `cols == 0`, `Some([])` when `b` is all `false`, else `None`
+    /// empty: `let m = BitMat(2, 0); m.solve([false, false]) == Some([]) and m.solve([true, false]) == None`
     /// order: indexed by column (variable)
     /// traps: when `b.len != rows`
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); m.solve([true, true]) == Some([false, true])`
@@ -987,7 +991,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// `Mat.solve_space`.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
-    /// empty: with `cols == 0`, `Some(([], []))` when `b` is all `false`, else `None`
+    /// empty: `let m = BitMat(2, 0); m.solve_space([false, false]) == Some((x0: [], basis: [])) and m.solve_space([false, true]) == None`
     /// order: basis vectors by increasing free column
     /// traps: when `b.len != rows`
     /// example: `var m = BitMat(2, 2); m.set(0, 0, true); m.set(0, 1, true); m.set(1, 0, true); m.set(1, 1, true); m.solve_space([true, true]) == Some((x0: [true, false], basis: [[true, true]]))`
@@ -1017,7 +1021,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
     /// The inverse of a square GF(2) matrix, or `None` when it is singular.
     ///
     /// cost: \(O(n^3 / 64)\)
-    /// empty: the `0 x 0` matrix
+    /// empty: `let inv = BitMat(0, 0).inverse()!; inv.rows == 0 and inv.cols == 0`
     /// traps: when the matrix is not square
     /// example: `var m = BitMat.identity(2); m.set(0, 1, true); let inv = m.inverse()!; inv.get(0, 1) and inv.get(1, 1) and not inv.get(1, 0)`
     pub fn inverse(self) -> ?BitMat:
@@ -1029,7 +1033,7 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
                 if self.get(r, c): aug.set(r, c, true)
             aug.set(r, n + r, true)
         let piv = bit_rref(n, 2 * n, mut aug.bits)
-        if 0 < n <= piv[n - 1]: return None
+        if n > 0 and piv[n - 1] >= n: return None
         var out = BitMat.new(n, n)
         for r in 0..n:
             for c in 0..n:
@@ -1119,9 +1123,11 @@ pub struct PrefixXorBasis:
 
     /// The maximum `init ^ s` for `s` in the span of the values at positions `r`.
     ///
+    /// The maximum value is unique, so there is no tie to break.
+    ///
     /// cost: \(O(62)\)
-    /// empty: `init` (the span of nothing is `{0}`)
-    /// ties: None possible; the maximum value is unique
+    /// empty: `var p = PrefixXorBasis(); p.push(6); p.max_xor(1..1, 5) == 5`
+    /// ties: `var p = PrefixXorBasis(); p.push(3); p.push(5); p.push(6); p.max_xor(0..3) == 6`
     /// traps: when `r` is non-empty and reaches outside `0..len`, or `init < 0`
     /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.max_xor(1..3) == 6 and p.max_xor(2..3) == 3`
     pub fn max_xor(self, r: Range<Int>, init: Int = 0) -> Int:
@@ -1136,7 +1142,7 @@ pub struct PrefixXorBasis:
     /// Whether `x` is in the span of the values at positions `r`.
     ///
     /// cost: \(O(62)\)
-    /// empty: `true` only for `x == 0`
+    /// empty: `var p = PrefixXorBasis(); p.push(6); [p.contains(1..1, x) for x in [0, 6]] == [true, false]`
     /// traps: when `r` is non-empty and reaches outside `0..len`, or `x < 0`
     /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.contains(1..3, 6) and not p.contains(1..2, 3)`
     pub fn contains(self, r: Range<Int>, x: Int) -> Bool:
@@ -1151,7 +1157,7 @@ pub struct PrefixXorBasis:
     /// The rank (dimension) of the span of the values at positions `r`.
     ///
     /// cost: \(O(62)\)
-    /// empty: zero
+    /// empty: `var p = PrefixXorBasis(); p.push(6); p.rank(1..1) == 0`
     /// traps: when `r` is non-empty and reaches outside `0..len`
     /// example: `var p = PrefixXorBasis(); p.push(6); p.push(5); p.push(3); p.rank(0..3) == 2 and p.rank(2..3) == 1`
     pub fn rank(self, r: Range<Int>) -> Int:
@@ -1169,7 +1175,7 @@ pub struct PrefixXorBasis:
 /// prime.
 ///
 /// cost: \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space
-/// empty: `Mod<P>(1)` for `n == 0`
+/// empty: `let e: List<(Int, Int, Mod<998244353>)> = []; sparse_det(0, e) == Mod<998244353>(1)`
 /// traps: when `n < 0` or a row or column is not in `0..n`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(2)), (1, 1, Mod(3))]; sparse_det(2, e) == Mod<998244353>(6)`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(1)), (0, 1, Mod(1))]; sparse_det(2, e) == Mod<998244353>(0)`
@@ -1198,7 +1204,7 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
 /// range). Deterministic, like `sparse_det`.
 ///
 /// cost: \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space
-/// empty: `Some([])` for `n == 0`
+/// empty: `let e: List<(Int, Int, Mod<998244353>)> = []; let b: List<Mod<998244353>> = []; sparse_solve(0, e, b) == Some([])`
 /// order: indexed by column (variable)
 /// traps: when `n < 0`, `b.len != n`, or a row or column is not in `0..n`
 /// example: `let e: List<(Int, Int, Mod<998244353>)> = [(0, 0, Mod(2)), (1, 1, Mod(3))]; sparse_solve(2, e, [Mod(4), Mod(9)]) == Some([Mod<998244353>(2), Mod<998244353>(3)])`
@@ -1293,7 +1299,7 @@ fn berlekamp_massey<P>(s: List<Mod<P>>) -> List<Mod<P>>:
 /// several points, `x` is the vertex the pivoting reaches; `val` is the optimum either way.
 ///
 /// cost: \(O(\mathit{pivots} \cdot \mathit{rows} \cdot \mathit{cols})\) time, the pivots typically \(O(\mathit{rows} + \mathit{cols})\) and exponential in the worst case; \(O(\mathit{rows} \cdot \mathit{cols})\) space
-/// empty: with no variables, `Some((val: 0.0, x: []))` when every `b` entry is at least `-eps`
+/// empty: `simplex(Mat<F64>.zeros(1, 0), [-1e-12], []) == Some((val: 0.0, x: [])) and simplex(Mat<F64>.zeros(1, 0), [-1.0], []) == None`
 /// order: `x` indexed by column (variable)
 /// traps: when `b.len != a.rows` or `c.len != a.cols`
 /// example: `let r = simplex(Mat<F64>.from_rows([[1.0, 0.0], [0.0, 1.0]]), [1.0, 2.0], [1.0, 1.0])!; abs(r.val - 3.0) < 1e-9 and abs(r.x[1] - 2.0) < 1e-9`
