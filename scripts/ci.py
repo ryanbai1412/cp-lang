@@ -381,6 +381,8 @@ class Tail:
     sel_packages: str = ""
     sel_filter: str = ""
     sel_site: str = ""
+    sel_slices: str = ""
+    sel_slice_filter: str = ""
     run: Callable = subprocess.run
     popen: Callable = subprocess.Popen
     which: Callable = shutil.which
@@ -512,11 +514,7 @@ class Tail:
         if gen.returncode:
             print((gen.stdout.strip().splitlines() or [""])[-1].removesuffix("; run: just gen"))
             print("note: not blocking, and no need to regenerate them: CI's regen job rewrites these on main")
-        if slices := sel.get("slices", "").split():
-            self.step(f"touched-path slices: {' '.join(slices)} (scripts/affected.py, each under 20 s)")
-            if self.call([sys.executable, "scripts/affected.py", "--run-slices", *slices]):
-                raise Failed("a touched-path slice failed or took over 20 s; the lines above name it, rerun:"
-                             f" uv run scripts/affected.py --run-slices {' '.join(slices)}")
+        self._slices(sel.get("slices", "").split())
         not_slow = f" & not ({slow_filter()})"
         if pkgs := sel.get("packages", "").split():
             ps = [a for p in pkgs for a in ("-p", p)]
@@ -769,6 +767,15 @@ class Tail:
             return "corpus part"
         raise ValueError(f"CPL_GATE_PART={self.gate_part} runs through `ci.py tail`")
 
+    def _slices(self, slices: list[str]) -> None:
+        """The touched paths' owner-named tests, ahead of the rest; one over 20 s fails."""
+        if not slices:
+            return
+        self.step(f"touched-path slices: {' '.join(slices)} (scripts/affected.py, each under 20 s)")
+        if self.call([sys.executable, "scripts/affected.py", "--run-slices", *slices]):
+            raise Failed("a touched-path slice failed or took over 20 s; the lines above name it, rerun:"
+                         f" uv run scripts/affected.py --run-slices {' '.join(slices)}")
+
     def _tests(self) -> None:
         """The workspace tests. --full runs SLOW_TESTS (why: beside the list)."""
         slow = slow_filter()
@@ -780,10 +787,13 @@ class Tail:
             print(CACHED)
         elif self.mode == "land":
             # Not cached: a partial run must not vouch for the whole tree.
+            self._slices(self.sel_slices.split())
             self.step(f"cargo nextest of the crates the train reaches: {self.sel_packages or 'none'}")
             if self.sel_packages:
-                if self.call(["cargo", "nextest", "run", "--workspace", "--no-fail-fast",
-                              "-E", f"({self.sel_filter}) & not ({slow})"]):
+                expr = f"({self.sel_filter}) & not ({slow})"
+                if self.sel_slice_filter:
+                    expr += f" & not ({self.sel_slice_filter})"
+                if self.call(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "-E", expr]):
                     raise Failed("a test of a crate the train reaches failed; the lines above name it")
                 self.step("cargo test --doc of the touched crates")
                 pkgs = [a for p in self.sel_packages.split() for a in ("-p", p)]
@@ -970,7 +980,8 @@ def run_gate(mode: str, part: str = "", cpl: str = "target/debug/cpl", cache_dir
         code = tail.commit(sel)
     else:
         tail = tail_cls(mode, part, cpl, cache_dir, manifest, sel.get("packages", ""), sel.get("filter", ""),
-                        sel.get("site", ""))
+                        sel.get("site", ""), sel_slices=sel.get("slices", ""),
+                        sel_slice_filter=sel.get("slice_filter", ""))
         code = tail()
     if code:
         return 1

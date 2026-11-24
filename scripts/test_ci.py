@@ -302,6 +302,19 @@ class TailTest(unittest.TestCase):
         self.assertIn("cargo test -q -p cpl-a -p cpl-b --doc", ev)
         self.assertNotIn("save nextest_doc", ev)
 
+    def test_a_land_train_runs_its_slices_first_and_refuses_a_slow_one(self) -> None:
+        code, ev, _, _, _, _ = self._tail(mode="land", sel_packages="cpl-a", sel_filter="rdeps(cpl-a)",
+                                          sel_slices="vm-trace copies", sel_slice_filter="test(=s)")
+        self.assertEqual(code, 0)
+        slices = ev.index("scripts/affected.py --run-slices vm-trace copies")
+        train = ev.index(f"cargo nextest run --workspace --no-fail-fast -E (rdeps(cpl-a)) & not ({ci.slow_filter()})"
+                         " & not (test(=s))")
+        self.assertLess(slices, train)
+        code, ev, _, err, _, _ = self._tail(mode="land", sel_slices="vm-trace", codes={"scripts/affected.py": 1})
+        self.assertEqual(code, 1)
+        self.assertIn("took over 20 s", err)
+        self.assertFalse([e for e in ev if e.startswith("cargo nextest")])
+
     def test_full_runs_the_full_steps_after_the_rest(self) -> None:
         code, ev, out, _, _, _ = self._tail(mode="full", manifest="")
         self.assertEqual(code, 0)
@@ -462,8 +475,9 @@ class GateTest(unittest.TestCase):
     class FakeTier:
         made: list = []
 
-        def __init__(self, mode, part="", cpl="", cache_dir="", manifest="", packages="", filter="", site="", run=None):
-            self.mode, self.sel = mode, (packages, filter, site)
+        def __init__(self, mode, part="", cpl="", cache_dir="", manifest="", packages="", filter="", site="", run=None,
+                     sel_slices="", sel_slice_filter=""):
+            self.mode, self.sel, self.slices = mode, (packages, filter, site), (sel_slices, sel_slice_filter)
             self.times = [(7, "the tests"), (0, "instant")]
             GateTest.FakeTier.made.append(self)
 
@@ -504,6 +518,9 @@ class GateTest(unittest.TestCase):
         self.assertIn("scripts/affected.py --base abc", ev)
         [tier] = GateTest.FakeTier.made
         self.assertEqual((tier.mode, tier.sel), ("land", ("cpl-fmt", "rdeps(cpl-fmt)", "0")))
+        self.assertEqual(tier.slices, ("", ""))
+        self._gate("land", affected="all=0\npackages=\nslices=copies\nslice_filter=test(=c)\n")
+        self.assertEqual(GateTest.FakeTier.made[0].slices, ("copies", "test(=c)"))
         self.assertIn("    7  the tests\n", out)
         self.assertNotIn("instant", out)
         self.assertIn("check: all land checks passed in 12s (budget <= 180s)", out)
