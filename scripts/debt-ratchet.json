@@ -190,5 +190,6 @@
   "unchecked_fix_paths": 4,
   "stress_engines": 5,
   "conformance_failing": 39,
-  "conformance_wrong_output": 6
+  "conformance_wrong_output": 6,
+  "rust_idiom_lints": 77
 }

@@ -28,6 +28,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import difflib
 import functools
 import glob
 import hashlib
@@ -1685,6 +1686,51 @@ def unregistered_lists(root: Path) -> list[str]:
 # Counters that are paid off: any instance fails, and no baseline, `--update` or
 # main's own measurement can raise them above 0. Every gated counter whose
 # committed baseline is 0 is listed here (scripts/test_debt_ratchet.py checks).
+CP_BINDING = re.compile(r"\b(?:let|var|fn|type|struct|enum|for)\s+(?:mut\s+)?\(?([A-Za-z_]\w*)")
+
+
+def idiom_edit_stateable(before: str, after: str) -> bool:
+    """Whether a lint record's before -> after edit is what a `@lint(from:, to:)`
+    pattern states (decision 512): each changed line run stays in one block (a
+    statement run), and no two runs change the same name bound in the file (then
+    they are one edit at two places, not two findings)."""
+    old = [line.rstrip() for line in before.split("\n")]
+    new = [line.rstrip() for line in after.split("\n")]
+    hunks = [o for o in difflib.SequenceMatcher(None, old, new, autojunk=False).get_opcodes() if o[0] != "equal"]
+    bound = set(CP_BINDING.findall(before + "\n" + after))
+    seen: set[str] = set()
+    for _, i1, i2, j1, j2 in hunks:
+        run = [line for line in old[i1:i2] if line.strip()]
+        if any(_indent(line) < _indent(run[0]) for line in run):
+            return False
+        names = bound & (set(re.findall(r"[A-Za-z_]\w*", " ".join(old[i1:i2])))
+                         ^ set(re.findall(r"[A-Za-z_]\w*", " ".join(new[j1:j2]))))
+        if names & seen:
+            return False
+        seen |= names
+    return bool(hunks)
+
+
+def _indent(line: str) -> int:
+    return len(line) - len(line.lstrip())
+
+
+def rust_idiom_lints(root: Path) -> list[str]:
+    """Idiom-group spec/lints records with no std `@lint(<name>, ...)`, so cpl-lint's Rust
+    implements them, whose before.cp -> after.cp edit a from/to pattern could state."""
+    std = "\n".join((root / rel).read_text(encoding="utf-8") for rel in _git(root, "ls-files", "std/*.cp", "std/**.cp"))
+    declared = set(re.findall(r"@lint\(\s*(\w+)", std))
+    out = []
+    for toml in sorted((root / "spec/lints").glob("*/lint.toml")):
+        d = toml.parent
+        if (d.name in declared or not re.search(r'^group = "idiom"', toml.read_text(encoding="utf-8"), re.M)
+                or not ((d / "before.cp").is_file() and (d / "after.cp").is_file())):
+            continue
+        if idiom_edit_stateable((d / "before.cp").read_text(encoding="utf-8"), (d / "after.cp").read_text(encoding="utf-8")):
+            out.append(_rel(root, d))
+    return out
+
+
 HARD_ZERO = frozenset({
     "pending_tests", "edition_refs", "uncited_rules", "decision_dup_numbers", "why_written_twice", "authority_drift",
     "continue_on_error", "unregistered_lists", "codegen_effect_guesses", "spec_std_refs",
@@ -1776,6 +1822,7 @@ COUNTERS = {
     "web_skip_only": ("web .skip(/.only( (Factory)", web_skip_only, True),
     "ts_ignore": ("web @ts-ignore (Factory)", ts_ignore, True),
     "habit_matchers": ("fns in hand-written habit matchers (Consumers)", habit_matchers, True),
+    "rust_idiom_lints": ("idiom lints in Rust a std @lint from/to could state (Consumers)", rust_idiom_lints, True),
     "unchecked_fix_paths": ("fix appliers outside the re-checking gate (Consumers)", unchecked_fix_paths, True),
     "stress_engines": ("stress-case runners picking a verdict (Consumers)", stress_engines, True),
     "dream_unverified": ("dream.cp files with no passing stress record", dream_unverified, True),

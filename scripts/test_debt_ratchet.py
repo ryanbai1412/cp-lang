@@ -187,6 +187,32 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr._cp_dup_bodies(root), ["std/a.cp:7 skip_while = std/a.cp:1 drop_while"])
             self.assertEqual(dr._cp_near_dups(root), ["std/a.cp:11 rank_real ~ std/a.cp:10 rank"])
 
+    def test_rust_idiom_lints_reads_the_record_diff(self) -> None:
+        one_span = ("let a = [1]\nlet n = a.len\nprint(n)\n", "let a = [1]\nprint(a.len)\n")
+        two_findings = ("let a = (x ?? 0) > 1\nprint(1)\nlet b = (y ?? 0) > 2\n",
+                        "let a = x.any(v => v > 1)\nprint(1)\nlet b = y.any(v => v > 2)\n")
+        two_places = ("fn f(u: Int) -> Int:\n    u\nlet _ = f(2)\n", "fn f(u: Int):\n    u\nf(2)\n")
+        leaves_block = ("for x in a:\n    h.push(-x)\nprint(-h.pop())\n", "for x in a:\n    h.push(x)\nprint(h.pop())\n")
+        shared_binding = ("let a: Int = 1\nprint(1)\nlet b: Int = 2\n",
+                          "type Z = Mod\nlet a: Z = 1\nprint(1)\nlet b: Z = 2\n")
+        self.assertTrue(dr.idiom_edit_stateable(*one_span))
+        self.assertTrue(dr.idiom_edit_stateable(*two_findings))
+        self.assertFalse(dr.idiom_edit_stateable(*leaves_block))
+        self.assertFalse(dr.idiom_edit_stateable(*shared_binding))
+        self.assertTrue(dr.idiom_edit_stateable(*two_places))
+        self.assertFalse(dr.idiom_edit_stateable("x\n", "x\n"))
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            subprocess.run(["git", "init", "-q"], cwd=root, check=True, env=dr._git_env())
+            for name, group, (before, after) in [("in_rust", "idiom", one_span), ("in_std", "idiom", one_span),
+                                                 ("style", "style", one_span), ("hard", "idiom", leaves_block)]:
+                self._write(root, f"spec/lints/{name}/lint.toml", f'group = "{group}"\n')
+                self._write(root, f"spec/lints/{name}/before.cp", before)
+                self._write(root, f"spec/lints/{name}/after.cp", after)
+            self._write(root, "std/seq.cp", '@lint(in_std, from: "x.len", to: "n")\npub fn n(x: Int) -> Int = x\n')
+            subprocess.run(["git", "add", "-A"], cwd=root, check=True, env=dr._git_env())
+            self.assertEqual(dr.rust_idiom_lints(root), ["spec/lints/in_rust"])
+
     def test_architecture_counters(self) -> None:
         with tempfile.TemporaryDirectory() as d:
             root = Path(d)
