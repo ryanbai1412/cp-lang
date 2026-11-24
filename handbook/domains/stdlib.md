@@ -261,9 +261,9 @@ and `cargo-semver-checks`. Targets and today's numbers are in
 
 | Quality | Metric | Mechanism |
 |---|---|---|
-| Errors from a std call point at the user's call, never into std | diagnostics whose primary span is in `std/` | rule `errors/R3`; `missing` (mutation suite of wrong calls checked for span location) |
+| Errors from a std call point at the user's call, never into std | diagnostics whose primary span is in `std/` | rule `errors/R3`; `crates/cpl-cli/tests/std_spans.rs` (every `pub fn` called with wrong shapes; no span inside std) |
 | Trap messages name the user's call and values | trap messages that show std internals | `missing` (same suite, traps half) |
-| Traces show std values by their meaning, not their fields | std types whose trace shows internals | `crates/cpl-cli/tests/trace_goldens.rs` per program; a check per std type is `missing` |
+| Traces show std values by their meaning, not their fields | std types whose trace shows internals | `crates/cpl-cli/tests/trace_goldens.rs` per program |
 | Stress can generate every std input type | std types with no generator | `missing` |
 
 ### No privilege and stable (J10)
