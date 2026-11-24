@@ -26,7 +26,7 @@ input = "17 28\n7 14\n2 7\n2 13\n1 14\n3 9\n2 15\n7 15\n1 4\n7 10\n3 6\n14 15\n5
 
 [[case]]
 seed = 1
-size = 0
+size = 1
 
 [[case]]
 seed = 2

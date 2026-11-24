@@ -21,5 +21,10 @@
  "difficulty": "easy",
  "dream": "draft",
  "spec": "draft",
- "notes": "Cuts as DP state: (c.next!..).take(m) enumerates group ends; reconstruction re-runs min(by:)."
+ "notes": "Cuts as DP state: (c.next!..).take(m) enumerates group ends; reconstruction re-runs min(by:).",
+ "dream_stress": {
+  "ok": true,
+  "cases": 8,
+  "sha": "8b35e1c9185526a491c368ecc7ee43898476ca20"
+ }
 }
