@@ -1,4 +1,6 @@
 import argparse
+import contextlib
+import io
 import importlib.util
 import json
 import os
@@ -99,6 +101,24 @@ class DreamStressTest(Corpus):
         args = argparse.Namespace(ids=["p1"], cpl=cpl, check=True)
         with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])):
             return corpus.verify(args), json.loads((d / "meta.json").read_text())
+
+    def test_a_broken_toolchain_is_no_verdict_and_writes_nothing(self):
+        good = json.dumps({"dream_stress": {"ok": True, "cases": 8, "sha": "abc"}})
+        d = self.package("p1", dream_cp="print(1)\n", orig_cpp=ECHO_CPP, gen_py=GEN, meta_json=good)
+        args = argparse.Namespace(ids=["p1"], cpl=os.path.join(corpus.ROOT, "target", "release", "cpl"), check=False)
+        broken = mock.Mock(side_effect=RuntimeError("No module named ziglang"))
+        err = io.StringIO()
+        with mock.patch.object(corpus, "problems", lambda sets=None, ids=None: iter([corpus.Package.at(d)])), \
+                mock.patch.object(corpus, "binary", broken), contextlib.redirect_stderr(err):
+            self.assertEqual(corpus.verify(args), 2)
+        self.assertEqual((d / "meta.json").read_text(), good)
+        self.assertIn("No module named ziglang", err.getvalue())
+
+    def test_a_python_without_the_wheel_and_no_venv_stops_naming_it(self):
+        with mock.patch("importlib.util.find_spec", return_value=None), \
+                mock.patch.object(corpus, "ROOT", tempfile.mkdtemp()), self.assertRaises(SystemExit) as e:
+            corpus.toolchain(["verify", "p1"])
+        self.assertIn("ziglang", str(e.exception))
 
     def test_check_fails_a_disagreeing_dream_and_writes_nothing(self):
         self.assertEqual(self.check("let _t = read<Int>()\nlet x = read<Int>()\nprint(x + 1)\n"), (1, {}))

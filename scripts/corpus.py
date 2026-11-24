@@ -21,7 +21,7 @@ Generated fields: problem, source, submissions, artifacts. Hand-written fields
 (tags, difficulty, dream, spec, notes) and recorded ones (dream_stress)
 survive a rebuild.
 """
-import argparse, hashlib, json, os, re, subprocess, sys, tempfile, tomllib
+import argparse, hashlib, importlib.util, json, os, re, subprocess, sys, tempfile, tomllib
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -133,6 +133,10 @@ def accepted_cxx(text):
     return GNU_CXX if GNU_EXT.search(text) else ACCEPTED_CXX
 
 
+class InfraError(Exception):
+    """The toolchain, a generator or the accepted C++ failed: no verdict, so nothing is recorded."""
+
+
 def binary(src):
     """`src` built with ACCEPTED_CXX, cached by content under target/corpus-cxx/."""
     os.makedirs(CXX_CACHE, exist_ok=True)
@@ -172,13 +176,16 @@ def judged(pkg, source, inputs, cpl):
     if not inputs or (ref is None and not pkg.interactor):
         return False, 0
     with tempfile.TemporaryDirectory() as cases:
-        exe = binary(ref) if ref else None
+        try:
+            exe = binary(ref) if ref else None
+        except RuntimeError as e:
+            raise InfraError(f"{pkg.id}: {e}") from e
         for i, text in enumerate(inputs, 1):
             Path(cases, f"{i:02}.in").write_text(text)
             if exe:
                 r = subprocess.run([exe], input=text, capture_output=True, text=True, timeout=60, preexec_fn=judge_stack)
                 if r.returncode:
-                    raise RuntimeError(f"{pkg.id}: accepted C++ exits {r.returncode} on case {i}")
+                    raise InfraError(f"{pkg.id}: accepted C++ exits {r.returncode} on case {i}")
                 Path(cases, f"{i:02}.ans").write_text(r.stdout)
         judge = ["--interactor", str(pkg.interactor)] if pkg.interactor else \
                 ["--checker", str(pkg.checker)] if pkg.checker else []
@@ -187,7 +194,9 @@ def judged(pkg, source, inputs, cpl):
         try:
             results = json.loads(r.stdout)["cases"]
         except (ValueError, KeyError):
-            return False, 0
+            if "does not build" in r.stderr:
+                return False, 0
+            raise InfraError(f"{pkg.id}: cpl test: {r.stderr.strip()[:300]}")
         return bool(results) and all(c["verdict"] == "ok" for c in results), len(results)
 
 
@@ -195,8 +204,8 @@ def dream_stress(pkg, cpl):
     """Does dream.cp agree with the accepted C++ on the package's inputs?"""
     try:
         ok, n = judged(pkg, pkg.dream, stress_inputs(pkg), cpl)
-    except (RuntimeError, subprocess.SubprocessError, OSError):
-        ok, n = False, 0
+    except (RuntimeError, subprocess.SubprocessError, OSError) as e:
+        raise InfraError(f"{pkg.id}: {e}") from e
     return {"ok": ok, "cases": n, "sha": blob_sha(pkg.dream)}
 
 
@@ -215,7 +224,11 @@ def verify(args):
     failed = 0
     for pkg in wanted:
         if pkg.dream and pkg.meta:
-            got = dream_stress(pkg, cpl)
+            try:
+                got = dream_stress(pkg, cpl)
+            except InfraError as e:
+                print(f"corpus: no verdict, the toolchain failed: {e}", file=sys.stderr)
+                return 2
             print(f"{pkg.id}: dream-stress {'ok' if got['ok'] else 'FAILS'} on {got['cases']} case(s)")
             failed += not got["ok"]
             if not args.check:
@@ -357,5 +370,18 @@ def cli(argv):
     return verify(args) if args.mode == "verify" else main(args.mode)
 
 
+def toolchain(argv):
+    """Modes that build C++ need ACCEPTED_CXX's ziglang wheel: run under the repo's
+    .venv when this python lacks it, else stop and name it."""
+    if not argv or argv[0] != "verify" or importlib.util.find_spec("ziglang"):
+        return
+    venv = Path(ROOT, ".venv", "bin", "python")
+    if venv.exists() and Path(sys.prefix).resolve() != venv.parent.parent.resolve():
+        os.execv(str(venv), [str(venv), __file__, *argv])
+    sys.exit("corpus.py: this python has no ziglang wheel (ACCEPTED_CXX); run `uv sync`, "
+             "or `uv run python scripts/corpus.py`")
+
+
 if __name__ == "__main__":
+    toolchain(sys.argv[1:])
     sys.exit(cli(sys.argv[1:]))
