@@ -337,9 +337,8 @@ impl<'a> Checker<'a> {
                     let elem_ok = args.first().is_none_or(|g| self.fits(g, elem));
                     match &index[0] {
                         Ty::Named { name: ename, .. } => {
-                            if let Some(Def::Enum { variants, .. }) =
-                                self.type_def(ename).as_deref().cloned()
-                            {
+                            let found = self.type_def(ename);
+                            if let Some(Def::Enum { variants, .. }) = found.as_deref() {
                                 if variants.iter().all(|(_, fs)| fs.is_empty()) {
                                     if items.len() != variants.len() {
                                         self.report(

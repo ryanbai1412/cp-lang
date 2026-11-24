@@ -419,11 +419,12 @@ impl<'a> Checker<'a> {
                 }
                 Ty::Named { name, args } => {
                     todo.extend(args);
+                    let found = self.type_def(name);
                     let Some(Def::Enum {
                         variants,
                         tagged: false,
                         ..
-                    }) = self.type_def(name).as_deref().cloned()
+                    }) = found.as_deref()
                     else {
                         continue;
                     };

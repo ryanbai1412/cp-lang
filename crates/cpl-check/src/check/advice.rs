@@ -304,19 +304,21 @@ impl Checker<'_> {
     /// The public methods a value of struct `owner` calls: `self` methods
     /// and getters, not constructors.
     fn public_receivers(&mut self, owner: &str) -> Option<Vec<String>> {
+        let found = self.type_def(owner);
         let Some(Def::Struct {
             receivers,
             mutators,
             getters,
             ..
-        }) = self.type_def(owner).as_deref().cloned()
+        }) = found.as_deref()
         else {
             return None;
         };
-        let names = receivers.into_iter().chain(mutators).chain(getters);
+        let names = receivers.iter().chain(mutators).chain(getters);
         Some(
             names
                 .filter(|m| !self.env.is_private_field(owner, m))
+                .cloned()
                 .collect(),
         )
     }

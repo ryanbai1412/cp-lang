@@ -730,7 +730,8 @@ impl<'a> Checker<'a> {
         let Ty::Named { name, .. } = scrutinee else {
             return;
         };
-        let Some(Def::Enum { variants, .. }) = self.type_def(name).as_deref().cloned() else {
+        let found = self.type_def(name);
+        let Some(Def::Enum { variants, .. }) = found.as_deref() else {
             return;
         };
         fn irrefutable(pat: &Pattern) -> bool {

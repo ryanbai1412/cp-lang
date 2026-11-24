@@ -147,9 +147,10 @@ impl Checker<'_> {
                 args,
             };
             for trait_name in traits {
+                let found = self.type_def(trait_name);
                 let Some(Def::Trait {
                     generics: of_trait, ..
-                }) = self.type_def(trait_name).as_deref().cloned()
+                }) = found.as_deref()
                 else {
                     continue;
                 };
@@ -201,19 +202,20 @@ impl Checker<'_> {
             return None;
         }
         seen.push(trait_name.to_string());
+        let found = self.type_def(trait_name);
         let Some(Def::Trait {
             methods,
             supers,
             super_args,
             ..
-        }) = self.type_def(trait_name).as_deref().cloned()
+        }) = found.as_deref()
         else {
             return None;
         };
         if let Some(m) = methods.iter().find(|m| m.name == name) {
             return Some(m.ty.subst(&on));
         }
-        for (sup, args) in supers.iter().zip(&super_args) {
+        for (sup, args) in supers.iter().zip(super_args) {
             let mut theirs = crate::ty::Bindings::default();
             if let Some(this) = on.get("Self") {
                 theirs.insert("Self".into(), this.clone());

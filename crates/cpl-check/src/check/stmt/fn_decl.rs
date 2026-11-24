@@ -211,14 +211,13 @@ impl<'a> Checker<'a> {
                         self.row_bounds.insert(b.name.text.clone(), resolved);
                     }
                     ast::TypeKind::Named { name: tname, .. } => {
-                        if let Some(Def::Trait { fields, .. }) =
-                            self.global(&tname.text).as_deref().cloned()
-                        {
+                        let found = self.global(&tname.text);
+                        if let Some(Def::Trait { fields, .. }) = found.as_deref() {
                             if !fields.is_empty() {
                                 self.row_bounds
                                     .entry(b.name.text.clone())
                                     .or_default()
-                                    .extend(fields);
+                                    .extend(fields.iter().cloned());
                             }
                         }
                     }

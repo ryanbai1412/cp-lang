@@ -240,11 +240,12 @@ impl Checker<'_> {
             return;
         };
         // An alias has no impl of its own: that is E0501, not a missing supertrait.
+        let found = self.global(&name.text);
         let Some(Def::Trait {
             supers,
             alias: false,
             ..
-        }) = self.global(&name.text).as_deref().cloned()
+        }) = found.as_deref()
         else {
             return;
         };
@@ -307,12 +308,13 @@ impl Checker<'_> {
             _ => return None,
         };
         for trait_name in self.env.names() {
+            let found = self.global(&trait_name);
             let Some(Def::Trait {
                 methods,
                 generics,
                 alias: false,
                 ..
-            }) = self.global(&trait_name).as_deref().cloned()
+            }) = found.as_deref()
             else {
                 continue;
             };
