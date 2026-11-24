@@ -125,7 +125,7 @@ def inputs(p, gens, n, tmp):
 def accepted_cpp(p):
     meta = json.load(open(os.path.join(PROBLEMS, p, "meta.json")))
     for s in meta.get("submissions", []):
-        if s.get("result") == "AC" and os.path.exists(os.path.join(ROOT, s["file"])):
+        if s.get("result") == "AC" and s["file"].endswith(".cpp") and os.path.exists(os.path.join(ROOT, s["file"])):
             return os.path.join(ROOT, s["file"])
     return None
 

@@ -122,15 +122,26 @@ def blob_sha(path):
 # the clang the ziglang wheel ships on every platform, with a bits/stdc++.h shim.
 ACCEPTED_CXX = [sys.executable, "-m", "ziglang", "c++", "-std=c++23", "-O2", "-w",
                 "-I", os.path.join(ROOT, "bench", "cxx23-shim")]
+# libstdc++'s GNU extensions (policy-based data structures, rope) exist only
+# under g++, the judges' compiler.
+GNU_EXT = re.compile(r"__gnu_pbds|__gnu_cxx|ext/pb_ds|ext/rope")
+GNU_CXX = ["g++", "-std=gnu++2b", "-O2", "-w"]
+
+
+def accepted_cxx(text):
+    """The compiler command for accepted C++ `text`."""
+    return GNU_CXX if GNU_EXT.search(text) else ACCEPTED_CXX
 
 
 def binary(src):
     """`src` built with ACCEPTED_CXX, cached by content under target/corpus-cxx/."""
     os.makedirs(CXX_CACHE, exist_ok=True)
-    key = hashlib.sha1(Path(src).read_bytes()).hexdigest()[:16]
+    data = Path(src).read_bytes()
+    key = hashlib.sha1(data).hexdigest()[:16]
     exe = os.path.join(CXX_CACHE, key)
     if not os.path.exists(exe):
-        r = subprocess.run([*ACCEPTED_CXX, "-o", exe, str(src)], capture_output=True, text=True)
+        cxx = accepted_cxx(data.decode(errors="replace"))
+        r = subprocess.run([*cxx, "-o", exe, str(src)], capture_output=True, text=True)
         if r.returncode:
             raise RuntimeError("c++: " + r.stderr[:200])
     return exe

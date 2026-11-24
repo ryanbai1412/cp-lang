@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 import tempfile
 import unittest
@@ -32,6 +33,14 @@ class SeedListTest(unittest.TestCase):
         self.assertEqual(ct.problems([]), [])
         self.write("[[case]]\nseed = 1\nsize = 4\n")
         self.assertEqual(ct.problems([]), ["p1"])
+
+    def test_the_reference_is_the_first_accepted_cpp_not_java(self):
+        java, cpp = self.dir / "1.java", self.dir / "2.cpp"
+        java.write_text("")
+        cpp.write_text("")
+        subs = [{"file": str(java), "result": "AC"}, {"file": str(cpp), "result": "AC"}]
+        (self.dir / "meta.json").write_text(json.dumps({"submissions": subs}))
+        self.assertEqual(ct.accepted_cpp("p1"), str(cpp))
 
     def test_no_list_means_none(self):
         self.assertIsNone(ct.seed_list("p1"))

@@ -63,6 +63,10 @@ class ProblemsTest(Corpus):
         pkg = corpus.Package.at(d)
         self.assertEqual([pkg.case_input(c) for c in pkg.cases()], ["1 2\n", "1\n7\n"])
 
+    def test_gnu_extension_sources_build_with_gxx(self):
+        self.assertIs(corpus.accepted_cxx('#include "bits/extc++.h"\n__gnu_pbds::tree<int> t;'), corpus.GNU_CXX)
+        self.assertIs(corpus.accepted_cxx('#include "bits/extc++.h"\nint main() {}'), corpus.ACCEPTED_CXX)
+
     def test_reference_falls_back_to_an_accepted_submission(self):
         d = self.package("p1", orig_cpp="")
         self.assertEqual(corpus.Package.at(d).reference(), d / "orig.cpp")
