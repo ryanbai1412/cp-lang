@@ -273,6 +273,17 @@ impl<'p> Devirt<'p> {
             .any(|c| !c.is_global && c.outer == slot)
     }
 
+    /// Whether `let name = <closure cid>` in `home` (a closure, or the fn when None) binds `auto`.
+    pub fn let_auto(&self, home: Option<ClosureId>, slot: usize, cid: ClosureId, n: u32) -> bool {
+        let mut stored = home.is_none() && n > 1;
+        if let Some(h) = home {
+            walk::deep_stmts(&self.program.closures[h].body, &mut |s| {
+                stored |= matches!(s, Stmt::Assign(p, _, _) if p.kind == PlaceKind::Local(slot));
+            });
+        }
+        !stored && self.local_auto(slot, cid)
+    }
+
     /// Whether a local `let name = <closure>` that names itself can bind
     /// `auto`: the closure takes itself as a parameter instead of capturing
     /// its own `std::function`.
@@ -1784,12 +1795,18 @@ pub fn explain_closures(
             ));
         }
         walk::deep_stmts(&c.body, &mut |stmt| {
-            if let Stmt::Let(slot, _) = stmt {
+            if let Stmt::Let(slot, init) = stmt {
                 if matches!(c.locals[*slot].ty, Ty::Fn(..)) {
-                    out.push(dynamic(
-                        format!("closure {cid} local {}", c.locals[*slot].name),
-                        "fn local inside a closure",
-                    ));
+                    let site = format!("closure {cid} local {}", c.locals[*slot].name);
+                    let auto = matches!(init.as_ref().map(|e| &e.kind),
+                        Some(ExprKind::Closure(i)) if devirt.let_auto(Some(cid), *slot, *i, 0));
+                    out.push(match auto {
+                        true => ClosureLowering {
+                            site,
+                            mode: ClosureMode::StaticLocalAuto,
+                        },
+                        false => dynamic(site, "fn local inside a closure"),
+                    });
                 }
             }
         });

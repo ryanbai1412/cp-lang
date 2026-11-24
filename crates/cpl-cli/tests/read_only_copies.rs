@@ -66,9 +66,13 @@ const BOUNDS: [Bound; 5] = [
     // (`old_s = self.state`) and temporaries copied out of places. Cases
     // that exist to show a copy is required count too: core-05's
     // map-entry-var-copies, copies-in-two-fns-stay-apart and
-    // match-payload-outlives-reassigning-its-scrutinee (twice).
+    // match-payload-outlives-reassigning-its-scrutinee (twice), and the
+    // round-47 cases where a `var` copies a global that is read again:
+    // global-copied-by-a-fn-a-closure-calls-twice, -called-in-a-loop,
+    // -by-a-recursive-fn, global-read-by-another-fn-after-the-copy and
+    // match-payload-outlives-a-fn-writing-its-global-scrutinee.
     ("deep_copies", deep_copies, 37),
-    ("std_functions", std_functions, 152),
+    ("std_functions", std_functions, 144),
 ];
 
 /// The `.cp` files one directory down from each root: the corpus
