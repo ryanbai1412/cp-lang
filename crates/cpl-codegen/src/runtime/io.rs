@@ -8,17 +8,15 @@ pub(super) const PIECES: &[Piece] = &[
         name: "out",
         needs: &[],
         code: "\
-// Output is collected here and written once at the end.
+// Output, written out 64 KiB at a time, mid-line too.
 std::string out;
 #ifdef _WIN32
 // Binary mode, so Windows writes \\n as \\n, not \\r\\n: the same bytes on every OS.
 inline const int binary_stdout = _setmode(_fileno(stdout), _O_BINARY);
 #endif
-// Open `Capture`s: while one lives, `out` holds only what it collects, and
-// writing it out early would put it before what was printed first.
+// While a `Capture` lives, `out` holds only what it collects.
 inline int capturing = 0;
 inline void flush() { fwrite(out.data(), 1, out.size(), stdout); out.clear(); }
-// Out at 64 KiB, mid-line too.
 inline void spill() { if (out.size() >= (1u << 16) && !capturing) flush(); }
 inline void put_char(u8 c) { out.push_back((char)c); spill(); }
 inline void put_str(const std::string& s) { out += s; spill(); }
