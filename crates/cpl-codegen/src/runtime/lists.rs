@@ -75,11 +75,11 @@ template <class T, int K> struct Grid {
     // size_t, not ll: a store to an `ll` cell can't alias the sizes, so a
     // loop over cells keeps them in registers and can vectorise.
     size_t n[K] = {};
-    template <class... I> size_t at(I... i) const { size_t ix[K] = {(size_t)(ll)i...}; size_t p = 0; for (int k = 0; k < K; k++) p = p * n[k] + ix[k]; return p; }
+    template <class... I> size_t at(I... i) const { size_t p = 0; int k = 0; ((p = p * n[k++] + (size_t)(ll)i), ...); return p; }
     template <class... I> T& operator()(I... i) { return d[at(i...)]; }
     template <class... I> const T& operator()(I... i) const { return d[at(i...)]; }
     // Indexed by an `Int` that nothing has proved in range.
-    template <class... I> size_t in(I... i) const { ll ix[K] = {(ll)i...}, p = 0; bool bad = 0; for (int k = 0; k < K; k++) bad |= (unsigned long long)ix[k] >= (unsigned long long)n[k], p = p * (ll)n[k] + ix[k]; if (bad) fail(\"index outside the array\"); return p; }
+    template <class... I> size_t in(I... i) const { ll p = 0; bool bad = 0; int k = 0; ((bad |= (unsigned long long)(ll)i >= (unsigned long long)n[k], p = p * (ll)n[k] + (ll)i, k++), ...); if (bad) fail(\"index outside the array\"); return p; }
     template <class... I> T& ck(I... i) { return d[in(i...)]; }
     template <class... I> const T& ck(I... i) const { return d[in(i...)]; }
     bool operator==(const Grid& o) const { return d == o.d; }
