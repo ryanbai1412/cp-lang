@@ -14,10 +14,10 @@
 let n: 1..=500_000 = read()
 let m: 1..=n = read()
 let a: [0..n]1..=m = read()
-var at_boundary: [0..=n]Int = 0
-var after_block: [0..=n]?Int = None
-var ending_at: [0..=n]?Int = None
-var last_with_start: [0..=n - m]?Int = None
+var at_boundary: [0..=n]0..=n = 0
+var after_block: [0..=n]?0..=n = None
+var ending_at: [0..=n]?0..=n = None
+var last_with_start: [0..=n - m]?0..n = None
 
 after_block[m] = 0
 for i in 0..n:
