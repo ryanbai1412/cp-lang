@@ -628,3 +628,27 @@ fn a_param_a_literal_stores_at_its_last_read_is_sunk_and_moved_in() {
         "read after the literal, so lent and copied: {out}"
     );
 }
+
+#[test]
+fn a_let_of_a_lent_node_is_a_reference_unless_its_slot_is_written_while_it_lives() {
+    let cpp = cpp(concat!(
+        "use std.marks.{Arena, Id}\n",
+        "struct N:\n    var a: Int\n    var big: List<Int>\n",
+        "fn read(ar: Arena<N>, i: Id<N>) -> Int:\n    let n = ar.get(i)\n    n.a + n.big.len\n",
+        "fn write(mut ar: Arena<N>, i: Id<N>) -> Int:\n",
+        "    let m = ar.get(i)\n    ar.at(i).a = 7\n    m.a\n",
+        "var ar = Arena<N>()\n",
+        "let i = ar.alloc(N(1, [2]))\n",
+        "print(read(ar, i), write(mut ar, i), ar.at(i).a + ar.at(i).big.len)\n",
+    ));
+    assert!(cpp.contains("const N& n = Arena_"), "{cpp}");
+    assert!(
+        cpp.contains("N m = Arena_"),
+        "the slot changes while `m` lives: {cpp}"
+    );
+    assert!(cpp.contains("ar._xs, ll(i.raw)).a, "), "{cpp}");
+    assert!(
+        !cpp.contains("-> N {"),
+        "a read through `at` builds no node: {cpp}"
+    );
+}

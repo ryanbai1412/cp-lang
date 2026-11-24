@@ -1253,7 +1253,8 @@ impl Emitter<'_> {
                 | ExprKind::Payload(..)
                 | ExprKind::Index(..)
                 | ExprKind::Unwrap(..)
-        ) && rooted_in_a_name(init);
+        ) && rooted_in_a_name(init)
+            || matches!(init.kind, ExprKind::Call(f, _) if self.lent_roots.contains_key(&f));
         // A temporary bound by reference names the place it was bound to.
         let whole = matches!(init.kind, ExprKind::Local(s)
                 if !self.locals()[s].name.is_empty() || self.ref_bound.contains(&s))

@@ -343,6 +343,8 @@ impl crate::emit::Emitter<'_> {
                     self.locals()[slot].name.is_empty() || self.locals()[src].name.is_empty()
                 }
                 ExprKind::Global(_) => self.locals()[slot].name.is_empty(),
+                // `let n = arena.get(id)`: a fn that lends from an argument.
+                ExprKind::Call(callee, _) => self.lent_roots.contains_key(&callee),
                 _ => false,
             }
             && self.source_change(slot, init, tail).is_none()
@@ -397,6 +399,21 @@ impl crate::emit::Emitter<'_> {
                 ExprKind::Index(base, indices) => {
                     keys.extend(indices);
                     base
+                }
+                ExprKind::Call(callee, args) => {
+                    let lent = *self.lent_roots.get(callee)?;
+                    let mut from = None;
+                    for (k, arg) in args.iter().enumerate() {
+                        let cpl_ir::Arg::Value(v) = arg else {
+                            return None;
+                        };
+                        if k == lent {
+                            from = Some(v);
+                        } else {
+                            keys.push(v);
+                        }
+                    }
+                    from?
                 }
                 _ => break walk::path_root(at)?,
             };

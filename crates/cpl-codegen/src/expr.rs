@@ -92,6 +92,19 @@ pub(crate) fn string_literal(bytes: &[u8]) -> String {
     out
 }
 
+/// The place a block names and does nothing else with, `{ let t = a._xs[i]; t }` from an
+/// inlined `lends` call: read where it is, so `a.at(i).v` copies no node.
+fn gives_its_place<'e>(block: &'e cpl_ir::Block, ty: &Ty) -> Option<&'e Expr> {
+    let [Stmt::Let(slot, Some(init)), Stmt::Give(given)] = block.stmts.as_slice() else {
+        return None;
+    };
+    (matches!(given.kind, ExprKind::Local(s) if s == *slot)
+        && !ty.is_scalar()
+        && crate::stmt::place_root(init).is_some()
+        && Touch::of_expr(init).quiet())
+    .then_some(init)
+}
+
 /// An `int` expression made `long long`, so arithmetic on it has 64 bits.
 fn widen(code: &Code) -> Code {
     if !code.narrow {
@@ -872,6 +885,9 @@ impl<'p> Emitter<'p> {
                     let k = self.expr(key_val).text;
                     return self
                         .packed_result(&e.ty, Code::primary(format!("cpl::map_take({p}, {k})")));
+                }
+                if let Some(place) = gives_its_place(block, &e.ty) {
+                    return self.expr(place);
                 }
                 let ret = if let Some(k) = self.expr_fixed_len(e) {
                     self.fixed_array_cpp(&e.ty, k)
