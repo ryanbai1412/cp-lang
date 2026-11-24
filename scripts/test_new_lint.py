@@ -26,6 +26,25 @@ class NewLintTest(unittest.TestCase):
         with self.assertRaises(SystemExit):
             MOD.next_code({599}, 5)
 
+    def test_the_default_series_moves_on_when_one_is_full(self):
+        self.assertEqual(MOD.first_free({598, 599, 610}), 611)
+        self.assertEqual(MOD.first_free({562}), 563)
+
+    def test_next_needs_no_rule_but_a_record_does(self):
+        self.assertEqual(MOD.main(["loop_sum", "--no-fetch", "--series", "6"]), 2)
+
+    def test_a_catalog_row_is_claimed_with_its_family_and_text(self):
+        catalog = "### S.seq: reductions\n\n| Lint | Catches | Write instead | Tier | P | Engine |\n|---|---|---|---|---|---|\n| loop_product | `acc *= f(x)` loop | `xs.map(f).product()` | fix | #2 | loop |\n| loop_xor_fold | `acc ^= x` loop | `xs.fold(Xor)` | fix | #2 | loop |\n"
+        rest, row = MOD.claim_row(catalog, "loop_product")
+        self.assertNotIn("loop_product", rest)
+        self.assertIn("loop_xor_fold", rest)
+        self.assertEqual(row, {"family": "S.seq: reductions", "catches": "`acc *= f(x)` loop",
+                               "write": "`xs.map(f).product()`", "practice": "#2"})
+        self.assertIsNone(MOD.claim_row(catalog, "loop_sum"))
+
+    def test_a_toml_string_escapes_quotes(self):
+        self.assertEqual(MOD.toml_str('`"a"`'), '"`\\"a\\"`"')
+
 
 if __name__ == "__main__":
     unittest.main()

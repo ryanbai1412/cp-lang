@@ -40,7 +40,7 @@ The infra work plan, dated 2026-11-22; the charter is [handbook/domains/infra.md
 | Instance | General fix | Owner |
 |---|---|---|
 | Lanes `git push` directly and skip land.sh, so the debt ratchet, fmt and clippy reds reach main (5 allowlisted files grew, 2026-11-22) | No new gate (Ryan: throughput first). Infra absorbs it: regen heals derived files, the sheriff fixes or reverts within one CI cycle, and checks only fail on the lane's own diff | infra |
-| Hand-picked lint codes collide across lanes (L0553, L0563, 2026-11-22) | `cpl lint --new` allocates the next free code | lint-fmt |
+| Hand-picked lint codes collide across lanes (L0553, L0563, 2026-11-22) | `cpl lint --new` allocates the next free code | lint-fmt (done as `scripts/new-lint.py`, which checks origin/main and moves to L06xx now L05xx is full) |
 | `cpl fmt` with no path or with stdin rewrote the whole repo (461-file revert, 2026-11-22) | No path means stdin only; never the tree in place | lint-fmt (done: pinned by `fmt_with_no_path_formats_stdin_and_rewrites_no_file`) |
 | A std/*.cp edit forces a 60 s release rebuild because std is embedded (2026-11-22) | Dev builds read std/ from disk | tools / compiler |
 | cpl.wasm at 2,098,812 of its 2,100,000 B gz cap (2026-11-22) | Cap set from a size budget per feature, with headroom, or cut size | site |
