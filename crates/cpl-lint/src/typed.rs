@@ -153,18 +153,7 @@ fn keep(d: &Diagnostic, facts: &Facts) -> bool {
     let label = || d.labels.first().map(|l| facts.place_type(l.span));
     match d.code {
         c if c == CHMIN_CHMAX_IF.code => scalar_place(d, facts),
-        c if c == COMPOUND_SELF_REF.code => {
-            let min_max = d
-                .fixes
-                .iter()
-                .flat_map(|f| &f.edits)
-                .any(|(_, t)| t.contains(" min= ") || t.contains(" max= "));
-            if min_max {
-                scalar_place(d, facts)
-            } else {
-                plain_place(d, facts)
-            }
-        }
+        c if c == COMPOUND_SELF_REF.code => plain_place(d, facts),
         c if c == PEEK_THEN_POP.code || c == REVERSE_INDEX.code => {
             matches!(label(), Some(Some(Ty::Named { name, .. })) if name == "List")
         }

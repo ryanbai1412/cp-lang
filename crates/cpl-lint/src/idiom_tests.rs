@@ -671,3 +671,43 @@ fn sentinel_table_reads_the_element_type_from_the_checker() {
     assert!(!fires("var memo: [0..=90]I128 = -1"));
     assert!(!fires("var memo: List<I128> = [-1 for _ in 0..=90]"));
 }
+
+/// `starts_with` is suggested for a `Str` or `List` slice, where slice bounds
+/// and `starts_with` count positions alike; an array over a domain slices by
+/// key, so the same shape stays quiet there.
+#[test]
+fn manual_starts_with_fires_on_positions_not_keys() {
+    let fires = |src: &str| {
+        crate::lint(src, &crate::Config::default())
+            .iter()
+            .any(|d| d.code == crate::MANUAL_STARTS_WITH.code)
+    };
+    let list = "let s: List<Int> = read()\nlet p: List<Int> = read()\nprint(yes(p.len <= s.len and s[0..p.len] == p))\n";
+    assert!(fires(list));
+    let array = "domain I = 0..4\nlet s: [I]Int = read()\nlet p: List<Int> = read()\nprint(yes(p.len <= s.len and s[0..p.len] == p))\n";
+    assert!(
+        !fires(array),
+        "{:#?}",
+        crate::lint(array, &crate::Config::default())
+    );
+}
+
+/// `x = min(x, e)` becomes `x min= e` only on a scalar: on a tuple `min=`
+/// works elementwise while `min` compares lexicographically.
+#[test]
+fn min_assign_is_suggested_on_scalars_not_tuples() {
+    let fires = |src: &str| {
+        crate::lint(src, &crate::Config::default())
+            .iter()
+            .any(|d| d.code == crate::CHMIN_CHMAX_IF.code)
+    };
+    assert!(fires(
+        "var x = 5\nlet y: Int = read()\nx = min(x, y)\nprint(x)\n"
+    ));
+    let tuple = "var t = (1, 2)\nlet y: Int = read()\nt = min(t, (y, 5))\nprint(t)\n";
+    assert!(
+        !fires(tuple),
+        "{:#?}",
+        crate::lint(tuple, &crate::Config::default())
+    );
+}
