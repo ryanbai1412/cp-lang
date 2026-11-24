@@ -17,6 +17,11 @@ brain.apply(to_l.l..min(short.r, to_r.r), Some(false))
 - **General fix:** a std "cut just after this cell" accessor (`Cell.r` exists) and a "cell just after this cut" accessor (`Cut.next_cell`), so that a search result can bound a range without ordinals. Owner: stdlib.
 - **Severity:** low.
 
+## Fixed with the scored review
+
+`solid` was an `= if` body that fmt split into a column of arguments; it is now a block body, `if hole: Run(len, 0, len, len, len) else: Run(0, len, 0, 0, 0)`, which fmt keeps on one line. fmt should prefer a block body over splitting an inner call (Owner: fmt).
+- **Owner:** idioms (done).
+
 ## Measurements
 
 - **Tokens:** port 449, accepted C++ 1217 (comments excluded).

@@ -1,6 +1,18 @@
 # shoi16p2
 
-Score: pending
-Dream: pending
+Score: 3/5
+Dream: pending (no dream.cp; the friction's `## Dream` is the target)
 
-Cold review: Mod<100_000_007> replaces the hand %-MOD arithmetic, X and Y domains make point() return None off the grid, and a square is named by its lowest and highest corners (always opposite) instead of a hand-packed code list. A square met at a pair of its c deleted corners adds back 2/c mod the prime, so no list of squares is kept (upstream showed the sorted list blew the 125 MB limit on clustered points) and no corner order is needed.
+Cold review on main 377955a60, against the idiomatic checklist. Rereviewed after this commit's change to lines 37-39: the four rotations are now a data list summed once. Checks clean, agrees with the reference at max in 0.67x its time and 0.05x its memory. The header (lines 3-10) gives the inclusion-exclusion and the 2 / c share per meeting. No dream.cp, so the port is capped at 3.
+
+## Checklist failures
+
+- The pair loop (lines 53-59) mixes ordered pairs (`continue` on `i == j`) and unordered ones (`i < j`); in the friction report (stdlib, `pairs(ordered:)`).
+
+## Rewrites owed with today's language
+
+- None.
+
+## Gaps that need the language
+
+- `pairs(ordered: true)`.

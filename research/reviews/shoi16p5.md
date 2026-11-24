@@ -1,6 +1,18 @@
 # shoi16p5
 
-Score: pending
-Dream: pending
+Score: 3/5
+Dream: pending (no dream.cp; the friction's `## Dream` is the target)
 
-Cold review: positions are a 1-based Pos domain read as 0..=1e4 values; each is a std Affine map, the run counts are one table computed once, and the SegTree's fold nests each map inside the one before it. Updates read as (Pos, 0..=1e4) and need no index shift.
+Cold review on main 377955a60, against the idiomatic checklist. Checks clean; agrees with the reference at max at 0.8x its time and memory. Each position is an `Affine`, a point update is one `set`, and the answer is the chain's constant: the editorial. No dream.cp, so the port is capped at 3.
+
+## Checklist failures
+
+- The opposite affine monoid is rebuilt from `Affine.id()` and a swapped `then`; in the friction report (stdlib, `Monoid.flip`).
+
+## Rewrites owed with today's language
+
+- None.
+
+## Gaps that need the language
+
+- `Monoid.flip()`.

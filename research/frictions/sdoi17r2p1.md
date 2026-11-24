@@ -16,6 +16,11 @@ let at_most = (k: Int) => if dice <= 800: below[k + 1] else: normal_cdf((F64(k) 
 - **General fix:** expose `erf`, `erfc` and a `PI` constant in std's float functions. Owner: stdlib.
 - **Severity:** low.
 
+## Fixed with the scored review
+
+`sqrt(3.141592653589793)` is now `sqrt(PI)` (`use std.geometry.{PI}`), and `dice <= 800` is named once as `let exact`. `PI` belongs in the F64 prelude rather than `std.geometry` (Owner: stdlib).
+- **Owner:** idioms (done).
+
 ## Measurements
 
 - **Tokens:** port 356, accepted C++ 645 (comments excluded).

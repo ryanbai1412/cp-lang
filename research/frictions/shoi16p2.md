@@ -23,6 +23,11 @@ fn corner(p: Point, d: (Int, Int)) -> ?Point = p + d      // off the lattice is 
 - **General fix:** a checked offset on product-domain values that returns `None` off the grid, the 2-D form of `offset`. Owner: stdlib.
 - **Severity:** low.
 
+## Fixed with the scored review
+
+The four hand-unrolled `corner_squares` calls are now data: `let sides = [(x, n - x, y), (m - y, y, x), (n - x, x, m - y), (y, m - y, n - x)]` and `total -= sum(corner_squares(a, b, c) for (a, b, c) in sides)`.
+- **Owner:** idioms (done).
+
 ## Measurements
 
 - **Tokens:** port 620, accepted C++ 970 (comments excluded).

@@ -10,6 +10,8 @@
 // original: corpus/submissions/5481972.cpp
 // Bounds: faces: 2..=20; dice: 1..=2e5; lo, hi: 0..=top
 
+use std.geometry.{PI}
+
 fn normal_below(z: F64) -> F64:  // P(N(0, 1) <= z)
     if z < -6.0: return 0.0
     if z > 6.0: return 1.0
@@ -20,13 +22,14 @@ fn normal_below(z: F64) -> F64:  // P(N(0, 1) <= z)
     for k in 1..120:
         term *= -x * x / F64(k)
         sum += term / F64(2 * k + 1)
-    0.5 + sum / sqrt(3.141592653589793)
+    0.5 + sum / sqrt(PI)
 
 @!multitest
 let (faces, dice): (2..=20, 1..=2e5) = read()
 let top = dice * (faces - 1)
 var below: List<F64> = [0.0]  // below[k]: the total is less than k (exact case only)
-if dice <= 800:
+let exact = dice <= 800
+if exact:
     domain Total = 0..=top
     var chance: [Total]F64 = 0.0
     chance[Total(0)] = 1.0
@@ -41,7 +44,7 @@ if dice <= 800:
     for t in Total: below.push(below.last + chance[t])
 let mean = F64(top) / 2.0
 let sd = sqrt(F64(dice * (faces * faces - 1)) / 12.0)
-let at_most = (k: Int) => if dice <= 800: below[k + 1] else: normal_below((F64(k) + 0.5 - mean) / sd)
+let at_most = (k: Int) => if exact: below[k + 1] else: normal_below((F64(k) + 0.5 - mean) / sd)
 for _ in 0..10:
     let (lo, hi): (0..=top, 0..=top) = read()
     assert lo <= hi

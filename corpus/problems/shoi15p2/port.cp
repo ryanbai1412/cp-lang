@@ -14,13 +14,8 @@ domain Cell = 1..=n
 
 struct Run(holes: 0..=2e5, cells: 0..=2e5, best: 0..=2e5, pre: 0..=2e5, suf: 0..=2e5)
 
-fn solid(hole: Bool, len: Int) -> Run = if hole: Run(
-    len,
-    0,
-    len,
-    len,
-    len,
-) else: Run(0, len, 0, 0, 0)
+fn solid(hole: Bool, len: Int) -> Run:
+    if hole: Run(len, 0, len, len, len) else: Run(0, len, 0, 0, 0)
 
 fn join(a: Run, b: Run) -> Run = Run(
     a.holes + b.holes,

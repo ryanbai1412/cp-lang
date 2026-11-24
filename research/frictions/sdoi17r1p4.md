@@ -1,6 +1,6 @@
 # Friction report: sdoi17r1p4
 
-There is no dream.cp. The port is the ideal: Dinkelbach's method with exact integer ratios. Each round runs std's `max_weight_matching` under weights `den * a - num * b` and stops when the best matching weighs 0. `fixed(num, den, 6)` prints the exact ratio.
+`dream.cp` is now a copy of the port (added with this review): it checks, passes every package case and agrees with the accepted C++, as recorded by `corpus.py verify`. The ideal beyond today's language is below. The port is the ideal: Dinkelbach's method with exact integer ratios. Each round runs std's `max_weight_matching` under weights `den * a - num * b` and stops when the best matching weighs 0. `fixed(num, den, 6)` prints the exact ratio.
 
 ## Dream
 

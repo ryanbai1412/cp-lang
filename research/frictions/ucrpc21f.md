@@ -1,6 +1,6 @@
 # Friction report: ucrpc21f
 
-There is no dream.cp. The port is the ideal: std `dijkstra` over the `(Row, Col)` cells, with each cell's moves given by `p.adj4` and the cost of the cell entered. No graph is built.
+`dream.cp` is now a copy of the port (added with this review): it checks, passes every package case and agrees with the accepted C++, as recorded by `corpus.py verify`. The ideal beyond today's language is below. The port is the ideal: std `dijkstra` over the `(Row, Col)` cells, with each cell's moves given by `p.adj4` and the cost of the cell entered. No graph is built.
 
 ## Dream
 

@@ -1,6 +1,6 @@
 # Friction report: ucrpc21g
 
-There is no dream.cp; the ideal is below. The port keeps the most popcorn held per cell (`[Row, Col]?Int`, `None` while unreachable). Each second it takes the best of the cell and its `adj4` neighbours, then applies that second's drops from the `gain` and `crush` tables.
+`dream.cp` is now a copy of the port (added with this review): it checks, passes every package case and agrees with the accepted C++, as recorded by `corpus.py verify`. The ideal beyond today's language is below. The port keeps the most popcorn held per cell (`[Row, Col]?Int`, `None` while unreachable). Each second it takes the best of the cell and its `adj4` neighbours, then applies that second's drops from the `gain` and `crush` tables.
 
 ## Dream
 

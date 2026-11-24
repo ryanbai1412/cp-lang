@@ -1,6 +1,6 @@
 # Friction report: tle18p5
 
-There is no dream.cp. The port is the ideal for the stdin form of the problem: std's `a.lis()` gives the positions of one longest strictly increasing subsequence.
+`dream.cp` is now a copy of the port (added with this review): it checks, passes every package case and agrees with the accepted C++, as recorded by `corpus.py verify`. The ideal beyond today's language is below. The port is the ideal for the stdin form of the problem: std's `a.lis()` gives the positions of one longest strictly increasing subsequence.
 
 ## Dream
 
