@@ -195,7 +195,7 @@
   "dream_unverified": 0,
   "measure_broken": 0,
   "mono_unguarded": 0,
-  "std_shadowed": 20,
+  "std_shadowed": 18,
   "corpus_walkers": 0,
   "unregistered_lists": 0,
   "json_outside_cpl_json": 0,
