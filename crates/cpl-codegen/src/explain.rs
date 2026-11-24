@@ -130,6 +130,14 @@ pub fn report_with(
                         entry.site
                     );
                 }
+                ClosureMode::FnPointer => {
+                    static_count += 1;
+                    let _ = writeln!(
+                        stdout,
+                        "  [static: fn ptr]   {} -> every closure it can hold captures nothing (no std::function)",
+                        entry.site
+                    );
+                }
                 ClosureMode::DynamicStdFunction { reason } => {
                     dynamic_count += 1;
                     let _ = writeln!(

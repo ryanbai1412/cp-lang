@@ -1335,6 +1335,9 @@ inline ll bit_ceil(ll x) { if (x > (1LL << 62)) fail(\"integer overflow: `bit_ce
 // struct exists, so it is never called.
 template <class R> struct NoFn {
     template <class... A> [[noreturn]] R operator()(A&&...) const { fail(\"a fn field of a struct that is never built was called\"); }
+    template <class... A> [[noreturn]] static R never(A...) { fail(\"a fn field of a struct that is never built was called\"); }
+    template <class... A> using Ptr = R (*)(A...);
+    template <class... A> operator Ptr<A...>() const { return &never<A...>; }
 };
 ",
     },

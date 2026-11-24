@@ -169,10 +169,11 @@ fn a_struct_built_with_several_closures_splits_per_closure() {
 fn a_variable_holding_two_closures_keeps_its_struct_whole() {
     let out = cpp(concat!(
         "struct Box(op: Int -> Int)\n",
-        "let k = read::<Int>()\n",
-        "var b = Box(x => x + 1)\n",
-        "if k > 3:\n    b = Box(x => x * k)\n",
-        "print(b.op(k))\n",
+        "fn go(k: Int):\n",
+        "    var b = Box(x => x + 1)\n",
+        "    if k > 3:\n        b = Box(x => x * k)\n",
+        "    print(b.op(k))\n",
+        "go(read::<Int>())\n",
     ));
     assert!(out.contains("std::function<ll(ll)> op;"), "{out}");
 }
@@ -255,5 +256,45 @@ print(fold(cat.opt(), [Some(1), None, Some(2)])!, fold(sub.opt(), [Some(5), Some
     assert!(
         !out.contains("std::function"),
         "each `opt()` clone captures one known closure, so its `op` calls it directly:\n{out}"
+    );
+}
+
+#[test]
+fn a_monoid_op_field_fed_only_captureless_closures_is_a_fn_pointer() {
+    let out = cpp("use std.algebra.{Monoid}
+struct Qs(m: Monoid<Int>)
+let q = Qs(Monoid(0, (a, b) => min(a, b)))
+let f = q.m.op
+print(f(3, 4))
+");
+    assert!(
+        !out.contains("std::function") && out.contains("std::add_pointer_t<ll(ll, ll)>"),
+        "every 2-ary closure captures nothing, so `op` is a plain function pointer:\n{out}"
+    );
+}
+
+#[test]
+fn an_unbuilt_ring_still_converts_to_a_fn_pointer() {
+    let out = cpp("type Z = Mod<7>
+domain V = 0..2
+print((Mat<Z>.new([V, V] (i, j) => Z(1)) ** 3).get(0, 0))
+");
+    assert!(
+        !out.contains("std::function") && out.contains("cpl::NoFn"),
+        "a `Mat` without a ring never calls its `add`/`mul`:\n{out}"
+    );
+}
+
+#[test]
+fn a_capturing_closure_of_the_same_arity_keeps_std_function() {
+    let out = cpp("fn go(k: Int):
+    let fs = [(x: Int) => x + k, (x: Int) => x * 2]
+    for f in fs:
+        print(f(3))
+go(read<Int>())
+");
+    assert!(
+        !out.contains("std::add_pointer_t"),
+        "a capturing 1-ary closure can't be a function pointer:\n{out}"
     );
 }

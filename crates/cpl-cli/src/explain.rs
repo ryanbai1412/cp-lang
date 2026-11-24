@@ -145,6 +145,10 @@ pub(crate) fn explain_file(
                     "unbuilt",
                     "its struct is never built, never called".to_string(),
                 ),
+                cpl_codegen::ClosureMode::FnPointer => (
+                    "fn_pointer",
+                    "every closure it can hold captures nothing".to_string(),
+                ),
                 cpl_codegen::ClosureMode::DynamicStdFunction { reason } => {
                     ("dynamic_std_function", reason.clone())
                 }

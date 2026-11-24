@@ -39,8 +39,26 @@ pub enum ClosureMode {
     /// A fn field of a struct the program never builds: no value holds
     /// it, so it is an empty `cpl::NoFn` and its calls never run.
     Unbuilt,
+    /// Every closure that can reach it captures nothing: a plain function
+    /// pointer, no `std::function`.
+    FnPointer,
     /// Genuinely dynamic fn value: falls back to `std::function`.
     DynamicStdFunction { reason: String },
+}
+
+/// The mode of a fn slot of type `ty` that no closure is known for: a function
+/// pointer when its arity only ever holds captureless closures.
+fn erased(program: &Program, ty: &Ty, reason: &str) -> ClosureMode {
+    let fn_ty = match ty {
+        Ty::Opt(inner) => inner.as_ref(),
+        t => t,
+    };
+    match fn_ty {
+        Ty::Fn(args, _) if crate::names::fn_pointer(program, args.len()) => ClosureMode::FnPointer,
+        _ => ClosureMode::DynamicStdFunction {
+            reason: reason.to_string(),
+        },
+    }
 }
 
 /// One fn-typed site reported by `cpl explain <file>`.
@@ -1668,9 +1686,7 @@ pub fn explain_closures(
             } else if devirt.unbuilt_field(sid, idx) {
                 ClosureMode::Unbuilt
             } else if matches!(fty, Ty::Opt(_)) {
-                ClosureMode::DynamicStdFunction {
-                    reason: "optional fn field that is read".to_string(),
-                }
+                erased(program, fty, "optional fn field that is read")
             } else if devirt.field_elidable(sid, idx) {
                 let Some(Held::One(cid)) = devirt.held.get(&Home::Field(sid, idx)).copied() else {
                     continue;
@@ -1684,7 +1700,7 @@ pub fn explain_closures(
                     }
                     None => "no closure stored in it is known here".to_string(),
                 };
-                ClosureMode::DynamicStdFunction { reason }
+                erased(program, fty, &reason)
             };
             out.push(ClosureLowering { site, mode });
         }
@@ -1723,7 +1739,7 @@ pub fn explain_closures(
                 } else {
                     "dynamic fn parameter".to_string()
                 };
-                ClosureMode::DynamicStdFunction { reason }
+                erased(program, &f.locals[slot].ty, &reason)
             };
             out.push(ClosureLowering { site, mode });
         }
@@ -1731,9 +1747,7 @@ pub fn explain_closures(
         if matches!(f.ret, Ty::Fn(..)) {
             out.push(ClosureLowering {
                 site: format!("fn {} result", f.name),
-                mode: ClosureMode::DynamicStdFunction {
-                    reason: "fn returning a closure".to_string(),
-                },
+                mode: erased(program, &f.ret, "fn returning a closure"),
             });
         }
 
@@ -1760,9 +1774,7 @@ pub fn explain_closures(
         if matches!(g.ty, Ty::Fn(..)) {
             let mode = match devirt.global_target(id) {
                 Some(closure) => ClosureMode::StaticDirect { closure },
-                None => ClosureMode::DynamicStdFunction {
-                    reason: "top-level fn var".to_string(),
-                },
+                None => erased(program, &g.ty, "top-level fn var"),
             };
             out.push(ClosureLowering {
                 site: format!("top-level {}", g.name),
@@ -1771,16 +1783,15 @@ pub fn explain_closures(
         }
     }
     for (cid, c) in program.closures.iter().enumerate() {
-        let dynamic = |site: String, reason: &str| ClosureLowering {
+        let dynamic = |site: String, ty: &Ty, reason: &str| ClosureLowering {
             site,
-            mode: ClosureMode::DynamicStdFunction {
-                reason: reason.to_string(),
-            },
+            mode: erased(program, ty, reason),
         };
         for &slot in &c.params {
             if matches!(c.locals[slot].ty, Ty::Fn(..)) {
                 out.push(dynamic(
                     format!("closure {cid} param {}", c.locals[slot].name),
+                    &c.locals[slot].ty,
                     "fn parameter of a closure",
                 ));
             }
@@ -1788,6 +1799,7 @@ pub fn explain_closures(
         if matches!(c.ret, Ty::Fn(..)) {
             out.push(dynamic(
                 format!("closure {cid} result"),
+                &c.ret,
                 "closure returning a closure",
             ));
         }
@@ -1802,7 +1814,7 @@ pub fn explain_closures(
                             site,
                             mode: ClosureMode::StaticLocalAuto,
                         },
-                        false => dynamic(site, "fn local inside a closure"),
+                        false => dynamic(site, &c.locals[*slot].ty, "fn local inside a closure"),
                     });
                 }
             }
@@ -1840,9 +1852,11 @@ fn explain_locals_in_block(
         let Some(init) = init else {
             out.push(ClosureLowering {
                 site,
-                mode: ClosureMode::DynamicStdFunction {
-                    reason: "fn slot declared before its value (a @memo fn's wrapper)".to_string(),
-                },
+                mode: erased(
+                    devirt.program,
+                    &locals[*slot].ty,
+                    "fn slot declared before its value (a @memo fn's wrapper)",
+                ),
             });
             return;
         };
@@ -1861,16 +1875,14 @@ fn explain_locals_in_block(
                 ClosureMode::StaticLocalAuto
             }
             ExprKind::Closure(cid) if !devirt.local_auto(*slot, cid) => {
-                ClosureMode::DynamicStdFunction {
-                    reason: "recursive local closure".to_string(),
-                }
+                erased(devirt.program, &locals[*slot].ty, "recursive local closure")
             }
-            ExprKind::Closure(_) => ClosureMode::DynamicStdFunction {
-                reason: "reassigned local closure".to_string(),
-            },
-            _ => ClosureMode::DynamicStdFunction {
-                reason: "dynamic fn value".to_string(),
-            },
+            ExprKind::Closure(_) => erased(
+                devirt.program,
+                &locals[*slot].ty,
+                "reassigned local closure",
+            ),
+            _ => erased(devirt.program, &locals[*slot].ty, "dynamic fn value"),
         };
         out.push(ClosureLowering { site, mode });
     });

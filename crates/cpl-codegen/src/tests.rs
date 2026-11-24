@@ -958,12 +958,15 @@ fn unread_fn_fields_are_dropped_instead_of_std_function() {
         "    var hook: ?(Int -> Int)\n",
         "struct Tagged:\n",
         "    pick: ?(Int -> Int)\n",
+        "fn bump(d: Int) -> Int:\n",
+        "    let f = (x: Int) => x + d\n",
+        "    f(1)\n",
         "let k = read::<Int>()\n",
         "let a = Acc(1, x => x * k)\n",
         "var b = Acc(2, None)\n",
         "b.hook = x => x + k\n",
         "let t = Tagged(x => x - k)\n",
-        "print(a.total + b.total, yes(t.pick == None))\n",
+        "print(a.total + b.total, yes(t.pick == None), bump(k))\n",
     );
     let out = cpp(src);
     let acc = &out[out.find("struct Acc {").expect("Acc")..];
@@ -1885,10 +1888,11 @@ fn a_bound_method_value_is_its_lambda_not_a_std_function() {
 #[test]
 fn explain_names_closure_params_and_top_level_fn_vars() {
     let src = concat!(
-        "let k = read::<Int>()\n",
-        "let g = x => x + k\n",
-        "let h = (f: Int -> Int, x: Int) => f(x) * 2\n",
-        "print(h(g, 3), g(1))\n",
+        "fn go(k: Int):\n",
+        "    let g = x => x + k\n",
+        "    let h = (f: Int -> Int, x: Int) => f(x) * 2\n",
+        "    print(h(g, 3), g(1))\n",
+        "go(read::<Int>())\n",
     );
     let mut db = cpl_check::Session::new();
     db.set_file("t.cp", src);

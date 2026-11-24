@@ -330,12 +330,28 @@ pub(crate) fn cty(program: &Program, niches: Niches, ty: &Ty) -> String {
         ),
         Ty::Mut(of) => format!("{}&", cty(program, niches, of)),
         Ty::Fn(args, ret) => {
-            let ps: Vec<String> = args.iter().map(|t| value_ty(program, niches, t)).collect();
-            format!(
-                "std::function<{}({})>",
-                cty(program, niches, ret),
-                ps.join(", ")
-            )
+            let pointer = fn_pointer(program, args.len());
+            let ps: Vec<String> = args
+                .iter()
+                .map(|t| match t {
+                    // A lambda takes these by `const&` (see `Emitter::closure`), and
+                    // a function pointer must name the lambda's exact parameters.
+                    _ if pointer
+                        && !matches!(t, Ty::Mut(_))
+                        && !t.is_scalar()
+                        && !cached(program, t) =>
+                    {
+                        format!("const {}&", value_ty(program, niches, t))
+                    }
+                    _ => value_ty(program, niches, t),
+                })
+                .collect();
+            let erased = if pointer {
+                "std::add_pointer_t"
+            } else {
+                "std::function"
+            };
+            format!("{erased}<{}({})>", cty(program, niches, ret), ps.join(", "))
         }
         Ty::Struct(id) => ident(&program.structs[*id].name),
         Ty::Enum(id) => ident(&program.enums[*id].name),
@@ -421,4 +437,18 @@ fn pos_path(ty: &Ty) -> Option<Vec<usize>> {
         path.insert(0, at);
         Some(path)
     })
+}
+
+/// Whether a fn value of this arity lowers to a plain function pointer: every
+/// closure of that arity in the whole program captures nothing, so each value
+/// that can reach the slot is a captureless lambda.
+pub(crate) fn fn_pointer(program: &Program, arity: usize) -> bool {
+    program
+        .closures
+        .iter()
+        .all(|c| c.params.len() != arity || c.captures.is_empty())
+}
+
+fn cached(program: &Program, ty: &Ty) -> bool {
+    matches!(ty, Ty::Struct(sid) if !program.structs[*sid].cached_fields.is_empty())
 }
