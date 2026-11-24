@@ -80,6 +80,12 @@ pub(crate) enum Op {
         dst: u16,
         src: u16,
     },
+    /// A copy of `src` that leaves it in place, a temporary too: a value
+    /// built once that a loop uses each round.
+    CloneV {
+        dst: u16,
+        src: u16,
+    },
     BoxI {
         dst_v: u16,
         src_i: u16,

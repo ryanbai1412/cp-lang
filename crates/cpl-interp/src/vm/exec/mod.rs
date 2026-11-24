@@ -195,6 +195,9 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                     };
                     regs_v[dst as usize] = v;
                 }
+                Op::CloneV { dst, src } => {
+                    regs_v[dst as usize] = regs_v[src as usize].clone();
+                }
                 Op::MoveVConsume { dst, src } => {
                     regs_v[dst as usize] =
                         std::mem::replace(&mut regs_v[src as usize], Value::Unit);

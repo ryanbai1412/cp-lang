@@ -284,24 +284,6 @@ impl<'a> Lowerer<'a> {
                 return self.err_expr(span);
             }
         };
-        // A key fn the sort calls once per element is held in a variable: a
-        // value built in place, such as the bound method `t.key`, is gone
-        // after its first call in a backend that moves temporaries.
-        if let SortBy::Fn { func, is_order } = key {
-            if !matches!(func.kind, ExprKind::Local(_) | ExprKind::Global(_)) {
-                return self.do_expr(Some(&Ty::Unit), span, |lw, out| {
-                    let held = lw.temp(func.ty.clone());
-                    out.push(Stmt::Let(held, Some(*func)));
-                    let func = Box::new(lw.local(held, span));
-                    let by = SortBy::Fn { func, is_order };
-                    let sort = lw.mk(ExprKind::Sort(Box::new(place), by, None), Ty::Unit, span);
-                    out.push(Stmt::Expr(sort));
-                    out.push(Stmt::Give(lw.mk(ExprKind::Unit, Ty::Unit, span)));
-                });
-            }
-            let key = SortBy::Fn { func, is_order };
-            return self.mk(ExprKind::Sort(Box::new(place), key, None), Ty::Unit, span);
-        }
         self.mk(ExprKind::Sort(Box::new(place), key, None), Ty::Unit, span)
     }
     /// `by: x => w(k)`, where `w` wraps its one argument in a one-field struct whose `Ord` asks
