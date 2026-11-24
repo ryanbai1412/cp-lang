@@ -544,6 +544,9 @@ class Tail:
             raise Failed("cargo build -p cpl-cli -p cpl-conform failed")
 
     def _commit(self, sel: dict[str, str], logs: str) -> None:
+        # First: the hook's 25 s cut allows a commit past any other step, so a slice
+        # after them went unrun whenever they were slow (e843b83dc's unparsable std).
+        self._slices(sel.get("slices", "").split())
         self.step("checking scripts (scripts/ci.py steps commit)")
         if run_steps("commit", self.cpl, run=self.run):
             raise Failed("")
@@ -555,7 +558,6 @@ class Tail:
         if gen.returncode:
             print((gen.stdout.strip().splitlines() or [""])[-1].removesuffix("; run: just gen"))
             print("note: not blocking, and no need to regenerate them: CI's regen job rewrites these on main")
-        self._slices(sel.get("slices", "").split())
         not_slow = f" & not ({slow_filter()})"
         if pkgs := sel.get("packages", "").split():
             ps = [a for p in pkgs for a in ("-p", p)]
@@ -820,6 +822,11 @@ class Tail:
         """The touched paths' owner-named tests, ahead of the rest; one over 20 s fails."""
         if not slices:
             return
+        # A separate step, so the hook's 25 s cut during a cold build allows the commit:
+        # only a slice's tests running out of time refuse it.
+        self.step(f"build of the touched-path slices' tests: {' '.join(slices)}")
+        if self.call([sys.executable, "scripts/affected.py", "--build-slices", *slices]):
+            raise Failed(f"the slices' tests do not build; rerun: uv run scripts/affected.py --build-slices {' '.join(slices)}")
         self.step(f"touched-path slices: {' '.join(slices)} (scripts/affected.py, each under 20 s)")
         if self.call([sys.executable, "scripts/affected.py", "--run-slices", *slices]):
             raise Failed("a touched-path slice failed or took over 20 s; the lines above name it, rerun:"

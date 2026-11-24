@@ -96,7 +96,7 @@ class StepsTest(unittest.TestCase):
                                                      *(ci.ROOT / ".github/workflows").glob("*.yml")])
         for g in sg.GATES:
             if g not in stepped:
-                self.assertRegex(elsewhere, rf'spec-gate\.py"?,? "?{g}\b|"{g}"\]', f"spec gate {g} is never run")
+                self.assertRegex(elsewhere, rf'spec-gate\.py"?,? "?{g}\b|just spec-gate {g}\b|"{g}"\]', f"spec gate {g} is never run")
 
     def test_every_failure_says_how_to_fix_it(self) -> None:
         from test_check_cache import FIX_HINT
@@ -321,11 +321,13 @@ class TailTest(unittest.TestCase):
         code, ev, _, _, _, _ = self._tail(mode="land", sel_packages="cpl-a", sel_filter="rdeps(cpl-a)",
                                           sel_slices="vm-trace copies", sel_slice_filter="test(=s)")
         self.assertEqual(code, 0)
+        self.assertLess(ev.index("scripts/affected.py --build-slices vm-trace copies"),
+                        ev.index("scripts/affected.py --run-slices vm-trace copies"))
         slices = ev.index("scripts/affected.py --run-slices vm-trace copies")
         train = ev.index(f"cargo nextest run --workspace --no-fail-fast -E (rdeps(cpl-a)) & not ({ci.slow_filter()})"
                          " & not (test(=s))")
         self.assertLess(slices, train)
-        code, ev, _, err, _, _ = self._tail(mode="land", sel_slices="vm-trace", codes={"scripts/affected.py": 1})
+        code, ev, _, err, _, _ = self._tail(mode="land", sel_slices="vm-trace", codes={"scripts/affected.py --run-slices vm-trace": 1})
         self.assertEqual(code, 1)
         self.assertIn("took over 20 s", err)
         self.assertFalse([e for e in ev if e.startswith("cargo nextest")])

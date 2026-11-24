@@ -121,6 +121,10 @@ class AffectedTest(unittest.TestCase):
         self.assertEqual(self.sel("crates/cpl-interp/src/vm/run.rs")["slices"], ["vm-trace"])
         self.assertEqual(self.sel("crates/cpl-fmt/src/lib.rs")["slices"], [])
 
+    def test_a_lint_or_checker_change_runs_the_corpus_warnings_slice(self):
+        for path in ("crates/cpl-lint/src/rules.rs", "crates/cpl-check/src/lib.rs"):
+            self.assertIn("corpus-warnings", self.sel(path)["slices"], path)
+
     def test_a_slice_filter_names_its_binaries_and_tests(self):
         self.assertEqual(affected.slice_filter(["corpus-warnings"]),
                          "(binary_id(cpl-lint) & test(=corpus_tests::corpus_warnings_only_go_down))")

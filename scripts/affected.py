@@ -53,7 +53,7 @@ SLICE_LIMIT_S = 20
 SLICES = [
     ("vm-trace", "consumers (trace)", ["std/*", "crates/cpl-interp/*", "crates/cpl-ir/*"],
      ["cpl-cli::trace_goldens", "cpl-cli::vm_fallbacks"]),
-    ("corpus-warnings", "consumers", ["std/*"],
+    ("corpus-warnings", "consumers", ["std/*", "crates/cpl-lint/*", "crates/cpl-check/*"],
      ["cpl-lint corpus_tests::corpus_warnings_only_go_down"]),
     ("ports-check", "content (stdlib)", ["std/*"],
      ["cpl-cli::corpus the_libraries_ports_and_passing_tests_check_clean"]),
@@ -135,15 +135,26 @@ def slice_times(output, names):
     return times
 
 
+def build_slices(names):
+    """Compiles the slices' test binaries: the commit hook times this apart from
+    the run, since a cold build after a crate change is slow compiling, not a slow test."""
+    unknown = [n for n in names if n not in {s[0] for s in SLICES}]
+    if unknown:
+        print(f"affected: unknown slice {' '.join(unknown)}; one of {', '.join(s[0] for s in SLICES)}")
+        return 2
+    return subprocess.run(["cargo", "nextest", "run", "--workspace", "--no-run", "-E", slice_filter(names)],
+                          cwd=ROOT).returncode
+
+
 def run_slices(names):
     unknown = [n for n in names if n not in {s[0] for s in SLICES}]
     if unknown:
         print(f"affected: unknown slice {' '.join(unknown)}; one of {', '.join(s[0] for s in SLICES)}")
         return 2
     expr = slice_filter(names)
-    built = subprocess.run(["cargo", "nextest", "run", "--workspace", "--no-run", "-E", expr], cwd=ROOT)
-    if built.returncode:
-        return built.returncode
+    built = build_slices(names)
+    if built:
+        return built
     run = subprocess.run(["cargo", "nextest", "run", "--workspace", "--no-fail-fast", "--status-level", "pass",
                           "-E", expr], cwd=ROOT, capture_output=True, text=True)
     sys.stdout.write(run.stdout + run.stderr)
@@ -226,6 +237,8 @@ def changed_since(base):
 
 
 def main(argv):
+    if argv[:1] == ["--build-slices"]:
+        return build_slices(argv[1:])
     if argv[:1] == ["--run-slices"]:
         return run_slices(argv[1:])
     as_json = "--json" in argv
