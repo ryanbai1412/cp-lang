@@ -175,8 +175,8 @@ fn enumerate_and_reversed_become_members() {
 }
 
 #[test]
-fn pow_is_std_fast_power_not_advice() {
-    let d = check("let xs = [1, 2]\nprint(pow(2, xs.len + 1), pow(3, 4, op: *))\n");
+fn pow_with_an_op_is_std_fast_power() {
+    let d = check("let xs = [1, 2]\nprint(pow(3, xs.len + 1, op: *), pow(3, 4, op: +))\n");
     assert!(d.is_empty(), "{d:?}");
 }
 
