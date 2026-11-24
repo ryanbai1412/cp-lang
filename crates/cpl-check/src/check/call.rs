@@ -1441,15 +1441,13 @@ impl<'a> Checker<'a> {
                     _ => Vec::new(),
                 };
                 let outer = std::mem::replace(&mut self.call_bound_args, through);
-                self.args(
-                    &callee_text,
-                    "takes",
-                    &params,
-                    args,
-                    call,
-                    &mut bindings,
-                    &own,
-                );
+                let takes = construct::Callee {
+                    name: &callee_text,
+                    verb: "takes",
+                    params: &params,
+                    own: &own,
+                };
+                self.args(takes, args, call, &mut bindings);
                 self.call_bound_args = outer;
                 if let Some(Def::Fn { default_binds, .. }) = callee_def.as_deref() {
                     for (generic, ty) in default_binds {

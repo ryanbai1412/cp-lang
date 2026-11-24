@@ -166,15 +166,13 @@ impl Checker<'_> {
                     let new = (method_rows.iter()).find(|(m, ..)| m == "new" && !is_generated_ctor);
                     let through = new.map(|r| r.2.clone());
                     let outer = std::mem::replace(&mut self.call_bound_args, through);
-                    self.args(
-                        callee_text,
+                    let callee = Callee {
+                        name: callee_text,
                         verb,
                         params,
-                        args,
-                        call,
-                        &mut bindings,
-                        generics,
-                    );
+                        own: generics,
+                    };
+                    self.args(callee, args, call, &mut bindings);
                     let through = std::mem::replace(&mut self.call_bound_args, outer);
                     if let Some((.., bounds)) = new {
                         self.method_bounds_hold(
@@ -264,14 +262,17 @@ impl Checker<'_> {
     /// the next `T` argument must be an `Int`.
     pub(super) fn args(
         &mut self,
-        callee: &str,
-        verb: &str,
-        params: &[Param],
+        callee: Callee<'_>,
         args: &[Arg],
         call: &Expr,
         bindings: &mut Bindings,
-        own: &[String],
     ) {
+        let Callee {
+            name: callee,
+            verb,
+            params,
+            own,
+        } = callee;
         let positional: Vec<&Param> = params.iter().filter(|p| !p.named_only).collect();
         let variadic = positional.last().is_some_and(|p| p.variadic);
         let labeled = params.iter().all(|p| !p.name.is_empty());
@@ -730,4 +731,15 @@ impl Checker<'_> {
         self.lambda_params.push((arg.value.span, tys));
         true
     }
+}
+
+/// The fn a call's arguments are checked against: its name and the verb
+/// errors say it with, its parameters, and its `own` type parameters, the
+/// ones the call binds.
+#[derive(Clone, Copy)]
+pub(super) struct Callee<'s> {
+    pub name: &'s str,
+    pub verb: &'s str,
+    pub params: &'s [Param],
+    pub own: &'s [String],
 }
