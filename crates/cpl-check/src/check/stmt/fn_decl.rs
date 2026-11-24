@@ -270,7 +270,7 @@ impl<'a> Checker<'a> {
         if let (Some(receiver), Some(Ty::Named { name, .. })) = (receiver, self_ty) {
             if let Some(Def::Struct { fields, .. }) = self.global(name).as_deref() {
                 for field in fields {
-                    self.scopes.last_mut().unwrap().insert(
+                    self.scopes.innermost().insert(
                         field.name.clone(),
                         Local {
                             ty: field.ty.clone(),

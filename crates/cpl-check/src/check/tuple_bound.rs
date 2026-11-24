@@ -13,7 +13,7 @@ impl Checker<'_> {
         let binds = items
             .iter()
             .any(|i| matches!(i.kind, TypeKind::DomainBinder(_)));
-        if pats.len() != items.len() || binds || self.scopes.is_empty() {
+        if pats.len() != items.len() || binds {
             return self.resolve_type(ty);
         }
         self.push_scope();
@@ -27,7 +27,7 @@ impl Checker<'_> {
                     span: part_pat.span,
                     keyword: "let",
                 };
-                self.scopes.last_mut().unwrap().insert(name.clone(), local);
+                self.scopes.innermost().insert(name.clone(), local);
             }
             parts.push(part);
         }

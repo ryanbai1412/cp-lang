@@ -88,7 +88,7 @@ impl<'a> Checker<'a> {
             }
             TypeKind::OwnDomain { name, elem } => {
                 // `[domain S]Char` declares `S` where it is written.
-                if self.local(&name.text).is_none() && !self.scopes.is_empty() {
+                if self.local(&name.text).is_none() {
                     self.declare(
                         &name.text,
                         name.span,
@@ -115,7 +115,7 @@ impl<'a> Checker<'a> {
                         .map(|i| match &i.kind {
                             TypeKind::DomainBinder(name) => {
                                 let domain = Ty::Domain(name.text.clone());
-                                self.scopes.last_mut().unwrap().insert(
+                                self.scopes.innermost().insert(
                                     name.text.clone(),
                                     Local {
                                         ty: domain.clone(),
@@ -145,7 +145,7 @@ impl<'a> Checker<'a> {
                         let field_ty = match &ty.kind {
                             TypeKind::NewDomain => {
                                 let domain = Ty::Domain(name.text.clone());
-                                self.scopes.last_mut().unwrap().insert(
+                                self.scopes.innermost().insert(
                                     name.text.clone(),
                                     Local {
                                         ty: domain.clone(),
@@ -555,10 +555,7 @@ impl<'a> Checker<'a> {
                 span: p.name.span,
                 keyword: "param",
             };
-            self.scopes
-                .last_mut()
-                .unwrap()
-                .insert(p.name.text.clone(), seen);
+            self.scopes.innermost().insert(p.name.text.clone(), seen);
             if p.ty.as_ref().is_some_and(Self::names_range_keys) {
                 self.lends.range_keys.insert(p.name.span);
             }
@@ -647,7 +644,7 @@ impl<'a> Checker<'a> {
                         },
                     };
                     let ty = self.declared_or_inferred(ty, init);
-                    self.scopes.last_mut().unwrap().insert(
+                    self.scopes.innermost().insert(
                         text.to_string(),
                         Local {
                             ty: ty.clone(),
@@ -661,7 +658,7 @@ impl<'a> Checker<'a> {
                 }
                 _ => continue,
             };
-            self.scopes.last_mut().unwrap().insert(
+            self.scopes.innermost().insert(
                 name.text.clone(),
                 Local {
                     ty: ty.clone(),

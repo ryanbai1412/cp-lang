@@ -37,6 +37,7 @@ mod mut_args;
 mod pattern;
 mod question;
 pub(crate) mod removed;
+mod scopes;
 mod spelling;
 mod steps;
 mod stmt;
@@ -212,7 +213,7 @@ pub(crate) struct Checker<'a> {
     /// The item's text; spans index into it.
     src: &'a str,
     sink: Sink,
-    scopes: Vec<HashMap<String, Local>>,
+    scopes: scopes::Scopes,
     /// The name spans of params declared `?mut T`: `if let s = p:` binds
     /// `s` to the caller's place, so it is mutable.
     opt_mut_params: crate::fx::HashSet<Span>,
@@ -331,7 +332,7 @@ impl<'a> Checker<'a> {
             env,
             src,
             sink: Sink::with_poisoned(poisoned),
-            scopes: vec![HashMap::default()],
+            scopes: scopes::Scopes::default(),
             opt_mut_params: Default::default(),
             generics: Vec::new(),
             defining_aliases: Vec::new(),
@@ -629,7 +630,7 @@ impl<'a> Checker<'a> {
     }
 
     fn push_scope(&mut self) {
-        self.scopes.push(HashMap::default());
+        self.scopes.push();
     }
 
     fn pop_scope(&mut self) {
@@ -697,7 +698,9 @@ impl<'a> Checker<'a> {
     }
 
     fn local(&self, name: &str) -> Option<&Local> {
-        self.scopes.iter().rev().find_map(|scope| scope.get(name))
+        self.scopes
+            .inner_first()
+            .find_map(|(_, scope)| scope.get(name))
     }
 
     /// The declaration of `name` when it is a fn parameter.
@@ -720,24 +723,18 @@ impl<'a> Checker<'a> {
 
     /// Scope depth (0-based) and declaration span of a block-local `domain`, if any.
     pub(crate) fn domain_depth(&self, name: &str) -> Option<(usize, Span)> {
-        self.scopes
-            .iter()
-            .enumerate()
-            .rev()
-            .find_map(|(depth, scope)| {
-                scope
-                    .get(name)
-                    .filter(|loc| loc.keyword == "domain")
-                    .map(|loc| (depth, loc.span))
-            })
+        self.scopes.inner_first().find_map(|(depth, scope)| {
+            scope
+                .get(name)
+                .filter(|loc| loc.keyword == "domain")
+                .map(|loc| (depth, loc.span))
+        })
     }
 
     /// Scope depth where `name` was declared, or `0` if top-level/global.
     pub(crate) fn var_depth(&self, name: &str) -> usize {
         self.scopes
-            .iter()
-            .enumerate()
-            .rev()
+            .inner_first()
             .find_map(|(depth, scope)| scope.contains_key(name).then_some(depth))
             .unwrap_or(0)
     }
@@ -879,7 +876,7 @@ impl<'a> Checker<'a> {
             owner: None,
         });
         self.moved.remove(name);
-        self.scopes.last_mut().unwrap().insert(
+        self.scopes.innermost().insert(
             name.to_string(),
             Local {
                 ty,
@@ -1078,7 +1075,7 @@ impl<'a> Checker<'a> {
         let mut candidates: Vec<String> = self.env.names();
         candidates.extend(prelude::VALUE_NAMES.iter().map(|n| n.to_string()));
         if value {
-            for scope in &self.scopes {
+            for scope in self.scopes.iter() {
                 candidates.extend(scope.keys().cloned());
             }
         }

@@ -1121,7 +1121,7 @@ impl<'a> Checker<'a> {
                 let aliased = self.resolve_alias(name, generics, ty);
                 self.type_hover(name);
                 if !top_level {
-                    self.scopes.last_mut().unwrap().insert(
+                    self.scopes.innermost().insert(
                         name.text.clone(),
                         Local {
                             ty: aliased,
@@ -1218,7 +1218,7 @@ impl<'a> Checker<'a> {
                         Vec::new()
                     };
                 for (oname, oty) in owned_from_struct {
-                    self.scopes.last_mut().unwrap().insert(
+                    self.scopes.innermost().insert(
                         oname,
                         Local {
                             ty: oty,

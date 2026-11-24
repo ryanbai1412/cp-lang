@@ -49,7 +49,7 @@ impl Checker<'_> {
     /// A scope where a struct body names its `fields` without `self.`.
     pub(crate) fn field_scope(&mut self, fields: &[crate::ty::Param], span: Span) {
         self.push_scope();
-        let scope = self.scopes.last_mut().unwrap();
+        let scope = self.scopes.innermost();
         for field in fields {
             let local = Local {
                 ty: field.ty.clone(),
