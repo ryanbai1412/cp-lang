@@ -169,12 +169,26 @@ def spawns(interactor):
     return False
 
 
+# `RUSAGE STATS PROG...` runs PROG and writes "exit user sys maxrss_kb" of PROG alone to
+# STATS, from wait4: microseconds, where GNU time's %U and %S round to 10 ms.
+RUSAGE = """import os, sys
+pid = os.fork()
+if pid == 0:
+    os.execv(sys.argv[2], sys.argv[2:])
+_, status, ru = os.wait4(pid, 0)
+code = os.waitstatus_to_exitcode(status)
+with open(sys.argv[1], "w") as f:
+    f.write(f"{code} {ru.ru_utime:.6f} {ru.ru_stime:.6f} {ru.ru_maxrss}")
+sys.exit(code if 0 <= code < 256 else 1)
+"""
+
+
 def run_interactive(binary, interactor, case, timeout):
     """`binary` against `interactor.py case`, connected the way `cpl test --interactor`
-    connects them; (cpu, status, peak RSS) of the solution alone, from `time`. "ok"
-    needs the interactor to accept and the solution to exit 0."""
+    connects them; (cpu, status, peak RSS) of the solution alone, from wait4 (see RUSAGE).
+    "ok" needs the interactor to accept and the solution to exit 0."""
     stats = os.path.join(os.path.dirname(binary) or ".", f".istats.{os.getpid()}.{threading.get_ident()}")
-    sol = [TIME, "-f", "%x %U %S %M", "-o", stats, binary]
+    sol = [sys.executable, "-c", RUSAGE, stats, binary]
     judge = [sys.executable, interactor, case]
     if spawns(interactor):
         procs = [subprocess.Popen(judge + ["--"] + sol, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
