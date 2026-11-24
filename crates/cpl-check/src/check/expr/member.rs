@@ -915,6 +915,7 @@ impl<'a> Checker<'a> {
             Ty::Domain(domain) => {
                 return match name.text.as_str() {
                     "first" | "last" => Ty::Optional(Box::new(Ty::Pos(domain.clone()))),
+                    "count" if !self.in_call_callee => Ty::Int,
                     "all" => Ty::Unknown,
                     "rev" => Ty::Domain(domain.clone()),
                     "mask" => Ty::Fn {

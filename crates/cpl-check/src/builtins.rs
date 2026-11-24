@@ -511,6 +511,7 @@ pub fn optional_member(name: &str) -> bool {
 /// (`v.next`) and range (`r.start`) without a declaration to read: the
 /// one list "did you mean" suggests from and completion offers.
 pub const DOMAIN_MEMBERS: &[(&str, &str)] = &[
+    ("count", "how many positions the domain has"),
     ("first", "the first position, or `None` when empty"),
     ("last", "the last position, or `None` when empty"),
     ("rev", "the positions in reverse order"),
@@ -599,6 +600,8 @@ mod tests {
         let d = &check("domain V = 1..=9\nprint(V.mas)\n")[0];
         assert_eq!(d.code.0, "E0203");
         assert_eq!(d.help.as_deref(), Some("did you mean `mask`?"));
+        let d = &check("domain V = 1..=9\nprint(V.bound)\n")[0];
+        assert_eq!(d.help.as_deref(), Some("did you mean `count`?"));
         let d = &check("domain V = 1..=9\nfor v in V:\n    print(v.nxt)\n")[0];
         assert_eq!(d.help.as_deref(), Some("did you mean `next`?"));
         // Every listed member is one `member_ty` knows.
