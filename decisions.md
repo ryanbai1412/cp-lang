@@ -8845,3 +8845,5 @@ Reserved for call 5, which landed as decision 519.
 - **Call.** `debt-ratchet.py`'s crate counters skip just the item a `#[cfg(test)]` gates (its attributes through the closing brace or `;`). They used to stop reading the file at the first one, so a test helper mid-file hid every line below it. The debt that exposed is re-measured, not new: `unwrap_input` 717 -> 721, `lsp_string_types` 11 -> 16, `unchecked_fix_paths` 4 -> 7, `config_schemas` 6 -> 7, `edit_engines` 3 -> 4 (4b631fd24).
 - **Why.** A counter must count raw totals; one that a test attribute can silence lets debt hide by moving a helper up the file.
 - **Reverse.** Stop `_ungated_lines` at the first `#[cfg(test)]` again and lower those five baselines.
+
+## 531. (reserved, content)
