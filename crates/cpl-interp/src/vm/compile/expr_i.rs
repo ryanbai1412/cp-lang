@@ -325,7 +325,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.emit(Op::MoveI { dst, src: r }, rhs.span);
                 let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let false_pc = self.ops.len() as u32;
-                self.patch(j_false, false_pc);
+                self.patch_all(j_false, false_pc);
                 self.emit(Op::ConstImmI { dst, val: 0 }, span);
                 let end_pc = self.ops.len() as u32;
                 self.patch(j_end, end_pc);
@@ -1022,7 +1022,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let else_pc = self.ops.len() as u32;
-                self.patch(j_else, else_pc);
+                self.patch_all(j_else, else_pc);
                 let re = self.compile_expr_i(else_e);
                 if re != dst {
                     self.emit(Op::MoveI { dst, src: re }, else_e.span);

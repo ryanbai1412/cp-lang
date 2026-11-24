@@ -1426,58 +1426,69 @@ impl<'p, 'f> Compiler<'p, 'f> {
         true
     }
 
-    pub(super) fn emit_branch_if_false(&mut self, cond: &'p Expr) -> Jump {
-        if let ExprKind::IsSome(inner) = &cond.kind {
-            if ScalarKind::of_opt_ty(&inner.ty, self.program).is_some() {
-                let (_, r_some) = self.compile_expr_opt_i(inner);
-                return self.emit_jump(JumpOp::JmpIfZero { reg: r_some }, cond.span);
-            } else {
-                let src_v = self.compile_expr_v(inner);
-                let r_some = self.alloc_i();
-                self.emit(
-                    Op::IsVariantI {
-                        tag: 1,
-                        dst_i: r_some,
-                        src_v,
-                    },
-                    cond.span,
-                );
-                return self.emit_jump(JumpOp::JmpIfZero { reg: r_some }, cond.span);
+    pub(super) fn emit_branch_if_false(&mut self, cond: &'p Expr) -> Vec<Jump> {
+        let mut out = Vec::new();
+        self.emit_branch(cond, false, &mut out);
+        out
+    }
+
+    /// Pushes onto `out` the jumps taken when `cond` is `on` and falls through
+    /// otherwise, so a condition of `and`, `or`, `not` and compares never stores a Bool.
+    fn emit_branch(&mut self, cond: &'p Expr, on: bool, out: &mut Vec<Jump>) {
+        let jump = match &cond.kind {
+            ExprKind::Unary(UnOp::Not, inner) => return self.emit_branch(inner, !on, out),
+            ExprKind::Binary(op @ (BinOp::And | BinOp::Or), lhs, rhs) => {
+                // `and` leaves on a false lhs, `or` on a true one.
+                let short = *op == BinOp::Or;
+                if short == on {
+                    self.emit_branch(lhs, short, out);
+                    return self.emit_branch(rhs, on, out);
+                }
+                let mut past = Vec::new();
+                self.emit_branch(lhs, short, &mut past);
+                self.emit_branch(rhs, on, out);
+                let here = self.ops.len() as u32;
+                return self.patch_all(past, here);
             }
-        }
-        if let ExprKind::Cmp(op, lhs, rhs) = &cond.kind {
-            if ScalarKind::of_ty(&lhs.ty, self.program).is_some()
-                && ScalarKind::of_ty(&rhs.ty, self.program).is_some()
-                && lhs.ty != Ty::U64
-                && rhs.ty != Ty::U64
-                && ty_uses_structural_cmp(&lhs.ty, self.program)
-                && matches!(
-                    op,
-                    CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
-                )
+            ExprKind::Cmp(op, lhs, rhs)
+                if ScalarKind::of_ty(&lhs.ty, self.program).is_some()
+                    && ScalarKind::of_ty(&rhs.ty, self.program).is_some()
+                    && lhs.ty != Ty::U64
+                    && rhs.ty != Ty::U64
+                    && ty_uses_structural_cmp(&lhs.ty, self.program)
+                    && matches!(
+                        op,
+                        CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge | CmpOp::Eq | CmpOp::Ne
+                    ) =>
             {
-                let inv: fn(u16, u16) -> JumpOp = match op {
-                    CmpOp::Lt => |a, b| JumpOp::JmpGeI { a, b },
-                    CmpOp::Le => |a, b| JumpOp::JmpGtI { a, b },
-                    CmpOp::Gt => |a, b| JumpOp::JmpLeI { a, b },
-                    CmpOp::Ge => |a, b| JumpOp::JmpLtI { a, b },
-                    CmpOp::Eq => |a, b| JumpOp::JmpNeI { a, b },
-                    CmpOp::Ne => |a, b| JumpOp::JmpEqI { a, b },
-                    _ => {
-                        let r = self.compile_expr_i(cond);
-                        return self.emit_jump(JumpOp::JmpIfZero { reg: r }, cond.span);
-                    }
-                };
                 let a = self.compile_expr_i(lhs);
                 let b = self.compile_expr_i(rhs);
-                return self.emit_jump(inv(a, b), cond.span);
+                let op = match (on, op) {
+                    (true, op) => *op,
+                    (_, CmpOp::Lt) => CmpOp::Ge,
+                    (_, CmpOp::Le) => CmpOp::Gt,
+                    (_, CmpOp::Gt) => CmpOp::Le,
+                    (_, CmpOp::Ge) => CmpOp::Lt,
+                    (_, CmpOp::Eq) => CmpOp::Ne,
+                    _ => CmpOp::Eq,
+                };
+                match op {
+                    CmpOp::Lt => JumpOp::JmpLtI { a, b },
+                    CmpOp::Le => JumpOp::JmpLeI { a, b },
+                    CmpOp::Gt => JumpOp::JmpGtI { a, b },
+                    CmpOp::Ge => JumpOp::JmpGeI { a, b },
+                    CmpOp::Eq => JumpOp::JmpEqI { a, b },
+                    _ => JumpOp::JmpNeI { a, b },
+                }
             }
-        }
-        if let ExprKind::Unary(UnOp::Not, inner) = &cond.kind {
-            let r = self.compile_expr_i(inner);
-            return self.emit_jump(JumpOp::JmpIfNonZero { reg: r }, cond.span);
-        }
-        let r = self.compile_expr_i(cond);
-        self.emit_jump(JumpOp::JmpIfZero { reg: r }, cond.span)
+            _ => {
+                let reg = self.compile_expr_i(cond);
+                match on {
+                    true => JumpOp::JmpIfNonZero { reg },
+                    false => JumpOp::JmpIfZero { reg },
+                }
+            }
+        };
+        out.push(self.emit_jump(jump, cond.span));
     }
 }

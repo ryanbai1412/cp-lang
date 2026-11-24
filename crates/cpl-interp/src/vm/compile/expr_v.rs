@@ -1330,7 +1330,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.compile_expr_small_tuple(then_e, dst_base, len);
                 let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let else_pc = self.ops.len() as u32;
-                self.patch(j_else, else_pc);
+                self.patch_all(j_else, else_pc);
                 self.compile_expr_small_tuple(else_e, dst_base, len);
                 let end_pc = self.ops.len() as u32;
                 self.patch(j_end, end_pc);

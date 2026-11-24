@@ -703,7 +703,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                         then_e.span,
                     );
                     let end_pc = self.ops.len() as u32;
-                    self.patch(j_else, end_pc);
+                    self.patch_all(j_else, end_pc);
                     return (dst_val, dst_some);
                 }
                 let dst_val = self.alloc_i();
@@ -726,7 +726,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 );
                 let j_end = self.emit_jump(JumpOp::Jmp, span);
                 let else_pc = self.ops.len() as u32;
-                self.patch(j_else, else_pc);
+                self.patch_all(j_else, else_pc);
                 let (ev, es) = self.compile_expr_opt_i(else_e);
                 self.emit(
                     Op::MoveI {

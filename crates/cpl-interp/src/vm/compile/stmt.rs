@@ -869,11 +869,11 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 }
                 if else_b.stmts.is_empty() {
                     let end = self.ops.len() as u32;
-                    self.patch(j_else, end);
+                    self.patch_all(j_else, end);
                 } else {
                     let j_end = self.emit_jump(JumpOp::Jmp, cond.span);
                     let else_pc = self.ops.len() as u32;
-                    self.patch(j_else, else_pc);
+                    self.patch_all(j_else, else_pc);
                     for s in &else_b.stmts {
                         self.compile_stmt(s);
                     }
@@ -894,7 +894,7 @@ impl<'p, 'f> Compiler<'p, 'f> {
                 self.note_back_edge(back, Some(LoopReg::While(*id)));
                 self.emit(Op::Jmp { target: head }, cond.span);
                 let end = self.ops.len() as u32;
-                self.patch(j_exit, end);
+                self.patch_all(j_exit, end);
                 self.patch_all(lt.breaks, end);
             }
             Stmt::For(id, slot, iter, body) => {
