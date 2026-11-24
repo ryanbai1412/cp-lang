@@ -3,86 +3,72 @@
 // Problem: a grid of n columns and m rows (n, m <= 1e9), q <= 1e5 strokes painting the cells of a horizontal,
 //   vertical or diagonal (x and y both rising) segment black; at most 5 strokes are diagonal.
 //   Print the number of black cells. The first input number is the test id.
-// Solution: merge overlapping or touching strokes on the same line and add up their lengths.
-//   Subtract the horizontal-vertical crossings with a sweep over y: vertical strokes enter and
-//   leave a Fenwick tree over their sorted x's, and each horizontal stroke counts the live x's in
-//   its range. Each of the <= 5 diagonals meets every other stroke in at most one cell: collect
-//   those x's, dedupe, subtract. O(q log q).
+// Solution: compress each kind's line keys and give every line an IntervalSet, which merges its
+//   overlapping or touching strokes; their covered lengths add up. A cell on a horizontal and a
+//   vertical stroke is counted twice: sweep the rows upward with a Fenwick tree over the vertical
+//   lines, live while one of their runs spans the row, and let each horizontal run take off the
+//   live columns it spans. Each of the <= 5 diagonals meets every other line in at most one cell
+//   per run: collect those columns, dedupe and take them off. O(q log q).
 // original: corpus/submissions/5723056.cpp
-// Strokes are (line, lo, hi) tuples in three lists, and the sweep carries a
-// hand-rolled Fenwick over the sorted vertical lines: the prototype has no
-// compress(...).first_ge and no Set.rank.
-// Bounds: _test_id: 0..=20; cols, rows: 1..=1e9; q: 1..=1e5; kind: 1..=3; x1, x2: 1..=cols; y1, y2: 1..=rows
+// Bounds: _test_id: 0..=20; cols, rows: 1..=1e9; q: 1..=1e5; strokes: [q](1..=3, Col, Row, Col, Row)
+use std.interval.{IntervalSet}
+
 let _test_id: 0..=20 = read()
 let cols: 1..=1e9 = read()
 let rows: 1..=1e9 = read()
 let q: 1..=1e5 = read()
-var hori_in: List<(Int, Int, Int)> = []  // (y, x from, x to)
-var vert_in: List<(Int, Int, Int)> = []  // (x, y from, y to)
-var diag_in: List<(Int, Int, Int)> = []  // (y - x, x from, x to)
-for _ in 0..q:
-    let kind: 1..=3 = read()
-    let x1: 1..=cols = read()
-    let y1: 1..=rows = read()
-    let x2: 1..=cols = read()
-    let y2: 1..=rows = read()
-    if kind == 1: hori_in.push((y1, min(x1, x2), max(x1, x2)))
-    elif kind == 2: vert_in.push((x1, min(y1, y2), max(y1, y2)))
-    else: diag_in.push((y1 - x1, min(x1, x2), max(x1, x2)))
+domain Col = 1..=cols
+domain Row = 1..=rows
 
-// strokes on one line that overlap or touch become one stroke
-fn merged(strokes: List<(Int, Int, Int)>) -> List<(Int, Int, Int)>:
-    var out: List<(Int, Int, Int)> = []
-    for s in strokes.sorted():
-        if let top = out.last and top.0 == s.0 and s.1 <= top.2 + 1:
-            out.last! = (top.0, top.1, max(top.2, s.2))
-        else: out.push(s)
-    out
+let strokes: [q](1..=3, Col, Row, Col, Row) = read()
 
-let hori = merged(hori_in)
-let vert = merged(vert_in)
-let diag = merged(diag_in)
+// one IntervalSet per line, over that line's compressed key, merges its overlapping or
+// touching strokes
+let (domain H, h_row) = compress([s.2 for s in strokes if s.0 == 1])
+let (domain V, v_col) = compress([s.1 for s in strokes if s.0 == 2])
+let (domain D, d_gap) = compress([s.2.ord - s.1.ord for s in strokes if s.0 == 3])
+var hori = [H] _ => IntervalSet<Col>()
+var vert = [V] _ => IntervalSet<Row>()
+var diag = [D] _ => IntervalSet<Col>()  // the line y - x = d_gap
+for (kind, x1, y1, x2, y2) in strokes:
+    let across = min(x1, x2)..=max(x1, x2)
+    match kind:
+        1 => hori[h_row.index_of(y1)].add(across)
+        2 => vert[v_col.index_of(x1)].add(min(y1, y2)..=max(y1, y2))
+        _ => diag[d_gap.index_of(y1.ord - x1.ord)].add(across)
 
-var cells = 0
-for s in hori: cells += s.2 - s.1 + 1
-for s in vert: cells += s.2 - s.1 + 1
-for s in diag: cells += s.2 - s.1 + 1
+var cells = sum(line.covered for line in hori) + sum(line.covered for line in vert)
+    + sum(line.covered for line in diag)
 
-// a cell on a horizontal and a vertical stroke was counted twice: sweep y
-// upward keeping the x of every vertical stroke alive at that height
-domain Vert = 0..vert.len
-let xs: [Vert]Int = [Vert] i => vert[i.ord].0  // already sorted, one per stroke
-fn first_ge(x: Int) -> Int:
-    var (lo, hi) = (0, vert.len)
-    while lo < hi:
-        let mid = (lo + hi) / 2
-        if xs[Vert(mid)] < x: lo = mid + 1
-        else: hi = mid
-    lo
-var alive = Fenwick<Vert, Int>()
+// rows upward: a vertical run goes live on its first row and dies after its last,
+// and the horizontal runs of a row are asked in between
+var live = Fenwick<V, Int>()
+var events: List<(Row, Int, Col, Col)> = []  // (row, 0 enter / 1 ask / 2 leave, columns)
+for v in V:
+    for run in vert[v].each():
+        events.push((run.first!, 0, v_col.get(v), v_col.get(v)))
+        events.push((run.last!, 2, v_col.get(v), v_col.get(v)))
+for h in H:
+    for run in hori[h].each(): events.push((h_row.get(h), 1, run.first!, run.last!))
+for (_, what, from, to) in events.sorted():
+    if what == 1:
+        if let lo = v_col.first_ge(from) and let hi = v_col.last_le(to) and lo <= hi:
+            cells -= live.fold(lo..=hi)
+    else: live.add(v_col.index_of(from), 1 - what)
 
-var events: List<(Int, Int, Int, Int)> = []  // (y, order, a, b): leave, enter, then ask
-for i in 0..vert.len:
-    events.push((vert[i].1, 1, i, 1))
-    events.push((vert[i].2 + 1, 0, i, -1))
-for s in hori: events.push((s.0, 2, s.1, s.2))
-for e in events.sorted():
-    if e.1 == 2:
-        let lo = first_ge(e.2)
-        let hi = first_ge(e.3 + 1)
-        if lo < hi: cells -= alive.fold(Vert(lo)..=Vert(hi - 1))
-    else: alive.add(Vert(e.2), e.3)
-
-// a diagonal stroke meets each other stroke in at most one cell
-for d in diag:
-    var hits: List<Int> = []
-    for s in hori:
-        let x = s.0 - d.0
-        if d.1 <= x and x <= d.2 and s.1 <= x and x <= s.2: hits.push(x)
-    for s in vert:
-        let y = s.0 + d.0
-        if d.1 <= s.0 and s.0 <= d.2 and s.1 <= y <= s.2: hits.push(s.0)
-    hits.sort()
-    for i in 0..hits.len:
-        if i == 0 or hits[i] != hits[i - 1]: cells -= 1
+// a diagonal run meets each other line in at most one cell
+for d in D:
+    let gap = d_gap.get(d)
+    for run in diag[d].each():
+        var hits: List<Col> = []
+        for h in H:
+            let x = h_row.get(h).ord - gap
+            if x in 0..cols and Col.nth(x) in run and hori[h].contains(Col.nth(x)): hits.push(Col.nth(x))
+        for v in V:
+            let x = v_col.get(v)
+            let y = x.ord + gap
+            if x in run and y in 0..rows and vert[v].contains(Row.nth(y)): hits.push(x)
+        hits.sort()
+        hits.dedup()
+        cells -= hits.len
 print(cells)
