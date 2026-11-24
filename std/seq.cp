@@ -1561,26 +1561,66 @@ impl Indexed<D, (D, T)> for Items<S: Indexed<D, T>>:
 /// `s[2..5][3]` is `s[3]` and `s[2..5][0]` traps. `w.first`, `w.nth(k)` and `w.rebase()` give
 /// offsets. Writable through a `var` source; the source's length can't change while it is alive.
 /// See `spec/core/04b-keys.md`.
-pub struct Slice<S>():
+pub struct Slice<S>(
+    /// \(O(1)\). The source sequence this slice views.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `let a = [1, 2, 3]; a[1..].src == a`
+    pub src: S,
+    lo: Int,
+    hi: Int,
+):
+    /// The number of elements in the slice.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `[1, 2, 3][1..].len == 2`
+    @get pub fn len(self) -> Int = hi - lo
+    /// Whether the slice has no elements.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `[1, 2][2..].is_empty == true`
+    @get pub fn is_empty(self) -> Bool = hi <= lo
+
+/// The keys at walk positions `lo..hi` of `s`; an empty slice sits at key `lo` when there is one.
+fn slice_keys<S: Indexed, D>(s: S, lo: Int, hi: Int) -> Range<D>:
+    let ks = s.keys
+    if lo < hi: return ks.nth(lo)..=ks.nth(hi - 1)
+    if lo < ks.len:
+        let k = ks.nth(lo)
+        return k..k
+    if ks.len == 0: return ks
+    let k = ks.nth(ks.len - 1)
+    k..k
+
+impl Seq<T> for Slice<S: Indexed<D, T>>:
+    fn iter(self) -> yields T:
+        for k in slice_keys(src, lo, hi): yield src.at(k)
+
+impl Keyed<D, T> for Slice<S: Indexed<D, T>>:
+    fn items(self) -> yields (D, T):
+        for k in slice_keys(src, lo, hi): yield (k, src.at(k))
+
+impl Sized for Slice<S: Indexed<D, T>>:
+    @get fn len(self) -> Int = hi - lo
+
+impl Bidir<T> for Slice<S: Indexed<D, T>>:
+    fn iter_rev(self) -> yields T:
+        for k in slice_keys(src, lo, hi).rev: yield src.at(k)
+
+impl Indexed<D, T> for Slice<S: Indexed<D, T>>:
+    fn at(self, i: D) -> T:
+        assert i in slice_keys(src, lo, hi), "a key outside the slice"
+        src.at(i)
     /// \(O(1)\). The slice's keys: a sub-range of the source's keys.
     ///
     /// cost: \(O(1)\)
     /// traps: never
     /// example: `[5, 6, 7][1..].keys == 1..3`
     /// order: increasing
-    @get pub fn keys<K>(self) -> Range<K> = todo
-    /// The number of elements in the slice.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `[1, 2, 3][1..].len == 2`
-    @get pub fn len(self) -> Int = todo
-    /// Whether the slice has no elements.
-    ///
-    /// cost: \(O(1)\)
-    /// traps: never
-    /// example: `[1, 2][2..].is_empty == true`
-    @get pub fn is_empty(self) -> Bool = todo
+    @get fn keys(self) -> Range<D> = slice_keys(src, lo, hi)
 
     /// \(O(\mathit{len})\). Visit every element with its source key; `for x in s` walks the
     /// same elements without the keys.

@@ -1025,15 +1025,6 @@ impl<'a> Checker<'a> {
                 {
                     return Some(Ty::Optional(Box::new(elem)));
                 }
-                "filter" => {
-                    if let [arg] = args {
-                        self.fn_value_takes("filter", &arg.value, 1);
-                    }
-                    return Some(Ty::Named {
-                        name: "Filter".into(),
-                        args: vec![elem],
-                    });
-                }
                 "sorted" => {
                     return Some(Ty::list(elem));
                 }
