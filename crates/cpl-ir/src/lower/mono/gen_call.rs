@@ -101,6 +101,7 @@ impl<'a> Lowerer<'a> {
 
         // Pass 1: unify from non-lambda arguments (and detect bare operators passed for unbound type params).
         let mut op_params: Vec<(String, BareOp)> = Vec::new();
+        let mut waiting_ops = Vec::new();
         for (param, arg) in ast_params.iter().zip(&matched) {
             // An omitted `over: M = (+)` binds `M` to the operator its default names.
             if let (Some(ast::TypeKind::Named { name, args }), None, Some(default)) =
@@ -131,6 +132,22 @@ impl<'a> Lowerer<'a> {
                     && gen_names.contains(&name.text)
                     && !inferred.contains_key(&name.text)
                 {
+                    // `go(+, [2, 3])` with `M: Op<E>`: `+` takes `Monoid<E>` once
+                    // a later argument gives `E`.
+                    if self.monoid_bare_op(&arg.value).is_some()
+                        && self.bound_has_monoid_impl(&decl.bounds, &name.text)
+                        && self
+                            .monoid_impl_shape(
+                                &decl.bounds,
+                                &name.text,
+                                (tpl_mod, tpl_offset),
+                                &inferred,
+                            )
+                            .is_none()
+                    {
+                        waiting_ops.push((pty, &arg.value, name.text.clone()));
+                        continue;
+                    }
                     let tpl = (tpl_mod, tpl_offset, &inferred);
                     if let Some(g) = self.bare_op_for(&decl.bounds, &name.text, &arg.value, tpl) {
                         inferred.insert(name.text.clone(), g);
@@ -268,6 +285,15 @@ impl<'a> Lowerer<'a> {
             }
         }
 
+        for (pty, value, param) in waiting_ops {
+            let tpl = (tpl_mod, tpl_offset, &inferred);
+            match self.bare_op_for(&decl.bounds, &param, value, tpl) {
+                Some(g) => {
+                    inferred.insert(param, g);
+                }
+                None => self.unify_lambda_params(pty, value, tpl_mod, &gen_names, &mut inferred),
+            }
+        }
         // Propagate bindings implied by row/trait bounds (e.g. `R: (u: V, v: V, ..)`,
         // `G: Next<V>`).
         self.unify_bounds(&decl.bounds, tpl_mod, &gen_names, &mut inferred);

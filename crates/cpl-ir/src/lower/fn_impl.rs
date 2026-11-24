@@ -354,6 +354,27 @@ impl<'a> Lowerer<'a> {
     /// `impl<T> Op<T> for (T, T) -> T`: a closure passed for it stays a fn
     /// value, so the impl's methods and associated types apply to it.
     fn bound_has_fn_impl(&self, bounds: &[ast::Bound], param: &str) -> bool {
+        self.bound_has_impl(bounds, param, |t| {
+            matches!(t.kind, ast::TypeKind::Fn { .. })
+        })
+    }
+
+    /// Whether `param`'s bound has an impl for `Monoid<..>`, which a bare op
+    /// passed for it takes.
+    pub(super) fn bound_has_monoid_impl(&self, bounds: &[ast::Bound], param: &str) -> bool {
+        self.bound_has_impl(
+            bounds,
+            param,
+            |t| matches!(&t.kind, ast::TypeKind::Named { name, .. } if name.text == "Monoid"),
+        )
+    }
+
+    fn bound_has_impl(
+        &self,
+        bounds: &[ast::Bound],
+        param: &str,
+        fits: impl Fn(&ast::Type) -> bool,
+    ) -> bool {
         bounds
             .iter()
             .filter(|b| b.name.text == param)
@@ -363,10 +384,9 @@ impl<'a> Lowerer<'a> {
                 _ => None,
             })
             .any(|tr| {
-                self.impls.iter().any(|imp| {
-                    imp.trait_name.as_deref() == Some(tr)
-                        && matches!(imp.target.kind, ast::TypeKind::Fn { .. })
-                })
+                self.impls
+                    .iter()
+                    .any(|imp| imp.trait_name.as_deref() == Some(tr) && fits(imp.target))
             })
     }
 

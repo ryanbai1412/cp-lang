@@ -1369,6 +1369,9 @@ impl<'a> Checker<'a> {
                         }
                     }
                 }
+                if let Some(def) = callee_def.as_deref() {
+                    self.bare_ops_take_monoid(def, &params, args, &mut bindings);
+                }
                 if let Some(fn_name) = callee_name {
                     if let Some(Def::Fn { bounds, .. }) = self.global(fn_name).as_deref().cloned() {
                         for (param, traits) in bounds {

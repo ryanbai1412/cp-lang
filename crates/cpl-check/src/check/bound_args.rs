@@ -176,6 +176,91 @@ impl Checker<'_> {
         None
     }
 
+    /// A bare op (`+`, `max`) passed for `M: Op<E>` is the `Monoid<E>` the
+    /// trait has an impl for, once `E` is known, at a generic bound as at a
+    /// concrete one; a closure keeps its fn type (R08.1.9, decision 456).
+    pub(crate) fn bare_ops_take_monoid(
+        &mut self,
+        def: &Def,
+        params: &[crate::ty::Param],
+        args: &[ast::Arg],
+        bindings: &mut crate::ty::Bindings,
+    ) {
+        let Def::Fn { bound_args, .. } = def else {
+            return;
+        };
+        let positional: Vec<&crate::ty::Param> = params.iter().filter(|p| !p.named_only).collect();
+        let mut next = 0;
+        for arg in args {
+            let param = match &arg.name {
+                Some(n) => params.iter().find(|p| p.name == n.text),
+                None => {
+                    next += 1;
+                    positional.get(next - 1).copied()
+                }
+            };
+            let Some(Ty::Param(m)) = param.map(|p| &p.ty) else {
+                continue;
+            };
+            if !self.is_bare_op(&arg.value) {
+                continue;
+            }
+            for (p, trait_name, targs) in bound_args {
+                if p != m {
+                    continue;
+                }
+                let want: Vec<Ty> = targs
+                    .iter()
+                    .map(|t| self.settle(&t.subst(bindings)))
+                    .collect();
+                if let Some(ty) = self.monoid_impl_for(trait_name, &want) {
+                    bindings.insert(m.clone(), ty);
+                }
+            }
+        }
+    }
+
+    /// The `Monoid<..>` an impl of `trait_name<want..>` is for.
+    fn monoid_impl_for(&mut self, trait_name: &str, want: &[Ty]) -> Option<Ty> {
+        for (t, def) in self.env.impls("Monoid") {
+            if t.as_deref().and_then(|t| t.split('<').next()) != Some(trait_name) {
+                continue;
+            }
+            let Def::Impl {
+                trait_args, target, ..
+            } = &*def
+            else {
+                continue;
+            };
+            if trait_args.len() != want.len() {
+                continue;
+            }
+            let mut on = crate::ty::Bindings::default();
+            for (a, w) in trait_args.iter().zip(want) {
+                a.unify(w, &mut on);
+            }
+            let ty = target.subst(&on);
+            if !ty.has_vague() && !ty.mentions_param() {
+                return Some(ty);
+            }
+        }
+        None
+    }
+
+    /// `+` or an unshadowed `max`/`min`/`gcd` written bare, which `Monoid.of` gives an identity for.
+    fn is_bare_op(&self, e: &ast::Expr) -> bool {
+        match &e.kind {
+            ast::ExprKind::Paren(inner) => self.is_bare_op(inner),
+            ast::ExprKind::Name(n) => {
+                matches!(n.as_str(), "max" | "min" | "gcd") && self.local(n).is_none()
+            }
+            ast::ExprKind::Lambda { body, .. } => {
+                matches!(&body.kind, ast::ExprKind::Binary { op_span, .. } if *op_span == e.span)
+            }
+            _ => false,
+        }
+    }
+
     /// At a call: each generic a bound's trait arguments name, from the
     /// type the bound's parameter is bound to, so `sum(xs)` over
     /// `S: Seq<T>` given a `List<Int>` has `T = Int`.
