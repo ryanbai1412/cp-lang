@@ -1,6 +1,9 @@
 # Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
+input = "2\nabc\naaa\n"
+
+[[case]]
 seed = 1
 size = 512
 
