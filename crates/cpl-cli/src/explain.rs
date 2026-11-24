@@ -98,7 +98,8 @@ pub(crate) fn explain_code(rest: &[&str], stdout: &mut dyn Write, stderr: &mut S
         }
         _ => {
             *stderr += &format!(
-                "cpl: `explain` takes a code or a file: `cpl explain E0302`\n\n{}",
+                "cpl: `explain` takes a code or a file: `cpl explain {}`\n\n{}",
+                cpl_diag::codes::TYPE_MISMATCH.0,
                 EXPLAIN_USAGE
             );
             EXIT_USAGE
