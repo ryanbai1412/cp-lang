@@ -5,6 +5,7 @@
 use std::borrow::Cow;
 
 use super::*;
+use cpl_diag::msgs;
 use cpl_syntax::ast;
 
 impl Checker<'_> {
@@ -64,5 +65,64 @@ fn written(ty: &ast::Type) -> String {
             format!("{}<{}>", name.text, args.join(", "))
         }
         _ => "_".to_string(),
+    }
+}
+
+impl Checker<'_> {
+    /// `Counter(0)` where `new` takes `xs: Seq<K>`: each bound of the
+    /// method's type parameters holds for what the call binds it to, checked
+    /// at the call as a free fn's are, so a type that misses one never
+    /// reaches the body. A parameter typed by the trait reads as that
+    /// parameter's type mismatch, at its argument.
+    pub(crate) fn method_bounds_hold(
+        &mut self,
+        callee: &str,
+        (bounds, params): (&crate::def::BoundArgs, &[crate::ty::Param]),
+        bindings: &crate::ty::Bindings,
+        (args, call): (&[ast::Arg], &ast::Expr),
+    ) {
+        for (param, trait_name, _) in bounds {
+            let Some(ty) = bindings.get(param) else {
+                continue;
+            };
+            let ty = self.settle(ty);
+            if ty.has_vague() || self.implements_trait(&ty, trait_name) {
+                continue;
+            }
+            let typed = Ty::Param(param.clone());
+            let written = param == trait_name || param.starts_with(&format!("{trait_name}<"));
+            let slot = params.iter().find(|p| written && p.ty == typed);
+            let mut positional = params.iter().filter(|p| !p.named_only);
+            let arg = slot.and_then(|slot| {
+                args.iter().find(|a| match &a.name {
+                    Some(n) => n.text == slot.name,
+                    None => positional.next().is_some_and(|p| p.name == slot.name),
+                })
+            });
+            if let (Some(slot), Some(arg)) = (slot, arg) {
+                let shown = self.quote(arg.value.span);
+                self.report(
+                    arg.value.span,
+                    msgs::check::BUT_2,
+                    &[
+                        &callee,
+                        &"takes",
+                        &typed.with_article(),
+                        &format!(" for `{}`", slot.name),
+                        &shown,
+                        &ty.with_article(),
+                    ],
+                );
+                continue;
+            }
+            let help = self.unmet_bound_help(&ty);
+            if let Some(diag) = self.report(
+                call.span,
+                msgs::check::MISSING_IMPL_DOES_NOT_IMPLEMENT_REQUIRED,
+                &[&ty, trait_name, &callee],
+            ) {
+                diag.help = help;
+            }
+        }
     }
 }

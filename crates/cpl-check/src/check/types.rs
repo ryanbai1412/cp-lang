@@ -763,6 +763,8 @@ impl<'a> Checker<'a> {
             .iter()
             .filter_map(|m| match &m.kind {
                 ast::StmtKind::Fn(f) => {
+                    let decl = self.trait_params_generic(f);
+                    let f = &*decl;
                     if m.decorators.iter().any(|d| d.name.text == "get") {
                         getters.push(f.name.text.clone());
                     }
@@ -993,6 +995,8 @@ impl<'a> Checker<'a> {
                 let method_rows = (s.methods.iter())
                     .filter_map(|m| match &m.kind {
                         ast::StmtKind::Fn(f) => {
+                            let decl = self.trait_params_generic(f);
+                            let f = &*decl;
                             let rows = self.fn_bounds(f).0;
                             let outer = self.generics.len();
                             (self.generics).extend(f.generics.iter().map(|g| g.text.clone()));

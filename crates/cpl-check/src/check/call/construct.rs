@@ -165,6 +165,14 @@ impl Checker<'_> {
                     let outer = std::mem::replace(&mut self.call_bound_args, through);
                     self.args(callee_text, verb, params, args, call, &mut bindings);
                     let through = std::mem::replace(&mut self.call_bound_args, outer);
+                    if let Some(bounds) = &through {
+                        self.method_bounds_hold(
+                            callee_text,
+                            (bounds, params),
+                            &bindings,
+                            (args, call),
+                        );
+                    }
                     // `W<T, M: Op<T>>(op: M, xs: List<T>)`: a bare op for `M` is the
                     // monoid, as at a generic fn's bound.
                     let bound_args = through.unwrap_or_else(|| {
@@ -648,7 +656,10 @@ impl Checker<'_> {
             None => return,
         };
         let ours = |d: &&mut cpl_diag::Diagnostic| {
-            matches!(d.code, codes::WRONG_ARG_COUNT | codes::TYPE_MISMATCH) && d.fixes.is_empty()
+            matches!(
+                d.code,
+                codes::WRONG_ARG_COUNT | codes::TYPE_MISMATCH | codes::MISSING_IMPL
+            ) && d.fixes.is_empty()
         };
         if let Some(diag) = self.sink.last_mut().filter(ours) {
             diag.help = Some(help);
