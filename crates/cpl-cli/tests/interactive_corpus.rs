@@ -4,6 +4,12 @@
 //! here; a package with no port yet, by its accepted C++. A port that forgets to flush, reads past
 //! the judge's reply or asks too many questions fails here.
 
+#[path = "support/parallel.rs"]
+mod parallel;
+#[path = "support/shards.rs"]
+mod shards;
+
+use parallel::parallel;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output, Stdio};
@@ -115,65 +121,79 @@ fn judge_problem(dir: &Path, cpp: bool) -> (usize, Vec<String>) {
     (runs, failures)
 }
 
+/// The interactive problems, sorted.
+fn interactive_problems() -> Vec<PathBuf> {
+    let mut dirs: Vec<_> = std::fs::read_dir(problems())
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|dir| interactive(dir))
+        .collect();
+    dirs.sort();
+    dirs
+}
+
+/// The interactive problems with a judge, each named by its id.
+fn judged() -> Vec<PathBuf> {
+    (interactive_problems().into_iter())
+        .filter(|dir| dir.join("interactor.py").exists())
+        .collect()
+}
+
+fn keys() -> Vec<String> {
+    judged().iter().map(|dir| name_of(dir)).collect()
+}
+
+/// The judged problems are split into `SHARDS` tests by a hash of their id.
+const SHARDS: usize = 4;
+
 #[test]
-fn every_interactive_port_satisfies_its_judge() {
+fn every_interactive_problem_has_a_judge() {
+    let unjudged: Vec<String> = (interactive_problems().iter())
+        .filter(|dir| !dir.join("interactor.py").exists())
+        .map(|dir| name_of(dir))
+        .collect();
+    assert!(
+        unjudged.is_empty(),
+        "interactive problems need an interactor.py to be judged: {unjudged:?}"
+    );
+}
+
+fn every_interactive_port_satisfies_its_judge(k: usize) {
     if !has("python3") {
         eprintln!("interactive corpus: skipped, no python3");
         return;
     }
     let cpp = has("g++");
-    let mut names: Vec<_> = std::fs::read_dir(problems())
-        .unwrap()
-        .map(|e| e.unwrap().path())
-        .filter(|dir| interactive(dir))
-        .collect();
-    names.sort();
-    let (judges, unjudged): (Vec<&PathBuf>, Vec<&PathBuf>) = names
-        .iter()
-        .partition(|dir| dir.join("interactor.py").exists());
-    let unjudged: Vec<String> = unjudged.iter().map(|dir| name_of(dir)).collect();
+    let judges = shards::mine(judged(), |dir| name_of(dir), k, SHARDS);
     let portless = judges
         .iter()
         .filter(|dir| !dir.join("port.cp").exists())
         .count();
-    let judged = judges.len();
     // Each problem's runs are independent and wait on python and the judge
     // more than on a core, so the problems run side by side.
-    let next = std::sync::atomic::AtomicUsize::new(0);
-    let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
-    let results: Vec<(usize, Vec<String>)> = std::thread::scope(|scope| {
-        let handles: Vec<_> = (0..threads.min(judged).max(1))
-            .map(|_| {
-                scope.spawn(|| {
-                    let mut done = Vec::new();
-                    loop {
-                        let i = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-                        let Some(dir) = judges.get(i) else { break };
-                        done.push(judge_problem(dir, cpp));
-                    }
-                    done
-                })
-            })
-            .collect();
-        handles
-            .into_iter()
-            .flat_map(|h| h.join().unwrap())
-            .collect()
-    });
+    let results = parallel(&judges, |dir| judge_problem(dir, cpp));
     let runs: usize = results.iter().map(|(runs, _)| runs).sum();
     let mut failures: Vec<String> = results.into_iter().flat_map(|(_, f)| f).collect();
     failures.sort();
-    assert!(
-        unjudged.is_empty(),
-        "interactive problems need an interactor.py to be judged: {unjudged:?}"
-    );
     eprintln!(
-        "interactive corpus: {judged} problems judged, {runs} runs, {} failed; {} without a judge, {portless} judged by their accepted C++",
+        "interactive corpus, shard {k}: {} problems judged, {runs} runs, {} failed; {portless} judged by their accepted C++",
+        judges.len(),
         failures.len(),
-        unjudged.len()
     );
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+shards::shard_tests!(
+    every_interactive_port_satisfies_its_judge,
+    keys(),
+    the_judge_shards_cover_every_judged_problem,
+    [
+        every_interactive_port_satisfies_its_judge_0 = 0,
+        every_interactive_port_satisfies_its_judge_1 = 1,
+        every_interactive_port_satisfies_its_judge_2 = 2,
+        every_interactive_port_satisfies_its_judge_3 = 3,
+    ]
+);
 
 /// `cpl run --release` hands the build its input as it arrives: it prints
 /// its question before the answer exists, as a judge needs.
