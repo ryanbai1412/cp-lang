@@ -48,9 +48,7 @@ no-max cf2124b -
 no-max cf2124c -
 no-max cf2124e -
 no-max cf2124f1 -
-no-max cf2124f2 -
 no-max cf2124h -
-no-max cf2124i -
 no-max cf2127a -
 no-max cf2127b -
 no-max cf2127c -
@@ -59,7 +57,6 @@ no-max cf2127e -
 no-max cf2127f -
 no-max cf2129a -
 no-max cf2129b -
-no-max cf2129d -
 no-max cf2129e -
 no-max cf2135a -
 no-max cf2135c -
@@ -76,7 +73,6 @@ no-max cf2138b -
 no-max cf2138c1 -
 no-max cf2138e1 -
 no-max cf2138e2 -
-no-max cf2138f -
 no-max cf2147a -
 no-max cf2147b -
 no-max cf2147e -

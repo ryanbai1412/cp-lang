@@ -1,5 +1,6 @@
 // Source: Codeforces 2138 F (Ode to the Bridge Builder),
 //   https://codeforces.com/contest/2138/problem/F
+// limits: 3000 ms, 512 MB
 // Problem: start from points (0, 0), (1, 0) joined by a segment; an operation picks a
 //   segment AB and adds a point C with triangle ABC's sides all in [1/2, 1]. Reach integer
 //   (p, q) (1 <= p, q <= 1e4) within 1e-4 using at most m = ceil(2 |(p, q)|) operations; print

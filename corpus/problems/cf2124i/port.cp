@@ -1,4 +1,5 @@
 // Source: Codeforces 2124I, https://codeforces.com/contest/2124/problem/I
+// limits: 2000 ms, 256 MB
 // Problem: f(a) is the number of parts in a partition of a into subarrays whose sequence of
 //   minimums is lexicographically largest. Given x_1..x_n (x_i <= i, n <= 2e5, multitest with
 //   sum n <= 2e5), print a permutation a with f(a[1..i]) = x_i for all i, or NO.

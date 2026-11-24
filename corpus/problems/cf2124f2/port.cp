@@ -1,5 +1,6 @@
 // Source: Codeforces 2124F2 (Appending Permutations, hard),
 //   https://codeforces.com/contest/2124/problem/F2
+// limits: 3000 ms, 1024 MB
 // Problem: build an array of length n by appending cyclic shifts [r, ..., s, 1, ..., r - 1] of
 //   1..=s; m restrictions a_i != x. Count distinct valid arrays mod 998244353. Multitest,
 //   sum n <= 5000, sum m <= 5000.
@@ -28,10 +29,13 @@ repeat m:
     let (pos, val): (1..=n, 1..=n) = read()
     let c = Cut(pos - 1)
     bads[diag_of(c, val - 1)].push(c)
-for d in Diag: bads[d].sort()
+for d in Diag: bads[d].sort(by: c => desc(c))
 
+// The first forbidden cut at or after `from` on `d`; `from` never decreases per diagonal, so
+// the passed cuts are popped off the back.
 fn next_bad(d: Diag, from: Cut) -> Cut:
-    if let k = bads[d].first_ge(from): bads[d][k] else: Cut.last!
+    while let b = bads[d].last, b < from: bads[d].pop()
+    if let b = bads[d].last: b else: Cut.last!
 fn wrap_limit(c: Cut) -> Cut = if c < Cut.last!: next_bad(diag_of(c, 0), from: c) else: Cut.last!
 
 var dp: [Cut]Z = 0

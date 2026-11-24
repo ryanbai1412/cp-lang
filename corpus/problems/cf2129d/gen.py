@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
 import random, sys
+if sys.argv[1] == "--max":
+    # one test at n = 100 (sum n^2 <= 1e4), every score free: no fixed score prunes the DP
+    print(1); print(100); print(*[-1] * 100)
+    sys.exit()
 r = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 T = r.randint(1, 3)

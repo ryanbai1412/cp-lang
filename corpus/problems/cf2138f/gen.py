@@ -1,5 +1,8 @@
 import sys, random
 from math import isqrt
+# --max: the size > 100 shape, (1e4, 1e4) first, then random targets until sum m = 1e5 or t = 1000
+if sys.argv[1] == "--max":
+    sys.argv[1:] = ["0", "1000"]
 rng = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 def need(p, q):

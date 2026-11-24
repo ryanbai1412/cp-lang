@@ -1,4 +1,5 @@
 // Source: Codeforces 2129 D (Permutation Blackhole), https://codeforces.com/contest/2129/problem/D
+// limits: 3000 ms, 512 MB
 // Problem: cells 1..=n turn black in the order of a permutation p; each newly coloured cell
 //   (after the first) adds 1 to the score of its nearest black cell, ties to the left. Some
 //   final scores s_i are fixed (-1 = free); count permutations matching them modulo
