@@ -12,47 +12,49 @@
 // input: n c r, the n - 1 ranks in order, then c lines `s e` (0-based)
 // original: corpus/submissions/4848321.cpp (the grader function GetBestPosition)
 
-let (n, c, r): (Int, Int, Int) = read()
+let n: 1..=1e5 = read()
+let c: 0..n = read()
+let r: 0..n = read()  // the late knight's rank
 domain Pos = 0..n
-domain Gap = 0..n - 1        // gap g is between positions g and g + 1
-domain Node = 0..n + c       // the leaves, then the rounds
-let rank: [Gap]Int = read()  // the fixed knight who fills gap g
-var kids: [Node]List<Node> = [Node] _ => []
+domain Gap = 0..n - 1   // gap g is between positions g and g + 1
+domain Round = 0..c
+domain Node = 0..n + c  // the leaves, then the rounds
+let rank: [Gap]0..n = read()  // the fixed knight who fills gap g
+fn leaf(p: Pos) -> Node = Node(p.ord)
+fn node(round: Round) -> Node = Node(n + round.ord)
+var kids: [Node]List<Node> = []
 
 // alive[p] = 1 while the group whose leftmost starting position is p is
 // still in; `head[p]` is the tree node that group has become
 var alive = Fenwick<Pos, Int>([Pos] _ => 1)
-var head: [Pos]Node = [Pos] p => Node(p.ord)
-for round in 0..c:
-    let (s, e): (Int, Int) = read()
-    let node = Node(n + round)
-    // WISH C7: an order-statistics `Set` (`line.nth(s)`, `line.remove_range(s..=e)`)
-    // is what the original uses; here the k-th survivor is a Fenwick descent.
+var head = [Pos] p => leaf(p)
+for round in Round:
+    let (s, e): (0..n, 0..n) = read()
+    // the k-th survivor is a Fenwick descent (an order-statistics Set would name it)
     let first = alive.first_ge(s + 1)!.left!
-    kids[node].push(head[first])
+    kids[node(round)].push(head[first])
     for _ in s..e:
         let gone = alive.first_ge(s + 2)!.left!
-        kids[node].push(head[gone])
+        kids[node(round)].push(head[gone])
         alive.add(gone, -1)
-    head[first] = node
+    head[first] = node(round)
 
-// top[v]: the strongest fixed knight inside v's span of gaps; inner[v]:
-// the strongest strictly between v's first and last position
-var top: [Node]Int = -1
-var inner: [Node]Int = -1
-var wins: [Node]Int = 0
-for v in Node:
-    if v.ord < n:
-        if v.ord < n - 1: top[v] = rank[Gap(v.ord)]
-        continue
+// top[v]: the strongest fixed knight inside v's span of gaps; inner[v]: the
+// strongest strictly between v's first and last position. -1 is below every
+// rank, the identity of `max`.
+var top: [Node]-1..n = -1
+var inner: [Node]-1..n = -1
+for g in Gap: top[leaf(Pos(g.ord))] = rank[g]
+for round in Round:
+    let v = node(round)
     for i in 0..kids[v].len:
         let k = kids[v][i]
         top[v] max= top[k]
         inner[v] max= if i + 1 < kids[v].len: top[k] else: inner[k]
-var best = (wins: -1, at: 0)
-for v in Node.rev:
-    if v.ord < n:
-        if wins[v] >= best.wins: best = (wins: wins[v], at: v.ord)
-        continue
+
+// wins[v]: rounds the late knight wins on the way to v from below
+var wins: [Node]Int = 0
+for round in Round.rev:
+    let v = node(round)
     for k in kids[v]: wins[k] = wins[v] + Int(r > inner[v])
-print(best.at)
+print(Pos.argmax(by: p => wins[leaf(p)])!)

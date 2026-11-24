@@ -7,24 +7,21 @@
 //   and the radius (the smallest eccentricity). Hang every centre off the centre of largest
 //   radius: the answer is the max of all diameters, r1 + r2 + L and r2 + r3 + 2L for the
 //   radii sorted down: O(N + T log T) for T trees.
-// original: proto/ports/scout_batch_17/harness/ioi13p1_main.cpp (wraps corpus/submissions/4687433.cpp)
 // Bounds: n: 1..=1e5; m: 0..=n - 1; l: 1..=1e4
+// original: corpus/problems/ioi13p1/orig.cpp (wraps corpus/submissions/4687433.cpp)
 let n: 1..=1e5 = read()
 let m: 0..n = read()
 let l: 1..=1e4 = read()
 domain V = 0..n
 domain E = 1..=m
-type Trail = (a: V, b: V, t: 1..=1e4)
+type Trail = (u: V, v: V, t: 1..=1e4)
 
 fn forest() -> [E]Trail:  // the last m billabongs each hang off an earlier one
     [E] e => (V(rand(0, e.label + n - 2 - m)), V(e.label + n - 1 - m), rand(1, 1e4))
 
 let trails: [E]Trail = read(gen: forest)
 
-var adj: [V]List<(V, Int)> = []
-for (a, b, t) in trails:
-    adj[a].push((b, t))
-    adj[b].push((a, t))
+let g = Graph.undirected(trails)
 
 type Walk = (to: V, dist: Int)
 
@@ -35,15 +32,11 @@ fn spread(from: V) -> List<Walk>:
     var todo: List<(at: V, came_from: V, dist: Int)> = [(from, from, 0)]
     while let (u, back, d) = todo.pop():
         walks.push((u, d))
-        for (v, t) in adj[u]:
-            if v != back: todo.push((v, u, d + t))
+        for arc in g.out(u):
+            if arc.to != back: todo.push((arc.to, u, d + trails[arc.e].t))
     walks
 
-fn farthest(walks: List<Walk>) -> V:  // WISH: max(walks, by: .dist).to
-    var far = walks[0]
-    for w in walks:
-        if w.dist > far.dist: far = w
-    far.to
+fn farthest(walks: List<Walk>) -> V = walks[walks.argmax(by: w => w.dist)!].to
 
 // In each tree: a is farthest from anywhere, b is farthest from a, and every
 // billabong's longest walk ends at a or b. The tree's best meeting point is
@@ -66,7 +59,7 @@ for root in V:
 // Hang every other tree's centre off the centre of the tree with the largest
 // radius. The longest new walk joins the two largest radii, or the second and
 // third through two new trails.
-let r = radii.sorted(by: x => -x)
+let r = radii.sorted(by: x => desc(x))
 if r.len >= 2: longest max= r[0] + r[1] + l
 if r.len >= 3: longest max= r[1] + r[2] + 2 * l
 print(longest)

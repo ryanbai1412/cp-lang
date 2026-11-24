@@ -8,32 +8,15 @@
 //   shortest path crosses exactly the tree edges between its ends' runs. So an edge with w
 //   blocks on one side is crossed by w * (N - w) pairs; do the same with the axes swapped:
 //   O(N log N) for the sort and the run map.
-// original: corpus/problems/ioi12p4/orig.cpp (corpus/submissions/4951048.cpp with a main)
 // Bounds: n: 1..=1e5
+// original: corpus/problems/ioi12p4/orig.cpp (corpus/submissions/4951048.cpp with a main)
+use std.graph.{undirected_of_pairs}
+
 let n: 1..=1e5 = read()
 domain Block = 0..n
-type Coord = 0..=2147483647
-type At = (x: Coord, y: Coord)
-
-// "Connected, no holes" is not a type. This builds one kind of such city:
-// each street x holds one unbroken run of blocks that touches the run before.
-fn city() -> [Block]At:
-    var at: [Block]At = (0, 0)
-    var placed = 0
-    var x = 0
-    var lo = 1e6
-    var hi = 1e6
-    while placed < n:
-        let tall = rand(1, min(n - placed, 5))
-        if placed > 0: lo = rand(lo - tall + 1, hi)
-        hi = lo + tall - 1
-        for y in lo..=hi:
-            at[Block(placed)] = (x, y)
-            placed += 1
-        x += 1
-    at
-
-let at: [Block]At = read(gen: city)
+// "connected, no holes" is not a type; gen.py builds such cities
+type Coord = 0..=2147483647  // below 2^31
+let at: [Block](x: Coord, y: Coord) = read()
 
 // Steps east or west, summed over all pairs. Cut each street (one x) into
 // runs of touching blocks. Without holes the runs form a tree, and a shortest
@@ -42,23 +25,20 @@ let at: [Block]At = read(gen: city)
 fn crossings(blocks: List<(Int, Int)>) -> Int:
     var run_of: Map<(Int, Int), Int> = []  // a HashMap keyed by a pair builds, then fails in g++
     var size: List<Int> = []
-    var last = (-1, -1)
+    var last: ?(Int, Int) = None
     for (x, y) in blocks.sorted():
-        if last != (x, y - 1): size.push(0)
+        if last != Some((x, y - 1)): size.push(0)
         size.last! += 1
         run_of[(x, y)] = size.len - 1
-        last = (x, y)
+        last = Some((x, y))
 
     domain Run = 0..size.len
-    var touch: [Run]List<Run> = []
-    for (x, y) in blocks:
-        if let west = run_of.get((x - 1, y)):
-            // one edge per pair of runs: skip it when the blocks just below already made it
-            if not ((x, y - 1) in run_of and (x - 1, y - 1) in run_of):
-                let here = run_of.get((x, y)) ?? 0
-                touch[Run(west)].push(Run(here))
-                touch[Run(here)].push(Run(west))
-    let tree = Rooted(touch, Run.first!)
+    // one edge per pair of touching runs: skip a block when the blocks just
+    // below it already made the edge
+    fn starts_edge(x: Int, y: Int) -> Bool =
+        (x - 1, y) in run_of and not ((x, y - 1) in run_of and (x - 1, y - 1) in run_of)
+    let edges = [(Run(run_of[(x - 1, y)]), Run(run_of[(x, y)])) for (x, y) in blocks if starts_edge(x, y)]
+    let tree = Rooted(undirected_of_pairs(edges), Run.first!)
     var under: [Run]Int = [Run] r => size[r.label]
     var total = 0
     for r in tree.at.rev:
@@ -67,9 +47,4 @@ fn crossings(blocks: List<(Int, Int)>) -> Int:
             under[p] += under[r]
     total
 
-var across: List<(Int, Int)> = []
-var along: List<(Int, Int)> = []
-for (x, y) in at:
-    across.push((x, y))
-    along.push((y, x))
-print((crossings(across) + crossings(along)) % 1e9)
+print((crossings([(b.x, b.y) for b in at]) + crossings([(b.y, b.x) for b in at])) % 1e9)
