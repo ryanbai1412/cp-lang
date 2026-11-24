@@ -10,7 +10,7 @@
 //   A plan is an order of parts: u itself, the children not named (each a 1-step side trip, so
 //   all of their profits count) and up to 3 named children, each with its own (done, back);
 //   a named child of each kind is among that kind's top 3. The route replays the best plans.
-//   O(n log n) for sorting children.
+//   The plans fill children before parents (t.order.rev); O(n).
 // Bounds: n: 1..=2e5; k: 1..=3; profit: 1..=1e9
 let (n, k): (1..=2e5, 1..=3) = read()
 domain City = 1..=n
@@ -34,47 +34,129 @@ fn sweep(u: City, pre: Bool):
 // A part of the route at a city: the city, its other children's side trips, or a named child.
 enum Part = Here | Rest | Kid(v: City, done: Bool, back: Bool)
 
-// The best plan at u naming one child per kind in `kinds`, each among the kind's top 3, all distinct.
-fn named(u: City, kinds: List<(done: Bool, back: Bool)>) -> ?(gain: Int, kids: List<City>):
-    var picks: List<(gain: Int, kids: List<City>)> = [(0, [])]
-    for kd in kinds:
-        picks = [(p.gain + extra(v, kd.done, kd.back), p.kids + [v]) for p in picks for v in top3(u, kd.done, kd.back) if not p.kids.contains(v)]
-    picks.max(by: p => p.gain)
+// Which part a named child plays: is it visited on arrival, must its route end next to u?
+type Kind = (done: Bool, back: Bool)
 
-@memo(array)
-fn top3(u: City, done: Bool, back: Bool) -> List<City> =
-    kids[u].sorted(by: v => desc(extra(v, done, back))).take(3).collect()
+// A kind with its top 3 children at a city, best first.
+type Ranked = (kd: Kind, top: List<City>)
+
+fn ranked(u: City, kd: Kind) -> Ranked = (kd, top3(u, kd.done, kd.back))
+
+// Every kind ranked at a city.
+type Tops = (ff: Ranked, ft: Ranked, tf: Ranked, tt: Ranked)
+
+fn tops(u: City) -> Tops = (
+    ranked(u, (false, false)),
+    ranked(u, (false, true)),
+    ranked(u, (true, false)),
+    ranked(u, (true, true)),
+)
+
+fn gain_of(v: City, kd: Kind) -> Int = extra(v, kd.done, kd.back)
+
+// The best two distinct named children of kinds a and b, each among its kind's top 3.
+fn pick2(a: Ranked, b: Ranked) -> ?(gain: Int, x: City, y: City):
+    var found: ?(gain: Int, x: City, y: City) = None
+    for x in a.top:
+        for y in b.top:
+            let gain = gain_of(x, a.kd) + gain_of(y, b.kd)
+            if y != x and (found.map(f => gain > f.gain) ?? true): found = Some((gain, x, y))
+    found
+
+// The same for three distinct named children of kinds a, b and c.
+fn pick3(a: Ranked, b: Ranked, c: Ranked) -> ?(gain: Int, x: City, y: City, z: City):
+    var found: ?(gain: Int, x: City, y: City, z: City) = None
+    for x in a.top:
+        for y in b.top:
+            for z in c.top:
+                let gain = gain_of(x, a.kd) + gain_of(y, b.kd) + gain_of(z, c.kd)
+                if x != y and y != z and x != z and (found.map(f => gain > f.gain) ?? true):
+                    found = Some((gain, x, y, z))
+    found
+
+// The 3 children of u with the most extra, best first (ties to the earlier child), in one pass.
+fn top3(u: City, done: Bool, back: Bool) -> List<City>:
+    var top: List<City> = []
+    for v in kids[u]:
+        let gain = extra(v, done, back)
+        var i = top.len
+        top.push(v)
+        while i > 0 and extra(top[i - 1], done, back) < gain:
+            top[i] = top[i - 1]
+            i -= 1
+        top[i] = v
+        if top.len > 3: top.pop()
+    top
 
 fn extra(v: City, done: Bool, back: Bool) -> Int = best(v, done, back) - profit[v]
 
-// The plans at u worth comparing: the best of each shape.
-fn plans(u: City, done: Bool, back: Bool) -> List<(gain: Int, parts: List<Part>)>:
+// The best plan at u: its gain, and its parts when `keep` (the route needs them only at the
+// cities it replays, so `best` builds none).
+fn plan(u: City, tp: Tops, done: Bool, back: Bool, keep: Bool) -> (gain: Int, parts: List<Part>):
     let rest = kids[u].map(v => profit[v]).sum()
-    var all: List<(gain: Int, parts: List<Part>)> = [(0, [Here])]
-    fn one(d: Bool, b: Bool) -> ?City = top3(u, d, b).first
+    var top: (gain: Int, parts: List<Part>) = (0, if keep: [Here] else: [])
+    fn offer(gain: Int, parts: List<Part>):
+        if gain > top.gain: top = (gain, parts)
     if not back:
-        if let v = kids[u].max(by: v => best(v, false, false)): all.push((best(v, false, false), [Here, Kid(v, false, false)]))
-        if let p = named(u, [(false, true), (true, false)]):
-            all.push((rest + p.gain, [Here, Kid(p.kids[0], false, true), Rest, Kid(p.kids[1], true, false)]))
+        if let v = kids[u].max(by: v => best(v, false, false)): offer(
+            best(v, false, false),
+            if keep: [Here, Kid(v, false, false)] else: [],
+        )
+        if let p = pick2(tp.ft, tp.tf):
+            offer(
+                rest + p.gain,
+                if keep: [Here, Kid(p.x, false, true), Rest, Kid(p.y, true, false)] else: [],
+            )
         if not done:
-            if let p = named(u, [(true, true), (false, true), (true, false)]):
-                all.push((rest + p.gain, [Kid(p.kids[0], true, true), Here, Kid(p.kids[1], false, true), Rest, Kid(p.kids[2], true, false)]))
-            if let p = named(u, [(true, true), (false, false)]):
-                all.push((rest + p.gain, [Rest, Kid(p.kids[0], true, true), Here, Kid(p.kids[1], false, false)]))
-            if let v = one(false, false): all.push((rest + extra(v, false, false), [Rest, Here, Kid(v, false, false)]))
+            if let p = pick3(tp.tt, tp.ft, tp.tf):
+                offer(
+                    rest + p.gain,
+                    if keep: [
+                        Kid(p.x, true, true),
+                        Here,
+                        Kid(p.y, false, true),
+                        Rest,
+                        Kid(p.z, true, false),
+                    ] else: [],
+                )
+            if let p = pick2(tp.tt, tp.ff):
+                offer(
+                    rest + p.gain,
+                    if keep: [Rest, Kid(p.x, true, true), Here, Kid(p.y, false, false)] else: [],
+                )
+            if let v = tp.ff.top.first: offer(
+                rest + extra(v, false, false),
+                if keep: [Rest, Here, Kid(v, false, false)] else: [],
+            )
     elif done:
-        if let v = one(false, true): all.push((rest + extra(v, false, true), [Here, Kid(v, false, true), Rest]))
+        if let v = tp.ft.top.first: offer(
+            rest + extra(v, false, true),
+            if keep: [Here, Kid(v, false, true), Rest] else: [],
+        )
     else:
-        if let v = one(true, true): all.push((rest + extra(v, true, true), [Rest, Kid(v, true, true), Here]))
-    all
+        if let v = tp.tt.top.first: offer(
+            rest + extra(v, true, true),
+            if keep: [Rest, Kid(v, true, true), Here] else: [],
+        )
+    top
 
-@memo(array)
-fn best(u: City, done: Bool, back: Bool) -> Int = profit[u] + plans(u, done, back).map(p => p.gain).max()!
+// The best gains of every city's four plans, filled children before parents.
+var bests = [City] _ => (ff: 0, ft: 0, tf: 0, tt: 0)
+
+fn best(u: City, done: Bool, back: Bool) -> Int:
+    let b = bests[u]
+    if done: (if back: b.tt else: b.tf) else: (if back: b.ft else: b.ff)
+
+fn fill():
+    for u in t.order.rev:
+        let tp = tops(u)
+        fn at(done: Bool, back: Bool) -> Int = profit[u] + plan(u, tp, done, back, false).gain
+        bests[u] = (at(false, false), at(false, true), at(true, false), at(true, true))
 
 fn replay(u: City, done: Bool, back: Bool):
-    let plan = plans(u, done, back).max(by: p => p.gain)!
-    let named_kids = [v for part in plan.parts if let Kid(v, _, _) = part]
-    for part in plan.parts:
+    let chosen = plan(u, tops(u), done, back, true)
+    let named_kids = [v for part in chosen.parts if let Kid(v, _, _) = part]
+    for part in chosen.parts:
         match part:
             Here => route.push(u)
             Rest => route += [v for v in t.children(u) if not named_kids.contains(v)]
@@ -83,7 +165,7 @@ fn replay(u: City, done: Bool, back: Bool):
 let root = City.first!
 match k:
     1 => print(down(root)); descend(root)
-    2 => print(best(root, true, false)); replay(root, true, false)
+    2 => fill(); print(best(root, true, false)); replay(root, true, false)
     _ => print(profit.sum()); sweep(root, true)
 print(route.len)
 print(route)
