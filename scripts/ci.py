@@ -176,7 +176,7 @@ STEPS = {
         gate("std-docs", "--audit", fail="a public std fn lacks a required doc label; see above", quiet=True),
         gate("vocab", fail="a spelling spec/GLOSSARY.md bans; see above"),
         Step("std containers print, walk and have is_empty (scripts/std-trait-matrix.py)",
-             ("scripts/std-trait-matrix.py", "--max", "76"), "a std container lacks a common trait; see above"),
+             ("scripts/std-trait-matrix.py", "--max", "39"), "a std container lacks a common trait; see above"),
         Step("std docs follow the std-docs checklist (scripts/std-docs-lint.py)",
              ("scripts/std-docs-lint.py", "--max", "0"), "a std doc breaks a std-docs rule; see above"),
         Step("std signatures follow the std-api checklist (scripts/std-api-lint.py)",
