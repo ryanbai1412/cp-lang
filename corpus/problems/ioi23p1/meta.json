@@ -8,10 +8,14 @@
   {"id": "5773674", "language": "CPP17", "result": "AC", "time": 11.296654466, "memory_kb": 139064.0, "file": "corpus/submissions/5773674.cpp"}
  ],
  "cpp_ac": 1,
- "artifacts": {},
+ "artifacts": {
+  "original": [
+   "corpus/problems/ioi23p1/orig.cpp"
+  ]
+ },
  "tags": [],
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Grader-only (max_score): orig.cpp is accepted submission 5773674 (corpus/submissions/5773674.cpp) with a main for the sample grader's format (C, then N X Y K and the roads per scenario); it agrees with an every-reach-set brute on 150 random cases with N <= 8."
 }
