@@ -1,7 +1,9 @@
 // Codeforces 2066 F: Curse, tuned: port.cp with the two O(m^2) and O(nm) tables
 // narrowed to what they hold (a max subarray sum of b fits in 32 bits, an agreement
-// length in 16), as orig.cpp's `int` tensors, so the dp's reads of them touch half the
-// cache lines.
+// length in 16), as orig.cpp's `int` tensors, and `came` holding only a start cut
+// (4 bytes, not a 2-field struct) with `spent` as its outer axis, so each threshold's
+// fresh table is half the bytes and a row of b cuts is contiguous. The one transition
+// that spends the free segment is marked in `freed`.
 @!multitest
 use std.algebra.{MaxSub}
 domain PosA = read(1..=500)
@@ -46,40 +48,42 @@ for p in PosA.rev:
 fn matches(j: PosB.cuts, s: Seg) -> ?PosB.cuts =
     if agree[span[s].start, j] >= span[s].len: Some(PosB.cuts.nth(j.ord + span[s].len)) else: None
 
-struct Back(from: PosB.cuts, spent: Bool)
 struct Plan(piece: [Seg](from: PosB.cuts, to: PosB.cuts), free: Seg)
 
 fn plan(x: Int) -> ?Plan:
-    var came: [Seg.cuts, PosB.cuts, Bool]?Back = None
+    // came[spent, k, j]: where the piece ending at (k, j) started; freed[k, j]: that
+    // start had not spent the free segment yet, though (spent, k, j) has.
+    var came: [Bool, Seg.cuts, PosB.cuts]?PosB.cuts = None
+    var freed: [Seg.cuts, PosB.cuts]Bool = false
     fn fit(k: Seg.cuts, j: PosB.cuts, spent: Bool) -> Bool =
-        came[k, j, spent] != None or (k == Seg.cuts.first and j == PosB.cuts.first and not spent)
+        came[spent, k, j] != None or (k == Seg.cuts.first and j == PosB.cuts.first and not spent)
     for s in Seg:
         if total[s] < x:
             for spent in [false, true]:
                 for j in PosB.cuts:
                     if let k = matches(j, s) and fit(s.l, j, spent):
-                        came[s.r, k, spent] = Back(j, spent)
+                        came[spent, s.r, k] = Some(j)
         else:
             for spent in [false, true]:
                 var latest: ?PosB.cuts = None
                 for j in PosB.cuts:
-                    if let i = latest and mss[i, j] <= x: came[s.r, j, spent] = Back(i, spent)
+                    if let i = latest and mss[i, j] <= x: came[spent, s.r, j] = Some(i)
                     if fit(s.l, j, spent): latest = j
             if let i = PosB.cuts.find(j => fit(s.l, j, false)):
                 for j in PosB.cuts:
-                    if j > i: came[s.r, j, true] = Back(i, false)
-    var at = Back(PosB.cuts.last!, true)
-    if not fit(Seg.cuts.last!, at.from, true): return None
+                    if j > i: (came[true, s.r, j], freed[s.r, j]) = (Some(i), true)
+    var (at, spent) = (PosB.cuts.last!, true)
+    if not fit(Seg.cuts.last!, at, true): return None
     var piece: [Seg](from: PosB.cuts, to: PosB.cuts) = (
         from: PosB.cuts.first!,
         to: PosB.cuts.first!,
     )
     var free: ?Seg = None
     for s in Seg.rev:
-        let back = came[s.r, at.from, at.spent]!
-        piece[s] = (from: back.from, to: at.from)
-        if back.spent != at.spent: free = s
-        at = back
+        let from = came[spent, s.r, at]!
+        piece[s] = (from: from, to: at)
+        if spent and freed[s.r, at]: (free, spent) = (Some(s), false)
+        at = from
     Plan(piece, free!)
 
 let thresholds = total.sorted(by: x => desc(x)).distinct()

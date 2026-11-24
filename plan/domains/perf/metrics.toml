@@ -62,7 +62,7 @@ milestone = "M3"
 name = "perf set outliers over 1.1x after tuning"
 command = "same as perf set p50 (the `over 1.1x tuned` lines)"
 target = "0, or each a logged language gap"
-today = "3 over 1.1x after tuning, re-timed alone: cf2066f 1.157x, cf2255e2 1.127x, ucup5s05f 1.112x (no tuned variant); 32 over 1.1x idiomatic (2026-11-23 full `python3 bench/v03_perf_bench.py --suite corpus,bench --jobs 4` on 5d0673826, outliers re-timed with `--runs 7 --jobs 1` on e46206cb9)"
+today = "0 of the 3 outliers over 1.1x after tuning, re-timed alone on 6ad9177de with `--runs 9-11 --jobs 1`: cf2066f 1.096x, cf2255e2 1.094x, ucup5s05f 0.758x (were 1.157x, 1.127x, 1.112x); 32 over 1.1x idiomatic (2026-11-23 full `python3 bench/v03_perf_bench.py --suite corpus,bench --jobs 4` on 5d0673826, outliers re-timed with `--runs 7 --jobs 1` on e46206cb9)"
 milestone = "M3"
 
 [[metric]]
