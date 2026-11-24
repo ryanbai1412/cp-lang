@@ -145,6 +145,7 @@ impl<'a> Checker<'a> {
                 name: "List".into(),
                 args: vec![first.clone()],
             }),
+            ("laws_hold", [_, _]) => Some(Ty::Bool),
             ("read_line", _) => Some(Ty::Str),
             ("print", _) => {
                 let allow_none = args

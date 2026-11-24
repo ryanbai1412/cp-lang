@@ -1391,7 +1391,6 @@
 3 spec/conformance/core-08/indexed-bound-types-the-body.cp
 8 spec/conformance/core-08/infer-domain-from-bounds.cp
 1 spec/conformance/core-08/inherent-on-builtin-type.cp
-2 spec/conformance/core-08/laws-hold.cp
 2 spec/conformance/core-08/lazy-method-sig.cp
 7 spec/conformance/core-08/list-bsearch-never-picks-range-bsearch.cp
 4 spec/conformance/core-08/list-built-struct-keeps-its-domain-through-a-bound.cp
