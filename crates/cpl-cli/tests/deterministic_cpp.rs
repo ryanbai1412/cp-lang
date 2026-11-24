@@ -20,15 +20,23 @@ fn build(src: &Path, out: &Path) -> Option<Vec<u8>> {
     (run.code == 0).then_some(cpp).flatten()
 }
 
-#[test]
-fn building_a_program_twice_gives_the_same_cpp() {
-    let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join("deterministic_cpp");
+/// The test is split into `SHARDS` tests by each source's index, so CI
+/// spreads the corpus over its shards.
+const SHARDS: usize = 4;
+
+fn shard_of(sources: &[PathBuf], shard: usize) -> Vec<&PathBuf> {
+    sources.iter().skip(shard).step_by(SHARDS).collect()
+}
+
+fn builds_the_same_twice(shard: usize) {
+    let out = Path::new(env!("CARGO_TARGET_TMPDIR")).join(format!("deterministic_cpp_{shard}"));
     std::fs::create_dir_all(&out).unwrap();
     let sources = sources();
-    let chunk = sources.len().div_ceil(8);
+    let mine = shard_of(&sources, shard);
+    let chunk = mine.len().div_ceil(8);
     let built = std::sync::atomic::AtomicUsize::new(0);
     let differ: Vec<String> = std::thread::scope(|s| {
-        let jobs: Vec<_> = sources
+        let jobs: Vec<_> = mine
             .chunks(chunk)
             .enumerate()
             .map(|(n, part)| {
@@ -52,8 +60,8 @@ fn building_a_program_twice_gives_the_same_cpp() {
     });
     let built = built.into_inner();
     assert!(
-        built >= 1000,
-        "only {built} corpus and conformance programs built"
+        built >= 1000 / SHARDS,
+        "only {built} corpus and conformance programs built in shard {shard}"
     );
     assert!(
         differ.is_empty(),
@@ -61,4 +69,33 @@ fn building_a_program_twice_gives_the_same_cpp() {
         differ.len(),
         differ.join("\n")
     );
+}
+
+macro_rules! shards {
+    ($($test:ident = $shard:literal),* $(,)?) => {
+        $(
+            #[test]
+            fn $test() {
+                builds_the_same_twice($shard);
+            }
+        )*
+        #[test]
+        fn building_a_program_twice_shards_cover_every_source_once() {
+            let sources = sources();
+            let mut covered: Vec<&PathBuf> =
+                [$($shard),*].into_iter().flat_map(|k| shard_of(&sources, k)).collect();
+            covered.sort();
+            let mut all: Vec<&PathBuf> = sources.iter().collect();
+            all.sort();
+            assert_eq!(covered, all);
+            assert_eq!([$($shard),*].len(), SHARDS);
+        }
+    };
+}
+
+shards! {
+    building_a_program_twice_gives_the_same_cpp_0 = 0,
+    building_a_program_twice_gives_the_same_cpp_1 = 1,
+    building_a_program_twice_gives_the_same_cpp_2 = 2,
+    building_a_program_twice_gives_the_same_cpp_3 = 3,
 }
