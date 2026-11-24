@@ -213,7 +213,8 @@ impl<'p> Devirt<'p> {
                 // moves a field from unset to one closure to many, so a
                 // closure first taken as captureless is revisited when a
                 // second closure reaches the field it calls through.
-                let known = matches!(self.value(None, callee), None | Some(Held::One(_)));
+                let held = self.value(None, callee);
+                let known = held.is_none() || self.captureless_one(held).is_some();
                 let callee_ok =
                     known && skippable(callee) || self.expr_captures_unused(callee, cap_slots);
                 callee_ok

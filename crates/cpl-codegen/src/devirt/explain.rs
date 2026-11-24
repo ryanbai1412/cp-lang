@@ -70,6 +70,9 @@ pub fn explain_closures(
                 ClosureMode::StaticDirect { closure: cid }
             } else {
                 let reason = match devirt.held.get(&Home::Field(sid, idx)) {
+                    Some(Held::One(cid)) if devirt.captureless_one(Some(Held::One(*cid))).is_none() => {
+                        "one closure, with captures no functor can hold, stored in field".to_string()
+                    }
                     Some(Held::One(_)) => "field escapes or is reassigned".to_string(),
                     Some(Held::Many) => {
                         "different closures, or one capturing a global, a var or a heap value, stored in field"

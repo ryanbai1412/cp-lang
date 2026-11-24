@@ -93,15 +93,23 @@ impl<'p> Emitter<'p> {
         )))
     }
 
-    /// `cpl_clN{a, b}`: closure `cid` built as its own type, each capture
-    /// copied as the lambda's `[a = a]` would.
+    /// `cpl_clN{a, &v}`: closure `cid` built as its own type, each capture
+    /// copied as the lambda's `[a = a]` would, and a `var` it shares
+    /// pointed to as the lambda's `[&v = v]` refers to it.
     fn functor_value(&mut self, cid: usize) -> Code {
         let def = &self.program.closures[cid];
-        let parts: Vec<String> = def
-            .captures
-            .iter()
-            .map(|cap| self.names[cap.outer].clone())
-            .collect();
+        let mut parts = Vec::new();
+        for cap in &def.captures {
+            let outer = &self.names[cap.outer];
+            if cap.by_ref {
+                parts.push(format!("&{outer}"));
+                continue;
+            }
+            parts.push(outer.clone());
+            let heap = crate::lend::holds_heap(self.program, &def.locals[cap.inner].ty);
+            let name = self.locals()[cap.outer].name.clone();
+            self.note_capture_copy(cid, heap, &name, crate::lend::KEPT);
+        }
         Code::primary(format!(
             "{}{{{}}}",
             crate::devirt::functor_name(cid),
@@ -110,12 +118,17 @@ impl<'p> Emitter<'p> {
     }
 
     /// `struct cpl_clN { .. }`: one mutable member per capture, as a
-    /// `mutable` lambda holds them, and a call operator defined later.
+    /// `mutable` lambda holds them, a pointer for each shared `var`, and a
+    /// call operator defined later.
     pub(crate) fn functor_decl(&self, cid: usize) -> String {
         let def = &self.program.closures[cid];
         let mut out = format!("struct {} {{\n", crate::devirt::functor_name(cid));
         for (k, cap) in def.captures.iter().enumerate() {
             let ty = &def.locals[cap.inner].ty;
+            if cap.by_ref {
+                out.push_str(&format!("    {}* c{k} = nullptr;\n", self.ty(ty)));
+                continue;
+            }
             out.push_str(&format!(
                 "    mutable {} c{k}{};\n",
                 self.ty(ty),
@@ -139,13 +152,15 @@ impl<'p> Emitter<'p> {
     /// named by a reference to its member.
     pub(crate) fn functor_body(&mut self, cid: usize) -> String {
         let t = self.closure_text(cid, true);
+        let caps = &self.program.closures[cid].captures;
         let aliases: String = t
             .captured
             .iter()
             .enumerate()
             .map(|(k, name)| {
+                let deref = if caps[k].by_ref { "*" } else { "" };
                 format!(
-                    "{}[[maybe_unused]] auto& {name} = c{k};\n",
+                    "{}[[maybe_unused]] auto& {name} = {deref}c{k};\n",
                     pad(self.indent + 1)
                 )
             })

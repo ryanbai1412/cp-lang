@@ -30,7 +30,11 @@ impl<'p> Devirt<'p> {
                     if matches!(field.ty, Ty::Fn(..)) {
                         let cid = match field.kind {
                             ExprKind::Closure(cid) if self.functor_shaped(cid, s) => Some(cid),
-                            _ => None,
+                            // Built from a param or local that only ever holds one closure.
+                            _ => match self.held.get(&Home::Field(s, index)) {
+                                Some(&Held::One(cid)) if self.functor_shaped(cid, s) => Some(cid),
+                                _ => None,
+                            },
                         };
                         note((s, index), cid);
                     }
@@ -63,10 +67,7 @@ impl<'p> Devirt<'p> {
         !self.closure_effectively_captureless(cid)
             && def.captures.iter().all(|cap| {
                 let ty = &def.locals[cap.inner].ty;
-                !cap.is_global
-                    && !cap.by_ref
-                    && (ty.is_scalar() || matches!(ty, Ty::Struct(t) if *t != holder))
-                    && !crate::lend::holds_heap(self.program, ty)
+                !cap.is_global && (cap.by_ref || !matches!(ty, Ty::Struct(t) if *t == holder))
             })
     }
 

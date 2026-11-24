@@ -1,7 +1,6 @@
 // expect: ok, output "skipped 1"
 // A closure a generator yields inside a struct, called through a method, writes the
 // generator's local; the generator sees the write when it resumes (std.dp's `Step.prune` shape).
-// std_functions: 1
 struct Step(pub v: Int, cut: () -> ()):
     pub fn prune(self) = cut()
 fn gen() -> yields Step:

@@ -111,7 +111,7 @@ enum Made {
 
 /// What has been stored in a [`Home`] so far.
 #[derive(Clone, Copy, PartialEq, Eq)]
-enum Held {
+pub(crate) enum Held {
     One(ClosureId),
     Many,
 }
@@ -119,6 +119,8 @@ enum Held {
 pub(crate) struct Devirt<'p> {
     program: &'p Program,
     held: BTreeMap<Home, Held>,
+    /// Closures whose captures `captureless_one` is checking.
+    visiting: std::cell::RefCell<BTreeSet<ClosureId>>,
     elidable: BTreeSet<Home>,
     template_params: BTreeMap<FnId, Vec<usize>>,
     reassigned_params: BTreeSet<(FnId, usize)>,
@@ -188,6 +190,7 @@ impl<'p> Devirt<'p> {
             main_auto_globals: BTreeSet::new(),
             functor_fields: BTreeMap::new(),
             functors: BTreeSet::new(),
+            visiting: Default::default(),
             changed: true,
         };
         // The judge's grader calls these with values of its own.
@@ -398,10 +401,24 @@ impl<'p> Devirt<'p> {
     /// The one closure `callee` can be, in fn `home` (`None` for the
     /// file's own lines and for closures).
     pub fn target(&self, home: Option<FnId>, callee: &Expr) -> Option<ClosureId> {
-        match self.value(home, callee) {
-            Some(Held::One(cid)) => Some(cid),
-            _ => None,
+        self.captureless_one(self.value(home, callee))
+    }
+
+    /// The one closure `held` names when it has no live captures, so a call
+    /// through it goes straight to `cpl_fnN`. A closure met again while its
+    /// own captures are being checked counts as captureless, as the
+    /// fixpoint's first pass takes it.
+    pub(crate) fn captureless_one(&self, held: Option<Held>) -> Option<ClosureId> {
+        let Some(Held::One(cid)) = held else {
+            return None;
+        };
+        if self.program.closures[cid].captures.is_empty() || !self.visiting.borrow_mut().insert(cid)
+        {
+            return Some(cid);
         }
+        let ok = self.closure_effectively_captureless(cid);
+        self.visiting.borrow_mut().remove(&cid);
+        ok.then_some(cid)
     }
 
     /// The closure emitted in place of `cid` (see [`same_closures`]).
@@ -412,14 +429,11 @@ impl<'p> Devirt<'p> {
     /// Parameter `slot` of fn `id` is always the same closure, so its
     /// calls go to the closure and the parameter itself may go unread.
     pub fn param_known(&self, id: FnId, slot: usize) -> bool {
-        matches!(self.held.get(&Home::Param(id, slot)), Some(Held::One(_)))
+        self.param_target(id, slot).is_some()
     }
 
     pub fn param_target(&self, id: FnId, slot: usize) -> Option<ClosureId> {
-        match self.held.get(&Home::Param(id, slot)) {
-            Some(Held::One(cid)) => Some(*cid),
-            _ => None,
-        }
+        self.captureless_one(self.held.get(&Home::Param(id, slot)).copied())
     }
 
     /// Struct field `(struct_id, index)` is a single statically known closure
@@ -756,6 +770,7 @@ impl<'p> Devirt<'p> {
             ExprKind::Closure(cid) if self.closure_effectively_captureless(*cid) => {
                 Some(Held::One(self.same[*cid]))
             }
+            ExprKind::Closure(cid) => Some(Held::One(*cid)),
             ExprKind::Local(slot) => match home {
                 Some(id) if *slot < self.program.fns[id].params.len() => {
                     self.held.get(&Home::Param(id, *slot)).copied()

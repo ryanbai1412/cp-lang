@@ -54,7 +54,7 @@ impl<'p> Devirt<'p> {
         }
 
         for (&home, &held) in &self.held {
-            if !matches!(held, Held::One(_)) {
+            if self.captureless_one(Some(held)).is_none() {
                 continue;
             }
             match home {

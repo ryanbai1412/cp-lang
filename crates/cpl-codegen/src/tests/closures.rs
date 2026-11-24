@@ -627,6 +627,29 @@ fn a_struct_field_built_from_one_capturing_closure_is_that_closures_type() {
 }
 
 #[test]
+fn a_struct_field_a_param_brings_one_capturing_closure_to_is_that_closures_type() {
+    let out = cpp(concat!(
+        "struct Keep(f: Int -> Int)\n",
+        "struct Share(f: Int -> Int)\n",
+        "fn make(n: Int) -> Keep:\n",
+        "    let xs = [i * i for i in 0..n]\n",
+        "    Keep(i => xs[i] + n)\n",
+        "fn tally(k: Int) -> Int:\n",
+        "    var t = 0\n",
+        "    let s = Share(x => t + x)\n",
+        "    t = k\n",
+        "    s.f(1)\n",
+        "let n: 1..=8 = read()\n",
+        "print(make(n).f(0) + tally(n))\n",
+    ));
+    assert!(!out.contains("std::function"), "{out}");
+    assert!(
+        out.contains("* c0 = nullptr;"),
+        "a shared var is pointed to:\n{out}"
+    );
+}
+
+#[test]
 fn a_struct_field_two_closures_with_like_captures_reach_is_a_bound_fn() {
     let src = concat!(
         "struct Op2(f: (Int, Int) -> Int)\n",

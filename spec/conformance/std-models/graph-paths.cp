@@ -18,7 +18,6 @@
 // vertices with 9 weighted edges (0/1, non-negative, or with negative arcs), runs every search
 // from random sources and checks distances, witness paths and arcs, iter order, tight arcs,
 // negative cycles, the least mean cycle and the k shortest walks. Reads `seed n`.
-// std_functions: 1
 use std.graph.{Graph, bellman_ford, bfs, bfs01, dial, dijkstra, fixed_cost_paths, floyd_warshall, johnson, k_shortest, min_mean_cycle, negative_cycle}
 use std.rand.{Rng}
 let seed0 = read<Int>()
