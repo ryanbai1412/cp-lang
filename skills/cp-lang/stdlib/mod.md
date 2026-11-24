@@ -22,15 +22,15 @@ An integer modulo the constant `P`, always stored in `0..P`.
 
 A number held as its residue in `0..modulus()`, so a sum of many residue products can stay unreduced and be reduced once: `Mat` products use it.
 
-## `struct Comb<M: Add + Sub + Mul>`
+## `struct Comb<M: Residue + Add + Sub + Mul>`
 
-Factorials and inverse factorials for a modular type `M = Mod<P>` (prime `P`).
+Factorials and inverse factorials over any `Residue` type `M` with a prime modulus, such as `Mod<P>`.
 
 - `fn new(limit: Len = 0) -> Comb<M>` — \(O(\min(\mathit{limit}, P))\); Precompute factorials and inverse factorials up to `limit` for `M = Mod<P>`, `P` prime.; traps: when `limit < 0` or `limit >= 2^31`, or `P` is not prime
-- `fn fact(self, n: 0..) -> M` — \(O(1)\) amortized; `n!`, reduced; 0 when `n >= M.MOD` (the product contains `P`).; traps: when `n < 0`
-- `fn inv_fact(self, n: Int) -> M` — \(O(1)\) amortized; `1 / n!`, for `0 <= n < M.MOD`.; traps: when `n` is outside `0..M.MOD`
-- `fn inv(self, i: Int) -> M` — \(O(1)\) amortized; `1 / i`, for `1 <= i < M.MOD`: one load from a table of `(i - 1)!; traps: when `i` is outside `1..M.MOD`
-- `fn choose(self, n: Int, k: Int) -> M` — \(O(1)\) amortized for `n < M.MOD`; \(O(\mathit{log\_P} n)\) otherwise; The number of `k`-subsets of `n` things, `n!
+- `fn fact(self, n: 0..) -> M` — \(O(1)\) amortized; `n!`, reduced; 0 when `n >= M.modulus()` (the product contains `P`).; traps: when `n < 0`
+- `fn inv_fact(self, n: Int) -> M` — \(O(1)\) amortized; `1 / n!`, for `0 <= n < M.modulus()`.; traps: when `n` is outside `0..M.modulus()`
+- `fn inv(self, i: Int) -> M` — \(O(1)\) amortized; `1 / i`, for `1 <= i < M.modulus()`: one load from a table of `(i - 1)!; traps: when `i` is outside `1..M.modulus()`
+- `fn choose(self, n: Int, k: Int) -> M` — \(O(1)\) amortized for `n < M.modulus()`; \(O(\mathit{log\_P} n)\) otherwise; The number of `k`-subsets of `n` things, `n!
 - `fn arrange(self, n: Int, k: Int) -> M` — \(O(1)\) amortized; The number of ordered selections of `k` out of `n` things, `n!
 - `fn multichoose(self, n: Int, k: Int) -> M` — \(O(1)\) amortized; The number of ways to put `n` equal balls into `k` boxes (stars and bars): `choose(n + k - 1, n)`.
 - `fn catalan(self, n: 0..) -> M` — \(O(1)\) amortized; The `n`-th Catalan number, `choose(2n, n) - choose(2n, n + 1)`.; traps: when `n < 0`
