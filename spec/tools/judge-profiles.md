@@ -30,7 +30,7 @@ int128 = false
 time_ms = 2000
 memory_mb = 256
 release_checks = []          # e.g. ["ranges", "overflow", "reads"]
-isa = "x86-64"               # or "avx2": target pragmas (Rjudge.9)
+isa = "x86-64"               # "avx2" or "unknown": target pragmas (Rjudge.9)
 answers = ["YES", "NO"]
 ```
 
@@ -50,5 +50,8 @@ answers = ["YES", "NO"]
   alone never vectorises a loop whose length is known only at run time,
   and `#pragma GCC target("avx2,bmi,bmi2,lzcnt,popcnt")` follows the
   includes: x86-64-v3's features, so `popcount`, `clz` and `ctz` are one
-  instruction each. `x86-64`, the default, emits neither. Each `isa` and
-  its features are one row of cpl-judge's `ISAS`. (Rjudge.9)
+  instruction each. `x86-64`, the default, emits no `optimize` pragma and
+  `#pragma GCC target("popcnt")`, since every x86-64 judge CPU since
+  Nehalem has it; `unknown` (CPUs not known, or not x86) emits neither.
+  Each `isa` and its features are one row of cpl-judge's `ISAS`
+  (decision 586). (Rjudge.9)

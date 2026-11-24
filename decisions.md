@@ -9085,7 +9085,11 @@ Superseded by 561: the CLI and the browser call one front end, and spawning is a
 
 ## 585. (reserved, unknown)
 
-## 586. (reserved, compiler)
+## 586. Every x86-64 judge profile targets `popcnt`; `isa = "unknown"` targets nothing (judge, 2026-11-24)
+
+- **Call.** The `x86-64` row of cpl-judge's `ISAS` table, the default `isa` of every builtin profile, promises `popcnt`, so the C++ for any x86-64 judge carries `#pragma GCC target("popcnt")` after its includes. `avx2` keeps its wider row (`avx2,bmi,bmi2,lzcnt,popcnt`), and a new `unknown` row, for a judge whose CPUs are not known or not x86, promises nothing and emits no target pragma. The rows are data; `emit.rs` joins whatever the profile's row lists.
+- **Why.** Without a popcnt target g++ lowers `__builtin_popcountll` to a call to libgcc's `__popcountdi2`, 7.5x slower in a loop; ioi14p6's WaveletMatrix spent 33% of its time there and ran 1810 ms against an 1800 ms limit on codeforces, yet std.math and `cpl explain` promise one popcnt. Gating it on `avx2` alone missed every builtin profile, since none sets `avx2`. Every x86-64 judge CPU since Nehalem (2008) has popcnt.
+- **Reverse.** Make the `x86-64` row of `ISAS` empty again and drop the `unknown` row; `x86-64-judge-targets-popcnt.cp` goes back to lacking a target pragma.
 
 ## 587. `gen<T>(args)` is `T.gen(args)`, through a std `Random` trait (stdlib, 2026-11-24)
 

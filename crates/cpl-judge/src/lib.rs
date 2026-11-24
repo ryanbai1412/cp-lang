@@ -403,7 +403,7 @@ fn profile(
         thread_stack: Some(THREAD_STACK),
         source_limit,
         int128: true,
-        cpu: Vec::new(),
+        cpu: cpu_of(ISAS[0].0),
         time_ms: 2000,
         memory_mb: 256,
         evidence: evidence.into(),
@@ -700,12 +700,25 @@ impl Config {
 }
 
 /// Each `isa` a profile may name and the CPU features it promises:
-/// `avx2` is x86-64-v3's AVX2 with the bit instructions every such CPU
-/// has, so `popcount`, `clz` and `ctz` are one instruction there.
+/// every x86-64 judge CPU since Nehalem has `popcnt`, so `popcount` is one
+/// instruction on any of them; `avx2` is x86-64-v3's AVX2 with the bit
+/// instructions every such CPU has, so `clz` and `ctz` are one too; and
+/// `unknown` (CPUs not known, or not x86) promises nothing (decision 586).
 pub const ISAS: &[(&str, &[&str])] = &[
-    ("x86-64", &[]),
+    ("x86-64", &["popcnt"]),
     ("avx2", &["avx2", "bmi", "bmi2", "lzcnt", "popcnt"]),
+    ("unknown", &[]),
 ];
+
+/// The CPU features of `isa`'s row of `ISAS`, the default row's when no
+/// row has that name.
+fn cpu_of(isa: &str) -> Vec<String> {
+    let (_, cpu) = ISAS
+        .iter()
+        .find(|(name, _)| *name == isa)
+        .unwrap_or(&ISAS[0]);
+    cpu.iter().map(|f| f.to_string()).collect()
+}
 
 const KEYS: &[(&str, &str)] = &[
     ("extends", "a profile's name in quotes"),
@@ -720,7 +733,7 @@ const KEYS: &[(&str, &str)] = &[
     ),
     ("source_kb", "a whole number of KB"),
     ("int128", "true or false"),
-    ("isa", "\"x86-64\" or \"avx2\""),
+    ("isa", "\"x86-64\", \"avx2\" or \"unknown\""),
     ("time_ms", "a whole number of milliseconds"),
     ("memory_mb", "a whole number of MB"),
 ];
@@ -770,10 +783,7 @@ fn apply(profile: &mut Profile, key: &str, value: &Value) {
         ("thread_stack_mb", Value::Int(mb)) => profile.thread_stack = (*mb > 0).then(|| mb << 20),
         ("source_kb", Value::Int(kb)) => profile.source_limit = (*kb as usize) * 1024,
         ("int128", Value::Bool(b)) => profile.int128 = *b,
-        ("isa", Value::Str(s)) => {
-            let (_, cpu) = ISAS.iter().find(|(isa, _)| isa == s).unwrap_or(&ISAS[0]);
-            profile.cpu = cpu.iter().map(|f| f.to_string()).collect();
-        }
+        ("isa", Value::Str(s)) => profile.cpu = cpu_of(s),
         ("time_ms", Value::Int(ms)) => profile.time_ms = *ms,
         ("memory_mb", Value::Int(mb)) => profile.memory_mb = *mb,
         _ => {}
