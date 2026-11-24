@@ -1,6 +1,15 @@
 # Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
+input = "min(min(?,?),min(?,?))\n"
+
+[[case]]
+input = "max(?,max(?,min(?,?)))\n"
+
+[[case]]
+input = "min(max(?,?),min(?,max(?,?)))\n"
+
+[[case]]
 seed = 1
 size = 1
 

@@ -1,6 +1,9 @@
 # Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
+input = "THTTHH\n3\n"
+
+[[case]]
 seed = 1
 size = 1
 

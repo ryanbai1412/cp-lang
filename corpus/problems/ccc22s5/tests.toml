@@ -1,6 +1,12 @@
 # Cases for scripts/corpus.py make (problem-packages/R9).
 
 [[case]]
+input = "4\n1 2\n2 3\n3 4\nYNYN\n4 3 6 2\n"
+
+[[case]]
+input = "15\n1 5\n5 2\n2 15\n15 4\n2 10\n8 3\n3 1\n1 6\n11 6\n12 6\n11 9\n11 14\n12 7\n13 7\nNNYYYNYYNNNNNNN\n1 1 1 1 1 1 1 1 1 1 1 1 1 1 1\n"
+
+[[case]]
 seed = 1
 size = 1
 
