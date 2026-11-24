@@ -30,7 +30,7 @@ pub(crate) fn domain_sizes(program: &Program) -> (Vec<bool>, Vec<Option<u32>>, V
         .map(|d| {
             let summed = facts.domain_len_expr(d).is_some_and(counts_domains);
             let composite = summed || program.products.get(d).is_some_and(Option::is_some);
-            composite && max_len(program, &facts, d, 0).is_none_or(|n| n > i64::from(i32::MAX))
+            composite && max_len(program, &facts, d, 9).is_none_or(|n| n > i64::from(i32::MAX))
         })
         .collect();
     (wide, fixed, bytes)
@@ -43,17 +43,16 @@ fn counts_domains(e: &Expr) -> bool {
     found
 }
 
-/// A static bound on how many positions `d` has.
-fn max_len(program: &Program, facts: &Facts, d: usize, depth: u8) -> Option<i64> {
-    if depth > 8 {
-        return None;
-    }
+/// A static bound on how many positions `d` has, looking at most `levels`
+/// products deep.
+fn max_len(program: &Program, facts: &Facts, d: usize, levels: u8) -> Option<i64> {
+    let levels = levels.checked_sub(1)?;
     let Some(Some(parts)) = program.products.get(d) else {
         return facts.domain_max_len(d);
     };
     parts.iter().try_fold(1i64, |n, (_, part)| {
         let k = match part {
-            Ty::Pos(p) | Ty::Bound(p) => max_len(program, facts, *p, depth + 1)?,
+            Ty::Pos(p) | Ty::Bound(p) => max_len(program, facts, *p, levels)?,
             Ty::Bool => 2,
             Ty::Enum(e) => program.enums[*e].variants.len() as i64,
             _ => return None,

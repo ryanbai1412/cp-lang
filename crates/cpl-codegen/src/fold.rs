@@ -104,10 +104,7 @@ pub(crate) struct Folded {
 pub(crate) fn fold(cpp: &str, origins: &BTreeMap<String, String>) -> Folded {
     let words = fold_by(cpp, origins, false);
     let whole = fold_by(cpp, origins, true);
-    match whole.cpp.len() < words.cpp.len() {
-        true => whole,
-        false => words,
-    }
+    std::cmp::min_by_key(words, whole, |f| f.cpp.len())
 }
 
 fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded {
@@ -192,7 +189,6 @@ fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded
     for &name in defs.keys() {
         groups.entry(origins[name].as_str()).or_default().push(name);
     }
-    groups.retain(|_, members| members.len() > 1);
     for members in groups.values_mut() {
         members.sort_by_key(|m| defs[m].item);
     }
@@ -275,8 +271,7 @@ fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded
                     let after = rep.get(p + 1).map_or("", |x| x.text.as_str());
                     let qualified = matches!(prev, ":" | "." | "->" | "struct" | "enum" | "class")
                         || after == ":";
-                    if k == Kind::Type && qualified || k == Kind::Int && matches!(prev, "." | "->")
-                    {
+                    if k == Kind::Type && qualified {
                         ok = false;
                         break;
                     }
@@ -309,7 +304,10 @@ fn fold_by(cpp: &str, origins: &BTreeMap<String, String>, whole: bool) -> Folded
         }
         args = next;
     }
-    if !settled || folds.is_empty() {
+    if !settled {
+        return unchanged();
+    }
+    if folds.is_empty() {
         return unchanged();
     }
 
@@ -541,9 +539,9 @@ fn type_spans(toks: &[Tok], types: &BTreeSet<&str>) -> BTreeMap<usize, (usize, S
     let text = |j: usize| toks.get(j).map_or("", |t| t.text);
     let mut out = BTreeMap::new();
     let mut i = 0;
-    while i < toks.len() {
+    while let Some(first) = toks.get(i) {
         let start = i;
-        let mut j = i + usize::from(text(i) == "const");
+        let mut j = i + usize::from(first.text == "const");
         let core = match (text(j), text(j + 1), text(j + 2), text(j + 3)) {
             ("std", ":", ":", w) if STD_TYPES.contains(&w) => Some(j + 3),
             ("cpl", ":", ":", w) if types.contains(w) => Some(j + 3),
@@ -562,9 +560,9 @@ fn type_spans(toks: &[Tok], types: &BTreeSet<&str>) -> BTreeMap<usize, (usize, S
                 match text(j) {
                     "<" => depth += 1,
                     ">" => depth -= 1,
-                    "" => ok = false,
                     w if matches!(w, ":" | "," | "&" | "*" | "const")
-                        || w.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_') => {}
+                        || !w.is_empty()
+                            && w.bytes().all(|c| c.is_ascii_alphanumeric() || c == b'_') => {}
                     _ => ok = false,
                 }
                 j += 1;
@@ -593,7 +591,7 @@ fn type_spans(toks: &[Tok], types: &BTreeSet<&str>) -> BTreeMap<usize, (usize, S
             s.push_str(t.text);
         }
         out.insert(start, (end, s));
-        i = end + 1;
+        i = end;
     }
     out
 }
@@ -728,4 +726,16 @@ fn declared<'a>(item: &Item<'a>, at: usize) -> Option<(&'a str, Option<Def>)> {
         )),
         _ => (body == t.len() - 1).then_some((name, None)),
     }
+}
+
+/// The whole types each item of `cpp` names, as [`type_spans`] finds them.
+#[cfg(test)]
+pub(crate) fn whole_types(cpp: &str, types: &[&str]) -> Vec<String> {
+    let lines: Vec<&str> = cpp.split_inclusive('\n').collect();
+    let types: BTreeSet<&str> = types.iter().copied().collect();
+    items(&lines)
+        .expect("a file fold reads")
+        .iter()
+        .flat_map(|item| type_spans(&item.toks, &types).into_values().map(|(_, s)| s))
+        .collect()
 }

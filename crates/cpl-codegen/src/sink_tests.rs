@@ -332,3 +332,89 @@ fn a_loop_that_runs_to_its_end_over_a_fn_that_only_builds_a_list_builds_no_list(
         "a fused consumer that stops walks the list:\n{found}"
     );
 }
+
+#[test]
+fn a_list_param_sinks_only_into_a_fn_that_reads_it_once_in_a_loop_it_runs_out() {
+    let list = "[i * j for i in 0..n for j in i..n if (i + j) % 3 == 0]";
+    let sinks = |fns: &str, args: &str| {
+        let cpp = cpp(&format!(
+            "{fns}\nlet n: 1..=1000 = read()\nprint(total({list}{args}))\n"
+        ));
+        let solve = &cpp[cpp.find("void solve()").unwrap()..];
+        assert_eq!(
+            solve.contains("cpl_sink_"),
+            !solve.contains("push_back"),
+            "{cpp}"
+        );
+        solve.contains("cpl_sink_")
+    };
+    let total = |body: &str| format!("fn total(xs: List<Int>) -> Int:\n    var t = 0\n{body}");
+    assert!(sinks(&total("    for x in xs: t ^= x\n    t"), ""));
+    for body in [
+        "    for x in xs: t ^= x\n    t + xs.len",
+        "    for x in xs:\n        if x > 5: break\n        t ^= x\n    t",
+    ] {
+        assert!(!sinks(&total(body), ""), "{body}");
+    }
+    let global = format!("var g = 3\n{}", total("    for x in xs: t ^= x + g\n    t"));
+    assert!(!sinks(&global, ""));
+    let mutable = "fn total(xs: List<Int>, mut ys: List<Int>) -> Int:
+    var t = 0
+    \
+                   for x in xs: t ^= x
+    ys.push(t)
+    t
+var zs: List<Int> = []";
+    assert!(!sinks(mutable, ", mut zs"));
+    let mut fns = total("    for x in xs: t ^= x\n    t").replace("fn total(", "fn f0(");
+    for k in 1..=5 {
+        let chain = format!("{fns}\nfn total(xs: List<Int>) -> Int = f{}(xs)", k - 1);
+        assert_eq!(sinks(&chain, ""), k <= 4, "{k} fns hand the list on");
+        fns = format!("{fns}\nfn f{k}(xs: List<Int>) -> Int = f{}(xs)", k - 1);
+    }
+}
+
+#[test]
+fn a_sunk_list_is_a_callback_indented_one_level_in() {
+    let cpp = cpp(concat!(
+        "fn total(xs: List<Int>) -> Int:\n    var t = 0\n    for x in xs: t ^= x\n    t\n",
+        "let n: 1..=1000 = read()\nfor k in 0..n:\n",
+        "    print(total([i * j for i in 0..n for j in i..k if (i + j) % 3 == 0]))\n",
+    ));
+    let solve = &cpp[cpp.find("void solve()").unwrap()..];
+    assert!(
+        solve.contains(concat!(
+            "    ll t1 = cpl_sink_total([&](auto&& t2) {\n",
+            "      for (ll i = 0; i < n; i++) {\n",
+            "        for (ll j = i; j < k; j++) {\n",
+            "          if ((i + j) % 3 == 0) {\n",
+            "            t2(i * j);\n",
+            "          }\n        }\n      }\n    });\n",
+            "    cpl::put_int(t1, '\\n');\n  }\n}\n",
+        )),
+        "{solve}"
+    );
+}
+
+#[test]
+fn a_sunk_call_passes_its_other_args_after_the_callback() {
+    let list = "[i * j for i in 0..n for j in i..n if (i + j) % 3 == 0]";
+    let fns = "fn inner(xs: List<Int>, by: Int = 1) -> Int:\n    var t = 0\n    \
+               for x in xs: t ^= x * by\n    t\n";
+    let direct = cpp(&format!(
+        "{fns}let n: 1..=1000 = read()\nprint(inner({list}, by: 3))\n"
+    ));
+    assert!(
+        direct.contains("ll cpl_sink_inner(CplG&& cpl_g, ll by) {"),
+        "{direct}"
+    );
+    assert!(direct.contains("\n  }, 3);\n"), "{direct}");
+    let handed = cpp(&format!(
+        "{fns}fn total(xs: List<Int>) -> Int = inner(xs, by: 5)\n\
+         let n: 1..=1000 = read()\nprint(total({list}))\n"
+    ));
+    assert!(
+        handed.contains("return cpl_sink_inner(cpl_g, 5);"),
+        "{handed}"
+    );
+}

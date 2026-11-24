@@ -275,9 +275,6 @@ impl<'p> Devirt<'p> {
                     || ahead.contains(&id)
                     || self.recursive_fns.contains(&id)
                     || program.entry_fns.contains(&id)
-                    || program.judge_fns.contains(&id)
-                    || is_hook_fn(program, id)
-                    || program.cpp_bodies.iter().any(|(c, _)| *c == id)
                 {
                     return false;
                 }
@@ -321,7 +318,7 @@ impl<'p> Devirt<'p> {
         each_write(&program.main, &mut |how, place| {
             if let Write::Mutate(_) | Write::Sort | Write::Mut = how {
                 if let (true, g) = walk::root(place) {
-                    *sets.entry(g).or_default() += 2;
+                    sets.insert(g, 2);
                 }
             }
         });
@@ -371,10 +368,10 @@ impl<'p> Devirt<'p> {
         blocks.extend(program.closures.iter().map(|c| &c.body));
         for block in blocks {
             each_put(block, &mut |put, value| {
-                if let Put::Store(place, op) = put {
+                if let Put::Store(place, _) = put {
                     if let PlaceKind::Global(g) = place.kind {
                         let cid = match value.kind {
-                            ExprKind::Closure(cid) if *op == AssignOp::Set => Some(cid),
+                            ExprKind::Closure(cid) => Some(cid),
                             _ => None,
                         };
                         set.entry(g).or_default().push(cid);
@@ -397,7 +394,7 @@ impl<'p> Devirt<'p> {
             .flat_map(|c| c.captures.iter().filter(|c| c.is_global).map(|c| c.outer))
             .collect();
         set.into_iter()
-            .filter(|(g, _)| matches!(program.globals[*g].ty, Ty::Fn(..)) && !captured.contains(g))
+            .filter(|(g, _)| !captured.contains(g))
             .filter_map(|(g, cids)| match cids.as_slice() {
                 [Some(cid)] if self.closure_effectively_captureless(*cid) => {
                     Some((g, self.same[*cid]))
@@ -665,7 +662,8 @@ impl<'p> Devirt<'p> {
                     }
                 }
             });
-            let Some(j) = stmts.iter().position(|s| {
+            let rest = &stmts[k + 2..];
+            let Some(at) = rest.iter().position(|s| {
                 matches!(s, Stmt::Assign(place, AssignOp::Set, value)
                     if place.kind == PlaceKind::Local(*w)
                         && sets == [value as *const Expr]
@@ -673,19 +671,15 @@ impl<'p> Devirt<'p> {
             }) else {
                 continue;
             };
-            let Stmt::Assign(_, _, wrap) = &stmts[j] else {
+            let Stmt::Assign(_, _, wrap) = &rest[at] else {
                 continue;
             };
             let ExprKind::Closure(cw) = wrap.kind else {
                 continue;
             };
-            if j > k + 1
-                && captures(cw, *b)
-                && !captures(cw, *w)
-                && !names(&stmts[k + 2..j], *w)
-                && !names(&stmts[k + 2..j], *b)
-            {
-                out.insert(*w, (*b, captures(cb, *w), names(&stmts[j + 1..], *b)));
+            let (between, after) = (&rest[..at], &rest[at + 1..]);
+            if captures(cw, *b) && !captures(cw, *w) && !names(between, *w) && !names(between, *b) {
+                out.insert(*w, (*b, captures(cb, *w), names(after, *b)));
             }
         }
     }
@@ -703,10 +697,7 @@ impl<'p> Devirt<'p> {
 
     fn compute_template_params(&mut self) {
         for (id, f) in self.program.fns.iter().enumerate() {
-            if self.program.entry_fns.contains(&id)
-                || self.program.judge_fns.contains(&id)
-                || is_hook_fn(self.program, id)
-            {
+            if self.program.entry_fns.contains(&id) || self.program.judge_fns.contains(&id) {
                 continue;
             }
             let slots: Vec<usize> = (0..f.params.len())
@@ -1343,9 +1334,6 @@ pub(crate) fn same_closures(program: &Program) -> Vec<ClosureId> {
 /// The fn closure `cid` only calls, with its own parameters in order.
 fn forwards_to(program: &Program, cid: ClosureId) -> Option<FnId> {
     let c = &program.closures[cid];
-    if !c.captures.is_empty() || !c.muts.is_empty() {
-        return None;
-    }
     let call = match c.body.stmts.as_slice() {
         [Stmt::Return(Some(e))] | [Stmt::Expr(e)] => e,
         _ => return None,

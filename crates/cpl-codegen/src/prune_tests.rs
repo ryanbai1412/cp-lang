@@ -324,3 +324,170 @@ fn a_none_passed_on_through_a_parameter_still_drops_the_branch_on_it() {
     let code: String = cpp.lines().filter(|l| !l.starts_with("//")).collect();
     assert!(!code.contains("slow"), "{cpp}");
 }
+
+#[test]
+fn a_let_of_a_param_nobody_passes_goes_with_the_branches_testing_it() {
+    let get = |body: &str| {
+        let cpp = cpp(&format!(
+            "fn get(x: Int, by: ?Int = None) -> Int:\n{body}\n    x + 1\nprint(get(read<Int>()))\n"
+        ));
+        let start = cpp.find("ll get(").expect("a get fn");
+        cpp[start..start + cpp[start..].find("\n}").expect("its end")].to_string()
+    };
+    for body in [
+        "    let f = by\n    if f != None: return x * f!",
+        "    if x > 3:\n        let f = by\n        if f != None: return x * f!",
+        "    if x > 3: print(1)\n    else:\n        let f = by\n        if f != None: return x * f!",
+        "    for i in 0..x:\n        let f = by\n        if f != None: return i * f!",
+        "    while x > 3:\n        let f = by\n        if f != None: return x * f!",
+    ] {
+        let get = get(body);
+        assert!(!get.contains(" f = by;"), "{body}\n{get}");
+    }
+    let kept = get(
+        "    let f = by\n    let g = () => f\n    if f != None: return x * f!\n    if g() != None: return 2",
+    );
+    assert!(kept.contains(" f = by;"), "a closure reads `f`:\n{kept}");
+}
+
+#[test]
+fn a_skipped_assert_that_stores_still_runs_inside_a_branch_or_loop() {
+    for wrap in [
+        "if n > 0:\n    ",
+        "if n > 5: print(0)\nelse:\n    ",
+        "while n > 5:\n    ",
+        "for i in 0..n:\n    ",
+    ] {
+        let source = format!(
+            "use std.graph.{{floyd_warshall}}\ndomain V = 0..3\nvar hop: [V, V]?Int = None\n\
+             hop[0, 1] = 1\nhop[1, 2] = 1\nlet n: 1..=10 = read()\n\
+             {wrap}assert floyd_warshall(mut hop)\nprint(hop[0, 2] ?? -1)\n"
+        );
+        let mut db = cpl_check::Session::new();
+        db.set_file("t.cp", source.as_str());
+        let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+        let target = crate::Target {
+            checks: crate::Checks::None,
+            ..crate::Target::default()
+        };
+        let out = crate::emit_for(&program, "t", None, &target);
+        let body = &out[out.find("void solve()").unwrap_or(0)..];
+        assert!(body.contains("floyd_warshall"), "{source}\n{out}");
+    }
+}
+
+fn solve_body(source: &str, checks: crate::Checks) -> String {
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let target = crate::Target {
+        checks,
+        ..crate::Target::default()
+    };
+    let out = crate::emit_for(&program, "t", None, &target);
+    out[out.find("void solve()").unwrap_or(0)..].to_string()
+}
+
+#[test]
+fn an_assert_storing_through_the_fns_it_calls_still_runs_or_is_checked() {
+    let source = "use std.graph.{floyd_warshall}\ndomain V = 0..3\nvar hop: [V, V]?Int = None\n\
+                  hop[0, 1] = 1\nhop[1, 2] = 1\n\
+                  fn close(mut d: [V, V]?Int) -> Bool = floyd_warshall(mut d)\n\
+                  fn wrap(mut d: [V, V]?Int) -> Bool = close(mut d)\n\
+                  assert wrap(mut hop)\nprint(hop[0, 2] ?? -1)\n";
+    let unchecked = solve_body(source, crate::Checks::None);
+    assert!(unchecked.contains("wrap("), "{unchecked}");
+    assert!(!unchecked.contains("assertion failed"), "{unchecked}");
+    let checked = solve_body(source, crate::Checks::default());
+    assert!(
+        checked.contains("wrap(") && checked.contains("assertion failed"),
+        "{checked}"
+    );
+}
+
+fn tests_some(source: &str) -> bool {
+    let cpp = cpp(source);
+    let start = cpp.find("ll get(").expect("a get fn");
+    let get = &cpp[start..start + cpp[start..].find("\n}").expect("its end")];
+    get.contains("has_value()") || get.contains("* 7") || get.contains(", 7)")
+}
+
+#[test]
+fn a_field_read_from_input_at_any_depth_may_hold_something() {
+    let source = |read: &str, built: &str| {
+        format!(
+            "struct B:\n    f: ?Int\n    g: ?Int\nstruct C:\n    b: B\n\
+             fn get(b: B) -> Int:\n    if b.f != None: return b.f! * 7\n    5\n\
+             {read}let q = B(None, Some(read<Int>()))\nlet w = {built}\nprint(get(w) + get(q))\n"
+        )
+    };
+    assert!(!tests_some(&source("", "B(None, None)")));
+    for read in [
+        "B",
+        "List<B>",
+        "(Int, B)",
+        "List<List<B>>",
+        "(x: Int, b: B)",
+        "C",
+    ] {
+        let read = format!("let r: {read} = read()\n");
+        assert!(tests_some(&source(&read, "B(None, None)")), "{read}");
+    }
+    for built in ["B(q.f, None)", "B(None, q.f)"] {
+        assert!(
+            !tests_some(&source("", built)),
+            "{built} fills `f` with None"
+        );
+    }
+    assert!(tests_some(&source("", "B(q.g, None)")), "`g` is Some");
+}
+
+#[test]
+fn an_optional_known_none_is_one_nothing_can_set() {
+    let get = |body: &str, params: &str| {
+        tests_some(&format!(
+            "fn get(x: Int{params}) -> Int:\n{body}\n    x + 1\nprint(get(read<Int>()))\n"
+        ))
+    };
+    let by = ", by: ?Int = None";
+    assert!(!get(
+        "    let f: ?Int = None\n    if f != None: return x * f!",
+        ""
+    ));
+    assert!(!get("    if by != None: return x * by!", by));
+    assert!(get(
+        "    if x > 5: by = Some(2)\n    if by != None: return x * by!",
+        ", var by: ?Int = None"
+    ));
+    assert!(get(
+        "    var g = by\n    let h = () => g = Some(3)\n    h()\n    if g != None: return x * g!",
+        by
+    ));
+}
+
+#[test]
+fn a_construction_counts_only_where_code_can_reach_it() {
+    let some = |body: &str| {
+        tests_some(&format!(
+            "struct B:\n    f: ?Int\nfn get(b: B) -> Int:\n    if b.f != None: return b.f! * 7\n    5\n\
+             fn mk(x: Int) -> B:\n{body}\n    B(Some(x))\nprint(get(mk(read<Int>())))\n"
+        ))
+    };
+    for body in [
+        "    return B(None)",
+        "    if x > 0: return B(None)\n    else: return B(None)",
+        "    if 1 < 2: return B(None)",
+        "    if 1 > 2: print(0)\n    else: return B(None)",
+    ] {
+        assert!(!some(body), "`B(Some(x))` is never reached:\n{body}");
+    }
+    for body in [
+        "    if x > 0: return B(None)",
+        "    for i in 0..x:\n        if i > 2: return B(Some(i))",
+        "    while x > 3:\n        return B(Some(x))",
+        "    let h = () => B(Some(x))\n    return h()",
+        "    let h = () => B(Some(x))\n    return B(None)",
+    ] {
+        assert!(some(body), "a `Some` is reached:\n{body}");
+    }
+}

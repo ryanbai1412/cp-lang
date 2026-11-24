@@ -76,3 +76,76 @@ fn a_list_of_a_small_domain_holds_each_position_in_a_byte() {
     assert!(!wide.contains("cpl::u8>"), "{wide}");
     assert!(wide.contains("std::vector<int>"), "{wide}");
 }
+
+/// `R`, `C` and `P = (R, C)` with at most `hi` rows and columns, and `body`.
+fn product_of(hi: &str, body: &str) -> String {
+    cpp(&format!(
+        "domain R = read(1..={hi})\ndomain C = read(1..={hi})\ndomain P = (R, C)\nlet i: Int = read()\n{body}"
+    ))
+}
+
+#[test]
+fn an_ordinal_cast_into_a_wide_product_checks_64_bits() {
+    let body = "var a: [P]Int = 0\na[P.nth(i)] = 1\nprint(a[P.nth(i)])\n";
+    let wide = product_of("100_000", body);
+    assert!(wide.contains("cpl::pos_wide(i, P_len)"), "{wide}");
+    let narrow = product_of("1000", body);
+    assert!(narrow.contains("cpl::pos(i, P_len)"), "{narrow}");
+}
+
+#[test]
+fn a_product_of_exactly_i32_max_positions_stays_an_int() {
+    let at = |hi: &str| {
+        cpp(&format!(
+            "domain R = read(1..={hi})\ndomain One = 0..1\ndomain P = (R, One)\nvar pq = MinHeap<P>()\npq.push(P.first!)\nprint(yes(pq.pop()! == P.first!))\n"
+        ))
+    };
+    let max = at("2147483647");
+    assert!(max.contains("std::vector<int>"), "{max}");
+    let past = at("2147483648");
+    assert!(past.contains("std::vector<ll>"), "{past}");
+}
+
+#[test]
+fn a_bool_or_enum_part_counts_its_cases() {
+    let with = |part: &str| {
+        cpp(&format!(
+            "enum E:\n    X\n    Y\n    Z\ndomain D = read(1..=1000)\ndomain P = (D, {part})\nvar pq = MinHeap<P>()\npq.push(P.first!)\nprint(yes(pq.pop()! == P.first!))\n"
+        ))
+    };
+    for part in ["Bool", "E"] {
+        let out = with(part);
+        assert!(out.contains("std::vector<int>"), "{part}: {out}");
+    }
+}
+
+#[test]
+fn explain_names_each_domains_width_and_the_bound_behind_it() {
+    let source = concat!(
+        "domain R = read(1..=100_000)\ndomain C = read(1..=100_000)\ndomain P = (R, C)\n",
+        "domain Q = read(1..=1000)\ndomain W = (Q, Q)\ndomain S = 0..5\n",
+        "domain D = 0..Q.count * 3\nlet i: Int = read()\nvar d: [D]Int = 0\nd[D.nth(i)] = 4\n",
+        "var a: [P]Int = 0\na[P.nth(i)] = 1\nvar w: [W]Int = 0\nw[W.nth(i)] = 2\n",
+        "var b: [S]Int = 0\nb[S.nth(i % 5)] = 3\n",
+        "print(a[P.nth(i)] + b[S.nth(i % 5)] + w[W.nth(i)] + d[D.nth(i)])\n",
+    );
+    let mut db = cpl_check::Session::new();
+    db.set_file("t.cp", source);
+    let program = cpl_ir::lower(&db.analyze("t.cp").expect("set")).expect("lowers");
+    let plain = "`int` positions: a plain domain holds at most i32::MAX";
+    let bounded = "`int` positions: a bound keeps its count under i32::MAX";
+    let wide =
+        "`ll` positions: its count multiplies other counts and no bound keeps it under i32::MAX";
+    assert_eq!(
+        crate::explain_lowered(&program).specializations,
+        [
+            format!("domain R -> {plain}"),
+            format!("domain C -> {plain}"),
+            format!("domain P -> {wide}"),
+            format!("domain Q -> {plain}"),
+            format!("domain W -> {bounded}"),
+            format!("domain S -> {plain}; 5 on every run, so an array over it is a `std::array`"),
+            format!("domain D -> {bounded}"),
+        ]
+    );
+}
