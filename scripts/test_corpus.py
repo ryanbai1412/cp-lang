@@ -613,6 +613,29 @@ class MaxShortTest(unittest.TestCase):
             self.assertEqual(corpus.max_short(pkg, "cpl", "1\n"),
                              ["max-short p m: --max reads 7, the statement allows n - 1"])
 
+    def test_each_max_input_counts_and_a_read_is_short_only_if_short_in_all(self):
+        short = lambda v: f"max-short p p: --max reads {v}, the statement allows 4e5"
+        self.assertEqual(corpus.merged_short([[short(7)]]), [short(7)])
+        # ioi08p6: P <= 3e4 when B > 0, so `--max free` (B = 0) saturates P = 4e5 on its own
+        self.assertEqual(corpus.merged_short([[short(30000)], []]), [])
+        self.assertEqual(corpus.merged_short([[short(30000)], [short(9)]]), [short(30000)])
+        self.assertEqual(corpus.merged_short([[short(30000)], ["max-unread p -"]]), ["max-unread p -"])
+        self.assertEqual(corpus.max_args(types.SimpleNamespace(tests=None)), [("--max",)])
+        with tempfile.TemporaryDirectory() as d:
+            toml = Path(d, "tests.toml")
+            toml.write_text('[[case]]\nseed = 1\nsize = 2\n\n[[case]]\nargs = ["--max"]\n\n'
+                            '[[case]]\nargs = ["--max", "free"]\n\n[[case]]\nargs = ["7", "3"]\n')
+            pkg = types.SimpleNamespace(tests=toml)
+            self.assertEqual(corpus.max_args(pkg), [("--max",), ("--max", "free")])
+            for gens, shorts, want in (([b"a", b"b"], [[short(30000)], []], []),
+                                       ([b"a", b"b"], [[short(30000)], [short(9)]], [short(30000)]),
+                                       ([b"a", None], [[]], ["max-unread p gen-fails"])):
+                with mock.patch.object(corpus, "problems", return_value=iter([pkg])), \
+                        mock.patch.object(corpus, "gen_out", side_effect=gens) as gen, \
+                        mock.patch.object(corpus, "max_short", side_effect=shorts):
+                    self.assertEqual(corpus.max_short_of(("p", "cpl")), want)
+                    self.assertEqual([c.args[1] for c in gen.call_args_list], [("--max",), ("--max", "free")])
+
     def test_a_stale_record_fails_and_write_records_what_it_measures(self):
         found = ["max-short a m: --max reads 3, the statement allows 2e5", "max-unread b multitest"]
         with tempfile.TemporaryDirectory() as root, \

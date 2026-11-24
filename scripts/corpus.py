@@ -873,12 +873,37 @@ def max_short(pkg, cpl, data):
 MAX_SHORT = "research/corpus-max-short.json"
 
 
+def max_args(pkg):
+    """The arguments of each of the package's --max inputs: `--max`, then each tests.toml case
+    whose args start with `--max`, so a statement with either-or bounds (B = 0 and P <= 4e5,
+    or P <= 3e4) saturates each branch in a case of its own."""
+    tests = getattr(pkg, "tests", None)
+    cases = tomllib.loads(tests.read_text()).get("case", []) if tests else []
+    more = [tuple(map(str, c["args"])) for c in cases if list(c.get("args", []))[:1] == ["--max"]]
+    return list(dict.fromkeys([("--max",), *more]))
+
+
+def merged_short(found):
+    """The max_short findings of a package's --max inputs, one list per input: each input it
+    can't read, and each sizing read short in every input, at the most any of them reads."""
+    unread = sorted({f for fs in found for f in fs if f.startswith("max-unread ")})
+    short = [[f for f in fs if f.startswith("max-short ")] for fs in found]
+    key = lambda f: f.split(":")[0]
+    reads = lambda f: int(re.search(r"reads (-?\d+)", f)[1])
+    keep = set.intersection(*({key(f) for f in fs} for fs in short)) if short else set()
+    return unread + [max((f for fs in short for f in fs if key(f) == k), key=reads) for k in sorted(keep)]
+
+
 def max_short_of(job):
     """One package's max_short findings, in a worker process; gen.py failing is max-unread."""
     pid, cpl = job
-    pkg = next(problems(ids=[pid]))
-    data = gen_out(pkg, ("--max",))
-    return [f"max-unread {pid} gen-fails"] if data is None else max_short(pkg, cpl, data.decode())
+    pkg, found = next(problems(ids=[pid])), []
+    for args in max_args(pkg):
+        data = gen_out(pkg, args)
+        if data is None:
+            return [f"max-unread {pid} gen-fails"]
+        found.append(max_short(pkg, cpl, data.decode()))
+    return merged_short(found)
 
 
 def max_short_mode(args):
@@ -1355,9 +1380,10 @@ def checked(pid, port, cpl):
             os.remove(cpp)
 
 
-def at_max(pkg, cpl, exe, orig, data, later=None):
-    """The findings of the max input: it passes the checked C++, fits the limits, matches the accepted C++.
-    Given a `later` list, the timed runs go on it instead, to run once every build is done."""
+def at_max(pkg, cpl, exe, orig, data, later=None, label="--max"):
+    """The findings of the max input (`label`, its gen.py args): it passes the checked C++, fits
+    the limits, matches the accepted C++. Given a `later` list, the timed runs go on it instead,
+    to run once every build is done."""
     pid, port = pkg.id, str(pkg.port)
     ms, mb = limits(port)
     found = []
@@ -1367,9 +1393,9 @@ def at_max(pkg, cpl, exe, orig, data, later=None):
     else:
         r = measure(safe, data, max(TIMEOUT, CHECKED_SLOWER * ms / 1000))
         if r is None:
-            found.append(f"checked-over-limit {pid} --max")
+            found.append(f"checked-over-limit {pid} {label}")
         elif r[0] != 0:
-            found.append(f"traps {pid} --max")
+            found.append(f"traps {pid} {label}")
     if not exe:
         return found
     if later is not None:
@@ -1377,16 +1403,16 @@ def at_max(pkg, cpl, exe, orig, data, later=None):
         fd, path = tempfile.mkstemp(dir=MAX_INPUTS)
         with os.fdopen(fd, "wb") as f:
             f.write(data)
-        later.append(lambda: timed_max(pkg, exe, orig, Path(path), ms, mb))
+        later.append(lambda: timed_max(pkg, exe, orig, Path(path), ms, mb, label))
         return found
-    return found + timed_max(pkg, exe, orig, data, ms, mb)
+    return found + timed_max(pkg, exe, orig, data, ms, mb, label)
 
 
 # A --max input waiting for its timed runs.
 MAX_INPUTS = os.path.join(ROOT, "target", "corpus-max-inputs")
 
 
-def timed_max(pkg, exe, orig, data, ms, mb):
+def timed_max(pkg, exe, orig, data, ms, mb, label="--max"):
     """The port's judge build against the accepted C++ on the max input (`data`, or a file of it,
     removed once read): the over-limit, traps, disagrees and slow findings."""
     if isinstance(data, Path):
@@ -1404,22 +1430,22 @@ def timed_max(pkg, exe, orig, data, ms, mb):
                 elif side:
                     wants.append(measure(orig, data, 4 * ms / 1000 + 1))
             if any(r is None or r[0] != 0 for r in runs):
-                return found + [f"over-limit {pid} --max" if any(r is None for r in runs) else f"traps {pid} --max"]
+                return found + [f"over-limit {pid} {label}" if any(r is None for r in runs) else f"traps {pid} {label}"]
     mine, theirs = min(r[2] for r in runs), None
     if orig:
         if all(w is not None and w[0] == 0 for w in wants):
             if not agrees(pkg, data, runs[0][1], wants[0][1]):
-                found.append(f"disagrees {pid} --max")
+                found.append(f"disagrees {pid} {label}")
             theirs = min(w[2] for w in wants)
             if mine >= FLOOR and mine > SLOWER * max(theirs, FLOOR):
-                found.append(f"slow {pid} --max: {mine:.3f} s of CPU, {mine / max(theirs, FLOOR):.2f}x"
+                found.append(f"slow {pid} {label}: {mine:.3f} s of CPU, {mine / max(theirs, FLOOR):.2f}x"
                              f" the accepted C++'s {theirs:.3f} s, over {SLOWER}x")
         else:
-            found.append(f"reference-fails {pid} --max")
+            found.append(f"reference-fails {pid} {label}")
     # On a box slower than the judge the accepted C++ itself runs past the
     # limit; the port then answers to the accepted C++'s time instead.
     if mine > max(ms / 1000, theirs or 0) or min(r[3] for r in runs) > mb:
-        found.append(f"over-limit {pid} --max")
+        found.append(f"over-limit {pid} {label}")
     return found
 
 
@@ -1454,29 +1480,37 @@ def interacted(pkg, ctx):
 
 
 def check_max(pkg, ctx):
-    """gen.py --max makes a valid maximum input that the port's checked C++ runs
+    """Each --max input (max_args) is valid and maximum: the port's checked C++ runs it
     without a trap, its judge build runs within the `// limits:` time and memory,
     and it matches the accepted C++ within 1.5x its time (problem-packages/R6).
     A missing --max is counted by the `corpus_no_max` ratchet, not here."""
     if not pkg.solution or not ctx.runs(pkg) or pkg.interactor or not has_max(pkg):
         return []
-    data = gen_out(pkg, ("--max",))
-    if data is None:
-        return [f"gen-fails {pkg.id} --max"]
+    inputs = []
+    for args in max_args(pkg):
+        data = gen_out(pkg, args)
+        if data is None:
+            return [f"gen-fails {pkg.id} {' '.join(args)}"]
+        inputs.append((" ".join(args), data))
     if not pkg.port:
         # A dream through its grader: `cpl test` judges it at the limits.
-        ok, _ = judged(pkg, pkg.solution, [data.decode()], ctx.cpl)
+        ok, _ = judged(pkg, pkg.solution, [d.decode() for _, d in inputs], ctx.cpl)
         return [] if ok else [f"max-fails {pkg.id} --max"]
     # A port the size check can't read yet is counted by corpus_max_unread, not failed here.
-    short = [f for f in max_short(pkg, ctx.cpl, data.decode()) if f.startswith("max-short ")]
+    found = [f for f in merged_short([max_short(pkg, ctx.cpl, d.decode()) for _, d in inputs])
+             if f.startswith("max-short ")]
     exe, _ = native(pkg, ctx)
-    if exe and (why := rejects([exe], data)):
-        return short + [f"{'max-timeout' if why == TIMED_OUT else 'invalid-input'} {pkg.id} --max"]
     ref = pkg.reference()
     orig = built(ref) if ref else None
-    if ref and not orig:
-        return short + [f"no-ref-build {pkg.id} {Path(ref).name}"]
-    return short + at_max(pkg, ctx.cpl, exe, orig, data, getattr(ctx, "later", None))
+    later = getattr(ctx, "later", None)
+    for label, data in inputs:
+        if exe and (why := rejects([exe], data)):
+            found.append(f"{'max-timeout' if why == TIMED_OUT else 'invalid-input'} {pkg.id} {label}")
+        elif ref and not orig:
+            return found + [f"no-ref-build {pkg.id} {Path(ref).name}"]
+        else:
+            found += at_max(pkg, ctx.cpl, exe, orig, data, later, label)
+    return found
 
 
 def check_size(pkg, ctx):
