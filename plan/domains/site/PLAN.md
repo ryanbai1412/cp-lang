@@ -10,7 +10,7 @@ cp-lang.org serves every route from `web/out`, with the compiler in the page (`c
 
 Ordered by [Milestone 1](../../../handbook/product/milestones.md): steps 1-2 of its scenario (Understand, Try) and the way into step 3 (Install) first.
 
-1. **Run on every landing example.** 6 of the 8 syntax and library examples run. The other 2 wait on checker fixes (Core): `egoi23p4` (a bare generic struct `Semiring` as a parameter type), `btoi20p3` (`undoing` nested in `.minimal(...)`). Each runs as soon as its fix lands: rename `.spec.cp` to `.cp` and add its `.in` and `.out`.
+1. **Run on every landing example.** 7 of the 8 syntax and library examples run. `egoi23p4` waits on a checker fix (Core: a bare generic struct `Semiring` as a parameter type) and std `symmetric` (Content). Each runs as soon as its fix lands: rename `.spec.cp` to `.cp` and add its `.in` and `.out`.
 2. **Practice that teaches.** At least 12 Div 2 A/B problems with hints before acceptance (21 have hints) and live lints in the practice and playground editors.
 3. **Homepage cold read.** Probe P5: a cold reader names 3 advantages over C++ after 3 minutes, at 390 and 1280 px.
 4. **Milestone 2.** Learn to Div 1 C with at least 60 judged problems, a Language chapter per part of `spec/core/`, stress and trace in the playground, and the docs-only eval passing at least 50 of 55 from the site alone.

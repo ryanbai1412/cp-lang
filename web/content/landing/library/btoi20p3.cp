@@ -6,6 +6,6 @@ let odd = street.ring.minimal(
     undoing(ParityDsu<V>(), add: (mut d, (u, v)) => d.unite(u, v)),
     ok: u => not u.state.consistent,
 )
-for closed in read<[q]Range<Street>>():
-    let shortest = odd[street.ring.prev(closed.l)]
-    print(yes(shortest.is_some_and(w => w.len <= m - closed.len)))
+for (l, r) in read<[q](Street, Street)>():
+    let open = m - (l..=r).len
+    print(yes(odd[street.ring.prev(l)].map(w => w.len <= open) ?? false))

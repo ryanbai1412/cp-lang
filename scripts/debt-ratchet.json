@@ -195,7 +195,7 @@
   "corpus_known": 0,
   "site_rederived": 0,
   "browser_lsp_gaps": 0,
-  "site_spec_snippets": 2,
+  "site_spec_snippets": 1,
   "allow_attrs": 42,
   "std_lint_allows": 0,
   "unsafe_blocks": 26,
