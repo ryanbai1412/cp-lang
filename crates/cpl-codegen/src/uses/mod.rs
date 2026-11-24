@@ -361,7 +361,7 @@ pub(crate) fn dead_past(
     });
     let set_again = read.into_iter().filter(|&s| {
         !captured_in(program, block, s)
-            && crate::lend::local_set_before_read(s, &block.stmts[k + 1..])
+            && crate::lend::local_set_before_read(program, s, &block.stmts[k + 1..])
     });
     (outer.iter().copied().chain(lets))
         .filter(|&s| unread_after(program, block, k, s))
@@ -727,7 +727,7 @@ pub(crate) fn last_read(
     if let Stmt::Let(bound, Some(init)) = &block.stmts[k] {
         // An `if let` payload stays a reference unless the name moves on.
         if let ExprKind::Unwrap(..) = init.kind {
-            return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
+            return crate::lend::overwritten_before_read(program, init, &block.stmts[k + 1..])
                 || (place_dies(program, block, k, init, outer)
                     && moved_on(&block.stmts[k + 1..], *bound));
         }
@@ -739,7 +739,7 @@ pub(crate) fn last_read(
             },
             _ => init,
         };
-        return crate::lend::overwritten_before_read(init, &block.stmts[k + 1..])
+        return crate::lend::overwritten_before_read(program, init, &block.stmts[k + 1..])
             || place_dies(program, block, k, in_place(init), outer)
             || copied(init).is_some_and(|src| match src.kind {
                 ExprKind::Global(g) => dies_in(program, block, k, (true, g), None),
@@ -756,7 +756,7 @@ pub(crate) fn last_read(
     };
     field_store(place)
         && walk::root(place) != source
-        && (crate::lend::overwritten_before_read(value, &block.stmts[k + 1..])
+        && (crate::lend::overwritten_before_read(program, value, &block.stmts[k + 1..])
             || match source {
                 (false, slot) => dead_after(program, block, k, slot, outer),
                 // Nothing runs after the program's last top-level statement.
