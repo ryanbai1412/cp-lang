@@ -67,7 +67,7 @@ fn match_bottoms(s: Stack, spare: Stack):
 
 for now in Time:
     if twin[now] != None:
-        let s = if empty.len == 0: single.each().max(by: s => leaves(stacks[s].first!))!  // stays longest
+        let s = if empty.len == 0: single.max(by: s => leaves(stacks[s].first!))!  // stays longest
             elif empty.len > 1: empty.first()!
             else: single.first() ?? ripe.first() ?? empty.first()!  // keep the last spare stack free
         place(s, now)
