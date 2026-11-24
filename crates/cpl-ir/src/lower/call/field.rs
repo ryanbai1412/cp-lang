@@ -871,18 +871,6 @@ impl<'a> Lowerer<'a> {
                 )
             }
             (Ty::Range(_), "rev") => self.reversed_range(value, span),
-            (
-                Ty::List(_)
-                | Ty::ListView(_, _)
-                | Ty::Keyed(_, _)
-                | Ty::MutView(..)
-                | Ty::Str
-                | Ty::StrView,
-                "adjacent",
-            ) => self.lower_adjacent(value, span),
-            (Ty::Array { dims, .. }, "adjacent") if dims.len() == 1 => {
-                self.lower_adjacent(value, span)
-            }
             (Ty::Struct(sid), "len" | "distinct") if self.counter_key.contains_key(sid) => {
                 let map_ty = self.structs[*sid].def.fields[0].1.clone();
                 let map_expr = self.mk(ExprKind::Field(Box::new(value), 0), map_ty, span);
