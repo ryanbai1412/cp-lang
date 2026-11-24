@@ -548,9 +548,29 @@ jobs:
         shell: bash
         run: just check | tee -a "$GITHUB_STEP_SUMMARY"
 
+  # One `cpl` per tip for the acceptance and audit shards, which only run it:
+  # each shard built its own, 85-150 s of runner time apiece.
+  cpl-build:
+    name: cpl (shared build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-rust
+        with:
+          target: release
+      - name: Build cpl
+        run: cargo build --profile ci --bin cpl
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cpl-ci
+          path: target/ci/cpl
+          retention-days: 1
+
   acceptance:
     name: acceptance solutions stay AC (${{ matrix.shard }}/16)
     runs-on: ubuntu-latest
+    needs: cpl-build
     timeout-minutes: 20
     strategy:
       fail-fast: false
@@ -559,11 +579,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - uses: ./.github/actions/setup-rust
+      # Downloaded after checkout, so corpus.py's stale check sees it newer than the sources.
+      - uses: actions/download-artifact@v4
         with:
-          target: release
-      - name: Build cpl
-        run: cargo build --profile ci --bin cpl
+          name: cpl-ci
+          path: target/ci
+      - run: chmod +x target/ci/cpl
+      - uses: ./.github/actions/install-tools
+        with:
+          tools: just@1.59.0
       - name: Rejudge the acceptance solutions
         run: just acceptance target/ci/cpl -j "$(nproc)" --shard ${{ matrix.shard }}/16
       # Keyed by content in scripts/corpus.py: built ports and references
@@ -607,6 +631,7 @@ jobs:
     # stays near 4 min and no package is skipped.
     name: corpus packages pass the audit (${{ matrix.shard }}/8)
     runs-on: ubuntu-latest
+    needs: cpl-build
     timeout-minutes: 15
     strategy:
       fail-fast: false
@@ -615,12 +640,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - uses: ./.github/actions/setup-rust
-        with:
-          target: release
       # The package mode makes each package's cases with `cpl test --make`.
-      - name: Build cpl
-        run: cargo build --profile ci --bin cpl
+      # Downloaded after checkout, so corpus.py's stale check sees it newer than the sources.
+      - uses: actions/download-artifact@v4
+        with:
+          name: cpl-ci
+          path: target/ci
+      - run: chmod +x target/ci/cpl
+      - uses: ./.github/actions/install-tools
+        with:
+          tools: just@1.59.0
       # corpus.py caches each built reference under CXX_CACHE; save it even
       # when the audit fails or times out, so the next run starts warm.
       - uses: actions/cache/restore@v4
