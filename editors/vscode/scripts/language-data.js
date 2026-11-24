@@ -54,6 +54,7 @@ function tables() {
     return {
         PRELUDE_TYPES: listed(builtinTypes),
         STDLIB_TYPES: names(kinds('struct', 'enum', 'trait', 'type', 'domain')),
+        BUILTIN_VALUES: listed([...builtinValues].filter(name => !builtinTypes.has(name))),
         PRELUDE_VALUES: listed([...builtinValues, ...fns.filter(name => imported.has(name))].filter(name => !builtinTypes.has(name))),
         STDLIB_VALUES: names(fns.filter(name => !imported.has(name))),
         PRELUDE_CONSTANTS: names(consts.filter(name => imported.has(name))),
@@ -99,8 +100,9 @@ function main() {
         'constant.language.none.cp': literals.filter(word => word !== 'true' && word !== 'false'),
         'support.type.builtin.cp': t.PRELUDE_TYPES,
         'support.type.stdlib.cp': t.STDLIB_TYPES,
-        'support.function.builtin.cp': t.PRELUDE_VALUES,
-        'support.function.stdlib.cp': t.STDLIB_VALUES,
+        // Only the compiler's own names are built in; a std fn reads as std even when the prelude imports it.
+        'support.function.builtin.cp': t.BUILTIN_VALUES,
+        'support.function.stdlib.cp': [...t.PRELUDE_VALUES.filter(name => !t.BUILTIN_VALUES.includes(name)), ...t.STDLIB_VALUES],
         'support.constant.stdlib.cp': [...t.PRELUDE_CONSTANTS, ...t.STDLIB_CONSTANTS],
     };
     for (const [scope, names] of Object.entries(scopes)) {

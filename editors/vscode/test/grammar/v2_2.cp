@@ -21,7 +21,7 @@ var seen = Marks<D>()
 let xs: Compressed<Int> = compress(raw_vals)
 //      ^^^^^^^^^^ support.type.stdlib.cp
 //                 ^^^ support.type.builtin.cp
-//                        ^^^^^^^^ support.function.builtin.cp
+//                        ^^^^^^^^ support.function.stdlib.cp
 
 var bs = Bitset<D>()
 //       ^^^^^^ support.type.stdlib.cp
@@ -72,10 +72,10 @@ for d in D:
 //       ^^^^ keyword.operator.assignment.compound.cp
 
 while prev_permutation(mut perm):
-//    ^^^^^^^^^^^^^^^^ support.function.builtin.cp
+//    ^^^^^^^^^^^^^^^^ support.function.stdlib.cp
 //                     ^^^ storage.modifier.mut.cp
     let k = ceil_div(a, b) + rand(1..=10)
-//          ^^^^^^^^ support.function.builtin.cp
+//          ^^^^^^^^ support.function.stdlib.cp
 //                           ^^^^ support.function.builtin.cp
     shuffle(mut perm)
 //  ^^^^^^^ support.function.builtin.cp
@@ -208,9 +208,9 @@ let stale_words = by + with + static + protocol + decorator + do + yields + requ
 //                                                                          ^^^^^^^^ - keyword
 //                                                                                     ^^^^^^^ - keyword
 //                                                                                               ^^^^ - invalid
-let total = fold(+, xs) + ceil_div(n, k) + scan(xs, +).len
-//          ^^^^ support.function.builtin.cp
-//                        ^^^^^^^^ support.function.builtin.cp
-//                                         ^^^^ support.function.builtin.cp
+let total = sum(xs) + ceil_div(n, k) + scan(xs, +).len
+//          ^^^ support.function.builtin.cp
+//                    ^^^^^^^^ support.function.stdlib.cp
+//                                     ^^^^ support.function.stdlib.cp
 for r in runs(sorted(xs, by: desc), by: x => x % 2): print(r.key)
-//       ^^^^ support.function.builtin.cp
+//       ^^^^ support.function.stdlib.cp
