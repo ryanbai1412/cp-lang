@@ -184,10 +184,12 @@ pub(crate) fn compile_cpp(cpp: &str, cache_dir: &Path) -> Result<PathBuf, CppCom
         .map_err(|e| CppCompileError::Infra(format!("cannot create cache dir: {e}")))?;
     // `CPL_CONFORM_CXXFLAGS` replaces `-O2`, e.g. `-O1 -g -fsanitize=address,undefined`
     // to turn undefined behaviour in emitted C++ into a failing case.
-    let flags = std::env::var("CPL_CONFORM_CXXFLAGS").unwrap_or_else(|_| "-O2".into());
+    let flags = cpl_env::CONFORM_CXXFLAGS
+        .text()
+        .unwrap_or_else(|| "-O2".into());
     // `CPL_CXX_SYSTEM_KEY` fingerprints the compiler and system headers when the
     // cache outlives them (shared across checkouts and CI runs).
-    let system = std::env::var("CPL_CXX_SYSTEM_KEY").unwrap_or_default();
+    let system = cpl_env::CXX_SYSTEM_KEY.text().unwrap_or_default();
     let key = if flags == "-O2" && system.is_empty() {
         fnv1a_hex(cpp.as_bytes())
     } else {
@@ -530,8 +532,8 @@ pub fn run(root: &Path, filter: Option<&str>) -> SuiteReport {
     let targets = discover(root, filter);
     // The per-user g++ cache (scripts/check.sh, kept across CI runs) when there is one,
     // so a fresh checkout or CI job doesn't recompile every case.
-    let cache_dir = match std::env::var_os("CPL_CXX_CACHE_DIR") {
-        Some(dir) => PathBuf::from(dir).join("conform-diff"),
+    let cache_dir = match cpl_env::CXX_CACHE_DIR.path() {
+        Some(dir) => dir.join("conform-diff"),
         None => std::env::var_os("CARGO_TARGET_DIR")
             .map(PathBuf::from)
             .unwrap_or_else(|| root.join("target"))

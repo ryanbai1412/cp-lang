@@ -6,11 +6,6 @@ use cpl_check::Session;
 fn no_spec_std_module_imports_itself_back() {
     let std_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../std");
     let std_dir = std_dir.canonicalize().expect("std exists");
-    // SAFETY: the only test in this binary, set before anything reads them.
-    unsafe {
-        std::env::set_var("CPL_SPEC", "1");
-        std::env::set_var("CPL_STD", &std_dir);
-    }
     let mut files: Vec<PathBuf> = std::fs::read_dir(&std_dir)
         .unwrap()
         .flatten()

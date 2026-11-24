@@ -116,10 +116,7 @@ fn run_interp_io(
 
 /// Seconds a case may run, from `CPL_CONFORM_CASE_TIMEOUT` (default 20).
 pub fn case_timeout() -> u64 {
-    std::env::var("CPL_CONFORM_CASE_TIMEOUT")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(20)
+    cpl_env::CONFORM_CASE_TIMEOUT.parse().unwrap_or(20)
 }
 
 /// Runs `cmd` with `input` on stdin and returns its output, or `Err` after
@@ -373,10 +370,7 @@ fn watch_memory(finished: &std::sync::mpsc::Receiver<()>) {
 /// `CPL_CONFORM_MAX_RSS_MB`, else three quarters of the machine's memory,
 /// capped at 10 GB; `None` where /proc can't tell.
 fn memory_limit_mb() -> Option<u64> {
-    if let Some(mb) = std::env::var("CPL_CONFORM_MAX_RSS_MB")
-        .ok()
-        .and_then(|s| s.parse().ok())
-    {
+    if let Some(mb) = cpl_env::CONFORM_MAX_RSS_MB.parse() {
         return Some(mb);
     }
     let total = proc_kb("/proc/meminfo", "MemTotal:")? / 1024;

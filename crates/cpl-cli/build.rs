@@ -12,15 +12,11 @@ fn git(args: &[&str]) -> Option<String> {
 }
 
 fn main() {
-    let commit = std::env::var("CPL_COMMIT")
-        .ok()
-        .filter(|s| !s.is_empty())
+    let commit = cpl_env::COMMIT
+        .text()
         .or_else(|| git(&["rev-parse", "--short", "HEAD"]))
         .unwrap_or_else(|| "unknown".to_string());
-    let channel = std::env::var("CPL_CHANNEL")
-        .ok()
-        .filter(|s| !s.is_empty())
-        .unwrap_or_else(|| "dev".to_string());
+    let channel = cpl_env::CHANNEL.text().unwrap_or_else(|| "dev".to_string());
     println!("cargo:rustc-env=CPL_GIT_COMMIT={commit}");
     println!("cargo:rustc-env=CPL_CHANNEL={channel}");
     println!("cargo:rerun-if-env-changed=CPL_CHANNEL");

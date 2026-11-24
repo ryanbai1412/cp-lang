@@ -92,7 +92,7 @@ fn every_program_records_its_saved_trace() {
         .collect();
     programs.sort();
     assert!(programs.len() > 150, "{} programs", programs.len());
-    let bless = std::env::var_os("CPL_BLESS").is_some();
+    let bless = cpl_env::BLESS.is_set();
     let threads = std::thread::available_parallelism().map_or(4, |n| n.get());
     let chunks: Vec<_> = programs.chunks(programs.len().div_ceil(threads)).collect();
     let differ: Vec<String> = std::thread::scope(|scope| {

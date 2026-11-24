@@ -81,10 +81,8 @@ pub fn set_crash_context(args: &[String]) {
 
 /// Directory holding ICE crash bundles (`CPL_CRASH_DIR`, or `~/.cpl/crashes`).
 pub fn crash_dir() -> PathBuf {
-    if let Ok(dir) = std::env::var("CPL_CRASH_DIR") {
-        if !dir.is_empty() {
-            return PathBuf::from(dir);
-        }
+    if let Some(dir) = cpl_env::CRASH_DIR.path() {
+        return dir;
     }
     if let Some(home) = cpl_check::home_dir() {
         return home.join(".cpl").join("crashes");

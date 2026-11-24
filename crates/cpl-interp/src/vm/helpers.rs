@@ -1207,7 +1207,7 @@ pub(crate) struct VmStats {
 
 impl VmStats {
     pub(crate) fn from_env() -> Option<Self> {
-        let val = std::env::var_os("CPL_VM_STATS")?;
+        let val = cpl_env::VM_STATS.raw()?;
         if val.is_empty() || val == "0" {
             return None;
         }
@@ -1241,7 +1241,7 @@ impl VmStats {
             .map(|(k, &v)| (k.as_str(), v))
             .collect();
         loop_entries.sort_by(|a, b| b.1.cmp(&a.1).then_with(|| a.0.cmp(b.0)));
-        if std::env::var("CPL_VM_STATS").ok().as_deref() == Some("json") {
+        if cpl_env::VM_STATS.is("json") {
             let mut walked: Vec<_> = self.walked_counts.iter().collect();
             walked.sort_by(|a, b| b.1.cmp(a.1).then_with(|| a.0.cmp(b.0)));
             let walked: Vec<(&str, u64)> = walked.iter().map(|(k, &v)| (k.as_str(), v)).collect();

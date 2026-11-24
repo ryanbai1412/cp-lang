@@ -1572,10 +1572,15 @@ def unsafe_blocks(root: Path) -> list[str]:
     return _grep_all(root, r"\bunsafe (\{|fn\b|impl\b)", "crates/**/*.rs")
 
 
+ENV_MODULE = "crates/cpl-env/"
+
+
 def cpl_env_reads(root: Path) -> list[str]:
-    """`var("CPL_…")`/`var_os("CPL_…")` in crates outside the one config module: a second config channel."""
-    return [h for h in _grep_all(root, r"var(_os)?\(\"CPL_", "crates/**/*.rs")
-            if not CONFIG_MODULES or _outside(h, CONFIG_MODULES)]
+    """`var`/`var_os`/`set_var`/`remove_var` of a `"CPL_…"` literal in crates outside `cpl-env`, the one
+    reader that declares and documents every `CPL_*` variable: a second config channel. A test sets a
+    child's variable by `cpl_env::NAME.name()`."""
+    return [h for h in _grep_all(root, r"\b(var|var_os|set_var|remove_var)\(\s*\"CPL_", "crates/**/*.rs")
+            if _outside(h, (ENV_MODULE,))]
 
 
 def test_sleeps(root: Path) -> list[str]:
@@ -2196,7 +2201,7 @@ def rust_idiom_lints(root: Path) -> list[str]:
 
 
 HARD_ZERO = frozenset({
-    "habit_matchers", "lint_std_names",
+    "habit_matchers", "lint_std_names", "cpl_env_reads",
     "corpus_walkers", "poll_sleeps", "retry_calls",
     "bench_lists", "hardcoded_codes", "scaling_mismatches", "corpus_test_files", "corpus_known", "corpus_no_max", "stale_arch_paths",
     "own_databases", "module_loaders", "web_skip_only", "test_sleeps", "todo_fixme", "ci_retries", "or_true", "codemods_outside_fix",

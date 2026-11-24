@@ -353,7 +353,7 @@ fn check(program: &Path, group: &str) -> Result<(), String> {
     let expected = match generated_golden(&name) {
         Some(expected) => expected,
         None => {
-            if std::env::var_os("CPL_BLESS").is_some() {
+            if cpl_env::BLESS.is_set() {
                 std::fs::write(&golden, &interpreted.stdout).map_err(|e| e.to_string())?;
             }
             std::fs::read(&golden).map_err(|_| {

@@ -526,6 +526,17 @@ class DebtRatchetTest(unittest.TestCase):
             self.assertEqual(dr.poll_sleeps(root), ["crates/cpl-contest/src/third.rs:1"])
             self.assertIn("poll_sleeps", dr.HARD_ZERO)
 
+    def test_cpl_env_reads_live_in_cpl_env(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            subprocess.run(["git", "init", "-q", str(root)], check=True, env=dr._git_env())
+            self._write(root, "crates/cpl-env/src/lib.rs", 'std::env::var_os("CPL_X")\n')
+            self._write(root, "crates/a/src/lib.rs", 'cpl_env::X.text()\nstd::env::set_var("CPL_X", "1");\n'
+                        'env::remove_var(\n"CPL_X")\nvar_os( "CPL_Y")\nenv::var("HOME")\n')
+            subprocess.run(["git", "-C", str(root), "add", "-A"], check=True, env=dr._git_env())
+            self.assertEqual(dr.cpl_env_reads(root), ["crates/a/src/lib.rs:2", "crates/a/src/lib.rs:5"])
+            self.assertIn("cpl_env_reads", dr.HARD_ZERO)
+
     def test_addendum_five_counters(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

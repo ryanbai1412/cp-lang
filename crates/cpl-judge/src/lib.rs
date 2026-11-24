@@ -294,7 +294,7 @@ fn accepts_all(compiler: &str, flags: &[String]) -> bool {
     }
     // A yes is kept across runs, so `cpl test` and `cpl stress` don't build two
     // probe programs on every start; `CPL_JUDGE_PROBE_DIR=` (empty) keeps nothing.
-    let memo = match std::env::var_os("CPL_JUDGE_PROBE_DIR") {
+    let memo = match cpl_env::JUDGE_PROBE_DIR.raw() {
         Some(dir) if dir.is_empty() => None,
         Some(dir) => Some(std::path::PathBuf::from(dir)),
         None => Some(std::env::temp_dir().join("cpl-cache").join("judge-probes")),
@@ -328,7 +328,7 @@ fn probe(compiler: &str, flags: &[String], memo: Option<&Path>) -> bool {
             meta.len(),
             modified.as_nanos(),
             flags,
-            std::env::var("CPL_CXX_SYSTEM_KEY").ok(),
+            cpl_env::CXX_SYSTEM_KEY.text(),
         )
             .hash(&mut hasher);
         Some(memo.join(format!("{:016x}", hasher.finish())))

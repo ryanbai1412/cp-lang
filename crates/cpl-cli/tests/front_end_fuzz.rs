@@ -155,10 +155,7 @@ fn front_end(db: &mut cpl_check::Session, path: &str, src: &str) -> Vec<String> 
 
 #[test]
 fn mutated_programs_never_crash_and_report_deterministically() {
-    let rounds: usize = std::env::var("CPL_FUZZ_ROUNDS")
-        .ok()
-        .and_then(|r| r.parse().ok())
-        .unwrap_or(12);
+    let rounds: usize = cpl_env::FUZZ_ROUNDS.parse().unwrap_or(12);
     let mut paths: Vec<PathBuf> = cpl_corpus::files(&root(), "spec.cp");
     paths.sort();
     std::panic::set_hook(Box::new(|_| {}));

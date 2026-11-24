@@ -8,8 +8,8 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 fn chrome() -> Option<PathBuf> {
-    if let Some(path) = std::env::var_os("CPL_CHROME") {
-        return Some(path.into());
+    if let Some(path) = cpl_env::CHROME.path() {
+        return Some(path);
     }
     let names = ["google-chrome", "chromium", "chromium-browser", "chrome"];
     let path = std::env::var_os("PATH")?;

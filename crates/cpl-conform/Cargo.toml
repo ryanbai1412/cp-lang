@@ -10,6 +10,7 @@ name = "cpl-conform"
 path = "src/main.rs"
 
 [dependencies]
+cpl-env.workspace = true
 cpl-corpus.workspace = true
 cpl-check.workspace = true
 cpl-codegen.workspace = true

@@ -18,7 +18,7 @@ fn main() -> ExitCode {
         eprintln!("error: {problem}");
         return ExitCode::from(2);
     }
-    if std::env::var_os("CPL_FORCE_ICE").as_deref() == Some(std::ffi::OsStr::new("1")) {
+    if cpl_env::FORCE_ICE.is("1") {
         panic!("forced ICE for testing");
     }
     // `cpl lsp` and `cpl lsp --stdio` are the same: stdio is the only transport.

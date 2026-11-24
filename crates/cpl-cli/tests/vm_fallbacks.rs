@@ -200,7 +200,7 @@ fn tree_walker_fallbacks_only_shrink() {
     let actual = measure();
     let added: Vec<_> = actual.difference(&baseline).collect();
     let removed: Vec<_> = baseline.difference(&actual).collect();
-    let bless = std::env::var_os("CPL_BLESS_VM_FALLBACKS").is_some();
+    let bless = cpl_env::BLESS_VM_FALLBACKS.is_set();
     // Blessing seeds an empty list; after that it only removes lines.
     assert!(
         added.is_empty() || (bless && baseline.is_empty()),

@@ -19,17 +19,11 @@ const PORTS: usize = 12;
 const EDITS_PER_PORT: usize = 30;
 
 fn edits_per_port() -> usize {
-    std::env::var("CPL_LSP_FUZZ_EDITS")
-        .ok()
-        .and_then(|n| n.parse().ok())
-        .unwrap_or(EDITS_PER_PORT)
+    cpl_env::LSP_FUZZ_EDITS.parse().unwrap_or(EDITS_PER_PORT)
 }
 
 fn port_count() -> usize {
-    std::env::var("CPL_LSP_FUZZ_PORTS")
-        .ok()
-        .and_then(|n| n.parse().ok())
-        .unwrap_or(PORTS)
+    cpl_env::LSP_FUZZ_PORTS.parse().unwrap_or(PORTS)
 }
 const SNIPPETS: &[&str] = &[
     "(", ")", "[", "]", "{", "}", "=>", "++", ".", ":", ",", "\n    ", "\n", "let ", "var ", "fn ",

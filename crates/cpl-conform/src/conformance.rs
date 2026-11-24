@@ -91,15 +91,15 @@ fn release_trap_outcome(release: bool) -> Option<CaseOutcome> {
 }
 
 fn release() -> bool {
-    std::env::var_os("CPL_CONFORM_RELEASE").is_some_and(|v| v == "1")
+    cpl_env::CONFORM_RELEASE.is("1")
 }
 
 /// The release build needs a `cpl` binary; without `CPL_CONFORM_CLI` it is
 /// the one built next to this runner.
 fn cli_override() -> Option<PathBuf> {
     let snapshot = held_cli();
-    std::env::var_os("CPL_CONFORM_CLI")
-        .map(PathBuf::from)
+    cpl_env::CONFORM_CLI
+        .path()
         .or_else(|| {
             release()
                 .then(|| {
@@ -178,8 +178,8 @@ fn case_limit(text: &str) -> u64 {
 /// `cpl run` runs it.
 /// The directory C++ builds of `what` are cached in: under `CPL_CXX_CACHE_DIR`, else the temp dir.
 pub(crate) fn cxx_cache(what: &str) -> std::path::PathBuf {
-    let cache = match std::env::var_os("CPL_CXX_CACHE_DIR") {
-        Some(dir) => std::path::PathBuf::from(dir).join(format!("conform-{what}")),
+    let cache = match cpl_env::CXX_CACHE_DIR.path() {
+        Some(dir) => dir.join(format!("conform-{what}")),
         None => std::env::temp_dir().join(format!("cpl-conform-{what}")),
     };
     let _ = std::fs::create_dir_all(&cache);

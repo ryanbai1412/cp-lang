@@ -805,8 +805,7 @@ impl<'p, 'o, O: Observer> Interp<'p, 'o, O> {
             }
             // `CPL_TRACE_ENGINE=tree` traces on the tree-walker;
             // trace_goldens holds both engines to the saved traces.
-            let tree = self.observed()
-                && std::env::var_os("CPL_TRACE_ENGINE").is_some_and(|e| e == "tree");
+            let tree = self.observed() && cpl_env::TRACE_ENGINE.is("tree");
             if !has_mut_view && !tree {
                 let (traced, profiled) = (self.observed(), self.profiler.is_some());
                 self.vm = Some(Rc::new(vm::CompiledProgram::compile(

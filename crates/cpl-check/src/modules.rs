@@ -145,7 +145,7 @@ pub(crate) fn modules() -> &'static [(&'static str, &'static str)] {
         std::sync::OnceLock::new();
     FROM_DISK
         .get_or_init(|| {
-            let dir = match std::env::var_os("CPL_STD_DIR") {
+            let dir = match cpl_env::STD_DIR.raw() {
                 Some(dir) if dir.is_empty() => return None,
                 Some(dir) => std::path::PathBuf::from(dir),
                 None => source_std()?.to_path_buf(),
@@ -168,7 +168,7 @@ fn source_std() -> Option<&'static Path> {
 /// in (a copied or shared target dir), whose std it would silently ignore.
 pub fn dev_std_problem() -> Option<String> {
     let built = env!("CPL_STD_SOURCE");
-    if built.is_empty() || std::env::var_os("CPL_STD_DIR").is_some() {
+    if built.is_empty() || cpl_env::STD_DIR.is_set() {
         return None;
     }
     let exe = std::env::current_exe().ok();

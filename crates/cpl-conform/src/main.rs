@@ -286,10 +286,7 @@ fn main() -> ExitCode {
     println!("cpl-conform: finished in {:.2}s", elapsed.as_secs_f64());
     // `CPL_CONFORM_BUDGET` seconds (default 900): fail by name well before CI's job
     // timeout kills the run with no report.
-    let budget: f64 = std::env::var("CPL_CONFORM_BUDGET")
-        .ok()
-        .and_then(|s| s.parse().ok())
-        .unwrap_or(900.0);
+    let budget: f64 = cpl_env::CONFORM_BUDGET.parse().unwrap_or(900.0);
     if elapsed.as_secs_f64() > budget {
         eprintln!("cpl-conform: over the {budget}s budget; slowest cases:");
         for (case, secs) in cpl_conform::runner::slowest_cases(10) {

@@ -18,6 +18,7 @@ cpl-ir.workspace = true
 cpl-syntax.workspace = true
 
 [dev-dependencies]
+cpl-env.workspace = true
 cpl-corpus.workspace = true
 # The latency test measures with the allocator the `cpl` binary ships with.
 mimalloc = { workspace = true }

@@ -307,7 +307,7 @@ fn old_neovim(version: &str) -> Option<String> {
 
 /// Installs the extension in `vsix`, or the edge release's, into VS Code.
 fn install_vscode(vsix: Option<PathBuf>) -> Result<String, String> {
-    let code = std::env::var("CPL_CODE").ok().filter(|c| !c.is_empty());
+    let code = cpl_env::CODE.text();
     let code = code.unwrap_or_else(|| if cfg!(windows) { "code.cmd" } else { "code" }.into());
     let downloaded = std::env::temp_dir().join(format!("cp-lang-{}.vsix", std::process::id()));
     let file = match vsix {
