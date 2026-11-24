@@ -164,7 +164,7 @@ Fields: `chars: List<A>`, `front: List<A>`, `barrier: Int`.
 - `fn new() -> PalindromicTree<A>` — \(O(\lvert A \rvert)\); An empty palindromic tree over the alphabet domain `A`: just the odd root `0` and the even root `1`.
 - `fn of<S: Seq>(s: S) -> PalindromicTree<A>` — \(O(\lvert s \rvert \cdot \lvert A \rvert)\) memory, \(O(\lvert s \rvert)\) amortized time; The palindromic tree of `s`: `PalindromicTree<A>()` followed by `push` of each element.; traps: when an element of `s` is not in `A`
 - `fn push(mut self, a: A) -> Int` — \(O(1)\) amortized; Appends the letter `a` and returns the state of the longest palindromic suffix of the new string, creating it if it is new.; traps: never (`a` is an `A`)
-- `fn at(self, i: Int) -> A`
+- `fn at(self, i: Int) -> A` — \(O(1)\); The character at position `i` of the current string, counting from the front.
 - `@get fn len(self) -> Int` — \(O(1)\); The number of states, both roots included: `distinct + 2`.
 - `@get fn distinct(self) -> Int` — \(O(1)\); The number of distinct non-empty palindromic substrings, `len - 2`; at most `n`.
 - `fn pal_len(self, state: Int) -> Int` — \(O(1)\); The length of the palindrome of `state`: `-1` at the odd root, `0` at the even root.; traps: when `state` is outside `0..self.len`

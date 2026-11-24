@@ -174,10 +174,12 @@ pub fn mo_order_hilbert<D>(queries: List<Range<D>>) -> List<Int>:
     keyed.sort()
     [p.1 for p in keyed]
 
-/// Mo's algorithm for structures that can add and undo but not remove (DSU, running max,
-/// convex hull): answers every query with `add` calls only, restoring state with `mark` /
-/// `undo` instead of `remove`. When `answer(qi)` runs, the state is exactly the result of
-/// adding the positions of `queries[qi]` to a reset structure.
+/// Mo's algorithm for structures that can add and undo but not remove (DSU, running max, convex
+/// hull): answers every query with `add` calls only, restoring state with `mark` / `undo` instead
+/// of `remove`.
+///
+/// When `answer(qi)` runs, the state is exactly the result of adding the positions of `queries[qi]`
+/// to a reset structure.
 ///
 /// Blocks are as in [`mo_order`](mo_order). A query that lies inside one block is answered on
 /// its own: `m = mark()`, add its positions, answer, `undo(m)`. The other queries of a block go

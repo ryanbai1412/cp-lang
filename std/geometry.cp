@@ -3406,8 +3406,9 @@ pub fn convex_hull_3d_idx<D>(pts: [D]Pt3) -> List<(D, D, D)>:
     [(keys[a], keys[b], keys[c]) for (a, b, c) in convex_hull_3d([pts[k] for k in keys])]
 
 /// Six times the signed volume of the closed triangulated surface `faces` over `pts`: the sum of
-/// `pts[a].dot128(pts[b].cross(pts[c]))` over faces, computed in `I128`. Positive when faces are
-/// counter-clockwise seen from outside, as `convex_hull_3d` returns them.
+/// `pts[a].dot128(pts[b].cross(pts[c]))` over faces, computed in `I128`.
+///
+/// Positive when faces are counter-clockwise seen from outside, as `convex_hull_3d` returns them.
 ///
 /// cost: \(O(\lvert \mathit{faces} \rvert)\)
 /// empty: 0

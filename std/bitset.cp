@@ -431,10 +431,11 @@ pub struct Bitset<D>:
         if bits > 0 and words < w.len: ans += popcount(w[words] & low(bits))
         ans
 
-    /// All subset sums in `0..D.count` reachable from non-negative `weights`: the position with ordinal `s`
-    /// is set exactly when some sub-multiset of `weights` sums to `s`. The empty sub-multiset makes `0`
-    /// reachable; sums of `D.count` or more are dropped.
-    /// Groups duplicate weights with binary carries so the work is \(O(K \sqrt{S} / 64)\).
+    /// All subset sums in `0..D.count` reachable from non-negative `weights`: the position with
+    /// ordinal `s` is set exactly when some sub-multiset of `weights` sums to `s`.
+    ///
+    /// The empty sub-multiset makes `0` reachable; sums of `D.count` or more are dropped. Groups
+    /// duplicate weights with binary carries so the work is \(O(K \sqrt{S} / 64)\).
     ///
     /// cost: \(O(K \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(K / 64)\) space
     /// empty: `{D.first}` (just the sum 0), or the empty set when `D` is empty
@@ -930,9 +931,10 @@ pub struct DynBitset:
                 x &= ~bit(b)
 
     /// All subset sums in `0..cap` reachable from `weights`: bit `s` is set exactly when some
-    /// sub-multiset of `weights` sums to `s`. The empty sub-multiset makes `0` reachable (when
-    /// `cap > 0`); sums of `cap` or more drop. Duplicate weights are grouped with binary carries, as in
-    /// `Bitset.subset_sums`.
+    /// sub-multiset of `weights` sums to `s`.
+    ///
+    /// The empty sub-multiset makes `0` reachable (when `cap > 0`); sums of `cap` or more drop.
+    /// Duplicate weights are grouped with binary carries, as in `Bitset.subset_sums`.
     ///
     /// cost: \(O(\mathit{cap} \sqrt{S} / 64)\) time, where S is the sum of `weights`; \(O(\mathit{cap} / 64)\) space
     /// empty: just bit 0 (None when `cap == 0`)

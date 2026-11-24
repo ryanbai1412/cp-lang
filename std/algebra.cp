@@ -18,8 +18,9 @@ pub struct Monoid<T>(pub id: T, pub op: (T, T) -> T):
 
     /// The monoid a structure was handed: a `Monoid` is itself, and a bare operator brings its
     /// identity: zero for `+`, `^`, `|` and `gcd`, one for `*`, all bits for `&`, and for `min` /
-    /// `max` the far end of `T` (`None` on a `?T`). Any other fn has no known identity and needs
-    /// `Monoid(id, op)`.
+    /// `max` the far end of `T` (`None` on a `?T`).
+    ///
+    /// Any other fn has no known identity and needs `Monoid(id, op)`.
     ///
     /// cost: \(O(1)\)
     /// traps: never (an operator without a known identity is a compile-time error)
@@ -80,10 +81,12 @@ pub struct Action<T, F>(
     // `compose(f, g)` applies `g` first, then `f`.
     law composes(f: F, g: F, a: T) = apply(compose(f, g), a, 1) == apply(f, apply(g, a, 1), 1)
 
-    /// A lazy action of tags `F` on values `T` folded with `over`. `id` is the no-op tag,
-    /// `compose(new_f, old_f)` applies `old_f` first and then `new_f`, and `apply(f, val, span)`
-    /// is the folded value of `span` leaves, `val`, after `f`. `id`, `compose` and `over` default
-    /// to `F.zero`, `F`'s `+` and `T`'s `+`, so an additive tag on sums needs only `apply`.
+    /// A lazy action of tags `F` on values `T` folded with `over`.
+    ///
+    /// `id` is the no-op tag, `compose(new_f, old_f)` applies `old_f` first and then `new_f`, and
+    /// `apply(f, val, span)` is the folded value of `span` leaves, `val`, after `f`. `id`,
+    /// `compose` and `over` default to `F.zero`, `F`'s `+` and `T`'s `+`, so an additive tag on
+    /// sums needs only `apply`.
     ///
     /// cost: \(O(1)\)
     /// traps: never (laws are not checked here; use `laws_hold`)

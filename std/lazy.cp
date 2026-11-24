@@ -415,7 +415,9 @@ pub struct LazyTreap<T, F>(
     var root: ?Int
     rng: Rng
 
-    /// An empty treap. `apply(v, k, f)` is element `v` after tag `f`, where `k` is the number of
+    /// An empty treap, with the tag operations its lazy updates use.
+    ///
+    /// `apply(v, k, f)` is element `v` after tag `f`, where `k` is the number of
     /// elements before it in the run the tag was applied to (so tags may depend on rank);
     /// `compose(new_f, old_f)` is `old_f` then `new_f`; `split(f, k)` gives the tags for the left
     /// child and for the right child of a node with `k` elements on its left (default `(f, f)`, for
@@ -888,9 +890,11 @@ pub struct Rope<D, T>:
         k += 1
         self.emit(rs[t], mut out, mut k)
 
-    /// A rope over `D` holding the values of `a`, or `fill` at every position. `merge(tag, x)` is
-    /// how a tag from `apply` combines into a value; without it, a tag overwrites the values it covers.
-    /// Positions keep their domain `D`; `reverse` moves values, not positions.
+    /// A rope over `D` holding the values of `a`, or `fill` at every position.
+    ///
+    /// `merge(tag, x)` is how a tag from `apply` combines into a value; without it, a tag
+    /// overwrites the values it covers. Positions keep their domain `D`; `reverse` moves values,
+    /// not positions.
     ///
     /// cost: \(O(\lvert D \rvert)\)
     /// empty: an empty `D` builds an empty rope
@@ -986,6 +990,7 @@ pub struct Rope<D, T>:
 
     /// The first `Some` that `f` gives on the pieces holding position `i`'s value, oldest first:
     /// the value stored at `i`, then each tag still pending above it, without pushing any tag down.
+    ///
     /// `f` may change a piece in place (`(mut seg) => seg.first_alive(ok)` prunes dead entries for
     /// good), so a query that would otherwise merge tags costs only the walk.
     ///

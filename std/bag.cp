@@ -325,9 +325,11 @@ pub struct SortedBag<K>:
         else:
             true
 
-    /// The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`, `last_le`,
-    /// `last_lt` and `count_range` (decision 103). `r` is any ordered range: `a..b`, `a..=b`, `..b`,
-    /// `..=b`, `a..` or `..`. The view lends `self`, so `self` cannot change while it is in use.
+    /// The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`,
+    /// `last_le`, `last_lt` and `count_range` (decision 103).
+    ///
+    /// `r` is any ordered range: `a..b`, `a..=b`, `..b`, `..=b`, `a..` or `..`. The view lends
+    /// `self`, so `self` cannot change while it is in use.
     ///
     /// cost: \(O(1)\) to make; see `SortedRange` for each query
     /// empty: a range with no keys gives an empty view
@@ -1208,9 +1210,11 @@ pub struct SortedSet<K>:
         while ok: K -> Bool
     ) -> List<K> = bag.drain(after:, before:, while: ok)
 
-    /// The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`, `last_le`,
-    /// `last_lt` and `count_range` (decision 103). `r` is any ordered range: `a..b`, `a..=b`, `..b`,
-    /// `..=b`, `a..` or `..`. The view lends `self`, so `self` cannot change while it is in use.
+    /// The keys of `self` inside `r`, as an \(O(1)\) view; replaces `first_ge`, `first_gt`,
+    /// `last_le`, `last_lt` and `count_range` (decision 103).
+    ///
+    /// `r` is any ordered range: `a..b`, `a..=b`, `..b`, `..=b`, `a..` or `..`. The view lends
+    /// `self`, so `self` cannot change while it is in use.
     ///
     /// cost: \(O(1)\) to make; see `SortedRange` for each query
     /// empty: a range with no keys gives an empty view
@@ -1650,7 +1654,7 @@ pub struct SortedMap<K, V>:
     pub fn each_rev(self) -> yields (K, V):
         for k in ks.entries_rev(): yield (k.key, vals.get(k.key)!)
 
-    ///
+    /// The map's keys, in ascending order.
     ///
     /// cost: \(O(1)\) to make, \(O(1)\) amortized per step
     /// empty: yields nothing
@@ -1660,7 +1664,7 @@ pub struct SortedMap<K, V>:
     @get pub fn keys(self) -> yields K:
         for k in ks.entries(): yield k.key
 
-    ///
+    /// The map's values, in ascending order of their keys.
     ///
     /// cost: \(O(1)\) to make, \(O(1)\) amortized per step
     /// empty: yields nothing
@@ -2242,7 +2246,7 @@ pub struct BucketCount:
             j += 1
         lo + j
 
-    ///
+    /// The total count of everything added, with multiplicity.
     ///
     /// cost: \(O(1)\)
     /// traps: never

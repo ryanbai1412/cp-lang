@@ -10,9 +10,10 @@ pub struct SparseTable<D, T>(op: (T, T) -> T):
     n: Int
     table: List<T>
 
-    /// Build a sparse table for the idempotent, associative `op` over the values of `a`. Level `k`
-    /// holds the fold of every window of length `2^k`, so any non-empty range is the fold of two
-    /// overlapping windows. The table copies `a` and keeps its domain `D`.
+    /// Build a sparse table for the idempotent, associative `op` over the values of `a`.
+    ///
+    /// Level `k` holds the fold of every window of length `2^k`, so any non-empty range is the fold
+    /// of two overlapping windows. The table copies `a` and keeps its domain `D`.
     ///
     /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory, `op` called \(O(\lvert D \rvert \log \lvert D \rvert)\) times
     /// empty: an empty `a` builds an empty table; every `fold` on it traps, `try_fold` is `None`
@@ -110,9 +111,11 @@ pub struct DisjointSparseTable<D, T>(op: (T, T) -> T):
     n: Int
     table: List<T>
 
-    /// Build a disjoint sparse table for the associative `op` over `a`. Each level splits the domain
-    /// into blocks and stores folds outward from each block's middle, so a range is answered by
-    /// combining one suffix fold and one prefix fold; no idempotence, identity or inverse is needed.
+    /// Build a disjoint sparse table for the associative `op` over `a`.
+    ///
+    /// Each level splits the domain into blocks and stores folds outward from each block's middle,
+    /// so a range is answered by combining one suffix fold and one prefix fold; no idempotence,
+    /// identity or inverse is needed.
     ///
     /// cost: \(O(\lvert D \rvert \log \lvert D \rvert)\) time and memory, `op` called \(O(\lvert D \rvert \log \lvert D \rvert)\) times
     /// empty: an empty `a` builds an empty table; every `fold` on it traps, `try_fold` is `None`
@@ -303,8 +306,10 @@ pub struct LinearRmq<D, T>(before: (T, T) -> Bool):
         base + bit_width(m & (~m + U64(1))) - 1
 
     /// Build a linear-space range-best structure over `a`, where `before(x, y)` means `x` is better
-    /// than `y` (default `<`, so the best is the minimum). Blocks of 64 positions carry a sparse
-    /// table over block bests and an in-block bitmask stack, so queries never scan.
+    /// than `y` (default `<`, so the best is the minimum).
+    ///
+    /// Blocks of 64 positions carry a sparse table over block bests and an in-block bitmask stack,
+    /// so queries never scan.
     ///
     /// cost: \(O(\lvert D \rvert)\) time and memory
     /// empty: an empty `a` builds an empty structure; `argbest` and `best` on it trap

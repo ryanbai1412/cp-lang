@@ -708,7 +708,7 @@ pub struct PersistentDsu<V>:
         _cell.push((0, 0))
         _kid.len - 1
 
-    pub fn get(self, root: Int, i: Int) -> (Int, Int):
+    fn get(self, root: Int, i: Int) -> (Int, Int):
         var t = root
         var (lo, hi) = (0, V.count)
         while hi - lo > 1:

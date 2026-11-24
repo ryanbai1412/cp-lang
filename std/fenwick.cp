@@ -67,8 +67,10 @@ pub struct Fenwick<D, T: Add + Sub>:
         self.prefix(r.r) - self.prefix(r.l)
 
     /// The smallest boundary `b` with `prefix(b) >= target`, by binary lifting over the tree;
-    /// `None` when even the whole sum is below `target`. A `target <= 0` gives the start cut.
-    /// Correct only when every value is non-negative (prefix sums non-decreasing).
+    /// `None` when even the whole sum is below `target`.
+    ///
+    /// A `target <= 0` gives the start cut. Correct only when every value is non-negative (prefix
+    /// sums non-decreasing).
     ///
     /// cost: \(O(\log \lvert D \rvert)\)
     /// ties: the leftmost qualifying cut

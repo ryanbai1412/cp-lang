@@ -58,9 +58,11 @@ pub fn concavity_break(xs: List<Int>) -> ?Int:
         if xs[i - 1] + xs[i + 1] > 2 * xs[i]: return Some(i)
     None
 
-/// The first position where `xs` stops having the shape `ternary_max` needs: strictly rising,
-/// then a plateau only at the maximum, then strictly falling. `Some(i)` names the element that
-/// breaks it, `None` when the shape holds. For `ternary_min`, check the negated values.
+/// The first position where `xs` stops having the shape `ternary_max` needs: strictly rising, then
+/// a plateau only at the maximum, then strictly falling.
+///
+/// `Some(i)` names the element that breaks it, `None` when the shape holds. For `ternary_min`,
+/// check the negated values.
 ///
 /// cost: \(O(n)\)
 /// empty: `None`
@@ -82,10 +84,11 @@ pub fn unimodality_break(xs: List<Int>) -> ?Int:
             return Some(i)
     None
 
-/// The first 2x2 block of `cost` over `0..rows` by `0..cols` that breaks the Monge law
-/// `cost(i, j) + cost(i + 1, j + 1) <= cost(i, j + 1) + cost(i + 1, j)`, as its top-left corner,
-/// rows first; `None` when the table is Monge. Adjacent blocks suffice: the law for any
-/// `a < b`, `c < d` is a sum of them.
+/// The first 2x2 block of `cost` over `0..rows` by `0..cols` that breaks the Monge law `cost(i, j)
+/// + cost(i + 1, j + 1) <= cost(i, j + 1) + cost(i + 1, j)`, as its top-left corner, rows first;
+/// `None` when the table is Monge.
+///
+/// Adjacent blocks suffice: the law for any `a < b`, `c < d` is a sum of them.
 ///
 /// cost: \(O(\mathit{rows} \cdot \mathit{cols})\) calls of `cost`
 /// empty: `None` when `rows < 2` or `cols < 2`
@@ -121,9 +124,11 @@ pub fn argmins(cost: (Int, Int) -> Int, rows: Int, cols: Int) -> List<Int>:
         out.push(best)
     out
 
-/// The first adjacent block of `cost(j, i)` over `0 <= j < i < n` that breaks the quadrangle
-/// inequality `cost(a, c) + cost(a + 1, c + 1) <= cost(a, c + 1) + cost(a + 1, c)`, as `(a, c)`
-/// with `a + 1 < c`, by `a` then `c`; `None` when it holds (the law `dnc_layer` relies on).
+/// The first adjacent block of `cost(j, i)` that breaks the quadrangle inequality `dnc_layer`
+/// relies on, or `None` when it holds.
+///
+/// The inequality is `cost(a, c) + cost(a + 1, c + 1) <= cost(a, c + 1) + cost(a + 1, c)` over
+/// `0 <= j < i < n`; a break is reported as `(a, c)` with `a + 1 < c`, by `a` then `c`.
 /// Adjacent blocks suffice: the law for any `a < b < c < d` is a sum of them. `cost` is asked
 /// only for `j < i`.
 ///
@@ -143,7 +148,9 @@ pub fn dnc_break(cost: (Int, Int) -> Int, n: Int) -> ?(Int, Int):
 
 /// The first interval `[i, j)` of cuts `0..=n` whose best split `opt(i, j)` breaks Knuth's bound
 /// `opt(i, j - 1) <= opt(i, j) <= opt(i + 1, j)`, shortest intervals first, then by `i`; `None`
-/// when the bound holds (the law `knuth` relies on). `opt` is asked only for `j - i >= 2`.
+/// when the bound holds (the law `knuth` relies on).
+///
+/// `opt` is asked only for `j - i >= 2`.
 ///
 /// cost: \(O(n^2)\) calls of `opt`
 /// empty: `None` when `n < 3`
@@ -185,10 +192,11 @@ pub fn newton(xs: List<Int>) -> List<Int>:
         row = differences(row)
     out
 
-/// The degree of the polynomial `xs` follows at `0, 1, 2, ...`: the smallest `d` whose
-/// `(d + 1)`-th differences are all zero, with at least one such difference to confirm it (so
-/// `xs.len >= d + 2`); `None` when `xs` is too short to confirm any degree. A zero sequence has
-/// degree 0.
+/// The degree of the polynomial `xs` follows at `0, 1, 2, ...`, or `None` when `xs` is too short
+/// to confirm any degree.
+///
+/// It is the smallest `d` whose `(d + 1)`-th differences are all zero, with at least one such
+/// difference to confirm it (so `xs.len >= d + 2`). A zero sequence has degree 0.
 ///
 /// cost: \(O(n^2)\)
 /// empty: `None` for fewer than 2 elements
@@ -222,9 +230,11 @@ pub fn poly_at(xs: List<Int>, n: Int) -> Int:
         binom = binom * (n - k) / (k + 1)
     total
 
-/// The shortest linear recurrence `xs` satisfies, by Berlekamp-Massey: `c` with
-/// `xs[i] == sum of c[j] * xs[i - 1 - j]` for `j` in `0..c.len`, for every `i >= c.len`. Exact
-/// over the field `Mod<P>` (`P` prime); with `xs.len >= 2 * c.len` it is the only one that short.
+/// The shortest linear recurrence `xs` satisfies, by Berlekamp-Massey: `c` with `xs[i] == sum of
+/// c[j] * xs[i - 1 - j]` for `j` in `0..c.len`, for every `i >= c.len`.
+///
+/// Exact over the field `Mod<P>` (`P` prime); with `xs.len >= 2 * c.len` it is the only one that
+/// short.
 ///
 /// cost: \(O(n^2)\) for `n = xs.len`
 /// empty: `[]` (no terms satisfy the empty recurrence; so does an all-zero `xs`)
@@ -305,7 +315,9 @@ pub fn recurrence_at<P>(c: List<Mod<P>>, init: List<Mod<P>>, n: Int) -> Mod<P>:
     total
 
 /// Term `n` of `xs` extended by the shortest recurrence it satisfies, or `None` when `xs` is too
-/// short to pin that recurrence: Berlekamp-Massey finds `c`, and the guess stands only when
+/// short to pin that recurrence.
+///
+/// Berlekamp-Massey finds `c`, and the guess stands only when
 /// `xs.len > 2 * c.len`, so at least one term past the ones that determine `c` agrees with it.
 /// Pass more terms for more confidence. `xs[n]` itself when `n < xs.len`.
 ///

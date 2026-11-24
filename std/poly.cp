@@ -44,9 +44,11 @@ pub fn integral<P>(a: List<Mod<P>>) -> List<Mod<P>>:
         for i in 0..m: out[i + 1] = a[i] * invs[i + 1]
     out
 
-/// The multiplicative inverse `a(x)^(-1) mod x^n` via half-size Newton doubling: the length-`n`
-/// `b` with `a * b == 1 (mod x^n)`. Requires `n >= 0`, and when `n > 0`, `a.len > 0` and
-/// `a[0] != 0`. Coefficients of `a` at or above `x^n` are ignored.
+/// The multiplicative inverse `a(x)^(-1) mod x^n` via half-size Newton doubling: the length-`n` `b`
+/// with `a * b == 1 (mod x^n)`.
+///
+/// Requires `n >= 0`, and when `n > 0`, `a.len > 0` and `a[0] != 0`. Coefficients of `a` at or
+/// above `x^n` are ignored.
 ///
 /// cost: \(O(n \log n)\)
 /// empty: `[]` when `n == 0`, whatever `a` is
@@ -627,7 +629,9 @@ pub fn lagrange_at<P>(ys: List<Mod<P>>, x: Mod<P>) -> Mod<P>:
 
 /// The unique polynomial `f` of degree `< xs.len` with `f(xs[i]) = ys[i]` for distinct `xs`, as
 /// exactly `xs.len` coefficients (trailing zeros kept).
-/// \(O(n^2)\) for `n <= 64` (any prime `P`), \(O(n \log^2 n)\) via subproduct tree + NTT for `n > 64`.
+///
+/// \(O(n^2)\) for `n <= 64` (any prime `P`), \(O(n \log^2 n)\) via subproduct tree + NTT for `n >
+/// 64`.
 ///
 /// cost: \(O(n^2)\) for `n <= 64`, \(O(n \log^2 n)\) above
 /// empty: `[]`
@@ -942,8 +946,10 @@ pub struct SubproductTree<P>:
     nodes: List<List<Mod<P>>>
 
     /// Build the subproduct tree for the points `xs`: leaf `i` is `x - xs[i]` and each node the
-    /// product of its children. With `keep >= 0` every stored product is truncated mod `x^keep`, which
-    /// is all `eval_transposed` needs; `eval` and `interpolate` need the full tree (`keep < 0`, the
+    /// product of its children.
+    ///
+    /// With `keep >= 0` every stored product is truncated mod `x^keep`, which is all
+    /// `eval_transposed` needs; `eval` and `interpolate` need the full tree (`keep < 0`, the
     /// default).
     ///
     /// cost: \(O(m \log^2 m)\) time, \(O(m \log m)\) space

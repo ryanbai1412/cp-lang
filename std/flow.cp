@@ -256,8 +256,9 @@ pub struct FlowGraph<V>:
             yield (arcs: path, amount: least)
 
     /// The same maximum flow amount as `max_flow(s, t)` by push-relabel (highest label, gap
-    /// heuristic), often several times faster than Dinic on dense or unit-capacity grids. Adds to
-    /// the flow already there and returns the amount added; `min_cut(s)` works after it.
+    /// heuristic), often several times faster than Dinic on dense or unit-capacity grids.
+    ///
+    /// Adds to the flow already there and returns the amount added; `min_cut(s)` works after it.
     ///
     /// cost: \(O(V^2 \sqrt E)\)
     /// traps: when `s == t`
@@ -386,9 +387,11 @@ pub struct CostFlow<V>:
     pub fn new() -> CostFlow<V>:
         CostFlow([V] v => [], [], [], [], [])
 
-    /// Adds an arc `u -> v` with capacity `cap` and cost `cost` per unit; its reverse has capacity 0
-    /// and cost `-cost`. `cap: None` is 2^60. Costs may be negative; `min_cost_flow` needs no
-    /// residual cycle of negative total cost (run `cancel_cycles` first when there may be one).
+    /// Adds an arc `u -> v` with capacity `cap` and cost `cost` per unit; its reverse has capacity
+    /// 0 and cost `-cost`.
+    ///
+    /// `cap: None` is 2^60. Costs may be negative; `min_cost_flow` needs no residual cycle of
+    /// negative total cost (run `cancel_cycles` first when there may be one).
     ///
     /// cost: \(O(1)\) amortized; two arcs of memory
     /// traps: when `cap` is negative
@@ -467,8 +470,10 @@ pub struct CostFlow<V>:
         for k in 0..to.len / 2: yield Arc(2 * k)
 
     /// Saturates every negative-cost cycle of the residual network, so the stored flow becomes a
-    /// min-cost circulation plus the `s`-`t` flows already sent, and returns the cost added (zero or
-    /// negative). Negative cycles are allowed here; afterwards `min_cost_flow` is safe.
+    /// min-cost circulation plus the `s`-`t` flows already sent, and returns the cost added (zero
+    /// or negative).
+    ///
+    /// Negative cycles are allowed here; afterwards `min_cost_flow` is safe.
     ///
     /// cost: \(O(V E)\) per cancelled cycle (Bellman-Ford), at most `|c|` cycles for the returned cost `c`
     /// traps: never
@@ -535,6 +540,7 @@ pub struct CostFlow<V>:
 
     /// The breakpoints of the cheapest cost of sending each amount from `s` to `t`, up to `limit`:
     /// `(0, 0)` first, then one `(flow, cost)` per change of slope, ending at the largest amount.
+    ///
     /// Between breakpoints the cost is linear and the slopes never decrease. Sends the flow, as
     /// `min_cost_flow` does; amounts and costs are relative to the flow already there.
     ///
@@ -614,9 +620,9 @@ pub struct CostFlow<V>:
         pot
 
 /// A maximum-weight closure (project selection): the set `take` of vertices with the largest
-/// total `profit` such that an arc `u -> v` of `before` means taking `v` forces taking `u`
-/// (prerequisites point at what they unlock, the direction `peel` and `topo` read).
+/// total `profit` such that an arc `u -> v` of `before` means taking `v` forces taking `u`.
 ///
+/// Prerequisites point at what they unlock, the direction `peel` and `topo` read.
 /// Profits may be negative; the empty set is a closure, so `value >= 0`. One `max_flow` on
 /// V + 2 vertices and V + E arcs; `take` is the source side of its minimum cut.
 ///
@@ -1177,8 +1183,9 @@ struct Blossom:
         false
 
 /// A maximum-weight matching in the undirected graph `edges`: no vertex in two chosen edges,
-/// maximizing `total`, the sum of chosen `w`, not necessarily of largest size. Edges with
-/// `w <= 0` never help and are ignored; of parallel edges the heaviest counts.
+/// maximizing `total`, the sum of chosen `w`, not necessarily of largest size.
+///
+/// Edges with `w <= 0` never help and are ignored; of parallel edges the heaviest counts.
 ///
 /// cost: \(O(V³)\) time, \(O(V^2)\) memory, by Edmonds' weighted blossom algorithm with dual labels
 /// ties: the matching the algorithm finds; `total` is exact
@@ -1346,9 +1353,11 @@ fn bounded_flow<V, E>(
         return (value: base + extra, flow: [E] e => arcs[e].lo + g.flow(ids[e]))
     (value: 0, flow: [E] e => arcs[e].lo + g.flow(ids[e]))
 
-/// A Gomory-Hu tree of the undirected graph `edges`: `V.count - 1` edges on `V` such that for
-/// every `s != t` the minimum `s`-`t` cut of `edges` is the smallest `w` on the tree path from
-/// `s` to `t`. Vertices in different components are joined by `w = 0`.
+/// A Gomory-Hu tree of the undirected graph `edges`: `V.count - 1` edges on `V` such that for every
+/// `s != t` the minimum `s`-`t` cut of `edges` is the smallest `w` on the tree path from `s` to
+/// `t`.
+///
+/// Vertices in different components are joined by `w = 0`.
 ///
 /// Gusfield's algorithm: every vertex starts with parent `V.first`; for each `u` after it in
 /// order, `w` is the minimum cut between `u` and its parent `p`, the tree gains `(u, p, w)`, and
@@ -2014,7 +2023,9 @@ pub struct Matching<L, R>:
 
 /// The maximum (or, with `min: true`, minimum) total-weight matching among the listed edges, not
 /// necessarily perfect: sparse weights through min-cost flow, where `max_weight_matching` needs
-/// every pair's weight. `size:` forces exactly that many pairs, `None` when impossible.
+/// every pair's weight.
+///
+/// `size:` forces exactly that many pairs, `None` when impossible.
 ///
 /// One `CostFlow` on L + R + 2 vertices: each edge costs its weight times `L.count + 1`, plus 1,
 /// so without `size` (where an extra zero-cost `s -> t` arc lets pairs go unused) of equal totals
@@ -2079,8 +2090,10 @@ pub fn best_matching<L, R, E>(
     Some((total:, mate:, used:))
 
 /// Gale-Shapley stable matching with proposals from `L`: `pref_l[l]` lists the `R`s `l` accepts,
-/// best first, and likewise `pref_r`. A pair can match only when each lists the other. The result
-/// is the stable matching best for every `l`, which is unique.
+/// best first, and likewise `pref_r`.
+///
+/// A pair can match only when each lists the other. The result is the stable matching best for
+/// every `l`, which is unique.
 ///
 /// cost: \(O(L R)\)
 /// empty: `[]` when `L` is empty; `None` for every `l` whose list is empty

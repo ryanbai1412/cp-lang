@@ -72,9 +72,11 @@ pub struct IntervalMap<D, T>:
         let (lo, seg) = segs.last_le(i.ord)!
         (range: D.nth(lo).l..D.nth(seg.hi - 1).r, val: seg.val)
 
-    /// Give every position of `r` the value `val`, then merge it with equal neighbouring runs so all
-    /// runs stay maximal. `on_old` is called with each overwritten piece (an old run overlapping
-    /// `r`, clipped to `r`) and its old value; the map is fully repainted when `assign` returns.
+    /// Give every position of `r` the value `val`, then merge it with equal neighbouring runs so
+    /// all runs stay maximal.
+    ///
+    /// `on_old` is called with each overwritten piece (an old run overlapping `r`, clipped to `r`)
+    /// and its old value; the map is fully repainted when `assign` returns.
     ///
     /// cost: \(O((1 + \mathit{overwritten}) \log \mathit{runs})\) amortized
     /// empty: changes nothing and calls `on_old` never

@@ -208,7 +208,9 @@ pub struct PersistentSegTree<D, T: Sub>(m: Monoid<T>):
         self.lw(left[u], nl, mid, h, ok, a)
 
     /// For a tree of counts under `+`, the position of the `k`-th item (1-based) in the difference
-    /// `hi - lo` (0-based, like `RangeKth.kth`), walking both versions at once; `None` when the difference holds at most `k` items.
+    /// `hi - lo` (0-based, like `RangeKth.kth`), walking both versions at once; `None` when the
+    /// difference holds at most `k` items.
+    ///
     /// A position with count `c` holds `c` items.
     ///
     /// Law: `hi` was derived from `lo` by adding counts, so no position of `hi - lo` is negative.

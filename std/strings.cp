@@ -15,10 +15,12 @@ pub fn repeat(self: Str, n: Int) -> Str:
     assert n >= 0, "`repeat` needs a count of 0 or more"
     Str(self[i % self.len] for i in 0..n * self.len)
 
-/// True when `pat` occurs in `self` starting at position `at` (default 0, so a prefix test):
-/// the `pat.len` elements of `self` from `at` equal those of `pat` in order, `false` when they
-/// run past the end. Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views); `at`
-/// counts positions from 0, and only the values are compared, never the keys.
+/// True when `pat` occurs in `self` starting at position `at` (default 0, so a prefix test): the
+/// `pat.len` elements of `self` from `at` equal those of `pat` in order, `false` when they run past
+/// the end.
+///
+/// Works on any `Indexed` pair (`Str`, `List<T>`, `[D]T`, views); `at` counts positions from 0, and
+/// only the values are compared, never the keys.
 ///
 /// cost: \(O(\min(\lvert \mathit{self} \rvert - \mathit{at}, \lvert \mathit{pat} \rvert))\)
 /// empty: an empty `pat` matches at every `at` in `0..=self.len`; an empty `self` starts only with an empty `pat`
@@ -1065,9 +1067,11 @@ pub struct SuffixArray:
     dcum: List<Int>
     toks: List<Int>
 
-    /// The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the
-    /// suffix of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks
-    /// `r` and `r + 1`. Call it as `SuffixArray(s)`; positions count from 0.
+    /// The suffix array of `s` with its inverse and LCP array: `sa[r]` is the start of the suffix
+    /// of rank `r`, `rank[sa[r]] == r`, and `lcp[r]` is the LCP of the suffixes of ranks `r` and `r
+    /// + 1`.
+    ///
+    /// Call it as `SuffixArray(s)`; positions count from 0.
     ///
     /// Elements are compared by `Ord`, so a shorter suffix that is a prefix of a longer one
     /// ranks first.
@@ -1367,9 +1371,11 @@ pub fn suffix_tree_edges<S: Indexed>(s: S) -> List<SuffixTreeEdge>:
                 st_sum.push(bottom)
     out
 
-/// Every run (maximal repetition) of `s`, by the Lyndon-runs theorem: each `(l, r, period)`
-/// is a half-open range `s[l..r]` with smallest period `period`, `r - l >= 2 * period`, that
-/// cannot be extended left or right with the same period. Positions count from 0.
+/// Every run (maximal repetition) of `s`, by the Lyndon-runs theorem: each `(l, r, period)` is a
+/// half-open range `s[l..r]` with smallest period `period`, `r - l >= 2 * period`, that cannot be
+/// extended left or right with the same period.
+///
+/// Positions count from 0.
 ///
 /// cost: \(O(n \log n)\) time and memory
 /// empty: `[]`
@@ -1789,9 +1795,11 @@ pub struct RollingHash61:
     pre: List<U64>
     pow: List<U64>
 
-    /// A single-modulus polynomial rolling hash of `seq` modulo the Mersenne prime `2^61 - 1`;
-    /// call it as `RollingHash61(seq)`. Same scheme as `RollingHash` with one modulus: each
-    /// token enters as `token % M + 1`; the base is drawn at random unless `base:` gives it.
+    /// A single-modulus polynomial rolling hash of `seq` modulo the Mersenne prime `2^61 - 1`; call
+    /// it as `RollingHash61(seq)`.
+    ///
+    /// Same scheme as `RollingHash` with one modulus: each token enters as `token % M + 1`; the
+    /// base is drawn at random unless `base:` gives it.
     ///
     /// cost: \(O(n)\)
     /// empty: an empty hash; `push` can grow it
@@ -2594,6 +2602,9 @@ pub struct PalindromicTree<A>:
 
     fn size(self) -> Int = front.len + chars.len
 
+    /// The character at position `i` of the current string, counting from the front.
+    ///
+    /// cost: \(O(1)\)
     pub fn at(self, i: Int) -> A:
         with lint(unproven_list_index: allow)
         return if i < front.len: front[front.len - 1 - i] else: chars[i - front.len]

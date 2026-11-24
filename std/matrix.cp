@@ -338,9 +338,11 @@ pub struct Mat<T: Add + Sub + Mul + Div>:
             for j in 0..n: out[i * n + j] = aug[i * stride + n + j]
         Mat(n, n, out)
 
-    /// The reduced row echelon form `(rref_mat, rank, pivot_cols)` over a field. Every pivot is
-    /// `T.one`, every other entry of a pivot column is zero, the nonzero rows come first, and the
-    /// `rank` pivot columns are listed in increasing order. The RREF is unique, so so is the result.
+    /// The reduced row echelon form `(rref_mat, rank, pivot_cols)` over a field.
+    ///
+    /// Every pivot is `T.one`, every other entry of a pivot column is zero, the nonzero rows come
+    /// first, and the `rank` pivot columns are listed in increasing order. The RREF is unique, so
+    /// so is the result.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space
     /// empty: rank zero, no pivots
@@ -615,9 +617,11 @@ pub fn rank_real(a: Mat<F64>, eps: F64 = 1e-9) -> Int:
         r += 1
     r
 
-/// Solve `a * x = b` over `F64` via partial pivoting with tolerance `eps`. Returns `None` if
-/// inconsistent: some row reduces to all-zero coefficients (each at most `eps`) with a right-hand
-/// side above `eps` in absolute value. Free variables are `0.0`, as in `Mat.solve`.
+/// Solve `a * x = b` over `F64` via partial pivoting with tolerance `eps`.
+///
+/// Returns `None` if inconsistent: some row reduces to all-zero coefficients (each at most `eps`)
+/// with a right-hand side above `eps` in absolute value. Free variables are `0.0`, as in
+/// `Mat.solve`.
 ///
 /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}))\) time, \(O(\mathit{rows} \cdot \mathit{cols})\) space
 /// empty: with `cols == 0`, `Some([])` when every `b` entry is within `eps` of zero, else `None`
@@ -1003,9 +1007,11 @@ pub struct BitMat(pub rows: Int, pub cols: Int):
         if let sp = self.solve_space(b): return Some(sp.x0)
         None
 
-    /// One solution `x0` and a nullspace basis over GF(2), or `None`. `x0` is `solve(b)`'s solution;
-    /// the basis has one vector per free column, in increasing column order, with `true` at that
-    /// column and `false` at the other free columns, as in `Mat.solve_space`.
+    /// One solution `x0` and a nullspace basis over GF(2), or `None`.
+    ///
+    /// `x0` is `solve(b)`'s solution; the basis has one vector per free column, in increasing
+    /// column order, with `true` at that column and `false` at the other free columns, as in
+    /// `Mat.solve_space`.
     ///
     /// cost: \(O(\mathit{rows} \cdot \mathit{cols} \cdot \min(\mathit{rows}, \mathit{cols}) / 64)\)
     /// empty: with `cols == 0`, `Some(([], []))` when `b` is all `false`, else `None`
@@ -1182,10 +1188,12 @@ pub struct PrefixXorBasis:
         let k = count(from[top + b] >= l for b in 0..63)
         k
 
-/// The determinant of a sparse `n x n` matrix via Wiedemann's algorithm. `entries` lists
-/// `(row, col, value)`; repeated cells add up, and missing cells are zero. Randomized with a fixed
-/// seed and retried until the minimal polynomial is certified, so the answer is always exact and
-/// deterministic; only the running time is an expectation. `P` must be prime.
+/// The determinant of a sparse `n x n` matrix via Wiedemann's algorithm.
+///
+/// `entries` lists `(row, col, value)`; repeated cells add up, and missing cells are zero.
+/// Randomized with a fixed seed and retried until the minimal polynomial is certified, so the
+/// answer is always exact and deterministic; only the running time is an expectation. `P` must be
+/// prime.
 ///
 /// cost: \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space
 /// empty: `Mod<P>(1)` for `n == 0`
@@ -1211,8 +1219,10 @@ pub fn sparse_det<P>(n: Int, entries: List<(Int, Int, Mod<P>)>) -> Mod<P>:
             return det
 
 /// Solve `A x = b` for a sparse `n x n` matrix via Wiedemann's algorithm, with `entries` as in
-/// `sparse_det`. Returns the unique solution, or `None` when `A` is singular (even if `b` happens
-/// to be in its range). Deterministic, like `sparse_det`.
+/// `sparse_det`.
+///
+/// Returns the unique solution, or `None` when `A` is singular (even if `b` happens to be in its
+/// range). Deterministic, like `sparse_det`.
 ///
 /// cost: \(O(n \cdot (\mathit{entries}.\mathit{len} + n))\) expected time, \(O(n + \mathit{entries}.\mathit{len})\) space
 /// empty: `Some([])` for `n == 0`

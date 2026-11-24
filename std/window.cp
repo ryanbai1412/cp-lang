@@ -279,12 +279,13 @@ pub struct Sweep<D, S>(pub state: S):
         if let r = start: s.move(r)
         s
 
-    /// Slide to `to`, feeding `state` the positions that enter and leave. Moving expands before
-    /// shrinking, in this order: grow the right end (push each new position, increasing), grow the
-    /// left end (push, decreasing), shrink the right end (pop, decreasing), shrink the left end
-    /// (pop, increasing). The state never sees a negative-length interval, but growing on the left
-    /// and shrinking on the right touch the "wrong" end of the `Track`, so as with Mo the state's
-    /// answer must ignore order.
+    /// Slide to `to`, feeding `state` the positions that enter and leave.
+    ///
+    /// Moving expands before shrinking, in this order: grow the right end (push each new position,
+    /// increasing), grow the left end (push, decreasing), shrink the right end (pop, decreasing),
+    /// shrink the left end (pop, increasing). The state never sees a negative-length interval, but
+    /// growing on the left and shrinking on the right touch the "wrong" end of the `Track`, so as
+    /// with Mo the state's answer must ignore order.
     ///
     /// cost: \(O(\lvert \mathit{dl} \rvert + \lvert \mathit{dr} \rvert)\) pushes and pops, where `dl` and `dr` are the moves of the two ends
     /// empty: moving to an empty `to` pops everything

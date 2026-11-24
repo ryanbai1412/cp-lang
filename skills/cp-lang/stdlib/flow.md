@@ -95,7 +95,7 @@ Fields: `color: [E]C`, `limit: [C]Int`, `used: [C]Int`.
 
 ## Functions
 
-- `fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, take: [V]Bool)` — one `max_flow` on V + 2 vertices and V + E arcs, \(O(V + E)\) calls of `profit`; A maximum-weight closure (project selection): the set `take` of vertices with the largest total `profit` such that an arc `u -> v` of `before` means taking `v` forces taking `u` (prerequisites point at what they unlock, the direction `peel` and `topo` read).
+- `fn max_closure<V, G: Next<V>>(before: G, profit: V -> Int) -> (value: Int, take: [V]Bool)` — one `max_flow` on V + 2 vertices and V + E arcs, \(O(V + E)\) calls of `profit`; A maximum-weight closure (project selection): the set `take` of vertices with the largest total `profit` such that an arc `u -> v` of `before` means taking `v` forces taking `u`.
 - `fn max_matching<L, R>(adj: [L]List<R>) -> (size: Int, mate: [L]?R, back: [R]?L)` — \(O(E \sqrt V)\) time, \(O(V + E)\) memory; A maximum matching between `L` and `R`, where `adj[l]` lists the partners `l` may take: its `size`, and the partner of each vertex on either side (`None` when unmatched).
 - `fn min_vertex_cover<L, R>(adj: [L]List<R>) -> (left: [L]Bool, right: [R]Bool)` — \(O(E \sqrt V)\); A minimum vertex cover of the bipartite graph `adj`: every edge has a marked end, and exactly `max_matching(adj).size` vertices are marked (König).
 - `fn max_weight_matching<L, R>(weight: (L, R) -> Int) -> (total: Int, mate: [L]R)` — \(O(L^2 R)\) time, \(O(L R)\) calls of `weight`, by the Hungarian algorithm; The maximum-weight assignment: every `l` in `L` gets a distinct `mate[l]` in `R`, maximizing `total`, the sum of `weight(l, mate[l])`.; traps: when `L.count > R.count`

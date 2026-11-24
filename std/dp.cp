@@ -210,8 +210,9 @@ pub fn monotone_minima(rows: Int, cols: Int, f: (Int, Int) -> ?Int) -> List<?(va
     out
 
 /// One layer of a partition DP: `next[i]` is the least `prev[j] + cost(j, i)` over `j < i` with
-/// `prev[j]` present, or `None` when no such `j` exists, so `next[0]` is always `None`. Indices are
-/// cuts `0..prev.len`, and `cost(j, i)` is the cost of the piece `[j, i)`.
+/// `prev[j]` present, or `None` when no such `j` exists, so `next[0]` is always `None`.
+///
+/// Indices are cuts `0..prev.len`, and `cost(j, i)` is the cost of the piece `[j, i)`.
 ///
 /// Law: `cost` satisfies the quadrangle inequality (`std.spec.dnc_break` checks it), so the best
 /// `j` moves right with `i`. `cost` is called only for `j < i` with `prev[j]` present.
@@ -349,8 +350,10 @@ struct Counted(k: Int, m: Int, used: Int):
 
 /// The shortest path from `nodes.first` to `nodes.last` along increasing edges
 /// `nodes[j] -> nodes[i]`, `j < i`, of weight `cost(nodes[j], nodes[i])`: its total and its number
-/// of edges, the shape `aliens` asks `solve` for
-/// (`aliens(k, solve: pen => monge_path(cuts, cost: (j, i) => w(j, i) + pen))`).
+/// of edges.
+///
+/// That is the shape `aliens` asks `solve` for:
+/// `aliens(k, solve: pen => monge_path(cuts, cost: (j, i) => w(j, i) + pen))`.
 ///
 /// Law: `cost` is Monge along `nodes`, `cost(a, c) + cost(b, d) <= cost(a, d) + cost(b, c)` for
 /// `a <= b <= c <= d` (`std.spec.monge_break`). A single node is a path of no edges, total `0`.
@@ -369,8 +372,9 @@ pub fn monge_path<N, K>(nodes: List<N>, cost: (N, N) -> K) -> (val: K, count: In
     (val: p.val[nodes.len - 1], count:)
 
 /// Every shortest path from `nodes.first`: `val[i]` is the least total weight to `nodes[i]` and
-/// `prev[i]` the index before it on that path (`val[0] == 0`, `prev[0] == 0`). Same law as
-/// `monge_path`; follow `prev` back from `i` to recover a path.
+/// `prev[i]` the index before it on that path (`val[0] == 0`, `prev[0] == 0`).
+///
+/// Same law as `monge_path`; follow `prev` back from `i` to recover a path.
 ///
 /// cost: \(O(n)\) calls of `cost` (online LARSCH), \(O(n)\) memory, for n = `nodes.len`
 /// empty: an empty `nodes` traps
@@ -886,8 +890,9 @@ pub fn subset_folds<T, M>(xs: List<T>, op: M) -> List<T>:
         out[mask] = m.op(out[mask ^ (1 << top)], xs[top])
     out
 
-/// Depth-first backtracking from `start`, where `next(s)` yields the states one step on. Every
-/// state reached is yielded as a `Step` with `.state` and `.depth` (`start` at depth 0), in
+/// Depth-first backtracking from `start`, where `next(s)` yields the states one step on.
+///
+/// Every state reached is yielded as a `Step` with `.state` and `.depth` (`start` at depth 0), in
 /// preorder: a state before its children, children in the order `next` yields them.
 ///
 /// Calling `.prune()` on the current step skips every state below it; stop the whole search with

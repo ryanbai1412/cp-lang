@@ -9,16 +9,16 @@ rows naming no existing check, from `scripts/debt-ratchet.json`; they only go do
 |---|---|---|---|
 | [compiler](domains/compiler/README.md) | 15 | 1 | 2 |
 | [debugger](domains/debugger/README.md) | 19 | 14 | 0 |
-| [diagnostics](domains/diagnostics/README.md) | 20 | 1 | 0 |
+| [diagnostics](domains/diagnostics/README.md) | 20 | 0 | 0 |
 | [idioms](domains/idioms/README.md) | 13 | 1 | 3 |
 | [infra](domains/infra/README.md) | 15 | 0 | 0 |
 | [lint-fmt](domains/lint-fmt/README.md) | 20 | 0 | 0 |
 | [perf](domains/perf/README.md) | 18 | 3 | 0 |
-| [site](domains/site/README.md) | 17 | 7 | 3 |
-| [spec](domains/spec/README.md) | 21 | 5 | 0 |
+| [site](domains/site/README.md) | 17 | 1 | 3 |
+| [spec](domains/spec/README.md) | 21 | 1 | 0 |
 | [stdlib](domains/stdlib/README.md) | 19 | 29 | 6 |
 | [tech-debt](domains/tech-debt/README.md) | 30 | 0 | 3 |
-| [tools](domains/tools/README.md) | 18 | 22 | 0 |
+| [tools](domains/tools/README.md) | 18 | 18 | 0 |
 
 ## compiler
 
@@ -316,8 +316,8 @@ catalogue was first written and only go down; M1 readiness gaps are every open M
 | complete | 32 | 29 | 3 | 0 | 0 | 0 | 1 |
 | play | 12 | 7 | 5 | 0 | 0 | 1 | 1 |
 | seq | 67 | 35 | 16 | 15 | 0 | 4 | 21 |
-| stress | 34 | 27 | 7 | 0 | 0 | 1 | 3 |
-| all | 145 | 98 | 31 | 15 | 0 | 6 | 26 |
+| stress | 34 | 28 | 6 | 0 | 0 | 1 | 2 |
+| all | 145 | 99 | 30 | 15 | 0 | 6 | 25 |
 
 ## Open questions (`plan/QUESTIONS.md`)
 

@@ -127,8 +127,8 @@ Fields: `ks: SortedBag<K>`, `vals: HashMap<K, V>`.
 - `fn absorb(mut self, mut other: SortedMap<K, V>, join: ?((V, V) -> V) = None)` — \(O(\min(n, m) \log(n + m))\) expected; Merge all entries of `other` into `self` (emptying `other`), combining collisions with `join` or overwriting.
 - `@get fn items(self) -> yields (K, V)` — \(O(1)\) to make, \(O(1)\) amortized per step; \(O(1)\) to make.
 - `fn each_rev(self) -> yields (K, V)` — \(O(1)\) amortized per step; Yield `(key, val)` pairs in descending key order.
-- `@get fn keys(self) -> yields K` — \(O(1)\) to make, \(O(1)\) amortized per step
-- `@get fn values(self) -> yields V` — \(O(1)\) to make, \(O(1)\) amortized per step
+- `@get fn keys(self) -> yields K` — \(O(1)\) to make, \(O(1)\) amortized per step; The map's keys, in ascending order.
+- `@get fn values(self) -> yields V` — \(O(1)\) to make, \(O(1)\) amortized per step; The map's values, in ascending order of their keys.
 
 ## `struct AugSortedBag<K, T>`
 
@@ -194,7 +194,7 @@ Fields: `lo: Int`, `hi: Int`, `bs: Int`, `total: Int`, `cnt: List<Int>`, `blk: L
 - `fn count(self, x: Int) -> Int` — \(O(1)\); traps: never; an `x` outside `r` has count 0
 - `fn count_lt(self, x: Int) -> Int` — \(O(\sqrt{N})\)
 - `fn kth(self, k: Int) -> Int` — \(O(\sqrt{N})\); traps: when `k` is not in `0..len`
-- `@get fn len(self) -> Int` — \(O(1)\)
+- `@get fn len(self) -> Int` — \(O(1)\); The total count of everything added, with multiplicity.
 - `@get fn is_empty(self) -> Bool` — \(O(1)\)
 - `fn clear(mut self)` — \(O(r.\mathit{len})\)
 

@@ -495,8 +495,10 @@ pub struct Graph<V: Domain, A: Target<V>>:
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
 /// Kahn's peeling: repeatedly removes a vertex with no arcs left coming in, and returns the
-/// vertices in removal order. What stays is every vertex on a cycle or reachable from one,
-/// so the order covers all of `V` exactly when the graph is acyclic.
+/// vertices in removal order.
+///
+/// What stays is every vertex on a cycle or reachable from one, so the order covers all of `V`
+/// exactly when the graph is acyclic.
 ///
 /// A FIFO queue starts with the vertices of in-degree zero in vertex order; removing `u`
 /// walks its arcs in order and appends each target whose in-degree drops to zero. With
@@ -773,10 +775,11 @@ pub fn condense<V, C>(g: Next<V>, comp: [V]C) -> [C]List<(to: C)>:
     out
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
-/// The two-edge-connected components (bridge blocks) of an undirected graph, as a fresh
-/// domain `C` and each vertex's component. Arcs carry `e`, so parallel edges are never
-/// bridges. Every edge between two components is a bridge, so `condense(g, comp)` is the
-/// bridge tree.
+/// The two-edge-connected components (bridge blocks) of an undirected graph, as a fresh domain `C`
+/// and each vertex's component.
+///
+/// Arcs carry `e`, so parallel edges are never bridges. Every edge between two components is a
+/// bridge, so `condense(g, comp)` is the bridge tree.
 ///
 /// cost: \(O(n + m)\), iterative Tarjan low-link
 /// order: `C` by smallest vertex; `comp` keyed by `V`
@@ -802,10 +805,11 @@ pub fn two_edge_components<V, E>(g: EdgedNext<V, E>) -> (domain C, comp: [V]C):
     domain C = 0..k
     (C:, comp: [V] v => C(cid[v]))
 
-/// Which vertices are cut vertices: removing one (and its arcs) leaves more components than
-/// before. Works per component, so disconnected graphs are fine; a root is a cut vertex
-/// exactly when it has two or more DFS children. Skips the arc's own edge, not its source
-/// vertex, so parallel edges are right.
+/// Which vertices are cut vertices: removing one (and its arcs) leaves more components than before.
+///
+/// Works per component, so disconnected graphs are fine; a root is a cut vertex exactly when it has
+/// two or more DFS children. Skips the arc's own edge, not its source vertex, so parallel edges are
+/// right.
 ///
 /// cost: \(O(n + m)\), iterative
 /// order: keyed by `V`
@@ -2022,10 +2026,12 @@ fn at_most_one_forbids_every_pair_and_allows_each_single():
 // ---- Spec surface without implementations yet ----------------------------
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
-/// A depth-first walk from each vertex of `from` in turn, yielding `Enter(v, via:)` when `v`
-/// is discovered, `Again(from, via)` for an arc into an already discovered vertex, and
-/// `Exit(v, via:)` when `v` is finished. `via` is the arc that discovered `v`, `None` for a
-/// source; on `[V]List<V>` an arc is the vertex it reaches.
+/// A depth-first walk from each vertex of `from` in turn, yielding `Enter(v, via:)` when `v` is
+/// discovered, `Again(from, via)` for an arc into an already discovered vertex, and `Exit(v, via:)`
+/// when `v` is finished.
+///
+/// `via` is the arc that discovered `v`, `None` for a source; on `[V]List<V>` an arc is the vertex
+/// it reaches.
 ///
 /// Arcs are taken in arc order and the walk descends at once (recursive order, run
 /// without recursion). Discovered vertices are shared across sources, so a source already
@@ -2184,10 +2190,11 @@ pub fn dial<V, G: WeightedNext<V, Int>>(
     Paths(dist, back, order)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
-/// All-pairs shortest distances with negative arcs: one Bellman-Ford from a virtual source
-/// joined to every vertex, then a Dijkstra per vertex on the reweighted arcs. `d[u, v]` is
-/// the distance, `None` when unreachable, `0` on the diagonal. `None` if any negative cycle
-/// exists, reachable or not.
+/// All-pairs shortest distances with negative arcs: one Bellman-Ford from a virtual source joined
+/// to every vertex, then a Dijkstra per vertex on the reweighted arcs.
+///
+/// `d[u, v]` is the distance, `None` when unreachable, `0` on the diagonal. `None` if any negative
+/// cycle exists, reachable or not.
 ///
 /// cost: \(O(n m \log m)\)
 /// traps: never
@@ -2374,9 +2381,10 @@ pub fn min_mean_cycle<V>(g: WeightedNext<V, Int>) -> ?(sum: Int, len: Int):
                 break
     Some((sum: p * (best_len / q), len: best_len))
 
-/// The length of a shortest cycle (the girth), or `None` if there is None. With `directed:
-/// false` the graph is read as undirected (every arc has its reverse) and a cycle counts
-/// only if it uses at least three edges, so loops and an arc's way back are not cycles.
+/// The length of a shortest cycle (the girth), or `None` if there is None.
+///
+/// With `directed: false` the graph is read as undirected (every arc has its reverse) and a cycle
+/// counts only if it uses at least three edges, so loops and an arc's way back are not cycles.
 ///
 /// cost: \(O(n m)\), a BFS from every vertex
 /// traps: never
@@ -2431,9 +2439,11 @@ pub fn smallest_topo<V>(g: Next<V>) -> ?List<V>:
     if order.len == V.count: order else: None
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
-/// DP over a DAG in topological order. Each vertex starts at `init(v)`; then, for `u` in
-/// `topo` order and each arc `a` of `u` in arc order, `val[a.to] = op(val[a.to],
-/// step(val[u], a))`. `op: max` gives longest paths, `op: +` counts. `None` on a cycle.
+/// DP over a DAG in topological order.
+///
+/// Each vertex starts at `init(v)`; then, for `u` in `topo` order and each arc `a` of `u` in arc
+/// order, `val[a.to] = op(val[a.to], step(val[u], a))`. `op: max` gives longest paths, `op: +`
+/// counts. `None` on a cycle.
 ///
 /// cost: \(O(n + m)\)
 /// order: keyed by `V`
@@ -2778,10 +2788,11 @@ pub fn block_cut_tree<V>(g: Next<V>) -> (domain B, links: List<(b: B, v: V)>):
     (B:, links: links)
 
 // blocked: generic `V` of a `Next<V>` free fn is bound to `Int` (GAPS.md graph free fns)
-/// The biconnected block of every edge: edges, not vertices, are partitioned, so a cut
-/// vertex lies in several blocks and parallel edges share one. Blocks are numbered as the
-/// DFS (roots in vertex order, arcs in arc order) closes them; each loop is a block of its
-/// own, numbered after those in edge order.
+/// The biconnected block of every edge: edges, not vertices, are partitioned, so a cut vertex lies
+/// in several blocks and parallel edges share one.
+///
+/// Blocks are numbered as the DFS (roots in vertex order, arcs in arc order) closes them; each loop
+/// is a block of its own, numbered after those in edge order.
 ///
 /// cost: \(O(n + m)\)
 /// order: `block` keyed by `E`
@@ -3223,11 +3234,13 @@ pub fn prim<V, W>(w: [V, V]?W) -> ?(total: W, parent: [V]?V):
         if not done[v]: return None
     Some((total:, parent:))
 
-/// A minimum spanning forest by Boruvka rounds, for implicit complete graphs (xor MST,
-/// Manhattan MST). Each round passes `comp`, the component label of every vertex
-/// (`0..c`, numbered by smallest vertex), and `cheapest(comp)` returns per label its
-/// lightest edge leaving it, or `None`. Every returned edge joining two different
-/// components is taken; rounds end when one component remains or no edge is taken.
+/// A minimum spanning forest by Boruvka rounds, for implicit complete graphs (xor MST, Manhattan
+/// MST).
+///
+/// Each round passes `comp`, the component label of every vertex (`0..c`, numbered by smallest
+/// vertex), and `cheapest(comp)` returns per label its lightest edge leaving it, or `None`. Every
+/// returned edge joining two different components is taken; rounds end when one component remains
+/// or no edge is taken.
 ///
 /// cost: \(O(\log n)\) rounds, each \(O(n)\) plus the call of `cheapest`
 /// empty: an empty `V` gives total 0 and no edges

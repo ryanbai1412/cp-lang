@@ -87,10 +87,11 @@ pub struct TimeTree<E>:
         for _ in 0..k:
             out.push(Undo)
 
-    /// The whole depth-first walk over `0..q` as a list. Entering a node emits one `Apply(id)`
-    /// per event stored there, in scheduling order; a leaf `t` then emits `Query(t)`; leaving
-    /// the node emits one `Undo` per `Apply` it emitted, so undos match applies in LIFO order.
-    /// Children are visited left (earlier times) before right.
+    /// The whole depth-first walk over `0..q` as a list.
+    ///
+    /// Entering a node emits one `Apply(id)` per event stored there, in scheduling order; a leaf
+    /// `t` then emits `Query(t)`; leaving the node emits one `Undo` per `Apply` it emitted, so
+    /// undos match applies in LIFO order. Children are visited left (earlier times) before right.
     ///
     /// cost: \(O(q + m \log q)\) time and memory for `m` scheduled intervals
     /// empty: `[]` when `q == 0`
@@ -131,10 +132,12 @@ pub struct TimeTree<E>:
                     self.run_node(2 * u + 1, mid, nr, mark, apply, answer, undo, mut out)
             undo(snap)
 
-    /// Walk the same order as `steps` with callbacks instead of a list. On entering a node that
-    /// holds at least one event it calls `mark()` once, then `apply(ev)` for each event there in
-    /// scheduling order; at each leaf `t` it calls `answer(t)`; on leaving such a node it calls
-    /// `undo(m)` once with the value its `mark()` returned. Nodes with no events call neither.
+    /// Walk the same order as `steps` with callbacks instead of a list.
+    ///
+    /// On entering a node that holds at least one event it calls `mark()` once, then `apply(ev)`
+    /// for each event there in scheduling order; at each leaf `t` it calls `answer(t)`; on leaving
+    /// such a node it calls `undo(m)` once with the value its `mark()` returned. Nodes with no
+    /// events call neither.
     ///
     /// cost: \(O(q + m \log q)\) callback calls for `m` scheduled intervals, \(O(\log q)\) extra stack
     /// empty: `[]` when `q == 0`
@@ -206,10 +209,11 @@ pub struct TimeTree<E>:
                 sl.push(nl)
                 sr.push(mid)
 
-/// CDQ divide and conquer over `events` in their given order. A list of length `n >= 2`
-/// splits into `left`, the first `n / 2` events, and `right`, the rest; it solves `left`,
-/// then `right`, then calls `on_cross(left, right)` once, so `on_cross` sees each pair of
-/// events `i < j` in exactly one call, with `i` in `left` and `j` in `right`.
+/// CDQ divide and conquer over `events` in their given order.
+///
+/// A list of length `n >= 2` splits into `left`, the first `n / 2` events, and `right`, the rest;
+/// it solves `left`, then `right`, then calls `on_cross(left, right)` once, so `on_cross` sees each
+/// pair of events `i < j` in exactly one call, with `i` in `left` and `j` in `right`.
 ///
 /// cost: \(O(n \log n)\) plus the callbacks; each level copies the halves, \(O(n)\) extra memory
 /// empty: makes no calls; neither does a single event
@@ -229,8 +233,10 @@ pub fn cdq<E>(events: List<E>, on_cross: (List<E>, List<E>) -> ()):
     on_cross(left, right)
 
 /// Offline divide and conquer over time `0..q`: each item is active on the half-open slots
-/// `by(item) = (lo, hi)`. Builds a `TimeTree`, schedules every item in list order and walks
-/// it with `run`; `TimeTree(q)` with `add_interval` and `run` gives the same calls.
+/// `by(item) = (lo, hi)`.
+///
+/// Builds a `TimeTree`, schedules every item in list order and walks it with `run`; `TimeTree(q)`
+/// with `add_interval` and `run` gives the same calls.
 ///
 /// cost: \(O(q + m \log q)\) callback calls for `m` items
 /// empty: no items: `[answer(0), ..., answer(q - 1)]` with no `mark`, `apply` or `undo` calls

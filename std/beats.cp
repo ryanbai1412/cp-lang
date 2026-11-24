@@ -298,9 +298,10 @@ pub struct BeatsSegTree<D>:
         self.chmin(r, x)
         self.chmax(r, x)
 
-    /// Replace every `a[i]` in `r` with `a[i] / d`, rounding toward negative infinity. A node whose
-    /// values all map to the same shift becomes a single `add` tag, so each value is divided
-    /// \(O(\log V)\) times before it settles, for values of magnitude at most `V`.
+    /// Replace every `a[i]` in `r` with `a[i] / d`, rounding toward negative infinity.
+    ///
+    /// A node whose values all map to the same shift becomes a single `add` tag, so each value is
+    /// divided \(O(\log V)\) times before it settles, for values of magnitude at most `V`.
     ///
     /// cost: \(O(\log \lvert D \rvert \log V)\) amortized
     /// empty: changes nothing
@@ -371,10 +372,11 @@ pub struct HistoricBeatsSegTree<D>:
     tg: List<Int> = []
     ver: Int = 0
 
-    /// A Beats tree that also tracks history, holding `a`, or `fill` everywhere, or zeros. Each
-    /// position remembers the greatest value it has held and the running sum of its values over
-    /// versions; version 0 is the initial array, and every `chmin`, `chmax` or `add` call makes
-    /// one new version of the whole array.
+    /// A Beats tree that also tracks history, holding `a`, or `fill` everywhere, or zeros.
+    ///
+    /// Each position remembers the greatest value it has held and the running sum of its values
+    /// over versions; version 0 is the initial array, and every `chmin`, `chmax` or `add` call
+    /// makes one new version of the whole array.
     ///
     /// cost: \(O(\lvert D \rvert)\)
     /// empty: an empty `D` builds a tree whose sums are zero and whose maxima are `None`

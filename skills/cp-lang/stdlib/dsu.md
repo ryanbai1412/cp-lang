@@ -99,7 +99,6 @@ Fields: `data: [D]T`, `log: List<(D, T)>`.
 Path-copying persistent disjoint-set union over domain `V`.
 
 - `fn new() -> PersistentDsu<V>` — \(O(n)\); A persistent union-find over `V` holding version 0, every position in its own set.
-- `fn get(self, root: Int, i: Int) -> (Int, Int)`
 - `@get fn base(self) -> Int` — \(O(1)\); The handle of version 0, where every position is alone.
 - `fn find(self, ver: Int, v: V) -> V` — \(O(\log^2 n)\); The representative of `v`'s set in version `ver`, chosen by union by size as in [`Dsu.find`](Dsu.find).; traps: when `ver` is not a version handle of `self`
 - `fn same(self, ver: Int, a: V, b: V) -> Bool` — \(O(\log^2 n)\); Whether `a` and `b` are in the same set in version `ver`.; traps: when `ver` is not a version handle of `self`
