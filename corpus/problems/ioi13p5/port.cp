@@ -22,14 +22,14 @@ weak.sort()
 small.sort(by: desc)
 // The sizes of the toys each weak robot (by rising limit) is the first one
 // strong enough for, and the sizes of the toys no weak robot can carry.
-var newly: [Weak]List<Desc<Int>> = []
-var heavy: List<Desc<Int>> = []
+var newly: [Weak]List<Desc<Limit>> = []
+var heavy: List<Desc<Limit>> = []
 for toy in toys:
     if let r = weak.bsearch(w => w > toy.weight).right: newly[r].push(desc(toy.size))
     else: heavy.push(desc(toy.size))
 
 fn done_in(minutes: Int) -> Bool:
-    var left = MinHeap<Desc<Int>>()  // largest size first
+    var left = MinHeap<Desc<Limit>>()  // largest size first
     for r in Weak:
         left.push_all(newly[r])
         for _ in 0..min(minutes, left.len): left.pop()
