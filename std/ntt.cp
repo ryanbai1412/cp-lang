@@ -922,3 +922,25 @@ fn convolve_2d_matches_the_quadruple_loop():
             for (k, s) in b.items:
                 for (l, y) in s.items: want[i + k][j + l] += x * y
     assert got == want
+
+impl Show for RelaxedConvolve<P>:
+    /// The convolution terms returned so far, space-separated.
+    ///
+    /// example: `type Z = Mod<17>; var rc = RelaxedConvolve<17>(); rc.push(Z(1), Z(3)); rc.push(Z(2), Z(4)); "{rc}" == "3 10"`
+    fn show(rc):
+        var out = ""
+        for i in 0..rc.a.len:
+            if not out.is_empty: out += " "
+            out += "{rc.c[i]}"
+        out
+
+impl Show for SemiRelaxedConvolve<P>:
+    /// The convolution terms returned so far, space-separated.
+    ///
+    /// example: `type Z = Mod<17>; var rc = SemiRelaxedConvolve<17>([Z(1), Z(2)]); rc.push(Z(1)); rc.push(Z(2)); rc.push(Z(5)); "{rc}" == "1 4 9"`
+    fn show(rc):
+        var out = ""
+        for i in 0..rc.a.len:
+            if not out.is_empty: out += " "
+            out += "{rc.c[i]}"
+        out
