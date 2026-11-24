@@ -17,7 +17,11 @@ pub fn root() -> PathBuf {
     let built = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     std::env::current_dir()
         .ok()
-        .and_then(|cwd| cwd.ancestors().find(|d| d.join(PACKAGES).is_dir()).map(Path::to_path_buf))
+        .and_then(|cwd| {
+            cwd.ancestors()
+                .find(|d| d.join(PACKAGES).is_dir())
+                .map(Path::to_path_buf)
+        })
         .unwrap_or(built)
 }
 
