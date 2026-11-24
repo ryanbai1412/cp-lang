@@ -1,3 +1,5 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -147,5 +149,34 @@ describe('LSP client', () => {
     const { LspDoc } = await load();
     expect(await LspDoc.request('completionItem/resolve', { label: 'x' })).toBe('completionItem/resolve answered');
     expect(workers[0].log).toEqual(['initialize', 'initialized', 'completionItem/resolve']);
+  });
+
+  // Read from the editor's source, so a method added there is covered here at once.
+  it('sends every method the editor asks for after the text it was asked about', async () => {
+    const dir = join(__dirname, '../components/editor');
+    const src = readdirSync(dir)
+      .filter((f) => /\.tsx?$/.test(f) && !f.includes('.test.'))
+      .map((f) => readFileSync(join(dir, f), 'utf8'))
+      .join('\n');
+    const named = (re: RegExp) => new Set([...src.matchAll(re)].map((m) => m[1]));
+    const all = named(/"((?:textDocument|workspace|completionItem|callHierarchy)\/[\w/]+)"/g);
+    const static_ = named(/LspDoc\.request(?:<[^>]*>)?\(\s*"([\w/]+)"/g);
+    expect(all.size).toBeGreaterThan(20);
+    const { LspDoc } = await load();
+    let text = '';
+    const doc = new LspDoc(() => text);
+    const n = doc.uri.match(/\d+/)![0];
+    let sync = 'textDocument/didOpen';
+    for (const [i, method] of [...all].entries()) {
+      if (static_.has(method)) {
+        expect(await LspDoc.request(method, {})).toBe(`${method} answered`);
+        continue;
+      }
+      text = `let x = ${i}`;
+      expect(await doc.request(method, {})).toBe(text);
+      expect(workers[0].log.slice(-2)).toEqual([`${sync} #${n}`, `${method} #${n}`]);
+      sync = 'textDocument/didChange';
+    }
+    expect([...static_]).toEqual(['completionItem/resolve']);
   });
 });
