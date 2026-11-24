@@ -165,7 +165,10 @@ impl Ty {
     /// The sequence a view walks: a `.rev`'s or a `Slice`'s source, whose
     /// elements it has (R07.4.5).
     pub fn view_source(&self) -> Option<&Ty> {
-        self.rev_source()
+        match self {
+            Ty::Named { name, args } if name == "Slice" && args.len() == 1 => args.first(),
+            _ => self.rev_source(),
+        }
     }
 
     /// The fields a lambda of several parameters takes from one element of

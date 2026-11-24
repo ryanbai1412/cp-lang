@@ -94,7 +94,8 @@ pub enum Shape {
     /// is written as `x`.
     Maybe { inner: Box<Shape>, none: i128 },
     /// A `while true:` loop's rows, each an `elem`, then `stop`: the
-    /// values its `if a == 0 and b == 0: break` leaves at.
+    /// values its `if a == 0 and b == 0: break` leaves at. With no `stop`,
+    /// the rows go to the end of the input (`while let x = read<?T>()`).
     Until { elem: Box<Shape>, stop: Vec<i128> },
     /// `read(gen: f)`: what `f()` makes, printed by `program`, which
     /// reads the input above it first.
@@ -622,6 +623,7 @@ impl InputSpec {
             std_scope: None,
             bound: Rc::default(),
             none: None,
+            ended: false,
             values: values(src, &parsed.items),
             elems: elems(&parsed.items),
             spec: InputSpec::default(),

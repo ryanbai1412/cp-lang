@@ -28,6 +28,9 @@ pub(super) struct Builder<'a> {
     pub(super) records: HashMap<String, (u32, Record)>,
     /// How the `read()` being built writes `none`, from `read(none: x)`.
     pub(super) none: Option<i128>,
+    /// A read above took the input to its end, so a `?T` read finds
+    /// `None` (R10.2.10).
+    pub(super) ended: bool,
     /// Each fn whose call reads the same values wherever it is, with the
     /// types it reads in order ([`values`]).
     pub(super) values: HashMap<String, (u32, Vec<Type>)>,
@@ -224,7 +227,14 @@ impl Builder<'_> {
                 self.shape(&args[0])
             }
             TypeKind::Optional(inner) => {
-                let none = self.none.ok_or_else(|| unsupported(self))?;
+                // Without `read(none: x)`, a `?T` is `None` only once the
+                // input has ended (R10.2.10): nothing then, a `T` before.
+                let Some(none) = self.none else {
+                    return match self.ended {
+                        true => Ok(Shape::tuple(Vec::new())),
+                        false => self.shape(inner),
+                    };
+                };
                 match self.shape(inner)? {
                     inner @ Shape::Int { .. } => Ok(Shape::Maybe {
                         inner: Box::new(inner),
@@ -682,6 +692,19 @@ impl Builder<'_> {
     /// [`Builder::until`], where `returns` lets a `return` leave as a
     /// `break` does.
     fn until_exit(&mut self, stmt: &Stmt, returns: bool) -> Result<Option<Shape>, SpecError> {
+        if let StmtKind::While {
+            cond:
+                Cond::Let {
+                    pat,
+                    value,
+                    and: None,
+                },
+            body,
+            else_body: None,
+        } = &stmt.kind
+        {
+            return self.until_end(pat, value, &body.stmts);
+        }
         let StmtKind::While {
             cond: Cond::Expr(cond),
             body,
@@ -735,6 +758,33 @@ impl Builder<'_> {
         Ok(Some(Shape::Until {
             elem: Box::new(Shape::Tuple { parts, binds }),
             stop,
+        }))
+    }
+
+    /// `while let x = read<?T>():`: rows, each a `T` and the body's
+    /// reads, until the input ends (R10.2.10).
+    fn until_end(
+        &mut self,
+        pat: &Pattern,
+        value: &Expr,
+        stmts: &[Stmt],
+    ) -> Result<Option<Shape>, SpecError> {
+        let Some((ty, None)) = typed_read(None, value) else {
+            return Ok(None);
+        };
+        let TypeKind::Optional(inner) = &ty.kind else {
+            return Ok(None);
+        };
+        let first = self.shape(inner)?;
+        let (mut parts, mut binds) = (Vec::new(), vec![Self::names(pat, &first)]);
+        parts.push(first);
+        if !self.rows(stmts, &mut HashSet::new(), &mut parts, &mut binds)? {
+            return Ok(None);
+        }
+        self.ended = true;
+        Ok(Some(Shape::Until {
+            elem: Box::new(Shape::Tuple { parts, binds }),
+            stop: Vec::new(),
         }))
     }
 

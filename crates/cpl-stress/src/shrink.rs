@@ -70,7 +70,9 @@ fn fit_value(shape: &Shape, value: &Value, env: &Env) -> Option<Value> {
             if rows.iter().any(|row| crate::gen::stops(row, stop)) {
                 return None;
             }
-            rows.push(crate::gen::stop_row(elem, &mut stop.as_slice())?);
+            if !stop.is_empty() {
+                rows.push(crate::gen::stop_row(elem, &mut stop.as_slice())?);
+            }
             Some(Value::Seq(rows))
         }
         (Shape::Maybe { none, .. }, Value::Int(v)) if v == none => Some(Value::Int(*none)),
@@ -534,8 +536,9 @@ fn numbers(spec: &InputSpec, case: &Case) -> Vec<(Path, i128)> {
                     }
                 }
             }
-            (Shape::Until { elem, .. }, Value::Seq(items)) => {
-                for (index, item) in items.iter().enumerate().take(items.len().saturating_sub(1)) {
+            (Shape::Until { elem, stop }, Value::Seq(items)) => {
+                let rows = items.len().saturating_sub(usize::from(!stop.is_empty()));
+                for (index, item) in items.iter().enumerate().take(rows) {
                     path.push(index);
                     walk(elem, item, env, path, out);
                     path.pop();

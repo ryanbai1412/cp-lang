@@ -377,7 +377,9 @@ fn build(
                     })
                 })
                 .collect::<Option<Vec<_>>>()?;
-            out.push(stop_row(elem, &mut stop.as_slice())?);
+            if !stop.is_empty() {
+                out.push(stop_row(elem, &mut stop.as_slice())?);
+            }
             Some(Value::Seq(out))
         }
         Shape::Maybe { inner, none } => match pick.pick(0, 3, false) {
@@ -544,7 +546,7 @@ pub(crate) fn stops(row: &Value, stop: &[i128]) -> bool {
     }
     let mut out = Vec::new();
     ints(row, &mut out);
-    out.starts_with(stop)
+    !stop.is_empty() && out.starts_with(stop)
 }
 
 /// The row that ends a `while true:` loop: `stop` in the places `shape`

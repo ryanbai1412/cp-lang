@@ -1716,3 +1716,31 @@ fn stress_in_vm(
     let stress = crate::Stress::build(std::path::Path::new(name), name, source, place, options)?;
     Ok(stress.run(options, explain, None)?.result)
 }
+
+#[test]
+fn an_optional_read_without_none_is_a_value_until_the_input_ends() {
+    // R10.2.10: `?T` is `None` only once only whitespace is left, so a
+    // trailing field and a `while let` loop read values, and a read
+    // after the loop finds the end.
+    let src = "let (n, k): (1..=5, ?1..=5) = read()\nvar xs = List<Int>()\n\
+               while let x = read<?1..=9>():\n    xs.push(x)\nlet w = read<?Str>()\n\
+               print(n, k ?? 0, xs.len, w is None)\n";
+    let spec = InputSpec::from_source(src).expect("stress generates every read");
+    let mut rows = 0;
+    for seed in 0..20 {
+        let case =
+            crate::generate(&spec, &mut crate::Rng::new(seed), crate::Size::Small(8)).unwrap();
+        let input = case.render();
+        let tokens: Vec<i128> = (input.split_ascii_whitespace())
+            .map(|t| t.parse().expect("no word follows the loop"))
+            .collect();
+        assert!(tokens.len() >= 2, "{input:?}");
+        assert!(
+            (1..=5).contains(&tokens[0]) && (1..=5).contains(&tokens[1]),
+            "{input:?}"
+        );
+        assert!(tokens[2..].iter().all(|t| (1..=9).contains(t)), "{input:?}");
+        rows += tokens.len() - 2;
+    }
+    assert!(rows > 0, "the loop read no values in 20 cases");
+}
