@@ -621,10 +621,14 @@ impl Server {
             }
             "textDocument/definition" => {
                 let (uri, offset) = self.position(params)?;
-                let Some(def) = self.db.definition_location(&uri, offset) else {
-                    return Ok(Reply::default());
-                };
-                Ok(Reply::result(self.location(&uri, &def)))
+                let defs = self.db.definitions(&uri, offset);
+                Ok(match defs.as_slice() {
+                    [] => Reply::default(),
+                    [def] => Reply::result(self.location(&uri, def)),
+                    _ => Reply::result(Value::Array(
+                        defs.iter().map(|d| self.location(&uri, d)).collect(),
+                    )),
+                })
             }
             "textDocument/codeLens" => {
                 let uri = uri_of(params)?;

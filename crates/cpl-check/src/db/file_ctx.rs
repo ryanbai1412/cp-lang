@@ -426,6 +426,7 @@ impl FileCtx<'_> {
             hovers: checked.hovers,
             refs: checked.refs,
             resolved: checked.resolved,
+            ambiguous: checked.ambiguous,
             typed_indexes: checked.typed_indexes,
             fixed_io: checked.fixed_io,
             io_costs: checked.io_costs,
