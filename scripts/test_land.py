@@ -348,12 +348,16 @@ class LandTest(unittest.TestCase):
         (bin_dir / "cargo").chmod(0o755)
         return {"PATH": f"{bin_dir}{os.pathsep}{os.environ['PATH']}", "CARGO_TARGET_DIR": str(self.tmp / "tgt")}
 
-    def _built(self, ours):
-        """A warm wasm build of ours' tree as it is now."""
+    def _built(self, ours, parent=True):
+        """A warm wasm build of ours' tree as it is now, and the sizes of main's tip."""
         out = self.tmp / "tgt" / "wasm-warm"
         out.mkdir(parents=True)
         (out / "cpl.wasm").write_text("wasm")
         (out / "tree").write_text(git(ours, "rev-parse", "HEAD^{tree}"))
+        if parent:
+            git(ours, "fetch", "-q", "origin")
+            (out / "sizes").mkdir()
+            (out / "sizes" / f'{git(ours, "rev-parse", "origin/main^{tree}").strip()}.json').write_text("{}")
         return out
 
     def _crate_change(self, theirs_crate):
@@ -372,10 +376,18 @@ class LandTest(unittest.TestCase):
         out = self._built(ours)
         r = self.land(ours, **self._wasm(ours, 1))
         self.assertEqual(r.returncode, 1, r.stderr)
-        self.assertIn("over its cpl.wasm budget", r.stderr)
-        self.assertIn(f"node web/scripts/wasm-crates.mjs --data {out}/cpl.wasm --touched cpl_x",
+        self.assertIn("grew past main or its cpl.wasm budget", r.stderr)
+        self.assertIn(f"node web/scripts/wasm-crates.mjs --data {out}/cpl.wasm --touched cpl_x --parent {out}/sizes/",
                       (self.tmp / "node.log").read_text())
         self.assertNotIn("ours", git(ours, "log", "--format=%s", "origin/main"))
+
+    def test_without_main_tips_wasm_sizes_land_warns_and_lands(self):
+        ours = self._crate_change("cpl-y")
+        self._built(ours, parent=False)
+        r = self.land(ours, **self._wasm(ours, 1))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("land: no wasm sizes of main's tip to compare with; CI checks it", r.stderr)
+        self.assertFalse((self.tmp / "node.log").exists())
 
     def test_a_warm_build_within_budget_lands(self):
         ours = self._crate_change("cpl-y")
@@ -401,24 +413,37 @@ class LandTest(unittest.TestCase):
 
     def test_wasm_warm_records_the_tree_it_built_and_only_a_committed_one(self):
         ours = self.clone("ours")
-        (ours / "scripts" / "build-wasm.sh").write_text('#!/bin/sh\necho built >> "$2/cpl.wasm"\n')
+        (ours / "scripts" / "build-wasm.sh").write_text('#!/bin/sh\nmkdir -p "$2"\necho built >> "$2/cpl.wasm"\n')
         (ours / "scripts" / "build-wasm.sh").chmod(0o755)
+        self.commit(ours, "build")
+        git(ours, "push", "-q", "origin", "HEAD:main")
+        main_tree = git(ours, "rev-parse", "HEAD^{tree}").strip()
         (ours / "crates" / "cpl-x").mkdir(parents=True)
         (ours / "crates" / "cpl-x" / "lib.rs").write_text("ours\n")
         self.commit(ours, "ours")
-        env = {**os.environ, "CARGO_TARGET_DIR": str(self.tmp / "tgt")}
+        env = {**os.environ, **self._wasm(ours, 0)}
+        node = self.tmp / "bin" / "node"
+        node.write_text(node.read_text().replace("exit 0", '[ "$2" != --sizes ] || echo "{}" > "$4"\nexit 0'))
         warm = lambda *a: subprocess.run(["bash", "scripts/wasm-warm.sh", *a], cwd=ours, env=env,
                                          capture_output=True, text=True)
         (ours / "crates" / "cpl-x" / "lib.rs").write_text("edited\n")
         self.assertEqual(warm("--wait").returncode, 0)
         self.assertEqual(warm("--current", "cpl-x").returncode, 1)
         git(ours, "checkout", "-q", "--", "crates")
-        self.assertEqual(warm("--wait").returncode, 0)
+        r = warm("--wait")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         r = warm("--current", "cpl-x")
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(r.stdout.strip(), str(self.tmp / "tgt" / "wasm-warm" / "cpl.wasm"))
         self.assertIn("is current", warm("--wait").stdout)
-        self.assertEqual((self.tmp / "tgt" / "wasm-warm" / "cpl.wasm").read_text(), "built\n")
+        out = self.tmp / "tgt" / "wasm-warm"
+        self.assertEqual((out / "cpl.wasm").read_text(), "built\n")
+        self.assertTrue((out / "sizes" / f'{git(ours, "rev-parse", "HEAD^{tree}").strip()}.json').exists())
+        self.assertTrue((out / "sizes" / f"{main_tree}.json").exists())
+        self.assertIn(f"node web/scripts/wasm-crates.mjs --sizes {out}/base/cpl.wasm", (self.tmp / "node.log").read_text())
+        r = warm("--parent", "origin/main", "cpl-x")
+        self.assertEqual((r.returncode, r.stdout.strip()), (0, str(out / "sizes" / f"{main_tree}.json")))
+        self.assertEqual(warm("--parent", "HEAD", "cpl-x").stdout.strip(), str(out / "sizes" / f'{git(ours, "rev-parse", "HEAD^{tree}").strip()}.json'))
 
 
 if __name__ == "__main__":

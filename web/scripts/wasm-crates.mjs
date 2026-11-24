@@ -224,15 +224,19 @@ export function dataOverBudget(rows, budgets) {
 }
 
 // `node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b]
-// [--parent SIZES.json] [--sizes SIZES.json]` (a scripts/build-wasm.sh --names build):
-// the commit gate's check that the data segment and every touched crate are within
-// their budgets; other crates over theirs only warn. `--sizes` writes this build's
-// per-crate gz and sort copies; `--parent` reads a parent's, and then a crate over its
-// budget refuses only if it grew (grewOverBudget), and the sort copies only if they grew.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// [--parent SIZES.json]` (a scripts/build-wasm.sh --names build): the commit gate's
+// check that the data segment and every touched crate are within their budgets; other
+// crates over theirs only warn. With `--parent`, a parent build's sizes, a crate over
+// its budget refuses only if it grew (grewOverBudget), and the sort copies only if they
+// grew. `--sizes DIR/cpl.wasm SIZES.json` writes a build's sizes for `--parent`.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2] === '--sizes') {
+  const wasm = readFileSync(process.argv[3]);
+  const crates = Object.fromEntries(contributors(wasm).map(([c, , gz]) => [c, gz]));
+  writeFileSync(process.argv[4], `${JSON.stringify({ crates, sorts: sortCopies(functionNames(wasm)).length })}\n`);
+} else if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const at = process.argv.indexOf('--data');
   if (at < 0 || !process.argv[at + 1]) {
-    console.error('usage: node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b] [--parent SIZES.json] [--sizes SIZES.json]');
+    console.error('usage: node web/scripts/wasm-crates.mjs --data DIR/cpl.wasm [--touched cpl_a,cpl_b] [--parent SIZES.json] | --sizes DIR/cpl.wasm SIZES.json');
     process.exit(2);
   }
   const t = process.argv.indexOf('--touched');
@@ -248,7 +252,6 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     ? grewOverBudget(rows, budgets, map, touched, parent.crates)
     : touchedOverBudget(rows, budgets, map, touched);
   const copies = sortCopies(functionNames(wasm));
-  if (flag('--sizes')) writeFileSync(flag('--sizes'), `${JSON.stringify({ crates: Object.fromEntries(rows.map(([c, , gz]) => [c, gz])), sorts: copies.length })}\n`);
   const sorts = checkSortCopies(copies, JSON.parse(readFileSync(join(here, '../..', sortCopiesFile), 'utf8')).max);
   if (sorts.error && parent && copies.length <= parent.sorts) held.push(`${sorts.error.split(':')[0]}, but no more than its parent's ${parent.sorts}`);
   else if (sorts.error) errors.push(sorts.error);
