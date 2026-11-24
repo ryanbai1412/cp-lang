@@ -225,7 +225,7 @@ fn is_part_or_name(text: &str) -> bool {
 
 /// A part of a value given out by value: `return self.agg[t];` in a fn
 /// returning a heap type (a container's is [`deep_copies`]'s), `Mat v = c ?
-/// f(..) : self.t[p];`, `Mat a = self.m.id;` and a tuple's field `std::vector<u8> w =
+/// f(..) : self.t[p];`, `T v = c ? xs : f(..);`, `Mat a = self.m.id;` and a tuple's field `std::vector<u8> w =
 /// std::get<1>(top);`. Mirrors
 /// `returned_parts` in scripts/specgate/explain_copies.py.
 fn returned_part_copies(cpp: &str) -> usize {
@@ -281,15 +281,24 @@ fn returned_part_copies(cpp: &str) -> usize {
                 }) && is_part(e)
             });
         let decl = line.strip_prefix("const ").unwrap_or(line);
-        let branch = decl.split_once(' ').is_some_and(|(ty, rest)| {
-            ty.matches('<').count() == ty.matches('>').count()
-                && heap(ty)
-                && rest.contains(" = ")
-                && rest.contains(" ? ")
-                && rest
+        let branch = decl.split_once(" = ").is_some_and(|(head, rest)| {
+            head.rsplit_once(' ').is_some_and(|(ty, name)| {
+                ty.matches('<').count() == ty.matches('>').count()
+                    && !ty.ends_with(['&', '*'])
+                    && heap(ty)
+                    && name.chars().all(|c| c.is_alphanumeric() || c == '_')
+            }) && rest.contains(" ? ")
+                && (rest
                     .strip_suffix(';')
                     .and_then(|r| r.rsplit_once(" : "))
                     .is_some_and(|(_, part)| is_part_or_name(part))
+                    || rest
+                        .split_once(" ? ")
+                        .and_then(|(_, r)| r.split_once(" : "))
+                        .is_some_and(|(arm, _)| {
+                            arm.starts_with(|c: char| c.is_alphabetic() || c == '_')
+                                && arm.chars().all(|c| c.is_alphanumeric() || c == '_')
+                        }))
         });
         let field = decl.split_once(" = std::get<").is_some_and(|(head, rest)| {
             CONSTRUCTED.iter().any(|c| head.starts_with(c))
@@ -995,6 +1004,9 @@ fn a_part_given_out_by_value_is_a_copy() {
         "inline H blank(const T& self) {\n  return self.m.id;\n}",
         "  H v = p == 0 ? f(self) : self.t[p];",
         "  std::string x = f(r) ? bag[g(r)] : w;",
+        "  std::vector<ll> lw = flat ? h : chain(h, lo, top);",
+        "  std::vector<ll> ys = c ? xs : [&]() -> std::vector<ll> {",
+        "  std::vector<std::tuple<ll, ll>> base = z ? f(s) : src;",
         "  H a = self.m.id;",
         "  std::vector<cpl::u8> w = std::get<1>(top);",
     ];
@@ -1009,6 +1021,8 @@ fn a_part_given_out_by_value_is_a_copy() {
         "inline std::string& at(T& self) {\n  return self.vals[0];\n}",
         "inline H make(const T& s) {\n  auto f = [&](ll i) -> ll {\n    return s.t[i];\n  };\n}",
         "  ll v = p == 0 ? f(self) : self.t[p];",
+        "  ll v = c ? h : f(h);",
+        "  const std::vector<ll>& v = c ? h : g;",
         "std::add_pointer_t<std::vector<ll>(ll)> leaf;",
     ];
     for line in not_copies {

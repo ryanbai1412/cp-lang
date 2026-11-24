@@ -201,14 +201,15 @@ def optional_copies(cpp, holders):
 HEADER = re.compile(r"^(?=\S)(?!.*\]\()(?:template <[^>]*> )?(?:inline |static )*(.+?) \w+\(.*\{$")
 PART = re.compile(r"[A-Za-z_]\w*(?:\.\w+|\[[^\[\]]+\])*")
 LAMBDA_RET = re.compile(r"\)(?: mutable)? -> (.+?) \{$")
-BRANCH = re.compile(r"(?:const )?(\S+) \w+ = .+ \? .+ : (.+);$")
+BRANCH = re.compile(r"(?:const )?(.+?) \w+ = .+ \? .+ : (.+);$")
+FIRST_ARM = re.compile(r"(?:const )?(.+?) \w+ = .+? \? ([A-Za-z_]\w*) : ")
 
 
 def returned_parts(cpp, holders):
     """A part of a value given out by value: `return self.agg[t];` from a
-    fn returning a heap type, and `Mat v = c ? f(..) : self.t[p];`.
+    fn returning a heap type, `Mat v = c ? f(..) : self.t[p];` and `T v = c ? xs : f(..)`.
     Mirrors returned_part_copies in crates/cpl-cli/tests/explain_accuracy.rs."""
-    heap = lambda ty: ty.startswith(CONTAINERS + ("std::array<",)) or ty in holders
+    heap = lambda ty: (ty.startswith(CONTAINERS + ("std::array<",)) or ty in holders) and not ty.endswith(("&", "*"))
     part = lambda e: bool(PART.fullmatch(e)) and ("." in e or "[" in e)
     count, depth, scopes = 0, 0, []
     for line in cpp.splitlines():
@@ -225,7 +226,9 @@ def returned_parts(cpp, holders):
         ret = scopes[-1][1] if scopes else None
         if ret and heap(ret) and not ret.endswith(("&", "*")) and s.startswith("return ") and s.endswith(";") and part(s[7:-1]):
             count += 1
-        if (m := BRANCH.match(s)) and heap(m.group(1)) and (part(m.group(2)) or is_place(m.group(2))):
+        last = (m := BRANCH.match(s)) and heap(m.group(1)) and (part(m.group(2)) or is_place(m.group(2)))
+        first = (m := FIRST_ARM.match(s)) and heap(m.group(1)) and is_place(m.group(2))
+        if last or first:
             count += 1
     return count
 
