@@ -6,7 +6,7 @@
 use crate::walk::Visitor;
 use crate::{File, Finding, Group, Level, Lint};
 use cpl_check::Analysis;
-use cpl_diag::{Code, Diagnostic, Span};
+use cpl_diag::{Code, Span};
 use cpl_syntax::ast::{Expr, Stmt};
 use cpl_syntax::library_lint::{self, is_name, LibraryLint};
 use cpl_syntax::{Token, TokenKind as K};
