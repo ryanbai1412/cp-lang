@@ -690,3 +690,9 @@ print(yes(f()))\n";
     let (rows, errors) = silent_unknowns_of(unknown);
     assert!(rows.is_empty() && errors == 0, "{rows:?} {errors}");
 }
+
+#[test]
+fn a_static_fn_types_its_struct_by_the_generic_a_lambda_body_gives() {
+    let src = "use std.tree.{Lift}\ndomain V = 0..8\nlet up = Lift.of(v => if v.idx == 0: None else: Some(V(v.idx - 1)))\nprint(up.climb(V(5), ok: v => v.idx >= 2).steps)\n";
+    assert_eq!(silent_unknowns_of(src), (vec![], 0));
+}

@@ -360,7 +360,10 @@ impl Checker<'_> {
                     || self.lambda_takes(arg, &expected, own, bindings);
             }
             let want = param.map(|p| p.ty.subst(bindings));
+            let mark = self.exprs.mark();
             let arg_ty = self.infer_arg(&arg.value, want.as_ref());
+            let open_before = !typed_lambda
+                && matches!(&want, Some(Ty::Fn { params, .. }) if params.iter().any(|p| p.ty.has_vague() || p.ty.mentions_param()));
             // A lambda with unwritten parameters keeps its signature for
             // itself; the generic its result is binds from it.
             let lambda_sig = (typed_lambda && arg_ty == Ty::Unknown)
@@ -397,6 +400,23 @@ impl Checker<'_> {
             let arg_ty = self.fn_value_for(&arg.value, arg_ty, &slot.subst(bindings));
             let arg_ty = self.narrowed(&arg_ty, slot);
             slot.unify(lambda_sig.as_ref().unwrap_or(&arg_ty), bindings);
+            // `of(v => .. Some(V(v.idx - 1)))` with `v` unwritten and the generic open: what the
+            // body gives back binds the generic it returns.
+            if let (
+                true,
+                ExprKind::Lambda {
+                    param_tys, body, ..
+                },
+                Ty::Fn { ret, .. },
+            ) = (open_before && arg_ty == Ty::Unknown, &arg.value.kind, slot)
+            {
+                let got = self.exprs.last_type(body.span).cloned();
+                if let Some(got) =
+                    got.filter(|g| param_tys.iter().all(Option::is_none) && !g.has_vague())
+                {
+                    ret.unify(&got, bindings);
+                }
+            }
             self.bind_bound_args(bindings);
             let want = slot.subst(bindings);
             if let (
@@ -417,6 +437,16 @@ impl Checker<'_> {
                     continue;
                 }
                 self.type_lambda_params(params, param_tys, wanted);
+                // `of(v => .. Some(V(v.idx - 1)))`: the generic `v` takes is the one its body gives
+                // back, so the body is checked again with `v` that type.
+                if open_before
+                    && param_tys.iter().all(Option::is_none)
+                    && (wanted.iter()).all(|p| !p.ty.has_vague() && !p.ty.mentions_param())
+                {
+                    self.exprs.truncate(mark);
+                    self.lambda_takes(arg, &want, own, bindings);
+                    self.infer_arg(&arg.value, Some(&want));
+                }
             }
             // `Node([none, none], 0)`: a list written out where an array is
             // wanted is the cells of that array, as in `let a: [0..2]?Int = [..]`.
