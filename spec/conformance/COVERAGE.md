@@ -7,7 +7,7 @@ must not appear. Status comes from `research/scoreboard.json` (`new` = not
 scored yet). A rule is *happy-path only* when its text forbids, traps
 or limits something and no negative case cites it.
 
-Cases: 3201 (1093 passing). Rules: 607.
+Cases: 3202 (1093 passing). Rules: 607.
 
 ## Summary per chapter
 
@@ -1092,12 +1092,12 @@ case names it. `/// example:` lines are also run by the `docs` suite of
   - uncovered: `Palindromes`, `Hashable`, `Hash2D`, `Hash2D.new`, `Hash2D.rect`, `Hash61`, `DynamicHash`, `DynamicHash.new`, `DynamicHash.rev_get`, `PalindromicTree.series_link`, `DynamicAhoCorasick`, `DynamicAhoCorasick.new`, `DynamicAhoCorasick.count_matches`, `_gen_str`
 - **subset** (17/17 named by a case)
 - **timetree** (11/11 named by a case)
-- **tree** (163/183 named by a case)
+- **tree** (160/180 named by a case)
   - uncovered: `Rooted.up_arc`, `Rooted.child_arcs`, `Rooted.reroot`, `Rooted.chains`, `Rooted.virtual`, `VirtualTree`, `PermKind`, `PermNode`, `PermTree`, `PermTree.new`, `PermTree.node`, `PermTree.vals`, `Layers`, `Events`, `LongPaths`, `LongPaths.slots`, `LongPaths.slot`, `EulerTourTree.reroot`, `LazyEulerTourTree.reroot`, `KruskalTree`
 - **window** (20/22 named by a case)
   - uncovered: `Tracked`, `Undo`
 
-2251 of 2371 std items are named by a case.
+2248 of 2368 std items are named by a case.
 
 ## Core cases without a `// rule:` line
 

@@ -35,7 +35,7 @@ A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre
 - `@get fn subtree_sizes(self) -> [V]Int` — \(O(1)\); a view of the stored sizes; The size of every subtree, by vertex: `t.subtree_sizes[v] == t.size(v)`.
 - `fn centroid(self) -> V` — \(O(\mathit{depth})\); A centroid of the tree holding `t.root`: a vertex whose removal leaves no piece of more than half its vertices.
 - `fn centroids(self) -> List<V>` — \(O(\mathit{depth})\); Every centroid of the tree holding `t.root`, one or two.
-- `@get fn tour(self) -> yields Visit<V, V>` — \(O(1)\) to make, \(O(n)\) to walk; The enter/exit Euler tour, the `Visit` events of `std.graph.dfs`: `Enter(v, via:)` when entering `v` and `Exit(v, via:)` when leaving its subtree, `via` the parent (`None` at a root, and a tree has no `Again`), children in `t.Pre` order, each tree of a forest in turn.
+- `@get fn tour(self) -> yields Visit<V, V>` — \(O(1)\) to make, \(O(n)\) to walk; The enter/exit Euler tour, as the `Visit` events of `std.graph.dfs`.
 - `fn sub(self, v: V) -> Range<Pre>` — \(O(1)\); The positions of `v`'s subtree, `v` first: one contiguous range of `t.Pre`.
 - `fn below(self, v: V) -> Range<Pre>` — \(O(1)\); The positions of `v`'s descendants: `sub(v)` without `v`.
 - `fn is_anc(self, a: V, b: V) -> Bool` — \(O(1)\); Whether `a` is an ancestor of `b`; a vertex is its own ancestor.
@@ -59,7 +59,7 @@ A tree rooted at `root`, owning its own fresh heavy-first preorder domain `t.Pre
 - `fn on_path(self, c: V, a: V, b: V) -> Bool` — \(O(\log n)\); Whether `c` lies on the path from `a` to `b`, ends included.
 - `fn meet(self, a: V, b: V, c: V) -> V` — \(O(\log n)\); The one vertex on all three paths between `a`, `b` and `c`: the deepest of their pairwise lowest common ancestors.; traps: when the three are not in one tree
 - `fn above<T, U, M>(self, op: M, lift: (T, V, V) -> U = (x, c, p) => x, finish: (U, V) -> T) -> [V]?T` — \(O(n)\) calls of `lift` and `finish`, \(O(n)\) calls of `op`; The other half of `reroot`: for `v` that is not a root, the DP of the tree without `sub(v)`, rooted at `parent(v)`; `None` at a root.
-- `fn farthest(self, x: ?(len: Int, u: V, v: V), y: ?(len: Int, u: V, v: V)) -> ?(len: Int, u: V, v: V)` — \(O(\log n)\): at most four `dist` calls; The farthest pair among two vertex sets' farthest pairs, which is the farthest pair of their union; `None` is the identity.; traps: when the vertices are in different trees of a forest
+- `fn farthest(self, x: ?(len: Int, u: V, v: V), y: ?(len: Int, u: V, v: V)) -> ?(len: Int, u: V, v: V)` — \(O(\log n)\): at most four `dist` calls; The farthest pair among two vertex sets' farthest pairs, which is the farthest pair of their union.; traps: when the vertices are in different trees of a forest
 - `fn layers(self) -> Layers<V, _>` — \(O(n)\); Every vertex ordered by depth, each depth in `t.Pre` order, over a fresh domain, so the descendants of `v` at one depth are one range.
 - `fn events(self) -> Events<V, _>` — \(O(n)\); The 2n enter and exit events of `tour` over a fresh domain, for Mo's algorithm on paths and on subtrees.
 - `fn euler_tour<K: Ord>(self, by: V -> K = _ => ()) -> yields V` — \(O(1)\) per item; The closed Euler walk: 2n - 1 visits from the root back to it, each pair of neighbours joined by a tree edge, children in `t.Pre` order.
@@ -106,8 +106,8 @@ Binary lifting over a fixed forest given by parent links, each carrying a value 
 Fields: `jmp: List<[V]?V>`, `val: List<[V]T>`.
 
 - `fn new(par: [V]?(V, T), op: (T, T) -> T, identity: T) -> Lift<V, T>` — \(O(n \log n)\) time and memory; Binary lifting over the forest `par`: `par[v]` is `v`'s parent with the value on the edge to it, `None` at a root.; traps: when the parent links have a cycle
-- `fn of(next: V -> ?V) -> Lift<V, ()>` — \(O(n \log n)\) time and memory, n calls of `next`; Lifting over any partial successor function, such as "the next interval a greedy picks": `Lift.of(i => first_from(iv[i].r))`.; traps: when the links have a cycle
-- `fn climb(self, v: V, ok: V -> Bool) -> (steps: Int, at: V)` — \(O(\log n)\) calls of `ok`; Climbs from `v` while the next vertex up satisfies `ok`, which must hold on a prefix of every root path: how many edges were climbed and where it stopped.
+- `fn of(next: V -> ?V) -> Lift<V, ()>` — \(O(n \log n)\) time and memory, n calls of `next`; Lifting over any partial successor function, such as "the next interval a greedy picks".; traps: when the links have a cycle
+- `fn climb(self, v: V, ok: V -> Bool) -> (steps: Int, at: V)` — \(O(\log n)\) calls of `ok`; Climbs from `v` while the next vertex up satisfies `ok`, returning how many edges were climbed and where it stopped.
 - `fn parent(self, v: V) -> ?V` — \(O(1)\); The parent of `v`, or `None` at a root.
 - `fn depth(self, v: V) -> Int` — \(O(1)\); The number of edges from `v` up to its root.
 - `fn ancestor(self, v: V, k: Int) -> ?V` — \(O(\log n)\); The ancestor `k` edges above `v` (`v` for `k == 0`), or `None` if that is above the root.; traps: when `k` is negative
@@ -122,8 +122,7 @@ A forest that changes: `link` and `cut` edges, re-root anywhere, and fold or set
 Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `flip: [V]Bool`, `val: [V]T`, `agg: [V]T`, `stk: List<V>`.
 
 - `fn new<M>(op: M, a: ?[V]T = None) -> LinkCut<V, T>` — \(O(n)\); `V.count` single-vertex trees holding `a`, or the identity of `op` everywhere when `a` is absent.
-- `fn top(self, x: V) -> Bool`
-- `fn access(mut self, x: V) -> V`
+- `fn access(mut self, x: V) -> V` — amortized \(O(\log n)\); Makes the path from the root to `x` preferred, with `x` at the root of its splay tree.
 - `fn make_root(mut self, v: V)` — amortized \(O(\log n)\); Makes `v` the root of its tree.
 - `fn root_of(mut self, v: V) -> V` — amortized \(O(\log n)\); The root of the tree holding `v`: the last vertex made root there, by `make_root`, `link`, `lca` or `fold_path`.
 - `fn connected(mut self, u: V, v: V) -> Bool` — amortized \(O(\log n)\); Whether `u` and `v` are in the same tree.
@@ -143,8 +142,7 @@ The preferred-path half of a link-cut tree over a fixed rooted tree: every node 
 Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `stk: List<V>`.
 
 - `fn new<P>(t: Rooted<V, P>) -> PreferredPaths<V>` — \(O(n)\); The preferred paths of `t` with every vertex its own path.
-- `fn access(mut self, v: V) -> yields (lost: ?V, gained: ?V)` — amortized \(O(\log n)\) switches; Makes the path from the root to `v` one preferred path, yielding each switch bottom-up: `gained` is the top vertex of the path just joined to its parent, `lost` the top vertex of the path that parent stopped preferring, if any.
-- `fn top(self, x: V) -> Bool`
+- `fn access(mut self, v: V) -> yields (lost: ?V, gained: ?V)` — amortized \(O(\log n)\) switches; Makes the path from the root to `v` one preferred path, yielding each switch bottom-up.
 
 ## `struct LazyLinkCut<V, T, F>(act: Action<T, F>)`
 
@@ -153,8 +151,7 @@ Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `stk: List<V>`.
 Fields: `lc: [V]?V`, `rc: [V]?V`, `pa: [V]?V`, `flip: [V]Bool`, `val: [V]T`, `agg: [V]T`, `lz: [V]F`, `stk: List<V>`.
 
 - `fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyLinkCut<V, T, F>` — \(O(n)\); `V.count` single-vertex trees holding `a`, or the identity of `act.over` everywhere when `a` is absent.
-- `fn top(self, x: V) -> Bool`
-- `fn access(mut self, x: V) -> V`
+- `fn access(mut self, x: V) -> V` — amortized \(O(\log n)\); Makes the path from the root to `x` preferred, with `x` at the root of its splay tree.
 - `fn make_root(mut self, v: V)` — amortized \(O(\log n)\); Makes `v` the root of its tree.
 - `fn root_of(mut self, v: V) -> V` — amortized \(O(\log n)\); The root of the tree holding `v`, as for `LinkCut.root_of`.
 - `fn connected(mut self, u: V, v: V) -> Bool` — amortized \(O(\log n)\); Whether `u` and `v` are in the same tree.
@@ -234,8 +231,8 @@ A forest that changes, with folds over whole trees and subtrees, by an Euler tou
 
 Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg: List<T>`, `cnt: List<Int>`, `arc: Map<(Int, Int), Int>`, `free: List<Int>`, `stk: List<Int>`.
 
-- `fn first(mut self, x: Int) -> Int`
-- `fn reroot(mut self, x: Int)`
+- `fn first(mut self, x: Int) -> Int` — The first node of `x`'s sequence, splayed to the root: one name per tree.
+- `fn reroot(mut self, x: Int)` — Rotates `x`'s tour so that it starts at `x`.
 - `fn new<M>(op: M, a: ?[V]T = None) -> EulerTourTree<V, T>` — \(O(n)\); Lone vertices with values `a`, or the identity of `op` everywhere when `a` is `None`.
 - `fn link(mut self, u: V, v: V)` — expected \(O(\log n)\); Joins the trees of `u` and `v` by the edge `u`-`v`.; traps: when `u` and `v` are already in one tree
 - `fn cut(mut self, u: V, v: V)` — expected \(O(\log n)\); Removes the edge `u`-`v`.; traps: when there is no edge `u`-`v`
@@ -252,8 +249,8 @@ Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg:
 
 Fields: `val: [V]T`, `lc: List<?Int>`, `rc: List<?Int>`, `pa: List<?Int>`, `agg: List<T>`, `cnt: List<Int>`, `lz: List<F>`, `arc: Map<(Int, Int), Int>`, `free: List<Int>`, `stk: List<Int>`.
 
-- `fn first(mut self, x: Int) -> Int`
-- `fn reroot(mut self, x: Int)`
+- `fn first(mut self, x: Int) -> Int` — The first node of `x`'s sequence, splayed to the root: one name per tree.
+- `fn reroot(mut self, x: Int)` — Rotates `x`'s tour so that it starts at `x`.
 - `fn new(act: Action<T, F>, a: ?[V]T = None) -> LazyEulerTourTree<V, T, F>` — \(O(n)\); Lone vertices with values `a`, or the identity of `act.over` everywhere when `a` is `None`.
 - `fn link(mut self, u: V, v: V)` — expected \(O(\log n)\); Joins the trees of `u` and `v` by the edge `u`-`v`.; traps: when `u` and `v` are already in one tree
 - `fn cut(mut self, u: V, v: V)` — expected \(O(\log n)\); Removes the edge `u`-`v`.; traps: when there is no edge `u`-`v`
@@ -274,8 +271,8 @@ Fields: `edge: [N]Int`, `lift: Lift<N, Int>`.
 
 - `@get fn tree(self) -> Rooted<N, _>` — \(O(1)\); built with the tree; The nodes as a `Rooted` forest over `N`: subtree ranges, LCA and folds.
 - `fn reach(self, v: V, limit: W) -> N` — \(O(\log n)\); The highest node above `leaf[v]` whose weight is at most `limit` (`leaf[v]` itself when None is); its leaves are what `v` reaches by edges of weight at most `limit`.
-- `fn top<E>(self, v: V, ok: E -> Bool) -> N` — \(O(\log n)\) calls of `ok`; The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`, which gets the edge's key in the list given to `kruskal_tree` (`kt.top(v, ok: e => roads[e].alt > p)`).
-- `fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T` — \(O(n)\) calls of `op` and `leaf`; For every node, `op` folded over the `leaf` values of the leaves under it: the least walk home from any vertex a subtree reaches is `kt.up(min, leaf: v => home[v]!)`.
+- `fn top<E>(self, v: V, ok: E -> Bool) -> N` — \(O(\log n)\) calls of `ok`; The highest node above `leaf[v]` whose merging edge, and every one below it, satisfies `ok`.
+- `fn up<T, M>(self, op: M, leaf: V -> T) -> [N]T` — \(O(n)\) calls of `op` and `leaf`; For every node, `op` folded over the `leaf` values of the leaves under it.
 - `fn bottleneck(self, a: V, b: V) -> ?W` — \(O(\log n)\); The least possible largest edge weight on a path from `a` to `b`: the weight of their lowest common ancestor.
 
 ## Functions
