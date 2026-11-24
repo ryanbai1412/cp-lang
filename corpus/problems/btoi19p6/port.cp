@@ -28,14 +28,21 @@ fn best(keep: List<P>, banned: List<Bool>) -> ?Sub:
     let value = sum(team.map(p => score[p, e]).max()! for e in Ev)
     Some(Sub(value, team, keep.len, banned))
 
-var subs = Heap<Sub>.new(by: s => desc(s.value))
-if let s = best([], List.filled(n, false)):
-    subs.push(s)
+// Every subproblem found so far, and a max-heap of (value, index into subs) over the open ones.
+var subs: List<Sub> = []
+var open = MaxHeap<(Int, Int)>()
+fn offer(found: ?Sub):
+    if let s = found:
+        open.push((s.value, subs.len))
+        subs.push(s)
+offer(best([], List.filled(n, false)))
+// Split subs[at] on its i-th free member: keep the members before it and ban that one.
+fn split(at: Int, i: Int) -> ?Sub:
+    var banned = subs[at].banned.clone()
+    banned[subs[at].team[i].ord] = true
+    best(subs[at].team[0..i].collect(), banned)
 repeat c - 1:
-    let top = subs.pop()!
-    for i in top.fixed..k:
-        var banned = top.banned.clone()
-        banned[top.team[i].ord] = true
-        if let s = best(top.team[0..i].collect(), banned):
-            subs.push(s)
-print(subs.peek!.value)
+    let at = open.pop()!.1
+    let found = [split(at, i) for i in subs[at].fixed..k]
+    for s in found: offer(s)
+print(open.peek!.0)
