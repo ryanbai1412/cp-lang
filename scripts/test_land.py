@@ -12,6 +12,7 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 GEN = "spec/conformance/widths/int.cp"
 RATCHET = "scripts/debt-ratchet.json"
+INDEX = "corpus/index.json"
 
 
 def git(cwd, *args):
@@ -31,6 +32,14 @@ class LandTest(unittest.TestCase):
         # A regen.sh that dirties a file the rebase never saw: land must not run it.
         (seed / "scripts" / "regen.sh").write_text("#!/bin/sh\necho x >> other.txt\necho other.txt\n")
         (seed / "scripts" / "regen.sh").chmod(0o755)
+        # A corpus.py whose build counts the packages, as the real index does.
+        (seed / "scripts" / "corpus.py").write_text(
+            "import glob, json, os\n"
+            "n = len(glob.glob(os.path.join('corpus', 'pkgs', '*', 'meta.json')))\n"
+            "open('corpus/index.json', 'w').write(json.dumps({'count': n}) + '\\n')\n")
+        (seed / "corpus" / "pkgs" / "a").mkdir(parents=True)
+        (seed / "corpus" / "pkgs" / "a" / "meta.json").write_text("{}\n")
+        (seed / INDEX).write_text('{"count": 1}\n')
         (seed / GEN).parent.mkdir(parents=True)
         (seed / GEN).write_text("base\n")
         (seed / RATCHET).write_text(json.dumps({"a": 5, "b": 5, "names": ["x", "y"]}, indent=2) + "\n")
@@ -80,6 +89,20 @@ class LandTest(unittest.TestCase):
         self.assertEqual(json.loads((ours / RATCHET).read_text()), {"a": 3, "b": 4, "names": ["x"]})
         self.assertEqual(git(ours, "status", "--porcelain"), "")
         self.assertIn("src.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+
+    def test_a_corpus_index_conflict_is_rebuilt_from_both_sides_packages(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        for repo, pkg in ((theirs, "b"), (ours, "c")):
+            (repo / "corpus" / "pkgs" / pkg).mkdir()
+            (repo / "corpus" / "pkgs" / pkg / "meta.json").write_text("{}\n")
+            (repo / INDEX).write_text(json.dumps({"count": 2, "by": pkg}) + "\n")
+            self.commit(repo, pkg)
+            if repo == theirs:
+                git(theirs, "push", "-q", "origin", "HEAD:main")
+        r = self.land(ours)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads((ours / INDEX).read_text()), {"count": 3})
+        self.assertEqual(git(ours, "status", "--porcelain"), "")
 
     def test_the_ratchet_merge_never_loosens(self):
         sys.path.insert(0, str(HERE))
