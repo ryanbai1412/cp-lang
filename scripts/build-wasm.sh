@@ -8,6 +8,8 @@
 #   scripts/build-wasm.sh --out DIR  build into DIR
 #   scripts/build-wasm.sh --names DIR  cpl.wasm only, keeping function names
 #                                    (for web/scripts/wasm-size.mjs --why)
+#   scripts/build-wasm.sh --source   print the key of the sources a build
+#                                    is made from (<out>/source.txt holds it)
 #   scripts/build-wasm.sh --embed-std  carry every std module's text; by
 #                                    default only prelude and mod, and the
 #                                    caller gives the rest from <out>/std/
@@ -15,6 +17,16 @@
 #
 # Needs the wasm32 target once: rustup target add wasm32-unknown-unknown
 set -euo pipefail
+
+# What a build is made of: the committed tree of its inputs plus any edits to
+# them, so a reader of <out>/source.txt (web/scripts/gate.mjs) can tell a stale
+# build from a current one.
+source_key() {
+    local paths=(crates std Cargo.toml Cargo.lock)
+    { git -C "$root" rev-parse "${paths[@]/#/HEAD:}"
+      git -C "$root" diff HEAD -- "${paths[@]}"
+      git -C "$root" ls-files -o --exclude-standard -- "${paths[@]}"; } | sha256sum | cut -c1-16
+}
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 out="$root/dist/wasm"
@@ -25,10 +37,11 @@ features=(--features lazy-std)
 while [ $# -gt 0 ]; do
     case "$1" in
         --smoke) smoke=true ;;
+        --source) source_key; exit 0 ;;
         --embed-std) features=() ;;
         --out) out="$(realpath -m "${2:?--out needs a directory}")"; shift ;;
         --names) names=true; out="$(realpath -m "${2:?--names needs a directory}")"; shift ;;
-        -h | --help) sed -n '2,16s/^# \{0,1\}//p' "$0"; exit 0 ;;
+        -h | --help) sed -n '2,18s/^# \{0,1\}//p' "$0"; exit 0 ;;
         *) echo "build-wasm: unknown argument \`$1\`" >&2; exit 2 ;;
     esac
     shift
@@ -87,6 +100,7 @@ cp "$root"/crates/cpl-wasm/js/* "$out/"
 # std module texts, which the page gives cpl.wasm on first use.
 mkdir -p "$out/std"
 cp "$root"/std/*.cp "$out/std/"
+source_key >"$out/source.txt"
 
 for file in "$out"/*.*; do
     printf '%8d bytes  %s\n' "$(wc -c <"$file")" "${file#"$root"/}"

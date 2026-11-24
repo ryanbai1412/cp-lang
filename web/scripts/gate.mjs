@@ -19,6 +19,7 @@ import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { availableParallelism, tmpdir } from 'node:os';
 import { Worker } from 'node:worker_threads';
+import { browserBuild } from './browser-build.mjs';
 import { cplBin } from './cpl-bin.mjs';
 
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -201,7 +202,7 @@ await Promise.all(
 );
 // The browser build must mean what the CLI means (site/R1): every program
 // that runs gets the same output and the same C++ from cpl-build.wasm.
-const wasmDir = [join(repo, 'dist/wasm'), join(web, 'public/wasm')].find((d) => existsSync(join(d, 'cpl-build.wasm')));
+const wasmDir = browserBuild();
 if (!wasmDir) console.log('gate: no browser build (scripts/build-wasm.sh); skipping the browser differential');
 else {
   const started = Date.now();

@@ -6,16 +6,17 @@
 // the solution's output and, for an interactive run, the transcript and the
 // interactor's verdict.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdtempSync } from 'node:fs';
+import { copyFileSync, mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { browserBuild } from './browser-build.mjs';
 import { cplBin } from './cpl-bin.mjs';
 
 const web = dirname(dirname(fileURLToPath(import.meta.url)));
 const repo = dirname(web);
 const cli = cplBin();
-const wasmDir = [join(repo, 'dist/wasm'), join(web, 'public/wasm')].find((d) => existsSync(join(d, 'cpl-build.wasm')));
+const wasmDir = browserBuild();
 if (!wasmDir) {
   // CI always builds it; only a local run without one may skip.
   console.error('stress-parity: no browser build; run scripts/build-wasm.sh');
