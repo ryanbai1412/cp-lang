@@ -1006,6 +1006,19 @@ print(hi.cut(0), hi.cut(n - 1))
 }
 
 #[test]
+fn a_map_entry_returned_with_a_default_is_read_in_place() {
+    let out = cpp(concat!(
+        "let xs = [read<Int>(), read<Int>(), read<Int>()]\n",
+        "let g = xs.group(by: x => x % 2)\n",
+        "fn kids(k: Int) -> List<Int> = g.get(k) ?? List()\n",
+        "print(kids(read()).len)\n",
+    ));
+    assert!(!out.contains("cpl::map_get("), "{out}");
+    assert!(out.contains("cpl::map_or(g, k, "), "{out}");
+    assert_eq!(crate::cpp_counts::map_get_copies(&out), 0, "{out}");
+}
+
+#[test]
 fn a_part_of_a_dying_payload_moves_into_its_optional() {
     let out = cpp(concat!(
         "struct P:\n    c: List<Int>\n",

@@ -1159,6 +1159,8 @@ impl<'p> Emitter<'p> {
                     self.line(out, "return;");
                 } else {
                     let is_return = matches!(stmt, Stmt::Return(_));
+                    // `return m.get(k) ?? d` copies the entry once, into the result.
+                    let marked = self.mark_read_in_place(&[value], None, &[]);
                     self.last_use_call = is_return
                         && self.closure_id.is_none()
                         && self.fn_id.is_some()
@@ -1199,6 +1201,7 @@ impl<'p> Emitter<'p> {
                         }
                     }
                     self.last_use_call = false;
+                    marked.iter().for_each(|m| _ = self.read_in_place.remove(m));
                     let held = (is_return && self.closure_id.is_none())
                         .then(|| self.holds_result.clone())
                         .flatten();
