@@ -1,7 +1,7 @@
 // noi06p3 Millennium Bug: the mechanical v0.3 port (port.cp); a rethought per-row DP is still owed.
 // `?Int` + `min=` (zero `INF` sentinels).
 // original: corpus/submissions/3868871.cpp
-let n: 1..=100_000 = read()
+let n: 1..=1_000_000 = read()
 domain Col = 0..n
 var a: [Col]Int = 0
 var b: [Col]Int = 0
