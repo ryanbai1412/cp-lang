@@ -1259,7 +1259,6 @@ def lsp_string_types(root: Path) -> list[str]:
 LINT_POST_FILTERS = {
     "crates/cpl-lint/src/typed.rs": ("TYPED",),
     "crates/cpl-lint/src/corpus_tests.rs": ("DISTINCT", "KNOWN_WORSE"),
-    "crates/cpl-lint/src/std_tests.rs": ("NOT_PARSED",),
     "crates/cpl-lint/src/record_tests.rs": ("DISTINCT",),
 }
 ARRAY_DECL_RE = re.compile(
