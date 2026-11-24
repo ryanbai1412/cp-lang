@@ -1,4 +1,2 @@
 # (mode, tag) kinds of tree-walker fallback over tests/programs; shrink-only (tests/vm_fallbacks.rs)
 expr:Read
-traced stmt:Expr(Mutate)
-untraced stmt:Expr(Mutate)

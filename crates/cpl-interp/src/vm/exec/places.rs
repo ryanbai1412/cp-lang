@@ -1331,16 +1331,7 @@ impl<'p, 'io, O: Observer> Interp<'p, 'io, O> {
                 let ctx = fed
                     .as_deref_mut()
                     .expect("FeedYieldExtend outside fed call");
-                let items: Vec<Value> = match seq {
-                    Value::List(xs) => xs.iter().collect(),
-                    Value::Array(arr) => (0..arr.len()).map(|i| arr.get_unchecked_val(i)).collect(),
-                    _ => {
-                        return trap(
-                            spans[cur_pc],
-                            "internal: a `yields` fn did something else to its list",
-                        )
-                    }
-                };
+                let items = yielded_items(seq, spans[cur_pc])?;
                 for item in items {
                     store_fed_val(ctx, vm_regs_i, item);
                     // The body may run a yielded closure that writes this frame's locals.

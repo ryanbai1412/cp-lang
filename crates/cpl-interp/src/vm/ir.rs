@@ -1320,10 +1320,12 @@ pub(crate) enum Op {
     /// the yielded local `back - 1` (if not 0) takes the loop variable
     /// back, the push to list `acc` (the `Assign` trace point `point`) is
     /// reported, and the run goes on at `skip`. Otherwise the next ops
-    /// push it.
+    /// push it. With `each` (a `yield from`), `src` holds a sequence and
+    /// each of its items goes to the body in turn.
     FeedTree {
         src: u16,
         back: u16,
+        each: bool,
         acc: u16,
         point: u32,
         skip: u32,

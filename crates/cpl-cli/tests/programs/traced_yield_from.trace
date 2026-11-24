@@ -1,0 +1,11 @@
+"variables":{"stdout":{"name":"stdout","type":"what the program printed, a line at a time","kind":"json"},"got":{"name":"got","type":"List\u003cInt>","kind":"array"}},"runs":{"fast":{"label":"cpl run","steps":[{"id":0,"line":17,"label":"print → both 1","stage":"main","values":{"stdout":["both 1"]},"locals":{"x":1},"checkpoint":"print 1","frames":[{"fn":"both","line":17},{"fn":"main","line":14}]},
+{"id":1,"line":17,"label":"print → both 0","stage":"main","values":{"stdout":["both 1","both 0"]},"locals":{"x":0},"checkpoint":"print 2","frames":[{"fn":"both","line":17},{"fn":"main","line":14}]},
+{"id":2,"line":17,"label":"print → both 3","stage":"main","values":{"stdout":["both 1","both 0","both 3"]},"locals":{"x":3},"checkpoint":"print 3","frames":[{"fn":"both","line":17},{"fn":"main","line":14}]},
+{"id":3,"line":18,"label":"var got: List\u003cInt> = []","stage":"main","values":{"stdout":["both 1","both 0","both 3"],"got":[]},"locals":{"x":4},"frames":[{"fn":"main","line":18}]},
+{"id":4,"line":20,"label":"got.push(x)","stage":"main","values":{"stdout":["both 1","both 0","both 3"],"got":[5]},"locals":{"x":4,"x":5},"frames":[{"fn":"twice","line":20},{"fn":"main","line":19}]},
+{"id":5,"line":20,"label":"got.push(x)","stage":"main","values":{"stdout":["both 1","both 0","both 3"],"got":[5,50]},"locals":{"x":4,"x":50},"frames":[{"fn":"twice","line":20},{"fn":"main","line":19}]},
+{"id":6,"line":20,"label":"got.push(x)","stage":"main","values":{"stdout":["both 1","both 0","both 3"],"got":[5,50,80]},"locals":{"x":4,"x":80},"frames":[{"fn":"twice","line":20},{"fn":"main","line":19}]},
+{"id":7,"line":22,"label":"print → 5 50 80","stage":"main","values":{"stdout":["both 1","both 0","both 3","5 50 80"],"got":[5,50,80]},"locals":{"x":4,"x":80},"checkpoint":"print 4","frames":[{"fn":"main","line":22}]},
+{"id":8,"line":23,"label":"print → 6 0 1 2 3","stage":"main","values":{"stdout":["both 1","both 0","both 3","5 50 80","6 0 1 2 3"],"got":[5,50,80]},"locals":{"x":4,"x":80,"x":3},"checkpoint":"print 5","frames":[{"fn":"main","line":23}]},
+{"id":9,"line":23,"label":"the program ended","stage":"main","values":{"stdout":["both 1","both 0","both 3","5 50 80","6 0 1 2 3"],"got":[5,50,80]},"locals":{"x":4,"x":80,"x":3},"checkpoint":"end","frames":[{"fn":"main","line":23}]}]}}}
+stderr:

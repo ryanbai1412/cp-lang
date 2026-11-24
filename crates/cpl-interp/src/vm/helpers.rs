@@ -48,6 +48,18 @@ pub(super) fn ty_uses_structural_cmp(ty: &Ty, program: &Program) -> bool {
 /// In a traced run a local the VM keeps in a register is left out of the
 /// stack, which the tracer shows, until it is declared, as in the tree-walker.
 #[inline(always)]
+/// The items a `yield from` of `seq` feeds: its elements, in order.
+pub(crate) fn yielded_items(seq: Value, span: Span) -> Res<Vec<Value>> {
+    match seq {
+        Value::List(xs) => Ok(xs.iter().collect()),
+        Value::Array(a) => Ok((0..a.len()).map(|i| a.get_unchecked_val(i)).collect()),
+        _ => trap(
+            span,
+            "internal: a `yields` fn did something else to its list",
+        ),
+    }
+}
+
 pub(crate) fn undeclared(traced: bool, loc: &SlotLoc, held: &Value) -> bool {
     traced && !matches!(loc, SlotLoc::V(_)) && matches!(held, Value::Unit)
 }
