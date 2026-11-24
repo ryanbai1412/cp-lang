@@ -229,7 +229,7 @@ pub(super) fn read_array_i(arr: &Array, at: usize) -> i64 {
             Cells::Bool(v) | Cells::Char(v) => i64::from(*v.get_unchecked(at)),
             Cells::Values(v) => ScalarKind::unbox_val(v.get_unchecked(at)),
             Cells::OptInt(v) => v.get_unchecked(at).unwrap_or(0),
-            Cells::Float(_) | Cells::SmallIntTuple { .. } => 0,
+            Cells::Float(_) | Cells::SmallIntTuple { .. } | Cells::SmallEnum { .. } => 0,
         }
     }
 }
@@ -261,7 +261,7 @@ pub(super) fn write_array_i(arr: &mut Array, at: usize, val: i64) {
                 }
             }
             Cells::OptInt(v) => *v.get_unchecked_mut(at) = Some(val),
-            Cells::Float(_) | Cells::SmallIntTuple { .. } => {}
+            Cells::Float(_) | Cells::SmallIntTuple { .. } | Cells::SmallEnum { .. } => {}
         }
     }
 }
@@ -527,12 +527,6 @@ pub(super) fn seq_of_items(items: Vec<Value>, dims: Option<Vec<i64>>) -> Value {
 }
 
 pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res<()> {
-    fn sort_ord<T: Ord>(v: &mut [T], desc: bool) {
-        v.sort_unstable();
-        if desc {
-            v.reverse();
-        }
-    }
     match target {
         Value::List(items) => {
             let items = Rc::make_mut(items);
@@ -541,7 +535,13 @@ pub(super) fn exec_sort_place(target: &mut Value, desc: bool, span: Span) -> Res
                 items.reverse();
             }
         }
-        Value::Str(bytes) => sort_ord(Rc::make_mut(bytes).as_mut_slice(), desc),
+        Value::Str(bytes) => {
+            let bytes = Rc::make_mut(bytes);
+            bytes.sort_unstable();
+            if desc {
+                bytes.reverse();
+            }
+        }
         Value::Array(arr) => {
             let a = Rc::make_mut(arr);
             a.data.sort_unstable();

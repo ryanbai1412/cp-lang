@@ -11,6 +11,16 @@ pub type More<'a> = Box<dyn FnMut() -> Option<Vec<u8>> + Send + 'a>;
 
 pub(crate) struct Input<'a> {
     data: std::borrow::Cow<'a, [u8]>,
+    /// Where `data` starts in the input: a live input lets go of what was
+    /// read, as a C++ solution's buffered stdin does.
+    gone: usize,
+    /// Lines, and bytes since the last newline, in what was let go.
+    gone_lines: usize,
+    gone_col: usize,
+    /// Where the token being read starts: nothing from here on is let go.
+    mark: usize,
+    /// Keeps every byte, for a run that rewinds to a checkpoint.
+    keep: bool,
     pos: usize,
     /// Whether the program has read or looked at any of it.
     looked: bool,
@@ -25,6 +35,11 @@ impl<'a> Input<'a> {
     pub fn new(data: &'a [u8]) -> Input<'a> {
         Input {
             data: std::borrow::Cow::Borrowed(data),
+            gone: 0,
+            gone_lines: 0,
+            gone_col: 0,
+            mark: 0,
+            keep: false,
             pos: 0,
             looked: false,
             more: None,
@@ -36,6 +51,11 @@ impl<'a> Input<'a> {
     pub fn owned(data: Vec<u8>) -> Input<'a> {
         Input {
             data: std::borrow::Cow::Owned(data),
+            gone: 0,
+            gone_lines: 0,
+            gone_col: 0,
+            mark: 0,
+            keep: false,
             pos: 0,
             looked: false,
             more: None,
@@ -46,6 +66,11 @@ impl<'a> Input<'a> {
     pub fn live(more: More<'a>) -> Input<'a> {
         Input {
             data: std::borrow::Cow::Owned(Vec::new()),
+            gone: 0,
+            gone_lines: 0,
+            gone_col: 0,
+            mark: 0,
+            keep: false,
             pos: 0,
             looked: false,
             more: Some(more),
@@ -58,6 +83,36 @@ impl<'a> Input<'a> {
         &self.data
     }
 
+    /// The same stream, keeping every byte when `keep`.
+    pub fn keeping(self, keep: bool) -> Input<'a> {
+        Input { keep, ..self }
+    }
+
+    /// Lets go of the bytes before the token being read once they are most
+    /// of the buffer, keeping the one before it for [`Input::line`].
+    fn let_go(&mut self) {
+        let cut = self
+            .mark
+            .min(self.pos)
+            .saturating_sub(1)
+            .saturating_sub(self.gone);
+        if self.keep || self.more.is_none() || cut < 1 << 16 || cut * 2 < self.data.len() {
+            return;
+        }
+        let dropped = &self.data[..cut];
+        match dropped.iter().rposition(|b| *b == b'\n') {
+            Some(last) => {
+                self.gone_lines += dropped.iter().filter(|b| **b == b'\n').count();
+                self.gone_col = cut - last - 1;
+            }
+            None => self.gone_col += cut,
+        }
+        let data = self.data.to_mut();
+        data.copy_within(cut.., 0);
+        data.truncate(data.len() - cut);
+        self.gone += cut;
+    }
+
     /// The same stream, called `name` in messages.
     pub fn named(self, name: &'static str) -> Input<'a> {
         Input { name, ..self }
@@ -66,24 +121,34 @@ impl<'a> Input<'a> {
     /// The byte at `pos`, waiting for it when the input is live.
     fn byte(&mut self, pos: usize) -> Option<u8> {
         self.looked = true;
-        while pos >= self.data.len() {
+        if pos - self.gone >= self.data.len() && !self.fill_to(pos) {
+            return None;
+        }
+        Some(self.data[pos - self.gone])
+    }
+
+    /// Reads chunks until `pos` is buffered; false at the end of input.
+    #[inline(never)]
+    fn fill_to(&mut self, pos: usize) -> bool {
+        while pos - self.gone >= self.data.len() {
+            self.let_go();
             let chunk = self.more.as_mut().and_then(|more| more());
             match chunk {
                 Some(chunk) => self.data.to_mut().extend_from_slice(&chunk),
                 None => {
                     self.more = None;
-                    return None;
+                    return false;
                 }
             }
         }
-        Some(self.data[pos])
+        true
     }
 
     /// True when the next read has to wait for bytes that have not
     /// arrived: whoever sends them may be waiting for what was printed.
     pub fn starved(&self) -> bool {
         self.more.is_some()
-            && self.data[self.pos.min(self.data.len())..]
+            && self.data[(self.pos - self.gone).min(self.data.len())..]
                 .iter()
                 .all(u8::is_ascii_whitespace)
     }
@@ -96,7 +161,8 @@ impl<'a> Input<'a> {
 
     /// The rest of the current line (or the next line when right after a token's newline).
     pub fn line(&mut self) -> Result<Vec<u8>, InputError> {
-        if self.pos > 0 && self.data.get(self.pos - 1) != Some(&b'\n') {
+        self.mark = self.pos;
+        if self.pos > 0 && self.data.get(self.pos - 1 - self.gone) != Some(&b'\n') {
             if self.byte(self.pos) == Some(b'\r') && self.byte(self.pos + 1) == Some(b'\n') {
                 self.pos += 2;
             } else if self.byte(self.pos) == Some(b'\n') {
@@ -125,9 +191,12 @@ impl<'a> Input<'a> {
 
     /// Line and column of a byte of the input, both from 1.
     fn at(&self, pos: usize) -> String {
-        let before = &self.data[..pos.min(self.data.len())];
-        let line = before.iter().filter(|b| **b == b'\n').count() + 1;
-        let col = before.iter().rev().take_while(|b| **b != b'\n').count() + 1;
+        let before = &self.data[..pos.saturating_sub(self.gone).min(self.data.len())];
+        let line = self.gone_lines + before.iter().filter(|b| **b == b'\n').count() + 1;
+        let col = match before.iter().rposition(|b| *b == b'\n') {
+            Some(last) => before.len() - last,
+            None => self.gone_col + before.len() + 1,
+        };
         match self.name {
             "input" => format!("input line {line}, column {col}"),
             name => format!("line {line}, column {col} of the {name}"),
@@ -160,6 +229,7 @@ impl<'a> Input<'a> {
     pub fn token(&mut self, what: &str) -> Result<(&[u8], usize), InputError> {
         self.skip_space();
         let start = self.pos;
+        self.mark = start;
         while self
             .byte(self.pos)
             .is_some_and(|b| !b.is_ascii_whitespace())
@@ -172,7 +242,7 @@ impl<'a> Input<'a> {
                 format!("the {} ended where {what} was expected", self.name),
             ));
         }
-        Ok((&self.data[start..self.pos], start))
+        Ok((&self.data[start - self.gone..self.pos - self.gone], start))
     }
 
     /// A number in `lo..=hi`, the range written `text`.
@@ -279,6 +349,7 @@ impl<'a> Input<'a> {
     /// The next byte that is not white space.
     pub fn char(&mut self) -> Result<u8, InputError> {
         self.skip_space();
+        self.mark = self.pos;
         match self.byte(self.pos) {
             Some(byte) => {
                 self.pos += 1;

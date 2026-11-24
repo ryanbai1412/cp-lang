@@ -393,7 +393,7 @@ fn run_from<O: Observer>(
         base: 0,
         input: match io.input {
             Feed::Fixed(input) => Input::new(input),
-            Feed::Live(more) => Input::live(more),
+            Feed::Live(more) => Input::live(more).keeping(ckpt.on()),
         },
         peer: io
             .peer

@@ -1617,6 +1617,58 @@ fn a_value_is_three_words() {
 }
 
 #[test]
+fn a_list_of_small_enums_is_packed() {
+    use crate::value::{Cells, Value};
+    use std::rc::Rc;
+    let set = |i, b| Value::Enum(1, Rc::new(vec![Value::Int(i), Value::Bool(b)]));
+    let mut asks = Cells::default();
+    asks.push(set(3, true));
+    asks.push(Value::Enum(0, Rc::new(Vec::new())));
+    assert!(matches!(asks, Cells::SmallEnum { .. }));
+    assert_eq!(asks.get(0), Some(set(3, true)));
+    asks.set(1, set(-4, false));
+    assert_eq!(asks.pop(), Some(set(-4, false)));
+    // A field that is not a scalar keeps every value, boxed.
+    asks.push(Value::Enum(
+        2,
+        Rc::new(vec![Value::Str(Rc::new(b"x".to_vec()))]),
+    ));
+    assert!(matches!(asks, Cells::Values(_)));
+    assert_eq!(asks.get(0), Some(set(3, true)));
+}
+
+#[test]
+fn a_live_input_lets_go_of_what_it_read() {
+    let lines: Vec<u8> = (0..100_000)
+        .flat_map(|i| format!("{i}\n").into_bytes())
+        .collect();
+    let total = lines.len();
+    let mut chunks = lines
+        .chunks(4096)
+        .map(<[u8]>::to_vec)
+        .collect::<Vec<_>>()
+        .into_iter();
+    let mut input = crate::input::Input::live(Box::new(move || chunks.next()));
+    for i in 0..100_000 {
+        assert_eq!(input.int().ok().map(|(v, _)| v), Some(i));
+    }
+    assert!(input.bytes().len() < total / 4, "{}", input.bytes().len());
+    let message = input.int().expect_err("ended").message;
+    assert!(message.contains("input line 100001, column 1"), "{message}");
+    let kept = (0..100)
+        .flat_map(|i| format!("{i}\n").into_bytes())
+        .collect::<Vec<_>>();
+    let mut chunks = kept
+        .chunks(7)
+        .map(<[u8]>::to_vec)
+        .collect::<Vec<_>>()
+        .into_iter();
+    let mut input = crate::input::Input::live(Box::new(move || chunks.next())).keeping(true);
+    while input.int().is_ok() {}
+    assert_eq!(input.bytes(), &kept[..]);
+}
+
+#[test]
 fn a_list_of_scalars_is_packed() {
     use crate::value::{Cells, TupleVal, Value};
     // A List<Int> cell is 8 bytes and a list of (Int, Int) 16, as in the
