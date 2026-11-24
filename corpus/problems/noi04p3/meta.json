@@ -16,5 +16,5 @@
  "difficulty": null,
  "dream": "none",
  "spec": "none",
- "notes": ""
+ "notes": "Many plans can be optimal, so checker.py judges: same verdict and minimum cost as the reference, a cost its flips add up to, and a monotone path for every request. Both accepted C++ submissions match a brute (every orientation, m + n <= 14) on 300 gen.py inputs."
 }
