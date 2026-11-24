@@ -1215,9 +1215,11 @@ fn own_members_of_ty(cursor: &Cursor, std: &mut StdLib, ty: &Ty) -> Vec<(Entry, 
             let arity = written_arity(&cursor.analysis.text[..cursor.offset as usize]);
             // A module's second `Prefix` is keyed `Prefix'1` (R02.11.4).
             let key = cpl_check::arity_key(name, arity);
-            let keyed = (arity > 0)
-                .then(|| type_members(cursor, std, &key, &[], arity, false))
-                .unwrap_or_default();
+            let keyed = if arity > 0 {
+                type_members(cursor, std, &key, &[], arity, false)
+            } else {
+                Vec::new()
+            };
             if keyed.is_empty() {
                 type_members(cursor, std, name, &[], arity, false)
             } else {

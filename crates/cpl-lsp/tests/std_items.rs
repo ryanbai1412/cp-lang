@@ -78,6 +78,15 @@ impl Lsp {
         ));
     }
 
+    fn request(&mut self, method: &str, params: Value) -> Value {
+        self.id += 1;
+        let reply = self.server.handle(&message(Some(self.id), method, params));
+        reply
+            .into_iter()
+            .find(|m| !m.at(&["id"]).is_null())
+            .map_or(Value::Null, |m| m.at(&["result"]).clone())
+    }
+
     fn ask(&mut self, method: &str, uri: &str, text: &str, offset: usize) -> Value {
         self.id += 1;
         let reply = self.server.handle(&message(
@@ -99,6 +108,23 @@ impl Lsp {
 /// `pub fn sort<S, K>(mut self: S, by: T -> K = x => x; desc: Bool)` gives
 /// `by`, `desc`.
 fn param_names(signature: &str, name: &str) -> Vec<String> {
+    params(signature, name)
+        .into_iter()
+        .map(|(l, _, _)| l)
+        .collect()
+}
+
+/// Each parameter's label, the name a call passes it by, with whether it is
+/// a named option, written after `;`: `while ok: (T) -> Bool` is `while`.
+fn params_of(signature: &str, name: &str) -> Vec<(String, bool)> {
+    params(signature, name)
+        .into_iter()
+        .map(|(l, _, named)| (l, named))
+        .collect()
+}
+
+/// Each parameter's label, name and whether it is a named option.
+fn params(signature: &str, name: &str) -> Vec<(String, String, bool)> {
     let Some(at) = signature.find(name) else {
         return Vec::new();
     };
@@ -120,7 +146,7 @@ fn param_names(signature: &str, name: &str) -> Vec<String> {
         return Vec::new();
     };
     let mut names = Vec::new();
-    let (mut depth, mut start) = (0i32, open + 1);
+    let (mut depth, mut start, mut named) = (0i32, open + 1, false);
     for (i, c) in rest[open..]
         .char_indices()
         .skip(1)
@@ -128,23 +154,32 @@ fn param_names(signature: &str, name: &str) -> Vec<String> {
     {
         match c {
             '(' | '[' | '{' => depth += 1,
-            '<' => depth += 1,
+            // `Map<K, V>` nests; `a < b` in a default does not.
+            '<' if rest[..i].ends_with(|p: char| p.is_alphanumeric()) => depth += 1,
             '>' if !rest[..i].ends_with('-') && !rest[..i].ends_with('=') => depth -= 1,
             ')' | ']' | '}' if depth > 0 => depth -= 1,
             ')' | ',' | ';' if depth == 0 => {
                 let piece = rest[start..i].trim();
-                let piece = piece.strip_prefix("mut ").unwrap_or(piece);
-                let piece = piece.strip_prefix("...").unwrap_or(piece);
+                // `mut self`, `var other: T`: the binding's mode is not its name.
+                let piece = (piece
+                    .strip_prefix("mut ")
+                    .or_else(|| piece.strip_prefix("var ")))
+                .unwrap_or(piece);
+                let piece = piece.trim_start_matches('.');
                 let word: String = piece
                     .chars()
                     .take_while(|c| c.is_alphanumeric() || *c == '_')
                     .collect();
-                if !word.is_empty()
-                    && word != "self"
-                    && piece[word.len()..].trim_start().starts_with(':')
-                {
-                    names.push(word);
+                // `while ok: (T) -> Bool` is passed by its label, `while`.
+                let after = piece[word.len()..].trim_start();
+                let inner = after.trim_start_matches(|c: char| c.is_alphanumeric() || c == '_');
+                let labelled = inner.len() < after.len() && inner.trim_start().starts_with(':');
+                if !word.is_empty() && word != "self" && (after.starts_with(':') || labelled) {
+                    let inner = after[..after.len() - inner.len()].to_string();
+                    let inner = if labelled { inner } else { word.clone() };
+                    names.push((word, inner, named));
                 }
+                named |= c == ';';
                 start = i + 1;
                 if c == ')' {
                     break;
@@ -191,6 +226,10 @@ struct Case {
     member: bool,
     params: Vec<String>,
     cost: Option<String>,
+    /// The parameters as the docs show them, each with whether it is a
+    /// named option, and the doc comment.
+    shape: Vec<(String, bool)>,
+    doc: String,
 }
 
 fn is_word(c: u8) -> bool {
@@ -287,6 +326,11 @@ fn lib_cases(dir: &Path, lib: &str) -> Vec<Case> {
             };
             let program = format!("{head}{}", program_of(&example));
             let at = use_of(&program[head.len()..], &name, member).unwrap() + head.len();
+            // Called by its struct's name, it shows the struct's doc.
+            let docs = match owner_item.filter(|o| o.name == name) {
+                Some(o) => o.doc.clone(),
+                None => item.doc.clone(),
+            };
             let who = match owner {
                 Some(o) => format!("{lib}.{module}.{o}.{}", item.name),
                 None => format!("{lib}.{module}.{}", item.name),
@@ -299,6 +343,9 @@ fn lib_cases(dir: &Path, lib: &str) -> Vec<Case> {
                 member,
                 params: param_names(&item.signature, &item.name),
                 cost: documented_cost(&item.doc).or_else(|| item.cost.clone()),
+                shape: params_of(&item.signature, &item.name),
+                // Called by its struct's name, it shows the struct's doc.
+                doc: docs,
             });
         }
     }
@@ -311,7 +358,8 @@ fn builtin_cases() -> Vec<Case> {
         .filter_map(|m| {
             let program = format!("{FIXTURE}{}", program_of(m.example));
             let at = use_of(&program[FIXTURE.len()..], m.name, true)? + FIXTURE.len();
-            let params = param_names(&format!("{}({})", m.name, m.params), m.name);
+            let declared = format!("{}({})", m.name, m.params);
+            let params = param_names(&declared, m.name);
             Some(Case {
                 who: format!("{}.{}", m.receiver.name(), m.name),
                 program,
@@ -320,6 +368,8 @@ fn builtin_cases() -> Vec<Case> {
                 member: true,
                 params,
                 cost: documented_cost(m.doc),
+                shape: params_of(&declared, m.name),
+                doc: m.doc.to_string(),
             })
         })
         .collect()
@@ -368,10 +418,24 @@ fn run(lsp: &mut Lsp, case: &Case, uri: &str, tally: &mut Tally) {
         .unwrap_or("")
         .to_string();
     let code = shown.split("\n```").next().unwrap_or("").to_string();
+    let mut surfaces = Surfaces::default();
+    if !shown.is_empty() {
+        let doc = shown.split_once("\n```\n\n").map_or("", |(_, d)| d);
+        surfaces.add("hover", &code, doc);
+    }
     let missing = |s: &str| {
         case.params
             .iter()
-            .filter(|p| !s.contains(&format!("{p}:")))
+            // `while:`, or `while ok:` as the declaration writes it.
+            .filter(|p| {
+                let labelled = |at: usize| {
+                    let rest = s[at + p.len()..].strip_prefix(' ').unwrap_or("");
+                    let inner = rest.trim_start_matches(|c: char| c.is_alphanumeric() || c == '_');
+                    inner.len() < rest.len() && inner.starts_with(':')
+                };
+                !s.contains(&format!("{p}:"))
+                    && !s.match_indices(p.as_str()).any(|(at, _)| labelled(at))
+            })
             .cloned()
             .collect::<Vec<_>>()
     };
@@ -426,6 +490,19 @@ fn run(lsp: &mut Lsp, case: &Case, uri: &str, tally: &mut Tally) {
             .or(labels.first())
             .cloned()
             .unwrap_or_default();
+        if let Some(chosen) = sig
+            .at(&["signatures"])
+            .as_array()
+            .unwrap_or(&[])
+            .iter()
+            .find(|s| s.at(&["label"]).as_str() == Some(label.as_str()))
+        {
+            let doc = chosen
+                .at(&["documentation", "value"])
+                .as_str()
+                .unwrap_or("");
+            surfaces.add("signature help", &label, doc);
+        }
         let gone = missing(&label);
         tally.check(
             "signature help names every parameter",
@@ -516,6 +593,16 @@ fn run(lsp: &mut Lsp, case: &Case, uri: &str, tally: &mut Tally) {
     });
     if let Some(item) = found {
         let detail = item.at(&["detail"]).as_str().unwrap_or("");
+        let doc = match item.at(&["documentation", "value"]).as_str() {
+            Some(doc) => doc.to_string(),
+            None => lsp
+                .request("completionItem/resolve", item.clone())
+                .at(&["documentation", "value"])
+                .as_str()
+                .unwrap_or("")
+                .to_string(),
+        };
+        surfaces.add("completion", detail, &doc);
         let gone = missing(detail);
         tally.check(
             "completion detail names every parameter",
@@ -523,6 +610,41 @@ fn run(lsp: &mut Lsp, case: &Case, uri: &str, tally: &mut Tally) {
             &case.who,
             || format!("{gone:?} missing from {detail:?}"),
         );
+    }
+    surfaces.agree(case, tally);
+}
+
+/// What each editor surface showed for one item: its text and its doc.
+#[derive(Default)]
+struct Surfaces(Vec<(&'static str, String, String)>);
+
+impl Surfaces {
+    fn add(&mut self, surface: &'static str, text: &str, doc: &str) {
+        self.0.push((surface, text.to_string(), doc.to_string()));
+    }
+
+    /// Every surface that showed the item renders the signature the docs
+    /// show, the same parameters in the same order with the same named
+    /// options, and the same doc comment as the docs.
+    fn agree(&self, case: &Case, tally: &mut Tally) {
+        for (surface, text, _) in &self.0 {
+            // A struct's completion is its declaration, then the call `new` takes.
+            let call = format!("\n{}(", case.name);
+            let text = text.rfind(&call).map_or(text.as_str(), |i| &text[i + 1..]);
+            let shape = params_of(text, &case.name);
+            let signs = text.contains(&format!("{}(", case.name));
+            tally.check(
+                "surfaces show the docs' parameters",
+                !signs || shape == case.shape,
+                &case.who,
+                || {
+                    format!(
+                        "{surface} shows {shape:?} in {text:?}, the docs {:?}",
+                        case.shape
+                    )
+                },
+            );
+        }
     }
 }
 
@@ -589,7 +711,8 @@ fn report(name: &str, tally: &Tally, ceilings: &[(&str, usize)]) {
 #[test]
 fn every_public_std_item_hovers_signs_and_completes_with_its_parameters() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let tally = run_all(&lib_cases(&root.join("std"), "std"), STD_URI);
+    let mut cases = lib_cases(&root.join("std"), "std");
+    let tally = run_all(&cases, STD_URI);
     report(
         "std",
         &tally,
