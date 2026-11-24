@@ -1,9 +1,10 @@
 // Source: APIO 2009 (The Siruseri Convention Centre), https://dmoj.ca/problem/apio09p2
+// limits: 750 ms, 64 MB
 // Problem: n <= 2e5 requests, each a closed range of days [s, e] within 1..1e9. Choose the most
 //   pairwise disjoint requests; among those choices, the lexicographically smallest list of
 //   request numbers. Print the count, then the numbers in increasing order.
 // Solution: sort by start; the greedy next pick after a request is the one with the least end
-//   that starts after it (a sparse table of min end), and binary lifting over those links counts
+//   that starts after it (a min SegTree of ends), and binary lifting over those links counts
 //   how many fit in an open window of days in O(log n). Free windows are blocks of the sorted
 //   order, found through a max SegTree of block starts. Try requests in input order: take one iff
 //   the counts left and right of it plus one equal its window's count, then split the window.
@@ -23,42 +24,15 @@ for i in 0..n:
     let s = segs[i]
     pos[s.2] = i
 
-// Sparse table over (r, idx)
 const LOG = 18
-var lg: [0..=n]Int = 0
-for i in 2..=n: lg[i] = lg[i / 2] + 1
-
-var st_r: [0..=LOG, I]Int = 0
-var st_i: [0..=LOG, I]Int = 0
-for i in I:
-    let s = segs[i.idx]
-    st_r[0, i] = s.1
-    st_i[0, i] = i.idx
-for k in 1..=LOG:
-    let half = 1 << (k - 1)
-    let span = 1 << k
-    for i in 0..n:
-        if i + span <= n:
-            let lr = st_r[k - 1, I(i)]
-            let li = st_i[k - 1, I(i)]
-            let rr = st_r[k - 1, I(i + half)]
-            let ri = st_i[k - 1, I(i + half)]
-            if lr < rr or (lr == rr and li < ri):
-                st_r[k, I(i)] = lr
-                st_i[k, I(i)] = li
-            else:
-                st_r[k, I(i)] = rr
-                st_i[k, I(i)] = ri
+// The least (end, index) among the sorted requests in a range.
+let none = (2_000_000_000, -1)
+var ends = SegTree<I, (Int, Int)>(Monoid(none, min), fill: none)
+for i in I: ends.set(i, (segs[i.idx].1, i.idx))
 
 fn query_st(l: Int, r: Int) -> (Int, Int):
-    if l >= r: return (2_000_000_000, -1)
-    let k = lg[r - l]
-    let p2 = r - (1 << k)
-    let lr = st_r[k, I(l)]
-    let li = st_i[k, I(l)]
-    let rr = st_r[k, I(p2)]
-    let ri = st_i[k, I(p2)]
-    if lr < rr or (lr == rr and li < ri): (lr, li) else: (rr, ri)
+    if l >= r: return none
+    ends.fold(I(l)..=I(r - 1))
 
 fn first_after(x: Int) -> Int:
     let lo = (0..n).first_true(mid => segs[mid].0 >= x) ?? n
