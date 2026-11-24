@@ -64,16 +64,16 @@ thread_local! {
 
 type PreludeOf = (u64, Option<cpl_interp::checkpoint::Checkpoint>);
 
+/// An interpreted run's output, or its output up to the trap; the trap is
+/// boxed, as it is far larger than the output.
+type Interpreted = Result<String, (String, Box<cpl_interp::Trap>)>;
+
 static VMS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
 
 impl Vm {
     /// [`run_ir`] on the calling thread, from the state `program` reaches
     /// before it first reads, once a first run has found it.
-    fn run_resumed(
-        &self,
-        input: &str,
-        limit: Duration,
-    ) -> Result<String, (String, cpl_interp::Trap)> {
+    fn run_resumed(&self, input: &str, limit: Duration) -> Interpreted {
         use cpl_interp::checkpoint::Checkpoints;
         let io = cpl_interp::Io::fixed(input.as_bytes());
         let Some(bytes) = self.stack_limit else {
@@ -114,7 +114,7 @@ impl Vm {
         let text = String::from_utf8_lossy(&out).into_owned();
         match run.observed.trap {
             None => Ok(text),
-            Some(trap) => Err((text, trap)),
+            Some(trap) => Err((text, Box::new(trap))),
         }
     }
 }
@@ -124,7 +124,7 @@ fn run_ir(
     io: cpl_interp::Io,
     stack_limit: Option<u32>,
     limit: Duration,
-) -> Result<String, (String, cpl_interp::Trap)> {
+) -> Interpreted {
     let io = io.until(cpl_interp::Stop::after(limit));
     let mut out = Vec::new();
     let res = match stack_limit {
@@ -141,12 +141,12 @@ fn run_ir(
     let text = String::from_utf8_lossy(&out).into_owned();
     match res {
         Ok(()) => Ok(text),
-        Err(trap) => Err((text, trap)),
+        Err(trap) => Err((text, Box::new(trap))),
     }
 }
 
 /// How an interpreted run ended.
-fn ran(run: Result<String, (String, cpl_interp::Trap)>) -> Ran {
+fn ran(run: Interpreted) -> Ran {
     match run {
         Ok(out) => Ran {
             out,
@@ -155,14 +155,14 @@ fn ran(run: Result<String, (String, cpl_interp::Trap)>) -> Ran {
         },
         Err((out, trap)) => Ran {
             out,
-            stop: Some(crate::judge::interp_failure(trap)),
+            stop: Some(crate::judge::interp_failure(*trap)),
             cost: None,
         },
     }
 }
 
 /// What a judge's trap says of the run: a bug in the judge, or its verdict.
-fn ruling(run: Result<String, (String, cpl_interp::Trap)>) -> Ruling {
+fn ruling(run: Interpreted) -> Ruling {
     match run {
         Ok(_) => Ruling::Accepted,
         Err((_, trap)) if crate::judge::judge_bug(trap.code().0) => Ruling::Broke(trap.message),
@@ -199,7 +199,7 @@ impl Vm {
             made: Vec::new(),
         }));
         let io = io.choosing(std::sync::Arc::clone(&choices));
-        let input = run_ir(&self.program, io, self.stack_limit, limit).map_err(|(_, t)| t)?;
+        let input = run_ir(&self.program, io, self.stack_limit, limit).map_err(|(_, t)| *t)?;
         let made = std::mem::take(&mut choices.lock().unwrap().made);
         let (sites, choices) = made.into_iter().unzip();
         Ok(Drawn {
@@ -295,10 +295,10 @@ impl Runner {
                 let trap = spoken.interactor.as_ref().map(|t| interactor.json(t));
                 let solution_trap =
                     (spoken.solution.as_ref().err()).map(|(_, t)| interactor.json(t));
-                let ruled =
-                    (spoken.interactor).map_or(Ok(String::new()), |t| Err((String::new(), t)));
+                let ruled = (spoken.interactor)
+                    .map_or(Ok(String::new()), |t| Err((String::new(), Box::new(t))));
                 Ok(Talked {
-                    solution: ran(spoken.solution),
+                    solution: ran(spoken.solution.map_err(|(out, t)| (out, Box::new(t)))),
                     ruling: ruling(ruled),
                     transcript: spoken.transcript,
                     trap,
@@ -310,7 +310,7 @@ impl Runner {
                     crate::judge::interact_in_vm(fast, &interactor.program, input, limit)
                         .map_err(unrunnable(&fast.name))?;
                 let json = trap.as_ref().map(|t| interactor.json(t));
-                let ruled = trap.map_or(Ok(String::new()), |t| Err((String::new(), t)));
+                let ruled = trap.map_or(Ok(String::new()), |t| Err((String::new(), Box::new(t))));
                 Ok(Talked {
                     solution: Ran {
                         out: outcome.stdout.clone(),
