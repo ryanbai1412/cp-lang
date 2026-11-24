@@ -705,21 +705,21 @@ pub struct Poly<T: Div>(pub c: List<T>):
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `Poly<Int>.zero.deg() == -1 and Poly<Int>.zero.len == 0`
+    /// example: `Poly<Int>.zero.deg() == None and Poly<Int>.zero.len == 0`
     @get pub fn zero() -> Poly<T> = Poly([])
 
     /// The constant polynomial `1`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `Poly<Int>.one.at(0) == 1 and Poly<Int>.one.deg() == 0`
+    /// example: `Poly<Int>.one.at(0) == 1 and Poly<Int>.one.deg() == Some(0)`
     @get pub fn one() -> Poly<T> = Poly([T.one])
 
     /// The indeterminate `x`: coefficients `[0, 1]`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `Poly<Int>.x.deg() == 1 and Poly<Int>.x.at(1) == 1`
+    /// example: `Poly<Int>.x.deg() == Some(1) and Poly<Int>.x.at(1) == 1`
     @get pub fn x() -> Poly<T> = Poly([T.zero, T.one])
 
     /// The number of stored coefficients, trailing zeros included.
@@ -729,24 +729,25 @@ pub struct Poly<T: Div>(pub c: List<T>):
     /// example: `Poly<Int>([1, 0]).len == 2`
     @get pub fn len(self) -> Int = c.len
 
-    /// The degree: the highest index with a nonzero coefficient, `-1` for the zero polynomial. Stored
-    /// trailing zeros do not count.
+    /// The degree: the highest index with a nonzero coefficient, `None` for the zero polynomial.
+    /// Stored trailing zeros do not count.
     ///
     /// cost: \(O(1)\) plus the number of stored trailing zeros
     /// traps: never
-    /// example: `Poly<Int>([1, 2, 0]).deg() == 1`
-    /// example: `Poly<Int>([0, 0]).deg() == -1`
-    pub fn deg(self) -> Int:
+    /// empty: the zero polynomial gives `None`
+    /// example: `Poly<Int>([1, 2, 0]).deg() == Some(1)`
+    /// example: `Poly<Int>([0, 0]).deg() == None`
+    pub fn deg(self) -> ?Int:
         var d = c.len - 1
         while d >= 0 and c[d] == T.zero: d -= 1
-        d
+        if d < 0: None else: Some(d)
 
     /// Whether all coefficients are zero (including when there are None).
     ///
     /// cost: \(O(1)\) plus the number of stored trailing zeros
     /// traps: never
     /// example: `Poly<Int>([0, 0]).is_zero() and not Poly<Int>.one.is_zero()`
-    pub fn is_zero(self) -> Bool = self.deg() < 0
+    pub fn is_zero(self) -> Bool = self.deg() == None
 
     /// Read coefficient `i` (0 when `i >= self.len`).
     ///
@@ -921,9 +922,9 @@ impl Mul for Poly<T>:
 
 impl Div for Poly<T>:
     fn div(a, b):
-        let db = b.deg()
-        assert db >= 0, "Poly division by the zero polynomial"
-        let da = a.deg()
+        assert not b.is_zero(), "Poly division by the zero polynomial"
+        let db = b.deg()!
+        let da = a.deg() ?? -1
         if da < db: return Poly([])
         var r = a.c
         var q = List.filled(da - db + 1, T.zero)

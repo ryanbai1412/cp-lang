@@ -77,5 +77,5 @@ for _ in 0..q:
     var fresh = 0
     for v in 1..of_t.len:
         let par_len = if let up = of_t.link(v): of_t.longest(up) else: 0
-        fresh += max(0, of_t.longest(v) - max(par_len, seen[of_t.first_pos(v)]))
+        fresh += max(0, of_t.longest(v) - max(par_len, seen[of_t.first_pos(v)!]))
     print(fresh)

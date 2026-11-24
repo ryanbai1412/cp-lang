@@ -4,7 +4,8 @@
 - R4 (#r4-nothing-is-t-never-a-sentinel): a public fn returning a number
   whose doc gives a sentinel (`-1`, `INF`, "`len` when none") for "nothing".
   Orderings and signs (`cmp`, `compare`, `*_sign`), where `-1` is a value,
-  are not sentinels.
+  are not sentinels, nor is a value the result's arithmetic uses, whose
+  doc says it is "not a sentinel" (the eertree's odd-root length `-1`).
 - R6 (#r6-options-are-named-arguments-with-defaults): a public fn `f_by`,
   `f_key` or `f_with` beside a public `f`: a variant where an option belongs.
 
@@ -35,7 +36,7 @@ def findings():
             line = text.count("\n", 0, m.start(2)) + 1
             if ret in ("Int", "I64", "F64") and not ORDERING.search(name):
                 s = SENTINEL.search(doc)
-                if s:
+                if s and "not a sentinel" not in doc:
                     yield f"{rel}:{line}: std-api/R4: `{name}` returns {s.group(0)} for nothing; return `?{ret}`"
             v = VARIANT.search(name)
             if v and name[: v.start()] in names and name not in WORDS:

@@ -2249,16 +2249,18 @@ pub struct SuffixAutomaton<A>:
         with lint(unproven_list_index: allow)
         return if links[state] == -1: 0 else: max_len[links[state]] + 1
 
-    /// The 0-based position where the first occurrence of `state`'s substrings ends; `-1` at the
-    /// root. A clone keeps the position of the state it was cloned from.
+    /// The 0-based position where the first occurrence of `state`'s substrings ends; `None` at the
+    /// root, whose only substring is empty. A clone keeps the position of the state it was cloned
+    /// from.
     ///
     /// cost: \(O(1)\)
     /// ties: the earliest occurrence; later ones are not tracked
     /// traps: when `state` is outside `0..self.len`
-    /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.first_pos(4) == 1 and m.first_pos(3) == 2`
-    pub fn first_pos(self, state: Int) -> Int:
+    /// example: `let m = SuffixAutomaton<Char>.of("abb"); m.first_pos(4) == Some(1) and m.first_pos(0) == None`
+    pub fn first_pos(self, state: Int) -> ?Int:
         with lint(unproven_list_index: allow)
-        return first_end[state]
+        let e = first_end[state]
+        return if e < 0: None else: Some(e)
 
     /// The state holding `word`, or `None` when `word` is not a substring; the root for an empty
     /// `word`.
@@ -2626,7 +2628,8 @@ pub struct PalindromicTree<A>:
     /// example: `PalindromicTree<Char>.of("aba").distinct == 3`
     @get pub fn distinct(self) -> Int = slink.len - 2
 
-    /// The length of the palindrome of `state`: `-1` at the odd root, `0` at the even root.
+    /// The length of the palindrome of `state`: `-1` at the odd root, `0` at the even root. The odd
+    /// root's `-1` is a value, not a sentinel: a child's length is its parent's plus 2.
     ///
     /// cost: \(O(1)\)
     /// traps: when `state` is outside `0..self.len`
@@ -3670,7 +3673,7 @@ fn suffix_automaton_matches_brute_and_linear_occurrences():
                             if (0..len).all(j => s[i + j] == w[j]):
                                 first = i + len - 1
                                 break
-                        assert sam.first_pos(v) == first
+                        assert sam.first_pos(v) == Some(first)
         var seen = Set<List<A>>()
         for l in 0..n:
             for r in l + 1..=n: seen.add([s[j] for j in l..r])

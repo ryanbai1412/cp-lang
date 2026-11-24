@@ -1,8 +1,8 @@
 // expect: ok, output "YES YES YES\nYES YES YES\nYES YES YES\nYES YES YES\nYES YES"
 use std.poly.{Poly}
 type Z = Mod<998244353>
-print(yes(Poly<Int>([1, 2, 0]).len == 3), yes(Poly<Z>.from_int(5).at(0) == Z(5)), yes(Poly<Int>.zero.deg() == -1 and Poly<Int>.zero.len == 0))
-print(yes(Poly<Int>.one.at(0) == 1 and Poly<Int>.one.deg() == 0), yes(Poly<Int>.x.deg() == 1 and Poly<Int>.x.at(1) == 1), yes(Poly<Int>([1, 2, 0]).deg() == 1 and Poly<Int>([0, 0]).deg() == -1))
+print(yes(Poly<Int>([1, 2, 0]).len == 3), yes(Poly<Z>.from_int(5).at(0) == Z(5)), yes(Poly<Int>.zero.deg() == None and Poly<Int>.zero.len == 0))
+print(yes(Poly<Int>.one.at(0) == 1 and Poly<Int>.one.deg() == Some(0)), yes(Poly<Int>.x.deg() == Some(1) and Poly<Int>.x.at(1) == 1), yes(Poly<Int>([1, 2, 0]).deg() == Some(1) and Poly<Int>([0, 0]).deg() == None))
 var p = Poly<Int>([1])
 p.set(3, 7)
 print(yes(Poly<Int>([0, 0]).is_zero() and not Poly<Int>.one.is_zero()), yes(Poly<Int>([1, 2]).at(1) == 2 and Poly<Int>([1, 2]).at(5) == 0), yes(p.len == 4 and p.at(2) == 0 and p.at(3) == 7))

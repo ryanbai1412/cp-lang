@@ -72,7 +72,7 @@ When an operation traps on bad input, its optional form is `try_<verb>` returnin
 A search, min, max, `first`, `last` or `pop` that can find nothing returns `?T`; no fn returns `-1`, `len`, `INF` or `0` to mean "none".
 
 - **Why:** a sentinel type-checks and silently corrupts the answer.
-- **Example:** `[].max()` is `None`; a `Counter` reading 0 for an unseen key is not a sentinel, since 0 is its true count.
+- **Example:** `[].max()` is `None`; a `Counter` reading 0 for an unseen key is not a sentinel, since 0 is its true count. Nor is `PalindromicTree.pal_len` being `-1` at the odd root: the length arithmetic uses it, and its doc says so with "not a sentinel".
 - **Enforced by:** `scripts/std-api-lint.py` (a numeric result whose doc gives `-1`, `INF` or `len` for nothing; shrink-only, in `scripts/check.sh`).
 
 ### R5. A fold of a monoid is `T`; without an identity it is `?T`
