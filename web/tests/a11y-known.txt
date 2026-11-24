@@ -1,1 +1,0 @@
-# `route rule` pairs axe-core flags today; delete a line once it passes.

@@ -1781,9 +1781,9 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "spec/idioms/lints-known.txt": ("idiom_lint_gaps", "idioms", "deleted: idioms-catalog.py fails on any finding"),
     "web/scripts/doc-examples-failing.txt": ("skip_lists", "site", "fix each example"),
     "web/scripts/practice-mutants-equivalent.txt": ("known_lists", "site", "data: equivalent mutants"),
-    "web/tests/a11y-known.txt": ("xfail_markers", "site", "fix each a11y finding"),
-    "web/tests/completion-known.txt": ("known_lists", "site", "fix each completion miss"),
-    "web/tests/search-known.txt": ("known_lists", "site", "fix each search miss"),
+    "web/tests/a11y-known.txt": ("xfail_markers", "site", "deleted: a11y.mjs fails on any violation"),
+    "web/tests/completion-known.txt": ("known_lists", "site", "deleted: completion-parity.mjs fails on any miss"),
+    "web/tests/search-known.txt": ("known_lists", "site", "deleted: search-tasks.mjs fails on any miss"),
 }
 # Directories of test data and fixtures, not lists of exemptions.
 LIST_DATA_DIRS = ("research/", "corpus/problems/", "corpus/submissions/", "bench/stress/", "node_modules/")

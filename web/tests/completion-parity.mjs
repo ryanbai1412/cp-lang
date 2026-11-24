@@ -4,7 +4,7 @@
 // the menu shows (CodeMirror renders the first 100). A context that ends in
 // `(`, `, ` or `{` must also open the menu as that character is typed; for a
 // name in scope, which the menu after `(` leaves out, as its first letter is.
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { base, done, open } from "./browser.mjs";
 
 const cases = JSON.parse(
@@ -14,8 +14,6 @@ const { page } = await open();
 await page.goto(base + "/play", { waitUntil: "networkidle" });
 await page.locator(".cm-content").first().click();
 const menu = page.locator(".cm-tooltip-autocomplete").first();
-const knownFile = new URL("./completion-known.txt", import.meta.url);
-const known = new Set(readFileSync(knownFile, "utf8").split("\n").filter((l) => l && !l.startsWith("#")));
 
 async function offered(before, after, typed, more = "") {
   await page.keyboard.press("ControlOrMeta+A");
@@ -45,13 +43,6 @@ for (const c of cases) {
     if (missing.length) misses.push({ name, why: `no ${missing.join(", ")} (offered ${labels.slice(0, 8).join(" ") || "nothing"})` });
   }
 }
-const fresh = misses.filter((m) => !known.has(m.name));
-const fixed = [...known].filter((k) => !misses.some((m) => m.name === k));
-for (const m of fresh) console.error(`completion-parity: ${m.name}: ${m.why}`);
-console.log(`completion-parity: ${cases.length} contexts and ${triggers} trigger characters, ${misses.length} misses (${misses.length - fresh.length} known)`);
-if (fixed.length || process.env.UPDATE) {
-  const keep = misses.map((m) => m.name).filter((n) => known.has(n) || process.env.UPDATE);
-  writeFileSync(knownFile, readFileSync(knownFile, "utf8").split("\n").filter((l) => l.startsWith("#")).join("\n") + "\n" + keep.map((n) => n + "\n").join(""));
-  if (fixed.length) console.warn(`completion-parity: now offered, removed from tests/completion-known.txt: ${fixed.join("; ")}`);
-}
-done(fresh.length ? 1 : 0);
+for (const m of misses) console.error(`completion-parity: ${m.name}: ${m.why}`);
+console.log(`completion-parity: ${cases.length} contexts and ${triggers} trigger characters, ${misses.length} misses`);
+done(misses.length ? 1 : 0);

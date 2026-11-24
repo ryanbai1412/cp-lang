@@ -123,7 +123,7 @@ A route a visitor lands on has no axe-core violation of the WCAG 2 A and AA rule
 
 - **Why:** a contestant on a screen reader, on a dim screen at 3am, or driving the site from the keyboard during a contest should be able to read, search and run code.
 - **Example:** each code editor carries an `aria-label` naming what it holds, so a screen reader announces "CP Lang source" instead of "edit text".
-- **Enforced by:** `web/tests/a11y.mjs`, with today's violations in `web/tests/a11y-known.txt`, a list that only shrinks.
+- **Enforced by:** `web/tests/a11y.mjs` (site browser tests), which fails on any violation.
 
 ## site/R15: The browser's tools answer as the CLI's do
 
@@ -155,7 +155,7 @@ A contestant who types the task ("range minimum query", "union find") rather tha
 
 - **Why:** a contestant who doesn't know the name yet is the one who most needs search; if it only matches names, they fall back to scrolling the module list.
 - **Example:** "union find" finds `std/dsu`; "convex hull" finds the geometry topic page.
-- **Enforced by:** `web/tests/search-tasks.mjs` (site browser tests); phrasings missed today are in `web/tests/search-known.txt`, which only shrinks.
+- **Enforced by:** `web/tests/search-tasks.mjs` (site browser tests), which fails on any missed phrasing.
 
 ## site/R19: Every practice problem has hints that point into the docs
 

@@ -1,6 +1,6 @@
 // handbook/guidelines/site-checklist.md site/R18: a contestant who describes
 // the task, not the item's name, finds the item in the first results.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import { base, done, open } from './browser.mjs';
 
 // Task phrasing -> the pages that answer it (any one counts): the std module
@@ -44,8 +44,6 @@ if (gone.length) {
   console.error(`search-tasks: answer pages not in the site: ${gone.join(' ')}`);
   done(1);
 }
-const knownFile = new URL('./search-known.txt', import.meta.url);
-const known = new Set(readFileSync(knownFile, 'utf8').split('\n').filter((l) => l && !l.startsWith('#')));
 
 const { page } = await open();
 await page.goto(base + '/docs/guides/tour');
@@ -62,15 +60,9 @@ for (const [query, want] of tasks) {
   if (rank < 0) misses.push(query);
   console.log(`${rank < 0 ? 'MISS' : `#${rank + 1}  `} ${query}${rank < 0 ? `  (got ${pages.join(' ') || 'nothing'})` : ''}`);
 }
-const fresh = misses.filter((q) => !known.has(q));
-const fixed = [...known].filter((q) => !misses.includes(q));
-console.log(`search-tasks: ${tasks.length - misses.length} of ${tasks.length} task phrasings find their page in the top ${TOP}; ${misses.length} known misses`);
-if (process.env.UPDATE) writeFileSync(knownFile, '# Task phrasings search misses today; this list only shrinks (site/R18).\n' + misses.join('\n') + '\n');
-else if (fresh.length) {
-  console.error(`search-tasks: newly missed: ${fresh.join('; ')}`);
-  done(1);
-} else if (fixed.length) {
-  console.error(`search-tasks: now found, delete from tests/search-known.txt: ${fixed.join('; ')}`);
+console.log(`search-tasks: ${tasks.length - misses.length} of ${tasks.length} task phrasings find their page in the top ${TOP}`);
+if (misses.length) {
+  console.error(`search-tasks: missed: ${misses.join('; ')}`);
   done(1);
 }
 done(0);
