@@ -16,23 +16,20 @@ let a: [C]0..=1e8 = read()
 let b: [C]0..=1e8 = read()
 let (lefts, rights) = (a.sum(), b.sum())
 
-// colour set s fails every (L, R) with L <= its left sum and R <= the right sum off it. A box
-// packs the two sums, each under 2^32, into one Int ordered by the left sum: 2^20 of them sort
-// in place within 32 MB.
-let shift = 1 << 32
-var boxes = List.filled(1 << n, rights)
+// colour set s fails every (L, R) with L <= its left sum and R <= the right sum off it.
+var boxes = List.filled(1 << n, (l: 0, r: rights))
 for c in C:
     for s in 0..(1 << c.ord):
-        boxes[s + (1 << c.ord)] = boxes[s] + a[c] * shift - b[c]
+        boxes[s + (1 << c.ord)] = (l: boxes[s].l + a[c], r: boxes[s].r - b[c])
 boxes.sort()
 
 var best: ?(l: Int, r: Int) = None
 var later: ?Int = None
 for box in boxes.rev:
     if let right = later:
-        let (l, r) = (box / shift + 1, right + 1)
+        let (l, r) = (box.l + 1, right + 1)
         if l <= lefts and r <= rights and (if let p = best: l + r <= p.l + p.r else: true):
             best = (l:, r:)
-    later = max(later, Some(box % shift))
+    later = max(later, Some(box.r))
 print(best!.l)
 print(best!.r)
