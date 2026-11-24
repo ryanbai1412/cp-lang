@@ -674,3 +674,73 @@ fn dual_and_range_fenwick_match_brute():
         for j in lo..hi: a[j] += x
         let i = seed / 100000 % 23
         assert f.get(V(i)) == a[i]
+
+impl Show for Fenwick<D, T>:
+    /// The current values in key order, space-separated.
+    ///
+    /// example: `"{Fenwick([1, 2, 3])}" == "1 2 3"`
+    fn show(f):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{f.get(i)}"
+        out
+
+impl Show for Fenwick2D<R, C, T>:
+    /// The current grid, one row of values per line.
+    ///
+    /// example: `domain R = 0..2; domain C = 0..2; var f = Fenwick2D<R, C, Int>(); f.add(R(1), C(0), 5); "{f}" == "0 0\n5 0"`
+    fn show(f):
+        var out = ""
+        for r in R:
+            if not out.is_empty: out += "\n"
+            var row = ""
+            for c in C:
+                if not row.is_empty: row += " "
+                row += "{f.get(r, c)}"
+            out += row
+        out
+
+impl Show for DualFenwick<D, T>:
+    /// The current values in key order, space-separated.
+    ///
+    /// example: `var d = DualFenwick([1, 2, 3]); d.add(1..3, 5); "{d}" == "1 7 8"`
+    fn show(f):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{f.get(i)}"
+        out
+
+impl Show for RangeFenwick<D>:
+    /// The current values in key order, space-separated.
+    ///
+    /// example: `var f = RangeFenwick([1, 2, 3]); f.add(0..2, 4); "{f}" == "5 6 3"`
+    fn show(f):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{f.fold(i..=i)}"
+        out
+
+impl Show for XorFenwick<D, T>:
+    /// The current values in key order, space-separated.
+    ///
+    /// example: `var f = XorFenwick([1, 2, 3]); f.add(2, 1); "{f}" == "1 2 2"`
+    fn show(f):
+        var out = ""
+        for i in D:
+            if not out.is_empty: out += " "
+            out += "{f.xor(i..=i)}"
+        out
+
+impl Show for SparseFenwick2D<T>:
+    /// Each added point as `x y: value`, comma-separated; before `build`, the points alone.
+    ///
+    /// example: `var f = SparseFenwick2D<Int>(); f.add_point(1, 2); f.build(); f.add(1, 2, 7); "{f}" == "1 2: 7"`
+    fn show(f):
+        var out = ""
+        for (x, y) in f.pts:
+            if not out.is_empty: out += ", "
+            out += if f.built: "{x} {y}: {f.fold(x..x + 1, y..y + 1)}" else: "{x} {y}"
+        out
