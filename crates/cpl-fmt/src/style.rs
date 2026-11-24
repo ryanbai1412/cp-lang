@@ -86,6 +86,10 @@ impl Style {
     /// directory, or the defaults. Returns the path it read with any bad
     /// lines.
     pub fn discover(source: &Path) -> (Style, Option<(PathBuf, Vec<StyleError>)>) {
+        // The browser build has no files to find a `cp.toml` in.
+        if cfg!(target_family = "wasm") {
+            return (Style::default(), None);
+        }
         match cpl_config::discover(source) {
             Some((file, text)) => {
                 let (style, errors) = Style::from_toml(&text);
