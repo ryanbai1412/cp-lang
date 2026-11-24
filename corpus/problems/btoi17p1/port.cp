@@ -1,4 +1,5 @@
 // Source: BOI 2017 Day 1 (Political Development), https://dmoj.ca/problem/btoi17p1
+// limits: 1000 ms, 1024 MB
 // Problem: n <= 5e4 politicians, each with the list of those they disagree with (symmetric),
 //   and K <= 10 such that every non-empty group has a member disagreeing with < K others in
 //   it. Print the size of the largest group in which every two disagree (a largest clique).
@@ -14,9 +15,9 @@ let k: 1..=10 = read()
 domain P = 0..n
 let lists: [P]List<P> = read()
 
-var pals: Set<(P, P)> = []
-for p in P:
-    for q in lists[p]: pals.insert((p, q))
+// each list sorted, so a pair is a binary search
+let foes = [P] p => lists[p].sorted()
+fn foes_of(p: P, q: P) -> Bool = foes[p].first_ge(q).map(i => foes[p][i] == q) ?? false
 var deg: [P]Int = [P] p => lists[p].len
 var gone: [P]Bool = false
 var heap = MinHeap<(Int, P)>()
@@ -33,7 +34,7 @@ while let (d, u) = heap.pop():
     domain Near = 0..near.len
     var mates: [Near]Subset<Near> = Subset<Near>.empty
     for i in Near:
-        for j in Near if (near[i.ord], near[j.ord]) in pals: mates[i] = mates[i].with(j)
+        for j in Near if foes_of(near[i.ord], near[j.ord]): mates[i] = mates[i].with(j)
     var clique: [Near.subsets]Bool = true
     for s in Subset<Near> if let i = s.first():
         let rest = s.without(i)
