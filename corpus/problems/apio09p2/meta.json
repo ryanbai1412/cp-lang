@@ -23,5 +23,10 @@
  "difficulty": "hard",
  "dream": "none",
  "spec": "draft",
- "notes": "Greedy-next links as a forest: Rooted.from_parents + jump_while counts picks. Suffix argmin via .rev.scan(min) over (end, id); free gaps in an IntervalMap."
+ "notes": "Greedy-next links as a forest: Rooted.from_parents + jump_while counts picks. Suffix argmin via .rev.scan(min) over (end, id); free gaps in an IntervalMap.",
+ "dream_stress": {
+  "ok": true,
+  "cases": 10,
+  "sha": "3d80c8dc7cec6850211ff93a2f8a769163fd45d9"
+ }
 }
