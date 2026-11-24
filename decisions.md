@@ -9194,3 +9194,5 @@ mechanism, and the lowering's `rev` arm and the bound-fail method fallback go.
 - **Reverse.** Drop the list-shape arm; `Prefix(list)` is `Prefix<Int, T>` again.
 
 ## 612. (reserved, stdlib)
+
+## 613. (reserved, stdlib)
