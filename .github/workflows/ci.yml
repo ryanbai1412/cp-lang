@@ -429,9 +429,14 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           printf '%s\n' "$changed" | sort -u | xargs -r git add -A --
           git commit -q -m "factory: regenerate generated files" -m "Domain: ${domain:-infra}"
-          . scripts/retry.sh
-          RETRY_TRIES=5 retry sh -c 'git pull -q --rebase origin main && git push -q origin HEAD:main'
-          gh workflow run ci.yml --ref main
+          # One attempt: a conflict or a lost push race means a newer main tip
+          # exists, and that tip's own run regenerates the same files.
+          if git pull -q --rebase origin main && git push -q origin HEAD:main; then
+            gh workflow run ci.yml --ref main
+          else
+            [ ! -d .git/rebase-merge ] || git rebase --abort
+            echo "::notice::main moved on; its own run regenerates these files"
+          fi
           failed
 
   # Milestone 1 acceptance: rejudge every committed acceptance-run solution
