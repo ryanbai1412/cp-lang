@@ -1,4 +1,5 @@
 // Source: Codeforces 2201C, https://codeforces.com/contest/2201/problem/C
+// limits: 2000 ms, 256 MB
 // Problem: multitest; a regular bracket sequence s, 2 <= n <= 3e5 (sum n <= 3e5). Count the
 //   non-empty subsequences whose cyclic right shift (each chosen character takes the previous
 //   chosen one's value, the first takes the last's) leaves s regular, modulo 998244353.

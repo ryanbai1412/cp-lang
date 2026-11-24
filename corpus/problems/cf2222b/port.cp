@@ -1,4 +1,5 @@
 // Source: Codeforces 2222B (Artistic Balance Tree), https://codeforces.com/contest/2222/problem/B
+// limits: 1500 ms, 256 MB
 // Problem: an array a of n <= 1e5 values, |a[i]| <= 1e9, and m <= 1e5 operations in order: the
 //   i-th first swaps a[u - k] and a[u + k] for k = 1..=y around any center u you choose, then
 //   marks the element (not the index) now at index x_i. Print the least possible sum of the

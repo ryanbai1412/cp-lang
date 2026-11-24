@@ -1,4 +1,5 @@
 // Source: Codeforces 2237B (Annoying the Ghost), https://codeforces.com/contest/2237/problem/B
+// limits: 1500 ms, 256 MB
 // Problem: piles a_1..a_n and a strictly increasing target b_1..b_n (values <= 1e9). Add any
 //   non-negative amount to each pile, then swap adjacent piles; print the fewest swaps that make
 //   the row exactly b, or -1. Multitest, sum of n <= 2000.

@@ -1,5 +1,6 @@
 // Source: Codeforces 2211C1, Equal Multisets (Easy Version),
 //   https://codeforces.com/contest/2211/problem/C1
+// limits: 2000 ms, 256 MB
 // Problem: multitest, sum n <= 2e5; a is a permutation of 1..=n, each b_i is in 1..=n or -1.
 //   Can the -1s be filled so every length-k window of b is a rearrangement of the same
 //   window of a? Print YES or NO.

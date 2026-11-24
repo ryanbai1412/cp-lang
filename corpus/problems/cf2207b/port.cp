@@ -1,4 +1,5 @@
 // Source: Codeforces 2207B (One Night At Freddy's), https://codeforces.com/contest/2207/problem/B
+// limits: 1000 ms, 256 MB
 // Problem: m animatronics start at danger 0; in each second 1..=l one of them (adversary's
 //   choice) gains 1, and right after seconds a_1 < ... < a_n you reset one to 0. Print the
 //   smallest x you can guarantee as the final maximum. n <= l, m * l <= 2e5; multitest, sum of

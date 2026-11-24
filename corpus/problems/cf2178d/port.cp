@@ -1,4 +1,5 @@
 // Source: Codeforces 2178D, Xmas or Hysteria, https://codeforces.com/contest/2178/problem/D
+// limits: 2000 ms, 512 MB
 // Problem: multitest, sum n <= 2e5; elves with distinct attacks a_i <= 1e9, health a_i. When
 //   alive x attacks alive y, y loses a_x and x loses a_y. Print a list of attacks after which
 //   exactly m elves survive, each of them having attacked, or -1.

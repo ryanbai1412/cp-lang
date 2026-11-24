@@ -1,6 +1,24 @@
 #!/usr/bin/env python3
 # usage: gen.py seed size; size caps the sum of n (the statement allows 3e5)
 import random, sys
+if sys.argv[1] == "--max":
+    # one test at sum n = 3e5: a random regular sequence leaning open, so the balance often
+    # drops back under 2 and the counts reset
+    g = random.Random(1)
+    half = 150_000
+    out, op, cl = [], 0, 0
+    for _ in range(2 * half):
+        if op == half or (op > cl and g.random() >= 0.55):
+            out.append(")")
+            cl += 1
+        else:
+            out.append("(")
+            op += 1
+    print(1)
+    print(2 * half)
+    print("".join(out))
+    sys.exit()
+
 rng = random.Random(int(sys.argv[1]))
 budget = max(2, min(int(sys.argv[2]) if len(sys.argv) > 2 else 20, 300_000)) // 2
 halves = []

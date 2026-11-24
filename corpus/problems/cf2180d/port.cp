@@ -1,4 +1,5 @@
 // Source: Codeforces 2180D, Insolvable Disks, https://codeforces.com/contest/2180/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: multitest, sum n <= 2e6; centres 0 <= x_1 < ... < x_n <= 1e9 on a line. Choose a
 //   positive radius per disk, no two overlapping, to maximize the number of tangent pairs.
 // Solution: only neighbours can touch. Sweep left to right keeping the open interval of radii

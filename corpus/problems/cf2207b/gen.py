@@ -1,5 +1,14 @@
 #!/usr/bin/env python3
 import random, sys
+if sys.argv[1] == "--max":
+    # one test at sum m * l = 2e5 maximising l * min(m, n + 1): m = 400, l = 500, n = 399
+    g = random.Random(1)
+    n, m, l = 399, 400, 500
+    print(1)
+    print(n, m, l)
+    print(*sorted(g.sample(range(1, l + 1), n)))
+    sys.exit()
+
 rng = random.Random(int(sys.argv[1]))
 size = int(sys.argv[2])
 # statement: t <= 1e4, 1 <= n, m, l <= 2e5, n <= l, m * l <= 2e5, a strictly increasing in 1..=l,

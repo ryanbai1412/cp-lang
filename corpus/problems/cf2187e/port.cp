@@ -1,4 +1,5 @@
 // Source: Codeforces 2187E (Doors and Keys), https://codeforces.com/contest/2187/problem/E
+// limits: 3000 ms, 1024 MB
 // Problem: rooms 1..n+1 in a line; door i (rooms i, i+1) opens by itself at second a_i <= 2e5
 //   or when a key is spent on it. Room i holds a key if s_i = 1; you carry at most one key at
 //   a time, and a move takes a second. For each i print the least time to reach room i+1
