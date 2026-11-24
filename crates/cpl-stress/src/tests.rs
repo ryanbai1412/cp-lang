@@ -1274,7 +1274,7 @@ fn a_letter_domain_is_made_in_its_range_as_the_runtime_reads_it() {
 
 #[test]
 fn a_weighted_tree_is_made_and_shrunk_as_a_tree_with_its_weights() {
-    let src = "let n: 2..=10 = read()\ndomain V = 1..=n\ntype Tree = [0..n - 1](u: V, v: V, w: 1..=9)\nlet t: Tree = read()\nprint(n)\n";
+    let src = "let n: 2..=10 = read()\ndomain V = 1..=n\n@stress(tree)\ntype Tree = [0..n - 1](u: V, v: V, w: 1..=9)\nlet t: Tree = read()\nprint(n)\n";
     let spec = InputSpec::from_source(src).unwrap();
     let weights_in_range = |value: &Value| {
         match value {
@@ -1355,6 +1355,55 @@ fn is_graph(value: &Value, n: i128, m: usize, connected: bool, directed: bool, d
     edges.len() == m && (!connected || joined) && (!dag || !cycle)
 }
 
+/// Stress makes a type as what `@stress(..)` on the declaration it
+/// resolves to says: an alias of std's keeps std's, and a user's own type of
+/// the same name is the plain values its type says.
+#[test]
+fn a_std_alias_is_made_as_std_says_and_a_same_named_user_type_is_not() {
+    let made = |src: &str| {
+        let spec = InputSpec::from_source(src).unwrap();
+        (0..200)
+            .filter_map(|seed| generate(&spec, &mut Rng::new(seed), Size::Small(8)))
+            .collect::<Vec<_>>()
+    };
+    let head = "let (n, m): (2..=8, 1..=12) = read()\ndomain V = 1..=n\ndomain E = 0..m\n";
+    let n_m = |case: &Case| match &case.values[0] {
+        Value::Tuple(nm) => (nm[0].number().unwrap(), nm[1].number().unwrap() as usize),
+        _ => panic!("{case:?}"),
+    };
+    let aliased = format!(
+        "use std.graph.{{Dag}}\n{head}type P = Perm<V>\ntype T = Tree<V>\ntype G = Dag<V, E>\nlet p: P = read()\nlet t: T = read()\nlet g: G = read()\nprint(n)\n"
+    );
+    let cases = made(&aliased);
+    assert!(cases.len() >= 50, "{} cases", cases.len());
+    for case in &cases {
+        let (n, m) = n_m(case);
+        assert!(is_perm(&case.values[1], n), "{case:?}");
+        assert!(is_tree(&case.values[2], n), "{case:?}");
+        assert!(
+            is_graph(&case.values[3], n, m, false, true, true),
+            "{case:?}"
+        );
+    }
+    let own = format!(
+        "{head}type Perm = [V]V\ntype Tree = [0..n - 1](u: V, v: V)\ntype Dag = [E](u: V, v: V)\nlet p: Perm = read()\nlet t: Tree = read()\nlet g: Dag = read()\nprint(n)\n"
+    );
+    let cases = made(&own);
+    let some = |test: &dyn Fn(&Case) -> bool| cases.iter().any(test);
+    assert!(
+        some(&|c| !is_perm(&c.values[1], n_m(c).0)),
+        "every Perm a permutation"
+    );
+    assert!(
+        some(&|c| !is_tree(&c.values[2], n_m(c).0)),
+        "every Tree a tree"
+    );
+    assert!(
+        some(&|c| !is_graph(&c.values[3], n_m(c).0, n_m(c).1, false, true, true)),
+        "every Dag acyclic"
+    );
+}
+
 const GRAPHS: &str = "use std.graph.{SimpleGraph, ConnectedGraph, Dag, Digraph}\n\
 let (n, m): (2..=8, 1..=12) = read()\n\
 domain V = 1..=n\n\
@@ -1362,8 +1411,9 @@ domain E = 0..m\n\
 let a: SimpleGraph<V, E> = read()\n\
 let b: ConnectedGraph<V, E> = read()\n\
 let c: Dag<V, E> = read()\n\
-type SimpleGraph = [E](u: V, v: V, w: 1..=9)\n\
-let d: SimpleGraph = read()\n\
+@stress(simple)\n\
+type Weighted = [E](u: V, v: V, w: 1..=9)\n\
+let d: Weighted = read()\n\
 let e: Digraph<V, E> = read()\n\
 print(n)\n";
 

@@ -1628,7 +1628,7 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   and the C++ as numbers (`66`, not `B`) today, though `plan/19` says its values are chars; stress
   makes what the reader accepts. When the reader takes letters, make `Shape::Int` with a char bound
   produce `Value::Char`. Reverse: that same change.
-- **25.4 Simple, connected and acyclic graphs are three stdlib aliases.** `std.graph` gains
+- **25.4 Simple, connected and acyclic graphs are three stdlib aliases (names superseded by 25.32).** `std.graph` gains
   `SimpleGraph<V, E>`, `ConnectedGraph<V, E>` and `Dag<V, E>`, each `[E](u: V, v: V)`: one edge per
   value of `E`, read and printed like any edge list by `cpl run` and the C++. Stress makes them with
   no loop and no repeated pair (an unordered pair for the first two, an arc for `Dag`), the second
@@ -1833,6 +1833,15 @@ recurring. Each one is implemented in the Rust compiler and covered by a program
   Only when the branch is the last top-level line that reads, no reader fn is
   inlined and no name is bound twice: a later read could need a name the arms now
   hold. Reverse: drop `Builder::top_choice` and its call.
+- **25.32 `@stress(kind)` on a type alias says how stress makes its values.** `std` writes
+  `@stress(perm)` above `Perm`, `@stress(tree)` above `Tree`, and `@stress(simple)`,
+  `@stress(connected)`, `@stress(dag)`, `@stress(digraph)` above the four graph aliases. Stress reads
+  the decorator on the declaration the checker resolves a written type to
+  (`Facts::imported_type`), or on a user's own alias, so `type P = Perm<V>` is a permutation, a
+  user's undecorated `type Tree = [0..n - 1](u: V, v: V)` is a plain edge list, and a weighted tree
+  is `@stress(tree) type Tree = [0..n - 1](u: V, v: V, w: 1..=9)`. This replaces 25.4's
+  recognition by name, which gave a user's own `Tree` std's meaning and kept std's type names in
+  cpl-stress. Reverse: match the alias names in cpl-stress again.
 
 ## 26. The stdlib surface (`plan/STDLIB.md`, 2026-11-21)
 

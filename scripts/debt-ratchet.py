@@ -3071,6 +3071,7 @@ HARD_ZERO = frozenset({
     "plan_delta_lines", "idioms_evidenced_unlinted", "v02_port_files", "judge_tables",
     "trait_gaps",
     "unwrap_input",
+    "consumer_rederived",
     "std_trait_matrix",
     "edge_labels_unrun",
     "std_model_gaps",
