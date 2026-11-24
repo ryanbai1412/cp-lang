@@ -56,6 +56,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "cpl-config"
+version = "0.3.0"
+
+[[package]]
 name = "cpl-conform"
 version = "0.3.0"
 dependencies = [
@@ -119,6 +123,7 @@ version = "0.3.0"
 name = "cpl-fmt"
 version = "0.3.0"
 dependencies = [
+ "cpl-config",
  "cpl-corpus",
  "cpl-diag",
  "cpl-syntax",
@@ -160,6 +165,7 @@ name = "cpl-lint"
 version = "0.3.0"
 dependencies = [
  "cpl-check",
+ "cpl-config",
  "cpl-corpus",
  "cpl-diag",
  "cpl-env",
