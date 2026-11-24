@@ -657,6 +657,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The wasm ratchet's walk back to the nearest first-parent with saved sizes.
+          fetch-depth: 21
       - uses: ./.github/actions/setup-rust
         with:
           target: release
@@ -694,11 +697,17 @@ jobs:
           WASM_SIZE_HISTORY: ${{ github.workspace }}/.wasm-size/last
           WASM_NAMES: ${{ runner.temp }}/wasm-names/cpl.wasm
         run: just web-build
+      - name: Record cpl.wasm's crate sizes
+        if: ${{ !cancelled() && hashFiles('.wasm-size/last') != '' }}
+        run: scripts/wasm-ratchet.sh record "$RUNNER_TEMP/wasm-names/cpl.wasm" .wasm-size/sizes
       - uses: actions/cache/save@v4
         if: ${{ !cancelled() && github.ref == 'refs/heads/main' && hashFiles('.wasm-size/last') != '' }}
         with:
           path: .wasm-size
           key: wasm-size-${{ github.run_id }}
+      - name: Hold every crate to the shrink-only wasm ratchet
+        if: ${{ !cancelled() && hashFiles('.wasm-size/last') != '' }}
+        run: scripts/wasm-ratchet.sh check "$RUNNER_TEMP/wasm-names/cpl.wasm" .wasm-size/sizes
       - name: Typecheck
         run: just web-typecheck
       - name: Unit tests
