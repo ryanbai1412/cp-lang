@@ -1,4 +1,5 @@
 // Source: Codeforces 2150A (Incremental Path), https://codeforces.com/contest/2150/problem/A
+// limits: 1000 ms, 256 MB
 // Problem: cells 1..=1e9, m <= 1e5 of them black; a string s of n <= 1e5 commands, A (go to x + 1)
 //   or B (go to the next white cell). For i = 1..=n a person starts at cell 1, runs the first i
 //   commands and paints the final cell black. Print the black cells at the end (multitest).

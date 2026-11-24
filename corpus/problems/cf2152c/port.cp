@@ -1,4 +1,5 @@
 // Source: Codeforces 2152C, Triple Removal, https://codeforces.com/contest/2152/problem/C
+// limits: 2000 ms, 1024 MB
 // Problem: multitest, binary array, n, q <= 250000 (sums bounded). An operation removes three
 //   equal elements at i < j < k at cost min(j - i, k - j). For each query [l, r] print the
 //   least cost to empty that subarray, or -1.

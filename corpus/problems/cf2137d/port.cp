@@ -1,5 +1,6 @@
 // Source: Codeforces 2137D (Replace with Occurrences),
 //   https://codeforces.com/contest/2137/problem/D
+// limits: 2000 ms, 256 MB
 // Problem: given b of length n <= 2e5 (1 <= b_i <= n), build a with 1 <= a_i <= n where the
 //   value a_i occurs exactly b_i times in a, or print -1. Multitest, sum n <= 2e5.
 // Solution: positions with b_i = x split into groups of x sharing one label, so a exists iff

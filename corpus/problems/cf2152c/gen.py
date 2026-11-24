@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
 import random, sys
-rng = random.Random(int(sys.argv[1]))
-size = int(sys.argv[2])
+if sys.argv[1:] == ["--max"]:
+    rng, size = random.Random(2152), 10**9
+else:
+    rng = random.Random(int(sys.argv[1]))
+    size = int(sys.argv[2])
 # statement: t <= 1e4, 1 <= n, q <= 250000, sums of n and of q <= 250000
 MAX, MAX_T = 250_000, 10_000
 if size < 1000:
     cases = [(rng.randint(1, max(4, size * 5)), rng.randint(1, max(3, size * 4))) for _ in range(rng.randint(1, 4))]
 else:
-    cases = [(MAX, MAX)] if rng.randrange(3) else [(MAX // MAX_T, MAX // MAX_T)] * MAX_T
+    cases = [(MAX, MAX)] if size == 10**9 or rng.randrange(3) else [(MAX // MAX_T, MAX // MAX_T)] * MAX_T
 print(len(cases))
 for n, q in cases:
     print(n, q)

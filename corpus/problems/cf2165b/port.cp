@@ -1,4 +1,5 @@
 // Source: Codeforces 2165B (Marble Council), https://codeforces.com/contest/2165/problem/B
+// limits: 2000 ms, 512 MB
 // Problem: a multiset a of n <= 5000 values in 1..=n. Split a into any non-empty groups and
 //   put one mode of each group into s. Count the distinct multisets s, mod 998244353.
 //   Multitest, sum of n <= 5000.

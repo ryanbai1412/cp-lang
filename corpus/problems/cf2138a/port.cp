@@ -1,4 +1,5 @@
 // Source: Codeforces 2138A (Cake Assignment), https://codeforces.com/contest/2138/problem/A
+// limits: 2000 ms, 256 MB
 // Problem: two piles of 2^k cakes (k <= 60); a move gives half of an even pile to the other.
 //   Print the fewest moves to reach (x, 2^(k+1) - x) and the moves (1 or 2, by who gives).
 //   Multitest.

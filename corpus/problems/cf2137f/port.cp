@@ -1,5 +1,6 @@
 // Source: Codeforces 2137F, Prefix Maximum Invariance,
 //   https://codeforces.com/contest/2137/problem/F
+// limits: 3000 ms, 256 MB
 // Problem: multitest, sum n <= 2e5, a_i, b_i in 1..=2n. f(x, y) is the most positions where z
 //   can equal y, over z with the same prefix maxima as x. Print the sum of
 //   f(a[l..=r], b[l..=r]) over all subarrays.

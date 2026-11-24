@@ -1,4 +1,5 @@
 // Source: Codeforces 2178B (Impost or Sus), https://codeforces.com/contest/2178/problem/B
+// limits: 1000 ms, 256 MB
 // Problem: a string r of 's' and 'u' (3 <= |r| <= 2e5; multitest, sum <= 2e5). It is suspicious
 //   when 's' appears at least twice and every 'u' has its two nearest 's' equally far away.
 //   Print the fewest letters to change to 's' to make it suspicious.

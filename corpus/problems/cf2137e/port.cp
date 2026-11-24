@@ -1,4 +1,5 @@
 // Source: Codeforces 2137E, Mexification, https://codeforces.com/contest/2137/problem/E
+// limits: 2000 ms, 256 MB
 // Problem: multitest, sum n <= 2e5, a_i in 0..=n, k <= 1e9. Apply k times: replace every a_i
 //   at once by the MEX of the other elements. Print the sum of the final array.
 // Solution: let base be the least value whose count is not 1; values below it stay fixed. If
