@@ -10,10 +10,11 @@
 /// `x` with `ok(x)`, to within `(hi - lo) / 2^steps`, or `None` when `not ok(hi)`.
 ///
 /// It first calls `ok(hi)`; then `steps` times it tests the midpoint `m` of `[lo, hi]` and keeps
-/// `[lo, m]` when `ok(m)`, else `[m, hi]`. The result is the final `hi`, so `ok` holds there.
+/// `[lo, m]` when `ok(m)`, else `[m, hi]`. The result is the final `hi`, so `ok` holds there. A
+/// monotone `ok` has one flip.
 ///
 /// cost: \(O(\mathit{steps})\) calls of `ok`, exactly `steps + 1`
-/// ties: none: a monotone `ok` has one flip
+/// ties: `bsearch_real(0.0, 8.0, x => x >= 2.0, steps: 2) == Some(2.0)`
 /// traps: when `lo > hi` or `steps < 0`
 /// example: `abs(bsearch_real(0.0, 2.0, x => x * x >= 2.0)! - 1.4142135623730951) <= 1e-9`
 /// example: `bsearch_real(0.0, 8.0, x => x >= 3.0, steps: 3) == Some(3.0)`
@@ -101,8 +102,8 @@ fn golden_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int, larger: Bool) -> F64
 /// assume. A non-unimodal `f` gives an unspecified position of `r`.
 ///
 /// cost: \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`
-/// empty: `None`
-/// ties: the first position of the plateau
+/// empty: `ternary_max(0..0, i => i) == None`
+/// ties: `let f = [0, 2, 2, 2, 1]; ternary_max(0..5, i => f[i]) == Some(1)`
 /// traps: never
 /// example: `ternary_max(0..6, i => -(i - 3) * (i - 3)) == Some(3)`
 /// example: `let f = [0, 1, 2, 2, 1]; ternary_max(0..5, i => f[i]) == Some(2)`
@@ -118,8 +119,8 @@ pub fn ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I:
 /// assume. A non-unimodal `f` gives an unspecified position of `r`.
 ///
 /// cost: \(O(\log n)\) calls of `f`, about log_phi n + 3, for n = `r.len`
-/// empty: `None`
-/// ties: the first position of the plateau
+/// empty: `ternary_min(0..0, i => i) == None`
+/// ties: `let f = [3, 1, 1, 1, 2]; ternary_min(0..5, i => f[i]) == Some(1)`
 /// traps: never
 /// example: `ternary_min(0..6, i => (i - 4) * (i - 4)) == Some(4)`
 /// example: `let f = [3, 1, 1, 2]; ternary_min(0..4, i => f[i]) == Some(1)`
@@ -131,11 +132,12 @@ pub fn ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I:
 /// within `(hi - lo) * 0.618^steps` of the maximizer.
 ///
 /// Two interior probes start the search; each of the `steps` rounds keeps the side holding the
-/// larger probe and adds one probe. The result is the midpoint of the final bracket.
+/// larger probe and adds one probe. The result is the midpoint of the final bracket. On a plateau
+/// at the maximum it is whichever plateau point the bracket closes on.
 ///
 /// cost: \(O(\mathit{steps})\) calls of `f`, exactly `steps + 2`
-/// empty: `lo` when `lo == hi`
-/// ties: on a plateau at the maximum, whichever plateau point the bracket closes on
+/// empty: `ternary_max_real(2.0, 2.0, x => x) == 2.0`
+/// ties: `let x = ternary_max_real(0.0, 4.0, t => min(t, 2.0) - max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
 /// traps: when `lo > hi` or `steps < 0`
 /// example: `abs(ternary_max_real(0.0, 4.0, x => -(x - 1.0) * (x - 1.0)) - 1.0) <= 1e-6`
 /// example: `ternary_max_real(2.0, 2.0, x => x) == 2.0`
@@ -146,11 +148,12 @@ pub fn ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F6
 /// within `(hi - lo) * 0.618^steps` of the minimizer.
 ///
 /// Two interior probes start the search; each of the `steps` rounds keeps the side holding the
-/// smaller probe and adds one probe. The result is the midpoint of the final bracket.
+/// smaller probe and adds one probe. The result is the midpoint of the final bracket. On a plateau
+/// at the minimum it is whichever plateau point the bracket closes on.
 ///
 /// cost: \(O(\mathit{steps})\) calls of `f`, exactly `steps + 2`
-/// empty: `lo` when `lo == hi`
-/// ties: on a plateau at the minimum, whichever plateau point the bracket closes on
+/// empty: `ternary_min_real(1.5, 1.5, x => x) == 1.5`
+/// ties: `let x = ternary_min_real(0.0, 4.0, t => max(2.0 - t, 0.0) + max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
 /// traps: when `lo > hi` or `steps < 0`
 /// example: `abs(ternary_min_real(-3.0, 3.0, x => (x - 2.0) * (x - 2.0)) - 2.0) <= 1e-6`
 /// example: `ternary_min_real(1.5, 1.5, x => x) == 1.5`
@@ -167,7 +170,7 @@ pub fn ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F6
 /// `r` in increasing order, and `ok` once per open query, between the right `apply` calls.
 ///
 /// cost: \(O((n + \mathit{queries}) \log n)\) calls of `apply` and `ok`, \(O(n + \mathit{queries})\) memory, for n = `r.len`
-/// empty: every entry `None` when `r` is empty; `[]` when `queries == 0`
+/// empty: `(parallel_bsearch(2, 0..0, reset: () => (), apply: _ => (), ok: _ => true), parallel_bsearch(0, 0..4, reset: () => (), apply: _ => (), ok: _ => true)) == ([None, None], [])`
 /// order: `out[q]` answers query `q`, for `q` in `0..queries`
 /// traps: when `queries < 0`
 /// example: `let need = [2, 9]; var c = 0; parallel_bsearch(2, 0..4, reset: () => c = 0, apply: _ => c += 1, ok: q => c >= need[q]) == [Some(1), None]`
@@ -275,10 +278,11 @@ pub fn dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) 
 /// `t` at position `p` yields `t` and queues the non-empty pieces `r.start..p` and `p.next..r.end`
 /// with their own `best`. So the k best cost \(O(k \log(n + k))\) `best` calls, n the number of
 /// groups: the k largest subarray sums, Super Piano, k smallest pair sums (with negated values).
+/// Equal values come out in group order, then left piece before right piece.
 ///
 /// cost: \(O(n + k)\) calls of `best` and \(O((n + k) \log(n + k))\) queue work for the first k values
-/// empty: yields nothing when `groups` is empty or every range is empty
-/// ties: equal values come out in group order, then left piece before right piece
+/// empty: `split_best([0..0, 2..2], range: g => g, best: (_, r) => (0, r.start)).collect() == []`
+/// ties: `split_best([0..2, 0..1], range: g => g, best: (_, r) => (7, r.start)).collect() == [7, 7, 7]`
 /// order: decreasing `T`
 /// traps: when `best` returns a position outside the range it was given
 /// example: `let a = [3, 1, 2]; split_best([0..3], range: g => g, best: (_, r) => r.map(i => (a[i], i)).max()!).collect() == [3, 2, 1]`
@@ -364,9 +368,11 @@ pub fn split_best<G, D, T: Ord>(
 /// within `(hi - lo) * 0.618^steps` of the maximizer: the real `peak`, picked by the range's
 /// element type (decision 419).
 ///
+/// On a plateau at the maximum it is whichever plateau point the bracket closes on.
+///
 /// cost: \(O(\mathit{steps})\) calls of `by`, exactly `steps + 2`
-/// empty: `self.start` when `self.start == self.end`
-/// ties: on a plateau at the maximum, whichever plateau point the bracket closes on
+/// empty: `(2.0..2.0).peak(by: x => x) == 2.0`
+/// ties: `let x = (0.0..4.0).peak(by: t => min(t, 2.0) - max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
 /// traps: when the range is written backwards or `steps < 0`
 /// example: `abs((0.0..4.0).peak(by: x => -(x - 1.0) * (x - 1.0)) - 1.0) <= 1e-6`
 pub fn peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
@@ -375,9 +381,11 @@ pub fn peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
 /// A point of `self` where a continuous unimodal `by` is smallest, by golden-section search,
 /// within `(hi - lo) * 0.618^steps` of the minimizer.
 ///
+/// On a plateau at the minimum it is whichever plateau point the bracket closes on.
+///
 /// cost: \(O(\mathit{steps})\) calls of `by`, exactly `steps + 2`
-/// empty: `self.start` when `self.start == self.end`
-/// ties: on a plateau at the minimum, whichever plateau point the bracket closes on
+/// empty: `(2.0..2.0).valley(by: x => x) == 2.0`
+/// ties: `let x = (0.0..4.0).valley(by: t => max(2.0 - t, 0.0) + max(t - 3.0, 0.0)); not (x < 2.0 or x > 3.0)`
 /// traps: when the range is written backwards or `steps < 0`
 /// example: `abs((-3.0..3.0).valley(by: x => (x - 2.0) * (x - 2.0)) - 2.0) <= 1e-6`
 pub fn valley(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64 =
