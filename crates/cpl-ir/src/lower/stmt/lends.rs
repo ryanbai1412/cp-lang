@@ -57,10 +57,7 @@ impl<'a> Lowerer<'a> {
             }
         }
         let index = match at.map(|f| &self.sigs[f].params) {
-            Some(params) if matches!(params.last().map(|p| &p.ty), Some(Ty::Bound(_))) => {
-                let Some(Ty::Bound(d)) = params.last().map(|p| p.ty.clone()) else {
-                    unreachable!()
-                };
+            Some(params) if let Some(Ty::Bound(d)) = params.last().map(|p| p.ty.clone()) => {
                 if self.probe_ty_silent(index) == Some(Ty::Pos(d)) {
                     let name = ast::Name {
                         text: "r".into(),
