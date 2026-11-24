@@ -1466,3 +1466,46 @@ fn empty_and_trailing_constraint_entries_are_skipped() {
     );
     assert_eq!(reads("").unwrap(), Vec::<String>::new());
 }
+
+#[test]
+fn zero_cost_compares_the_median_layout() {
+    assert_eq!(zero_cost::median(&[3.0, 1.0, 2.0]), 2.0);
+    assert_eq!(zero_cost::median(&[4.0, 1.0, 3.0, 2.0]), 2.5);
+    assert_eq!(zero_cost::median(&[]), 0.0);
+}
+
+#[test]
+fn zero_cost_layouts_move_every_function_by_their_pad() {
+    let dir = scratch("zero-cost-layouts");
+    let src = "static int f(int x) { return x * 3; }\nint main(int c, char**) { return f(c); }\n";
+    let addr = |pad: usize, sym: &str| -> u64 {
+        let cpp = dir.join(format!("p{pad}.cpp"));
+        let bin = dir.join(format!("p{pad}.bin"));
+        std::fs::write(&cpp, zero_cost::padded(src, pad)).unwrap();
+        let built = std::process::Command::new("g++")
+            .args(["-O2", "-std=c++17", "-fno-inline"])
+            .arg(&cpp)
+            .arg("-o")
+            .arg(&bin)
+            .status()
+            .unwrap();
+        assert!(built.success());
+        let nm = std::process::Command::new("nm").arg(&bin).output().unwrap();
+        let text = String::from_utf8(nm.stdout).unwrap();
+        let line = text
+            .lines()
+            .find(|l| {
+                l.split_whitespace()
+                    .last()
+                    .is_some_and(|n| n.starts_with(sym))
+            })
+            .unwrap_or_else(|| panic!("no {sym} in\n{text}"));
+        u64::from_str_radix(line.split_whitespace().next().unwrap(), 16).unwrap()
+    };
+    for sym in ["main", "_ZL1fi"] {
+        let base = addr(0, sym);
+        for pad in &zero_cost::LAYOUTS[1..] {
+            assert_eq!(addr(*pad, sym), base + *pad as u64, "{sym} at pad {pad}");
+        }
+    }
+}

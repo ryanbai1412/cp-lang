@@ -2,6 +2,9 @@
 
 Newest first: what landed (commit), evidence, next, blocked, requests from other lanes.
 
+## 2026-11-24
+- `bench: time zero-cost pairs over a cycle of code layouts`: iterators' 1.08x was where the loop landed, not codegen. At g++ -O2 abstract and direct build to the same inner loop (the end pointer stays in a register), and K bytes of `.text` ahead of the program swing abstract/direct from 0.76x to 1.21x (fastest of 21; K = 0, 16, 32, 48 give 0.93, 0.80, 1.19, 0.76). `cpl bench --zero-cost` now builds each program at `LAYOUTS` (0/16/32/48 bytes) and compares medians: iterators 1.111x -> 0.988x and 1.002x vs direct, 0.80x vs hand.cpp (`--reps 15`). Still red in the full suite, as real gaps: grids 1.35x vs direct and 1.36x vs hand.cpp, modular 1.26x vs direct (1.05x vs hand.cpp).
+
 ## 2026-11-23
 - `codegen: emit a generic fn's instances as one C++ template`: once a file's C++ is over its aim after comments and indentation, the instances of one generic fn (same origin in the IR, with `split`'s `_kN` dropped) whose tokens differ only in type names and integer literals become one `template<class T0, auto V1>` with a declaration ahead of its first use, and each call names its instance (`Mod_7_1_add<Mod_7_1,7>`). It runs to a fixed point, so a template's callers fold too (`ntt` then `convolve`); fns with a `#` line inside never fold. cf2201e/port 47655 -> 38118 bytes, cco20p5/spec 41467 -> 40075, egoi23p7/spec 40444 -> 40325; still 7 over 32 KB. All 35 programs it folds compile under `g++ -std=c++17`; their output matches the `expect:` line or the interpreter (corpus: tests/ and gen.py inputs; cf2201e 90 generated inputs identical to the unfolded C++). Codegen (239), explain accuracy, deterministic C++, read-only-copies pass; `judges a_release_run_builds_with_the_judges_flags_on_the_judges_stack` fails with and without the change (input not reaching the `--release` run).
 

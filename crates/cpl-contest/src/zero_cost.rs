@@ -2,11 +2,12 @@
 //!
 //! For each subdirectory of `bench/zero-cost/` containing `abstract.cp` and
 //! `direct.cp` (plus `input.txt` or `gen.py`), emits C++17, builds both with
-//! `g++ -O2 -std=c++17`, verifies identical stdout, runs `reps` alternating
-//! iterations, compares the fastest wall time of each (`abstract / direct <=
-//! max_ratio`; noise from a loaded machine only adds time, so the minimum is
-//! the stable estimate for a deterministic program),
-//! and compares normalized `-O2 -S` assembly of the `kernel` function.
+//! `g++ -O2 -std=c++17` at each of [`LAYOUTS`], verifies identical stdout,
+//! runs `reps` alternating iterations, takes the fastest wall time of each
+//! build (noise from a loaded machine only adds time, so the minimum is the
+//! stable estimate for a deterministic program) and compares the median over
+//! layouts (`abstract / direct <= max_ratio`), and compares normalized
+//! `-O2 -S` assembly of the `kernel` function.
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -18,6 +19,22 @@ use cpl_diag::Shown;
 pub const DEFAULT_DIR: &str = "bench/zero-cost";
 pub const DEFAULT_REPS: usize = 5;
 pub const DEFAULT_MAX_RATIO: f64 = 1.05;
+
+/// Bytes of code put before each program, one 64-byte cycle in g++'s 16-byte
+/// loop alignment. Where a hot loop lands moves its time by more than the
+/// bar: iterators' abstract and direct build to the same loop, yet run 0.76x
+/// to 1.21x of each other as it shifts. Comparing medians over a whole cycle
+/// times the code, not one address.
+pub const LAYOUTS: [usize; 4] = [0, 16, 32, 48];
+
+/// `cpp` with `pad` bytes at the start of `.text.startup`, which the linker
+/// puts before `.text`, so every function moves by `pad`.
+pub(crate) fn padded(cpp: &str, pad: usize) -> String {
+    if pad == 0 {
+        return cpp.to_string();
+    }
+    format!("asm(\".pushsection .text.startup\\n.skip {pad}, 0x90\\n.popsection\");\n{cpp}")
+}
 
 #[derive(Debug, Clone)]
 pub struct PairResult {
@@ -205,6 +222,21 @@ fn fastest(values: &[f64]) -> f64 {
     values.iter().copied().reduce(f64::min).unwrap_or(0.0)
 }
 
+pub(crate) fn median(values: &[f64]) -> f64 {
+    let mut v = values.to_vec();
+    v.sort_by(f64::total_cmp);
+    match v.len() {
+        0 => 0.0,
+        n if n % 2 == 1 => v[n / 2],
+        n => (v[n / 2 - 1] + v[n / 2]) / 2.0,
+    }
+}
+
+/// The median over layouts of each layout's fastest run.
+fn across_layouts(times: &[Vec<f64>]) -> f64 {
+    median(&times.iter().map(|t| fastest(t)).collect::<Vec<_>>())
+}
+
 pub fn run_pair(dir: &Path, reps: usize, max_ratio: f64) -> PairResult {
     let name = dir
         .file_name()
@@ -228,17 +260,38 @@ pub fn run_pair(dir: &Path, reps: usize, max_ratio: f64) -> PairResult {
         let has_hand_cpp = hand_cpp_src.is_file();
         let abs_cpp = scratch.join("abstract.cpp");
         let dir_cpp = scratch.join("direct.cpp");
-        let abs_bin = scratch.join("abstract.bin");
-        let dir_bin = scratch.join("direct.bin");
-        let hand_bin = scratch.join("hand.bin");
         let input_path = scratch.join("input.txt");
 
-        std::fs::write(&abs_cpp, emit_cpp(&abs_cp)?).map_err(|e| e.to_string())?;
-        std::fs::write(&dir_cpp, emit_cpp(&dir_cp)?).map_err(|e| e.to_string())?;
-        compile_cpp(&abs_cpp, &abs_bin)?;
-        compile_cpp(&dir_cpp, &dir_bin)?;
-        if has_hand_cpp {
-            compile_cpp(&hand_cpp_src, &hand_bin)?;
+        let abs_text = emit_cpp(&abs_cp)?;
+        let dir_text = emit_cpp(&dir_cp)?;
+        std::fs::write(&abs_cpp, &abs_text).map_err(|e| e.to_string())?;
+        std::fs::write(&dir_cpp, &dir_text).map_err(|e| e.to_string())?;
+        let hand_text = if has_hand_cpp {
+            Some(
+                std::fs::read_to_string(&hand_cpp_src)
+                    .map_err(|e| format!("read {}: {e}", hand_cpp_src.shown()))?,
+            )
+        } else {
+            None
+        };
+        let build = |label: &str, text: &str, pad: usize| -> Result<PathBuf, String> {
+            let cpp = scratch.join(format!("{label}-{pad}.cpp"));
+            let bin = scratch.join(format!("{label}-{pad}.bin"));
+            std::fs::write(&cpp, padded(text, pad)).map_err(|e| e.to_string())?;
+            compile_cpp(&cpp, &bin)?;
+            Ok(bin)
+        };
+        let mut bins = Vec::with_capacity(LAYOUTS.len());
+        for pad in LAYOUTS {
+            let hand = match &hand_text {
+                Some(t) => Some(build("hand", t, pad)?),
+                None => None,
+            };
+            bins.push((
+                build("abstract", &abs_text, pad)?,
+                build("direct", &dir_text, pad)?,
+                hand,
+            ));
         }
         generate_input(dir, &input_path)?;
 
@@ -253,59 +306,56 @@ pub fn run_pair(dir: &Path, reps: usize, max_ratio: f64) -> PairResult {
             _ => None,
         };
 
-        let mut abs_times = Vec::with_capacity(reps);
-        let mut dir_times = Vec::with_capacity(reps);
-        let mut hand_times = Vec::with_capacity(reps);
+        let mut abs_times = vec![Vec::with_capacity(reps); LAYOUTS.len()];
+        let mut dir_times = vec![Vec::with_capacity(reps); LAYOUTS.len()];
+        let mut hand_times = vec![Vec::with_capacity(reps); LAYOUTS.len()];
         let mut expected_out: Option<Vec<u8>> = None;
 
-        for r in 0..reps {
-            let (ta, oa) = run_binary(&abs_bin, &input_path)?;
-            let (td, od) = run_binary(&dir_bin, &input_path)?;
-            let hand_run = if has_hand_cpp {
-                Some(run_binary(&hand_bin, &input_path)?)
-            } else {
-                None
-            };
-            if r == 0 {
-                if oa != od {
-                    return Err(format!(
-                        "stdout mismatch: abstract={:?} direct={:?}",
-                        String::from_utf8_lossy(&oa).trim(),
-                        String::from_utf8_lossy(&od).trim()
-                    ));
-                }
-                if let Some((_, ref oh)) = hand_run {
-                    if &oa != oh {
+        for _ in 0..reps {
+            for (l, (abs_bin, dir_bin, hand_bin)) in bins.iter().enumerate() {
+                let (ta, oa) = run_binary(abs_bin, &input_path)?;
+                let (td, od) = run_binary(dir_bin, &input_path)?;
+                let hand_run = match hand_bin {
+                    Some(b) => Some(run_binary(b, &input_path)?),
+                    None => None,
+                };
+                if expected_out.is_none() {
+                    if oa != od {
                         return Err(format!(
-                            "stdout mismatch: abstract={:?} hand.cpp={:?}",
+                            "stdout mismatch: abstract={:?} direct={:?}",
                             String::from_utf8_lossy(&oa).trim(),
-                            String::from_utf8_lossy(oh).trim()
+                            String::from_utf8_lossy(&od).trim()
                         ));
                     }
+                    if let Some((_, ref oh)) = hand_run {
+                        if &oa != oh {
+                            return Err(format!(
+                                "stdout mismatch: abstract={:?} hand.cpp={:?}",
+                                String::from_utf8_lossy(&oa).trim(),
+                                String::from_utf8_lossy(oh).trim()
+                            ));
+                        }
+                    }
+                    expected_out = Some(oa);
+                } else if expected_out.as_ref() != Some(&oa)
+                    || expected_out.as_ref() != Some(&od)
+                    || hand_run
+                        .as_ref()
+                        .is_some_and(|(_, oh)| expected_out.as_ref() != Some(oh))
+                {
+                    return Err("non-deterministic stdout across repetitions".to_string());
                 }
-                expected_out = Some(oa);
-            } else if expected_out.as_ref() != Some(&oa)
-                || expected_out.as_ref() != Some(&od)
-                || hand_run
-                    .as_ref()
-                    .is_some_and(|(_, oh)| expected_out.as_ref() != Some(oh))
-            {
-                return Err("non-deterministic stdout across repetitions".to_string());
-            }
-            abs_times.push(ta);
-            dir_times.push(td);
-            if let Some((th, _)) = hand_run {
-                hand_times.push(th);
+                abs_times[l].push(ta);
+                dir_times[l].push(td);
+                if let Some((th, _)) = hand_run {
+                    hand_times[l].push(th);
+                }
             }
         }
 
-        let abstract_ms = fastest(&abs_times);
-        let direct_ms = fastest(&dir_times);
-        let cpp_ms = if has_hand_cpp {
-            Some(fastest(&hand_times))
-        } else {
-            None
-        };
+        let abstract_ms = across_layouts(&abs_times);
+        let direct_ms = across_layouts(&dir_times);
+        let cpp_ms = has_hand_cpp.then(|| across_layouts(&hand_times));
         let ratio = if direct_ms > 0.0 {
             abstract_ms / direct_ms
         } else {
@@ -460,7 +510,8 @@ pub fn run(args: &[String], stdout: &mut dyn Write, stderr: &mut dyn Write) -> u
     } else {
         let _ = writeln!(
             stdout,
-            "Zero-cost abstraction benchmark (fastest of {reps} runs, bar <= {max_ratio:.2}x):"
+            "Zero-cost abstraction benchmark (median over {} layouts of the fastest of {reps} runs, bar <= {max_ratio:.2}x):",
+            LAYOUTS.len()
         );
         let _ = writeln!(
             stdout,
