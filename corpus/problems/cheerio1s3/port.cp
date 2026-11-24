@@ -7,7 +7,6 @@
 //   seen so far, compared by cross product: (i, j) counts when j's direction is at least the
 //   steepest (all below or on) or at most the shallowest (all above or on). O(n^2).
 // Bounds: n: 2..=5000; obs.t, obs.p: 0..=1e9
-use std.geometry.{cross}
 
 let n: 2..=5000 = read()
 let obs: [0..n](t: 0..=1e9, p: 0..=1e9) = read()

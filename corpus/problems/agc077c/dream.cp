@@ -17,7 +17,6 @@
 // parity as `odd`. Summing these intervals gives [lo, hi] with the same parity
 // as `target`, so `lo <= target <= hi` is both necessary and sufficient.
 
-use std.graph.{components, complement}
 use std.graph.undirected_of_pairs
 
 @!multitest

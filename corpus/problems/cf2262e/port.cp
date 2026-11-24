@@ -11,8 +11,6 @@
 //   counts by inclusion-exclusion, out[j] = sum_k (-1)^(k-j) C(k, j) ans[k], O(n^2).
 // Bounds: n: 1..=500; m: 2..=2 * 10 ** 9
 
-use std.ntt.{ntt}
-
 @!multitest
 let (n, m): (1..=500, 2..=2 * 10 ** 9) = read()
 type Z = Mod<m>

@@ -2,7 +2,6 @@
 // Count rectangles formed by two horizontal and two vertical segments. Fix the lower
 // horizontal level y1, keep the verticals that cross it in two Fenwick trees over x (count,
 // and pairs sharing an x), and sweep the upper level y2 upward, dropping verticals that end.
-use std.seq.{dedup}
 
 type H = (y: Int, x1: Int, x2: Int)
 type Vt = (x: Int, y1: Int, y2: Int)

@@ -9,7 +9,6 @@
 //   rounds (`max_weight_matching`, O(n^3) each), exact in integers.
 // original: corpus/submissions/5466798.cpp
 // Bounds: n: 1..=100; a, b: 1..=1e4
-use std.flow.{max_weight_matching}
 
 let n: 1..=100 = read()
 domain Boy = 0..n

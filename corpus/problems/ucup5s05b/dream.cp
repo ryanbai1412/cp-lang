@@ -6,7 +6,6 @@
 // the line in one point or, when parallel and on it, in a whole x-interval.
 // The answer is the length of the union of those x-intervals (b != 0 after the
 // swap, so x determines the point).
-use std.geometry.{dot}
 
 // Reflect a coordinate back into 0..=m.
 fn fold(v: Int, m: Int) -> Int:

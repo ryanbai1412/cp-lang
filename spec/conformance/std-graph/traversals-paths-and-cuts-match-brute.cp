@@ -1,6 +1,6 @@
 // expect: ok, output "YES"
 // The graph.cp @test bodies run as a program: `cpl test` on std files does not yet see built-in `Next` impls.
-use std.graph.{components, cut_vertices, bridges, two_color, bellman_ford, euler_walk}
+use std.graph.{cut_vertices}
 
 fn random_edges<V, E>() -> [E](u: V, v: V):
     [E] e => (u: V.nth(rand(0, V.count - 1)), v: V.nth(rand(0, V.count - 1)))

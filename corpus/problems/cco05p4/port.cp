@@ -7,7 +7,6 @@
 //   in order, testing the window sum with is_prime; the first hit is the answer. O(n^2)
 //   windows in the worst case, each with a primality test of a sum <= 1e8.
 // original: corpus/submissions/4665767.cpp
-use std.math.{is_prime}
 
 @multitest
 let n: Int = read()

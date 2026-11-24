@@ -1,5 +1,4 @@
 // expect: ok, output "NO YES"
-use std.dsu.{PotentialDsu}
 domain V = 0..3
 var d = PotentialDsu<V>()
 let m = d.mark()

@@ -1,6 +1,6 @@
 // let: V = \sqrt n; L = \sqrt n; R = \sqrt n; F = \sqrt n; P = \sqrt n
 // fixed: c
-use std.flow.{FlowGraph, CostFlow, Arc, Matching, max_closure, max_matching, min_vertex_cover, max_weight_matching, min_weight_matching, general_matching, max_weight_general_matching, circulation, max_bounded_flow, min_bounded_flow, gomory_hu, global_min_cut, best_matching, stable_matching, edge_coloring, min_cost_circulation}
+use std.flow.{CostFlow, Matching, best_matching, stable_matching, edge_coloring, min_cost_circulation}
 // Graphs on V = sqrt n vertices and E = n arcs. The flow families need V augmenting phases: a
 // shortcut 0 -> i of capacity 1 into a chain i -> t gives one path of each length, and the rest of
 // the n arcs can carry nothing but are scanned by every phase.

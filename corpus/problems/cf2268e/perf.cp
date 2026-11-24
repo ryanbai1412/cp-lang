@@ -10,7 +10,6 @@
 // Tuned: the reference's one forward NTT per bit. `rev(a)` is `a` read backwards, so its
 // transform is `a`'s at `-j`, and coefficient `n` of `w * a * rev(a)` is
 // `sum_j W_j A_j A_(-j) / L`: no second transform and no inverse.
-use std.ntt.{ntt}
 
 const MOD = 998_244_353
 const BITS = 18

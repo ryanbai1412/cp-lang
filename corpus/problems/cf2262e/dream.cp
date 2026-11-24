@@ -5,7 +5,6 @@
 // lists), then apply the binomial Taylor shift `ans(x - 1)`:
 // `out[j] = sum_{k=j..n} ans[k] * choose(k, j) * (-1)^(k - j)`.
 
-use std.ntt.{convolve}
 
 @!multitest
 let (n, m): (1..=500, 2..=2 * 10 ** 9) = read()

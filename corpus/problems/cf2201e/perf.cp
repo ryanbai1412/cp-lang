@@ -1,7 +1,6 @@
 // Tuned: one convolution instead of two, as the reference does. A side's cell is 0 for `?`,
 // 1 for `a` and `base` for `b`, so each cyclic product counts aa + ab·base + bb·base² and
 // one NTT pass gives both the agreeing pairs and the known pairs.
-use std.math.{factor}
 
 type Z = Mod<998_244_353>
 

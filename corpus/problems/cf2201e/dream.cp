@@ -15,8 +15,6 @@
 // with no known letter is free. Over all shifts at once: correlating the
 // +1/-1 letter signs gives agree - disagree, correlating known flags gives
 // the number of known pairs.
-use std.math.{factor}
-use std.ntt.{convolve}
 
 type Z = Mod<998_244_353>
 

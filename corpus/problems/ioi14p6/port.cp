@@ -9,7 +9,6 @@
 //   sides over every split of the days, visiting the start city or not.
 // original: corpus/submissions/4691210.cpp (a grader function)
 // Bounds: n: 1..=1e5; start: 0..=n - 1; days: 0..=250000; fun: 0..=1e9
-use std.dp.{monotone_minima}
 use std.segtree.{WaveletMatrix}
 
 let (n, start, days): (1..=1e5, 0..n, 0..=250000) = read()

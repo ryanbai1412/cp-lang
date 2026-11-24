@@ -37,12 +37,80 @@ use std.beats.{BeatsSegTree}
 use std.bitset.{Bitset}
 use std.deque.{Deque}
 use std.derive.{Hash}
-use std.dp.{LiChao, Line, LineContainer, MonotoneHull, aliens}
+use std.dp.{
+    LiChao,
+    Line,
+    LineContainer,
+    MonotoneHull,
+    aliens,
+    backtrack,
+    knuth,
+    monge_path,
+    monotone_minima,
+    smawk,
+}
 use std.dsu.{Dsu, DsuOf, ParityDsu, PotentialDsu}
 use std.fenwick.{Fenwick, Fenwick2D}
-use std.flow.{Arc, FlowGraph, max_closure}
-use std.geometry.{ByAngle, Location, Pt, cross, dot, locate, turn}
-use std.ntt.{Curved, convolve, convolve_2d}
+use std.flow.{
+    Arc,
+    FlowGraph,
+    max_closure,
+    circulation,
+    general_matching,
+    global_min_cut,
+    gomory_hu,
+    max_bounded_flow,
+    max_matching,
+    max_weight_general_matching,
+    max_weight_matching,
+    min_bounded_flow,
+    min_vertex_cover,
+    min_weight_matching,
+}
+use std.geometry.{
+    ByAngle,
+    Location,
+    Pt,
+    locate,
+    turn,
+    angle_less,
+    area2,
+    circle_circle_tangents,
+    circle_intersect,
+    circle_line_intersect,
+    circle_tangents,
+    circles_union_area,
+    circumcenter,
+    close,
+    closest_pair,
+    closest_pair2,
+    convex_hull,
+    convex_hull_idx,
+    cross,
+    diameter2,
+    dot,
+    half_plane_intersect,
+    hull_extreme,
+    hull_tangents,
+    line_dist,
+    line_intersect,
+    locate_convex,
+    lower_hull,
+    min_bounding_box,
+    minkowski_sum,
+    minkowski_upper,
+    on_segment,
+    polygon_area,
+    polygon_cut,
+    project,
+    reflect,
+    same_dir,
+    seg_dist,
+    segments_meet,
+    sign_eps,
+    upper_hull,
+}
+use std.ntt.{Curved, convolve, convolve_2d, ntt, sos}
 use std.graph.{
     Functional,
     Graph,
@@ -62,6 +130,16 @@ use std.graph.{
     reachable,
     scc,
     topo,
+    bellman_ford,
+    bfs01,
+    blocks,
+    bridges,
+    complement,
+    dial,
+    euler_walk,
+    find_cycle,
+    two_color,
+    two_edge_components,
 }
 use std.grid.{Dir4, Dir8, adj4, adj8, ray, step}
 use std.heap.{Heap, MaxHeap, MinHeap, Settle}
@@ -92,7 +170,23 @@ use std.math.{
     pow_mod,
     sign,
     to_str,
+    choose,
+    crt,
+    crt_all,
+    divisors_from_factors,
+    ext_gcd,
+    factor,
+    floor_sum,
+    inv_mod,
+    is_prime,
+    mod_log,
+    mod_sqrt,
+    mul_mod,
+    primitive_root,
+    sieve_multiplicative,
+    splitmix64,
 }
+use std.mo.{mo}
 use std.mod.{Comb, Mod}
 use std.opt.{and_then, is_none_or, is_some_and}
 use std.prefix.{Diff, Prefix, scan}
@@ -103,6 +197,8 @@ use std.search.{
     ternary_max_real,
     ternary_min,
     ternary_min_real,
+    dinkelbach,
+    parallel_bsearch,
 }
 use std.segtree.{SegTree}
 use std.window.{Sweep, Undo, Undoing, Window, track, undoing, window_fold}
@@ -193,5 +289,8 @@ use std.strings.{
     starts_with,
     upper,
     z_function,
+    is_palindrome,
+    lyndon_runs,
+    suffix_array,
 }
 use std.tree.{JumpTree, KruskalTree, LcaTable, Lift, PreferredPaths, Rooted, kruskal_tree}

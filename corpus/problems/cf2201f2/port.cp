@@ -11,7 +11,6 @@
 //   transposed. Compare the two cell multisets by summed splitmix64 hashes: O(1) per query.
 // Bounds: n: 2..=2e6; q: 1..=min(n * n, 2e6); r0, r1: 1..=n
 
-use std.math.{splitmix64}
 
 enum Side: Left | Right
 

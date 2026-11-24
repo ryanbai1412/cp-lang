@@ -2,7 +2,6 @@
 // for every i <= sqrt(k), the values too big to sit beside anything above i matched by values <= i,
 // up to floor(L / 2) of each, and one change fixes two mismatches. A value b > sqrt(k) matters only
 // through k / b, so both sides are histograms over 1..=sqrt(k), kept per window by Mo's algorithm.
-use std.mo.{mo}
 @!multitest
 let (n, q, k) = read<(2..=1e5, 1..=1e5, 1..=1e6)>()
 domain P = 1..=n

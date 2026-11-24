@@ -12,7 +12,6 @@
 //   falling-factorial probability of that origin sequence. O(m + Q).
 // original: corpus/submissions/5652798.cpp
 // Bounds: n: 3..=1e7; m, q: 1..=5e5; kind: 1..=2; a: 0..=n; c: 1..=n
-use std.math.{choose}
 type Z = Mod<998_244_353>
 
 let (n, m, kind): (3..=1e7, 1..=5e5, 1..=2) = read()

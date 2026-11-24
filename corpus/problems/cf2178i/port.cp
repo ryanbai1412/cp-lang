@@ -9,7 +9,6 @@
 //   in A and T; b in T may be picked by each outsider next to b, at most once each. Add dp[out],
 //   subtract 1 for T = all cities. O(3^|A| * |B| * deg), |A| <= 15.
 // Bounds: n: 2..=31; k: 1..=20_000
-use std.graph.{two_color}
 type Z = Mod<998_244_353>
 
 @!multitest

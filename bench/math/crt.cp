@@ -1,5 +1,4 @@
 // Matched benchmark: 1_000_000 std.math.crt calls over deterministic coprime & non-coprime pairs.
-use std.math.{crt}
 
 let n = 1_000_000
 var s = 987654321

@@ -10,7 +10,6 @@
 //   CRT. Factor x, y, z and each p - 1: a product over the primes q.
 // Bounds: xs: 1..=10 ** 6
 
-use std.math.{factor}
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

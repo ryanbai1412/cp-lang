@@ -1,4 +1,4 @@
-use std.geometry.{Vec, Circle, circle_intersect}
+use std.geometry.{Vec, Circle}
 
 let n: Int = read()
 var cnt = 0

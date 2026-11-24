@@ -11,7 +11,6 @@
 //   (difficulty x, length start - x); passes print last first. O(n) per tried d.
 // Bounds: n: 1..=250_000
 
-use std.math.{choose}
 
 const LAYER_COST = 1000
 

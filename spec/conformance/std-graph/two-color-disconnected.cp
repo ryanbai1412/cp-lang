@@ -1,5 +1,4 @@
 // expect: ok, output "YES NO"
-use std.graph.{two_color}
 domain V = 0..4
 let g: [V]List<V> = [[V(1)], [V(0)], [V(3)], [V(2)]]
 let c = two_color(g)!

@@ -27,7 +27,6 @@
 //   with two hull corners; if no such `s` exists, all points lie on the two
 //   diagonals and the 4 hull corners are the unique minimal enclosing polygon.
 // Bounds: n: 3..=2e5; q: 1..=2e5
-use std.geometry.{convex_hull_idx}
 
 const WINDOW = 5
 

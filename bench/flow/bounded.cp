@@ -1,6 +1,5 @@
 // Max flow with lower bounds: 5000 vertices, 200000 random arcs with lo <= hi / 4,
 // plus s -> v and v -> t for every v so a feasible flow exists.
-use std.flow.{max_bounded_flow}
 
 domain V = 0..5000
 var seed = 1

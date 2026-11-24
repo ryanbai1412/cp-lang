@@ -331,36 +331,40 @@ returning a `List<Mod<P>>` of length `n`, with `n == 0` returning `[]`) and
 requires an NTT-friendly prime `P` (`P - 1` divisible by a power of two at
 least `2 * bit_ceil(n)`).
 
+The series functions share their names with the float builtins (`exp`, `log`,
+`sqrt`) and the fast power (`pow`), so the module is reached qualified as a
+whole: `use std.poly` and then `poly.inv(a, n)`, `poly.deriv(a)` (R11.3.3).
+
 <!-- signatures: std/poly.cp -->
 ```cp
-fn deriv<P>(a: List<Mod<P>>) -> List<Mod<P>>
+fn poly.deriv<P>(a: List<Mod<P>>) -> List<Mod<P>>
 // O(a.len) time and memory; formal derivative a'(x), length max(0, a.len - 1)
 
-fn integral<P>(a: List<Mod<P>>) -> List<Mod<P>>
+fn poly.integral<P>(a: List<Mod<P>>) -> List<Mod<P>>
 // O(a.len) time and memory; antiderivative with constant term 0, length a.len + 1
 // (or [] if a is empty); uses linear-time modular inverses 1..=a.len, no O(log P) div
 
-fn inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
+fn poly.inv<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
 // O(n log n) time (~10n log n via half-size Newton doubling: 5 NTTs of size 2m per
 // doubling step m -> 2m), O(n) memory; returns a(x)^(-1) mod x^n.
 // Precondition: n >= 0; if n > 0, a.len > 0 and a[0] != 0.
 
-fn log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
+fn poly.log<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
 // O(n log n) time (1 inv + 1 convolve + deriv + integral, ~13n log n), O(n) memory;
 // returns ln(a(x)) mod x^n = integral(a'(x) * a(x)^(-1)) mod x^n.
 // Precondition: n >= 0; if n > 0, a.len > 0 and a[0] == 1.
 
-fn exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
+fn poly.exp<P>(a: List<Mod<P>>, n: Int) -> List<Mod<P>>
 // O(n log n) time (Newton doubling g <- g * (1 - ln(g) + a) mod x^(2m), ~28n log n),
 // O(n) memory; returns exp(a(x)) mod x^n.
 // Precondition: n >= 0; if n > 0, a.len == 0 or a[0] == 0.
 
-fn pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>
+fn poly.pow<P>(a: List<Mod<P>>, k: Int, n: Int) -> List<Mod<P>>
 // O(n log n) time (1 log + 1 exp when nonzero, O(n) when k == 0 or shifted past n),
 // O(n) memory; returns a(x)^k mod x^n for k >= 0, handling leading zeros a(x) = c x^d (...).
 // Precondition: n >= 0, k >= 0.
 
-fn sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>
+fn poly.sqrt<P>(a: List<Mod<P>>, n: Int) -> ?List<Mod<P>>
 // O(n log n + log^2 P) time (Tonelli-Shanks mod_sqrt for leading term + Newton doubling
 // g <- (g + a * g^(-1)) / 2 mod x^(2m), ~20n log n), O(n) memory.
 // Returns Some(g) with g(x)^2 == a(x) (mod x^n), or None if no square root exists mod P

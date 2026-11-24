@@ -154,7 +154,7 @@
   "lsp_string_types": 13,
   "lint_post_filters": 0,
   "known_lists": 8,
-  "prelude_gaps": 92,
+  "prelude_gaps": 0,
   "permits": 0,
   "trait_gaps": 0,
   "generate_gaps": 0,

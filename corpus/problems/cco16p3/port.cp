@@ -12,7 +12,6 @@
 //   tries each of its cycles. O(n + m) per graph, plus 5! cycles per small block.
 // original: corpus/submissions/5568296.cpp
 // Bounds: pattern: 1..=5; graphs: 1..=1000; n: 1..=100_000; m: 0..=100_000; edges.u, edges.v: 1..=n
-use std.graph.{blocks}
 
 let pattern: 1..=5 = read()
 let graphs: 1..=1000 = read()

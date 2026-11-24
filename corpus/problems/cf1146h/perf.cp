@@ -3,7 +3,6 @@
 // (|x|, |y| <= 10^9), so the orientation test is a 64-bit cross product as in
 // orig.cpp; std's `turn` takes unbounded `Pt`s and works in 128 bits. The
 // bitsets are filled in place, not built from a list of members.
-use std.math.{choose}
 
 let n: 5..=300 = read()
 domain V = 0..n

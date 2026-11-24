@@ -19,7 +19,6 @@
 // Taking the upper hull of the per-length maxima and maximizing `dot(p, Pt(v, 1))`
 // answers each query in O(log n).
 // Bounds: n, q: 1..=500_000
-use std.geometry.{hull_extreme, minkowski_upper, upper_hull}
 
 @!multitest
 let (n, q): (1..=500_000, 1..=500_000) = read()

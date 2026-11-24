@@ -10,7 +10,6 @@
 //   grid) of a cricket touches a cricket or the border 8-way; with no crickets, iff n or m is 1.
 //   Otherwise 2. O(c log c) per test.
 // original: corpus/submissions/4798070.cpp
-use std.graph.{components}
 use scout.connectivity.{articulation_points}
 
 /// Check whether the white cells of an n x m grid minus `blocked` are disconnected.

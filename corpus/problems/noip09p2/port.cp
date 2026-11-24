@@ -7,8 +7,6 @@
 // original: corpus/submissions/5184950.cpp
 // Bounds: a0, a1, b0, b1: 1..=2e9
 
-use std.math.{factor, divisors_from_factors}
-
 @!multitest
 let (a0, a1, b0, b1): (1..=2e9, 1..=2e9, 1..=2e9, 1..=2e9) = read()
 print(count(gcd(x, a0) == a1 and lcm(x, b0) == b1 for x in divisors_from_factors(factor(b1))))

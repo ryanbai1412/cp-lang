@@ -97,12 +97,9 @@ fn an_import_joins_its_module_line_or_the_file_header() {
         assert_eq!(got, want);
     }
     // The checker's quick fix uses it, wherever in the file the name is.
-    let src = "use std.math.{gcd}\nlet a = gcd(4, 6)\nprint(floor_sum(a, 3, 1, 0))\n";
+    let src = "use std.math.{gcd}\nlet a = gcd(4, 6)\nprint(jacobi(a, 3))\n";
     let fix = &one(src).fixes[0];
-    assert_eq!(
-        fix.edits,
-        vec![(Span::point(17), ", floor_sum".to_string())]
-    );
+    assert_eq!(fix.edits, vec![(Span::point(17), ", jacobi".to_string())]);
 }
 
 /// `STD_NAMES` is what the hint for a missing `use` is read from. It is

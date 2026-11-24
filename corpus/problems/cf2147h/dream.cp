@@ -2,7 +2,6 @@
 // If it is not 1, one color. Otherwise two colors always suffice (Gallai): split V
 // so each side's odd-weight edges give every vertex even degree; then every cut
 // inside a side has even weight, so 2 divides all its max flows.
-use std.flow.{gomory_hu}
 @!multitest
 let n: 1..=50 = read()
 domain V = 1..=n

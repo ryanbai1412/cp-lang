@@ -1,5 +1,4 @@
 // expect: ok, output "YES\nYES\nYES\nYES"
-use std.ntt.{ntt}
 type Z = Mod<17>
 var a = [Z(1), Z(0), Z(0), Z(0)]
 ntt(mut a)

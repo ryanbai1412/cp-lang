@@ -6,7 +6,6 @@
 // independently fails to divide the random order with probability `q^(-e)`,
 // and otherwise contributes an extra factor `0` (if `q | M`) or `q^(-1)`.
 
-use std.math.{factor}
 
 const MOD = 998_244_353
 type Z = Mod<MOD>

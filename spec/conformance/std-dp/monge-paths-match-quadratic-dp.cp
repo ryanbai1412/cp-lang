@@ -1,5 +1,5 @@
 // expect: ok, output "0 1 2 0 0 1 YES\nYES"
-use std.dp.{monge_path, monge_paths}
+use std.dp.{monge_paths}
 let r = monge_paths([0, 1, 2], (a, b) => (b - a) * (b - a))
 print(r.val, r.prev, yes(monge_path([0, 1, 2], (a, b) => (b - a) * (b - a)) == (val: 2, count: 2)))
 var ok = true

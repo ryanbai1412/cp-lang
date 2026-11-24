@@ -8,7 +8,6 @@
 // hold a bad walk among p | i with i / p odd. Period 1 is never possible and
 // period 2 only for even n. The same closed form solves both versions; E1's
 // smaller n only lets the odd-divisor sums come from a plain divisor sieve.
-use std.math.{sieve_multiplicative}
 
 type M = Mod<998_244_353>
 // g reads odd_div_sum up to n + 1.

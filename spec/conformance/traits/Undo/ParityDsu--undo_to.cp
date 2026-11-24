@@ -1,5 +1,4 @@
 // expect: ok, output "NO YES"
-use std.dsu.{ParityDsu}
 domain V = 0..3
 var d = ParityDsu<V>()
 let m = d.mark()

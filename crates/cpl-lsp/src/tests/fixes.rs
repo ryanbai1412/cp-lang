@@ -77,34 +77,34 @@ fn quick_fixes_undo_the_most_frequent_mistakes_in_a_real_port() {
 #[test]
 fn quick_fixes_import_a_stdlib_name_where_the_file_imports_its_module() {
     assert_fixes_restore_src(
-        "use std.math.{floor_sum}\nprint(floor_sum(4, 3, 2, 1))\n",
+        "use std.math.{jacobi}\nprint(jacobi(4, 3))\n",
         &[(
-            "use std.math.{floor_sum}\n",
+            "use std.math.{jacobi}\n",
             "",
             "E0201",
-            "add `use std.math.{floor_sum}`",
+            "add `use std.math.{jacobi}`",
         )],
     );
     assert_fixes_restore_src(
-        "use std.math.{gcd, floor_sum}\nprint(gcd(6, 4) + floor_sum(4, 3, 2, 1))\n",
+        "use std.math.{gcd, jacobi}\nprint(gcd(6, 4) + jacobi(4, 3))\n",
         &[(
-            "{gcd, floor_sum}",
+            "{gcd, jacobi}",
             "{gcd}",
             "E0201",
-            "add `use std.math.{floor_sum}`",
+            "add `use std.math.{jacobi}`",
         )],
     );
 }
 
 #[test]
 fn completion_offers_unimported_stdlib_names_with_their_use() {
-    let src = "use std.math.{gcd}\nprint(floor_s|)\n";
+    let src = "use std.math.{gcd}\nprint(jaco|)\n";
     let reply = ask_at("textDocument/completion", src);
     let items = reply.at(&["items"]).as_array().unwrap_or(&[]);
     let item = items
         .iter()
-        .find(|i| i.at(&["label"]).as_str() == Some("floor_sum"))
-        .unwrap_or_else(|| panic!("no floor_sum in {items:?}"));
+        .find(|i| i.at(&["label"]).as_str() == Some("jacobi"))
+        .unwrap_or_else(|| panic!("no jacobi in {items:?}"));
     assert_eq!(
         item.at(&["labelDetails", "description"]).as_str(),
         Some("std.math")
@@ -113,10 +113,10 @@ fn completion_offers_unimported_stdlib_names_with_their_use() {
         .at(&["detail"])
         .as_str()
         .unwrap()
-        .starts_with("fn floor_sum"));
+        .starts_with("fn jacobi"));
     let edits = item.at(&["additionalTextEdits"]).as_array().unwrap_or(&[]);
     assert_eq!(edits.len(), 1);
-    assert_eq!(edits[0].at(&["newText"]).as_str(), Some(", floor_sum"));
+    assert_eq!(edits[0].at(&["newText"]).as_str(), Some(", jacobi"));
     assert_eq!(edits[0].at(&["range", "start", "line"]).as_u32(), Some(0));
     assert_eq!(
         edits[0].at(&["range", "start", "character"]).as_u32(),

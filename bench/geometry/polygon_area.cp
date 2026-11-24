@@ -1,4 +1,4 @@
-use std.geometry.{Vec, area2, polygon_area}
+use std.geometry.{Vec}
 
 let n: Int = read()
 var ipoly: List<Pt> = []

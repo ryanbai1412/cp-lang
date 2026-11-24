@@ -1,7 +1,7 @@
 // expect: ok, output "1 4 9\n9 4\n1 3 4"
 // rule: std.heap push_all
 // `push_all` takes any sequence, such as a filter or a map, not only a `List`.
-use std.heap.{Heap, MaxHeap, MeldHeap}
+use std.heap.{Heap, MeldHeap}
 var a = MeldHeap.of([4])
 a.push_all([1, 2, 3].map(x => x * x).filter(x => x != 4))
 print(a.drain())

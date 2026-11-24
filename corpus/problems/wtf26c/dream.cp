@@ -9,8 +9,6 @@
 // Two binomial inversions then give the answer:
 //   exact[h] = labelled[h] - sum_{g < h} C(h, g) exact[g]
 //   ans[g]   = exact[g]    - sum_{h < g} C(n - h, g - h) ans[h]
-use std.ntt.{convolve_2d}
-use std.poly.{binomial_transform}
 
 type Z = Mod<998_244_353>
 let comb = Comb<Z>()

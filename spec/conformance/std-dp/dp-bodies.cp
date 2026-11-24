@@ -1,5 +1,5 @@
 // expect: ok, output "1 3\n3 5 6 0\n0 1 2 3 4 5 6 7\n0 0\n0 1\n1 1 2 1 3\n1 2 3\n1 2 2\nYES"
-use std.dp.{supermasks, masks_of_size, subset_folds, smawk, lis_ends}
+use std.dp.{supermasks, masks_of_size, subset_folds, lis_ends}
 use std.rand.{Rng}
 print(supermasks(0b01, 2).collect())
 print(masks_of_size(3, 2).collect(), masks_of_size(2, 3).collect(), masks_of_size(4, 0).collect())

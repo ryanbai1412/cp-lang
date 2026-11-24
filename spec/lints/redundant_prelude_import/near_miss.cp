@@ -1,2 +1,2 @@
-use std.geometry.{same_dir}
-print(yes(same_dir(Pt(1, 0), Pt(2, 0))))
+use std.math.{jacobi}
+print(jacobi(2, 7))

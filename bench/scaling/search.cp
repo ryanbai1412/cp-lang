@@ -1,5 +1,5 @@
 // fixed: eps
-use std.search.{bsearch_real, ternary_max, ternary_min, ternary_max_real, ternary_min_real, parallel_bsearch, gallop_first, dinkelbach, split_best}
+use std.search.{gallop_first}
 let n: Int = read()
 let m = n / 16
 let up = (x: F64) => x >= 0.3 // within: search.bsearch_real

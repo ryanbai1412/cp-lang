@@ -14,7 +14,6 @@
 // cost — matching the Manhattan lower bound without re-sorting cycles.
 // Bounds: n: 2..=100; p, q: 1..=n
 
-use std.flow.min_weight_matching
 use std.seq.{swap_at}
 
 fn sort_perm<D>(mut perm: [D]D) -> List<(D, D)>:

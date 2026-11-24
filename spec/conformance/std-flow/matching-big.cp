@@ -1,5 +1,5 @@
 // expect: ok, output "500\n500\nYES"
-use std.flow.{max_matching, Matching}
+use std.flow.{Matching}
 domain L = 0..500
 domain R = 0..500
 var adj: [L]List<R> = []

@@ -3,7 +3,6 @@
 // The letters are numbered 1..=k here: `cpl run` reads a letter domain as
 // numbers today.
 // class: logic
-use std.seq.{Perm}
 
 let n: 1..=1000 = read()
 let k: 1..=26 = read()

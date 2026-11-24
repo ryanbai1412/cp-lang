@@ -150,16 +150,19 @@ class GatesTest(unittest.TestCase):
             self.assertEqual([p.what for p in run("traits")], ["no case: Shout/Dog/shout (write one)"])
 
     def test_prelude(self):
-        files = {"std/prelude.cp": "use std.a.{f}\n", "std/a.cp": "pub fn f() -> Int = 1\npub fn g() -> Int = 2\npub fn h() -> Int = 3\n",
-                 "spec/lib/a.md": "```cp\nfn f() -> Int\nfn g() -> Int\n```\n| `h(x)` | h |\n",
-                 "spec/conformance/prelude-gaps.txt": "# head\nspec/lib/a.md: g\nspec/lib/a.md: h\nspec/lib/a.md: gone\n"}
+        files = {"std/prelude.cp": "use std.a.{f}\nuse std.b.{k}\n",
+                 "std/a.cp": "pub fn f() -> Int = 1\npub fn g() -> Int = 2\npub fn h() -> Int = 3\npub fn m(self) -> Int = 4\n",
+                 "std/b.cp": "pub fn inv() -> Int = 1\npub fn k() -> Int = 2\n",
+                 "spec/lib/a.md": "```cp\nfn f() -> Int\nfn g() -> Int\nfn m(self) -> Int\nfn b.inv() -> Int\n```\n| `h(x)` | h |\n"}
         with Tree(files) as t:
-            self.assertEqual([p.what.split(" ")[0] for p in run("prelude")], ["`spec/lib/a.md:"])
-            self.assertEqual(run("prelude", "--write"), [])
-            self.assertTrue(t.read("spec/conformance/prelude-gaps.txt").endswith("spec/lib/a.md: g\nspec/lib/a.md: h\n"))
+            self.assertEqual([p.what.split(" ")[0] for p in run("prelude")], ["`g`", "`h`"])
+            self.assertFalse((t.root / "spec/conformance/prelude-gaps.txt").exists())
+            (t.root / "std/prelude.cp").write_text("use std.a.{f, g, h}\nuse std.b.{inv, k}\n")
+            self.assertEqual([p.what.split(" ")[0] for p in run("prelude")], ["`b.inv`"])
+            (t.root / "std/prelude.cp").write_text("use std.a.{f, g, h}\nuse std.b.{k}\n")
             self.assertEqual(run("prelude"), [])
-            (t.root / "spec/conformance/prelude-gaps.txt").write_text("spec/lib/a.md: g\n")
-            self.assertEqual([p.where for p in run("prelude", "--write")], ["spec/lib/a.md"])
+            (t.root / "spec/lib/a.md").write_text("```cp\nfn b.nope() -> Int\n```\n")
+            self.assertEqual([p.what.split(" ")[0] for p in run("prelude")], ["`b.nope`:"])
 
     def test_std_signatures(self):
         files = {"std/a.cp": "pub fn f<K>(x: K) -> ?K = None\npub fn g() -> Int = 1\n",

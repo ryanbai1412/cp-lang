@@ -8,7 +8,6 @@
 //   other was charged at both ends, so subtract it once. O(N + C).
 // original: corpus/submissions/4371347.cpp
 // Bounds: n, c: 3..=1e6; points: 0..=c - 1
-use std.math.{choose}
 
 let (n, c): (3..=1e6, 3..=1e6) = read()
 domain Spot = 0..c

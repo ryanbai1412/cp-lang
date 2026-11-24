@@ -1,4 +1,3 @@
-use std.heap.{MaxHeap}
 @!multitest
 let (n, d): (2..=2e5, 1..=2e5) = read()
 let ms: [0..n - 1](1..=4e5, 1..=4e5) = read()

@@ -1,7 +1,7 @@
 // expect: ok, output "0 0 2 0\n0 0 2 0\n0:0 0:5 2:0 0:8\n0:0 0:5 2:0 0:8\n1 2 3\n4 5\n1 3\n5"
 // The union-finds print each vertex's root (and its offset, for PotentialDsu) in vertex order,
 // without compressing paths; Deque, LinkedList and DynBitset print their elements, and a Subset its mask (decision 291).
-use std.deque.{Deque, LinkedList}
+use std.deque.{LinkedList}
 use std.bitset.{DynBitset}
 domain V = 0..4
 var d = Dsu<V>()

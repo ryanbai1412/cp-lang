@@ -11,7 +11,6 @@
 //   period 2 only for even n). Odd-divisor sums come from a multiplicative sieve, binomials from
 //   factorials: O(lim) once, then O(n) per test.
 // Bounds: n: 1..=1e6
-use std.math.{sieve_multiplicative}
 
 type M = Mod<998_244_353>
 // g reads odd_div_sum up to n + 1.

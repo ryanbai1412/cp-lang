@@ -10,8 +10,6 @@
 //   one NTT per bit. O(18 n log n).
 // Bounds: n: 1..=200_000; xs: 0..=MAX_X
 
-use std.ntt.{ntt}
-
 const MOD = 998_244_353
 const BITS = 18
 const MAX_X = (1 << BITS) - 1

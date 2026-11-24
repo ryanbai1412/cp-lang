@@ -222,7 +222,8 @@ def undocumented_prelude(root):
     docs = "".join(open(f).read() for d in ("core", "lib")
                    for f in glob.glob(os.path.join(spec, d, "*.md")))
     return [n for n in names
-            if not re.search(r"`[^`\n]*\b" + re.escape(n) + r"\b[^`\n]*`", docs)]
+            if not re.search(r"`[^`\n]*\b" + re.escape(n) + r"\b[^`\n]*`", docs)
+            and not re.search(r"^fn\s+" + re.escape(n) + r"\b", docs, re.M)]
 
 
 def label_gaps(files):

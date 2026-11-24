@@ -1,5 +1,5 @@
 // CSES 1193 Labyrinth: shortest A -> B path through '.', printed as URDL moves.
-use std.grid.{Dir4, step}
+use std.grid.{Dir4}
 let (n, m): (1..=1000, 1..=1000) = read()
 domain Row = 0..n
 domain Col = 0..m

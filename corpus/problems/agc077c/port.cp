@@ -19,8 +19,6 @@
 //   vertices only, O(n + m).
 // Bounds: n: 4..=200_000; m: 0..=200_000; k: 2..=n - 2
 
-use std.graph.{complement, components}
-
 with io(answers: ("Yes", "No"))
 @!multitest
 let n: 4..=200_000 = read()

@@ -1,5 +1,4 @@
 // CSES 1133 Tree Distances II: for every vertex, the sum of distances to all others.
-use std.algebra.Monoid
 let n: 1..=2e5 = read()
 domain V = 1..=n
 let edges: [0..n - 1](u: V, v: V) = read()

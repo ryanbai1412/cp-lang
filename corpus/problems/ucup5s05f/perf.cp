@@ -8,7 +8,6 @@
 //   power sums. Walk the tree of the leaves x - l down, carrying c[j] = sum_m prefix[m] p[m + j]
 //   with prefix the product of the leaves left of the node: a left child keeps c's front, a
 //   right child takes the middle product of c with its left sibling.
-use std.ntt.{ntt}
 use std.poly.{deriv, inv, transposed_mul}
 use std.strings.{suffix_tree_edges}
 

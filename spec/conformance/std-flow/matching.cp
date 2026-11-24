@@ -1,5 +1,5 @@
 // expect: ok, output "YES\nYES YES\n3\nYES YES\nYES\nYES YES"
-use std.flow.{max_matching, min_vertex_cover, Matching}
+use std.flow.{Matching}
 domain L = 0..2
 domain R = 0..2
 let adj: [L]List<R> = [[R(0), R(1)], [R(0)]]

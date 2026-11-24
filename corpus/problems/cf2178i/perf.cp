@@ -4,7 +4,6 @@
 // `out` scattered across a table over all of A, the neighbour sets as plain
 // bit masks, and each bit's sum over subsets walked block by block instead of
 // testing the bit of every index.
-use std.graph.{two_color}
 type Z = Mod<998_244_353>
 
 @!multitest

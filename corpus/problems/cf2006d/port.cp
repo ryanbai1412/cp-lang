@@ -10,7 +10,6 @@
 //   kept by Mo's algorithm and scanned per query: O(n sqrt(q) + q sqrt(k)).
 // Bounds: n: 2..=100_000; q: 1..=100_000; k: 1..=1_000_000; b: 1..=k; days.l, days.r: 1..=n
 
-use std.mo.{mo}
 
 enum Side: Small | Big
 

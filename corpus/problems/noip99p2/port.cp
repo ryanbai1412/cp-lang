@@ -8,7 +8,6 @@
 //   O(len) each.
 // Bounds: base: 2..=16
 // original: corpus/submissions/5044551.cpp
-use std.strings.{is_palindrome}
 
 let base: 2..=16 = read()
 let number: Str = read()

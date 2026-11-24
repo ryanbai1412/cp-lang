@@ -12,7 +12,7 @@
 // grows the span only widens; when a value at p widens it to lo2..=hi2, the
 // segments that stop covering it start in (lo2, lo] or end in [hi, hi2).
 // Each segment leaves once, so the whole walk is O(n^2) per test.
-use std.mod.{Comb, Mod}
+use std.mod.{Comb}
 
 type Z = Mod<1e9 + 7>
 

@@ -6,7 +6,6 @@
 // points in convex position give two such crossings fewer than one inside a
 // triangle, and each interior quadruple has n - 4 fifth points, halved.
 // No three points are collinear, so the swapped pair is always adjacent.
-use std.math.choose
 
 struct Dir(d: Pt)
 

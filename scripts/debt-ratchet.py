@@ -1349,7 +1349,7 @@ def known_lists(root: Path) -> list[str]:
 
 
 def prelude_gaps(root: Path) -> list[str]:
-    """Entries of spec/conformance/prelude-gaps.txt: prelude names with no conformance case."""
+    """Entries of spec/conformance/prelude-gaps.txt, deleted: every lib-table fn is a prelude name."""
     return _registered_entries(root, "prelude_gaps")
 
 
@@ -1844,7 +1844,7 @@ LISTS: dict[str, tuple[str | None, str, str]] = {
     "scripts/public-hosts.txt": (None, "infra", "data: hosts the public-history scan allows"),
     "scripts/std-lint-baseline.txt": ("std_lint_findings", "stdlib", "deleted: std-lint-ratchet.py fails on any hit"),
     "spec/conformance/permits.txt": ("permits", "spec", "a case per permit"),
-    "spec/conformance/prelude-gaps.txt": ("prelude_gaps", "stdlib", "a case per prelude name"),
+    "spec/conformance/prelude-gaps.txt": ("prelude_gaps", "stdlib", "deleted: spec-gate.py prelude fails on any prelude gap"),
     "spec/conformance/rule-gaps.txt": ("rule_gaps", "spec", "deleted: spec-gate.py coverage fails on any rule gap"),
     "spec/conformance/sig-gaps.txt": ("sig_gaps", "spec", "deleted: spec-gate.py sigs fails on any mismatch"),
     "spec/conformance/trait-gaps.txt": ("trait_gaps", "spec", "deleted: spec-gate.py traits fails on any missing case"),
@@ -1947,6 +1947,7 @@ HARD_ZERO = frozenset({
     "generate_gaps",
     "xfail_markers",
     "std_doc_parsers",
+    "prelude_gaps",
 })
 
 # name -> (label, measure, ratcheted). Informational counts are shown, never gated.
@@ -2008,7 +2009,7 @@ COUNTERS = {
     "lsp_string_types": ("LSP lines reading types out of rendered text", lsp_string_types, True),
     "lint_post_filters": ("entries of cpl-lint after-the-fact tables", lint_post_filters, True),
     "known_lists": ("entries of known-finding lists", known_lists, True),
-    "prelude_gaps": ("prelude names with no conformance case", prelude_gaps, True),
+    "prelude_gaps": ("entries of spec/conformance/prelude-gaps.txt", prelude_gaps, True),
     "permits": ("entries of spec/conformance/permits.txt", permits, True),
     "trait_gaps": ("entries of spec/conformance/trait-gaps.txt", trait_gaps, True),
     "rule_gaps": ("entries of spec/conformance/rule-gaps.txt", rule_gaps, True),

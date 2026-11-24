@@ -3,7 +3,7 @@
 // Every std/strings function that reads its input through `nth` takes a `[D]T` (cf1943b).
 // Not `find_all`: its empty pattern yields the end key, which a `[D]T` has no value for
 // (stdlib PLAN.md, General fixes owed).
-use std.strings.{is_palindrome, lyndon_runs, overlap, lyndon_factorization, min_rotation, max_rotation, manacher}
+use std.strings.{max_rotation}
 domain P = 1..=7
 let s: [P]Char = ['a', 'b', 'a', 'c', 'a', 'b', 'a']
 let t: [P]Char = ['b', 'a', 'b', 'a', 'b', 'a', 'b']

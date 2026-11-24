@@ -573,7 +573,7 @@ impl HandSearch<'_> {
             format!("`{s}[{i}]` against `{s}[{n} - 1 - {i}]` tests whether `{s}` is a palindrome"),
         )
         .with_help(format!(
-            "write `is_palindrome({s})` (`use std.strings.{{is_palindrome}}`): a `Bool`, with no mirrored index or half-length bound to get wrong"
+            "write `is_palindrome({s})`: a `Bool`, with no mirrored index or half-length bound to get wrong"
         ));
         self.out.push(Finding {
             lint: &PALINDROME_BY_HAND,
