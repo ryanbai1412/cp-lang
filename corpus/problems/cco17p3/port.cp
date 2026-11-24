@@ -43,7 +43,7 @@ for s in strokes:
         cols.push(Column(ys: Trie<Bit>.new(), colour: []))
     let k = column_at[node]
     let at = cols[k].ys.add(low_bits(s.y))
-    cols[k].colour.resize(cols[k].ys.len, 0)
+    cols[k].colour.resize(cols[k].ys.nodes, 0)
     cols[k].colour[at] += s.v
 
 for qu in queries:

@@ -335,7 +335,10 @@ Laws:
 struct Trie<A>:
     fn new() -> Trie<A>                              // O(|A|)
     @get fn root(self) -> Int                        // O(1); 0
-    @get fn len(self) -> Int                         // O(1); nodes incl. root
+    @get fn nodes(self) -> Int                       // O(1); nodes incl. root
+    @get fn len(self) -> Int                         // O(1); stored words, with copies
+    @get fn is_empty(self) -> Bool                   // O(1); no word stored
+    fn each(self) -> yields List<A>                  // O(nodes * |A|); words, kth order
     fn step(self, node: Int, a: A) -> ?Int           // O(1)
     fn find<S: Seq>(self, word: S) -> ?Int           // O(|word|)
     fn add<S: Seq>(mut self, word: S) -> Int         // O(|word|); returns terminal node
@@ -575,7 +578,7 @@ Audit against AtCoder Library (`string`), KACTL (`strings`), cp-algorithms (`str
 | 2D rolling hash (grid sub-rectangles) | cp-alg, contest templates | have | `Hash2D<R, C>.{new,rect}` |
 | Suffix automaton (SAM) + online/generalized + k-th substring | cp-alg, Benq, jiangly | have / new | `SuffixAutomaton<A>.{new,of,push,root,len,step,link,longest,shortest,first_pos,find,contains,distinct,topo_order,occ_counts,lcs}` (have); `{reset,add_word,kth_substring}` (new) |
 | Palindromic tree (eertree) + series_link + deque/rollback/min-partition | cp-alg, Benq, jiangly | have / new | `PalindromicTree<A>.{new,of,push,len,pal_len,link,step,diff,series_link,occ_counts}` (have); `{push_front,pop,last_state,contains,min_palindrome_partition}` (new) |
-| Prefix trie + order statistics | cp-alg, contest templates | have / new | `Trie<A>.{new,root,len,step,find,add,remove,count,count_prefix,ends_at,pass_at}` (have); `{contains,clear,kth,count_less}` (new) |
+| Prefix trie + order statistics | cp-alg, contest templates | have / new | `Trie<A>.{new,root,nodes,len,each,step,find,add,remove,count,count_prefix,ends_at,pass_at}` (have); `{contains,clear,kth,count_less}` (new) |
 | Binary XOR trie (max/min XOR, count `< limit`, k-th XOR) | Benq, jiangly, cp-alg | out | Owned by `std.bitset` (`std.bitset.XorTrie`). |
 | Aho-Corasick (static) | KACTL `AhoCorasick`, cp-alg | have / new | `AhoCorasick<A>.{new,root,len,step,link,hit,words_at,find_all,counts}` (have); `{fail_order,exit_link,pattern_state}` (new) |
 | Dynamic / online Aho-Corasick (log-decomposed buckets) | cp-alg, contest templates | new | `DynamicAhoCorasick<A>.{new,add,remove,count_matches}` |

@@ -1949,3 +1949,21 @@ print(SuffixArray.new("banana"))
 """
 out = "5 3 1 0 4 2"
 
+
+[case."Show/Trie/show"]
+code = """
+use std.strings.{Trie}
+var t = Trie<Char>()
+for w in ["b", "ab", "a", "b"]: t.add(w)
+print(t)
+"""
+out = "a ab b b"
+
+[case."Show/PMultisetWithin/show"]
+code = """
+use std.persistent.{PArena, PMultiset}
+var ar = PArena<PMultiset<0..10>>()
+let s = PMultiset<0..10>.empty().with(mut ar, 7).with(mut ar, 2).with(mut ar, 7)
+print(s.within(ar))
+"""
+out = "2 7 7"

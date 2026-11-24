@@ -1613,6 +1613,15 @@ def edge_labels_unrun(root: Path) -> list[str]:
     return found
 
 
+def std_trait_matrix(root: Path) -> list[str]:
+    """std containers missing `Show`, a walk or `is_empty` (std-api/R12, scripts/std-trait-matrix.py; Content)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("std_trait_matrix", Path(__file__).with_name("std-trait-matrix.py"))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return [f"{rel}:{line} {name} {trait}" for rel, line, name, missing in mod.matrix(str(root)) for trait in missing]
+
+
 def std_types_shown_empty(root: Path) -> list[str]:
     """`pub struct`s in std with no `pub` field and no `impl Show`: a trace shows their
     values as `{}`, since a std type's private fields never reach a user (Content)."""
@@ -2002,6 +2011,7 @@ HARD_ZERO = frozenset({
     "permits", "written_twice",
     "plan_delta_lines",
     "trait_gaps",
+    "std_trait_matrix",
     "idiom_lint_gaps",
     "rule_gaps",
     "direct_python",
@@ -2092,6 +2102,8 @@ COUNTERS = {
     "trace_engine_refs": ("CPL_TRACE_ENGINE mentions (scoreboard F3, Core)", trace_engine_refs, True),
     "std_types_shown_empty": ("std types a trace shows as `{}`: no pub field, no Show (Content)",
                               std_types_shown_empty, True),
+    "std_trait_matrix": ("std containers missing Show, a walk or is_empty (std-api/R12, Content)",
+                         std_trait_matrix, True),
     "std_model_gaps": ("std types and pub std fns with no seeded model case against a brute force (Content)",
                        std_model_gaps, True),
     "edge_labels_unrun": ("std empty:/ties: labels that are not a claim cpl-conform docs runs (Content)",

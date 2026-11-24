@@ -742,6 +742,14 @@ pub struct PMultiset<D>:
     /// example: `PMultiset<0..10>.empty().is_empty`
     @get pub fn is_empty(self) -> Bool = _len == 0
 
+    /// \(O(1)\). The multiset read through the arena it lives in: a lent view that walks, counts
+    /// and prints like any container. This is the walk of a `PMultiset`, since its nodes are in `ar`.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 3).with(mut ar, 1); s.within(ar).each().collect() == [1, 3]`
+    pub fn within(self, ar: PArena<PMultiset<D>>) -> lends PMultisetWithin<D> = PMultisetWithin(ar, self)
+
     /// A new multiset with one more copy of `x`; `self` is unchanged.
     ///
     /// cost: \(O(\log \lvert D \rvert)\) time and arena nodes
@@ -825,6 +833,41 @@ pub struct PMultiset<D>:
         else: n._r = Some(ar.alloc(kid(ar, _r).step(mut ar, k, d, mid, hi)))
         n
 
+/// A `PMultiset` read through its `PArena`, from `s.within(ar)`. It lends both, so it lives no
+/// longer than either and copies nothing.
+pub struct PMultisetWithin<D>(ar: PArena<PMultiset<D>>, set: PMultiset<D>):
+    /// The number of elements, counting copies.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 3).with(mut ar, 3); s.within(ar).len == 2`
+    @get pub fn len(self) -> Int = set.len
+
+    /// Whether the multiset has no element.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var ar = PArena<PMultiset<0..10>>(); PMultiset<0..10>.empty().within(ar).is_empty`
+    @get pub fn is_empty(self) -> Bool = set.is_empty
+
+    /// Visit every element, one per copy, skipping empty subtrees.
+    ///
+    /// cost: \(O(\min(\mathit{len}, \lvert D \rvert) \log \lvert D \rvert + \mathit{len})\)
+    /// empty: `var ar = PArena<PMultiset<0..10>>(); PMultiset<0..10>.empty().within(ar).each().collect() == []`
+    /// order: ascending `D` order, each element repeated by its count
+    /// traps: never
+    /// example: `var ar = PArena<PMultiset<0..10>>(); let s = PMultiset<0..10>.empty().with(mut ar, 7).with(mut ar, 2).with(mut ar, 7); s.within(ar).each().collect() == [2, 7, 7]`
+    pub fn each(self) -> yields D:
+        var stack = [(node: set, lo: 0, hi: D.count)]
+        while let top = stack.pop():
+            if top.node._len == 0: continue
+            if top.hi - top.lo == 1:
+                for _ in 0..top.node._len: yield D.nth(top.lo)
+                continue
+            let mid = top.lo + (top.hi - top.lo) / 2
+            stack.push((node: kid(ar, top.node._r), lo: mid, hi: top.hi))
+            stack.push((node: kid(ar, top.node._l), lo: top.lo, hi: mid))
+
 impl<D> Eq for PMultiset<D>:
     fn eq(a, b) = a._len == b._len and a._hash == b._hash
 
@@ -874,3 +917,21 @@ fn persistent_segtree_and_range_kth_match_brute():
             for k in 0..s.len: assert rk.kth(rng, k) == s[k]
             for x in [-20, -5, 0, 5, 20]:
                 assert rk.count_le(rng, x) == s.count(y => y <= x)
+
+@test
+fn pmultiset_within_walks_and_shows():
+    var ar = PArena<PMultiset<0..8>>()
+    let e = PMultiset<0..8>.empty()
+    let s = e.with(mut ar, 5).with(mut ar, 0).with(mut ar, 5).with(mut ar, 7)
+    let t = s.without(mut ar, 5)
+    assert s.within(ar).each().collect() == [0, 5, 5, 7] and "{s.within(ar)}" == "0 5 5 7"
+    assert t.within(ar).each().collect() == [0, 5, 7] and t.within(ar).len == 3
+    assert e.within(ar).is_empty and "{e.within(ar)}" == ""
+
+impl Show for PMultisetWithin<D>:
+    fn show(v):
+        var out = ""
+        for x in v.each():
+            if not out.is_empty: out += " "
+            out += "{x}"
+        out

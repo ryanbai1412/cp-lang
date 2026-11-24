@@ -720,7 +720,7 @@ std/graph.cp: Functional.root_of(self, v: V) -> V
 std/graph.cp: Graph.at(self, u: V) -> lends Slice<A>
 std/graph.cp: Graph.contains(self, u: V, v: V) -> Bool
 std/graph.cp: Graph.deg(self, u: V) -> Int
-std/graph.cp: Graph.directed<E, R: (u: V, v: V, ..)
+std/graph.cp: Graph.directed<S: Indexed<E, R>, E, R: (u: V, v: V, ..)
 std/graph.cp: Graph.edges<E>(self) -> yields Edge<V, E> where A: Edged<E>
 std/graph.cp: Graph.hops(self) -> [V, V]Int
 std/graph.cp: Graph.lists(self) -> [V]List<V>
@@ -731,7 +731,7 @@ std/graph.cp: Graph.only(self, keep: V -> Bool = v => true, from: V -> Bool = v 
 std/graph.cp: Graph.out(self, u: V) -> yields A
 std/graph.cp: Graph.peel(self, ready: ?(V -> Bool) = None, on_remove: ?((V, A) -> ()) = None) -> List<V>
 std/graph.cp: Graph.transpose(self) -> Graph<V, A>
-std/graph.cp: Graph.undirected<E, R: (u: V, v: V, ..)
+std/graph.cp: Graph.undirected<S: Indexed<E, R>, E, R: (u: V, v: V, ..)
 std/graph.cp: Graph.weighted<E, W>(self, f: A -> W) -> Reweighted<V, E, A, W> where A: Edged<E>
 std/graph.cp: IncrementalBridges.add(mut self, u: V, v: V)
 std/graph.cp: IncrementalBridges.new() -> IncrementalBridges<V>
@@ -1294,7 +1294,11 @@ std/persistent.cp: PMultiset.empty() -> PMultiset<D>
 std/persistent.cp: PMultiset.is_empty(self) -> Bool
 std/persistent.cp: PMultiset.len(self) -> Int
 std/persistent.cp: PMultiset.with(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>
+std/persistent.cp: PMultiset.within(self, ar: PArena<PMultiset<D>>) -> lends PMultisetWithin<D>
 std/persistent.cp: PMultiset.without(self, mut ar: PArena<PMultiset<D>>, x: D) -> PMultiset<D>
+std/persistent.cp: PMultisetWithin.each(self) -> yields D
+std/persistent.cp: PMultisetWithin.is_empty(self) -> Bool
+std/persistent.cp: PMultisetWithin.len(self) -> Int
 std/persistent.cp: PersistentArray.base(self) -> Version<PersistentArray<D, T>>
 std/persistent.cp: PersistentArray.get(self, v: Version<PersistentArray<D, T>>, i: D) -> T
 std/persistent.cp: PersistentArray.new(a: ?[D]T = None, fill: ?T = None) -> PersistentArray<D, T>
@@ -1452,6 +1456,7 @@ std/range.cp: l<D>(self: Range<D>) -> Cut<D>
 std/range.cp: last_true<D>(self: Range<D>, ok: D -> Bool) -> ?D
 std/range.cp: mid<D>(self: Range<D>) -> Cut<D>
 std/range.cp: r<D>(self: Range<D>) -> Cut<D>
+std/range.cp: shift<D>(self: D, r: Range<Int>) -> Range<D>
 std/range.cp: splits<D>(self: Range<D>) -> yields (Range<D>, Range<D>)
 std/search.cp: bsearch_real(lo: F64, hi: F64, ok: F64 -> Bool, steps: Int = 100) -> ?F64
 std/search.cp: dinkelbach(lo: F64, solve: F64 -> (num: F64, den: F64), eps: F64 = 1e-9) -> F64
@@ -1460,9 +1465,7 @@ std/search.cp: parallel_bsearch<I>(queries: Int, r: Range<I>, reset: () -> (), a
 std/search.cp: peak(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64
 std/search.cp: split_best<G, D, T: Ord>(groups: Seq<G>, range: G -> Range<D>, best: (G, Range<D>) -> (T, D)) -> yields T
 std/search.cp: ternary_max<I, K>(r: Range<I>, f: I -> K) -> ?I
-std/search.cp: ternary_max_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
 std/search.cp: ternary_min<I, K>(r: Range<I>, f: I -> K) -> ?I
-std/search.cp: ternary_min_real(lo: F64, hi: F64, f: F64 -> F64, steps: Int = 100) -> F64
 std/search.cp: valley(self: Range<F64>, by: F64 -> F64, steps: Int = 100) -> F64
 std/segtree.cp: DynamicOrderTree.count_in(self, r: Range<D>, lo_v: T, hi_v: T) -> Int
 std/segtree.cp: DynamicOrderTree.count_lt(self, r: Range<D>, x: T) -> Int
@@ -1624,7 +1627,8 @@ std/seq.cp: first_gt<D, T, K>(self: [D]T, target: K, by: T -> K = x => x) -> ?D
 std/seq.cp: first_some<S: Seq, T, U>(self: S, f: T -> ?U) -> ?U
 std/seq.cp: flat_map<S: Seq<T>, T, U: Seq<V>, V>(self: S, f: T -> U) -> yields V
 std/seq.cp: flatten<S: Seq<U>, U: Seq<T>, T>(self: S) -> yields T
-std/seq.cp: fold<S: Seq, T, Acc>(self: S, f: (Acc, T) -> Acc, init: Acc) -> Acc
+std/seq.cp: fold<S: Seq<T>, T, M>(self: S, op: M) -> T
+std/seq.cp: fold_from<S: Seq<T>, T, Acc>(self: S, init: Acc, f: (Acc, T) -> Acc) -> Acc
 std/seq.cp: get_or_insert<K, V>(mut self: Map<K, V>, k: K, v: V) -> V
 std/seq.cp: group<S: Seq, T, K, U>(self: S, by: T -> K, of: T -> U = x => x) -> Map<K, List<U>>
 std/seq.cp: index_pairs<D>(self: Range<D>) -> yields (D, D)
@@ -1925,12 +1929,14 @@ std/strings.cp: Trie.contains<S: Seq>(self, word: S) -> Bool
 std/strings.cp: Trie.count<S: Seq>(self, word: S) -> Int
 std/strings.cp: Trie.count_less<S: Seq>(self, word: S) -> Int
 std/strings.cp: Trie.count_prefix<S: Seq>(self, prefix: S) -> Int
+std/strings.cp: Trie.each(self) -> yields List<A>
 std/strings.cp: Trie.ends_at(self, node: Int) -> Int
 std/strings.cp: Trie.find<S: Seq>(self, word: S) -> ?Int
 std/strings.cp: Trie.is_empty(self) -> Bool
 std/strings.cp: Trie.kth(self, k: Int) -> ?List<A>
 std/strings.cp: Trie.len(self) -> Int
 std/strings.cp: Trie.new() -> Trie<A>
+std/strings.cp: Trie.nodes(self) -> Int
 std/strings.cp: Trie.pass_at(self, node: Int) -> Int
 std/strings.cp: Trie.remove<S: Seq>(mut self, word: S) -> Bool
 std/strings.cp: Trie.root(self) -> Int

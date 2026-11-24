@@ -2741,7 +2741,7 @@ pub struct Trie<A>:
     ///
     /// cost: \(O(\lvert A \rvert)\)
     /// traps: never
-    /// example: `Trie<Char>().len == 1`
+    /// example: `Trie<Char>().nodes == 1`
     pub fn new() -> Trie<A>:
         let k = A.count
         Trie(k, List.filled(k, -1), [0], [0])
@@ -2753,13 +2753,20 @@ pub struct Trie<A>:
     /// example: `Trie<Char>().root == 0`
     @get pub fn root(self) -> Int = 0
 
-    /// The number of nodes, the root included. `remove` keeps nodes, so this never shrinks
-    /// except by `clear`.
+    /// The number of nodes, the root included: node ids are `0..nodes`, so a per-node table has
+    /// this length. `remove` keeps nodes, so this never shrinks except by `clear`.
     ///
     /// cost: \(O(1)\)
     /// traps: never
-    /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.len == 4`
-    @get pub fn len(self) -> Int = ends.len
+    /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.nodes == 4`
+    @get pub fn nodes(self) -> Int = ends.len
+
+    /// The number of stored words, counting copies.
+    ///
+    /// cost: \(O(1)\)
+    /// traps: never
+    /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ab"); t.add("a"); t.len == 3 and t.nodes == 3`
+    @get pub fn len(self) -> Int = pass[0]
 
     /// True when no words are stored (every count is zero), whatever nodes remain.
     ///
@@ -2768,10 +2775,31 @@ pub struct Trie<A>:
     /// example: `var t = Trie<Char>(); t.add("a"); t.remove("a"); t.is_empty`
     @get pub fn is_empty(self) -> Bool = pass[0] == 0
 
+    /// \(O(\mathit{nodes} \cdot \lvert A \rvert + \mathit{letters})\). Visit every stored word as its
+    /// letters, one per copy.
+    ///
+    /// cost: \(O(\mathit{nodes} \cdot \lvert A \rvert)\) plus the letters yielded
+    /// empty: `Trie<Char>().each().collect() == []`
+    /// ties: `var t = Trie<Char>(); t.add("a"); t.add("b"); t.add("a"); t.each().collect() == [['a'], ['a'], ['b']]`
+    /// order: lexicographic in `A` order, a word before its extensions (`kth` order)
+    /// traps: never
+    /// example: `var t = Trie<Char>(); t.add("b"); t.add("ab"); t.add("a"); t.each().collect() == [['a'], ['a', 'b'], ['b']]`
+    pub fn each(self) -> yields List<A>:
+        var stack: List<(node: Int, word: List<A>)> = [(node: 0, word: [])]
+        while let top = stack.pop():
+            if pass[top.node] == 0: continue
+            for _ in 0..ends[top.node]: yield top.word
+            for c in (0..alpha).rev:
+                let child = next[top.node * alpha + c]
+                if child == -1: continue
+                var w = top.word
+                w.push(A.try_at(c)!)
+                stack.push((node: child, word: w))
+
     /// The child of `node` along `a`, or `None` when it was never created.
     ///
     /// cost: \(O(1)\)
-    /// traps: when `node` is outside `0..self.len`
+    /// traps: when `node` is outside `0..self.nodes`
     /// example: `var t = Trie<Char>(); t.add("ab"); t.step(0, 'a') == Some(1) and t.step(1, 'z') == None`
     pub fn step(self, node: Int, a: A) -> ?Int:
         let t = next[node * alpha + a.ord]
@@ -2859,7 +2887,7 @@ pub struct Trie<A>:
     /// The number of stored words that end at `node`.
     ///
     /// cost: \(O(1)\)
-    /// traps: when `node` is outside `0..self.len`
+    /// traps: when `node` is outside `0..self.nodes`
     /// example: `var t = Trie<Char>(); let v = t.add("ab"); t.ends_at(v) == 1`
     pub fn ends_at(self, node: Int) -> Int:
         return ends[node]
@@ -2867,7 +2895,7 @@ pub struct Trie<A>:
     /// The number of stored words that pass through or end at `node`; at the root, all of them.
     ///
     /// cost: \(O(1)\)
-    /// traps: when `node` is outside `0..self.len`
+    /// traps: when `node` is outside `0..self.nodes`
     /// example: `var t = Trie<Char>(); t.add("ab"); t.add("ac"); t.pass_at(1) == 2`
     pub fn pass_at(self, node: Int) -> Int:
         return pass[node]
@@ -2885,7 +2913,7 @@ pub struct Trie<A>:
     ///
     /// cost: \(O(\lvert A \rvert)\)
     /// traps: never
-    /// example: `var t = Trie<Char>(); t.add("ab"); t.clear(); t.is_empty and t.len == 1`
+    /// example: `var t = Trie<Char>(); t.add("ab"); t.clear(); t.is_empty and t.nodes == 1`
     pub fn clear(mut self):
         next = List.filled(alpha, -1)
         ends = [0]
@@ -3924,6 +3952,21 @@ fn palindromes_and_suffix_array_walk_and_show():
     let sa = SuffixArray.new("banana")
     assert sa.each().collect() == sa.sa and "{sa}" == "5 3 1 0 4 2"
 
+@test
+fn trie_counts_words_walks_them_and_keeps_node_ids():
+    var t = Trie<Char>()
+    assert t.len == 0 and t.nodes == 1 and t.each().collect() == []
+    var per_node: List<Int> = []
+    for w in ["ba", "a", "ba", "abc"]:
+        let at = t.add(w)
+        per_node.resize(t.nodes, 0)
+        per_node[at] += 1
+    assert t.len == 4 and t.nodes == 6
+    assert per_node.sum() == 4 and per_node[t.find("ba")!] == 2
+    assert t.each().collect() == [['a'], ['a', 'b', 'c'], ['b', 'a'], ['b', 'a']] and "{t}" == "a abc ba ba"
+    t.remove("ba")
+    assert t.len == 3 and t.nodes == 6 and "{t}" == "a abc ba"
+
 impl Show for Palindromes:
     fn show(v):
         var out = ""
@@ -3938,4 +3981,14 @@ impl Show for SuffixArray<T>:
         for x in v.each():
             if not out.is_empty: out += " "
             out += "{x}"
+        out
+
+impl Show for Trie<A>:
+    fn show(t):
+        var out = ""
+        var first = true
+        for w in t.each():
+            if not first: out += " "
+            first = false
+            for c in w: out += "{c}"
         out
