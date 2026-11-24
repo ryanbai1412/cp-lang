@@ -1126,4 +1126,8 @@ def main(argv: list[str] | None = None) -> int:
         return run_steps(args.tier, args.cpl, only=set(args.scripts) or None)
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        # A tier past its time limit (the hook's `timeout`) or Ctrl-C: the caller says which step.
+        sys.exit(130)

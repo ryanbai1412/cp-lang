@@ -90,6 +90,20 @@ class LandTest(unittest.TestCase):
         self.assertNotEqual(r.returncode, 0)
         self.assertIn(f"rebase conflict in {case}", r.stderr)
 
+    def test_an_autostash_that_conflicts_stops_and_names_the_stash(self):
+        theirs, ours = self.clone("theirs"), self.clone("ours")
+        (theirs / RATCHET).write_text(json.dumps({"a": 4, "b": 5, "names": ["x", "y"]}, indent=2) + "\n")
+        self.commit(theirs, "tighten a")
+        git(theirs, "push", "-q", "origin", "HEAD:main")
+        (ours / "src.txt").write_text("source\n")
+        self.commit(ours, "ours")
+        (ours / RATCHET).write_text(json.dumps({"a": 5, "b": 3, "names": ["x", "y"]}, indent=2) + "\n")
+        r = self.land(ours)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn(f"conflict with main in: {RATCHET}", r.stderr)
+        self.assertIn("stash@{0}", r.stderr)
+        self.assertNotIn("src.txt", git(ours, "show", "--name-only", "--format=", "origin/main"))
+
     def test_a_checkout_behind_main_lands_with_mains_land_sh(self):
         theirs, ours = self.clone("theirs"), self.clone("ours")
         land = theirs / "scripts" / "land.sh"

@@ -39,8 +39,20 @@ domain=$(git log -1 --format='%(trailers:key=Domain,valueonly,separator=)' HEAD)
 # drops this commit's change to it.
 ratchet=scripts/debt-ratchet.json index=corpus/index.json
 rebasing() { [ -d "$(git rev-parse --git-path rebase-merge)" ] || [ -d "$(git rev-parse --git-path rebase-apply)" ]; }
+# A rebase that worked can still leave the autostash's pop conflicted; say so
+# rather than land around it.
+stash_conflict() {
+    rebasing && return 1
+    left=$(git diff --name-only --diff-filter=U)
+    [ -n "$left" ] || return 1
+    echo "land: your uncommitted changes conflict with main in: $(echo $left); they are kept in" \
+        "$(git stash list -1 --format=%gd); resolve the files, then \`git stash drop\`" >&2
+}
 pull() {
-    git pull -q --rebase --autostash "$remote" main && return 0
+    if git pull -q --rebase --autostash "$remote" main; then
+        stash_conflict && return 1
+        return 0
+    fi
     while rebasing; do
         conflicts=$(git diff --name-only --diff-filter=U)
         # The corpus index sums every package's meta.json: rebuild it from the rebased tree.
@@ -81,7 +93,7 @@ pull() {
             { echo "land: git rebase --continue failed" >&2; return 1; }
     done
 }
-pull
+pull || exit 1
 # Only committed work lands (handbook/guidelines/ci-checklist.md ci/R27): a
 # commit whose hook failed left nothing new, and pushing the regeneration
 # alone would ship generated files without their source.
