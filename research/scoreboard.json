@@ -857,7 +857,7 @@
         "core-05/let-cannot-assign.cp": "pass",
         "core-05/let-field-survives-push-then-reassign.cp": "pass",
         "core-05/let-field-then-conditional-reassign.cp": "pass",
-        "core-05/let-heap-element-lends-no-copy.cp": "fail",
+        "core-05/let-heap-element-lends-no-copy.cp": "pass",
         "core-05/let-receiver-builtin-mutator-rejects.cp": "pass",
         "core-05/local-var-captured-by-reference.cp": "pass",
         "core-05/loop-item-clone-kept.cp": "pass",
@@ -3551,14 +3551,6 @@
           ]
         },
         {
-          "cause": "wrong output",
-          "count": 2,
-          "examples": [
-            "core-04/zip-keyed-by-first.cp",
-            "core-05/let-heap-element-lends-no-copy.cp"
-          ]
-        },
-        {
           "cause": "E0201: no `\u003cid>` in scope",
           "count": 1,
           "examples": [
@@ -3620,13 +3612,20 @@
           "examples": [
             "core-05/map-entry-index-key-lends.cp"
           ]
+        },
+        {
+          "cause": "wrong output",
+          "count": 1,
+          "examples": [
+            "core-04/zip-keyed-by-first.cp"
+          ]
         }
       ],
       "counts": {
-        "fail": 13,
-        "pass": 3524
+        "fail": 12,
+        "pass": 3525
       },
-      "passed": 3524,
+      "passed": 3525,
       "total": 3537
     },
     "corpus": {
